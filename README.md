@@ -267,7 +267,7 @@ O uso, distribuição ou modificação deste código sem autorização expressa 
 
 ## 📞 Contato
 
-Para suporte ou dúvidas, entre em contato através do e-mail pessoal do desenvolvedor: caio.valerio@exemplo.com
+Para suporte ou dúvidas, entre em contato através do e-mail pessoal do desenvolvedor: caiovaleriogoulartcorreia@gmail.com
 
 ---
 
