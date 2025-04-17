@@ -57,7 +57,7 @@ O Painel ABZ Group é uma plataforma de gestão interna desenvolvida para centra
 ### Clonando o Repositório
 
 ```bash
-git clone https://github.com/seu-usuario/painel-abz.git
+git clone https://github.com/Caiolinooo/painel-abz.git
 cd painel-abz
 ```
 
@@ -262,14 +262,20 @@ Você pode testar a configuração de email acessando a rota:
 
 ## 📄 Licença
 
-Este projeto está licenciado sob a [Licença MIT](LICENSE).
+Este projeto é propriedade pessoal de Caio Valerio Goulart Correia. Todos os direitos reservados.
+O uso, distribuição ou modificação deste código sem autorização expressa do autor é proibido.
 
-## 📞 Suporte
+## 📞 Contato
 
-Para suporte ou dúvidas, entre em contato através do e-mail: suporte@abzgroup.com.br
+Para suporte ou dúvidas, entre em contato através do e-mail pessoal do desenvolvedor: caio.valerio@exemplo.com
 
 ---
 
 <div align="center">
-  <p>Desenvolvido com ❤️ por ABZ Group</p>
+  <p>Desenvolvido com ❤️ por Caio Valerio Goulart Correia</p>
+  <div class="social-links" style="margin-top: 10px;">
+    <a href="https://www.linkedin.com/in/caio-goulart/" target="_blank">LinkedIn</a> |
+    <a href="https://github.com/Caiolinooo" target="_blank">GitHub</a> |
+    <a href="https://www.instagram.com/Tal_do_Goulart" target="_blank">Instagram</a>
+  </div>
 </div>
