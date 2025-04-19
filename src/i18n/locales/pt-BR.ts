@@ -114,7 +114,7 @@ export default {
     registeredUserMessage: 'Você já possui uma conta cadastrada. Por favor, digite sua senha para acessar o sistema.',
     invalidPassword: 'Senha incorreta. Por favor, tente novamente',
     phoneNumber: 'Número de Telefone',
-    phoneNumberHelp: 'Digite seu número de telefone com código do país (ex: +5511999999999)',
+    phoneNumberHelp: 'Digite seu número de telefone com código do país, começando com + (ex: +5511999999999). O número deve estar no formato internacional.',
     verificationCode: 'Código de Verificação',
     verificationCodeHelp: 'Digite o código de verificação enviado para seu telefone',
     backToStart: 'Voltar para o início',

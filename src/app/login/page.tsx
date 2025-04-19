@@ -76,7 +76,7 @@ export default function Login() {
       }
     } else {
       // Validar o número de telefone
-      if (!phoneNumber || phoneNumber.length < 10) {
+      if (!phoneNumber || phoneNumber.length < 10 || !phoneNumber.startsWith('+') || !/^\+[0-9]+$/.test(phoneNumber)) {
         setError(t('auth.invalidPhoneNumber'));
         return;
       }
@@ -259,7 +259,20 @@ export default function Login() {
                       required={!useEmail}
                       placeholder="+5511999999999"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      onChange={(e) => {
+                        // Formatar o número de telefone para garantir que esteja no formato correto
+                        let value = e.target.value;
+
+                        // Remover todos os caracteres não numéricos, exceto o sinal de +
+                        value = value.replace(/[^0-9+]/g, '');
+
+                        // Garantir que o número comece com +
+                        if (value && !value.startsWith('+')) {
+                          value = '+' + value;
+                        }
+
+                        setPhoneNumber(value);
+                      }}
                       className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
                     />
                   </div>
