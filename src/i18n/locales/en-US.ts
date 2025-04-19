@@ -115,7 +115,7 @@ export default {
     registeredUserMessage: 'You already have a registered account. Please enter your password to access the system.',
     invalidPassword: 'Incorrect password. Please try again',
     phoneNumber: 'Phone Number',
-    phoneNumberHelp: 'Enter your phone number with country code (e.g. +15551234567)',
+    phoneNumberHelp: 'Enter your phone number with country code, starting with + (e.g. +15551234567). The number must be in international format.',
     verificationCode: 'Verification Code',
     verificationCodeHelp: 'Enter the verification code sent to your phone',
     backToStart: 'Back to start',
