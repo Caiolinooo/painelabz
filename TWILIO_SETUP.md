@@ -32,12 +32,9 @@ Edite o arquivo `.env` na raiz do projeto e adicione suas credenciais:
 
 ```
 # Configurações do Twilio Verify
-TWILIO_ACCOUNT_SID="***REMOVED***"
-TWILIO_AUTH_TOKEN="***REMOVED***"
-TWILIO_VERIFY_SERVICE_SID="***REMOVED***"
-TWILIO_MESSAGING_SERVICE_SID="***REMOVED***"
-TWILIO_WEBHOOK_SID="***REMOVED***"
-TWILIO_USER_SID="***REMOVED***"
+TWILIO_ACCOUNT_SID="seu-account-sid"
+TWILIO_AUTH_TOKEN="seu-auth-token"
+TWILIO_VERIFY_SERVICE_SID="seu-verify-service-sid"
 ```
 
 Substitua `seu-account-sid` e `seu-auth-token` pelos valores que você anotou.
