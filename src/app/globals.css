@@ -1,26 +1,68 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Estilos globais para imagens */
+img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* Componentes personalizados */
+@layer components {
+  .abz-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .abz-card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+  
+  .abz-button-primary {
+    @apply bg-abz-blue text-white rounded-md px-4 py-2 font-medium hover:bg-abz-blue-dark transition-colors;
+  }
+  
+  .abz-button-secondary {
+    @apply bg-gray-200 text-gray-800 rounded-md px-4 py-2 font-medium hover:bg-gray-300 transition-colors;
+  }
+  
+  .abz-button-danger {
+    @apply bg-red-600 text-white rounded-md px-4 py-2 font-medium hover:bg-red-700 transition-colors;
+  }
+}
+
+/* Definições básicas da fonte e cores */
+:root {
+  --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Estilos para garantir que a fonte seja aplicada */
+html {
+  font-family: var(--font-plus-jakarta);
+}
+
+body {
+  font-family: var(--font-plus-jakarta);
+  @apply bg-gray-50;
+}
+
+/* Útils para garantir que as classes do Tailwind comuns sejam sempre geradas */
+.abz-gradient {
+  @apply bg-gradient-to-br from-blue-100 to-purple-100;
+}
+
+.abz-header {
+  @apply bg-white shadow-md;
 }
