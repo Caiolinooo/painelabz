@@ -1,0 +1,138 @@
+{
+  "timestamp": "2024-01-24T00:00:00Z",
+  "context": {
+    "project_files": [
+      {
+        "path": "src/app/api/reembolso/route.ts",
+        "type": "API Route",
+        "description": "Endpoints para gerenciamento de reembolsos"
+      },
+      {
+        "path": "src/lib/authorization.ts",
+        "type": "Library",
+        "description": "Funções de autorização e geração de convites"
+      },
+      {
+        "path": "src/app/api/upload/route.ts",
+        "type": "API Route",
+        "description": "Endpoint para upload de arquivos"
+      },
+      {
+        "path": "src/app/api/documents/route.ts",
+        "type": "API Route",
+        "description": "Endpoints para gerenciamento de documentos"
+      },
+      {
+        "path": "src/models/Document.ts",
+        "type": "Model",
+        "description": "Schema do modelo Document"
+      },
+      {
+        "path": "src/lib/db.ts",
+        "type": "Library",
+        "description": "Configuração do Prisma Client"
+      },
+      {
+        "path": "src/lib/mongodb.ts",
+        "type": "Library",
+        "description": "Configuração de conexão com MongoDB"
+      },
+      {
+        "path": "src/app/api/reembolso/[protocolo]/route.ts",
+        "type": "API Route",
+        "description": "Endpoints para manipulação de reembolsos específicos"
+      },
+      {
+        "path": "src/app/api/documents/[id]/route.ts",
+        "type": "API Route",
+        "description": "Endpoints para manipulação de documentos específicos"
+      },
+      {
+        "path": "src/app/api/news/route.ts",
+        "type": "API Route",
+        "description": "Endpoints para gerenciamento de notícias"
+      },
+      {
+        "path": "docs/DEVELOPER_GUIDE.md",
+        "type": "Documentation",
+        "description": "Guia do desenvolvedor"
+      },
+      {
+        "path": "src/models/Reimbursement.ts",
+        "type": "Model",
+        "description": "Schema do modelo Reimbursement"
+      },
+      {
+        "path": "src/app/api/cards/route.ts",
+        "type": "API Route",
+        "description": "Endpoints para gerenciamento de cards"
+      },
+      {
+        "path": "src/models/User.ts",
+        "type": "Model",
+        "description": "Schema do modelo User"
+      },
+      {
+        "path": "src/app/admin/documents/page.tsx",
+        "type": "Page Component",
+        "description": "Página de administração de documentos"
+      },
+      {
+        "path": "src/app/api/admin/send-invite/route.ts",
+        "type": "API Route",
+        "description": "Endpoint para envio de convites"
+      },
+      {
+        "path": "src/app/api/auth/me/route.ts",
+        "type": "API Route",
+        "description": "Endpoint para informações do usuário autenticado"
+      },
+      {
+        "path": "src/scripts/list-databases.js",
+        "type": "Script",
+        "description": "Script para listar bancos de dados"
+      },
+      {
+        "path": "src/app/calendario/page.tsx",
+        "type": "Page Component",
+        "description": "Página do calendário"
+      },
+      {
+        "path": "src/app/api/config/route.ts",
+        "type": "API Route",
+        "description": "Endpoints para configuração do site"
+      },
+      {
+        "path": "src/scripts/verify-password.js",
+        "type": "Script",
+        "description": "Script para verificação de senha"
+      },
+      {
+        "path": ".env",
+        "type": "Configuration",
+        "description": "Variáveis de ambiente"
+      }
+    ],
+    "environment": {
+      "database": {
+        "type": "MongoDB",
+        "connection": "MongoDB Atlas",
+        "orm": ["Prisma", "Mongoose"]
+      },
+      "framework": "Next.js",
+      "authentication": "JWT"
+    }
+  },
+  "conversation": {
+    "messages": [
+      {
+        "role": "human",
+        "content": "Pegue toda essa conversa e Salve em um arquivo de dados para usarmos em outra conversa ou salve na memoria do projeto."
+      },
+      {
+        "role": "assistant",
+        "content": "Criando arquivo JSON com o backup da conversa e contexto do projeto"
+      }
+    ]
+  }
+}
