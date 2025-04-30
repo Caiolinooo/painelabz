@@ -23,6 +23,12 @@
 # misc
 .DS_Store
 *.pem
+*.zip
+login-error.png
+admin-token-tester.html
+token-tester.html
+.token
+phone-validation-test.js
 
 # debug
 npm-debug.log*
@@ -39,3 +45,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# temporary and migration files
+/migration-temp/
+/painel-abz-migration/
+/painel-abz-migration-clean/
+/painel-abz-migration-new/
+/painel-abz-supabase-migration-clean/
+/painel-abz/
+
+# test files
+/test-*.csv
+/test-*.js
