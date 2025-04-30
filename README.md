@@ -15,13 +15,15 @@ O Painel ABZ Group é uma plataforma de gestão interna desenvolvida para centra
 - **Sistema de Autenticação Seguro**: Login com e-mail/telefone e senha
 - **Gerenciamento de Usuários**: Cadastro, importação e controle de acesso
 - **Módulo de Reembolso**: Solicitação e aprovação de reembolsos com fluxo completo
+- **Módulo de Avaliação de Desempenho**: Sistema para avaliação de funcionários
 - **Painel Administrativo**: Interface intuitiva para gestão de todas as funcionalidades
 - **Multilíngue**: Suporte para múltiplos idiomas
 - **Design Responsivo**: Funciona em dispositivos desktop e móveis
-- **Banco de Dados MongoDB**: Armazenamento robusto e escalável sem esquema fixo
+- **Banco de Dados PostgreSQL (Supabase)**: Armazenamento robusto, escalável e relacional
 - **API RESTful**: Endpoints para gerenciamento de todos os recursos
 - **Upload de Arquivos**: Sistema para upload e gerenciamento de documentos e imagens
 - **Personalização**: Configurações de cores, logo, favicon e textos
+- **Tabela Unificada de Usuários**: Sistema consolidado de gerenciamento de usuários
 
 ## 🚀 Tecnologias Utilizadas
 
@@ -33,24 +35,24 @@ O Painel ABZ Group é uma plataforma de gestão interna desenvolvida para centra
 
 - **Backend**:
   - [Next.js API Routes](https://nextjs.org/docs/api-routes/introduction) - API serverless
-  - [MongoDB](https://www.mongodb.com/) - Banco de dados NoSQL
+  - [PostgreSQL](https://www.postgresql.org/) - Banco de dados relacional
+  - [Supabase](https://supabase.com/) - Plataforma de banco de dados e autenticação
   - [Prisma](https://www.prisma.io/) - ORM para TypeScript e Node.js
-  - [Mongoose](https://mongoosejs.com/) - ODM para MongoDB
 
 - **Autenticação e Segurança**:
   - [JWT](https://jwt.io/) - Tokens de autenticação
   - [bcrypt](https://github.com/kelektiv/node.bcrypt.js) - Criptografia de senhas
 
 - **Email e Notificações**:
-  - [Nodemailer](https://nodemailer.com/) - Envio de e-mails
-  - [Twilio](https://www.twilio.com/) - Envio de SMS
+  - [Nodemailer](https://nodemailer.com/) - Envio de e-mails via Exchange Server
+  - [Supabase](https://supabase.com/) - Envio de SMS e códigos de verificação
 
 ## 💻 Requisitos do Sistema
 
 - Node.js 18.x ou superior
-- MongoDB 5.x ou superior
+- Conta Supabase com PostgreSQL
 - NPM 8.x ou superior ou Yarn 1.22.x ou superior
-- Conta Twilio para envio de SMS (opcional para desenvolvimento)
+- Conta de email Exchange para envio de emails
 
 ## 🔧 Instalação e Configuração
 
@@ -74,8 +76,11 @@ yarn install
 Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 
 ```env
-# Banco de dados MongoDB
-MONGODB_URI="mongodb+srv://usuario:senha@seu-cluster.mongodb.net/abzpainel"
+# Configurações do PostgreSQL (Supabase)
+DATABASE_URL="postgresql://postgres:senha@localhost:5432/abzpainel"
+NEXT_PUBLIC_SUPABASE_URL="https://seu-projeto.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="sua-chave-anonima-supabase"
+SUPABASE_SERVICE_KEY="sua-chave-servico-supabase"
 
 # Chave secreta para JWT
 JWT_SECRET="sua-chave-secreta-jwt"
@@ -84,26 +89,21 @@ JWT_SECRET="sua-chave-secreta-jwt"
 NEXT_PUBLIC_API_URL="http://localhost:3000/api"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
-# Configurações do Twilio (opcional para SMS)
-TWILIO_ACCOUNT_SID="seu-account-sid"
-TWILIO_AUTH_TOKEN="seu-auth-token"
-TWILIO_VERIFY_SERVICE_SID="seu-verify-service-sid"
-
-# Configurações de Email
-EMAIL_SERVER="smtp://seu-usuario:sua-senha@seu-servidor-smtp:587"
-EMAIL_FROM="\"ABZ Group\" <seu-email@exemplo.com>"
-EMAIL_USER="seu-usuario"
+# Configurações de Email (Exchange)
+EMAIL_SERVER="smtp://seu-usuario:sua-senha@outlook.office365.com:587"
+EMAIL_FROM="\"ABZ Group\" <apiabz@groupabz.com>"
+EMAIL_USER="apiabz@groupabz.com"
 EMAIL_PASSWORD="sua-senha"
-EMAIL_HOST="seu-servidor-smtp"
+EMAIL_HOST="outlook.office365.com"
 EMAIL_PORT="587"
-EMAIL_SECURE="false"
+EMAIL_SECURE="true"
 
 # Configurações de autenticação
 ADMIN_PHONE_NUMBER="+5511999999999"
 ADMIN_EMAIL="admin@exemplo.com"
 ADMIN_PASSWORD="senha-segura"
-VERIFICATION_CODE_EXPIRY_MINUTES=15
-PASSWORD_EXPIRY_DAYS=365
+ADMIN_FIRST_NAME="Admin"
+ADMIN_LAST_NAME="ABZ"
 ```
 
 ### Executando Migrações do Banco de Dados
@@ -116,9 +116,9 @@ npx prisma db push
 ### Inicializando o Banco de Dados com Dados Iniciais
 
 ```bash
-npm run db:seed
+npm run db:setup-postgres
 # ou
-yarn db:seed
+yarn db:setup-postgres
 ```
 
 ### Iniciando o Servidor de Desenvolvimento
@@ -167,13 +167,13 @@ Os novos usuários podem ser adicionados de três formas:
 painel-abz/
 ├── public/             # Arquivos estáticos
 ├── prisma/             # Esquemas e migrações do Prisma
+├── scripts/            # Scripts de utilidade e inicialização
 ├── src/
 │   ├── app/            # Rotas e páginas Next.js App Router
 │   ├── components/     # Componentes React reutilizáveis
 │   ├── contexts/       # Contextos React (auth, i18n, etc.)
 │   ├── hooks/          # Hooks personalizados
 │   ├── lib/            # Bibliotecas e utilitários
-│   ├── models/         # Modelos Mongoose
 │   └── types/          # Definições de tipos TypeScript
 ├── .env                # Variáveis de ambiente (não versionado)
 ├── .env.example        # Exemplo de variáveis de ambiente
@@ -190,6 +190,7 @@ painel-abz/
 - Importação em lote
 - Controle de permissões
 - Histórico de acesso
+- Tabela unificada de usuários
 
 ### Reembolsos
 - Solicitação de reembolsos
@@ -197,10 +198,17 @@ painel-abz/
 - Fluxo de aprovação
 - Notificações por e-mail
 
+### Avaliação de Desempenho
+- Avaliação de funcionários
+- Métricas de desempenho
+- Histórico de avaliações
+- Relatórios de desempenho
+
 ### Documentos
 - Repositório de documentos
 - Categorização e busca
 - Controle de acesso por grupo
+- Visualização integrada de PDFs
 
 ### Notícias e Comunicados
 - Publicação de notícias
@@ -227,22 +235,27 @@ O sistema possui uma API RESTful completa para gerenciamento de todos os recurso
 - `/api/auth`: Autenticação e autorização
 - `/api/admin`: Endpoints administrativos
 - `/api/users`: Gerenciamento de usuários
+- `/api/users-unified`: Gerenciamento de usuários unificados
 - `/api/cards`: Gerenciamento de cards
 - `/api/menu`: Gerenciamento de menu
 - `/api/documents`: Gerenciamento de documentos
 - `/api/news`: Gerenciamento de notícias
 - `/api/reimbursement`: Gerenciamento de reembolsos
+- `/api/evaluation`: Gerenciamento de avaliações de desempenho
 - `/api/config`: Configurações do sistema
 - `/api/upload`: Upload de arquivos
+- `/api/token-refresh`: Atualização de tokens de autenticação
 
 ## 📧 Sistema de Email
 
-O sistema possui um sistema de envio de emails para notificações e comunicações com os usuários. Os emails são enviados nos seguintes casos:
+O sistema possui um sistema de envio de emails para notificações e comunicações com os usuários, utilizando o servidor Exchange da empresa. Os emails são enviados nos seguintes casos:
 
 1. **Aprovação de Acesso**: Quando um administrador aprova uma solicitação de acesso
 2. **Código de Convite**: Quando um administrador envia um código de convite
 3. **Solicitação de Reembolso**: Quando um usuário envia uma solicitação de reembolso
 4. **Aprovação/Rejeição de Reembolso**: Quando um administrador processa uma solicitação
+5. **Verificação de Login**: Envio de códigos de verificação para login
+6. **Avaliação de Desempenho**: Notificações sobre novas avaliações
 
 ### Testando o Envio de Email
 
@@ -264,6 +277,8 @@ Você pode testar a configuração de email acessando a rota:
 
 Este projeto é propriedade pessoal de Caio Valerio Goulart Correia. Todos os direitos reservados.
 O uso, distribuição ou modificação deste código sem autorização expressa do autor é proibido.
+
+Este software é licenciado sob uma licença proprietária. Veja o arquivo [LICENSE](./LICENSE) para mais detalhes.
 
 ## 📞 Contato
 
