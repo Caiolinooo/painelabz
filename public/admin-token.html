@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token de Administrador</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .token-container {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 20px 0;
+      overflow-wrap: break-word;
+    }
+    .success {
+      color: green;
+      font-weight: bold;
+    }
+    .button {
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .info {
+      margin-bottom: 20px;
+    }
+    .info div {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Token de Administrador</h1>
+
+  <div class="info">
+    <div><strong>ID do usuário:</strong> f8cea564-85c8-4fa5-a89b-17c5bd647203</div>
+    <div><strong>Email:</strong> caio.correia@groupabz.com</div>
+    <div><strong>Telefone:</strong> +5522997847289</div>
+    <div><strong>Nome completo:</strong> Caio Correia</div>
+    <div><strong>Papel:</strong> ADMIN</div>
+    <div><strong>Validade:</strong> 30 dias</div>
+  </div>
+
+  <h2>Token JWT</h2>
+  <div class="token-container" id="token">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmOGNlYTU2NC04NWM4LTRmYTUtYTg5Yi0xN2M1YmQ2NDcyMDMiLCJlbWFpbCI6ImNhaW8uY29ycmVpYUBncm91cGFiei5jb20iLCJwaG9uZU51bWJlciI6Iis1NTIyOTk3ODQ3Mjg5Iiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzQ1ODYyODY5LCJleHAiOjE3NDg0NTQ4Njl9.wnSMYGiFoozBIzxWLUITyQuLzOW4lMXO0QRwh2_2yM8</div>
+
+  <button class="button" onclick="copyToken()">Copiar Token</button>
+  <button class="button" onclick="saveToLocalStorage()">Salvar no localStorage</button>
+  <button class="button" onclick="verifyToken()">Verificar Token</button>
+
+  <div id="message"></div>
+
+  <div id="verification-result" style="margin-top: 20px;"></div>
+
+  <script>
+    function copyToken() {
+      const tokenElement = document.getElementById('token');
+      const range = document.createRange();
+      range.selectNode(tokenElement);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      document.execCommand('copy');
+      window.getSelection().removeAllRanges();
+
+      const message = document.getElementById('message');
+      message.innerHTML = '<p class="success">Token copiado para a área de transferência!</p>';
+      setTimeout(() => {
+        message.innerHTML = '';
+      }, 3000);
+    }
+
+    function saveToLocalStorage() {
+      const token = document.getElementById('token').textContent;
+      localStorage.setItem('abzToken', token);
+
+      const message = document.getElementById('message');
+      message.innerHTML = '<p class="success">Token salvo no localStorage!</p>';
+      setTimeout(() => {
+        message.innerHTML = '';
+      }, 3000);
+    }
+
+    async function verifyToken() {
+      const token = document.getElementById('token').textContent;
+      const resultElement = document.getElementById('verification-result');
+
+      resultElement.innerHTML = '<p>Verificando token...</p>';
+
+      try {
+        const response = await fetch('/api/verify-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ token })
+        });
+
+        const data = await response.json();
+
+        if (data.valid) {
+          resultElement.innerHTML = `
+            <h3 style="color: green;">Token Válido!</h3>
+            <div style="background-color: #f0f8f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
+              <pre style="white-space: pre-wrap;">${JSON.stringify(data.decoded, null, 2)}</pre>
+            </div>
+          `;
+        } else {
+          resultElement.innerHTML = `
+            <h3 style="color: red;">Token Inválido</h3>
+            <div style="background-color: #f8f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
+              <p><strong>Erro:</strong> ${data.error}</p>
+              ${data.details ? `<p><strong>Detalhes:</strong> ${data.details}</p>` : ''}
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultElement.innerHTML = `
+          <h3 style="color: red;">Erro ao verificar token</h3>
+          <div style="background-color: #f8f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
+            <p>${error.message || 'Erro desconhecido'}</p>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

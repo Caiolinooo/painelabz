@@ -1,0 +1,67 @@
+# Manual de Logística ABZ Group
+
+## Introdução
+
+Este manual tem como objetivo estabelecer as diretrizes e procedimentos para as operações logísticas do ABZ Group. Ele serve como referência para todos os colaboradores envolvidos em atividades de logística, transporte, armazenamento e distribuição.
+
+## Objetivos
+
+1. Padronizar os processos logísticos em todas as unidades
+2. Garantir a eficiência e qualidade nas operações
+3. Reduzir custos operacionais
+4. Melhorar o nível de serviço ao cliente
+
+## Responsabilidades
+
+O departamento de logística é responsável por:
+
+- Planejamento e execução das operações de transporte
+- Gestão de estoques e armazenagem
+- Controle de documentação
+- Monitoramento de indicadores de desempenho
+
+## Procedimentos Operacionais
+
+### Recebimento de Materiais
+
+Ao receber materiais, o colaborador deve seguir os seguintes passos:
+
+1. Verificar a documentação (nota fiscal, pedido de compra)
+2. Inspecionar visualmente os itens recebidos
+3. Conferir quantidades e especificações
+4. Registrar no sistema de gestão
+5. Armazenar adequadamente
+
+### Expedição
+
+Para expedição de materiais:
+
+1. Separar os itens conforme solicitação
+2. Embalar adequadamente
+3. Emitir documentação necessária
+4. Carregar o veículo de transporte
+5. Registrar a saída no sistema
+
+## Indicadores de Desempenho
+
+Os principais indicadores monitorados são:
+
+Indicador | Meta | Frequência
+--------- | ---- | ----------
+Tempo de entrega | 48h | Diário
+Acuracidade de inventário | 98% | Mensal
+Custo de frete | < 5% do valor | Mensal
+Avarias | < 1% | Semanal
+
+## Contatos
+
+Para dúvidas ou sugestões, entre em contato com:
+
+Departamento de Logística
+Email: logistica@abzgroup.com
+Telefone: (22) 1234-5678
+
+---
+
+*Este documento é de uso interno e confidencial.*
+*Revisão: 2.0 - Data: 01/07/2024*
