@@ -37,7 +37,12 @@ export default function ProtectedRoute({
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   // Verificar se o usuário deveria ser administrador
-  const shouldBeAdmin = user?.email === 'caio.correia@groupabz.com' || user?.phoneNumber === '+5522997847289';
+  const adminEmail = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
+  const shouldBeAdmin = user?.email === adminEmail || user?.phoneNumber === adminPhone;
+
+  // Forçar acesso de administrador para o usuário principal
+  const forceAdmin = shouldBeAdmin && !isAdmin;
 
   // Verificar se estamos na rota de avaliação
   const isAvaliacaoRoute = typeof window !== 'undefined' && window.location.pathname.includes('/avaliacao');
@@ -54,12 +59,16 @@ export default function ProtectedRoute({
       userEmail: user?.email,
       userPhone: user?.phoneNumber,
       shouldBeAdmin,
+      forceAdmin,
       userRole: user?.role,
       profileRole: profile?.role,
       contextIsAdmin,
       contextIsManager,
       isAvaliacaoRoute,
-      pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown'
+      pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+      isDevelopment,
+      adminEmail: process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com',
+      adminPhone: process.env.ADMIN_PHONE_NUMBER || '+5522997847289'
     });
 
     // Log detalhado para depuração de permissões
@@ -132,6 +141,11 @@ export default function ProtectedRoute({
           // Se o usuário deveria ser admin mas não está marcado como tal, mostrar opção de correção
           if (shouldBeAdmin) {
             console.log('Usuário deveria ser administrador mas não está marcado como tal');
+            // Em produção, permitir acesso mesmo sem a marcação de admin para o usuário principal
+            if (!isDevelopment && forceAdmin) {
+              console.log('BYPASS PRODUÇÃO: Permitindo acesso à rota de administração para o usuário principal');
+              return; // Permitir acesso
+            }
             setShowAdminFix(true);
           } else {
             // Redirecionar para dashboard se a rota for apenas para administradores
@@ -140,8 +154,13 @@ export default function ProtectedRoute({
           }
         } else if (managerOnly && !isAdmin && !isManager) {
           // Verificar se o usuário é o administrador principal
-          if (user?.email === 'caio.correia@groupabz.com' || user?.phoneNumber === '+5522997847289') {
+          if (shouldBeAdmin) {
             console.log('Usuário é o administrador principal, mas não está marcado como tal');
+            // Em produção, permitir acesso mesmo sem a marcação de admin para o usuário principal
+            if (!isDevelopment && forceAdmin) {
+              console.log('BYPASS PRODUÇÃO: Permitindo acesso à rota de gerente para o usuário principal');
+              return; // Permitir acesso
+            }
             setShowAdminFix(true);
             return;
           }
@@ -257,9 +276,9 @@ export default function ProtectedRoute({
   // Verificar acesso em ambiente de produção
   if (!isDevelopment && (
     !isAuthenticated ||
-    (adminOnly && !isAdmin && !isAvaliacaoRoute && !window.location.pathname.includes('/admin')) ||
-    (managerOnly && !isAdmin && !isManager && !isAvaliacaoRoute) ||
-    (moduleName && !hasAccess(moduleName) && !isAdmin && !isAvaliacaoRoute)
+    (adminOnly && !isAdmin && !forceAdmin && !isAvaliacaoRoute && !window.location.pathname.includes('/admin')) ||
+    (managerOnly && !isAdmin && !isManager && !forceAdmin && !isAvaliacaoRoute) ||
+    (moduleName && !hasAccess(moduleName) && !isAdmin && !forceAdmin && !isAvaliacaoRoute)
   )) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-abz-background">
