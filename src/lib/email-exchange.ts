@@ -2,7 +2,7 @@
  * IMPORTANTE: Este arquivo deve ser usado apenas no servidor.
  * Não importe este arquivo diretamente em componentes do cliente.
  * Use src/lib/email-client.ts para componentes do cliente.
- * 
+ *
  * Configuração otimizada para Microsoft Exchange/Office 365
  */
 
@@ -15,8 +15,11 @@ const emailConfig = {
   secure: process.env.EMAIL_SECURE === 'true', // geralmente false para porta 587 (STARTTLS)
   auth: {
     user: process.env.EMAIL_USER || 'apiabz@groupabz.com',
-    pass: process.env.EMAIL_PASSWORD || ''
+    pass: process.env.EMAIL_PASSWORD || 'Caio@2122@'
   },
+  // Log detalhado para depuração
+  debug: process.env.NODE_ENV !== 'production',
+  logger: process.env.NODE_ENV !== 'production',
   // Configurações para melhorar a entregabilidade
   pool: true, // Usar conexões persistentes
   maxConnections: 5,
@@ -54,6 +57,15 @@ export async function createTransport() {
   try {
     console.log('Inicializando transporte de email com Exchange/Office 365');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
+    console.log('Configuração detalhada:', {
+      host: emailConfig.host,
+      port: emailConfig.port,
+      secure: emailConfig.secure,
+      user: emailConfig.auth.user,
+      // Não logar a senha por segurança
+      debug: emailConfig.debug,
+      logger: emailConfig.logger
+    });
 
     // Criar transporter com configuração otimizada para Exchange
     const transporter = nodemailer.createTransport(emailConfig);
@@ -67,6 +79,11 @@ export async function createTransport() {
   } catch (error) {
     console.error('Erro ao inicializar transporte de email Exchange:', error);
 
+    if (error instanceof Error) {
+      console.error('Detalhes do erro:', error.message);
+      console.error('Stack trace:', error.stack);
+    }
+
     // Tentar criar uma conta de teste Ethereal como fallback
     try {
       console.log('Tentando criar conta de teste Ethereal como fallback...');
@@ -79,12 +96,15 @@ export async function createTransport() {
         auth: {
           user: testAccount.user,
           pass: testAccount.pass
-        }
+        },
+        debug: true,
+        logger: true
       });
 
       console.log('Conta de teste Ethereal criada:', {
         user: testAccount.user,
-        pass: testAccount.pass
+        pass: testAccount.pass,
+        previewURL: `https://ethereal.email/message/`
       });
 
       // Verificar conexão
@@ -94,7 +114,13 @@ export async function createTransport() {
       return etherealTransporter;
     } catch (fallbackError) {
       console.error('Erro ao criar conta de teste Ethereal:', fallbackError);
-      throw new Error('Não foi possível inicializar nenhum transporte de email');
+
+      if (fallbackError instanceof Error) {
+        console.error('Detalhes do erro fallback:', fallbackError.message);
+        console.error('Stack trace fallback:', fallbackError.stack);
+      }
+
+      throw new Error(`Não foi possível inicializar nenhum transporte de email: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 }
@@ -311,10 +337,10 @@ export async function sendInvitationEmail(
   try {
     // Importar o template de convite
     const { inviteTemplate } = await import('./emailTemplates');
-    
+
     // Gerar HTML usando o template
     const html = inviteTemplate(inviteCode, inviteUrl, '', undefined);
-    
+
     const result = await sendEmail(email, 'Convite para o Painel ABZ Group', text, html);
     return result;
   } catch (error) {
@@ -332,17 +358,50 @@ export async function sendInvitationEmail(
  */
 export async function testEmailConnection() {
   try {
+    console.log('Testando conexão com o servidor de email...');
+    console.log('Configuração:', {
+      host: emailConfig.host,
+      port: emailConfig.port,
+      secure: emailConfig.secure,
+      user: emailConfig.auth.user,
+      // Não logar a senha por segurança
+      environment: process.env.NODE_ENV || 'development'
+    });
+
     const transport = await createTransport();
     await transport.verify();
 
+    console.log('Teste de conexão bem-sucedido!');
+
     return {
       success: true,
-      message: 'Conexão com o servidor Exchange/Office 365 verificada com sucesso'
+      message: 'Conexão com o servidor Exchange/Office 365 verificada com sucesso',
+      config: {
+        host: emailConfig.host,
+        port: emailConfig.port,
+        secure: emailConfig.secure,
+        user: emailConfig.auth.user,
+        environment: process.env.NODE_ENV || 'development'
+      }
     };
   } catch (error) {
+    console.error('Erro ao testar conexão com o servidor de email:', error);
+
+    if (error instanceof Error) {
+      console.error('Detalhes do erro:', error.message);
+      console.error('Stack trace:', error.stack);
+    }
+
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Erro desconhecido'
+      message: error instanceof Error ? error.message : 'Erro desconhecido',
+      config: {
+        host: emailConfig.host,
+        port: emailConfig.port,
+        secure: emailConfig.secure,
+        user: emailConfig.auth.user,
+        environment: process.env.NODE_ENV || 'development'
+      }
     };
   }
 }

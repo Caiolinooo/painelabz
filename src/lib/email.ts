@@ -4,15 +4,17 @@
  * Use src/lib/email-client.ts para componentes do cliente.
  */
 
-// Usando SendGrid para envio de e-mails
-// Para usar o SendGrid (recomendado para produção):
-export * from './email-sendgrid';
+// Escolher o provedor de email com base no ambiente
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Para usar o Ethereal (apenas para testes), comente a linha do SendGrid acima e descomente a linha abaixo:
-// export * from './email-ethereal';
+// Log para debug
+console.log(`Ambiente: ${isProduction ? 'produção' : 'desenvolvimento'}`);
+console.log(`Configuração de email: ${isProduction ? 'Office 365/Exchange' : 'SendGrid'}`);
+console.log(`Host: ${process.env.EMAIL_HOST}`);
+console.log(`Porta: ${process.env.EMAIL_PORT}`);
+console.log(`Usuário: ${process.env.EMAIL_USER}`);
+console.log(`Remetente: ${process.env.EMAIL_FROM}`);
 
-// Para usar o Exchange, comente as linhas acima e descomente a linha abaixo:
-// export * from './email-exchange';
-
-// Para usar o Gmail, comente as linhas acima e descomente a linha abaixo:
-// export * from './email-gmail';
+// Em produção, usar Office 365/Exchange
+// Em desenvolvimento, usar SendGrid
+export * from './email-exchange';
