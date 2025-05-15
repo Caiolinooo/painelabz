@@ -102,9 +102,13 @@ export default function CurrencyInput({
     updateConversions();
   }, [value, selectedCurrency]);
 
+  // Referência para o input
+  const inputRef = useRef<HTMLInputElement>(null);
+
   // Formatar valor ao digitar
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
+    const cursorPosition = e.target.selectionStart || 0;
 
     // Remover caracteres não numéricos, exceto vírgula e ponto
     const cleanValue = inputValue.replace(/[^\d,.]/g, '');
@@ -115,6 +119,11 @@ export default function CurrencyInput({
       return;
     }
 
+    // Contar quantos caracteres foram removidos antes da posição do cursor
+    const beforeCursor = inputValue.substring(0, cursorPosition);
+    const cleanBeforeCursor = beforeCursor.replace(/[^\d,.]/g, '');
+    const removedCount = beforeCursor.length - cleanBeforeCursor.length;
+
     // Formatar o valor de acordo com a moeda selecionada
     const numericValue = extractNumericValue(cleanValue);
     const formattedValue = formatCurrencyValue(numericValue, selectedCurrency);
@@ -123,6 +132,39 @@ export default function CurrencyInput({
     const valueWithoutSymbol = formattedValue.replace(currencySymbols[selectedCurrency], '').trim();
 
     onChange(valueWithoutSymbol);
+
+    // Calcular a nova posição do cursor
+    // Ajustar a posição do cursor considerando a formatação
+    setTimeout(() => {
+      if (inputRef.current) {
+        // Obter o valor atual formatado
+        const currentValue = inputRef.current.value;
+
+        // Calcular quantos caracteres de formatação foram adicionados antes da posição do cursor
+        // (espaços, pontos, vírgulas, etc.)
+        const formattedBeforeCursor = currentValue.substring(0, cursorPosition);
+        const digitsBeforeCursor = cleanBeforeCursor.replace(/[,.]/g, '').length;
+
+        // Contar dígitos no valor formatado atual
+        let digitCount = 0;
+        let newPosition = 0;
+
+        // Percorrer o valor formatado e contar dígitos até atingir o número de dígitos antes do cursor
+        for (let i = 0; i < currentValue.length; i++) {
+          if (/\d/.test(currentValue[i])) {
+            digitCount++;
+          }
+          if (digitCount > digitsBeforeCursor) {
+            newPosition = i;
+            break;
+          }
+          newPosition = i + 1;
+        }
+
+        // Definir a posição do cursor
+        inputRef.current.setSelectionRange(newPosition, newPosition);
+      }
+    }, 0);
   };
 
   // Mudar a moeda selecionada
@@ -169,6 +211,7 @@ export default function CurrencyInput({
             type="text"
             value={value}
             onChange={handleInputChange}
+            ref={inputRef}
             className={`flex-1 px-3 py-2 border-y border-r rounded-r-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               error ? 'border-red-500' : 'border-gray-300'
             }`}

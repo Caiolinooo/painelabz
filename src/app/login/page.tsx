@@ -413,6 +413,13 @@ export default function Login() {
 
   // Função para lidar com o sucesso da definição de senha
   const handlePasswordSetSuccess = async () => {
+    // Não fechar o modal automaticamente, deixar o usuário clicar em "Continuar"
+    // O redirecionamento para o dashboard será feito quando o usuário fechar o modal
+    console.log('Senha definida com sucesso');
+  };
+
+  // Função para fechar o modal de definição de senha
+  const handleCloseSetPasswordModal = () => {
     setShowSetPasswordModal(false);
     router.push('/dashboard');
   };
@@ -430,7 +437,7 @@ export default function Login() {
       {/* Modal de definição de senha */}
       <SetPasswordModal
         isOpen={showSetPasswordModal}
-        onClose={() => setShowSetPasswordModal(false)}
+        onClose={handleCloseSetPasswordModal}
         onSuccess={handlePasswordSetSuccess}
         isNewUser={isNewUser}
       />

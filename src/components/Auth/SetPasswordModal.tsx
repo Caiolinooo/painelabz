@@ -17,6 +17,7 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passwordSet, setPasswordSet] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +48,7 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
               (isNewUser
                 ? t('auth.accountCreatedDescription', 'Sua conta foi criada com sucesso')
                 : t('auth.passwordUpdatedDescription', 'Sua senha foi atualizada com sucesso')));
+        setPasswordSet(true);
         onSuccess();
       } else {
         setError(response.error || t('auth.passwordSetError', 'Erro ao definir senha'));
@@ -68,13 +70,17 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
               ? t('auth.createAccount', 'Criar Conta')
               : t('auth.setPassword', 'Definir Senha')}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            &times;
-          </button>
+          {passwordSet ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              &times;
+            </button>
+          ) : (
+            <div className="w-6 h-6"></div> {/* Espaçador para manter o layout */}
+          )}
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -136,24 +142,29 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">
+            {passwordSet && (
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isLoading}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {t('common.close', 'Fechar')}
+              </button>
+            )}
             <button
-              type="button"
-              onClick={onClose}
-              disabled={isLoading}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {t('common.cancel', 'Cancelar')}
-            </button>
-            <button
-              type="submit"
+              type={passwordSet ? "button" : "submit"}
+              onClick={passwordSet ? onClose : undefined}
               disabled={isLoading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
             >
               {isLoading
                 ? t('common.loading', 'Carregando...')
-                : isNewUser
-                  ? t('auth.createAccount', 'Criar Conta')
-                  : t('auth.setPassword', 'Definir Senha')}
+                : passwordSet
+                  ? t('common.continue', 'Continuar')
+                  : isNewUser
+                    ? t('auth.createAccount', 'Criar Conta')
+                    : t('auth.setPassword', 'Definir Senha')}
             </button>
           </div>
         </form>
