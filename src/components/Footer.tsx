@@ -3,15 +3,17 @@
 import React from 'react';
 import { FaLinkedin, FaGithub, FaInstagram } from 'react-icons/fa';
 import { useI18n } from '@/contexts/I18nContext';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 
 export default function Footer() {
   const { t } = useI18n();
-  
+  const { config } = useSiteConfig();
+
   return (
     <footer className="bg-white border-t border-gray-200 py-4 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col sm:flex-row justify-between items-center">
         <p className="text-center sm:text-left text-sm text-gray-500 mb-2 sm:mb-0">
-          © {new Date().getFullYear()} ABZ Group - {t('common.all')} {t('common.rights')} {t('common.reserved')}
+          {config.footerText || `© ${new Date().getFullYear()} ${config.companyName} - ${t('common.all')} ${t('common.rights')} ${t('common.reserved')}`}
         </p>
         <div className="flex flex-col sm:flex-row items-center">
           <p className="text-center sm:text-right text-xs text-gray-400 mb-2 sm:mb-0 sm:mr-4">

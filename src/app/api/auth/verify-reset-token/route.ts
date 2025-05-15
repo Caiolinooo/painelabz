@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,12 +13,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await dbConnect();
-
     // Buscar o usuário pelo token de redefinição
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: new Date() }
+    const user = await prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: {
+          gt: new Date()
+        }
+      }
     });
 
     if (!user) {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Token válido',
-      userId: user._id
+      userId: user.id
     });
   } catch (error) {
     console.error('Erro ao verificar token de redefinição:', error);

@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Reimbursement from '@/models/Reimbursement';
+import { prisma } from '@/lib/db';
 import { generateProtocol } from '@/lib/utils';
 import { sendReimbursementConfirmationEmail } from '@/lib/notifications';
 
 // POST - Criar uma nova solicitação de reembolso
 export async function POST(request: NextRequest) {
   try {
-    // Conectar ao MongoDB
-    await dbConnect();
-
     // Obter dados do corpo da requisição
     const body = await request.json();
     const {
@@ -63,39 +59,38 @@ export async function POST(request: NextRequest) {
     // Gerar protocolo único
     const protocolo = generateProtocol();
 
-    // Criar a solicitação de reembolso
-    const reembolso = new Reimbursement({
-      nome,
-      email,
-      telefone,
-      cpf,
-      cargo,
-      centroCusto,
-      data: new Date(data),
-      tipoReembolso,
-      iconeReembolso,
-      descricao,
-      valorTotal,
-      moeda: moeda || 'BRL',
-      metodoPagamento,
-      banco: metodoPagamento === 'deposito' ? banco : undefined,
-      agencia: metodoPagamento === 'deposito' ? agencia : undefined,
-      conta: metodoPagamento === 'deposito' ? conta : undefined,
-      pixTipo: metodoPagamento === 'pix' ? pixTipo : undefined,
-      pixChave: metodoPagamento === 'pix' ? pixChave : undefined,
-      comprovantes,
-      observacoes,
-      protocolo,
-      status: 'pendente',
-      historico: [{
-        data: new Date(),
+    // Criar a solicitação de reembolso usando Prisma
+    const reembolso = await prisma.reimbursement.create({
+      data: {
+        nome,
+        email,
+        telefone,
+        cpf,
+        cargo,
+        centroCusto,
+        data: new Date(data),
+        tipoReembolso,
+        iconeReembolso,
+        descricao,
+        valorTotal,
+        moeda: moeda || 'BRL',
+        metodoPagamento,
+        banco: metodoPagamento === 'deposito' ? banco : null,
+        agencia: metodoPagamento === 'deposito' ? agencia : null,
+        conta: metodoPagamento === 'deposito' ? conta : null,
+        pixTipo: metodoPagamento === 'pix' ? pixTipo : null,
+        pixChave: metodoPagamento === 'pix' ? pixChave : null,
+        comprovantes: comprovantes,
+        observacoes,
+        protocolo,
         status: 'pendente',
-        observacao: 'Solicitação criada pelo usuário'
-      }]
+        historico: [{
+          data: new Date(),
+          status: 'pendente',
+          observacao: 'Solicitação criada pelo usuário'
+        }]
+      }
     });
-
-    // Salvar no banco de dados
-    await reembolso.save();
 
     // Enviar email de confirmação (se a função existir)
     try {
@@ -126,9 +121,6 @@ export async function POST(request: NextRequest) {
 // GET - Obter todas as solicitações de reembolso (com filtros opcionais)
 export async function GET(request: NextRequest) {
   try {
-    // Conectar ao MongoDB
-    await dbConnect();
-
     // Obter parâmetros de consulta
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -141,29 +133,33 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const skip = (page - 1) * limit;
 
-    // Construir filtro
-    const filter: any = {};
+    // Construir filtro para Prisma
+    const where: any = {};
 
-    if (status) filter.status = status;
-    if (email) filter.email = email;
-    if (protocolo) filter.protocolo = protocolo;
-    if (cpf) filter.cpf = cpf;
+    if (status) where.status = status;
+    if (email) where.email = email;
+    if (protocolo) where.protocolo = protocolo;
+    if (cpf) where.cpf = cpf;
 
     // Filtro de data
     if (dataInicio || dataFim) {
-      filter.dataCriacao = {};
-      if (dataInicio) filter.dataCriacao.$gte = new Date(dataInicio);
-      if (dataFim) filter.dataCriacao.$lte = new Date(dataFim);
+      where.dataCriacao = {};
+      if (dataInicio) where.dataCriacao.gte = new Date(dataInicio);
+      if (dataFim) where.dataCriacao.lte = new Date(dataFim);
     }
 
-    // Executar consulta
-    const reembolsos = await Reimbursement.find(filter)
-      .sort({ dataCriacao: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Executar consulta com Prisma
+    const reembolsos = await prisma.reimbursement.findMany({
+      where,
+      orderBy: {
+        dataCriacao: 'desc'
+      },
+      skip,
+      take: limit
+    });
 
     // Contar total de registros para paginação
-    const total = await Reimbursement.countDocuments(filter);
+    const total = await prisma.reimbursement.count({ where });
 
     return NextResponse.json({
       data: reembolsos,

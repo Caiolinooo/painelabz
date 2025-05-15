@@ -4,10 +4,13 @@ import { prisma } from '@/lib/db';
 // GET - Obter um card pelo ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
 
     const card = await prisma.card.findUnique({
       where: { id },
@@ -33,14 +36,17 @@ export async function GET(
 // PUT - Atualizar um card
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
     const body = await request.json();
     const {
       title, description, href, icon, color, hoverColor, external, enabled, order,
-      adminOnly, managerOnly, allowedRoles, allowedUserIds
+      adminOnly, managerOnly, allowedRoles, allowedUserIds, titleEn, descriptionEn
     } = body;
 
     // Validar os dados de entrada
@@ -63,25 +69,40 @@ export async function PUT(
       );
     }
 
+    // Preparar os dados para atualização
+    const updateData: any = {
+      title,
+      description,
+      href,
+      icon,
+      color,
+      hoverColor,
+      external: external || false,
+      enabled: enabled !== false,
+      order,
+      // Campos de tradução
+      titleEn: titleEn || '',
+      // Campos de controle de acesso
+      adminOnly: adminOnly || false,
+      managerOnly: managerOnly || false,
+      allowedRoles: allowedRoles || [],
+      allowedUserIds: allowedUserIds || [],
+    };
+
+    // Adicionar descriptionEn apenas se for fornecido
+    if (descriptionEn !== undefined) {
+      try {
+        updateData.descriptionEn = descriptionEn || '';
+      } catch (error) {
+        console.warn('Campo descriptionEn não existe no banco de dados:', error);
+        // Ignorar o erro e continuar sem o campo descriptionEn
+      }
+    }
+
     // Atualizar o card
     const updatedCard = await prisma.card.update({
       where: { id },
-      data: {
-        title,
-        description,
-        href,
-        icon,
-        color,
-        hoverColor,
-        external: external || false,
-        enabled: enabled !== false,
-        order,
-        // Campos de controle de acesso
-        adminOnly: adminOnly || false,
-        managerOnly: managerOnly || false,
-        allowedRoles: allowedRoles || [],
-        allowedUserIds: allowedUserIds || [],
-      },
+      data: updateData,
     });
 
     return NextResponse.json(updatedCard);
@@ -100,7 +121,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
 
     // Verificar se o card existe
     const existingCard = await prisma.card.findUnique({

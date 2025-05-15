@@ -134,11 +134,17 @@ O servidor estará disponível em `http://localhost:3000`.
 ### Construindo para Produção
 
 ```bash
-npm run build
-npm start
-# ou
-yarn build
-yarn start
+# Construir para produção com limpeza de cache
+npm run build:prod
+
+# Iniciar em modo produção
+npm run start:prod
+
+# Implantação completa (build + start)
+npm run deploy
+
+# Iniciar com PM2 (recomendado para produção)
+npm run start:prod:pm2
 ```
 
 ## 🔐 Autenticação e Autorização

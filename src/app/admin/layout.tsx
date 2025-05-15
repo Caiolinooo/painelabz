@@ -21,6 +21,7 @@ const adminMenuItems = [
   { id: 'news', href: '/admin/news', label: 'admin.news', icon: FiEdit },
   { id: 'user-management', href: '/admin/user-management', label: 'admin.usersSection', icon: FiUsers },
   { id: 'settings', href: '/admin/settings', label: 'admin.settings', icon: FiSettings },
+  { id: 'admin-fix', href: '/admin-fix', label: 'Corrigir Permissões', icon: FiUserCheck },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

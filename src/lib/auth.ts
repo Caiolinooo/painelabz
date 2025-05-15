@@ -1,15 +1,20 @@
 /**
  * Sistema de autenticação e autorização
  */
-import { IUser } from '@/models/User';
-import { generateVerificationCode, sendVerificationSMS, isVerificationCodeValid, sendVerificationEmail } from './sms';
-import { checkUserAuthorization, createAccessRequest } from './authorization';
-import dbConnect from './mongodb';
+import { generateVerificationCode, sendVerificationSMS, isVerificationCodeValid } from './sms';
+// Importar do módulo server-side apenas em contexto de servidor
+// Não importar diretamente aqui para evitar problemas com módulos Node.js no browser
+// import { sendVerificationEmail } from './email';
+import { checkUserAuthorization, createAccessRequest } from './authorization-pg';
+import { sendVerificationCode } from './verification';
 import { prisma } from './db';
-import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
+// Não importar nodemailer diretamente aqui para evitar problemas com módulos Node.js no browser
+// import nodemailer from 'nodemailer';
+import { User } from '@prisma/client';
+import { Pool } from 'pg';
+import bcrypt from 'bcryptjs';
 
 // Tipo para o payload do token
 export interface TokenPayload {
@@ -18,44 +23,92 @@ export interface TokenPayload {
   role: string;
 }
 
-// Função para buscar usuário usando Mongoose e Prisma como fallback
-async function findUserByQuery(query: any): Promise<IUser | null> {
+// Função para buscar usuário usando PostgreSQL diretamente
+async function findUserByQuery(query: any): Promise<User | null> {
   try {
-    // Primeiro tenta com Mongoose
-    let user = await User.findOne(query);
+    // Criar pool de conexão com o PostgreSQL
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
 
-    // Se não encontrar, tenta com Prisma
-    if (!user) {
-      const prismaQuery: any = {};
+    try {
+      // Construir a consulta SQL
+      let sqlQuery = `SELECT * FROM "users_unified" WHERE `;
+      const params = [];
+      let paramIndex = 1;
+      const conditions = [];
 
-      // Converter query do Mongoose para Prisma
-      if (query.phoneNumber) prismaQuery.phoneNumber = query.phoneNumber;
-      if (query.email) prismaQuery.email = query.email;
-      if (query._id) prismaQuery.id = query._id.toString();
-
-      const prismaUser = await prisma.user.findFirst({
-        where: prismaQuery
-      });
-
-      if (prismaUser) {
-        // Converter usuário do Prisma para formato Mongoose
-        user = await User.findOneAndUpdate(
-          { phoneNumber: prismaUser.phoneNumber },
-          {
-            firstName: prismaUser.firstName,
-            lastName: prismaUser.lastName,
-            email: prismaUser.email,
-            role: prismaUser.role,
-            // Outros campos conforme necessário
-          },
-          { new: true, upsert: true }
-        );
+      if (query.phoneNumber) {
+        conditions.push(`"phone_number" = $${paramIndex}`);
+        params.push(query.phoneNumber);
+        paramIndex++;
       }
-    }
 
-    return user;
+      if (query.email) {
+        conditions.push(`"email" = $${paramIndex}`);
+        params.push(query.email);
+        paramIndex++;
+      }
+
+      if (query.id) {
+        conditions.push(`"id" = $${paramIndex}`);
+        params.push(query.id);
+        paramIndex++;
+      }
+
+      // Se não houver condições, retornar null
+      if (conditions.length === 0) {
+        await pool.end();
+        return null;
+      }
+
+      sqlQuery += conditions.join(' OR '); // Alterado para OR para permitir busca por qualquer um dos campos
+
+      // Adicionar condição para usuários ativos
+      sqlQuery += ` AND "active" = true`;
+
+      console.log('Executando consulta SQL:', sqlQuery);
+      console.log('Parâmetros:', params);
+
+      // Executar a consulta
+      const result = await pool.query(sqlQuery, params);
+
+      console.log('Resultado da consulta:', result.rows.length > 0 ? 'Usuário encontrado' : 'Nenhum usuário encontrado');
+      if (result.rows.length > 0) {
+        console.log('ID do usuário encontrado:', result.rows[0].id);
+        console.log('Email do usuário:', result.rows[0].email);
+        console.log('Telefone do usuário:', result.rows[0].phone_number);
+
+        // Mapear os campos para o formato esperado pelo resto do código
+        const user = {
+          ...result.rows[0],
+          phoneNumber: result.rows[0].phone_number,
+          firstName: result.rows[0].first_name,
+          lastName: result.rows[0].last_name,
+          createdAt: result.rows[0].created_at,
+          updatedAt: result.rows[0].updated_at,
+          accessPermissions: result.rows[0].access_permissions,
+          accessHistory: result.rows[0].access_history
+        };
+
+        // Fechar a conexão
+        await pool.end();
+
+        return user;
+      }
+
+      // Fechar a conexão
+      await pool.end();
+
+      // Retornar null se nenhum usuário for encontrado
+      return null;
+    } catch (error) {
+      console.error('Erro ao buscar usuário no PostgreSQL:', error);
+      await pool.end();
+      return null;
+    }
   } catch (error) {
-    console.error('Erro ao buscar usuário:', error);
+    console.error('Erro ao criar pool de conexão:', error);
     return null;
   }
 }
@@ -67,16 +120,28 @@ export interface PhoneCredentials {
 }
 
 // Função para gerar um token JWT
-export function generateToken(user: IUser): string {
+export function generateToken(user: any): string {
   const payload: TokenPayload = {
-    userId: user._id.toString(),
-    phoneNumber: user.phoneNumber,
+    userId: user.id,
+    phoneNumber: user.phoneNumber || user.phone_number || '',
     role: user.role,
   };
 
   return jwt.sign(payload, process.env.JWT_SECRET || 'fallback-secret', {
-    expiresIn: '7d', // Token expira em 7 dias
+    expiresIn: '1d', // Token expira em 1 dia (reduzido para segurança)
   });
+}
+
+// Função para gerar um refresh token
+export function generateRefreshToken(user: any): { token: string; expiresAt: Date } {
+  // Gerar um token aleatório
+  const token = crypto.randomBytes(40).toString('hex');
+
+  // Token expira em 30 dias
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+
+  return { token, expiresAt };
 }
 
 // Função para gerar um token de redefinição de senha
@@ -102,50 +167,50 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
   }
 
   try {
-    // Configurar o transportador de email
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
+    // Usar o serviço de email centralizado
+    const { sendEmail } = await import('./email');
 
-    // Configurar o email
-    const mailOptions = {
-      from: `"ABZ Group" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Redefinição de Senha - ABZ Group',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background-color: #0066cc; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0;">ABZ Group</h1>
-          </div>
-          <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
-            <h2>Redefinição de Senha</h2>
-            <p>Você solicitou a redefinição de senha para sua conta no ABZ Group.</p>
-            <p>Clique no botão abaixo para redefinir sua senha:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}" style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Redefinir Senha</a>
-            </div>
-            <p>Se você não solicitou esta redefinição, ignore este email.</p>
-            <p>Este link é válido por 1 hora.</p>
-            <p>Atenciosamente,<br>Equipe ABZ Group</p>
-          </div>
-          <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-            &copy; ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.
-          </div>
+    // Preparar o conteúdo do email
+    const text = `Redefinição de Senha - ABZ Group\n\nVocê solicitou a redefinição de senha para sua conta no ABZ Group.\n\nAcesse o link para redefinir sua senha: ${resetUrl}\n\nSe você não solicitou esta redefinição, ignore este email.\n\nEste link é válido por 1 hora.\n\nAtenciosamente,\nEquipe ABZ Group`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #0066cc; padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">ABZ Group</h1>
         </div>
-      `
-    };
+        <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
+          <h2>Redefinição de Senha</h2>
+          <p>Você solicitou a redefinição de senha para sua conta no ABZ Group.</p>
+          <p>Clique no botão abaixo para redefinir sua senha:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Redefinir Senha</a>
+          </div>
+          <p>Se você não solicitou esta redefinição, ignore este email.</p>
+          <p>Este link é válido por 1 hora.</p>
+          <p>Atenciosamente,<br>Equipe ABZ Group</p>
+        </div>
+        <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+          &copy; ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.
+        </div>
+      </div>
+    `;
 
-    // Enviar o email
-    await transporter.sendMail(mailOptions);
+    // Enviar o email usando o serviço centralizado
+    const result = await sendEmail(
+      email,
+      'Redefinição de Senha - ABZ Group',
+      text,
+      html
+    );
 
-    return {
-      success: true,
-      message: 'Email de redefinição enviado com sucesso'
-    };
+    if (result.success) {
+      return {
+        success: true,
+        message: 'Email de redefinição enviado com sucesso'
+      };
+    } else {
+      throw new Error(result.message);
+    }
   } catch (error) {
     console.error('Erro ao enviar email de redefinição:', error);
     return {
@@ -200,32 +265,123 @@ export async function sendPasswordResetSMS(phoneNumber: string, resetUrl: string
 // Função para verificar um token JWT
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as TokenPayload;
+    if (!token) {
+      console.error('verifyToken: Token não fornecido');
+      return null;
+    }
+
+    // Verificar se o token tem o formato correto de um JWT
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.error('verifyToken: Token não tem formato JWT válido');
+      return null;
+    }
+
+    // Verificar se é o token de serviço do Supabase
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+    if (token === supabaseServiceKey) {
+      console.log('verifyToken: Token de serviço do Supabase detectado');
+      // Retornar um payload especial para o token de serviço
+      return {
+        userId: 'service-account',
+        phoneNumber: '',
+        role: 'ADMIN'
+      };
+    }
+
+    // Obter a chave secreta do JWT
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+    if (process.env.NODE_ENV === 'development' && !process.env.JWT_SECRET) {
+      console.warn('verifyToken: JWT_SECRET não definido, usando fallback-secret');
+    }
+
+    // Verificar se é um token JWT normal
+    const payload = jwt.verify(token, jwtSecret) as TokenPayload;
+
+    // Verificar se o payload contém as informações necessárias
+    if (!payload) {
+      console.error('verifyToken: Payload nulo após verificação');
+      return null;
+    }
+
+    if (!payload.userId) {
+      console.error('verifyToken: Payload não contém userId');
+      return null;
+    }
+
+    // Verificar se o token está expirado
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      console.error('verifyToken: Token expirado');
+      return null;
+    }
+
+    // Log para depuração
+    console.log('verifyToken: Token válido para usuário:', payload.userId);
+
+    return payload;
   } catch (error) {
+    // Fornecer mensagens de erro mais específicas
+    if (error instanceof Error) {
+      if (error.name === 'TokenExpiredError') {
+        console.error('verifyToken: Token expirado:', error.message);
+      } else if (error.name === 'JsonWebTokenError') {
+        console.error('verifyToken: Token JWT inválido:', error.message);
+      } else {
+        console.error('verifyToken: Erro ao verificar token:', error);
+      }
+    } else {
+      console.error('verifyToken: Erro desconhecido ao verificar token:', error);
+    }
+
     return null;
   }
 }
 
 // Função para extrair o token do cabeçalho de autorização
 export function extractTokenFromHeader(authHeader: string | undefined): string | null {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader) {
     return null;
   }
 
-  return authHeader.substring(7); // Remove 'Bearer ' do início
+  // Verificar formato "Bearer token"
+  if (authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7); // Remove 'Bearer ' do início
+  }
+
+  // Verificar se o próprio cabeçalho é o token (para compatibilidade)
+  if (authHeader.includes('.') && authHeader.split('.').length === 3) {
+    console.log('extractTokenFromHeader: Token encontrado diretamente no cabeçalho');
+    return authHeader;
+  }
+
+  return null;
 }
 
 // Função para iniciar o processo de login por SMS ou Email
-export async function initiatePhoneLogin(phoneNumber: string, email?: string, inviteCode?: string): Promise<{ success: boolean; message: string; hasPassword?: boolean; previewUrl?: string; method?: 'sms' | 'email'; authStatus?: string; authorized?: boolean }> {
-  await dbConnect();
-
+export async function initiatePhoneLogin(phoneNumber: string, email?: string, inviteCode?: string): Promise<{ success: boolean; message: string; hasPassword?: boolean; previewUrl?: string; method?: 'sms' | 'email'; authStatus?: string; authorized?: boolean; requiresPassword?: boolean }> {
   try {
-    // Verificar se o usuário existe pelo telefone
-    let user = await findUserByQuery({ phoneNumber });
+    // Verificar se o usuário existe pelo telefone ou email
+    let user;
 
-    // Se não encontrou pelo telefone e temos um email, tenta pelo email
-    if (!user && email) {
+    if (email) {
+      console.log('Buscando usuário pelo email:', email);
       user = await findUserByQuery({ email });
+      console.log('Resultado da busca por email:', user ? 'Encontrado' : 'Não encontrado');
+    }
+
+    // Se não encontrou pelo email ou não tinha email, tenta pelo telefone
+    if (!user && phoneNumber) {
+      console.log('Buscando usuário pelo telefone:', phoneNumber);
+      user = await findUserByQuery({ phoneNumber });
+      console.log('Resultado da busca por telefone:', user ? 'Encontrado' : 'Não encontrado');
+    }
+
+    // Se ainda não encontrou, tenta buscar por qualquer um dos dois
+    if (!user && email && phoneNumber) {
+      console.log('Tentando busca combinada por email ou telefone');
+      const query = { email, phoneNumber };
+      user = await findUserByQuery(query);
+      console.log('Resultado da busca combinada:', user ? 'Encontrado' : 'Não encontrado');
     }
 
     // Verificar se o usuário tem senha
@@ -241,14 +397,33 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
     // Verificar autorização para todos os usuários (existentes ou não)
     // Isso garante que apenas usuários autorizados recebam códigos de verificação
     const authCheck = await checkUserAuthorization(email, phoneNumber, inviteCode);
-    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '';
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
+
+    // Verificar se é o administrador
+    const isAdminPhone = phoneNumber === adminPhone;
+    const isAdminEmail = email === adminEmail;
+    const isAdmin = isAdminPhone || isAdminEmail;
+
+    console.log('Verificando se é administrador:', { isAdminPhone, isAdminEmail, isAdmin });
+
+    // Se for o administrador, retornar que tem senha para ir direto para a tela de senha
+    if (isAdmin) {
+      console.log('Usuário administrador detectado, redirecionando para login com senha');
+      return {
+        success: true,
+        message: 'Usuário administrador detectado',
+        hasPassword: true,
+        requiresPassword: true // Adicionar flag para indicar que a senha é obrigatória
+      };
+    }
 
     // Se o usuário não existe
     if (!user) {
+      console.log('Usuário não encontrado, verificando autorização');
+
       // Se não está autorizado e não é o admin, retornar erro
-      if (!authCheck.authorized && phoneNumber !== adminPhone) {
-        console.log('Telefone fornecido:', phoneNumber);
-        console.log('Telefone admin:', adminPhone);
+      if (!authCheck.authorized && !isAdmin) {
         console.log('Usuário não autorizado a receber código');
 
         // Se o status for pendente, informar que está aguardando aprovação
@@ -269,6 +444,91 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
           authStatus: 'unauthorized'
         };
       }
+
+      // Criar usuário temporário para enviar o código
+      console.log('Criando usuário temporário para envio de código');
+
+      // Gerar ID único
+      const { v4: uuidv4 } = require('uuid');
+      const userId = uuidv4();
+
+      // Determinar o papel do usuário
+      const role = isAdmin ? 'ADMIN' : 'USER';
+
+      // Gerar um número de telefone único se não for fornecido
+      // Isso evita o erro de chave duplicada quando o usuário faz login apenas com email
+      const uniquePhoneNumber = phoneNumber || `temp-${userId.substring(0, 8)}`;
+
+      // Criar pool de conexão com o PostgreSQL
+      const createUserPool = new Pool({
+        connectionString: process.env.DATABASE_URL
+      });
+
+      try {
+        // Criar usuário temporário
+        const now = new Date().toISOString();
+        const userResult = await createUserPool.query(`
+          INSERT INTO "users_unified" (
+            "id",
+            "phone_number",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "position",
+            "department",
+            "active",
+            "is_authorized",
+            "authorization_status",
+            "access_permissions",
+            "access_history",
+            "created_at",
+            "updated_at"
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14)
+          RETURNING *
+        `, [
+          userId,
+          uniquePhoneNumber,
+          email,
+          isAdmin ? 'Admin' : 'Novo',
+          isAdmin ? 'ABZ' : 'Usuário',
+          role,
+          isAdmin ? 'Administrador do Sistema' : 'Usuário',
+          isAdmin ? 'TI' : 'Geral',
+          true,
+          true, // is_authorized
+          'active', // authorization_status
+          JSON.stringify(getDefaultPermissions(role)),
+          JSON.stringify([{
+            timestamp: now,
+            action: 'CREATED',
+            details: 'Usuário criado automaticamente durante login'
+          }]),
+          now
+        ]);
+
+        // Mapear os campos para o formato esperado pelo resto do código
+        const rawUser = userResult.rows[0];
+        user = {
+          ...rawUser,
+          phoneNumber: rawUser.phone_number,
+          firstName: rawUser.first_name,
+          lastName: rawUser.last_name,
+          createdAt: rawUser.created_at,
+          updatedAt: rawUser.updated_at,
+          accessPermissions: rawUser.access_permissions,
+          accessHistory: rawUser.access_history
+        };
+        console.log('Usuário temporário criado com sucesso:', user.id);
+      } catch (error) {
+        console.error('Erro ao criar usuário temporário:', error);
+        return {
+          success: false,
+          message: 'Erro ao criar usuário temporário. Por favor, tente novamente.'
+        };
+      } finally {
+        await createUserPool.end();
+      }
     } else {
       // Se o usuário existe mas está inativo
       if (!user.active) {
@@ -280,7 +540,7 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
       }
 
       // Se o usuário existe mas não está autorizado a receber código
-      if (!authCheck.authorized && phoneNumber !== adminPhone) {
+      if (!authCheck.authorized && !isAdmin) {
         console.log('Usuário existente mas não autorizado a receber código');
         return {
           success: true,
@@ -291,29 +551,8 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
       }
     }
 
-    // Se for o número de telefone do administrador, criar o usuário admin
-    // Usando a mesma variável adminPhone declarada acima
-    if (phoneNumber === adminPhone && !user) {
-      console.log('Criando usuário admin para o telefone:', phoneNumber);
-      const adminUser = new User({
-        phoneNumber,
-        firstName: 'Admin',
-        lastName: 'ABZ',
-        role: 'ADMIN',
-        position: 'Administrador do Sistema',
-        department: 'TI',
-        active: true,
-        passwordLastChanged: new Date(),
-        accessPermissions: getDefaultPermissions('ADMIN'),
-        accessHistory: [{
-          timestamp: new Date(),
-          action: 'CREATED',
-          details: 'Usuário administrador criado automaticamente'
-        }]
-      });
-      await adminUser.save();
-      user = adminUser;
-    }
+    // O código para criar o usuário administrador foi movido para a seção acima
+    // que cria usuários temporários para qualquer tipo de usuário
 
     // Verificar se o usuário já tem senha definida
     if (user && user.password) {
@@ -333,43 +572,47 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
       };
     }
 
-    // Gerar código de verificação
-    const verificationCode = generateVerificationCode();
-
-    // Calcular data de expiração (15 minutos por padrão)
-    const expiryMinutes = parseInt(process.env.VERIFICATION_CODE_EXPIRY_MINUTES || '15');
-    const verificationCodeExpires = new Date();
-    verificationCodeExpires.setMinutes(verificationCodeExpires.getMinutes() + expiryMinutes);
-
     // Determinar o método de envio (SMS ou Email)
     let method: 'sms' | 'email' = 'sms';
-    let sendResult: any = { success: false };
-    let query = { phoneNumber };
 
     // Se o usuário tem email e foi fornecido, usar email
     if (email && user.email) {
       method = 'email';
-      query = { _id: user._id };
-      sendResult = await sendVerificationEmail(user.email, verificationCode);
+      console.log('Usando email para enviar código:', user.email);
     } else {
-      // Caso contrário, usar SMS
-      sendResult = await sendVerificationSMS(phoneNumber, verificationCode);
+      console.log('Usando SMS para enviar código:', phoneNumber);
     }
 
-    // Atualizar usuário com o código de verificação
-    await User.findOneAndUpdate(
-      query,
-      {
-        verificationCode,
-        verificationCodeExpires,
-        active: true
-      }
-    );
+    // Enviar código de verificação
+    const sendTo = method === 'email' ? user.email : phoneNumber;
+    console.log(`Enviando código de verificação por ${method} para:`, sendTo);
+
+    const sendResult = await sendVerificationCode(sendTo, user.id, method);
+
+    // Atualizar o usuário como ativo
+    const updatePool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
+
+    try {
+      await updatePool.query(`
+        UPDATE "users_unified"
+        SET
+          "active" = true,
+          "updated_at" = CURRENT_TIMESTAMP
+        WHERE "id" = $1
+      `, [user.id]);
+    } catch (error) {
+      console.error('Erro ao atualizar status do usuário:', error);
+    } finally {
+      await updatePool.end();
+    }
 
     if (!sendResult.success) {
+      console.error('Falha ao enviar código de verificação:', sendResult.message);
       return {
         success: false,
-        message: `Erro ao enviar código de verificação por ${method === 'sms' ? 'SMS' : 'Email'}.`
+        message: `Erro ao enviar código de verificação por ${method === 'sms' ? 'SMS' : 'Email'}: ${sendResult.message}`
       };
     }
 
@@ -389,9 +632,8 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
 }
 
 // Função para verificar o código e completar o login
-export async function verifyPhoneLogin(phoneNumber: string, code: string, email?: string, inviteCode?: string): Promise<{ success: boolean; message: string; user?: IUser; token?: string; authStatus?: string }> {
+export async function verifyPhoneLogin(phoneNumber: string, code: string, email?: string, inviteCode?: string): Promise<{ success: boolean; message: string; user?: User; token?: string; authStatus?: string; requiresPassword?: boolean; isNewUser?: boolean }> {
   console.log('Verificando código para login:', { phoneNumber, email, inviteCode });
-  await dbConnect();
 
   try {
     // Buscar o usuário pelo número de telefone ou email
@@ -399,18 +641,47 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
     let method: 'sms' | 'email' = 'sms';
     let identifier = phoneNumber;
 
+    console.log('Verificando código para login com:', { phoneNumber, email });
+
     if (email) {
       // Se temos um email, tentar encontrar o usuário por email primeiro
+      console.log('Buscando usuário pelo email:', email);
       user = await findUserByQuery({ email });
       if (user) {
+        console.log('Usuário encontrado pelo email:', user.id);
         method = 'email';
         identifier = email;
+      } else {
+        console.log('Usuário não encontrado pelo email');
       }
     }
 
     // Se não encontrou por email ou não tinha email, buscar por telefone
-    if (!user) {
+    if (!user && phoneNumber) {
+      console.log('Buscando usuário pelo telefone:', phoneNumber);
       user = await findUserByQuery({ phoneNumber });
+      if (user) {
+        console.log('Usuário encontrado pelo telefone:', user.id);
+      } else {
+        console.log('Usuário não encontrado pelo telefone');
+      }
+    }
+
+    // Se ainda não encontrou, tenta buscar por qualquer um dos dois
+    if (!user && email && phoneNumber) {
+      console.log('Tentando busca combinada por email ou telefone');
+      const query = { email, phoneNumber };
+      user = await findUserByQuery(query);
+      if (user) {
+        console.log('Usuário encontrado pela busca combinada:', user.id);
+        // Determinar o método com base em qual campo corresponde
+        if (user.email === email) {
+          method = 'email';
+          identifier = email;
+        }
+      } else {
+        console.log('Usuário não encontrado pela busca combinada');
+      }
     }
 
     if (!user) {
@@ -438,32 +709,36 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
       const adminPhone = process.env.ADMIN_PHONE_NUMBER || '';
       if (phoneNumber === adminPhone) {
         // Criar usuário administrador com campos obrigatórios
-        const adminUser = new User({
-          phoneNumber,
-          firstName: 'Admin',
-          lastName: 'ABZ',
-          role: 'ADMIN',
-          position: 'Administrador do Sistema',
-          department: 'TI',
-          active: true,
-          verificationCode: code, // Usar o código fornecido
-          verificationCodeExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
-          accessPermissions: getDefaultPermissions('ADMIN'),
-          accessHistory: [{
-            timestamp: new Date(),
-            action: 'CREATED',
-            details: 'Usuário administrador criado automaticamente'
-          }]
-        });
-
         try {
-          await adminUser.save();
+          const adminUser = await prisma.user.create({
+            data: {
+              phoneNumber,
+              firstName: 'Admin',
+              lastName: 'ABZ',
+              role: 'ADMIN',
+              position: 'Administrador do Sistema',
+              department: 'TI',
+              active: true,
+              verificationCode: code, // Usar o código fornecido
+              verificationCodeExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
+              accessPermissions: getDefaultPermissions('ADMIN'),
+              accessHistory: {
+                timestamp: new Date(),
+                action: 'CREATED',
+                details: 'Usuário administrador criado automaticamente'
+              }
+            }
+          });
           console.log('Usuário administrador criado com sucesso');
 
           // Limpar o código de verificação
-          adminUser.verificationCode = undefined;
-          adminUser.verificationCodeExpires = undefined;
-          await adminUser.save();
+          await prisma.user.update({
+            where: { id: adminUser.id },
+            data: {
+              verificationCode: null,
+              verificationCodeExpires: null
+            }
+          });
 
           // Gerar token JWT
           const token = generateToken(adminUser);
@@ -483,6 +758,19 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
         }
       }
 
+      // Já verificamos a autorização anteriormente, não precisamos chamar novamente
+      // Se estiver autorizado, permitir o registro
+      if (authCheck.authorized || inviteCode) {
+        console.log(`Usuário não encontrado para ${identifier}. Será necessário criar um novo usuário.`);
+        return {
+          success: true,
+          message: 'Código verificado com sucesso. É necessário completar o cadastro.',
+          isNewUser: true,
+          requiresPassword: true,
+          authStatus: 'new_user'
+        };
+      }
+
       return {
         success: false,
         message: 'Usuário não encontrado.'
@@ -499,15 +787,26 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
     }
 
     // Verificar se o código é válido
+    console.log(`Verificando código ${code} para ${identifier} via ${method}`);
+    console.log(`Código armazenado no banco: ${user.verificationCode || 'Nenhum'}`);
+    console.log(`Data de expiração: ${user.verificationCodeExpires ? user.verificationCodeExpires.toISOString() : 'Nenhuma'}`);
+
     const isValid = await isVerificationCodeValid(
       identifier,
       code,
-      user.verificationCode,
-      user.verificationCodeExpires,
+      user.verificationCode || undefined,
+      user.verificationCodeExpires || undefined,
       method
     );
 
+    console.log(`Resultado da verificação: ${isValid ? 'Válido' : 'Inválido'}`);
+
     if (!isValid) {
+      // Verificar se o código está no serviço em memória
+      const { getActiveCodes } = await import('./code-service');
+      const activeCodes = getActiveCodes();
+      console.log('Códigos ativos em memória:', JSON.stringify(activeCodes, null, 2));
+
       return {
         success: false,
         message: 'Código de verificação inválido ou expirado.'
@@ -515,18 +814,39 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
     }
 
     // Limpar o código de verificação
-    user.verificationCode = undefined;
-    user.verificationCodeExpires = undefined;
-    await user.save();
+    const clearCodePool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
+
+    try {
+      await clearCodePool.query(`
+        UPDATE "User"
+        SET
+          "verificationCode" = NULL,
+          "verificationCodeExpires" = NULL,
+          "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = $1
+      `, [user.id]);
+    } catch (error) {
+      console.error('Erro ao limpar código de verificação:', error);
+    } finally {
+      await clearCodePool.end();
+    }
 
     // Gerar token JWT
     const token = generateToken(user);
 
+    // Verificar se o usuário tem senha definida
+    const requiresPassword = !user.password;
+
     return {
       success: true,
-      message: 'Login realizado com sucesso.',
+      message: requiresPassword
+        ? 'Código verificado com sucesso. É necessário definir uma senha.'
+        : 'Login realizado com sucesso.',
       user,
-      token
+      token,
+      requiresPassword
     };
   } catch (error) {
     console.error('Erro ao verificar código:', error);
@@ -539,10 +859,8 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
 
 // Função para atualizar a senha do usuário
 export async function updateUserPassword(userId: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-  await dbConnect();
-
   try {
-    const user = await findUserByQuery({ _id: userId });
+    const user = await findUserByQuery({ id: userId });
 
     if (!user) {
       return {
@@ -551,14 +869,29 @@ export async function updateUserPassword(userId: string, newPassword: string): P
       };
     }
 
-    // Atualizar senha
-    user.password = newPassword;
-
     // Definir data de expiração da senha (1 ano por padrão)
     const passwordLastChanged = new Date();
-    user.passwordLastChanged = passwordLastChanged;
 
-    await user.save();
+    // Atualizar senha
+    const updatePasswordPool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
+
+    try {
+      await updatePasswordPool.query(`
+        UPDATE "User"
+        SET
+          "password" = $1,
+          "passwordLastChanged" = $2,
+          "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = $3
+      `, [newPassword, passwordLastChanged, userId]);
+    } catch (error) {
+      console.error('Erro ao atualizar senha:', error);
+      throw error;
+    } finally {
+      await updatePasswordPool.end();
+    }
 
     return {
       success: true,
@@ -594,14 +927,58 @@ export function isPasswordExpired(passwordLastChanged: Date | undefined, role?: 
 }
 
 // Função para verificar se o usuário é administrador
-export function isAdmin(user: IUser | null): boolean {
-  console.log('Verificando se o usuário é admin:', { userId: user?._id, role: user?.role });
+export function isAdmin(user: User | null): boolean {
+  console.log('Verificando se o usuário é admin:', { userId: user?.id, role: user?.role });
   if (!user) return false;
   return user.role === 'ADMIN';
 }
 
+// Função para verificar se o usuário é administrador a partir de uma requisição
+export async function isAdminFromRequest(request: Request): Promise<{ isAdmin: boolean; userId?: string }> {
+  try {
+    // Extrair e verificar o token
+    const authHeader = request.headers.get('authorization');
+    const token = extractTokenFromHeader(authHeader || '');
+
+    if (!token) {
+      console.log('Token não encontrado no cabeçalho');
+      return { isAdmin: false };
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      console.log('Token inválido ou expirado');
+      return { isAdmin: false };
+    }
+
+    // Se for o token de serviço do Supabase, considerar como admin
+    if (payload.userId === 'service-account') {
+      console.log('Token de serviço do Supabase detectado, concedendo acesso de administrador');
+      return { isAdmin: true, userId: 'service-account' };
+    }
+
+    // Verificar se o usuário existe e é administrador
+    const user = await findUserByQuery({ id: payload.userId });
+
+    if (!user) {
+      console.log('Usuário não encontrado');
+      return { isAdmin: false };
+    }
+
+    // Verificar se o usuário é o administrador principal
+    const adminEmail = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
+    const isMainAdmin = user.email === adminEmail || user.phoneNumber === adminPhone;
+
+    return { isAdmin: user.role === 'ADMIN' || isMainAdmin, userId: user.id };
+  } catch (error) {
+    console.error('Erro ao verificar se o usuário é administrador:', error);
+    return { isAdmin: false };
+  }
+}
+
 // Função para verificar se o usuário é gerente
-export function isManager(user: IUser | null): boolean {
+export function isManager(user: User | null): boolean {
   return user?.role === 'MANAGER';
 }
 
@@ -619,7 +996,8 @@ export function getDefaultPermissions(role: 'ADMIN' | 'MANAGER' | 'USER') {
         reembolso: true,
         contracheque: true,
         ponto: true,
-        admin: true
+        admin: true,
+        avaliacao: true
       }
     },
     MANAGER: {
@@ -633,7 +1011,8 @@ export function getDefaultPermissions(role: 'ADMIN' | 'MANAGER' | 'USER') {
         reembolso: true,
         contracheque: true,
         ponto: true,
-        admin: false
+        admin: false,
+        avaliacao: true
       }
     },
     USER: {
@@ -647,7 +1026,8 @@ export function getDefaultPermissions(role: 'ADMIN' | 'MANAGER' | 'USER') {
         reembolso: true,
         contracheque: true,
         ponto: true,
-        admin: false
+        admin: false,
+        avaliacao: false
       }
     }
   };
@@ -656,7 +1036,7 @@ export function getDefaultPermissions(role: 'ADMIN' | 'MANAGER' | 'USER') {
 }
 
 // Função para verificar se o usuário tem acesso a um módulo específico
-export function hasModuleAccess(user: IUser | null, moduleName: string): boolean {
+export function hasModuleAccess(user: User | null, moduleName: string): boolean {
   // Administradores sempre têm acesso a todos os módulos
   if (isAdmin(user)) {
     return true;
@@ -676,54 +1056,303 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_TIME = 15 * 60 * 1000; // 15 minutos em milissegundos
 
 // Função para autenticar com senha
-export async function loginWithPassword(identifier: string, password: string): Promise<{ success: boolean; message: string; user?: IUser; token?: string; locked?: boolean; lockExpires?: Date; attempts?: number; maxAttempts?: number }> {
+export async function loginWithPassword(identifier: string, password: string): Promise<{ success: boolean; message: string; user?: User; token?: string; locked?: boolean; lockExpires?: Date; attempts?: number; maxAttempts?: number; authStatus?: string }> {
+  // Verificar se é o administrador
+  const adminEmail = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Caio@2122@';
+
+  const isAdminEmail = identifier === adminEmail;
+  const isAdminPhone = identifier === adminPhone;
+  const isAdmin = isAdminEmail || isAdminPhone;
+
+  console.log('Verificando se é login de administrador:', { isAdminEmail, isAdminPhone, isAdmin });
+
+  // Se for o administrador e a senha estiver correta, fazer login direto
+  if (isAdmin) {
+    // Verificar se a senha está correta
+    if (password === adminPassword) {
+      console.log('Login de administrador com senha correta');
+
+      // Buscar o usuário administrador
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL
+      });
+
+      try {
+        const result = await pool.query(`
+          SELECT * FROM "users_unified"
+          WHERE "email" = $1 OR "phone_number" = $2
+        `, [adminEmail, adminPhone]);
+
+        if (result.rows.length > 0) {
+          const rawAdminUser = result.rows[0];
+          console.log('Usuário administrador encontrado:', rawAdminUser.id);
+
+          // Mapear os campos para o formato esperado pelo resto do código
+          const adminUser = {
+            ...rawAdminUser,
+            phoneNumber: rawAdminUser.phone_number,
+            firstName: rawAdminUser.first_name,
+            lastName: rawAdminUser.last_name,
+            createdAt: rawAdminUser.created_at,
+            updatedAt: rawAdminUser.updated_at,
+            accessPermissions: rawAdminUser.access_permissions,
+            accessHistory: rawAdminUser.access_history
+          };
+
+          // Gerar token JWT
+          const token = generateToken(adminUser);
+
+          return {
+            success: true,
+            message: 'Login de administrador realizado com sucesso',
+            user: adminUser,
+            token
+          };
+        }
+      } catch (error) {
+        console.error('Erro ao buscar usuário administrador:', error);
+      } finally {
+        await pool.end();
+      }
+    } else {
+      // Se for o administrador mas a senha estiver incorreta
+      console.log('Senha incorreta para o administrador');
+      return {
+        success: false,
+        message: 'Senha incorreta'
+      };
+    }
+  }
   console.log('Tentando login com senha para:', identifier);
-  await dbConnect();
+
+  // Criar pool de conexão com o PostgreSQL
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL
+  });
 
   try {
     // Verificar se o identificador é um email ou número de telefone
     const isEmail = identifier.includes('@');
+    console.log('Identificador é um email:', isEmail);
 
     // Buscar o usuário pelo email ou número de telefone
-    const query = isEmail ? { email: identifier } : { phoneNumber: identifier };
-    const user = await findUserByQuery(query);
+    console.log('Buscando usuário com', isEmail ? 'email' : 'telefone', ':', identifier);
+
+    // Buscar o usuário diretamente no banco de dados PostgreSQL
+    let user;
+    try {
+      // Se for email, buscar por email ou tentar buscar por phoneNumber
+      if (isEmail) {
+        console.log('Buscando por email:', identifier);
+        const userResult = await pool.query(`
+          SELECT * FROM "users_unified"
+          WHERE "email" = $1
+        `, [identifier]);
+
+        if (userResult.rows.length > 0) {
+          const rawUser = userResult.rows[0];
+          // Mapear os campos para o formato esperado pelo resto do código
+          user = {
+            ...rawUser,
+            phoneNumber: rawUser.phone_number,
+            firstName: rawUser.first_name,
+            lastName: rawUser.last_name,
+            createdAt: rawUser.created_at,
+            updatedAt: rawUser.updated_at,
+            accessPermissions: rawUser.access_permissions,
+            accessHistory: rawUser.access_history
+          };
+          console.log('Usuário encontrado pelo email:', user.id);
+        } else {
+          console.log('Usuário não encontrado pelo email, tentando buscar por outros campos');
+
+          // Tentar buscar por outros campos (como phoneNumber)
+          const fallbackResult = await pool.query(`
+            SELECT * FROM "users_unified"
+            WHERE "phone_number" = $1
+          `, [identifier]);
+
+          if (fallbackResult.rows.length > 0) {
+            const rawUser = fallbackResult.rows[0];
+            // Mapear os campos para o formato esperado pelo resto do código
+            user = {
+              ...rawUser,
+              phoneNumber: rawUser.phone_number,
+              firstName: rawUser.first_name,
+              lastName: rawUser.last_name,
+              createdAt: rawUser.created_at,
+              updatedAt: rawUser.updated_at,
+              accessPermissions: rawUser.access_permissions,
+              accessHistory: rawUser.access_history
+            };
+            console.log('Usuário encontrado pelo telefone:', user.id);
+          }
+        }
+      } else {
+        // Buscar por número de telefone
+        console.log('Buscando por telefone:', identifier);
+        const userResult = await pool.query(`
+          SELECT * FROM "users_unified"
+          WHERE "phone_number" = $1
+        `, [identifier]);
+
+        if (userResult.rows.length > 0) {
+          const rawUser = userResult.rows[0];
+          // Mapear os campos para o formato esperado pelo resto do código
+          user = {
+            ...rawUser,
+            phoneNumber: rawUser.phone_number,
+            firstName: rawUser.first_name,
+            lastName: rawUser.last_name,
+            createdAt: rawUser.created_at,
+            updatedAt: rawUser.updated_at,
+            accessPermissions: rawUser.access_permissions,
+            accessHistory: rawUser.access_history
+          };
+          console.log('Usuário encontrado pelo telefone:', user.id);
+        }
+      }
+
+      if (!user) {
+        console.log('Usuário não encontrado');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar usuário no banco de dados:', error);
+    }
 
     console.log('Buscando usuário por:', isEmail ? 'email' : 'telefone', identifier);
     console.log('Usuário encontrado:', user ? 'Sim' : 'Não');
 
     if (!user) {
-      // Verificar se é o número de telefone do administrador
+      // Verificar se é o número de telefone ou email do administrador
       const adminPhone = process.env.ADMIN_PHONE_NUMBER || '';
       const adminEmail = process.env.ADMIN_EMAIL || '';
 
       if ((isEmail && identifier === adminEmail) || (!isEmail && identifier === adminPhone)) {
-        // Criar usuário administrador com campos obrigatórios
-        const adminUser = new User({
-          phoneNumber: isEmail ? adminPhone : identifier,
-          email: isEmail ? identifier : adminEmail,
-          firstName: 'Admin',
-          lastName: 'ABZ',
-          role: 'ADMIN',
-          position: 'Administrador do Sistema',
-          department: 'TI',
-          active: true,
-          password: password, // A senha será hasheada automaticamente pelo middleware
-          passwordLastChanged: new Date(),
-          accessPermissions: getDefaultPermissions('ADMIN'),
-          accessHistory: [{
-            timestamp: new Date(),
-            action: 'CREATED',
-            details: 'Usuário administrador criado automaticamente'
-          }]
+        console.log('Tentando criar/atualizar usuário administrador');
+        console.log('Admin email:', adminEmail);
+        console.log('Admin phone:', adminPhone);
+
+        // Criar um novo pool para esta operação
+        const adminPool = new Pool({
+          connectionString: process.env.DATABASE_URL
         });
 
         try {
-          await adminUser.save();
+          // Verificar se o usuário admin já existe
+          const existingAdminResult = await adminPool.query(`
+            SELECT * FROM "users_unified"
+            WHERE "email" = $1 OR "phone_number" = $2
+          `, [adminEmail, adminPhone]);
+
+          if (existingAdminResult.rows.length > 0) {
+            const existingAdmin = existingAdminResult.rows[0];
+            console.log('Usuário administrador já existe, gerando token');
+
+            // Verificar se a senha está correta ou atualizá-la se necessário
+            const isPasswordValid = await bcrypt.compare(password, existingAdmin.password);
+
+            if (!isPasswordValid) {
+              console.log('Atualizando senha do administrador');
+              const hashedPassword = await bcrypt.hash(password, 10);
+
+              await adminPool.query(`
+                UPDATE "users_unified"
+                SET
+                  "password" = $1,
+                  "updated_at" = CURRENT_TIMESTAMP
+                WHERE "id" = $2
+              `, [hashedPassword, existingAdmin.id]);
+            }
+
+            // Gerar token JWT
+            const token = generateToken(existingAdmin);
+
+            await adminPool.end();
+            return {
+              success: true,
+              message: 'Login realizado com sucesso.',
+              user: existingAdmin,
+              token
+            };
+          }
+
+          // Criar usuário administrador com campos obrigatórios
+          console.log('Criando novo usuário administrador');
+
+          // Hash da senha
+          const hashedPassword = await bcrypt.hash(password, 10);
+
+          // Gerar ID único
+          const { v4: uuidv4 } = require('uuid');
+          const userId = uuidv4();
+
+          // Inserir o usuário administrador
+          const now = new Date().toISOString();
+          const adminUserResult = await adminPool.query(`
+            INSERT INTO "users_unified" (
+              "id",
+              "phone_number",
+              "email",
+              "first_name",
+              "last_name",
+              "role",
+              "position",
+              "department",
+              "active",
+              "is_authorized",
+              "authorization_status",
+              "password",
+              "password_last_changed",
+              "access_permissions",
+              "access_history",
+              "created_at",
+              "updated_at"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
+            RETURNING *
+          `, [
+            userId,
+            isEmail ? adminPhone : identifier,
+            isEmail ? identifier : adminEmail,
+            process.env.ADMIN_FIRST_NAME || 'Admin',
+            process.env.ADMIN_LAST_NAME || 'ABZ',
+            'ADMIN',
+            'Administrador do Sistema',
+            'TI',
+            true,
+            true, // is_authorized
+            'active', // authorization_status
+            hashedPassword,
+            now,
+            JSON.stringify(getDefaultPermissions('ADMIN')),
+            JSON.stringify([{
+              timestamp: now,
+              action: 'CREATED',
+              details: 'Usuário administrador criado automaticamente'
+            }]),
+            now
+          ]);
+
+          const rawAdminUser = adminUserResult.rows[0];
+          // Mapear os campos para o formato esperado pelo resto do código
+          const adminUser = {
+            ...rawAdminUser,
+            phoneNumber: rawAdminUser.phone_number,
+            firstName: rawAdminUser.first_name,
+            lastName: rawAdminUser.last_name,
+            createdAt: rawAdminUser.created_at,
+            updatedAt: rawAdminUser.updated_at,
+            accessPermissions: rawAdminUser.access_permissions,
+            accessHistory: rawAdminUser.access_history
+          };
           console.log('Usuário administrador criado com sucesso');
 
           // Gerar token JWT
           const token = generateToken(adminUser);
 
+          await adminPool.end();
           return {
             success: true,
             message: 'Login realizado com sucesso.',
@@ -732,6 +1361,7 @@ export async function loginWithPassword(identifier: string, password: string): P
           };
         } catch (error) {
           console.error('Erro ao criar usuário administrador:', error);
+          await adminPool.end();
           return {
             success: false,
             message: 'Erro ao criar usuário administrador.'
@@ -747,6 +1377,7 @@ export async function loginWithPassword(identifier: string, password: string): P
 
     // Verificar se o usuário tem senha definida
     if (!user.password) {
+      console.log('Usuário não possui senha definida');
       return {
         success: false,
         message: 'Usuário não possui senha definida.'
@@ -755,6 +1386,7 @@ export async function loginWithPassword(identifier: string, password: string): P
 
     // Verificar se a conta está ativa
     if (!user.active) {
+      console.log('Conta do usuário está desativada');
       return {
         success: false,
         message: 'Sua conta está desativada. Entre em contato com o suporte.',
@@ -767,6 +1399,7 @@ export async function loginWithPassword(identifier: string, password: string): P
     if (user.lockUntil && user.lockUntil > now) {
       // Calcular tempo restante em minutos
       const remainingTimeMinutes = Math.ceil((user.lockUntil.getTime() - now.getTime()) / 60000);
+      console.log('Conta do usuário está bloqueada até:', user.lockUntil);
 
       return {
         success: false,
@@ -779,59 +1412,122 @@ export async function loginWithPassword(identifier: string, password: string): P
     // Verificar se a senha está correta
     console.log('Verificando senha para o usuário:', user.phoneNumber);
     console.log('Senha fornecida (primeiros caracteres):', password.substring(0, 3) + '...');
-    console.log('Senha armazenada (hash):', user.password);
+    console.log('Senha armazenada (hash):', user.password ? user.password.substring(0, 20) + '...' : 'Não definida');
 
-    const isPasswordValid = await user.comparePassword(password);
+    // Verificar a senha usando bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     console.log('Resultado da verificação de senha:', isPasswordValid ? 'Válida' : 'Inválida');
 
     if (!isPasswordValid) {
+      console.log('Senha inválida para o usuário:', user.phoneNumber);
+
       // Incrementar contador de tentativas falhas
-      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      const failedAttempts = (user.failedLoginAttempts || 0) + 1;
+      console.log('Tentativas falhas de login:', failedAttempts);
 
       // Se excedeu o número máximo de tentativas, bloquear a conta
-      if (user.failedLoginAttempts >= MAX_LOGIN_ATTEMPTS) {
-        user.lockUntil = new Date(Date.now() + LOCK_TIME);
+      if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+        const lockUntil = new Date(Date.now() + LOCK_TIME);
+        console.log('Bloqueando conta até:', lockUntil);
 
-        // Registrar no histórico de acesso
-        user.accessHistory.push({
+        // Preparar histórico de acesso
+        let accessHistory = user.accessHistory || [];
+        if (!Array.isArray(accessHistory)) {
+          accessHistory = [];
+        }
+
+        accessHistory.push({
           timestamp: new Date(),
           action: 'ACCOUNT_LOCKED',
           details: `Conta bloqueada por ${LOCK_TIME/60000} minutos devido a múltiplas tentativas de login`
         });
 
-        await user.save();
+        try {
+          // Criar um novo pool para esta operação
+          const lockPool = new Pool({
+            connectionString: process.env.DATABASE_URL
+          });
+
+          await lockPool.query(`
+            UPDATE "users_unified"
+            SET
+              "failed_login_attempts" = $1,
+              "lock_until" = $2,
+              "access_history" = $3,
+              "updated_at" = CURRENT_TIMESTAMP
+            WHERE "id" = $4
+          `, [failedAttempts, lockUntil, JSON.stringify(accessHistory), user.id]);
+
+          await lockPool.end();
+          console.log('Conta bloqueada com sucesso');
+        } catch (error) {
+          console.error('Erro ao bloquear conta:', error);
+        }
 
         return {
           success: false,
           message: `Conta temporariamente bloqueada devido a múltiplas tentativas de login. Tente novamente em ${LOCK_TIME/60000} minutos.`,
           locked: true,
-          lockExpires: user.lockUntil
+          lockExpires: lockUntil
         };
       }
 
-      await user.save();
+      try {
+        // Criar um novo pool para esta operação
+        const attemptsPool = new Pool({
+          connectionString: process.env.DATABASE_URL
+        });
+
+        await attemptsPool.query(`
+          UPDATE "users_unified"
+          SET
+            "failed_login_attempts" = $1,
+            "updated_at" = CURRENT_TIMESTAMP
+          WHERE "id" = $2
+        `, [failedAttempts, user.id]);
+
+        await attemptsPool.end();
+        console.log('Contador de tentativas falhas atualizado');
+      } catch (error) {
+        console.error('Erro ao atualizar contador de tentativas falhas:', error);
+      }
 
       return {
         success: false,
         message: 'Senha incorreta.',
-        attempts: user.failedLoginAttempts,
+        attempts: failedAttempts,
         maxAttempts: MAX_LOGIN_ATTEMPTS
       };
     }
 
-    // Resetar contador de tentativas falhas após login bem-sucedido
-    if (user.failedLoginAttempts) {
-      user.failedLoginAttempts = 0;
-      user.lockUntil = undefined;
+    console.log('Login bem-sucedido para o usuário:', user.phoneNumber);
+
+    // Preparar histórico de acesso
+    let accessHistory = user.accessHistory || [];
+    if (!Array.isArray(accessHistory)) {
+      accessHistory = [];
     }
 
-    // Registrar login no histórico de acesso
-    user.accessHistory.push({
+    accessHistory.push({
       timestamp: new Date(),
       action: 'LOGIN',
       details: 'Login com senha'
     });
-    await user.save();
+
+    try {
+      // Atualizar histórico de acesso no PostgreSQL
+      await pool.query(`
+        UPDATE "users_unified"
+        SET
+          "access_history" = $1,
+          "updated_at" = CURRENT_TIMESTAMP
+        WHERE "id" = $2
+      `, [JSON.stringify(accessHistory), user.id]);
+
+      console.log('Histórico de acesso atualizado após login bem-sucedido');
+    } catch (error) {
+      console.error('Erro ao atualizar histórico de acesso:', error);
+    }
 
     // Gerar token JWT
     const token = generateToken(user);
@@ -848,5 +1544,8 @@ export async function loginWithPassword(identifier: string, password: string): P
       success: false,
       message: 'Erro interno do servidor. Por favor, tente novamente.'
     };
+  } finally {
+    // Fechar a conexão com o PostgreSQL
+    await pool.end();
   }
 }

@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import { FiClipboard, FiDownload, FiEye } from 'react-icons/fi';
-import DocumentViewer from '@/components/DocumentViewer';
+import LazyDocumentViewer from '@/components/LazyLoad/LazyDocumentViewer';
 import { useI18n } from '@/contexts/I18nContext';
+import { measure } from '@/lib/performance';
 
-const PROCEDIMENTO_PDF_URL = '/documentos/Revisão de procedimento de logistica.pdf';
+const PROCEDIMENTO_PDF_URL = '/documentos/procedimentos/Revisão de procedimento de logistica.pdf';
 
 // Simplified data structure - will be populated with translations
 const getProcedimentoDoc = (t: (key: string) => string) => ({
@@ -20,8 +21,8 @@ export default function ProcedimentosLogisticaPage() {
   const [showViewer, setShowViewer] = useState(false);
   const { t } = useI18n();
 
-  // Get translated procedure document
-  const procedimentoDoc = getProcedimentoDoc(t);
+  // Get translated procedure document with performance measurement
+  const procedimentoDoc = measure('getProcedimentoDoc', () => getProcedimentoDoc(t), { locale: t('locale.code', 'pt-BR') });
 
   const openViewer = () => setShowViewer(true);
   const closeViewer = () => setShowViewer(false);
@@ -36,7 +37,7 @@ export default function ProcedimentosLogisticaPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
               key={procedimentoDoc.id}
-              className="bg-white rounded-lg shadow-md p-5 transition-shadow hover:shadow-lg"
+              className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start mb-3">
                 <div className={`bg-abz-light-blue p-3 rounded-full mr-3`}>
@@ -73,13 +74,13 @@ export default function ProcedimentosLogisticaPage() {
         </div>
       </div>
 
-      {/* Visualizador de documento usando o componente reutilizável */}
+      {/* Visualizador de documento usando o componente lazy-loaded */}
       {showViewer && (
-        <DocumentViewer
+        <LazyDocumentViewer
           title={procedimentoDoc.title}
           filePath={procedimentoDoc.file}
           onClose={closeViewer}
-          accentColor="text-abz-green"
+          accentColor="text-abz-blue"
         />
       )}
     </MainLayout>

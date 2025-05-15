@@ -20,6 +20,15 @@ export function getTranslation(locale: Locale, key: string, defaultValue?: strin
     return cachedValue;
   }
 
+  // Special handling for card IDs with hyphens
+  // If the key starts with 'cards.' and contains hyphens, try to find a version without hyphens
+  let modifiedKey = key;
+  if (key.startsWith('cards.') && key.includes('-')) {
+    // Create a version of the key without hyphens
+    modifiedKey = key.replace(/-/g, '');
+  }
+
+  // Try with the original key first
   const keys = key.split('.');
   let translation: any = locales[locale];
   let found = true;
@@ -39,8 +48,29 @@ export function getTranslation(locale: Locale, key: string, defaultValue?: strin
     return translation;
   }
 
+  // If not found and we have a modified key (without hyphens), try that
+  if (!found && modifiedKey !== key) {
+    const modifiedKeys = modifiedKey.split('.');
+    translation = locales[locale];
+    found = true;
+
+    for (const k of modifiedKeys) {
+      if (!translation || !translation[k]) {
+        found = false;
+        break;
+      }
+      translation = translation[k];
+    }
+
+    if (found) {
+      setCacheValue(cacheKey, translation);
+      return translation;
+    }
+  }
+
   // Try to find in default locale if not found in current locale
   if (locale !== defaultLocale) {
+    // Try with original key
     translation = locales[defaultLocale];
     found = true;
 
@@ -56,6 +86,26 @@ export function getTranslation(locale: Locale, key: string, defaultValue?: strin
       setCacheValue(cacheKey, translation);
       return translation;
     }
+
+    // Try with modified key (without hyphens) in default locale
+    if (modifiedKey !== key) {
+      const modifiedKeys = modifiedKey.split('.');
+      translation = locales[defaultLocale];
+      found = true;
+
+      for (const k of modifiedKeys) {
+        if (!translation || !translation[k]) {
+          found = false;
+          break;
+        }
+        translation = translation[k];
+      }
+
+      if (found) {
+        setCacheValue(cacheKey, translation);
+        return translation;
+      }
+    }
   }
 
   // Cache and return default value or key if not found in any locale
@@ -69,13 +119,27 @@ export function getBrowserLocale(): Locale {
     return defaultLocale;
   }
 
-  const browserLocale = navigator.language;
+  try {
+    // Tentar obter o idioma do navegador
+    const browserLocale = navigator.language ||
+                         (navigator as any).userLanguage ||
+                         (navigator as any).browserLanguage ||
+                         (navigator as any).systemLanguage ||
+                         defaultLocale;
 
-  if (browserLocale.startsWith('pt')) {
-    return 'pt-BR';
+    console.log('Idioma detectado do navegador:', browserLocale);
+
+    // Verificar se o idioma começa com 'pt' (português)
+    if (browserLocale.toLowerCase().startsWith('pt')) {
+      return 'pt-BR';
+    }
+
+    // Caso contrário, usar inglês
+    return 'en-US';
+  } catch (error) {
+    console.error('Erro ao detectar idioma do navegador:', error);
+    return defaultLocale;
   }
-
-  return 'en-US';
 }
 
 export function getLocalStorageLocale(): Locale | null {

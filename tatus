@@ -1,0 +1,187 @@
+[1mdiff --git a/src/components/CurrencyInput.tsx b/src/components/CurrencyInput.tsx[m
+[1mindex 8bb7639..dbb5952 100644[m
+[1m--- a/src/components/CurrencyInput.tsx[m
+[1m+++ b/src/components/CurrencyInput.tsx[m
+[36m@@ -1,11 +1,11 @@[m
+ 'use client';[m
+ [m
+[31m-import React, { useState, useEffect } from 'react';[m
+[31m-import { [m
+[31m-  Currency, [m
+[31m-  getExchangeRates, [m
+[31m-  convertCurrency, [m
+[31m-  formatCurrencyValue, [m
+[32m+[m[32mimport React, { useState, useEffect, useRef } from 'react';[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  Currency,[m
+[32m+[m[32m  getExchangeRates,[m
+[32m+[m[32m  convertCurrency,[m
+[32m+[m[32m  formatCurrencyValue,[m
+   extractNumericValue,[m
+   currencySymbols[m
+ } from '@/lib/currencyConverter';[m
+[36m@@ -40,6 +40,27 @@[m [mexport default function CurrencyInput({[m
+     GBP: ''[m
+   });[m
+   const [isConverting, setIsConverting] = useState(false);[m
+[32m+[m[32m  const dropdownRef = useRef<HTMLDivElement>(null);[m
+[32m+[m[32m  const buttonRef = useRef<HTMLButtonElement>(null);[m
+[32m+[m
+[32m+[m[32m  // Handle click outside to close dropdown[m
+[32m+[m[32m  useEffect(() => {[m
+[32m+[m[32m    function handleClickOutside(event: MouseEvent) {[m
+[32m+[m[32m      if ([m
+[32m+[m[32m        dropdownRef.current &&[m
+[32m+[m[32m        !dropdownRef.current.contains(event.target as Node) &&[m
+[32m+[m[32m        buttonRef.current &&[m
+[32m+[m[32m        !buttonRef.current.contains(event.target as Node)[m
+[32m+[m[32m      ) {[m
+[32m+[m[32m        setShowCurrencySelector(false);[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    document.addEventListener('mousedown', handleClickOutside);[m
+[32m+[m[32m    return () => {[m
+[32m+[m[32m      document.removeEventListener('mousedown', handleClickOutside);[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }, []);[m
+ [m
+   // Atualizar valores convertidos quando o valor ou a moeda mudar[m
+   useEffect(() => {[m
+[36m@@ -58,10 +79,10 @@[m [mexport default function CurrencyInput({[m
+       try {[m
+         // Extrair valor numérico da string formatada[m
+         const numericValue = extractNumericValue(value);[m
+[31m-        [m
+[32m+[m
+         // Obter taxas de câmbio[m
+         const rates = await getExchangeRates(selectedCurrency);[m
+[31m-        [m
+[32m+[m
+         // Calcular valores convertidos para todas as moedas[m
+         const converted: Record<Currency, string> = {[m
+           BRL: formatCurrencyValue(convertCurrency(numericValue, selectedCurrency, 'BRL', rates), 'BRL'),[m
+[36m@@ -69,7 +90,7 @@[m [mexport default function CurrencyInput({[m
+           EUR: formatCurrencyValue(convertCurrency(numericValue, selectedCurrency, 'EUR', rates), 'EUR'),[m
+           GBP: formatCurrencyValue(convertCurrency(numericValue, selectedCurrency, 'GBP', rates), 'GBP')[m
+         };[m
+[31m-        [m
+[32m+[m
+         setConvertedValues(converted);[m
+       } catch (error) {[m
+         console.error('Erro ao converter moedas:', error);[m
+[36m@@ -77,30 +98,30 @@[m [mexport default function CurrencyInput({[m
+         setIsConverting(false);[m
+       }[m
+     };[m
+[31m-    [m
+[32m+[m
+     updateConversions();[m
+   }, [value, selectedCurrency]);[m
+ [m
+   // Formatar valor ao digitar[m
+   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {[m
+     const inputValue = e.target.value;[m
+[31m-    [m
+[32m+[m
+     // Remover caracteres não numéricos, exceto vírgula e ponto[m
+     const cleanValue = inputValue.replace(/[^\d,.]/g, '');[m
+[31m-    [m
+[32m+[m
+     // Se estiver vazio, retornar string vazia[m
+     if (!cleanValue) {[m
+       onChange('');[m
+       return;[m
+     }[m
+[31m-    [m
+[32m+[m
+     // Formatar o valor de acordo com a moeda selecionada[m
+     const numericValue = extractNumericValue(cleanValue);[m
+     const formattedValue = formatCurrencyValue(numericValue, selectedCurrency);[m
+[31m-    [m
+[32m+[m
+     // Remover o símbolo da moeda para manter consistência com o formato esperado pelo formulário[m
+     const valueWithoutSymbol = formattedValue.replace(currencySymbols[selectedCurrency], '').trim();[m
+[31m-    [m
+[32m+[m
+     onChange(valueWithoutSymbol);[m
+   };[m
+ [m
+[36m@@ -108,11 +129,11 @@[m [mexport default function CurrencyInput({[m
+   const handleCurrencyChange = (currency: Currency) => {[m
+     setSelectedCurrency(currency);[m
+     setShowCurrencySelector(false);[m
+[31m-    [m
+[32m+[m
+     if (onCurrencyChange) {[m
+       onCurrencyChange(currency);[m
+     }[m
+[31m-    [m
+[32m+[m
+     // Atualizar o valor formatado para a nova moeda[m
+     if (value) {[m
+       const numericValue = extractNumericValue(value);[m
+[36m@@ -127,17 +148,22 @@[m [mexport default function CurrencyInput({[m
+       <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">[m
+         {label} {required && <span className="text-red-500">*</span>}[m
+       </label>[m
+[31m-      [m
+[31m-      <div className="relative">[m
+[32m+[m
+[32m+[m[32m      <div className="relative" style={{ zIndex: 30 }}>[m
+         <div className="flex">[m
+           <button[m
+             type="button"[m
+[32m+[m[32m            ref={buttonRef}[m
+             onClick={() => setShowCurrencySelector(!showCurrencySelector)}[m
+[31m-            className="px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-700 hover:bg-gray-100"[m
+[32m+[m[32m            className="px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 relative"[m
+[32m+[m[32m            aria-label="Selecionar moeda"[m
+[32m+[m[32m            aria-expanded={showCurrencySelector}[m
+           >[m
+[31m-            {currencySymbols[selectedCurrency]}[m
+[32m+[m[32m            <span className="flex items-center">[m
+[32m+[m[32m              {currencySymbols[selectedCurrency]}[m
+[32m+[m[32m            </span>[m
+           </button>[m
+[31m-          [m
+[32m+[m
+           <input[m
+             id={id}[m
+             type="text"[m
+[36m@@ -149,10 +175,16 @@[m [mexport default function CurrencyInput({[m
+             placeholder={`0,00`}[m
+           />[m
+         </div>[m
+[31m-        [m
+[32m+[m
+         {showCurrencySelector && ([m
+[31m-          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg">[m
+[31m-            <div className="p-2">[m
+[32m+[m[32m          <div[m
+[32m+[m[32m            ref={dropdownRef}[m
+[32m+[m[32m            className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-xl animate-fadeIn"[m
+[32m+[m[32m            style={{[m
+[32m+[m[32m              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'[m
+[32m+[m[32m            }}[m
+[32m+[m[32m          >[m
+[32m+[m[32m            <div className="p-3">[m
+               <div className="text-sm font-medium text-gray-700 mb-2">Selecione a moeda:</div>[m
+               <div className="space-y-1">[m
+                 {(['BRL', 'USD', 'EUR', 'GBP'] as Currency[]).map((currency) => ([m
+[36m@@ -161,7 +193,7 @@[m [mexport default function CurrencyInput({[m
+                     type="button"[m
+                     onClick={() => handleCurrencyChange(currency)}[m
+                     className={`w-full text-left px-3 py-2 rounded-md ${[m
+[31m-                      selectedCurrency === currency ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100'[m
+[32m+[m[32m                      selectedCurrency === currency ? 'bg-blue-100 text-blue-800 font-medium' : 'hover:bg-gray-100'[m
+                     }`}[m
+                   >[m
+                     <span className="font-medium">{currencySymbols[currency]}</span> {currency}[m
+[36m@@ -172,9 +204,9 @@[m [mexport default function CurrencyInput({[m
+           </div>[m
+         )}[m
+       </div>[m
+[31m-      [m
+[32m+[m
+       {error && <p cl

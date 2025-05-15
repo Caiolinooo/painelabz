@@ -98,16 +98,16 @@ const NewsEditor = ({ news, onSave, onCancel, isNew = false }: NewsEditorProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Se houver arquivos para upload, fazer o upload primeiro
     if (file) {
       await handleUpload(file, 'news');
     }
-    
+
     if (thumbnail) {
       await handleUpload(thumbnail, 'thumbnails');
     }
-    
+
     onSave(editedNews);
   };
 
@@ -245,7 +245,7 @@ const NewsEditor = ({ news, onSave, onCancel, isNew = false }: NewsEditorProps) 
           </div>
           {file && (
             <p className="mt-1 text-sm text-gray-500">
-              Arquivo selecionado: {file.name} ({(file.size / 1024).toFixed(2)} KB)
+              Arquivo selecionado: {file.name} ({(typeof file.size === 'number' ? (file.size / 1024).toFixed(2) : '0.00')} KB)
             </p>
           )}
         </div>
@@ -292,14 +292,14 @@ const NewsEditor = ({ news, onSave, onCancel, isNew = false }: NewsEditorProps) 
           </div>
           {thumbnail && (
             <p className="mt-1 text-sm text-gray-500">
-              Imagem selecionada: {thumbnail.name} ({(thumbnail.size / 1024).toFixed(2)} KB)
+              Imagem selecionada: {thumbnail.name} ({(typeof thumbnail.size === 'number' ? (thumbnail.size / 1024).toFixed(2) : '0.00')} KB)
             </p>
           )}
           {editedNews.thumbnail && (
             <div className="mt-2">
-              <img 
-                src={editedNews.thumbnail} 
-                alt="Miniatura" 
+              <img
+                src={editedNews.thumbnail}
+                alt="Miniatura"
                 className="h-20 w-auto object-cover rounded-md"
               />
             </div>
@@ -377,9 +377,9 @@ const NewsItemComponent = ({ news, onEdit, onDelete, onToggleVisibility, onToggl
       <div className="flex justify-between items-start">
         <div className="flex items-start space-x-3">
           {news.thumbnail ? (
-            <img 
-              src={news.thumbnail} 
-              alt={news.title} 
+            <img
+              src={news.thumbnail}
+              alt={news.title}
               className="w-16 h-16 object-cover rounded-md"
             />
           ) : (
@@ -402,9 +402,9 @@ const NewsItemComponent = ({ news, onEdit, onDelete, onToggleVisibility, onToggl
               <span className="mr-3">Data: {formatDate(news.date)}</span>
               <span className="mr-3">Categoria: {news.category}</span>
               <span className="mr-3">Autor: {news.author}</span>
-              <a 
-                href={news.file} 
-                target="_blank" 
+              <a
+                href={news.file}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-abz-blue hover:text-abz-blue-dark flex items-center"
               >
@@ -462,37 +462,99 @@ export default function NewsPage() {
   // Carregar notícias
   const fetchNews = async () => {
     setIsLoading(true);
+    setError(null); // Limpar erros anteriores
+
     try {
+      console.log('Iniciando busca de notícias...');
+
+      // Tentar primeiro a API real
       let url = '/api/news';
       const params = new URLSearchParams();
-      
+
       if (selectedCategory) {
         params.append('category', selectedCategory);
       }
-      
+
       if (showFeaturedOnly) {
         params.append('featured', 'true');
       }
-      
+
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
-        
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error('Erro ao carregar notícias');
+
+      console.log('URL de busca (API real):', url);
+
+      let response;
+      let useMockData = false;
+
+      try {
+        response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        console.log('Status da resposta (API real):', response.status);
+
+        if (!response.ok) {
+          console.log('API real falhou, usando dados de exemplo...');
+          useMockData = true;
+        }
+      } catch (fetchError) {
+        console.error('Erro ao buscar da API real:', fetchError);
+        console.log('Usando dados de exemplo devido a erro na API real...');
+        useMockData = true;
       }
-      
+
+      // Se a API real falhar, usar a API de exemplo
+      if (useMockData) {
+        let mockUrl = '/api/news/mock';
+        if (params.toString()) {
+          mockUrl += `?${params.toString()}`;
+        }
+
+        console.log('URL de busca (API mock):', mockUrl);
+
+        response = await fetch(mockUrl, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        console.log('Status da resposta (API mock):', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Resposta de erro (API mock):', errorText);
+          throw new Error(`Erro ao carregar notícias: ${response.status} ${response.statusText}`);
+        }
+      }
+
       const data = await response.json();
-      setNewsItems(data);
-      
-      // Extrair categorias únicas
-      const uniqueCategories = Array.from(new Set(data.map((item: NewsItem) => item.category)));
-      setCategories(uniqueCategories as string[]);
+      console.log('Dados recebidos:', data);
+
+      // Verificar se data é um array
+      if (!Array.isArray(data)) {
+        console.error('Resposta não é um array:', data);
+        setNewsItems([]);
+        setError('Formato de resposta inválido. Por favor, tente novamente.');
+      } else {
+        setNewsItems(data);
+
+        // Extrair categorias únicas
+        const uniqueCategories = Array.from(new Set(data.map((item: NewsItem) => item.category)));
+        setCategories(uniqueCategories as string[]);
+        console.log('Categorias encontradas:', uniqueCategories);
+      }
     } catch (error) {
       console.error('Erro ao carregar notícias:', error);
       setError('Erro ao carregar notícias. Por favor, tente novamente.');
+      setNewsItems([]); // Definir como array vazio para evitar erros de renderização
     } finally {
       setIsLoading(false);
     }
@@ -531,7 +593,7 @@ export default function NewsPage() {
   const handleSave = async (news: NewsItem) => {
     try {
       let response;
-      
+
       if (isAdding) {
         // Adicionar nova notícia
         response = await fetch('/api/news', {
@@ -551,14 +613,14 @@ export default function NewsPage() {
           body: JSON.stringify(news),
         });
       }
-      
+
       if (!response.ok) {
         throw new Error('Erro ao salvar notícia');
       }
-      
+
       // Recarregar notícias
       fetchNews();
-      
+
       // Limpar estado de edição
       setEditingNews(null);
       setIsAdding(false);
@@ -579,11 +641,11 @@ export default function NewsPage() {
         const response = await fetch(`/api/news/${id}`, {
           method: 'DELETE',
         });
-        
+
         if (!response.ok) {
           throw new Error('Erro ao excluir notícia');
         }
-        
+
         // Recarregar notícias
         fetchNews();
       } catch (error) {
@@ -596,11 +658,11 @@ export default function NewsPage() {
   const handleToggleVisibility = async (id: string, enabled: boolean) => {
     try {
       const news = newsItems.find(item => item.id === id);
-      
+
       if (!news) {
         throw new Error('Notícia não encontrada');
       }
-      
+
       const response = await fetch(`/api/news/${id}`, {
         method: 'PUT',
         headers: {
@@ -608,11 +670,11 @@ export default function NewsPage() {
         },
         body: JSON.stringify({ ...news, enabled }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Erro ao atualizar notícia');
       }
-      
+
       // Recarregar notícias
       fetchNews();
     } catch (error) {
@@ -624,11 +686,11 @@ export default function NewsPage() {
   const handleToggleFeatured = async (id: string, featured: boolean) => {
     try {
       const news = newsItems.find(item => item.id === id);
-      
+
       if (!news) {
         throw new Error('Notícia não encontrada');
       }
-      
+
       const response = await fetch(`/api/news/${id}`, {
         method: 'PUT',
         headers: {
@@ -636,11 +698,11 @@ export default function NewsPage() {
         },
         body: JSON.stringify({ ...news, featured }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Erro ao atualizar notícia');
       }
-      
+
       // Recarregar notícias
       fetchNews();
     } catch (error) {
@@ -683,8 +745,8 @@ export default function NewsPage() {
               <button
                 onClick={() => setSelectedCategory('')}
                 className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  selectedCategory === '' 
-                    ? 'bg-abz-blue text-white' 
+                  selectedCategory === ''
+                    ? 'bg-abz-blue text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -695,8 +757,8 @@ export default function NewsPage() {
                   key={category}
                   onClick={() => setSelectedCategory(category)}
                   className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    selectedCategory === category 
-                      ? 'bg-abz-blue text-white' 
+                    selectedCategory === category
+                      ? 'bg-abz-blue text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -705,7 +767,7 @@ export default function NewsPage() {
               ))}
             </div>
           </div>
-          
+
           {/* Filtro por destaque */}
           <div>
             <label className="flex items-center">

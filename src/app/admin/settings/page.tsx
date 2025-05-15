@@ -175,28 +175,37 @@ export default function SettingsPage() {
       }
 
       // Salvar configurações
-      const response = await fetch('/api/config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedConfig),
-      });
+      console.log('Enviando configurações para o servidor:', updatedConfig);
 
-      if (!response.ok) {
-        throw new Error('Erro ao salvar configurações');
+      try {
+        const response = await fetch('/api/config', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedConfig),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Erro na resposta da API:', response.status, errorText);
+          throw new Error(`Erro ao salvar configurações: ${response.status} ${errorText}`);
+        }
+
+        console.log('Resposta da API:', response.status);
+
+        const savedConfig = await response.json();
+        console.log('Configuração salva com sucesso:', savedConfig);
+        setConfig(savedConfig);
+        setSuccess('Configurações salvas com sucesso!');
+
+        // Limpar arquivos
+        setLogoFile(null);
+        setFaviconFile(null);
+      } catch (error) {
+        console.error('Erro ao salvar configurações:', error);
+        setError('Erro ao salvar configurações. Por favor, tente novamente.');
       }
-
-      const savedConfig = await response.json();
-      setConfig(savedConfig);
-      setSuccess('Configurações salvas com sucesso!');
-
-      // Limpar arquivos
-      setLogoFile(null);
-      setFaviconFile(null);
-    } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-      setError('Erro ao salvar configurações. Por favor, tente novamente.');
     } finally {
       setIsSaving(false);
     }

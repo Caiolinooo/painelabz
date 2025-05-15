@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-
-// Criar cliente Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { supabaseAdmin } from '@/lib/supabase';
 
 // GET /api/admin/authorized-users/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     // Verificar autenticação
     const authHeader = request.headers.get('authorization') || '';
@@ -33,7 +29,7 @@ export async function GET(
     }
 
     // Verificar se o usuário é administrador
-    const { data: requestingUser, error: userError } = await supabase
+    const { data: requestingUser, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, role')
       .eq('id', payload.userId)
@@ -47,10 +43,12 @@ export async function GET(
     }
 
     // Obter ID do usuário autorizado
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
 
     // Buscar usuário autorizado
-    const { data: authorizedUser, error: findError } = await supabase
+    const { data: authorizedUser, error: findError } = await supabaseAdmin
       .from('authorized_users')
       .select('*')
       .eq('id', id)
@@ -76,8 +74,9 @@ export async function GET(
 // DELETE /api/admin/authorized-users/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     // Verificar autenticação
     const authHeader = request.headers.get('authorization') || '';
@@ -99,7 +98,7 @@ export async function DELETE(
     }
 
     // Verificar se o usuário é administrador
-    const { data: requestingUser, error: userError } = await supabase
+    const { data: requestingUser, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, role')
       .eq('id', payload.userId)
@@ -113,10 +112,12 @@ export async function DELETE(
     }
 
     // Obter ID do usuário autorizado
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
 
     // Verificar se o usuário autorizado existe
-    const { data: authorizedUser, error: findError } = await supabase
+    const { data: authorizedUser, error: findError } = await supabaseAdmin
       .from('authorized_users')
       .select('*')
       .eq('id', id)
@@ -130,7 +131,7 @@ export async function DELETE(
     }
 
     // Excluir o usuário autorizado
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('authorized_users')
       .delete()
       .eq('id', id);
@@ -159,8 +160,9 @@ export async function DELETE(
 // PUT /api/admin/authorized-users/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     // Verificar autenticação
     const authHeader = request.headers.get('authorization') || '';
@@ -182,7 +184,7 @@ export async function PUT(
     }
 
     // Verificar se o usuário é administrador
-    const { data: requestingUser, error: userError } = await supabase
+    const { data: requestingUser, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, role, first_name, last_name')
       .eq('id', payload.userId)
@@ -196,13 +198,15 @@ export async function PUT(
     }
 
     // Obter ID do usuário autorizado
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
 
     // Obter dados do corpo da requisição
     const body = await request.json();
 
     // Buscar o usuário autorizado para verificar se existe
-    const { data: userToUpdate, error: findError } = await supabase
+    const { data: userToUpdate, error: findError } = await supabaseAdmin
       .from('authorized_users')
       .select('*')
       .eq('id', id)
@@ -227,7 +231,7 @@ export async function PUT(
     };
 
     // Atualizar usuário autorizado
-    const { data: updatedUser, error: updateError } = await supabase
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from('authorized_users')
       .update(updateData)
       .eq('id', id)

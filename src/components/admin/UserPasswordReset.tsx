@@ -20,30 +20,39 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
   // Função para redefinir a senha
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validar senha
     if (password.length < 8) {
       setError('A senha deve ter pelo menos 8 caracteres');
       return;
     }
-    
+
     // Validar confirmação de senha
     if (password !== confirmPassword) {
       setError('As senhas não coincidem');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      const token = localStorage.getItem('abzToken');
-      
+      // Obter token do localStorage (tenta várias opções)
+      const token = localStorage.getItem('token') ||
+                   localStorage.getItem('abzToken') ||
+                   sessionStorage.getItem('token') ||
+                   sessionStorage.getItem('abzToken') ||
+                   document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] ||
+                   document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
+
       if (!token) {
-        throw new Error('Não autorizado');
+        console.error('Token não encontrado em nenhum local de armazenamento');
+        throw new Error('Não autorizado - Token não encontrado');
       }
-      
-      const response = await fetch(`/api/users/${userId}/reset-password`, {
+
+      console.log('Enviando solicitação de redefinição de senha para usuário:', userId);
+
+      const response = await fetch(`/api/users-unified/${userId}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,12 +60,13 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
         },
         body: JSON.stringify({ password })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Resposta de erro:', errorData);
         throw new Error(errorData.error || 'Erro ao redefinir senha');
       }
-      
+
       setSuccess(true);
       setTimeout(() => {
         onSuccess();
@@ -77,7 +87,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
           <h2 className="text-xl font-semibold text-abz-blue">
             Redefinir Senha - {userName}
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-red-100"
             disabled={loading}
@@ -85,7 +95,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
             <FiX className="h-6 w-6" />
           </button>
         </div>
-        
+
         <form onSubmit={handleResetPassword} className="p-6">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md flex items-start">
@@ -93,7 +103,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
               <p>{error}</p>
             </div>
           )}
-          
+
           {success ? (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md">
               Senha redefinida com sucesso!
@@ -102,10 +112,10 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
             <>
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Você está prestes a redefinir a senha do usuário <strong>{userName}</strong>. 
+                  Você está prestes a redefinir a senha do usuário <strong>{userName}</strong>.
                   A nova senha será definida imediatamente e o usuário precisará usá-la no próximo login.
                 </p>
-                
+
                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-3 rounded-md mb-4 flex items-start">
                   <FiAlertTriangle className="mr-2 mt-0.5 flex-shrink-0" />
                   <p className="text-sm">
@@ -113,7 +123,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
                   </p>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
@@ -136,7 +146,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
                     Mínimo de 8 caracteres
                   </p>
                 </div>
-                
+
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                     Confirmar Nova Senha*
@@ -154,7 +164,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
               </div>
             </>
           )}
-          
+
           <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
@@ -164,7 +174,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
             >
               Cancelar
             </button>
-            
+
             {!success && (
               <button
                 type="submit"

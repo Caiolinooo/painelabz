@@ -6,9 +6,11 @@ import Image from 'next/image';
 import { FiLock, FiEye, FiEyeOff, FiShield, FiAlertCircle, FiCheck } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 
 export default function SetPassword() {
   const { t } = useI18n();
+  const { config } = useSiteConfig();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -112,8 +114,8 @@ export default function SetPassword() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <Image
-            src="/images/LC1_Azul.png"
-            alt="ABZ Group Logo"
+            src={config.logo}
+            alt={config.companyName + " Logo"}
             width={200}
             height={60}
             className="h-auto"
@@ -242,7 +244,7 @@ export default function SetPassword() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="bg-white px-2 text-gray-500">
-                  ABZ Group
+                  {config.companyName}
                 </span>
               </div>
             </div>
@@ -250,7 +252,7 @@ export default function SetPassword() {
         </div>
 
         <p className="mt-10 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} ABZ Group. Todos os direitos reservados.
+          {config.footerText || `© ${new Date().getFullYear()} ${config.companyName}. Todos os direitos reservados.`}
         </p>
       </div>
     </div>

@@ -1,0 +1,3 @@
+nome|email|telefone|cargo|departamento
+Joao Silva|joao.silva@example.com|+5511999999999|Analista|TI
+Maria Souza|maria.souza@example.com|+5511888888888|Gerente|RH

@@ -7,7 +7,7 @@ import LazyDocumentViewer from '@/components/LazyLoad/LazyDocumentViewer';
 import { useI18n } from '@/contexts/I18nContext';
 import { measure } from '@/lib/performance';
 
-const MANUAL_PDF_URL = '/documentos/Manual de logística.pdf';
+const MANUAL_PDF_URL = '/documentos/manuais/Manual de logística.pdf';
 
 // Simplified data structure for consistency - will be populated with translations
 const getManualDoc = (t: (key: string) => string) => ({

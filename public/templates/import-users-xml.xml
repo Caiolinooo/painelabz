@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<employees>
+  <employee>
+    <name>João Silva</name>
+    <email>joao.silva@exemplo.com</email>
+    <phoneNumber>+5521999999999</phoneNumber>
+    <department>TI</department>
+    <position>Desenvolvedor</position>
+    <admissionDate>2023-01-01</admissionDate>
+    <registration>12345</registration>
+    <document>123.456.789-00</document>
+    <notes>Funcionário exemplar</notes>
+  </employee>
+  <employee>
+    <name>Maria Oliveira</name>
+    <email>maria.oliveira@exemplo.com</email>
+    <phoneNumber>+5521888888888</phoneNumber>
+    <department>RH</department>
+    <position>Analista de RH</position>
+    <admissionDate>2023-02-15</admissionDate>
+    <registration>54321</registration>
+    <document>987.654.321-00</document>
+    <notes>Contratada recentemente</notes>
+  </employee>
+  <employee>
+    <name>Carlos Santos</name>
+    <email>carlos.santos@exemplo.com</email>
+    <phoneNumber>+5521777777777</phoneNumber>
+    <department>Financeiro</department>
+    <position>Contador</position>
+    <admissionDate>2022-11-10</admissionDate>
+    <registration>67890</registration>
+    <document>456.789.123-00</document>
+    <notes>Responsável pela contabilidade</notes>
+  </employee>
+</employees>

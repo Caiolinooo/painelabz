@@ -1,0 +1,5 @@
+funcionarioId,avaliadorId,periodo,dataAvaliacao,pontuacao,status,observacoes
+user-1,user-5,2025-Q1,2025-03-15,4.5,concluida,"Bom desempenho, precisa melhorar comunicação"
+user-2,user-5,2025-Q1,2025-03-16,3.8,concluida,"Desempenho satisfatório, atende expectativas"
+user-3,user-4,2025-Q1,2025-03-17,4.2,concluida,"Excelente trabalho em equipe"
+user-4,user-5,2025-Q1,2025-03-18,5.0,concluida,"Desempenho excepcional em todos os critérios"

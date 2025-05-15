@@ -179,7 +179,9 @@ export default function ReimbursementForm() {
       if (!isValid) {
         setError('pixChave', {
           type: 'manual',
-          message: `Chave PIX inválida para o tipo ${pixTipoValue}`
+          message: t('locale.code') === 'en-US'
+            ? `Invalid PIX key for type ${pixTipoValue === 'cpf' ? 'TAX ID' : pixTipoValue}`
+            : `Chave PIX inválida para o tipo ${pixTipoValue}`
         });
       } else {
         clearErrors('pixChave');
@@ -189,7 +191,6 @@ export default function ReimbursementForm() {
 
   return (
     <>
-      <ToastContainer position="top-right" theme="colored" />
 
       {/* PDF Viewer Modal */}
       <AnimatePresence>
@@ -521,7 +522,7 @@ export default function ReimbursementForm() {
                       <div style={{ opacity: 1 }}>
                         <SelectField
                           id="pixTipo"
-                          label="Tipo de Chave PIX"
+                          label={t('reimbursement.form.pixKeyType')}
                           value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e);
@@ -531,10 +532,10 @@ export default function ReimbursementForm() {
                             // Não precisamos atualizar o estado local, pois já estamos usando watch('pixTipo')
                           }}
                           options={[
-                            { value: 'cpf', label: 'CPF' },
+                            { value: 'cpf', label: t('locale.code') === 'en-US' ? 'TAX ID' : 'CPF' },
                             { value: 'email', label: 'Email' },
-                            { value: 'telefone', label: 'Telefone' },
-                            { value: 'aleatoria', label: 'Chave Aleatória' }
+                            { value: 'telefone', label: t('locale.code') === 'en-US' ? 'Phone' : 'Telefone' },
+                            { value: 'aleatoria', label: t('locale.code') === 'en-US' ? 'Random Key' : 'Chave Aleatória' }
                           ]}
                           error={errors.pixTipo?.message}
                           required
@@ -549,25 +550,25 @@ export default function ReimbursementForm() {
                     render={({ field }) => {
                       // Determinar o tipo de entrada e máscara com base no tipo de PIX
                       let inputType = 'text';
-                      let placeholder = 'Digite sua chave PIX';
+                      let placeholder = t('locale.code') === 'en-US' ? 'Enter your PIX key' : 'Digite sua chave PIX';
                       let mask = undefined;
 
                       if (pixTipo) {
                         switch(pixTipo) {
                           case 'cpf':
-                            placeholder = '000.000.000-00';
+                            placeholder = t('locale.code') === 'en-US' ? '000.000.000-00 (TAX ID)' : '000.000.000-00';
                             mask = formatCPF;
                             break;
                           case 'email':
                             inputType = 'email';
-                            placeholder = 'exemplo@email.com';
+                            placeholder = t('locale.code') === 'en-US' ? 'example@email.com' : 'exemplo@email.com';
                             break;
                           case 'telefone':
-                            placeholder = '(00) 00000-0000';
+                            placeholder = t('locale.code') === 'en-US' ? '(00) 00000-0000' : '(00) 00000-0000';
                             mask = formatPhone;
                             break;
                           case 'aleatoria':
-                            placeholder = 'Chave aleatória PIX';
+                            placeholder = t('locale.code') === 'en-US' ? 'Random PIX key' : 'Chave aleatória PIX';
                             break;
                         }
                       }
@@ -576,7 +577,7 @@ export default function ReimbursementForm() {
                         <div style={{ opacity: 1 }}>
                           <InputField
                             id="pixChave"
-                            label="Chave PIX"
+                            label={t('reimbursement.form.pixKey')}
                             type={inputType}
                             value={field.value || ''}
                             onChange={(e) => {

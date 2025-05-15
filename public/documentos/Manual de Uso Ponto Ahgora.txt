@@ -1,0 +1,91 @@
+
+
+ 
+ 
+COMO UTILIZAR O SISTEMA DE PONTO AHGORA 
+ 
+A partir do dia 05/08/2024 passaremos a utilizar o ponto digital Ahgora, que deverá ser 
+baixado no celular. 
+ 
+COMO BAIXAR: 
+Entre na loja de aplicativos do seu celular e baixe os aplicativos My Ahgora e Ahgora 
+Multi. 
+     
+ 
+ 
+ 
+COMO UTILIZAR OS APP: 
+Ahgora Multi: Será o aplicativo onde você realizará as marcações de ponto. 
+Ao entrar no app você deverá fornecer algumas informações para conseguir ter acesso a 
+área onde será registrado o seu ponto. 
+1) Será necessário inserir o Código de Autorização (enviado por e-mail) 
+2) Deverá informar sua matrícula e senha (enviado por e-mail) 
+3) Cadastrar a sua face para realizar as batidas  
+Importante: O aplicativo solicitará algumas permissões, como por exemplo a 
+localização, e será preciso aceitar TODAS para que o aplicativo funcione de maneira 
+correta. 
+ 
+My Ahgora: Será o app onde o colaborador poderá ter acesso ao espelho de ponto e fazer 
+algumas solicitações. 
+Ao acessar o app você deverá fornecer algumas informações, como: 
+- Código da Empresa (a982521) 
+- Matrícula (enviado por e-mail) 
+- Senha (enviado por e-mail) 
+Já no aplicativo, você terá acesso as seguintes funções: 
+
+ 
+ 
+ 
+1) Na parte superior, onde consta o dia, você consegue verificar as batidas do dia. 
+- Em “Solicitar Ajustes” temos as seguintes informações: 
+2) Incluir Batida: Caso o funcionário esqueça de realizar uma batida, deverá acessar essa 
+opção e informar o horário que deseja incluir e o motivo, após isso a informação chegará 
+ao DP para verificação e para aprovar ou não daquela inclusão. 
+ 
+3) Solicitar Abono: Se um colaborador precisar se ausentar do trabalho por motivos 
+médicos, ele deve acessar esta opção e informar a hora a ser abonada ou os dias de 
+atestado. 
+É importante incluir o atestado médico ou a declaração na solicitação. 
+ 
+4) Desconsiderar Batida: Caso o funcionário bata o ponto errado, deverá entrar nessa 
+opção, selecionar o horário que deseja desconsiderar e fazer a solicitação. 
+ 
+VERIFICAR ESPELHO DE PONTO: 
+Vá na opção “Acessar espelho de ponto” que você consegue verificar todas as batidas 
+que fez no mês. 
+ 
+ 
+1 
+3 
+4 
+2 
+
+ 
+ 
+HORÁRIO DAS BATIDAS: 
+Solicitamos que sempre realize as batidas de ponto próximo ao horário pré-estabelecido, 
+exemplo: 
+Se o horário de início do expediente for 08:00, pedimos que bata o ponto eletrônico entre 
+07:56 e 08:02. 
+A mesma coisa para o restante dos horários. 
+ 
+HORA EXTRA 
+Se precisar realizar hora extra após o expediente, não é preciso registrar o ponto as 
+17/18h. Basta continuar trabalhando e quando for finalizar as atividades, basta solicitar 
+uma inclusão de batida MANUAL pelo aplicativo MyAghora informando o horário de saída 
+e colocando o motivo da hora extra. 
+                                  
+ 
+O sistema irá considerar automaticamente as horas extras com base nos horários de 
+início e término que foram pré-registrados. 
+Mas caso saia do trabalho e, de casa precise trabalhar, será necessário bater o ponto 
+novamente usando o Multi (reconhecimento facial) e na hora de encerrar será necessário 
+ir em incluir batida para inserir o motivo da hora extra.  
+1° 
+ 
+2° 
+ 
+4° 
+ 
+5° 
+ 

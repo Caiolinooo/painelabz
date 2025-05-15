@@ -5,6 +5,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary-color: #005dff;
+  --secondary-color: #6339F5;
 }
 
 body {
@@ -25,19 +27,19 @@ img {
   .abz-container {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
-  
+
   .abz-card {
     @apply bg-white rounded-lg shadow-md p-6;
   }
-  
+
   .abz-button-primary {
     @apply bg-abz-blue text-white rounded-md px-4 py-2 font-medium hover:bg-abz-blue-dark transition-colors;
   }
-  
+
   .abz-button-secondary {
     @apply bg-gray-200 text-gray-800 rounded-md px-4 py-2 font-medium hover:bg-gray-300 transition-colors;
   }
-  
+
   .abz-button-danger {
     @apply bg-red-600 text-white rounded-md px-4 py-2 font-medium hover:bg-red-700 transition-colors;
   }
@@ -46,6 +48,10 @@ img {
 /* Definições básicas da fonte e cores */
 :root {
   --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* Estas variáveis serão atualizadas dinamicamente pelo SiteConfigContext */
+  --primary-color: #005dff;
+  --secondary-color: #6339F5;
 }
 
 /* Estilos para garantir que a fonte seja aplicada */
@@ -65,4 +71,29 @@ body {
 
 .abz-header {
   @apply bg-white shadow-md;
+}
+
+/* Aplicação dinâmica das cores do tema */
+.text-primary {
+  color: var(--primary-color);
+}
+
+.bg-primary {
+  background-color: var(--primary-color);
+}
+
+.border-primary {
+  border-color: var(--primary-color);
+}
+
+.text-secondary {
+  color: var(--secondary-color);
+}
+
+.bg-secondary {
+  background-color: var(--secondary-color);
+}
+
+.border-secondary {
+  border-color: var(--secondary-color);
 }

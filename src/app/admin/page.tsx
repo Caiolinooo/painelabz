@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
+import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings, FiUserCheck, FiRefreshCw } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -39,6 +40,8 @@ const AdminCard = ({ title, description, icon: Icon, href, color }: AdminCardPro
 export default function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const { t } = useI18n();
+  const router = useRouter();
+  const [isFixingPermissions, setIsFixingPermissions] = useState(false);
 
   // Verificar se estamos em ambiente de desenvolvimento
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -48,14 +51,39 @@ export default function AdminDashboard() {
   console.log('AdminDashboard - user:', user);
   console.log('AdminDashboard - Ambiente de desenvolvimento:', isDevelopment);
 
+  // Função para corrigir permissões de administrador
+  const fixAdminPermissions = () => {
+    setIsFixingPermissions(true);
+    router.push('/admin-fix');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('admin.dashboard')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {t('admin.welcomeAdmin', { name: user?.name })}
+            {t('admin.welcomeAdmin', { name: user?.firstName })}
           </p>
+        </div>
+        <div className="mt-4 md:mt-0">
+          <button
+            onClick={fixAdminPermissions}
+            disabled={isFixingPermissions}
+            className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+          >
+            {isFixingPermissions ? (
+              <>
+                <FiRefreshCw className="animate-spin mr-2" />
+                Corrigindo Permissões...
+              </>
+            ) : (
+              <>
+                <FiUserCheck className="mr-2" />
+                Corrigir Permissões
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -78,14 +106,14 @@ export default function AdminDashboard() {
           title={t('admin.documentsSection')}
           description={t('admin.documentsDesc')}
           icon={FiFileText}
-          href="/admin/documents"
+          href="/admin/documentos"
           color="border-purple-500"
         />
         <AdminCard
           title={t('admin.news')}
           description={t('admin.newsDesc')}
           icon={FiEdit}
-          href="/admin/news"
+          href="/admin/noticias"
           color="border-pink-500"
         />
         <AdminCard

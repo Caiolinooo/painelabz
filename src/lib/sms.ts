@@ -63,8 +63,8 @@ export async function sendVerificationSMS(phoneNumber: string, code: string): Pr
   }
 }
 
-// Importar a função de inicialização de email do arquivo email.ts
-import { initEmailTransport as getEmailTransporter } from './email';
+// Importar a função de inicialização de email do arquivo email-gmail.ts
+import { createTransport as getEmailTransporter } from './email-gmail';
 
 /**
  * Inicializa o transporte de email
@@ -126,7 +126,7 @@ export async function sendVerificationEmail(
 
     // Conteúdo do email padrão
     const defaultMailOptions = {
-      from: process.env.EMAIL_FROM || '"ABZ Group" <apiabzgroup@gmail.com>',
+      from: process.env.EMAIL_FROM || '"ABZ Group" <apiabz@groupabz.com>',
       to: email,
       subject: 'Código de Verificação - ABZ Group',
       text: `Seu código de verificação é: ${code}. Este código expira em 15 minutos.`,
@@ -281,14 +281,32 @@ export async function isVerificationCodeValid(
   expirationDate?: Date,
   method: 'sms' | 'email' = 'sms'
 ): Promise<boolean> {
+  // Importar o serviço de código para verificar também os códigos em memória
+  const { verifyCode: verifyCodeService } = await import('./code-service');
+
+  // Verificar primeiro no serviço em memória
+  console.log(`Verificando código ${providedCode} para ${identifier} via ${method} no serviço em memória`);
+  const isValidInMemory = verifyCodeService(identifier, providedCode, method);
+
+  if (isValidInMemory) {
+    console.log(`Código ${providedCode} válido no serviço em memória`);
+    return true;
+  }
+
+  // Se não for válido em memória, verificar no banco de dados
+  console.log(`Código não encontrado em memória, verificando no banco de dados`);
+
   // Verificar localmente (sempre para email, ou para SMS em desenvolvimento)
   if (method === 'email' || process.env.NODE_ENV !== 'production' || !accountSid || !authToken || !verifyServiceSid) {
     if (!storedCode || !expirationDate) {
+      console.log(`Código não encontrado no banco de dados`);
       return false;
     }
 
     const now = new Date();
-    return storedCode === providedCode && expirationDate > now;
+    const isValid = storedCode === providedCode && expirationDate > now;
+    console.log(`Código ${isValid ? 'válido' : 'inválido'} no banco de dados`);
+    return isValid;
   }
 
   // Se for SMS em produção, usar o Twilio Verify
@@ -306,9 +324,11 @@ export async function isVerificationCodeValid(
         code: providedCode
       });
 
-    return verificationCheck.status === 'approved';
+    const isValid = verificationCheck.status === 'approved';
+    console.log(`Código ${isValid ? 'válido' : 'inválido'} no Twilio Verify`);
+    return isValid;
   } catch (error) {
-    console.error('Erro ao verificar código:', error);
+    console.error('Erro ao verificar código no Twilio:', error);
     return false;
   }
 }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { prisma } from '@/lib/db';
 
 // GET - Obter histórico de acesso de um usuário
 export async function GET(request: NextRequest) {
@@ -25,13 +24,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se o usuário é administrador
-    await dbConnect();
-    const requestingUser = await User.findById(payload.userId);
-    
-    if (!requestingUser || requestingUser.role !== 'ADMIN') {
+    // Verificar se o usuário é administrador ou gerente
+    const requestingUser = await prisma.user.findUnique({
+      where: { id: payload.userId }
+    });
+
+    if (!requestingUser || (requestingUser.role !== 'ADMIN' && requestingUser.role !== 'MANAGER')) {
       return NextResponse.json(
-        { error: 'Acesso negado. Apenas administradores podem acessar o histórico.' },
+        { error: 'Acesso negado. Apenas administradores e gerentes podem acessar o histórico.' },
         { status: 403 }
       );
     }
@@ -48,19 +48,104 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar o histórico de acesso do usuário
-    const user = await User.findById(userId);
-    if (!user) {
+    try {
+      // Primeiro tentar buscar na tabela users_unified
+      const unifiedUser = await prisma.$queryRaw`
+        SELECT
+          id,
+          first_name as "firstName",
+          last_name as "lastName",
+          access_history as "accessHistory"
+        FROM
+          users_unified
+        WHERE
+          id = ${userId}::uuid
+      `;
+
+      // Se encontrou o usuário na tabela unificada
+      if (unifiedUser && Array.isArray(unifiedUser) && unifiedUser.length > 0) {
+        const user = unifiedUser[0];
+        console.log('Usuário encontrado na tabela unificada:', user.id);
+
+        // Verificar se o histórico existe e está no formato correto
+        let accessHistory = user.accessHistory || [];
+
+        // Garantir que o histórico seja um array
+        if (!Array.isArray(accessHistory)) {
+          console.log('Histórico não é um array, convertendo...');
+          try {
+            // Tentar converter de string JSON para array
+            if (typeof accessHistory === 'string') {
+              accessHistory = JSON.parse(accessHistory);
+            }
+            // Se ainda não for um array, criar um vazio
+            if (!Array.isArray(accessHistory)) {
+              accessHistory = [];
+            }
+          } catch (error) {
+            console.error('Erro ao converter histórico:', error);
+            accessHistory = [];
+          }
+        }
+
+        return NextResponse.json({
+          userId: user.id,
+          fullName: `${user.firstName} ${user.lastName}`,
+          accessHistory: accessHistory
+        });
+      }
+
+      // Se não encontrou na tabela unificada, tentar na tabela User
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          accessHistory: true
+        }
+      });
+
+      if (!user) {
+        // Se não encontrou em nenhuma tabela, buscar informações básicas do usuário
+        const basicUser = await prisma.$queryRaw`
+          SELECT
+            id,
+            first_name as "firstName",
+            last_name as "lastName"
+          FROM
+            users
+          WHERE
+            id = ${userId}::uuid
+        `;
+
+        if (basicUser && Array.isArray(basicUser) && basicUser.length > 0) {
+          const user = basicUser[0];
+          return NextResponse.json({
+            userId: user.id,
+            fullName: `${user.firstName} ${user.lastName}`,
+            accessHistory: []
+          });
+        }
+
+        return NextResponse.json(
+          { error: 'Usuário não encontrado' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        userId: user.id,
+        fullName: `${user.firstName} ${user.lastName}`,
+        accessHistory: user.accessHistory || []
+      });
+    } catch (error) {
+      console.error('Erro ao buscar histórico de acesso:', error);
       return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
+        { error: 'Erro ao buscar histórico de acesso' },
+        { status: 500 }
       );
     }
-
-    return NextResponse.json({
-      userId: user._id,
-      fullName: `${user.firstName} ${user.lastName}`,
-      accessHistory: user.accessHistory || []
-    });
   } catch (error) {
     console.error('Erro ao obter histórico de acesso:', error);
     return NextResponse.json(
@@ -105,9 +190,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o usuário é administrador
-    await dbConnect();
-    const requestingUser = await User.findById(payload.userId);
-    
+    const requestingUser = await prisma.user.findUnique({
+      where: { id: payload.userId }
+    });
+
     if (!requestingUser || requestingUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem registrar histórico.' },
@@ -116,7 +202,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar o usuário
-    const user = await User.findById(userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        accessHistory: true
+      }
+    });
+
     if (!user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
@@ -131,12 +224,16 @@ export async function POST(request: NextRequest) {
       details: details || ''
     };
 
-    if (!user.accessHistory) {
-      user.accessHistory = [];
-    }
+    // Obter o histórico atual
+    const accessHistory = user.accessHistory || [];
 
-    user.accessHistory.push(historyEntry);
-    await user.save();
+    // Atualizar o usuário com o novo histórico
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        accessHistory: [...accessHistory, historyEntry]
+      }
+    });
 
     return NextResponse.json({
       success: true,

@@ -12,7 +12,8 @@ import {
   FiRss,
   FiDollarSign,
   FiClock,
-  FiUser
+  FiUser,
+  FiBarChart2
 } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 
@@ -144,6 +145,32 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       external: false,
       enabled: true,
       order: 9
+    },
+    {
+      id: 'avaliacao',
+      title: t('avaliacao.title') || t('cards.avaliacao', 'Avaliação de Desempenho'),
+      description: t('avaliacao.description') || t('cards.avaliacaoDesc', 'Gerencie avaliações de desempenho dos colaboradores'),
+      href: '/avaliacao',
+      icon: FiBarChart2,
+      color: 'bg-abz-blue',
+      hoverColor: 'hover:bg-abz-blue-dark',
+      external: false,
+      enabled: true,
+      order: 10,
+      managerOnly: true
+    },
+    {
+      id: 'admin',
+      title: t('admin.title') || 'Admin',
+      description: t('admin.dashboard') || 'Painel administrativo',
+      href: '/admin',
+      icon: FiUser,
+      color: 'bg-abz-indigo',
+      hoverColor: 'hover:bg-abz-indigo-dark',
+      external: false,
+      enabled: true,
+      order: 11,
+      adminOnly: true
     }
   ] as DashboardCard[];
 }
@@ -257,6 +284,32 @@ const dashboardCards: DashboardCard[] = [
     external: false,
     enabled: true,
     order: 9
+  },
+  {
+    id: 'avaliacao',
+    title: 'Avaliação de Desempenho',
+    description: 'Gerencie avaliações de desempenho dos colaboradores.',
+    href: '/avaliacao',
+    icon: FiBarChart2,
+    color: 'bg-abz-blue',
+    hoverColor: 'hover:bg-abz-blue-dark',
+    external: false,
+    enabled: true,
+    order: 10,
+    managerOnly: true
+  },
+  {
+    id: 'admin',
+    title: 'Admin',
+    description: 'Painel administrativo',
+    href: '/admin',
+    icon: FiUser,
+    color: 'bg-abz-indigo',
+    hoverColor: 'hover:bg-abz-indigo-dark',
+    external: false,
+    enabled: true,
+    order: 11,
+    adminOnly: true
   }
 ];
 

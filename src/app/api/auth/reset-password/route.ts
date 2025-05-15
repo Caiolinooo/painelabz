@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { prisma } from '@/lib/db';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,12 +22,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await dbConnect();
-
     // Buscar o usuário pelo token de redefinição
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: new Date() }
+    const user = await prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: {
+          gt: new Date()
+        }
+      }
     });
 
     if (!user) {
@@ -45,22 +47,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Atualizar a senha
-    user.password = password;
-    user.passwordLastChanged = new Date();
-    
-    // Limpar o token de redefinição
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-    
-    // Registrar no histórico de acesso
-    user.accessHistory.push({
-      timestamp: new Date(),
-      action: 'PASSWORD_RESET',
-      details: 'Senha redefinida via link de recuperação'
+    // Gerar hash da senha
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Obter o histórico de acesso atual
+    const accessHistory = user.accessHistory || [];
+
+    // Adicionar novo registro ao histórico
+    const updatedAccessHistory = [
+      ...accessHistory,
+      {
+        timestamp: new Date(),
+        action: 'PASSWORD_RESET',
+        details: 'Senha redefinida via link de recuperação'
+      }
+    ];
+
+    // Atualizar o usuário
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        passwordLastChanged: new Date(),
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+        accessHistory: updatedAccessHistory
+      }
     });
-    
-    await user.save();
 
     return NextResponse.json({
       success: true,

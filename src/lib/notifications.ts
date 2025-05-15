@@ -1,7 +1,5 @@
 import { sendEmail } from './email';
-import User from '@/models/User';
-import AuthorizedUser from '@/models/AuthorizedUser';
-import dbConnect from './mongodb';
+import { prisma } from './db';
 import {
   accessApprovalTemplate,
   accessRejectionTemplate,
@@ -15,6 +13,16 @@ import {
   inviteTemplate
 } from './emailTemplates';
 
+// Tipo para dados do usuário
+interface UserData {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  position: string;
+  department: string;
+  protocol: string;
+}
+
 /**
  * Envia uma notificação por email sobre a aprovação de acesso
  * @param userId ID do usuário que teve o acesso aprovado
@@ -25,13 +33,14 @@ export async function sendAccessApprovalNotification(
   authorizedUserId: string,
   approvedById: string
 ): Promise<{ success: boolean; message: string; previewUrl?: string }> {
-  await dbConnect();
-
   try {
     console.log(`Iniciando envio de notificação de aprovação para ID: ${authorizedUserId}`);
 
     // Buscar informações do usuário autorizado
-    const authorizedUser = await AuthorizedUser.findById(authorizedUserId);
+    const authorizedUser = await prisma.authorizedUser.findUnique({
+      where: { id: authorizedUserId }
+    });
+
     if (!authorizedUser) {
       console.error(`Usuário autorizado não encontrado: ${authorizedUserId}`);
       return {
@@ -43,7 +52,10 @@ export async function sendAccessApprovalNotification(
     console.log(`Usuário autorizado encontrado: ${authorizedUser.email || 'Sem email'}`);
 
     // Buscar informações do administrador
-    const admin = await User.findById(approvedById);
+    const admin = await prisma.user.findUnique({
+      where: { id: approvedById }
+    });
+
     if (!admin) {
       console.error(`Administrador não encontrado: ${approvedById}`);
       return {
@@ -124,7 +136,7 @@ export async function sendCustomEmail(
       text,
       htmlContent,
       {
-        from: process.env.EMAIL_FROM || '"ABZ Group" <apiabzgroup@gmail.com>'
+        from: process.env.EMAIL_FROM || '"ABZ Group" <apiabz@groupabz.com>'
       }
     );
 
@@ -225,13 +237,14 @@ export async function sendAccessRejectionNotification(
   rejectedById: string,
   reason?: string
 ): Promise<{ success: boolean; message: string; previewUrl?: string }> {
-  await dbConnect();
-
   try {
     console.log(`Iniciando envio de notificação de rejeição para ID: ${authorizedUserId}`);
 
     // Buscar informações do usuário autorizado
-    const authorizedUser = await AuthorizedUser.findById(authorizedUserId);
+    const authorizedUser = await prisma.authorizedUser.findUnique({
+      where: { id: authorizedUserId }
+    });
+
     if (!authorizedUser) {
       console.error(`Usuário autorizado não encontrado: ${authorizedUserId}`);
       return {
@@ -243,7 +256,10 @@ export async function sendAccessRejectionNotification(
     console.log(`Usuário autorizado encontrado: ${authorizedUser.email || 'Sem email'}`);
 
     // Buscar informações do administrador
-    const admin = await User.findById(rejectedById);
+    const admin = await prisma.user.findUnique({
+      where: { id: rejectedById }
+    });
+
     if (!admin) {
       console.error(`Administrador não encontrado: ${rejectedById}`);
       return {
@@ -412,11 +428,13 @@ export async function sendReimbursementRejectionEmail(
  * Envia um email de boas-vindas para novos usuários
  * @param email Email do destinatário
  * @param nome Nome do usuário
+ * @param password Senha temporária (opcional, apenas se gerada automaticamente)
  * @returns Resultado do envio
  */
 export async function sendNewUserWelcomeEmail(
   email: string,
-  nome: string
+  nome: string,
+  password?: string
 ): Promise<{ success: boolean; message: string; previewUrl?: string }> {
   try {
     console.log(`Enviando email de boas-vindas para: ${email}`);
@@ -425,7 +443,7 @@ export async function sendNewUserWelcomeEmail(
     const loginUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : 'http://localhost:3000/login';
 
     // Gerar conteúdo do email usando o template
-    const emailContent = newUserWelcomeTemplate(nome, loginUrl);
+    const emailContent = newUserWelcomeTemplate(nome, loginUrl, password);
 
     // Enviar email
     const result = await sendCustomEmail(
@@ -511,6 +529,51 @@ export async function sendInviteWithRegisterLinkEmail(
     return {
       success: false,
       message: `Erro ao enviar email de convite: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+    };
+  }
+}
+
+/**
+ * Envia uma notificação para o administrador sobre um novo usuário
+ * @param adminEmail Email do administrador
+ * @param userData Dados do usuário
+ * @returns Resultado do envio do email
+ */
+export async function sendAdminNotificationEmail(
+  adminEmail: string,
+  userData: UserData
+): Promise<{ success: boolean; message: string; previewUrl?: string }> {
+  try {
+    console.log(`Enviando email de notificação para o administrador: ${adminEmail}`);
+
+    // Importar o template de notificação para o administrador
+    const { adminNotificationTemplate } = await import('./emailTemplates');
+
+    // Gerar conteúdo do email usando o template
+    const emailContent = adminNotificationTemplate(userData);
+
+    // Enviar email
+    const result = await sendCustomEmail(
+      adminEmail,
+      `Novo cadastro no Portal ABZ - ${userData.protocol}`,
+      emailContent
+    );
+
+    console.log(`Resultado do envio de email para o administrador: ${result.success ? 'Sucesso' : 'Falha'}`);
+    if (result.previewUrl) {
+      console.log(`URL de preview: ${result.previewUrl}`);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Erro ao enviar email para o administrador:', error);
+    if (error instanceof Error) {
+      console.error('Detalhes do erro:', error.message);
+      console.error('Stack trace:', error.stack);
+    }
+    return {
+      success: false,
+      message: `Erro ao enviar email para o administrador: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
     };
   }
 }

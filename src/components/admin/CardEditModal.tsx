@@ -20,6 +20,9 @@ interface CardData {
   managerOnly: boolean;
   allowedRoles: string[];
   allowedUserIds: string[];
+  // Campos para traduções
+  titleEn?: string;
+  descriptionEn?: string;
 }
 
 interface CardEditModalProps {
@@ -44,6 +47,8 @@ const defaultCard: CardData = {
   managerOnly: false,
   allowedRoles: [],
   allowedUserIds: [],
+  titleEn: '',
+  descriptionEn: ''
 };
 
 export default function CardEditModal({
@@ -56,12 +61,12 @@ export default function CardEditModal({
   const { t } = useI18n();
   const [formData, setFormData] = useState<CardData>(card || defaultCard);
   const [showAllIcons, setShowAllIcons] = useState(false);
-  
+
   // Lista de ícones disponíveis
   const availableIcons = [
-    'FiBookOpen', 'FiCalendar', 'FiClock', 'FiDollarSign', 'FiFile', 
-    'FiFileText', 'FiGrid', 'FiHome', 'FiInfo', 'FiLink', 'FiList', 
-    'FiMail', 'FiMap', 'FiMessageSquare', 'FiPhone', 'FiSettings', 
+    'FiBookOpen', 'FiCalendar', 'FiClock', 'FiDollarSign', 'FiFile',
+    'FiFileText', 'FiGrid', 'FiHome', 'FiInfo', 'FiLink', 'FiList',
+    'FiMail', 'FiMap', 'FiMessageSquare', 'FiPhone', 'FiSettings',
     'FiShield', 'FiStar', 'FiTool', 'FiTruck', 'FiUser', 'FiUsers'
   ];
 
@@ -81,7 +86,7 @@ export default function CardEditModal({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -121,7 +126,16 @@ export default function CardEditModal({
 
   // Salvar o card
   const handleSave = () => {
-    onSave(formData);
+    // Criar uma cópia do formData para evitar problemas com campos que não existem no banco de dados
+    const cardData = { ...formData };
+
+    // Remover o campo descriptionEn se estiver vazio
+    // Isso evita problemas se a coluna não existir no banco de dados
+    if (!cardData.descriptionEn) {
+      delete cardData.descriptionEn;
+    }
+
+    onSave(cardData);
   };
 
   // Renderizar o ícone selecionado
@@ -151,12 +165,12 @@ export default function CardEditModal({
             <FiX className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('admin.title')}
+                {t('admin.title')} (Português)
               </label>
               <input
                 type="text"
@@ -167,7 +181,23 @@ export default function CardEditModal({
                 placeholder={t('admin.cardTitle')}
               />
             </div>
-            
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('admin.title')} (English)
+              </label>
+              <input
+                type="text"
+                name="titleEn"
+                value={formData.titleEn || ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                placeholder={t('admin.cardTitleEn', 'Enter card title in English')}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('admin.link')} (URL)
@@ -181,8 +211,22 @@ export default function CardEditModal({
                 placeholder={t('admin.linkPlaceholder')}
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('admin.order')}
+              </label>
+              <input
+                type="number"
+                name="order"
+                value={formData.order}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                placeholder="0"
+              />
+            </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -208,7 +252,7 @@ export default function CardEditModal({
                   placeholder="FiBookOpen"
                 />
               </div>
-              
+
               {showAllIcons && (
                 <div className="mt-2 p-2 border border-gray-200 rounded-md grid grid-cols-6 gap-2">
                   {availableIcons.map(icon => (
@@ -232,22 +276,10 @@ export default function CardEditModal({
                 </div>
               )}
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('admin.order')}
-              </label>
-              <input
-                type="number"
-                name="order"
-                value={formData.order}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                placeholder="0"
-              />
-            </div>
+
+
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -262,7 +294,7 @@ export default function CardEditModal({
                 placeholder="bg-abz-blue"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('admin.hoverColor')}
@@ -277,10 +309,10 @@ export default function CardEditModal({
               />
             </div>
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('admin.description')}
+              {t('admin.description')} (Português)
             </label>
             <textarea
               name="description"
@@ -291,7 +323,21 @@ export default function CardEditModal({
               placeholder={t('admin.descriptionPlaceholder')}
             />
           </div>
-          
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('admin.description')} (English)
+            </label>
+            <textarea
+              name="descriptionEn"
+              value={formData.descriptionEn || ''}
+              onChange={handleChange}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+              placeholder={t('admin.descriptionPlaceholderEn', 'Enter card description in English')}
+            />
+          </div>
+
           <div className="flex items-center mb-4">
             <input
               type="checkbox"
@@ -305,7 +351,7 @@ export default function CardEditModal({
               {t('admin.externalLink')}
             </label>
           </div>
-          
+
           <div className="flex items-center mb-4">
             <input
               type="checkbox"
@@ -329,7 +375,7 @@ export default function CardEditModal({
               )}
             </label>
           </div>
-          
+
           {/* Componente de controle de acesso */}
           <CardAccessControl
             adminOnly={formData.adminOnly}
@@ -338,7 +384,7 @@ export default function CardEditModal({
             allowedUserIds={formData.allowedUserIds}
             onAccessChange={handleAccessChange}
           />
-          
+
           <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"

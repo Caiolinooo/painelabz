@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { prisma } from '@/lib/db';
 
 // GET - Obter permissões de acesso de um usuário
 export async function GET(request: NextRequest) {
@@ -29,13 +28,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    // Conectar ao banco de dados
-    await dbConnect();
-
     // Se não for fornecido um ID, retornar as permissões do usuário atual
     if (!userId) {
-      const user = await User.findById(payload.userId).select('role accessPermissions');
-      
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: {
+          id: true,
+          role: true,
+          accessPermissions: true
+        }
+      });
+
       if (!user) {
         return NextResponse.json(
           { error: 'Usuário não encontrado' },
@@ -44,15 +47,21 @@ export async function GET(request: NextRequest) {
       }
 
       return NextResponse.json({
-        userId: user._id,
+        userId: user.id,
         role: user.role,
         accessPermissions: user.accessPermissions || {}
       });
     }
 
     // Se for fornecido um ID, verificar se o usuário atual é administrador
-    const requestingUser = await User.findById(payload.userId);
-    
+    const requestingUser = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        role: true
+      }
+    });
+
     if (!requestingUser || requestingUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem ver permissões de outros usuários.' },
@@ -61,8 +70,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar o usuário solicitado
-    const user = await User.findById(userId).select('firstName lastName role accessPermissions');
-    
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        accessPermissions: true
+      }
+    });
+
     if (!user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
@@ -71,7 +89,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      userId: user._id,
+      userId: user.id,
       fullName: `${user.firstName} ${user.lastName}`,
       role: user.role,
       accessPermissions: user.accessPermissions || {}
@@ -108,9 +126,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o usuário é administrador
-    await dbConnect();
-    const requestingUser = await User.findById(payload.userId);
-    
+    const requestingUser = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        accessHistory: true
+      }
+    });
+
     if (!requestingUser || requestingUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem atualizar permissões.' },
@@ -131,7 +157,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar o usuário
-    const user = await User.findById(userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        accessHistory: true
+      }
+    });
+
     if (!user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
@@ -139,31 +174,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Atualizar permissões de acesso
-    user.accessPermissions = accessPermissions;
-    
-    // Registrar no histórico de acesso
-    user.accessHistory.push({
-      timestamp: new Date(),
-      action: 'PERMISSIONS_UPDATED',
-      details: `Permissões atualizadas por ${requestingUser.firstName} ${requestingUser.lastName}`
+    // Obter o histórico de acesso atual do usuário
+    const userAccessHistory = user.accessHistory || [];
+
+    // Atualizar permissões de acesso e registrar no histórico
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        accessPermissions,
+        accessHistory: [
+          ...userAccessHistory,
+          {
+            timestamp: new Date(),
+            action: 'PERMISSIONS_UPDATED',
+            details: `Permissões atualizadas por ${requestingUser.firstName} ${requestingUser.lastName}`
+          }
+        ]
+      }
     });
-    
-    await user.save();
 
     // Registrar a ação no histórico do administrador
-    requestingUser.accessHistory.push({
-      timestamp: new Date(),
-      action: 'UPDATE_PERMISSIONS',
-      details: `Atualizou permissões do usuário ${user.firstName} ${user.lastName}`
+    const adminAccessHistory = requestingUser.accessHistory || [];
+    await prisma.user.update({
+      where: { id: requestingUser.id },
+      data: {
+        accessHistory: [
+          ...adminAccessHistory,
+          {
+            timestamp: new Date(),
+            action: 'UPDATE_PERMISSIONS',
+            details: `Atualizou permissões do usuário ${user.firstName} ${user.lastName}`
+          }
+        ]
+      }
     });
-    await requestingUser.save();
 
     return NextResponse.json({
       success: true,
       message: 'Permissões de acesso atualizadas com sucesso',
-      userId: user._id,
-      accessPermissions: user.accessPermissions
+      userId: updatedUser.id,
+      accessPermissions: updatedUser.accessPermissions
     });
   } catch (error) {
     console.error('Erro ao atualizar permissões de acesso:', error);

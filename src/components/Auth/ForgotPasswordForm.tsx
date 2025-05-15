@@ -28,10 +28,16 @@ export default function ForgotPasswordForm({ onCancel }: ForgotPasswordFormProps
       return;
     }
 
-    if (useEmail && !identifier.includes('@')) {
-      setError(t('auth.invalidEmail'));
-      setIsLoading(false);
-      return;
+    if (useEmail) {
+      // Importar a função de validação de email
+      const { validateEmail } = await import('@/lib/schema');
+
+      // Validar o email com a função melhorada
+      if (!validateEmail(identifier)) {
+        setError(t('auth.invalidEmail'));
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {

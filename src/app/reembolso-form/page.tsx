@@ -11,8 +11,7 @@ import 'react-toastify/dist/ReactToastify.css';
 export default function PublicReimbursementPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100">
-      {/* Toast notifications */}
-      <ToastContainer position="top-right" theme="colored" />
+
 
       <div className="container mx-auto py-12 px-4">
         {/* Animated header with logo */}

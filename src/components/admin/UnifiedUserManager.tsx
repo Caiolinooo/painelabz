@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   FiPlus,
   FiEdit2,
@@ -41,6 +42,9 @@ interface User {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  isAuthorized?: boolean;
+  authorizationStatus?: string;
+  accessPermissions?: any;
 }
 
 // Interface para usuário autorizado
@@ -81,6 +85,7 @@ type AuthStats = {
 
 export default function UnifiedUserManager() {
   const { user, isAdmin } = useSupabaseAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'users' | 'authorized'>('users');
 
   // Estados para usuários regulares
@@ -118,6 +123,7 @@ export default function UnifiedUserManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [isFixingToken, setIsFixingToken] = useState(false);
 
   // Estados para rejeição
   const [rejectReason, setRejectReason] = useState('');
@@ -127,13 +133,176 @@ export default function UnifiedUserManager() {
   // Carregar dados quando o componente montar
   useEffect(() => {
     if (user) {
-      fetchUsers();
-      fetchAuthorizedUsers();
-      fetchStats();
+      // Primeiro tentar renovar o token
+      const refreshToken = async () => {
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
+          if (token) {
+            console.log('Tentando renovar token antes de carregar dados...');
+            const refreshResponse = await fetch('/api/auth/token-refresh', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+
+            if (refreshResponse.ok) {
+              const refreshData = await refreshResponse.json();
+              console.log('Token renovado com sucesso antes de carregar dados');
+
+              if (refreshData.token && refreshData.token !== token) {
+                console.log('Atualizando token renovado no localStorage');
+                localStorage.setItem('token', refreshData.token);
+                // Remover o token antigo se existir
+                localStorage.removeItem('abzToken');
+              }
+            } else {
+              console.log('Falha na renovação do token, tentando fix-token');
+
+              // Tentar corrigir o token
+              try {
+                const fixResponse = await fetch('/api/auth/fix-token', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                  },
+                });
+
+                if (fixResponse.ok) {
+                  const fixData = await fixResponse.json();
+                  console.log('Token corrigido com sucesso');
+
+                  if (fixData.token && fixData.token !== token) {
+                    console.log('Atualizando token corrigido no localStorage');
+                    localStorage.setItem('token', fixData.token);
+                  }
+                }
+              } catch (fixError) {
+                console.error('Erro ao tentar corrigir token:', fixError);
+              }
+            }
+          }
+        } catch (refreshError) {
+          console.error('Erro ao renovar token antes de carregar dados:', refreshError);
+        }
+
+        // Carregar dados após tentativa de renovação/correção do token
+        fetchUsers();
+        fetchAuthorizedUsers();
+        fetchStats();
+      };
+
+      refreshToken();
     }
   }, [user]);
 
+  // Carregar dados quando a aba mudar
+  useEffect(() => {
+    console.log('UnifiedUserManager - Tab changed to:', activeTab);
+    if (activeTab === 'users') {
+      console.log('Iniciando busca de usuários devido à mudança de aba');
+      fetchUsers();
+    } else if (activeTab === 'authorized') {
+      fetchAuthorizedUsers();
+      fetchStats();
+    }
+  }, [activeTab]);
 
+
+
+
+  // Função para corrigir o token manualmente
+  const fixToken = async () => {
+    setIsFixingToken(true);
+    setError(null);
+    setSuccessMessage('');
+
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
+
+      if (!token) {
+        throw new Error('Não há token para corrigir. Faça login novamente.');
+      }
+
+      // Primeiro tentar renovar o token
+      console.log('Tentando renovar token manualmente...');
+      const refreshResponse = await fetch('/api/auth/token-refresh', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        console.log('Token renovado com sucesso');
+
+        if (refreshData.token && refreshData.token !== token) {
+          console.log('Atualizando token renovado no localStorage');
+          localStorage.setItem('token', refreshData.token);
+          localStorage.removeItem('abzToken');
+
+          setSuccessMessage('Token renovado com sucesso! Recarregando dados...');
+
+          // Recarregar dados
+          await fetchUsers();
+          await fetchAuthorizedUsers();
+          await fetchStats();
+
+          return;
+        }
+      }
+
+      // Se a renovação falhar, tentar corrigir o token
+      console.log('Tentando corrigir token manualmente...');
+      const fixResponse = await fetch('/api/auth/fix-token', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (fixResponse.ok) {
+        const fixData = await fixResponse.json();
+        console.log('Token corrigido com sucesso');
+
+        if (fixData.token) {
+          console.log('Atualizando token corrigido no localStorage');
+          localStorage.setItem('token', fixData.token);
+          localStorage.removeItem('abzToken');
+
+          setSuccessMessage('Token corrigido com sucesso! Recarregando dados...');
+
+          // Recarregar dados
+          await fetchUsers();
+          await fetchAuthorizedUsers();
+          await fetchStats();
+        } else {
+          setError('Token corrigido, mas nenhum novo token foi gerado.');
+        }
+      } else {
+        const errorData = await fixResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro ao corrigir token');
+      }
+    } catch (error) {
+      console.error('Erro ao corrigir token:', error);
+      setError(`Erro ao corrigir token: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+
+      // Se falhar, tentar criar um novo token para o administrador
+      if (user?.email === 'caio.correia@groupabz.com' || user?.phoneNumber === '+5522997847289') {
+        try {
+          console.log('Tentando criar novo token para o administrador...');
+
+          // Redirecionar para a página de correção de admin
+          router.push('/admin-fix');
+        } catch (adminFixError) {
+          console.error('Erro ao tentar corrigir token de administrador:', adminFixError);
+        }
+      }
+    } finally {
+      setIsFixingToken(false);
+    }
+  };
 
   // Filtrar usuários quando o termo de busca mudar
   useEffect(() => {
@@ -155,37 +324,233 @@ export default function UnifiedUserManager() {
     }
   }, [searchTerm, users]);
 
+
   // Buscar usuários regulares
   const fetchUsers = async () => {
+    console.log('=== INICIANDO BUSCA DE USUÁRIOS ===');
     setLoading(true);
+    setError(null);
     try {
-      const token = localStorage.getItem('abzToken');
+      // Tentar renovar o token primeiro
+      try {
+        const refreshToken = localStorage.getItem('token') || localStorage.getItem('abzToken');
+        if (refreshToken) {
+          console.log('Tentando renovar token antes de buscar usuários...');
+          const refreshResponse = await fetch('/api/auth/token-refresh', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${refreshToken}`,
+            },
+          });
+
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            console.log('Token renovado com sucesso antes de buscar usuários');
+
+            if (refreshData.token && refreshData.token !== refreshToken) {
+              console.log('Atualizando token renovado no localStorage');
+              localStorage.setItem('token', refreshData.token);
+              // Remover o token antigo se existir
+              localStorage.removeItem('abzToken');
+            }
+          }
+        }
+      } catch (refreshError) {
+        console.error('Erro ao renovar token antes de buscar usuários:', refreshError);
+      }
+
+      // Obter o token (possivelmente renovado)
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Não autorizado');
       }
 
-      // Tentar primeiro com a API do Supabase
-      const response = await fetch('/api/users/supabase', {
+      console.log('Buscando usuários com token:', token.substring(0, 10) + '...');
+
+      // Usar o endpoint de usuários unificados para garantir que estamos obtendo os dados mais recentes
+      console.log('Iniciando requisição para /api/users-unified...');
+
+      // Adicionar timestamp para evitar cache
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/users-unified?_=${timestamp}`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
 
+      console.log('Resposta da API de usuários:', response.status, response.statusText);
+
       if (!response.ok) {
-        throw new Error('Erro ao carregar usuários');
+        // Se receber 401 ou 403, tentar corrigir o token e tentar novamente
+        if (response.status === 401 || response.status === 403) {
+          console.log('Acesso negado, tentando corrigir token...');
+
+          try {
+            const fixResponse = await fetch('/api/auth/fix-token', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+
+            if (fixResponse.ok) {
+              const fixData = await fixResponse.json();
+              console.log('Token corrigido com sucesso');
+
+              if (fixData.token) {
+                console.log('Usando novo token para tentar novamente');
+                localStorage.setItem('token', fixData.token);
+                localStorage.removeItem('abzToken');
+
+                // Tentar novamente com o novo token usando a API direta do Supabase
+                const retryResponse = await fetch(`/api/users/supabase?_=${new Date().getTime()}`, {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': `Bearer ${fixData.token}`,
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                  }
+                });
+
+                if (retryResponse.ok) {
+                  const retryText = await retryResponse.text();
+                  if (retryText && retryText.trim() !== '') {
+                    try {
+                      const retryData = JSON.parse(retryText);
+                      console.log('Usuários recebidos após correção de token:', retryData.length);
+                      setUsers(retryData);
+                      setFilteredUsers(retryData);
+                      setLoading(false);
+                      return;
+                    } catch (parseError) {
+                      console.error('Erro ao analisar resposta JSON após correção de token:', parseError);
+                    }
+                  }
+                }
+              }
+            }
+          } catch (fixError) {
+            console.error('Erro ao tentar corrigir token:', fixError);
+          }
+        }
+
+        const errorText = await response.text();
+        let errorData = {};
+
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (parseError) {
+          console.error('Erro ao analisar resposta de erro:', parseError);
+          console.log('Texto da resposta de erro:', errorText);
+        }
+
+        console.error('Erro ao buscar usuários:', errorData);
+        throw new Error(errorData.error || `Erro ao carregar usuários: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
-      setUsers(data);
-      setFilteredUsers(data);
+      const responseText = await response.text();
+      console.log('Resposta recebida, tamanho:', responseText.length);
+
+      // Verificar se a resposta está vazia
+      if (!responseText || responseText.trim() === '') {
+        console.error('Resposta vazia recebida da API');
+        setUsers([]);
+        setFilteredUsers([]);
+        setError('Nenhum usuário encontrado. A resposta da API está vazia.');
+        setLoading(false);
+        return;
+      }
+
+      // Log dos primeiros 200 caracteres da resposta para depuração
+      console.log('Primeiros 200 caracteres da resposta:', responseText.substring(0, 200));
+
+      let data = [];
+      try {
+        data = JSON.parse(responseText);
+        console.log('Usuários recebidos:', data.length);
+
+        if (data.length > 0) {
+          console.log('Amostra do primeiro usuário:', JSON.stringify(data[0], null, 2));
+          console.log('Campos do primeiro usuário:', Object.keys(data[0]).join(', '));
+        } else {
+          console.log('Array de usuários vazio retornado pela API');
+        }
+
+        // Sempre mapear os dados para garantir o formato correto
+        console.log('Mapeando dados para o formato padrão...');
+
+        // Mapear para o formato correto independentemente da estrutura original
+        const mappedData = Array.isArray(data) ? data.map((user: any) => {
+          const mappedUser = {
+            _id: user.id || user._id || '',
+            firstName: user.first_name || user.firstName || 'Usuário',
+            lastName: user.last_name || user.lastName || 'Desconhecido',
+            email: user.email || '',
+            phoneNumber: user.phone_number || user.phoneNumber || '',
+            role: user.role || 'USER',
+            position: user.position || '',
+            department: user.department || '',
+            active: user.active !== undefined ? user.active : true,
+            createdAt: user.created_at || user.createdAt || new Date().toISOString(),
+            updatedAt: user.updated_at || user.updatedAt || new Date().toISOString(),
+            accessPermissions: user.access_permissions || user.accessPermissions || {},
+            isAuthorized: user.is_authorized || user.isAuthorized || false,
+            authorizationStatus: user.authorization_status || user.authorizationStatus || null
+          };
+
+          console.log(`Usuário mapeado: ${mappedUser.firstName} ${mappedUser.lastName} (${mappedUser._id})`);
+          return mappedUser;
+        }) : [];
+
+        console.log('Total de dados mapeados:', mappedData.length);
+
+        if (mappedData.length > 0) {
+          console.log('Exemplo de usuário mapeado:', JSON.stringify(mappedData[0], null, 2));
+        }
+
+        // Atualizar o estado com os dados mapeados
+        setUsers(mappedData);
+        setFilteredUsers(mappedData);
+        console.log('Estado de usuários atualizado com', mappedData.length, 'registros');
+
+        // Verificar se os dados foram definidos corretamente
+        setTimeout(() => {
+          console.log('Verificando estado após atualização:');
+          console.log('- users.length:', users.length);
+          console.log('- filteredUsers.length:', filteredUsers.length);
+        }, 100);
+      } catch (parseError) {
+        console.error('Erro ao analisar resposta JSON:', parseError);
+        console.log('Primeiros 100 caracteres da resposta:', responseText.substring(0, 100));
+        throw new Error('Erro ao processar dados de usuários. Formato inválido.');
+      }
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
-      setError('Erro ao carregar usuários. Tente novamente.');
+      setError(`Erro ao carregar usuários: ${error instanceof Error ? error.message : String(error)}`);
+
+      // Definir um array vazio em caso de erro para evitar que a interface fique presa em "Carregando..."
+      setUsers([]);
+      setFilteredUsers([]);
     } finally {
       setLoading(false);
+
+      // Garantir que o estado de carregamento seja desativado mesmo em caso de erro
+      setTimeout(() => {
+        if (loading) {
+          console.log('Forçando desativação do estado de carregamento após timeout');
+          setLoading(false);
+        }
+      }, 5000);
     }
   };
+
+
 
   // Buscar usuários autorizados
   const fetchAuthorizedUsers = async () => {
@@ -196,11 +561,13 @@ export default function UnifiedUserManager() {
         url += `?status=${filter}`;
       }
 
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
       }
+
+      console.log('Buscando usuários autorizados com token:', token.substring(0, 10) + '...');
 
       const response = await fetch(url, {
         headers: {
@@ -208,13 +575,89 @@ export default function UnifiedUserManager() {
         }
       });
 
+      console.log('Resposta da API:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error('Erro ao buscar usuários autorizados:', errorData);
+
+        // Se o erro for de acesso negado e o usuário for o administrador principal, redirecionar para a página de correção
+        if (response.status === 403 &&
+            (user?.email === 'caio.correia@groupabz.com' || user?.phoneNumber === '+5522997847289')) {
+          console.log('Usuário é o administrador principal mas não tem acesso. Redirecionando para correção...');
+          router.push('/admin-fix');
+          return;
+        }
+
         throw new Error(errorData.error || 'Erro ao carregar usuários autorizados');
       }
 
-      const data = await response.json();
-      setAuthorizedUsers(data);
+      const responseText = await response.text();
+      console.log('Resposta recebida, tamanho:', responseText.length);
+
+      // Verificar se a resposta está vazia
+      if (!responseText || responseText.trim() === '') {
+        console.error('Resposta vazia recebida da API de usuários autorizados');
+        setAuthorizedUsers([]);
+        setError('Nenhum usuário autorizado encontrado. A resposta da API está vazia.');
+        return;
+      }
+
+      try {
+        const data = JSON.parse(responseText);
+        console.log('Usuários autorizados recebidos:', data.length);
+
+        // Verificar se os dados estão no formato esperado
+        if (Array.isArray(data)) {
+          // Verificar se os dados têm a estrutura esperada
+          if (data.length > 0) {
+            const firstUser = data[0];
+            // Verificar se os campos necessários estão presentes
+            if (!firstUser._id) {
+              console.warn('Dados de usuário autorizado podem estar em formato incorreto:', firstUser);
+              console.log('Tentando mapear para o formato correto...');
+
+              // Tentar mapear para o formato correto
+              const mappedData = data.map((user: any) => ({
+                _id: user.id || user._id || '',
+                email: user.email || undefined,
+                phoneNumber: user.phone_number || user.phoneNumber || undefined,
+                domain: user.authorization_domain || user.domain || undefined,
+                inviteCode: user.invite_code || user.inviteCode || undefined,
+                status: user.authorization_status || user.status || 'pending',
+                createdAt: user.created_at || user.createdAt || new Date().toISOString(),
+                updatedAt: user.updated_at || user.updatedAt || new Date().toISOString(),
+                expiresAt: user.authorization_expires_at || user.expires_at || user.expiresAt || undefined,
+                maxUses: user.authorization_max_uses || user.max_uses || user.maxUses || undefined,
+                usedCount: user.authorization_uses || user.uses || user.usedCount || 0,
+                notes: user.authorization_notes ?
+                  (Array.isArray(user.authorization_notes) ?
+                    user.authorization_notes.map((note: any) => note.note || note.details || note).join(', ') :
+                    String(user.authorization_notes)
+                  ) : user.notes || undefined
+              }));
+
+              console.log('Dados mapeados:', mappedData.length);
+              setAuthorizedUsers(mappedData);
+            } else {
+              // Dados já estão no formato correto
+              setAuthorizedUsers(data);
+            }
+          } else {
+            // Array vazio, definir como está
+            setAuthorizedUsers(data);
+          }
+        } else {
+          console.error('Formato de resposta inesperado para usuários autorizados:', typeof data);
+          setError('Formato de resposta inesperado. Esperava um array de usuários autorizados.');
+          setAuthorizedUsers([]);
+        }
+      } catch (parseError) {
+        console.error('Erro ao analisar resposta JSON de usuários autorizados:', parseError);
+        console.log('Primeiros 100 caracteres da resposta:', responseText.substring(0, 100));
+        setError('Erro ao processar dados de usuários autorizados. Formato inválido.');
+        setAuthorizedUsers([]);
+      }
     } catch (error) {
       console.error('Erro ao carregar usuários autorizados:', error);
       setError('Erro ao carregar usuários autorizados. Tente novamente.');
@@ -226,11 +669,13 @@ export default function UnifiedUserManager() {
   // Buscar estatísticas
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
       }
+
+      console.log('Buscando estatísticas com token:', token.substring(0, 10) + '...');
 
       const response = await fetch('/api/admin/access-stats', {
         headers: {
@@ -238,12 +683,25 @@ export default function UnifiedUserManager() {
         }
       });
 
+      console.log('Resposta da API de estatísticas:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error('Erro ao buscar estatísticas:', errorData);
+
+        // Se o erro for de acesso negado e o usuário for o administrador principal, redirecionar para a página de correção
+        if (response.status === 403 &&
+            (user?.email === 'caio.correia@groupabz.com' || user?.phoneNumber === '+5522997847289')) {
+          console.log('Usuário é o administrador principal mas não tem acesso às estatísticas. Redirecionando para correção...');
+          router.push('/admin-fix');
+          return;
+        }
+
         throw new Error(errorData.error || 'Erro ao carregar estatísticas');
       }
 
       const data = await response.json();
+      console.log('Estatísticas recebidas:', data);
       setStats(data);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -286,7 +744,7 @@ export default function UnifiedUserManager() {
   const handleSaveUser = async (userData: UserEditorData, password?: string) => {
     try {
       setError(null);
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Não autorizado');
@@ -331,7 +789,7 @@ export default function UnifiedUserManager() {
 
     try {
       setError(null);
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Não autorizado');
@@ -396,7 +854,7 @@ export default function UnifiedUserManager() {
 
       payload.action = action;
 
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -428,7 +886,7 @@ export default function UnifiedUserManager() {
           // Se tiver email para enviar o convite
           if (inviteEmail && result.inviteCode && result.expiresAt) {
             // Enviar email com o código de convite
-            const token = localStorage.getItem('abzToken');
+            const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
             if (!token) {
               throw new Error('Token não encontrado. Faça login novamente.');
@@ -479,7 +937,7 @@ export default function UnifiedUserManager() {
 
   const handleApprove = async (id: string) => {
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -525,7 +983,7 @@ export default function UnifiedUserManager() {
 
   const handleReject = async () => {
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -571,7 +1029,7 @@ export default function UnifiedUserManager() {
     }
 
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -651,7 +1109,17 @@ export default function UnifiedUserManager() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Abas */}
-      <div className="flex justify-end mb-6">
+      <div className="flex justify-between mb-6">
+        <div>
+          <button
+            onClick={fixToken}
+            disabled={isFixingToken}
+            className={`flex items-center px-4 py-2 rounded-md ${isFixingToken ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'} text-white`}
+          >
+            <FiRefreshCw className={`mr-2 ${isFixingToken ? 'animate-spin' : ''}`} />
+            {isFixingToken ? 'Corrigindo Token...' : 'Corrigir Token de Acesso'}
+          </button>
+        </div>
         <div className="flex space-x-2">
           <button
             onClick={() => setActiveTab('users')}
@@ -696,7 +1164,7 @@ export default function UnifiedUserManager() {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex flex-wrap justify-between items-center mb-6">
             <div className="flex items-center mb-4 md:mb-0">
-              <div className="relative">
+              <div className="relative mr-2">
                 <input
                   type="text"
                   placeholder="Buscar usuários..."
@@ -706,6 +1174,17 @@ export default function UnifiedUserManager() {
                 />
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
+              <button
+                onClick={() => {
+                  console.log('Atualizando lista de usuários manualmente');
+                  fetchUsers();
+                }}
+                className="flex items-center px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                title="Atualizar lista de usuários"
+              >
+                <FiRefreshCw className="mr-1" />
+                Atualizar
+              </button>
             </div>
 
             <button
@@ -755,7 +1234,9 @@ export default function UnifiedUserManager() {
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((user) => (
+                  filteredUsers.map((user) => {
+                    console.log(`Renderizando usuário: ${user.firstName} ${user.lastName} (${user._id})`);
+                    return (
                     <tr key={user._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -830,7 +1311,8 @@ export default function UnifiedUserManager() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

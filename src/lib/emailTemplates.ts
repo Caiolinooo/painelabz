@@ -5,13 +5,24 @@
 
 // Obter configurações de personalização do .env
 const getEmailConfig = () => {
+  // Usar a URL completa do aplicativo para o logo
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  // Garantir que a URL do logo seja absoluta
+  let logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/images/LC1_Azul.png`;
+  if (!logoUrl.startsWith('http')) {
+    logoUrl = `${appUrl}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+  }
+
+  console.log('Logo URL para emails:', logoUrl);
+
   return {
     companyName: process.env.EMAIL_COMPANY_NAME || 'ABZ Group',
-    logoUrl: process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png',
+    logoUrl: logoUrl,
     primaryColor: process.env.EMAIL_PRIMARY_COLOR || '#0066cc',
     secondaryColor: process.env.EMAIL_SECONDARY_COLOR || '#f5f5f5',
     footerText: process.env.EMAIL_FOOTER_TEXT || 'ABZ Group. Todos os direitos reservados.',
-    appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    appUrl: appUrl
   };
 };
 
@@ -90,7 +101,7 @@ const baseTemplate = (content: string) => {
     <body>
       <div class="container">
         <div class="header">
-          <img src="${config.logoUrl}" alt="${config.companyName}" class="logo">
+          <img src="${config.logoUrl}" alt="${config.companyName}" class="logo" style="max-width: 200px; height: auto; display: block; margin: 0 auto;">
         </div>
         <div class="content">
           ${content}
@@ -369,8 +380,23 @@ export const reimbursementRejectionTemplate = (nome: string, protocolo: string, 
 };
 
 // Template para boas-vindas a novos usuários
-export const newUserWelcomeTemplate = (nome: string, loginUrl: string) => {
+export const newUserWelcomeTemplate = (nome: string, loginUrl: string, password?: string) => {
   const config = getEmailConfig();
+
+  // Adicionar informações de senha se fornecida
+  const passwordInfo = password
+    ? `
+    <div style="background-color: #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
+      <p style="margin: 0; font-weight: bold; color: #ff6d00;">⚠️ Informações de Acesso</p>
+      <p style="margin: 8px 0 0 0;">
+        Uma senha temporária foi gerada para você: <strong>${password}</strong>
+      </p>
+      <p style="margin: 8px 0 0 0;">
+        Por favor, altere esta senha no seu primeiro acesso ao sistema.
+      </p>
+    </div>
+    `
+    : '';
 
   const content = `
     <h2 style="text-align: center; color: ${config.primaryColor};">Bem-vindo ao ${config.companyName}!</h2>
@@ -380,6 +406,7 @@ export const newUserWelcomeTemplate = (nome: string, loginUrl: string) => {
     <p>
       Sua conta foi criada com sucesso no sistema ${config.companyName}.
     </p>
+    ${passwordInfo}
     <p>
       <strong>Importante:</strong> Sua conta está aguardando aprovação do administrador. Você receberá um email quando sua conta for aprovada.
     </p>
@@ -409,6 +436,9 @@ export const newUserWelcomeTemplate = (nome: string, loginUrl: string) => {
 export const inviteTemplate = (inviteCode: string, registerUrl: string, expiryText: string, maxUses?: number) => {
   const config = getEmailConfig();
 
+  // Modificar a URL para apontar para a página de login
+  const loginUrl = `${config.appUrl}/login`;
+
   const content = `
     <h2 style="text-align: center; color: ${config.primaryColor};">Convite para o ${config.companyName}</h2>
     <p>
@@ -418,28 +448,124 @@ export const inviteTemplate = (inviteCode: string, registerUrl: string, expiryTe
       Você foi convidado para se juntar ao sistema ${config.companyName}.
     </p>
     <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center;">
-      <p style="margin: 5px 0; font-size: 18px;"><strong>Seu código de convite:</strong></p>
+      <p style="margin: 5px 0; font-size: 18px;"><strong>Seu código de verificação:</strong></p>
       <p style="margin: 10px 0; font-size: 24px; font-weight: bold; letter-spacing: 2px; font-family: monospace;">${inviteCode}</p>
       ${maxUses ? `<p style="margin: 5px 0; font-size: 14px;">Este código pode ser usado ${maxUses} ${maxUses === 1 ? 'vez' : 'vezes'}</p>` : ''}
       ${expiryText ? `<p style="margin: 5px 0; font-size: 14px; color: #d32f2f;">${expiryText}</p>` : ''}
     </div>
-    <p>
-      Para se registrar, clique no botão abaixo e use o código de convite acima quando solicitado.
-    </p>
+
+    <h3 style="color: ${config.primaryColor}; margin-top: 30px;">Como acessar o sistema:</h3>
+
+    <ol style="margin-bottom: 20px; padding-left: 20px;">
+      <li style="margin-bottom: 10px;">
+        <strong>Acesse a página de login</strong> clicando no botão abaixo
+      </li>
+      <li style="margin-bottom: 10px;">
+        <strong>Insira seu email</strong> (o mesmo que recebeu este convite)
+      </li>
+      <li style="margin-bottom: 10px;">
+        <strong>Quando solicitado, insira o código de verificação</strong> mostrado acima
+      </li>
+      <li style="margin-bottom: 10px;">
+        <strong>Defina uma senha</strong> para seu acesso futuro
+      </li>
+    </ol>
+
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${registerUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
-        Registrar-se Agora
+      <a href="${loginUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+        Acessar o Sistema
       </a>
     </div>
+
     <p>
-      Se o botão não funcionar, você pode acessar o seguinte link e inserir o código manualmente:
-      <a href="${registerUrl.split('?')[0]}">${registerUrl.split('?')[0]}</a>
+      Se o botão não funcionar, você pode acessar o seguinte link:
+      <a href="${loginUrl}">${loginUrl}</a>
     </p>
+
+    <p style="margin-top: 20px; font-weight: bold; color: ${config.primaryColor};">
+      Importante: Guarde este código com segurança. Você precisará dele para seu primeiro acesso.
+    </p>
+
     <p>
       Se você não solicitou este convite, por favor ignore este email.
     </p>
+
+    <div style="background-color: #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
+      <p style="margin: 0; font-weight: bold; color: #ff6d00;">⚠️ Importante: Verifique sua pasta de spam</p>
+      <p style="margin: 8px 0 0 0; font-size: 14px;">
+        Nossos emails podem ocasionalmente ser filtrados como spam. Se você não encontrar futuros emails do sistema,
+        verifique sua pasta de spam e marque nosso endereço como "não é spam" ou adicione
+        <strong>${process.env.EMAIL_USER || 'apiabzgroup@gmail.com'}</strong> à sua lista de contatos.
+      </p>
+    </div>
+
     <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
       Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+// Template para notificação de administrador sobre novo usuário
+export const adminNotificationTemplate = (userData: {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  position: string;
+  department: string;
+  protocol: string;
+}) => {
+  const config = getEmailConfig();
+  const adminUrl = `${config.appUrl}/admin/users`;
+
+  const content = `
+    <h2 style="text-align: center; color: ${config.primaryColor};">Novo Cadastro no Portal</h2>
+    <p>
+      Olá Administrador,
+    </p>
+    <p>
+      Um novo usuário se cadastrou no Portal ${config.companyName} e está aguardando aprovação.
+    </p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: ${config.primaryColor};">Detalhes do Usuário:</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Nome:</td>
+          <td style="padding: 8px 0;">${userData.name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Email:</td>
+          <td style="padding: 8px 0;">${userData.email || 'Não informado'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Telefone:</td>
+          <td style="padding: 8px 0;">${userData.phoneNumber || 'Não informado'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Cargo:</td>
+          <td style="padding: 8px 0;">${userData.position || 'Não informado'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Departamento:</td>
+          <td style="padding: 8px 0;">${userData.department || 'Não informado'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Protocolo:</td>
+          <td style="padding: 8px 0;">${userData.protocol}</td>
+        </tr>
+      </table>
+    </div>
+    <p>
+      Por favor, acesse o painel administrativo para revisar e aprovar este cadastro.
+    </p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${adminUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+        Acessar Painel Admin
+      </a>
+    </div>
+    <p>
+      Atenciosamente,<br>Sistema Portal ${config.companyName}
     </p>
   `;
 

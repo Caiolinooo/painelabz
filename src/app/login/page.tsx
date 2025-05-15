@@ -8,23 +8,36 @@ import { FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiArrowRight, FiGlobe, FiAler
 import { FaLinkedin, FaGithub, FaInstagram } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import LanguageSelector from '@/components/LanguageSelector';
 import InviteCodeInput from '@/components/auth/InviteCodeInput';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
+import { SetPasswordModal } from '@/components/auth/SetPasswordModal';
+import { QuickRegisterForm } from '@/components/auth/QuickRegisterForm';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function Login() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [useEmail, setUseEmail] = useState(false);
   const [showInviteField, setShowInviteField] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
+
+  // Campos para registro rápido
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const {
     initiateLogin,
     loginWithPassword,
@@ -34,11 +47,15 @@ export default function Login() {
     loginStep,
     hasPassword,
     passwordExpired,
-    authStatus
+    authStatus,
+    requiresPassword,
+    isNewUser,
+    setPasswordAfterVerification
   } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
+  const { config } = useSiteConfig();
 
   // Verificar se há um código de convite na URL
   useEffect(() => {
@@ -62,6 +79,20 @@ export default function Login() {
     }
   }, [isAuthenticated, passwordExpired, router]);
 
+  // Garantir que o usuário administrador exista
+  useEffect(() => {
+    const ensureAdmin = async () => {
+      try {
+        const data = await fetchWrapper.get('/api/auth/ensure-admin');
+        console.log('Verificação de admin:', data);
+      } catch (error) {
+        console.error('Erro ao verificar admin:', error);
+      }
+    };
+
+    ensureAdmin();
+  }, []);
+
   // Função para iniciar o login com número de telefone ou email
   const handlePhoneSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -69,15 +100,59 @@ export default function Login() {
     setSuccess('');
 
     if (useEmail) {
-      // Validar o email
-      if (!email || !email.includes('@')) {
+      // Importar a função de validação de email
+      const { validateEmail } = await import('@/lib/schema');
+
+      // Validar o email com a função melhorada
+      if (!email || !validateEmail(email)) {
         setError(t('auth.invalidEmail'));
+        return;
+      }
+
+      // Verificar se é o email do administrador
+      if (email === 'caio.correia@groupabz.com' || email === 'apiabz@groupabz.com') {
+        console.log('Email do administrador detectado, iniciando login normal');
+
+        // Iniciar o processo de login normal, que redirecionará para a tela de senha
+        const initSuccess = await initiateLogin(
+          '',  // phoneNumber vazio para login por email
+          email,
+          inviteCode || undefined
+        );
+
+        if (initSuccess) {
+          console.log('Login iniciado com sucesso para o administrador');
+          // Não precisamos mais forçar a mudança para a etapa de senha,
+          // pois o backend já retorna hasPassword: true para o admin
+        }
         return;
       }
     } else {
       // Validar o número de telefone
       if (!phoneNumber || phoneNumber.length < 10 || !phoneNumber.startsWith('+') || !/^\+[0-9]+$/.test(phoneNumber)) {
         setError(t('auth.invalidPhoneNumber'));
+        return;
+      }
+
+      // Verificar se é o telefone do administrador
+      if (phoneNumber === '+5522997847289' || phoneNumber === '22997847289' || phoneNumber === '997847289') {
+        console.log('Telefone do administrador detectado, iniciando login normal');
+        // Padronizar o formato do telefone
+        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+55' + (phoneNumber.startsWith('22') ? phoneNumber : '22' + phoneNumber);
+        setPhoneNumber(formattedPhone);
+
+        // Iniciar o processo de login normal, que redirecionará para a tela de senha
+        const initSuccess = await initiateLogin(
+          formattedPhone,
+          undefined,  // email vazio para login por telefone
+          inviteCode || undefined
+        );
+
+        if (initSuccess) {
+          console.log('Login iniciado com sucesso para o administrador');
+          // Não precisamos mais forçar a mudança para a etapa de senha,
+          // pois o backend já retorna hasPassword: true para o admin
+        }
         return;
       }
     }
@@ -99,10 +174,22 @@ export default function Login() {
         setError(t('auth.unauthorizedAccessMessage'));
       } else if (authStatus === 'inactive') {
         setError('Sua conta está desativada. Entre em contato com o suporte.');
+      } else if (authStatus === 'new_email' || authStatus === 'new_phone') {
+        // Redirecionar para a página de registro com o email/telefone preenchido
+        const identifier = useEmail ? email : phoneNumber;
+        console.log(`Email/telefone não cadastrado: ${identifier}. Redirecionando para registro.`);
+
+        // Mostrar formulário de registro rápido em vez de redirecionar
+        setError('');
+        setSuccess(t('auth.notRegisteredYet', 'Este email/telefone ainda não está cadastrado. Por favor, complete seu cadastro abaixo.'));
+
+        // Mudar para o passo de registro rápido
+        setLoginStep('quick_register');
       } else {
         setError(useEmail ? t('auth.invalidEmail') : t('auth.invalidPhoneNumber'));
       }
     } catch (error) {
+      console.error('Erro ao iniciar login:', error);
       setError(t('auth.requestError'));
     }
   };
@@ -164,6 +251,25 @@ export default function Login() {
         return;
       }
 
+      // Verificar se é o administrador e padronizar o identificador
+      if (identifier === 'caio.correia@groupabz.com' ||
+          identifier === 'apiabz@groupabz.com' ||
+          identifier === '+5522997847289' ||
+          identifier === '22997847289' ||
+          identifier === '997847289') {
+        console.log('Usuário administrador detectado');
+        // Padronizar o formato do telefone se for um número
+        if (!identifier.includes('@')) {
+          const formattedPhone = identifier.startsWith('+') ? identifier : '+55' + (identifier.startsWith('22') ? identifier : '22' + identifier);
+          if (useEmail) {
+            setEmail('caio.correia@groupabz.com');
+          } else {
+            setPhoneNumber(formattedPhone);
+          }
+        }
+        // Não definimos mais a senha automaticamente, o usuário precisa digitar
+      }
+
       console.log('Tentando login com senha:', {
         [useEmail ? 'email' : 'phoneNumber']: identifier,
         password: password.substring(0, 3) + '...',
@@ -174,6 +280,7 @@ export default function Login() {
       console.log('Resultado do login:', success ? 'Sucesso' : 'Falha');
 
       if (!success) {
+        // Informar que a senha está incorreta
         setError(t('auth.invalidPassword'));
       }
     } catch (error) {
@@ -182,17 +289,171 @@ export default function Login() {
     }
   };
 
+  // Função para lidar com o registro rápido
+  const handleQuickRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    try {
+      // Validar os campos
+      if (!firstName || !lastName) {
+        setError(t('register.error.requiredFields', 'Nome e sobrenome são obrigatórios'));
+        return;
+      }
+
+      if (!password) {
+        setError(t('auth.passwordRequired', 'A senha é obrigatória'));
+        return;
+      }
+
+      if (password.length < 8) {
+        setError(t('auth.passwordTooShort', 'A senha deve ter pelo menos 8 caracteres'));
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setError(t('auth.passwordsDoNotMatch', 'As senhas não coincidem'));
+        return;
+      }
+
+      // Formatar o número de telefone para o formato internacional
+      let formattedPhone = phoneNumber;
+      if (!useEmail && phoneNumber) {
+        formattedPhone = phoneNumber.replace(/\s/g, '').replace(/[\(\)\-]/g, '');
+
+        // Se não começar com +, adicionar +55 (Brasil)
+        if (!formattedPhone.startsWith('+')) {
+          // Remover o 0 inicial se existir
+          formattedPhone = formattedPhone.replace(/^0/, '');
+
+          // Se começar com DDD (2 dígitos), adicionar +55
+          if (/^[1-9][0-9]/.test(formattedPhone)) {
+            formattedPhone = '+55' + formattedPhone;
+          } else {
+            // Se não tiver DDD, assumir DDD 22 (Campos dos Goytacazes)
+            formattedPhone = '+5522' + formattedPhone;
+          }
+        }
+      }
+
+      // Preparar os dados para envio
+      const userData = {
+        firstName,
+        lastName,
+        email: useEmail ? email : '',
+        phoneNumber: useEmail ? '' : formattedPhone,
+        password,
+        inviteCode: inviteCode || undefined
+      };
+
+      console.log('Enviando dados de registro rápido:', {
+        ...userData,
+        password: '********'
+      });
+
+      // Enviar os dados para a API usando o wrapper de fetch
+      const data = await fetchWrapper.post('/api/auth/quick-register', userData);
+
+      if (data.success) {
+        setSuccess(t('register.success', 'Registro realizado com sucesso!'));
+
+        // Se a conta estiver ativa, fazer login automaticamente
+        if (data.accountActive) {
+          // Fazer login com a senha
+          const identifier = useEmail ? email : formattedPhone;
+          const loginSuccess = await loginWithPassword(identifier, password, rememberMe);
+
+          if (loginSuccess) {
+            // O redirecionamento é feito no useEffect quando isAuthenticated muda
+          } else {
+            // Redirecionar para a página de login após 2 segundos
+            setTimeout(() => {
+              setLoginStep('phone');
+              setPassword('');
+              setConfirmPassword('');
+            }, 2000);
+          }
+        } else {
+          // Redirecionar para a página de login após 2 segundos
+          setTimeout(() => {
+            setLoginStep('phone');
+            setPassword('');
+            setConfirmPassword('');
+          }, 2000);
+        }
+      } else {
+        setError(data.error || t('register.error.generic', 'Erro ao registrar. Por favor, tente novamente.'));
+      }
+    } catch (error: any) {
+      console.error('Erro ao registrar:', error);
+      setError(error.message || t('register.error.generic', 'Erro ao registrar. Por favor, tente novamente.'));
+    }
+  };
+
+  // Modal de definição de senha
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+
+  // Modal de registro rápido
+  const [showQuickRegisterModal, setShowQuickRegisterModal] = useState(false);
+
+  // Efeito para mostrar os modais quando necessário
+  useEffect(() => {
+    if (loginStep === 'set_password') {
+      setShowSetPasswordModal(true);
+      setShowQuickRegisterModal(false);
+    } else if (loginStep === 'quick_register') {
+      setShowSetPasswordModal(false);
+      setShowQuickRegisterModal(true);
+    } else {
+      setShowSetPasswordModal(false);
+      setShowQuickRegisterModal(false);
+    }
+  }, [loginStep]);
+
+  // Função para lidar com o sucesso da definição de senha
+  const handlePasswordSetSuccess = async () => {
+    setShowSetPasswordModal(false);
+    router.push('/dashboard');
+  };
+
+  // Função para lidar com o sucesso do registro rápido
+  const handleQuickRegisterSuccess = async () => {
+    setShowQuickRegisterModal(false);
+    router.push('/dashboard');
+  };
+
   return (
     <div className="min-h-screen flex flex-col justify-center px-6 py-12 lg:px-8 bg-abz-background">
+
+
+      {/* Modal de definição de senha */}
+      <SetPasswordModal
+        isOpen={showSetPasswordModal}
+        onClose={() => setShowSetPasswordModal(false)}
+        onSuccess={handlePasswordSetSuccess}
+        isNewUser={isNewUser}
+      />
+
+      {/* Modal de registro rápido */}
+      <QuickRegisterForm
+        isOpen={showQuickRegisterModal}
+        onClose={() => setShowQuickRegisterModal(false)}
+        onSuccess={handleQuickRegisterSuccess}
+        email={email}
+        phoneNumber={phoneNumber}
+      />
+
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <Image
-            src="/images/LC1_Azul.png"
-            alt="ABZ Group Logo"
+            src={config.logo}
+            alt={config.companyName + " Logo"}
             width={200}
             height={60}
             className="h-auto"
             priority
+            unoptimized
           />
         </div>
         <h2 className="mt-6 text-center text-2xl font-bold leading-9 tracking-tight text-abz-blue-dark">
@@ -200,7 +461,8 @@ export default function Login() {
            loginStep === 'verification' ? t('auth.verifyPhone') :
            loginStep === 'password' ? t('auth.enterPassword') :
            loginStep === 'pending' ? t('auth.pendingRequest') :
-           loginStep === 'unauthorized' ? t('auth.unauthorizedAccess') : t('auth.accessAccount')}
+           loginStep === 'unauthorized' ? t('auth.unauthorizedAccess') :
+           loginStep === 'quick_register' ? t('register.title', 'Complete seu cadastro') : t('auth.accessAccount')}
         </h2>
         <div className="mt-3 flex justify-center">
           <LanguageSelector variant="inline" />
@@ -252,7 +514,7 @@ export default function Login() {
                       <FiPhone className="h-5 w-5 text-gray-400" />
                     </div>
                     <input
-                      id="phoneNumber"
+                      id="login-phone-number"
                       name="phoneNumber"
                       type="tel"
                       autoComplete="tel"
@@ -367,16 +629,49 @@ export default function Login() {
 
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setVerificationCode('');
                     setError('');
                     setSuccess('');
-                    initiateLogin(phoneNumber);
+                    setLocalLoading(true);
+
+                    try {
+                      // Chamar a API de reenvio de código
+                      const identifier = useEmail ? email : phoneNumber;
+                      const method = useEmail ? 'email' : 'sms';
+
+                      // Usar o wrapper de fetch para tratar erros de parsing JSON
+                      const data = await fetchWrapper.post('/api/auth/resend-code', { identifier, method });
+
+                      if (data.success) {
+                        setSuccess(t('auth.codeSentAgain'));
+                      } else {
+                        setError(data.error || t('auth.resendCodeError'));
+                      }
+                    } catch (error: any) {
+                      console.error('Erro ao reenviar código:', error);
+                      setError(error.message || t('auth.resendCodeError'));
+                    } finally {
+                      setLocalLoading(false);
+                    }
                   }}
-                  className="flex w-full justify-center rounded-md bg-gray-100 px-3 py-2.5 text-sm font-medium leading-6 text-gray-700 shadow-sm hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300 transition-colors duration-200"
+                  disabled={isLoading || localLoading}
+                  className="flex w-full justify-center rounded-md bg-gray-100 px-3 py-2.5 text-sm font-medium leading-6 text-gray-700 shadow-sm hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {t('auth.resendCode')}
+                  {isLoading || localLoading ? t('auth.sending') : t('auth.resendCode')}
                 </button>
+
+                {process.env.NODE_ENV !== 'production' && (
+                  <div className="mt-2 text-center">
+                    <a
+                      href="/debug/codes"
+                      target="_blank"
+                      className="text-xs text-gray-500 hover:text-blue-500 transition-colors"
+                    >
+                      Ver códigos de verificação (Debug)
+                    </a>
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -387,7 +682,7 @@ export default function Login() {
                     setSuccess('');
                     // Voltar para a etapa de telefone
                     // Isso é feito no contexto, mas podemos forçar aqui
-                    window.location.reload();
+                    window.location.href = '/login';
                   }}
                   className="flex w-full justify-center text-sm font-medium text-abz-blue hover:text-abz-blue-dark transition-colors duration-200"
                 >
@@ -413,11 +708,11 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => {
-                  // Não podemos usar setLoginStep diretamente
+                  // Reiniciar o processo de login
                   setError('');
                   setSuccess('');
                   // Forçar um recarregamento da página para reiniciar o processo
-                  window.location.reload();
+                  window.location.href = '/login';
                 }}
                 className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
               >
@@ -442,7 +737,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => {
-                  // Não podemos usar setLoginStep diretamente, então vamos reiniciar o processo
+                  // Reiniciar o processo de login
                   setError('');
                   setSuccess('');
                   setPhoneNumber('');
@@ -451,7 +746,7 @@ export default function Login() {
                   setPassword('');
                   setInviteCode('');
                   // Forçar um recarregamento da página para reiniciar o processo
-                  window.location.reload();
+                  window.location.href = '/login';
                 }}
                 className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
               >
@@ -481,7 +776,7 @@ export default function Login() {
                       <FiLock className="h-5 w-5 text-gray-400" />
                     </div>
                     <input
-                      id="password"
+                      id="login-password"
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
@@ -551,6 +846,170 @@ export default function Login() {
                 </div>
               </form>
             </>
+          )}
+
+          {/* Formulário de Registro Rápido */}
+          {loginStep === 'quick_register' && (
+            <form onSubmit={handleQuickRegister} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-1">
+                  <label htmlFor="firstName" className="block text-sm font-medium leading-6 text-gray-900">
+                    {t('register.firstName', 'Nome')}*
+                  </label>
+                  <div className="mt-2 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiUser className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
+                      placeholder={t('register.firstNamePlaceholder', 'Seu nome')}
+                    />
+                  </div>
+                </div>
+
+                <div className="col-span-1">
+                  <label htmlFor="lastName" className="block text-sm font-medium leading-6 text-gray-900">
+                    {t('register.lastName', 'Sobrenome')}*
+                  </label>
+                  <div className="mt-2 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiUser className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
+                      placeholder={t('register.lastNamePlaceholder', 'Seu sobrenome')}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="identifier" className="block text-sm font-medium leading-6 text-gray-900">
+                  {useEmail ? t('auth.email', 'Email') : t('auth.phoneNumber', 'Telefone')}
+                </label>
+                <div className="mt-2 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    {useEmail ? <FiUser className="h-5 w-5 text-gray-400" /> : <FiPhone className="h-5 w-5 text-gray-400" />}
+                  </div>
+                  <input
+                    id="identifier"
+                    name="identifier"
+                    type={useEmail ? "email" : "tel"}
+                    value={useEmail ? email : phoneNumber}
+                    readOnly
+                    className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 bg-gray-100 sm:text-sm sm:leading-6"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="register-password" className="block text-sm font-medium leading-6 text-gray-900">
+                  {t('auth.password', 'Senha')}*
+                </label>
+                <div className="mt-2 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiLock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="register-password"
+                    name="register-password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full rounded-md border-0 py-2.5 pl-10 pr-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
+                    placeholder={t('auth.passwordPlaceholder', 'Mínimo 8 caracteres')}
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                    >
+                      {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirm-password" className="block text-sm font-medium leading-6 text-gray-900">
+                  {t('auth.confirmPassword', 'Confirmar Senha')}*
+                </label>
+                <div className="mt-2 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiLock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="login-confirm-password"
+                    name="confirm-password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="block w-full rounded-md border-0 py-2.5 pl-10 pr-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
+                    placeholder={t('auth.confirmPasswordPlaceholder', 'Repita a senha')}
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                    >
+                      {showConfirmPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <InviteCodeInput
+                inviteCode={inviteCode}
+                setInviteCode={setInviteCode}
+                showInviteField={showInviteField}
+                setShowInviteField={setShowInviteField}
+              />
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-600">
+                  {t('register.requiredFields', 'Campos marcados com * são obrigatórios')}
+                </p>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex w-full justify-center rounded-md bg-abz-blue px-3 py-2.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-abz-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-abz-blue transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? t('register.loading', 'Registrando...') : t('register.submit', 'Registrar')}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setLoginStep('phone')}
+                  className="text-sm text-abz-blue hover:text-abz-blue-dark flex items-center"
+                >
+                  <FiArrowRight className="mr-1 rotate-180" />
+                  {t('auth.backToIdentifier', 'Voltar para identificação')}
+                </button>
+              </div>
+            </form>
           )}
 
           <div className="mt-6">

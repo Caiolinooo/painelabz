@@ -88,7 +88,7 @@ const UserRoleManager: React.FC<UserRoleManagerProps> = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Não autorizado');

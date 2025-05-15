@@ -1,0 +1,13 @@
+            <p className="mt-1 text-xs text-gray-500">
+              {t('admin.supportedFormats')}: {(() => {
+                try {
+                  const selectedType = IMPORT_TYPES.find(t => t.id === importType);
+                  if (selectedType && selectedType.formats && Array.isArray(selectedType.formats)) {
+                    return selectedType.formats.join(', ');
+                  }
+                  return '';
+                } catch (e) {
+                  return '';
+                }
+              })()}
+            </p>

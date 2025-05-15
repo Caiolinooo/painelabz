@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { prisma } from '@/lib/db';
 import { generatePasswordResetToken, sendPasswordResetEmail, sendPasswordResetSMS } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -16,11 +15,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await dbConnect();
-
     // Buscar o usuário pelo email ou número de telefone
-    const query = email ? { email } : { phoneNumber };
-    const user = await User.findOne(query);
+    const where = email ? { email } : { phoneNumber };
+    const user = await prisma.user.findFirst({ where });
 
     // Se o usuário não for encontrado, retornar sucesso para evitar enumeração de usuários
     // Isso é uma prática de segurança para não revelar quais emails/telefones estão cadastrados
@@ -45,13 +42,17 @@ export async function POST(request: NextRequest) {
     const { token, expiresAt } = generatePasswordResetToken();
 
     // Atualizar o usuário com o token de redefinição
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = expiresAt;
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: token,
+        resetPasswordExpires: expiresAt
+      }
+    });
 
     // Enviar email ou SMS com o link de redefinição
     const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
-    
+
     let sendResult;
     if (email) {
       sendResult = await sendPasswordResetEmail(email, resetUrl);
@@ -68,12 +69,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Registrar no histórico de acesso
-    user.accessHistory.push({
-      timestamp: new Date(),
-      action: 'PASSWORD_RESET_REQUEST',
-      details: `Solicitação de redefinição de senha via ${email ? 'email' : 'SMS'}`
+    const accessHistory = user.accessHistory || [];
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        accessHistory: [
+          ...accessHistory,
+          {
+            timestamp: new Date(),
+            action: 'PASSWORD_RESET_REQUEST',
+            details: `Solicitação de redefinição de senha via ${email ? 'email' : 'SMS'}`
+          }
+        ]
+      }
     });
-    await user.save();
 
     return NextResponse.json({
       success: true,

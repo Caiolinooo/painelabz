@@ -9,7 +9,7 @@ interface ImportPreviewProps {
 
 export default function ImportPreview({ data }: ImportPreviewProps) {
   const { t } = useI18n();
-  
+
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-4 text-gray-500">
@@ -45,16 +45,27 @@ export default function ImportPreview({ data }: ImportPreviewProps) {
                   key={cellIndex}
                   className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                 >
-                  {row[header] !== undefined && row[header] !== null
-                    ? String(row[header])
-                    : '-'}
+                  {(() => {
+                    try {
+                      const value = row[header];
+                      if (value === undefined || value === null) {
+                        return '-';
+                      }
+                      if (typeof value === 'object') {
+                        return JSON.stringify(value);
+                      }
+                      return String(value);
+                    } catch (e) {
+                      return '-';
+                    }
+                  })()}
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
-      
+
       <div className="mt-2 text-xs text-gray-500">
         {t('admin.previewLimited', { count: data.length })}
       </div>

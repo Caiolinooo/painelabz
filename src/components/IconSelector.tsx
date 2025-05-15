@@ -21,27 +21,30 @@ export default function IconSelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [showIconGrid, setShowIconGrid] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Lista de ícones disponíveis
   const iconOptions = Object.keys(Icons)
     .filter(key => key.startsWith('Fi'))
     .filter(key => key.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort();
-  
+
   // Função para renderizar o ícone
   const renderIcon = (iconName: string) => {
     // @ts-ignore - Estamos assumindo que o ícone existe no objeto Icons
     const IconComponent = Icons[iconName];
-    return <IconComponent className="h-5 w-5" />;
+    return IconComponent ? <IconComponent className="h-5 w-5" /> : null;
   };
-  
+
   // Função para selecionar um ícone
   const handleSelectIcon = (iconName: string) => {
     // @ts-ignore - Estamos assumindo que o ícone existe no objeto Icons
-    onIconChange(iconName, Icons[iconName]);
-    setShowIconGrid(false);
+    const IconComponent = Icons[iconName];
+    if (IconComponent) {
+      onIconChange(iconName, IconComponent);
+      setShowIconGrid(false);
+    }
   };
-  
+
   // Função para fazer upload de ícone personalizado
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,7 +53,7 @@ export default function IconSelector({
       setShowIconGrid(false);
     }
   };
-  
+
   return (
     <div className="relative">
       <div className="flex items-center mb-2">
@@ -65,12 +68,12 @@ export default function IconSelector({
           {showIconGrid ? 'Fechar seletor' : 'Mostrar todos os ícones'}
         </button>
       </div>
-      
+
       <div className="flex items-center space-x-2">
         <div className="p-3 border border-gray-300 rounded-md bg-gray-50 flex items-center justify-center w-12 h-12">
           {selectedIcon && renderIcon(selectedIcon)}
         </div>
-        
+
         <div className="flex-1">
           <div className="flex items-center">
             <button
@@ -80,7 +83,7 @@ export default function IconSelector({
             >
               {selectedIcon || 'Selecionar ícone'}
             </button>
-            
+
             {allowCustomUpload && (
               <button
                 type="button"
@@ -101,7 +104,7 @@ export default function IconSelector({
           </div>
         </div>
       </div>
-      
+
       {showIconGrid && (
         <div className="absolute z-10 mt-2 w-full bg-white border border-gray-300 rounded-md shadow-lg p-4">
           <div className="flex items-center mb-3 border border-gray-300 rounded-md overflow-hidden">
@@ -125,7 +128,7 @@ export default function IconSelector({
               </button>
             )}
           </div>
-          
+
           <div className="max-h-60 overflow-y-auto grid grid-cols-6 gap-2">
             {iconOptions.map((iconName) => (
               <button
@@ -145,7 +148,7 @@ export default function IconSelector({
                 </span>
               </button>
             ))}
-            
+
             {iconOptions.length === 0 && (
               <div className="col-span-6 py-4 text-center text-gray-500">
                 Nenhum ícone encontrado para "{searchTerm}"

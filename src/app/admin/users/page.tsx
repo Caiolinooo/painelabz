@@ -72,7 +72,7 @@ export default function UsersPage() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Não autorizado');
@@ -168,7 +168,7 @@ export default function UsersPage() {
   // Função para salvar usuário (novo ou editado)
   const handleSaveUser = async (userData: UserEditorData, password?: string) => {
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Não autorizado');
@@ -226,7 +226,7 @@ export default function UsersPage() {
     if (!selectedUser) return;
 
     try {
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Não autorizado');

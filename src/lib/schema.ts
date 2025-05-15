@@ -44,10 +44,20 @@ export const validateCPF = (value: string): boolean => {
   return true;
 };
 
-// Validação de email
+// Validação de email extremamente permissiva
 export const validateEmail = (value: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(value);
+  if (!value) return false;
+
+  // Remover espaços em branco no início e fim
+  const trimmedValue = value.trim();
+  if (trimmedValue.length === 0) return false;
+
+  // Verificação super básica: contém @ e não é o primeiro nem o último caractere
+  const hasAtSymbol = trimmedValue.includes('@');
+  const atSymbolNotAtEnds = trimmedValue[0] !== '@' && trimmedValue[trimmedValue.length - 1] !== '@';
+
+  // Verificação extremamente permissiva
+  return hasAtSymbol && atSymbolNotAtEnds;
 };
 
 // Validação de telefone
@@ -147,7 +157,7 @@ export const formSchema = z.object({
   centroCusto: z.string().min(1, { message: 'Centro de custo é obrigatório' }),
   cpf: z.string().min(11, { message: 'CPF inválido' })
     .refine(validateCPF, {
-      message: 'CPF inválido'
+      message: 'CPF inválido' // This will be translated through the i18n system
     })
 });
 
@@ -198,6 +208,8 @@ export const refinedFormSchema = formSchema.superRefine(
           path: ['pixChave']
         });
       } else if (data.pixTipo && !validatePixKey(data.pixTipo, data.pixChave)) {
+        // This error message will be overridden by the custom validation in the form component
+        // which uses the i18n system to provide localized error messages
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `Chave PIX inválida para o tipo ${data.pixTipo}`,

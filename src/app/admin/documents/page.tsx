@@ -231,7 +231,7 @@ const DocumentEditor = ({ document, onSave, onCancel, isNew = false }: DocumentE
           </div>
           {file && (
             <p className="mt-1 text-sm text-gray-500">
-              Arquivo selecionado: {file.name} ({(file.size / 1024).toFixed(2)} KB)
+              Arquivo selecionado: {file.name} ({(typeof file.size === 'number' ? (file.size / 1024).toFixed(2) : '0.00')} KB)
             </p>
           )}
         </div>

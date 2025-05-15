@@ -51,7 +51,7 @@ export default function LanguageSelector({ variant = 'dropdown', className = '' 
           aria-label={t('common.chooseLanguage')}
         >
           <FiGlobe className="h-5 w-5" />
-          <span className="hidden sm:inline-block">{getLanguageFlag(locale)}</span>
+          <span className="inline-block">{getLanguageFlag(locale)}</span>
         </button>
 
         {isOpen && (
@@ -90,7 +90,7 @@ export default function LanguageSelector({ variant = 'dropdown', className = '' 
           aria-label={t('common.chooseLanguage')}
         >
           <FiGlobe className="h-5 w-5" />
-          <span className="hidden sm:inline-block">{getLanguageFlag(locale)}</span>
+          <span className="inline-block">{getLanguageFlag(locale)}</span>
         </button>
 
         {isOpen && (
