@@ -1,0 +1,4 @@
+Nome para exibição,Nome UPN,Nome,Sobrenome,Título,Departamento,Cidade,CountryOrRegion,Office,StateOrProvince,Local de uso,Bloquear credencial,Telefone Celular,Número de telefone,CEP,Idioma preferencial,Endereço,Fax
+João Silva,joao.silva@groupabz.com,João,Silva,Analista de TI,TI,Rio de Janeiro,Brasil,RIO,Rio de Janeiro,BR,FALSE,+5521999999999,,20000-000,pt-BR,"Av. Rio Branco, 1 - Centro",
+Maria Oliveira,maria.oliveira@groupabz.com,Maria,Oliveira,Gerente de RH,Recursos Humanos,São Paulo,Brasil,SP,São Paulo,BR,FALSE,+5511988888888,,01000-000,pt-BR,"Av. Paulista, 1000 - Bela Vista",
+Carlos Santos,carlos.santos@groupabz.com,Carlos,Santos,Desenvolvedor,TI,Belo Horizonte,Brasil,BH,Minas Gerais,BR,FALSE,+5531977777777,,30000-000,pt-BR,"Av. Afonso Pena, 1500 - Centro",

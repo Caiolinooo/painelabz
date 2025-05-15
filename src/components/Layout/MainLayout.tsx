@@ -11,6 +11,7 @@ import Footer from '@/components/Footer';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import LanguageSelector from '@/components/LanguageSelector';
 import PerformanceMonitor from '@/components/Performance/PerformanceMonitor';
 import menuItems, { getTranslatedMenu } from '@/data/menu';
@@ -27,6 +28,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, isAdmin, logout } = useAuth();
   const { t } = useI18n();
+  const { config } = useSiteConfig();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Obter os itens do menu traduzidos
@@ -73,8 +75,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className="flex items-center justify-center h-16 border-b">
             <Link href="/dashboard">
             <img
-                src="/images/LC1_Azul.png"
-                alt="ABZ Group Logo"
+                src={config.logo}
+                alt={config.companyName + " Logo"}
                 className="h-10 w-auto"
             />
             </Link>
@@ -83,7 +85,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {/* Menu do Sidebar */}
         <nav className="flex-grow overflow-y-auto py-4 space-y-1">
           {translatedMenu
-            .filter(item => item.enabled && (!item.adminOnly || isAdmin))
+            .filter(item => {
+              // Verificar se o item está habilitado
+              if (!item.enabled) return false;
+
+              // Se o item tem forceShow, sempre mostrar
+              if (item.forceShow) return true;
+
+              // Verificar permissões de administrador
+              if (item.adminOnly && !isAdmin) return false;
+
+              // Verificar permissões de gerente
+              if (item.managerOnly && !(isAdmin || user?.role === 'MANAGER')) return false;
+
+              return true;
+            })
             .sort((a, b) => a.order - b.order)
             .map((item) => {
               const isActive = pathname === item.href;
@@ -133,8 +149,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     <div className="flex-shrink-0 flex items-center">
                     <Link href="/dashboard">
                         <img
-                        src="/images/LC1_Azul.png"
-                        alt="ABZ Group Logo"
+                        src={config.logo}
+                        alt={config.companyName + " Logo"}
                         className="h-10 w-auto"
                         />
                     </Link>

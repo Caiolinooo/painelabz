@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Document from '@/models/Document';
+import { prisma } from '@/lib/db';
 
 // GET - Obter um documento pelo ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
-    await dbConnect();
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
 
-    const id = params.id;
-
-    const document = await Document.findById(id);
+    const document = await prisma.document.findUnique({
+      where: { id }
+    });
 
     if (!document) {
       return NextResponse.json(
@@ -34,12 +36,13 @@ export async function GET(
 // PUT - Atualizar um documento
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
-    await dbConnect();
-
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
     const body = await request.json();
     const { title, description, category, language, file, enabled, order } = body;
 
@@ -52,7 +55,9 @@ export async function PUT(
     }
 
     // Verificar se o documento existe
-    const existingDocument = await Document.findById(id);
+    const existingDocument = await prisma.document.findUnique({
+      where: { id }
+    });
 
     if (!existingDocument) {
       return NextResponse.json(
@@ -62,9 +67,9 @@ export async function PUT(
     }
 
     // Atualizar o documento
-    const updatedDocument = await Document.findByIdAndUpdate(
-      id,
-      {
+    const updatedDocument = await prisma.document.update({
+      where: { id },
+      data: {
         title,
         description,
         category,
@@ -72,9 +77,8 @@ export async function PUT(
         file,
         enabled: enabled !== false,
         order,
-      },
-      { new: true }
-    );
+      }
+    });
 
     return NextResponse.json(updatedDocument);
   } catch (error) {
@@ -92,12 +96,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await dbConnect();
-
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
 
     // Verificar se o documento existe
-    const existingDocument = await Document.findById(id);
+    const existingDocument = await prisma.document.findUnique({
+      where: { id }
+    });
 
     if (!existingDocument) {
       return NextResponse.json(
@@ -107,7 +113,9 @@ export async function DELETE(
     }
 
     // Excluir o documento
-    await Document.findByIdAndDelete(id);
+    await prisma.document.delete({
+      where: { id }
+    });
 
     return NextResponse.json({ message: 'Documento excluído com sucesso' });
   } catch (error) {

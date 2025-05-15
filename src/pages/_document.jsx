@@ -6,7 +6,7 @@ export default function Document() {
       <Head>
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#ffffff" />
-        <link rel="icon" href="/favicon.ico" />
+        {/* Favicon is now managed by SiteConfigContext */}
       </Head>
       <body>
         <Main />

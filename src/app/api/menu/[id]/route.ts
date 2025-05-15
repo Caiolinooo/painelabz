@@ -4,11 +4,14 @@ import { prisma } from '@/lib/db';
 // GET - Obter um item de menu pelo ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
-    const id = params.id;
-    
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
+
     const menuItem = await prisma.menuItem.findUnique({
       where: { id },
     });
@@ -19,7 +22,7 @@ export async function GET(
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(menuItem);
   } catch (error) {
     console.error('Erro ao obter item de menu:', error);
@@ -36,7 +39,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
     const body = await request.json();
     const { href, label, icon, external, enabled, order, adminOnly } = body;
 
@@ -73,7 +78,7 @@ export async function PUT(
         adminOnly: adminOnly || false,
       },
     });
-    
+
     return NextResponse.json(updatedMenuItem);
   } catch (error) {
     console.error('Erro ao atualizar item de menu:', error);
@@ -90,7 +95,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const id = await Promise.resolve(params.id);
 
     // Verificar se o item de menu existe
     const existingMenuItem = await prisma.menuItem.findUnique({
@@ -108,7 +115,7 @@ export async function DELETE(
     await prisma.menuItem.delete({
       where: { id },
     });
-    
+
     return NextResponse.json({ message: 'Item de menu excluído com sucesso' });
   } catch (error) {
     console.error('Erro ao excluir item de menu:', error);

@@ -1,0 +1,35 @@
+[
+  {
+    "name": "João Silva",
+    "email": "joao.silva@exemplo.com",
+    "phoneNumber": "+5521999999999",
+    "department": "TI",
+    "position": "Desenvolvedor",
+    "admissionDate": "2023-01-01",
+    "registration": "12345",
+    "document": "123.456.789-00",
+    "notes": "Funcionário exemplar"
+  },
+  {
+    "name": "Maria Oliveira",
+    "email": "maria.oliveira@exemplo.com",
+    "phoneNumber": "+5521888888888",
+    "department": "RH",
+    "position": "Analista de RH",
+    "admissionDate": "2023-02-15",
+    "registration": "54321",
+    "document": "987.654.321-00",
+    "notes": "Contratada recentemente"
+  },
+  {
+    "name": "Carlos Santos",
+    "email": "carlos.santos@exemplo.com",
+    "phoneNumber": "+5521777777777",
+    "department": "Financeiro",
+    "position": "Contador",
+    "admissionDate": "2022-11-10",
+    "registration": "67890",
+    "document": "456.789.123-00",
+    "notes": "Responsável pela contabilidade"
+  }
+]

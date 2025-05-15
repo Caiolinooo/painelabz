@@ -31,27 +31,93 @@ const UserAccessHistory: React.FC<UserAccessHistoryProps> = ({ userId, userName,
   const fetchAccessHistory = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const token = localStorage.getItem('abzToken');
-      
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
+
       if (!token) {
         throw new Error('Não autorizado');
       }
-      
-      const response = await fetch(`/api/users/access-history?userId=${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+
+      // Adicionar timestamp para evitar cache
+      const timestamp = new Date().getTime();
+      console.log(`Buscando histórico para usuário ${userId} com timestamp ${timestamp}`);
+
+      // Fazer até 3 tentativas em caso de falha
+      let attempts = 0;
+      const maxAttempts = 3;
+      let response;
+
+      while (attempts < maxAttempts) {
+        try {
+          response = await fetch(`/api/users/access-history?userId=${userId}&_=${timestamp}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          });
+
+          if (response.ok) break;
+
+          console.log(`Tentativa ${attempts + 1} falhou com status ${response.status}. Tentando novamente...`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Esperar 1 segundo entre tentativas
+        } catch (error) {
+          console.error(`Erro na tentativa ${attempts + 1}:`, error);
         }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao obter histórico de acesso');
+
+        attempts++;
       }
-      
-      const data = await response.json();
-      setHistory(data.accessHistory || []);
+
+      if (!response || !response.ok) {
+        const errorData = await response?.json().catch(() => ({}));
+        throw new Error(errorData.error || `Falha ao buscar histórico após ${maxAttempts} tentativas`);
+      }
+
+      const responseText = await response.text();
+
+      // Verificar se a resposta está vazia
+      if (!responseText || responseText.trim() === '') {
+        console.error('Resposta vazia recebida da API de histórico');
+        setHistory([]);
+        setError('Nenhum histórico encontrado. A resposta da API está vazia.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = JSON.parse(responseText);
+        console.log('Histórico recebido:', data);
+
+        // Verificar se o histórico existe e está no formato correto
+        let accessHistory = data.accessHistory || [];
+
+        // Garantir que o histórico seja um array
+        if (!Array.isArray(accessHistory)) {
+          console.log('Histórico não é um array, convertendo...');
+          try {
+            // Tentar converter de string JSON para array
+            if (typeof accessHistory === 'string') {
+              accessHistory = JSON.parse(accessHistory);
+            }
+            // Se ainda não for um array, criar um vazio
+            if (!Array.isArray(accessHistory)) {
+              accessHistory = [];
+            }
+          } catch (error) {
+            console.error('Erro ao converter histórico:', error);
+            accessHistory = [];
+          }
+        }
+
+        setHistory(accessHistory);
+      } catch (parseError) {
+        console.error('Erro ao analisar resposta JSON:', parseError);
+        console.log('Texto da resposta:', responseText);
+        setError('Erro ao processar dados de histórico. Formato inválido.');
+        setHistory([]);
+      }
     } catch (error) {
       console.error('Erro ao obter histórico de acesso:', error);
       setError(error instanceof Error ? error.message : 'Erro desconhecido');
@@ -108,38 +174,50 @@ const UserAccessHistory: React.FC<UserAccessHistoryProps> = ({ userId, userName,
           <h2 className="text-xl font-semibold text-abz-blue">
             Histórico de Acesso - {userName}
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-red-100"
           >
             <FiX className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="p-4 flex-1 overflow-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-abz-blue"></div>
+            <div className="flex flex-col items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-abz-blue mb-4"></div>
+              <p className="text-gray-600">Carregando histórico de acesso...</p>
             </div>
           ) : error ? (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
-              <p>{error}</p>
-              <button 
+            <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-md">
+              <h3 className="text-lg font-medium mb-2">Erro ao carregar histórico</h3>
+              <p className="mb-4">{error}</p>
+              <button
                 onClick={fetchAccessHistory}
-                className="mt-2 flex items-center text-abz-blue hover:text-abz-blue-dark"
+                className="px-4 py-2 bg-abz-blue text-white rounded-md hover:bg-abz-blue-dark flex items-center justify-center"
               >
-                <FiRefreshCw className="mr-1" /> Tentar novamente
+                <FiRefreshCw className="mr-2" /> Tentar novamente
               </button>
             </div>
           ) : history.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              Nenhum registro de acesso encontrado.
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <FiInfo className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum registro encontrado</h3>
+              <p className="text-gray-500 max-w-md mx-auto mb-6">
+                Não há registros de acesso para este usuário. Os registros são criados automaticamente quando o usuário realiza ações no sistema.
+              </p>
+              <button
+                onClick={fetchAccessHistory}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center mx-auto"
+              >
+                <FiRefreshCw className="mr-2" /> Atualizar
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
               {history.map((entry, index) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-start">
@@ -167,7 +245,7 @@ const UserAccessHistory: React.FC<UserAccessHistoryProps> = ({ userId, userName,
             </div>
           )}
         </div>
-        
+
         <div className="border-t p-4 flex justify-end">
           <button
             onClick={onClose}

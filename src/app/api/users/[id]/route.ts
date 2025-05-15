@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
+import bcrypt from 'bcryptjs';
 
 // GET - Obter um usuário específico
 export async function GET(
@@ -29,10 +29,13 @@ export async function GET(
     }
 
     // Verificar se o usuário é administrador
-    await dbConnect();
-    const requestingUser = await User.findById(payload.userId);
+    const { data: requestingUser, error: userError } = await supabaseAdmin
+      .from('users_unified')
+      .select('id, role, first_name, last_name, email, phone_number')
+      .eq('id', payload.userId)
+      .single();
 
-    if (!requestingUser || requestingUser.role !== 'ADMIN') {
+    if (userError || !requestingUser || requestingUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem visualizar detalhes de usuários.' },
         { status: 403 }
@@ -40,19 +43,42 @@ export async function GET(
     }
 
     // Obter o ID do usuário dos parâmetros da rota
-    const userId = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const userId = await Promise.resolve(params.id);
 
     // Buscar o usuário
-    const user = await User.findById(userId).select('-password -verificationCode -verificationCodeExpires');
+    const { data: user, error: fetchError } = await supabaseAdmin
+      .from('users_unified')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-    if (!user) {
+    if (fetchError || !user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(user);
+    // Mapear os campos para o formato esperado pelo cliente
+    const mappedUser = {
+      id: user.id,
+      phoneNumber: user.phone_number,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      role: user.role,
+      position: user.position,
+      department: user.department,
+      active: user.active,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      accessHistory: user.access_history,
+      accessPermissions: user.access_permissions
+    };
+
+    return NextResponse.json(mappedUser);
   } catch (error) {
     console.error('Erro ao obter usuário:', error);
     return NextResponse.json(
@@ -88,10 +114,13 @@ export async function PUT(
     }
 
     // Verificar se o usuário é administrador
-    await dbConnect();
-    const requestingUser = await User.findById(payload.userId);
+    const { data: requestingUser, error: userError } = await supabaseAdmin
+      .from('users_unified')
+      .select('id, role, first_name, last_name, email, phone_number, access_history')
+      .eq('id', payload.userId)
+      .single();
 
-    if (!requestingUser || requestingUser.role !== 'ADMIN') {
+    if (userError || !requestingUser || requestingUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem atualizar usuários.' },
         { status: 403 }
@@ -99,7 +128,9 @@ export async function PUT(
     }
 
     // Obter o ID do usuário dos parâmetros da rota
-    const userId = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const userId = await Promise.resolve(params.id);
 
     // Obter os dados do corpo da requisição
     const body = await request.json();
@@ -124,56 +155,111 @@ export async function PUT(
     }
 
     // Buscar o usuário
-    const user = await User.findById(userId);
-    if (!user) {
+    const { data: user, error: fetchError } = await supabaseAdmin
+      .from('users_unified')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError || !user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
         { status: 404 }
       );
     }
 
-    // Atualizar os dados do usuário
-    user.firstName = firstName;
-    user.lastName = lastName;
-    user.email = email;
-    user.role = ['ADMIN', 'USER', 'MANAGER'].includes(role) ? role : user.role;
-    user.position = position;
-    user.department = department;
+    // Preparar os dados para atualização
+    const now = new Date().toISOString();
+    const updateData: any = {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      role: ['ADMIN', 'USER', 'MANAGER'].includes(role) ? role : user.role,
+      position,
+      department,
+      updated_at: now
+    };
 
     if (active !== undefined) {
-      user.active = active;
+      updateData.active = active;
     }
 
     if (accessPermissions) {
-      user.accessPermissions = accessPermissions;
+      updateData.access_permissions = accessPermissions;
     }
 
     if (password) {
-      user.password = password;
+      // Gerar hash da senha
+      updateData.password = await bcrypt.hash(password, 10);
+      updateData.password_last_changed = now;
     }
 
-    // Registrar no histórico de acesso
-    user.accessHistory.push({
-      timestamp: new Date(),
-      action: 'UPDATED',
-      details: `Usuário atualizado por ${requestingUser.firstName} ${requestingUser.lastName}`
-    });
+    // Obter o histórico de acesso atual
+    const accessHistory = user.access_history || [];
 
-    await user.save();
+    // Adicionar novo registro ao histórico
+    updateData.access_history = [
+      ...accessHistory,
+      {
+        timestamp: now,
+        action: 'UPDATED',
+        details: `Usuário atualizado por ${requestingUser.first_name} ${requestingUser.last_name}`
+      }
+    ];
+
+    // Atualizar o usuário
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
+      .from('users_unified')
+      .update(updateData)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Erro ao atualizar usuário:', updateError);
+      return NextResponse.json(
+        { error: `Erro ao atualizar usuário: ${updateError.message}` },
+        { status: 500 }
+      );
+    }
 
     // Registrar a ação no histórico do administrador
-    requestingUser.accessHistory.push({
-      timestamp: new Date(),
-      action: 'UPDATE_USER',
-      details: `Atualizou o usuário ${user.firstName} ${user.lastName}`
-    });
-    await requestingUser.save();
+    const adminAccessHistory = requestingUser.access_history || [];
+    const { error: adminUpdateError } = await supabaseAdmin
+      .from('users_unified')
+      .update({
+        access_history: [
+          ...adminAccessHistory,
+          {
+            timestamp: now,
+            action: 'UPDATE_USER',
+            details: `Atualizou o usuário ${user.first_name} ${user.last_name}`
+          }
+        ],
+        updated_at: now
+      })
+      .eq('id', requestingUser.id);
 
-    // Retornar os dados do usuário (sem campos sensíveis)
-    const userResponse = user.toObject();
-    delete userResponse.password;
-    delete userResponse.verificationCode;
-    delete userResponse.verificationCodeExpires;
+    if (adminUpdateError) {
+      console.error('Erro ao atualizar histórico do administrador:', adminUpdateError);
+    }
+
+    // Mapear os campos para o formato esperado pelo cliente
+    const userResponse = {
+      id: updatedUser.id,
+      phoneNumber: updatedUser.phone_number,
+      firstName: updatedUser.first_name,
+      lastName: updatedUser.last_name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      position: updatedUser.position,
+      department: updatedUser.department,
+      active: updatedUser.active,
+      createdAt: updatedUser.created_at,
+      updatedAt: updatedUser.updated_at,
+      accessHistory: updatedUser.access_history,
+      accessPermissions: updatedUser.access_permissions
+    };
 
     return NextResponse.json(userResponse);
   } catch (error) {
@@ -211,10 +297,13 @@ export async function DELETE(
     }
 
     // Verificar se o usuário é administrador
-    await dbConnect();
-    const requestingUser = await User.findById(payload.userId);
+    const { data: requestingUser, error: userError } = await supabaseAdmin
+      .from('users_unified')
+      .select('id, role, first_name, last_name, email, phone_number, access_history')
+      .eq('id', payload.userId)
+      .single();
 
-    if (!requestingUser || requestingUser.role !== 'ADMIN') {
+    if (userError || !requestingUser || requestingUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem excluir usuários.' },
         { status: 403 }
@@ -222,7 +311,9 @@ export async function DELETE(
     }
 
     // Obter o ID do usuário dos parâmetros da rota
-    const userId = params.id;
+    // Garantir que params seja await antes de acessar suas propriedades
+    // Usar Promise.resolve para garantir que params.id seja tratado como uma Promise
+    const userId = await Promise.resolve(params.id);
 
     // Não permitir excluir o próprio usuário
     if (userId === payload.userId) {
@@ -233,8 +324,13 @@ export async function DELETE(
     }
 
     // Buscar o usuário
-    const user = await User.findById(userId);
-    if (!user) {
+    const { data: user, error: fetchError } = await supabaseAdmin
+      .from('users_unified')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError || !user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
         { status: 404 }
@@ -242,18 +338,43 @@ export async function DELETE(
     }
 
     // Armazenar informações do usuário para o log
-    const userInfo = `${user.firstName} ${user.lastName} (${user.phoneNumber})`;
+    const userInfo = `${user.first_name} ${user.last_name} (${user.phone_number})`;
 
     // Excluir o usuário
-    await User.findByIdAndDelete(userId);
+    const { error: deleteError } = await supabaseAdmin
+      .from('users_unified')
+      .delete()
+      .eq('id', userId);
+
+    if (deleteError) {
+      console.error('Erro ao excluir usuário:', deleteError);
+      return NextResponse.json(
+        { error: `Erro ao excluir usuário: ${deleteError.message}` },
+        { status: 500 }
+      );
+    }
 
     // Registrar a ação no histórico do administrador
-    requestingUser.accessHistory.push({
-      timestamp: new Date(),
-      action: 'DELETE_USER',
-      details: `Excluiu o usuário ${userInfo}`
-    });
-    await requestingUser.save();
+    const now = new Date().toISOString();
+    const adminAccessHistory = requestingUser.access_history || [];
+    const { error: adminUpdateError } = await supabaseAdmin
+      .from('users_unified')
+      .update({
+        access_history: [
+          ...adminAccessHistory,
+          {
+            timestamp: now,
+            action: 'DELETE_USER',
+            details: `Excluiu o usuário ${userInfo}`
+          }
+        ],
+        updated_at: now
+      })
+      .eq('id', requestingUser.id);
+
+    if (adminUpdateError) {
+      console.error('Erro ao atualizar histórico do administrador:', adminUpdateError);
+    }
 
     return NextResponse.json({
       success: true,

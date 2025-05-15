@@ -28,9 +28,21 @@ export function I18nProvider({ children }: I18nProviderProps) {
 
   // Function to set locale and save to localStorage
   const setLocale = (newLocale: Locale) => {
+    console.log('Alterando idioma para:', newLocale);
     setLocaleState(newLocale);
     setLocalStorageLocale(newLocale);
+
+    // Atualizar o atributo lang do documento
     document.documentElement.lang = newLocale;
+
+    // Definir um cookie para persistir o idioma entre sessões
+    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+
+    // Forçar uma atualização da interface
+    if (typeof window !== 'undefined') {
+      // Disparar um evento personalizado para notificar outros componentes
+      window.dispatchEvent(new CustomEvent('localeChanged', { detail: { locale: newLocale } }));
+    }
   };
 
   // Set initial locale on mount

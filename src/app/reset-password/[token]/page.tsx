@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FiLock, FiEye, FiEyeOff, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 
 export default function ResetPassword({ params }: { params: { token: string } }) {
   const [password, setPassword] = useState('');
@@ -18,6 +19,7 @@ export default function ResetPassword({ params }: { params: { token: string } })
   const [tokenChecked, setTokenChecked] = useState(false);
   const router = useRouter();
   const { t } = useI18n();
+  const { config } = useSiteConfig();
   const { token } = params;
 
   // Verificar se o token é válido
@@ -107,8 +109,8 @@ export default function ResetPassword({ params }: { params: { token: string } })
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
             <Image
-              src="/images/LC1_Azul.png"
-              alt="ABZ Group Logo"
+              src={config.logo}
+              alt={config.companyName + " Logo"}
               width={200}
               height={60}
               className="h-auto"
@@ -151,8 +153,8 @@ export default function ResetPassword({ params }: { params: { token: string } })
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <Image
-            src="/images/LC1_Azul.png"
-            alt="ABZ Group Logo"
+            src={config.logo}
+            alt={config.companyName + " Logo"}
             width={200}
             height={60}
             className="h-auto"

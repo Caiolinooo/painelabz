@@ -1,6 +1,4 @@
-import dbConnect from './mongodb';
-import AuthorizedUser from '@/models/AuthorizedUser';
-import User from '@/models/User';
+import { prisma } from './db';
 
 /**
  * Verifica se um usuário está autorizado a acessar o sistema
@@ -19,8 +17,6 @@ export async function checkUserAuthorization(
   status?: 'active' | 'pending' | 'rejected';
   message: string;
 }> {
-  await dbConnect();
-
   try {
     // Se não temos nenhuma informação para verificar, retorna não autorizado
     if (!email && !phoneNumber && !inviteCode) {
@@ -31,11 +27,13 @@ export async function checkUserAuthorization(
     }
 
     // Verificar se o usuário já existe no sistema
-    const existingUser = await User.findOne({
-      $or: [
-        { email: email },
-        { phoneNumber: phoneNumber }
-      ]
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { phoneNumber: phoneNumber }
+        ]
+      }
     });
 
     // Se o usuário já existe e está ativo, está autorizado
@@ -53,12 +51,14 @@ export async function checkUserAuthorization(
 
     // 1. Verificar por email ou telefone exato
     if (email || phoneNumber) {
-      authorizedEntry = await AuthorizedUser.findOne({
-        $or: [
-          { email: email },
-          { phoneNumber: phoneNumber }
-        ],
-        status: 'active'
+      authorizedEntry = await prisma.authorizedUser.findFirst({
+        where: {
+          OR: [
+            { email: email },
+            { phoneNumber: phoneNumber }
+          ],
+          status: 'active'
+        }
       });
 
       if (authorizedEntry) {
@@ -74,9 +74,11 @@ export async function checkUserAuthorization(
     // 2. Verificar por domínio de email
     if (email && email.includes('@')) {
       const domain = email.split('@')[1];
-      const domainAuth = await AuthorizedUser.findOne({
-        domain: domain,
-        status: 'active'
+      const domainAuth = await prisma.authorizedUser.findFirst({
+        where: {
+          domain: domain,
+          status: 'active'
+        }
       });
 
       if (domainAuth) {
@@ -91,9 +93,11 @@ export async function checkUserAuthorization(
 
     // 3. Verificar por código de convite
     if (inviteCode) {
-      const inviteAuth = await AuthorizedUser.findOne({
-        inviteCode: inviteCode,
-        status: 'active'
+      const inviteAuth = await prisma.authorizedUser.findFirst({
+        where: {
+          inviteCode: inviteCode,
+          status: 'active'
+        }
       });
 
       if (inviteAuth) {
@@ -101,7 +105,10 @@ export async function checkUserAuthorization(
         const now = new Date();
         if (inviteAuth.expiresAt && inviteAuth.expiresAt < now) {
           // Atualizar status para expirado
-          await AuthorizedUser.findByIdAndUpdate(inviteAuth._id, { status: 'expired' });
+          await prisma.authorizedUser.update({
+            where: { id: inviteAuth.id },
+            data: { status: 'expired' }
+          });
 
           return {
             authorized: false,
@@ -122,14 +129,16 @@ export async function checkUserAuthorization(
         }
 
         // Incrementar o contador de uso
-        await AuthorizedUser.findByIdAndUpdate(inviteAuth._id, {
-          $inc: { usedCount: 1 }
+        await prisma.authorizedUser.update({
+          where: { id: inviteAuth.id },
+          data: { usedCount: inviteAuth.usedCount + 1 }
         });
 
         // Se o código atingiu o número máximo de usos após este uso, marcar como expirado
         if (inviteAuth.maxUses && inviteAuth.usedCount + 1 >= inviteAuth.maxUses) {
-          await AuthorizedUser.findByIdAndUpdate(inviteAuth._id, {
-            status: 'expired'
+          await prisma.authorizedUser.update({
+            where: { id: inviteAuth.id },
+            data: { status: 'expired' }
           });
         }
 
@@ -143,12 +152,14 @@ export async function checkUserAuthorization(
     }
 
     // 4. Verificar se há uma solicitação pendente
-    const pendingRequest = await AuthorizedUser.findOne({
-      $or: [
-        { email: email },
-        { phoneNumber: phoneNumber }
-      ],
-      status: 'pending'
+    const pendingRequest = await prisma.authorizedUser.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { phoneNumber: phoneNumber }
+        ],
+        status: 'pending'
+      }
     });
 
     if (pendingRequest) {
@@ -187,15 +198,15 @@ export async function createAccessRequest(
   phoneNumber?: string,
   notes?: string
 ): Promise<{ success: boolean; message: string }> {
-  await dbConnect();
-
   try {
     // Verificar se já existe uma solicitação para este email/telefone
-    const existingRequest = await AuthorizedUser.findOne({
-      $or: [
-        { email: email },
-        { phoneNumber: phoneNumber }
-      ]
+    const existingRequest = await prisma.authorizedUser.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { phoneNumber: phoneNumber }
+        ]
+      }
     });
 
     if (existingRequest) {
@@ -212,20 +223,15 @@ export async function createAccessRequest(
       } else {
         // Atualizar solicitação rejeitada para pendente
         const noteToAdd = notes ? [notes] : [];
+        const currentNotes = existingRequest.notes as string[] || [];
 
-        if (Array.isArray(existingRequest.notes)) {
-          // Se já for um array, adicionar a nova nota
-          await AuthorizedUser.findByIdAndUpdate(existingRequest._id, {
+        await prisma.authorizedUser.update({
+          where: { id: existingRequest.id },
+          data: {
             status: 'pending',
-            $push: { notes: { $each: noteToAdd } }
-          });
-        } else {
-          // Se for string ou não existir, substituir por um array
-          await AuthorizedUser.findByIdAndUpdate(existingRequest._id, {
-            status: 'pending',
-            notes: noteToAdd
-          });
-        }
+            notes: [...currentNotes, ...noteToAdd]
+          }
+        });
 
         return {
           success: true,
@@ -235,14 +241,14 @@ export async function createAccessRequest(
     }
 
     // Criar nova solicitação
-    const newRequest = new AuthorizedUser({
-      email,
-      phoneNumber,
-      status: 'pending',
-      notes: notes ? [notes] : []
+    await prisma.authorizedUser.create({
+      data: {
+        email,
+        phoneNumber,
+        status: 'pending',
+        notes: notes ? [notes] : []
+      }
     });
-
-    await newRequest.save();
 
     // Aqui você poderia adicionar código para notificar administradores
     // sobre a nova solicitação de acesso
@@ -274,8 +280,6 @@ export async function generateInviteCode(
   expiryDays?: number,
   maxUses?: number
 ): Promise<{ success: boolean; inviteCode?: string; message: string; expiresAt?: Date; maxUses?: number }> {
-  await dbConnect();
-
   try {
     // Definir valores padrão para expiração e número máximo de usos
     const defaultExpiryDays = parseInt(process.env.INVITE_CODE_EXPIRY_DAYS || '30');
@@ -307,7 +311,10 @@ export async function generateInviteCode(
 
       try {
         // Verificar se o código já existe
-        const existingCode = await AuthorizedUser.findOne({ inviteCode });
+        const existingCode = await prisma.authorizedUser.findUnique({
+          where: { inviteCode }
+        });
+
         if (!existingCode) {
           isUnique = true;
           console.log('Código de convite único gerado:', inviteCode);
@@ -336,18 +343,19 @@ export async function generateInviteCode(
     });
 
     try {
-      const newInvite = new AuthorizedUser({
-        inviteCode,
-        status: 'active',
-        expiresAt,
-        maxUses: finalMaxUses,
-        usedCount: 0,
-        createdBy,
-        notes: notes ? [notes] : []
+      await prisma.authorizedUser.create({
+        data: {
+          inviteCode,
+          status: 'active',
+          expiresAt,
+          maxUses: finalMaxUses,
+          usedCount: 0,
+          createdBy,
+          notes: notes ? [notes] : []
+        }
       });
 
-      await newInvite.save();
-      console.log('Código de convite salvo com sucesso:', newInvite);
+      console.log('Código de convite salvo com sucesso');
     } catch (error) {
       console.error('Erro ao salvar código de convite:', error);
       throw error; // Propagar o erro para ser capturado no catch externo
@@ -381,11 +389,11 @@ export async function addAuthorizedDomain(
   createdBy?: string,
   notes?: string
 ): Promise<{ success: boolean; message: string }> {
-  await dbConnect();
-
   try {
     // Verificar se o domínio já está cadastrado
-    const existingDomain = await AuthorizedUser.findOne({ domain });
+    const existingDomain = await prisma.authorizedUser.findFirst({
+      where: { domain }
+    });
 
     if (existingDomain) {
       if (existingDomain.status === 'active') {
@@ -396,20 +404,15 @@ export async function addAuthorizedDomain(
       } else {
         // Atualizar domínio para ativo
         const noteToAdd = notes ? [notes] : [];
+        const currentNotes = existingDomain.notes as string[] || [];
 
-        if (Array.isArray(existingDomain.notes)) {
-          // Se já for um array, adicionar a nova nota
-          await AuthorizedUser.findByIdAndUpdate(existingDomain._id, {
+        await prisma.authorizedUser.update({
+          where: { id: existingDomain.id },
+          data: {
             status: 'active',
-            $push: { notes: { $each: noteToAdd } }
-          });
-        } else {
-          // Se for string ou não existir, substituir por um array
-          await AuthorizedUser.findByIdAndUpdate(existingDomain._id, {
-            status: 'active',
-            notes: noteToAdd
-          });
-        }
+            notes: [...currentNotes, ...noteToAdd]
+          }
+        });
 
         return {
           success: true,
@@ -419,14 +422,14 @@ export async function addAuthorizedDomain(
     }
 
     // Adicionar novo domínio
-    const newDomain = new AuthorizedUser({
-      domain,
-      status: 'active',
-      createdBy,
-      notes: notes ? [notes] : []
+    await prisma.authorizedUser.create({
+      data: {
+        domain,
+        status: 'active',
+        createdBy,
+        notes: notes ? [notes] : []
+      }
     });
-
-    await newDomain.save();
 
     return {
       success: true,
@@ -455,8 +458,6 @@ export async function addAuthorizedUser(
   createdBy?: string,
   notes?: string
 ): Promise<{ success: boolean; message: string }> {
-  await dbConnect();
-
   try {
     if (!email && !phoneNumber) {
       return {
@@ -466,11 +467,13 @@ export async function addAuthorizedUser(
     }
 
     // Verificar se o usuário já está cadastrado
-    const existingAuth = await AuthorizedUser.findOne({
-      $or: [
-        { email: email },
-        { phoneNumber: phoneNumber }
-      ]
+    const existingAuth = await prisma.authorizedUser.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { phoneNumber: phoneNumber }
+        ]
+      }
     });
 
     if (existingAuth) {
@@ -482,20 +485,15 @@ export async function addAuthorizedUser(
       } else {
         // Atualizar para ativo
         const noteToAdd = notes ? [notes] : [];
+        const currentNotes = existingAuth.notes as string[] || [];
 
-        if (Array.isArray(existingAuth.notes)) {
-          // Se já for um array, adicionar a nova nota
-          await AuthorizedUser.findByIdAndUpdate(existingAuth._id, {
+        await prisma.authorizedUser.update({
+          where: { id: existingAuth.id },
+          data: {
             status: 'active',
-            $push: { notes: { $each: noteToAdd } }
-          });
-        } else {
-          // Se for string ou não existir, substituir por um array
-          await AuthorizedUser.findByIdAndUpdate(existingAuth._id, {
-            status: 'active',
-            notes: noteToAdd
-          });
-        }
+            notes: [...currentNotes, ...noteToAdd]
+          }
+        });
 
         return {
           success: true,
@@ -505,15 +503,15 @@ export async function addAuthorizedUser(
     }
 
     // Adicionar novo usuário autorizado
-    const newAuth = new AuthorizedUser({
-      email,
-      phoneNumber,
-      status: 'active',
-      createdBy,
-      notes: notes ? [notes] : []
+    await prisma.authorizedUser.create({
+      data: {
+        email,
+        phoneNumber,
+        status: 'active',
+        createdBy,
+        notes: notes ? [notes] : []
+      }
     });
-
-    await newAuth.save();
 
     return {
       success: true,

@@ -77,7 +77,7 @@ export default function AuthorizedUsersManager() {
       }
 
       // Obter o token do localStorage
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -107,7 +107,7 @@ export default function AuthorizedUsersManager() {
   const fetchStats = async () => {
     try {
       // Obter o token do localStorage
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -168,7 +168,7 @@ export default function AuthorizedUsersManager() {
       console.log('Enviando solicitação para API:', payload);
 
       // Obter o token do localStorage
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -205,7 +205,7 @@ export default function AuthorizedUsersManager() {
           if (inviteEmail && result.inviteCode && result.expiresAt) {
             // Enviar email com o código de convite
             // Obter o token do localStorage
-            const token = localStorage.getItem('abzToken');
+            const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
             if (!token) {
               throw new Error('Token não encontrado. Faça login novamente.');
@@ -257,7 +257,7 @@ export default function AuthorizedUsersManager() {
   const handleApprove = async (id: string) => {
     try {
       // Obter o token do localStorage
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -304,7 +304,7 @@ export default function AuthorizedUsersManager() {
   const handleReject = async () => {
     try {
       // Obter o token do localStorage
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
@@ -352,7 +352,7 @@ export default function AuthorizedUsersManager() {
     try {
       console.log(`Excluindo usuário autorizado com ID: ${id}`);
       // Obter o token do localStorage
-      const token = localStorage.getItem('abzToken');
+      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');

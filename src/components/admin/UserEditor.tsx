@@ -18,14 +18,45 @@ export interface UserEditorData {
 }
 
 interface UserEditorProps {
-  user: UserEditorData;
+  user?: UserEditorData;
   onSave: (user: UserEditorData, password?: string) => void;
   onCancel: () => void;
-  isNew?: boolean;
+  isNewUser?: boolean;
+  isModal?: boolean;
 }
 
-const UserEditor: React.FC<UserEditorProps> = ({ user, onSave, onCancel, isNew = false }) => {
-  const [editedUser, setEditedUser] = useState<UserEditorData>({ ...user });
+const UserEditor: React.FC<UserEditorProps> = ({
+  user,
+  onSave,
+  onCancel,
+  isNewUser = false,
+  isModal = true
+}) => {
+  const defaultUser: UserEditorData = {
+    phoneNumber: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: 'USER',
+    position: '',
+    department: '',
+    accessPermissions: {
+      modules: {
+        dashboard: true,
+        manual: true,
+        procedimentos: true,
+        politicas: true,
+        calendario: true,
+        noticias: true,
+        reembolso: true,
+        contracheque: true,
+        ponto: true,
+        admin: false
+      }
+    }
+  };
+
+  const [editedUser, setEditedUser] = useState<UserEditorData>(user ? { ...user } : defaultUser);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -135,7 +166,7 @@ const UserEditor: React.FC<UserEditorProps> = ({ user, onSave, onCancel, isNew =
     }
 
     // Validar senha para novos usuários
-    if (isNew && !password) {
+    if (isNewUser && !password) {
       setPasswordError('A senha é obrigatória para novos usuários');
       return;
     }
@@ -150,12 +181,12 @@ const UserEditor: React.FC<UserEditorProps> = ({ user, onSave, onCancel, isNew =
     onSave(editedUser, password || undefined);
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+  const renderContent = () => (
+    <>
+      {isModal && (
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-xl font-semibold text-abz-blue">
-            {isNew ? 'Novo Usuário' : 'Editar Usuário'}
+            {isNewUser ? 'Novo Usuário' : 'Editar Usuário'}
           </h2>
           <button
             onClick={onCancel}
@@ -164,6 +195,7 @@ const UserEditor: React.FC<UserEditorProps> = ({ user, onSave, onCancel, isNew =
             <FiX className="h-6 w-6" />
           </button>
         </div>
+      )}
 
         <form onSubmit={handleSubmit} className="p-6">
           {passwordError && (
@@ -308,10 +340,10 @@ const UserEditor: React.FC<UserEditorProps> = ({ user, onSave, onCancel, isNew =
                   />
                 </div>
 
-                {isNew && (
+                {isNewUser && (
                   <div>
                     <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                      Senha{isNew ? '*' : ''}
+                      Senha{isNewUser ? '*' : ''}
                     </label>
                     <input
                       type="password"
@@ -320,11 +352,11 @@ const UserEditor: React.FC<UserEditorProps> = ({ user, onSave, onCancel, isNew =
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                      required={isNew}
+                      required={isNewUser}
                       minLength={8}
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      {isNew ? 'Mínimo de 8 caracteres' : 'Deixe em branco para manter a senha atual'}
+                      {isNewUser ? 'Mínimo de 8 caracteres' : 'Deixe em branco para manter a senha atual'}
                     </p>
                   </div>
                 )}
@@ -406,7 +438,24 @@ const UserEditor: React.FC<UserEditorProps> = ({ user, onSave, onCancel, isNew =
             </button>
           </div>
         </form>
+      </>
+  );
+
+  // Renderizar como modal ou como componente normal
+  if (isModal) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+          {renderContent()}
+        </div>
       </div>
+    );
+  }
+
+  // Renderizar como componente normal
+  return (
+    <div className="bg-white rounded-lg shadow-md">
+      {renderContent()}
     </div>
   );
 };

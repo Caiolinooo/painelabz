@@ -3,8 +3,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, isAdmin } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { prisma } from '@/lib/db';
 
 /**
  * Verifica a autenticação e autorização do usuário
@@ -36,16 +35,17 @@ export async function verifyAuth(request: NextRequest, requireAdmin = false) {
       };
     }
 
-    // Conectar ao banco de dados
-    await dbConnect();
-
     // Buscar usuário pelo ID
-    let user = await User.findById(payload.userId);
+    let user = await prisma.user.findUnique({
+      where: { id: payload.userId }
+    });
 
     // Se não encontrar pelo ID, tentar pelo número de telefone
     if (!user && payload.phoneNumber) {
       console.log('Usuário não encontrado pelo ID, tentando pelo telefone:', payload.phoneNumber);
-      user = await User.findOne({ phoneNumber: payload.phoneNumber });
+      user = await prisma.user.findUnique({
+        where: { phoneNumber: payload.phoneNumber }
+      });
     }
 
     // Verificar se o usuário existe

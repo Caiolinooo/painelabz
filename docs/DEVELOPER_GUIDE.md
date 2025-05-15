@@ -112,7 +112,7 @@ npm run dev
 │       ├── db.ts        # Cliente Prisma
 │       ├── jwt.ts       # Funções para JWT
 │       └── password.ts  # Funções para hash de senha
-├── .env                 # Variáveis de ambiente
+├── .env                 # Variáveis de ambiente (único arquivo de configuração)
 ├── next.config.js       # Configuração do Next.js
 ├── package.json         # Dependências e scripts
 ├── server.js            # Servidor Express para produção

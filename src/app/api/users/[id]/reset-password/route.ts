@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { prisma } from '@/lib/db';
+import bcrypt from 'bcryptjs';
 
 export async function POST(
   request: NextRequest,
@@ -28,9 +28,17 @@ export async function POST(
     }
 
     // Verificar se o usuário é administrador
-    await dbConnect();
-    const requestingUser = await User.findById(payload.userId);
-    
+    const requestingUser = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        accessHistory: true
+      }
+    });
+
     if (!requestingUser || requestingUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem redefinir senhas.' },
@@ -40,7 +48,7 @@ export async function POST(
 
     // Obter o ID do usuário dos parâmetros da rota
     const userId = params.id;
-    
+
     // Obter a nova senha do corpo da requisição
     const body = await request.json();
     const { password } = body;
@@ -54,7 +62,16 @@ export async function POST(
     }
 
     // Buscar o usuário
-    const user = await User.findById(userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        accessHistory: true
+      }
+    });
+
     if (!user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
@@ -62,25 +79,44 @@ export async function POST(
       );
     }
 
-    // Atualizar a senha
-    user.password = password;
-    
-    // Registrar no histórico de acesso
-    user.accessHistory.push({
-      timestamp: new Date(),
-      action: 'PASSWORD_RESET',
-      details: `Senha redefinida por ${requestingUser.firstName} ${requestingUser.lastName}`
+    // Gerar hash da senha
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Obter o histórico de acesso atual do usuário
+    const userAccessHistory = user.accessHistory || [];
+
+    // Atualizar a senha e registrar no histórico
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        passwordLastChanged: new Date(),
+        accessHistory: [
+          ...userAccessHistory,
+          {
+            timestamp: new Date(),
+            action: 'PASSWORD_RESET',
+            details: `Senha redefinida por ${requestingUser.firstName} ${requestingUser.lastName}`
+          }
+        ]
+      }
     });
-    
-    await user.save();
 
     // Registrar a ação no histórico do administrador
-    requestingUser.accessHistory.push({
-      timestamp: new Date(),
-      action: 'RESET_USER_PASSWORD',
-      details: `Redefiniu a senha do usuário ${user.firstName} ${user.lastName}`
+    const adminAccessHistory = requestingUser.accessHistory || [];
+    await prisma.user.update({
+      where: { id: requestingUser.id },
+      data: {
+        accessHistory: [
+          ...adminAccessHistory,
+          {
+            timestamp: new Date(),
+            action: 'RESET_USER_PASSWORD',
+            details: `Redefiniu a senha do usuário ${user.firstName} ${user.lastName}`
+          }
+        ]
+      }
     });
-    await requestingUser.save();
 
     return NextResponse.json({
       success: true,

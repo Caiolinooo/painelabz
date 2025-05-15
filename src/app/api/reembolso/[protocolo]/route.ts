@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Reimbursement from '@/models/Reimbursement';
+import { prisma } from '@/lib/db';
 
 // GET - Obter uma solicitação de reembolso pelo protocolo
 export async function GET(
@@ -8,13 +7,12 @@ export async function GET(
   { params }: { params: { protocolo: string } }
 ) {
   try {
-    // Conectar ao MongoDB
-    await dbConnect();
-    
     const protocolo = params.protocolo;
-    
-    // Buscar o reembolso pelo protocolo
-    const reembolso = await Reimbursement.findOne({ protocolo });
+
+    // Buscar o reembolso pelo protocolo usando Prisma
+    const reembolso = await prisma.reimbursement.findUnique({
+      where: { protocolo }
+    });
 
     if (!reembolso) {
       return NextResponse.json(
@@ -22,7 +20,7 @@ export async function GET(
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(reembolso);
   } catch (error) {
     console.error('Erro ao obter solicitação de reembolso:', error);
@@ -39,9 +37,6 @@ export async function PUT(
   { params }: { params: { protocolo: string } }
 ) {
   try {
-    // Conectar ao MongoDB
-    await dbConnect();
-    
     const protocolo = params.protocolo;
     const body = await request.json();
     const { status, observacao, usuarioId } = body;
@@ -55,7 +50,9 @@ export async function PUT(
     }
 
     // Buscar o reembolso pelo protocolo
-    const reembolso = await Reimbursement.findOne({ protocolo });
+    const reembolso = await prisma.reimbursement.findUnique({
+      where: { protocolo }
+    });
 
     if (!reembolso) {
       return NextResponse.json(
@@ -64,24 +61,27 @@ export async function PUT(
       );
     }
 
-    // Atualizar o status
-    reembolso.status = status;
-    
-    // Adicionar ao histórico
-    reembolso.historico.push({
+    // Criar novo item de histórico
+    const novoHistorico = {
       data: new Date(),
       status,
       observacao,
       usuarioId
+    };
+
+    // Atualizar o reembolso com Prisma
+    const reembolsoAtualizado = await prisma.reimbursement.update({
+      where: { protocolo },
+      data: {
+        status,
+        historico: [...reembolso.historico, novoHistorico]
+      }
     });
 
-    // Salvar as alterações
-    await reembolso.save();
-    
     return NextResponse.json({
       success: true,
       message: `Status atualizado para ${status}`,
-      data: reembolso
+      data: reembolsoAtualizado
     });
   } catch (error) {
     console.error('Erro ao atualizar solicitação de reembolso:', error);

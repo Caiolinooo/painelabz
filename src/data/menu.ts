@@ -15,7 +15,8 @@ import {
   FiClock,
   FiSettings,
   FiUsers,
-  FiKey
+  FiKey,
+  FiBarChart2
 } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 
@@ -28,6 +29,8 @@ export interface MenuItem {
   enabled: boolean;
   order: number;
   adminOnly: boolean;
+  managerOnly?: boolean;
+  forceShow?: boolean;
 }
 
 // Função para obter os itens do menu com traduções
@@ -134,13 +137,25 @@ export function getTranslatedMenu(t: (key: string, params?: Record<string, any>)
       adminOnly: false
     },
     {
+      id: 'avaliacao',
+      title: t('menu.avaliacao', 'Avaliação'),
+      href: '/avaliacao',
+      icon: FiBarChart2,
+      external: false,
+      enabled: true,
+      order: 11,
+      adminOnly: false,
+      managerOnly: true, // Restringir acesso apenas para gerentes e administradores
+      forceShow: false // Não forçar exibição do item de menu
+    },
+    {
       id: 'admin',
       title: t('menu.administracao'),
       href: '/admin',
       icon: FiSettings,
       external: false,
       enabled: true,
-      order: 11,
+      order: 12,
       adminOnly: true
     },
     // Removido o item 'usuarios-autorizados' do menu principal
@@ -251,13 +266,25 @@ const menuItems: MenuItem[] = [
     adminOnly: false
   },
   {
+    id: 'avaliacao',
+    href: '/avaliacao',
+    label: 'Avaliação',
+    icon: FiBarChart2,
+    external: false,
+    enabled: true,
+    order: 11,
+    adminOnly: false,
+    managerOnly: true, // Restringir acesso apenas para gerentes e administradores
+    forceShow: false // Não forçar exibição do item de menu
+  },
+  {
     id: 'admin',
     href: '/admin',
     label: 'Administração',
     icon: FiSettings,
     external: false,
     enabled: true,
-    order: 11,
+    order: 12,
     adminOnly: true
   },
   // Removido o item 'authorized-users' do menu principal

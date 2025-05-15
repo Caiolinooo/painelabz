@@ -15,7 +15,7 @@ const getPolicies = (t: (key: string, defaultValue?: string) => string) => [
     description: t('policies.hse.description', 'Diretrizes de Saúde, Segurança e Meio Ambiente do ABZ Group'),
     language: t('common.portuguese', 'Português'),
     category: 'HSE',
-    file: '/documentos/PL-HSE-R0 - Política de HSE_ABZ Group-PORT.pdf'
+    file: '/documentos/politicas/PL-HSE-R0 - Política de HSE_ABZ Group-PORT.pdf'
   },
   {
     id: 'qua-pt',
@@ -23,7 +23,7 @@ const getPolicies = (t: (key: string, defaultValue?: string) => string) => [
     description: t('policies.quality.description', 'Política de Qualidade e Gestão do ABZ Group'),
     language: t('common.portuguese', 'Português'),
     category: 'Qualidade',
-    file: '/documentos/PL-QUA-R8 - Politica da Qualidade_ABZ Group-PORT.pdf'
+    file: '/documentos/politicas/PL-QUA-R8 - Politica da Qualidade_ABZ Group-PORT.pdf'
   },
   {
     id: 'qua-en',
@@ -31,7 +31,7 @@ const getPolicies = (t: (key: string, defaultValue?: string) => string) => [
     description: t('policies.quality.descriptionEn', 'ABZ Group Quality Management Policy'),
     language: t('common.english', 'English'),
     category: 'Qualidade',
-    file: '/documentos/PL-QUA-a-R8 - Quality Policy_ABZ Group-ENG.pdf'
+    file: '/documentos/politicas/PL-QUA-a-R8 - Quality Policy_ABZ Group-ENG.pdf'
   },
 ];
 
