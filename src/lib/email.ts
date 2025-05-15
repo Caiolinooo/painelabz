@@ -4,17 +4,13 @@
  * Use src/lib/email-client.ts para componentes do cliente.
  */
 
-// Escolher o provedor de email com base no ambiente
-const isProduction = process.env.NODE_ENV === 'production';
+// Usar Gmail para todos os ambientes (desenvolvimento e produção)
+console.log('Usando Gmail para envio de emails em todos os ambientes');
+console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
+console.log(`Host: ${process.env.EMAIL_HOST || 'smtp.gmail.com'}`);
+console.log(`Porta: ${process.env.EMAIL_PORT || '465'}`);
+console.log(`Usuário: ${process.env.EMAIL_USER || 'apiabzgroup@gmail.com'}`);
+console.log(`Remetente: ${process.env.EMAIL_FROM || 'apiabzgroup@gmail.com'}`);
 
-// Log para debug
-console.log(`Ambiente: ${isProduction ? 'produção' : 'desenvolvimento'}`);
-console.log(`Configuração de email: ${isProduction ? 'Office 365/Exchange' : 'SendGrid'}`);
-console.log(`Host: ${process.env.EMAIL_HOST}`);
-console.log(`Porta: ${process.env.EMAIL_PORT}`);
-console.log(`Usuário: ${process.env.EMAIL_USER}`);
-console.log(`Remetente: ${process.env.EMAIL_FROM}`);
-
-// Em produção, usar Office 365/Exchange
-// Em desenvolvimento, usar SendGrid
-export * from './email-exchange';
+// Exportar as funções do Gmail
+export * from './email-gmail';
