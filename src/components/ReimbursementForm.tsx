@@ -103,9 +103,15 @@ export default function ReimbursementForm() {
     try {
       setSubmitting(true);
 
+      // Normalizar o valor total para um formato que o banco de dados possa processar
+      // Substituir pontos de milhar e converter vírgula para ponto decimal
+      const normalizedValue = data.valorTotal.replace(/\./g, '').replace(',', '.');
+
       // Preparar os dados para envio
       const formData = {
         ...data,
+        // Substituir o valor formatado pelo valor normalizado
+        valorTotal: normalizedValue,
         // Converter os comprovantes para o formato esperado pela API
         comprovantes: data.comprovantes.map((file: any) => ({
           nome: file.name,

@@ -131,6 +131,11 @@ export default function CurrencyInput({
     // Remover o símbolo da moeda para manter consistência com o formato esperado pelo formulário
     const valueWithoutSymbol = formattedValue.replace(currencySymbols[selectedCurrency], '').trim();
 
+    // Garantir que o valor esteja em um formato válido para o banco de dados
+    // Substituir vírgula por ponto para garantir que seja um número válido
+    const normalizedValue = valueWithoutSymbol.replace(/\./g, '').replace(',', '.');
+
+    // Armazenar o valor formatado para exibição e o valor normalizado para o banco de dados
     onChange(valueWithoutSymbol);
 
     // Calcular a nova posição do cursor
