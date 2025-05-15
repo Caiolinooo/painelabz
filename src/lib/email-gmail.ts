@@ -6,42 +6,26 @@
 
 import nodemailer from 'nodemailer';
 
-// Configuração do Gmail com otimizações avançadas para evitar spam
+// Configuração do Gmail com otimizações simplificadas para maior compatibilidade
 const emailConfig = {
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.EMAIL_PORT || '465'),
-  secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para outras portas
+  service: 'gmail', // Usar o serviço pré-configurado do Gmail
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // true para 465
   auth: {
     user: process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
     pass: process.env.EMAIL_PASSWORD || 'zbli vdst fmco dtfc'
   },
-  // Configurações para melhorar a entregabilidade
-  pool: true, // Usar conexões persistentes
-  maxConnections: 5,
-  maxMessages: 100,
-  // Configurações de timeout
-  connectionTimeout: 10000, // 10 segundos
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-  // Configurações de segurança
+  // Configurações de timeout mais generosas
+  connectionTimeout: 30000, // 30 segundos
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
+  // Configurações de segurança simplificadas
   tls: {
-    rejectUnauthorized: process.env.NODE_ENV === 'production',
-    ciphers: 'SSLv3', // Usar cifras mais fortes
-    minVersion: 'TLSv1.2' // Usar versão mínima de TLS 1.2
+    rejectUnauthorized: false, // Aceitar certificados auto-assinados
   },
-  // Configurações de DKIM (se disponíveis)
-  dkim: process.env.DKIM_PRIVATE_KEY ? {
-    domainName: process.env.DKIM_DOMAIN || 'abzgroup.com.br',
-    keySelector: process.env.DKIM_SELECTOR || 'default',
-    privateKey: process.env.DKIM_PRIVATE_KEY,
-  } : undefined,
-  // Configurações adicionais
-  name: 'ABZ Group Mailer', // Identificação do servidor
-  localAddress: process.env.EMAIL_LOCAL_ADDRESS, // Endereço IP local (se necessário)
-  // Desativar verificação de certificado em ambiente de desenvolvimento
-  ignoreTLS: process.env.NODE_ENV !== 'production',
-  // Usar STARTTLS quando disponível
-  opportunisticTLS: true
+  debug: process.env.NODE_ENV !== 'production', // Ativar debug em desenvolvimento
+  logger: process.env.NODE_ENV !== 'production' // Ativar logger em desenvolvimento
 };
 
 // Log para debug
@@ -60,22 +44,44 @@ export async function createTransport() {
   try {
     console.log('Inicializando transporte de email com Gmail');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
+    console.log('Configuração detalhada:', {
+      service: emailConfig.service,
+      host: emailConfig.host,
+      port: emailConfig.port,
+      secure: emailConfig.secure,
+      user: emailConfig.auth.user,
+      // Não logar a senha por segurança
+      debug: emailConfig.debug,
+      logger: emailConfig.logger
+    });
 
-    // Criar transporter com configuração otimizada para Gmail
-    const transporter = nodemailer.createTransport(emailConfig);
+    // Criar transporter com configuração simplificada para Gmail
+    // Usar configuração mais simples para maior compatibilidade
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailConfig.auth.user,
+        pass: emailConfig.auth.pass
+      }
+    });
 
     // Verificar conexão
-    console.log('Verificando conexão com o servidor SMTP...');
+    console.log('Verificando conexão com o servidor SMTP do Gmail...');
     await transporter.verify();
-    console.log('Conexão com o servidor SMTP verificada com sucesso');
+    console.log('Conexão com o servidor SMTP do Gmail verificada com sucesso');
 
     return transporter;
   } catch (error) {
-    console.error('Erro ao inicializar transporte de email:', error);
+    console.error('Erro ao inicializar transporte de email com Gmail:', error);
 
-    // Tentar criar uma conta de teste Ethereal
+    if (error instanceof Error) {
+      console.error('Detalhes do erro:', error.message);
+      console.error('Stack trace:', error.stack);
+    }
+
+    // Tentar criar uma conta de teste Ethereal como fallback
     try {
-      console.log('Tentando criar conta de teste Ethereal...');
+      console.log('Tentando criar conta de teste Ethereal como fallback...');
       const testAccount = await nodemailer.createTestAccount();
 
       const etherealTransporter = nodemailer.createTransport({
@@ -85,12 +91,15 @@ export async function createTransport() {
         auth: {
           user: testAccount.user,
           pass: testAccount.pass
-        }
+        },
+        debug: true,
+        logger: true
       });
 
       console.log('Conta de teste Ethereal criada:', {
         user: testAccount.user,
-        pass: testAccount.pass
+        pass: testAccount.pass,
+        previewURL: `https://ethereal.email/message/`
       });
 
       // Verificar conexão
@@ -100,7 +109,13 @@ export async function createTransport() {
       return etherealTransporter;
     } catch (fallbackError) {
       console.error('Erro ao criar conta de teste Ethereal:', fallbackError);
-      throw new Error('Não foi possível inicializar nenhum transporte de email');
+
+      if (fallbackError instanceof Error) {
+        console.error('Detalhes do erro fallback:', fallbackError.message);
+        console.error('Stack trace fallback:', fallbackError.stack);
+      }
+
+      throw new Error(`Não foi possível inicializar nenhum transporte de email: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 }
@@ -131,10 +146,16 @@ export async function sendEmail(
   }
 ) {
   try {
-    // Criar transporte
-    const transport = await createTransport();
+    // Criar transporte com configuração simplificada para Gmail
+    const transport = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailConfig.auth.user,
+        pass: emailConfig.auth.pass
+      }
+    });
 
-    // Preparar opções do e-mail com cabeçalhos anti-spam aprimorados
+    // Preparar opções do e-mail com configuração simplificada
     const mailOptions = {
       from: options?.from || process.env.EMAIL_FROM || '"ABZ Group" <apiabzgroup@gmail.com>',
       to,
@@ -144,40 +165,7 @@ export async function sendEmail(
       text,
       html,
       attachments: options?.attachments,
-      // Cabeçalhos para melhorar a entregabilidade e evitar spam
-      headers: {
-        // Prioridade do email (usar com moderação, pois pode aumentar chance de spam)
-        'X-Priority': '3', // Mudado para prioridade normal (3) em vez de alta (1)
-        'X-MSMail-Priority': 'Normal',
-        'Importance': 'Normal',
-        // Identificação do remetente
-        'X-Mailer': 'ABZ Group Mailer',
-        'X-Sender': process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
-        // Opção de descadastramento (importante para evitar spam)
-        'List-Unsubscribe': `<mailto:${process.env.EMAIL_USER || 'apiabzgroup@gmail.com'}?subject=Unsubscribe>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        // Identificação da mensagem
-        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2)}@${process.env.DKIM_DOMAIN || 'abzgroup.com.br'}>`,
-        // Feedback loop
-        'Feedback-ID': `${Date.now()}:abzgroup:${process.env.NODE_ENV || 'production'}`,
-        // Cabeçalhos adicionais para autenticação
-        'X-Report-Abuse': `Please report abuse to ${process.env.EMAIL_CONTACT || 'contato@abzgroup.com.br'}`,
-        'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN, AutoReply',
-        // Cabeçalhos para conformidade com regulamentações
-        'Precedence': 'bulk',
-        // Cabeçalhos para melhorar a entregabilidade
-        'X-Entity-Ref-ID': `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-        // Cabeçalho para indicar que é um email transacional (não marketing)
-        'X-Email-Type': 'transactional'
-      },
       // Configurações adicionais
-      encoding: 'utf-8',
-      priority: 'normal', // Mudado para normal em vez de high
-      disableFileAccess: true,
-      disableUrlAccess: true,
-      // Adicionar um ID de mensagem personalizado
-      messageId: `<${Date.now()}.${Math.random().toString(36).substring(2)}@${process.env.DKIM_DOMAIN || 'abzgroup.com.br'}>`,
-      // Adicionar um endereço de resposta
       replyTo: process.env.EMAIL_REPLY_TO || process.env.EMAIL_USER || 'apiabzgroup@gmail.com'
     };
 
@@ -428,17 +416,61 @@ export async function sendInvitationEmail(
  */
 export async function testEmailConnection() {
   try {
-    const transport = await createTransport();
-    await transport.verify();
+    console.log('Testando conexão com o servidor de email Gmail...');
+    console.log('Configuração:', {
+      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      user: emailConfig.auth.user,
+      // Não logar a senha por segurança
+      environment: process.env.NODE_ENV || 'development'
+    });
+
+    // Criar transporter com configuração simplificada para Gmail
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailConfig.auth.user,
+        pass: emailConfig.auth.pass
+      }
+    });
+
+    // Verificar conexão
+    await transporter.verify();
+    console.log('Teste de conexão com Gmail bem-sucedido!');
 
     return {
       success: true,
-      message: 'Conexão com o servidor SMTP verificada com sucesso'
+      message: 'Conexão com o servidor Gmail verificada com sucesso',
+      config: {
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        user: emailConfig.auth.user,
+        environment: process.env.NODE_ENV || 'development'
+      }
     };
   } catch (error) {
+    console.error('Erro ao testar conexão com o servidor Gmail:', error);
+
+    if (error instanceof Error) {
+      console.error('Detalhes do erro:', error.message);
+      console.error('Stack trace:', error.stack);
+    }
+
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Erro desconhecido'
+      message: error instanceof Error ? error.message : 'Erro desconhecido',
+      config: {
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        user: emailConfig.auth.user,
+        environment: process.env.NODE_ENV || 'development'
+      }
     };
   }
 }
