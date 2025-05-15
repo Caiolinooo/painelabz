@@ -4,8 +4,8 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { FiLock, FiKey, FiShield } from 'react-icons/fi';
-import TwoFactorSetup from '@/components/auth/TwoFactorSetup';
-import PasswordChange from '@/components/auth/PasswordChange';
+import TwoFactorSetup from '@/components/Auth/TwoFactorSetup';
+import PasswordChange from '@/components/Auth/PasswordChange';
 
 export default function SecuritySettingsPage() {
   const { isAuthenticated, loading } = useAuth();
@@ -43,12 +43,12 @@ export default function SecuritySettingsPage() {
             <FiKey className="text-abz-blue text-xl mr-2" />
             <h2 className="text-xl font-semibold">Alterar Senha</h2>
           </div>
-          
+
           <p className="mb-4 text-gray-700">
             Recomendamos alterar sua senha regularmente para manter sua conta segura.
             Use uma senha forte com pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e símbolos.
           </p>
-          
+
           <PasswordChange />
         </div>
 
