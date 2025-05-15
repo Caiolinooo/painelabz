@@ -41,7 +41,8 @@ export default function ProtectedRoute({
   const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
   const shouldBeAdmin = user?.email === adminEmail || user?.phoneNumber === adminPhone;
 
-  // Forçar acesso de administrador para o usuário principal
+  // Forçar acesso de administrador para o usuário principal (mesmo em produção)
+  // Isso garante que o usuário principal sempre tenha acesso ao painel de administração
   const forceAdmin = shouldBeAdmin && !isAdmin;
 
   // Verificar se estamos na rota de avaliação
