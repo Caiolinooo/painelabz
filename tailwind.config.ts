@@ -13,10 +13,10 @@ const config: Config = {
         sans: ["var(--font-plus-jakarta)", "sans-serif"],
       },
       colors: {
-        'abz-purple': '#6339F5',
+        'abz-purple': 'var(--secondary-color, #6339F5)',
         'abz-purple-dark': '#5128D4',
         'abz-blue-dark': '#0D1B42',
-        'abz-blue': '#005dff',
+        'abz-blue': 'var(--primary-color, #005dff)',
         'abz-background': '#F5F5F5',
         'abz-light-blue': '#E0F2FE',
         'abz-text-dark': '#111111',
@@ -47,6 +47,15 @@ const config: Config = {
               },
             },
           },
+        },
+      },
+      animation: {
+        'fadeIn': 'fadeIn 0.2s ease-in-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
     },
