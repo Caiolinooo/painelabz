@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useI18n } from '@/contexts/I18nContext';
-import ImportUsers from '@/components/Admin/UserImport/ImportUsers';
+import ImportUsers from '@/components/admin/UserImport/ImportUsers';
 import { FiUsers, FiUploadCloud, FiInfo, FiFileText, FiBarChart2 } from 'react-icons/fi';
 
 export default function ImportUsersPage() {
