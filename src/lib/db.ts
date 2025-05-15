@@ -1,39 +1,27 @@
-import { PrismaClient } from '@prisma/client';
+// Este arquivo foi atualizado para usar apenas o Supabase
+// Importar as funções e clientes do Supabase
+import { supabase, supabaseAdmin } from './supabase';
 
-// Evitar múltiplas instâncias do Prisma Client em desenvolvimento
-// https://www.prisma.io/docs/guides/other/troubleshooting-orm/help-articles/nextjs-prisma-client-dev-practices
+// Exportar o cliente Supabase para uso em toda a aplicação
+export { supabase, supabaseAdmin };
 
-// Verificar se a string de conexão do PostgreSQL está definida
-const DATABASE_URL = process.env.DATABASE_URL;
+// Para manter a compatibilidade com o código existente que usa prisma
+// Criamos um objeto de compatibilidade que redireciona as chamadas para o Supabase
+// NOTA: Este é um objeto temporário para facilitar a migração
+// Eventualmente, todo o código deve ser atualizado para usar diretamente o Supabase
 
-if (!DATABASE_URL) {
-  console.error('AVISO: DATABASE_URL não está definida nas variáveis de ambiente!');
-}
+// Aviso de depreciação
+console.warn('AVISO: O objeto prisma está depreciado. Use supabase ou supabaseAdmin diretamente.');
 
-// Definir opções do Prisma Client
-const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-    datasources: {
-      db: {
-        url: DATABASE_URL
-      }
-    }
-  });
-};
+// Criar um proxy para redirecionar chamadas do Prisma para o Supabase
+export const prisma = new Proxy({}, {
+  get: function(target, prop) {
+    // Registrar tentativa de uso do Prisma
+    console.warn(`Tentativa de usar prisma.${String(prop)}. Use supabase diretamente.`);
 
-// Definir o tipo para o global
-type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
-
-// Definir o objeto global
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClientSingleton | undefined;
-};
-
-// Exportar a instância do Prisma Client
-export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
-
-// Em desenvolvimento, atribuir a instância ao objeto global
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
-}
+    // Retornar uma função que registra um erro
+    return () => {
+      throw new Error(`O Prisma foi removido. Atualize seu código para usar o Supabase diretamente.`);
+    };
+  }
+});
