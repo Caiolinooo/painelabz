@@ -91,21 +91,32 @@ export default function ReimbursementForm() {
     }
   });
 
-  // Watch values for conditional rendering
-  const metodoPagamento = watch('metodoPagamento');
-  const pixTipo = watch('pixTipo');
-  const comprovantes = watch('comprovantes');
-  const tipoReembolso = watch('tipoReembolso');
+  // Watch values for conditional rendering with fallbacks for undefined values
+  const metodoPagamento = watch('metodoPagamento') || 'agente';
+  const pixTipo = watch('pixTipo') || null;
+  const comprovantes = watch('comprovantes') || [];
+  const tipoReembolso = watch('tipoReembolso') || 'alimentacao';
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>('BRL');
 
   // Handle form submission
   const onSubmit = async (data: FormValues) => {
     try {
       setSubmitting(true);
+      console.log('Iniciando envio do formulário de reembolso...');
 
       // Normalizar o valor total para um formato que o banco de dados possa processar
       // Substituir pontos de milhar e converter vírgula para ponto decimal
       const normalizedValue = data.valorTotal.replace(/\./g, '').replace(',', '.');
+      console.log(`Valor normalizado: ${normalizedValue} (original: ${data.valorTotal})`);
+
+      // Verificar se há comprovantes
+      if (!data.comprovantes || data.comprovantes.length === 0) {
+        toast.error('É necessário anexar pelo menos um comprovante.');
+        setSubmitting(false);
+        return;
+      }
+
+      console.log(`Comprovantes anexados: ${data.comprovantes.length}`);
 
       // Preparar os dados para envio
       const formData = {
@@ -113,32 +124,83 @@ export default function ReimbursementForm() {
         // Substituir o valor formatado pelo valor normalizado
         valorTotal: normalizedValue,
         // Converter os comprovantes para o formato esperado pela API
-        comprovantes: data.comprovantes.map((file: any) => ({
-          nome: file.name,
-          url: file.id, // Usamos o ID como URL temporária
-          tipo: file.type,
-          tamanho: file.size
-        }))
+        comprovantes: data.comprovantes.map((file: any) => {
+          // Verificar se é um arquivo local (fallback quando o bucket não existe)
+          const isLocalFile = file.isLocalFile === true;
+
+          // Processar o buffer se existir
+          let base64Buffer = null;
+          if (file.buffer) {
+            try {
+              // Verificar se o buffer já é uma string DataURL
+              if (typeof file.buffer === 'string' && file.buffer.startsWith('data:')) {
+                // Já é uma DataURL, usar diretamente
+                base64Buffer = file.buffer;
+                console.log(`Arquivo ${file.name} já tem DataURL (${base64Buffer.length} caracteres)`);
+              } else if (file.buffer instanceof ArrayBuffer) {
+                // Converter ArrayBuffer para string base64
+                const bytes = new Uint8Array(file.buffer);
+                const len = bytes.byteLength;
+                let binary = '';
+                for (let i = 0; i < len; i++) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+                base64Buffer = btoa(binary);
+                console.log(`Buffer do arquivo ${file.name} convertido para base64 (${base64Buffer.length} caracteres)`);
+              } else {
+                console.log(`Tipo de buffer não reconhecido para ${file.name}: ${typeof file.buffer}`);
+              }
+            } catch (bufferError) {
+              console.error(`Erro ao processar buffer: ${file.name}`, bufferError);
+            }
+          }
+
+          return {
+            nome: file.name,
+            url: file.id, // ID é o nome do arquivo no storage ou um ID local
+            tipo: file.type,
+            tamanho: file.size,
+            publicUrl: file.url, // URL pública para acesso ao arquivo
+            isLocalFile: isLocalFile, // Indicar se é um arquivo local
+            // Se for um arquivo local, incluir o arquivo original para upload posterior
+            file: isLocalFile ? file.file : undefined,
+            // Incluir os dados binários do arquivo como base64
+            buffer: base64Buffer,
+            // Incluir dados brutos para processamento no servidor
+            dados: base64Buffer
+          };
+        })
       };
+
+      console.log('Enviando dados para a API...');
+
+      // Obter token de autenticação
+      const token = localStorage.getItem('supabase.auth.token');
 
       // Enviar para a API
       const response = await fetch('/api/reembolso', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify(formData),
       });
 
+      console.log(`Resposta da API: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Erro retornado pela API:', errorData);
         throw new Error(errorData.error || 'Erro ao enviar formulário');
       }
 
       const result = await response.json();
+      console.log('Resultado do envio:', result);
 
       // Salvar o protocolo
       setProtocol(result.protocolo);
+      console.log(`Protocolo gerado: ${result.protocolo}`);
 
       // Mostrar mensagem de sucesso
       toast.success('Formulário enviado com sucesso!');
@@ -348,7 +410,7 @@ export default function ReimbursementForm() {
                       { value: 'omega', label: 'Omega' },
                       { value: 'constellation', label: 'Constellation' },
                       { value: 'sentinel', label: 'Sentinel' },
-                      { value: 'ahn', label: 'AHN' }
+                      { value: 'ahk', label: 'AHK' }
                     ]}
                     error={errors.centroCusto?.message}
                   />

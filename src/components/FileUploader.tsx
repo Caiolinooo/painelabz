@@ -2,15 +2,22 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUpload, FiX, FiFile, FiImage, FiPaperclip } from 'react-icons/fi';
+import { FiUpload, FiX, FiFile, FiImage, FiPaperclip, FiLoader } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
+import { uploadReimbursementAttachment } from '@/services/reimbursementService';
+import toast from 'react-hot-toast';
 
 export interface UploadedFile {
   id: string;
   name: string;
   size: number;
   type: string;
-  file: File;
+  file?: File;
+  url?: string;
+  uploading?: boolean;
+  uploadError?: string;
+  buffer?: ArrayBuffer | null; // Dados binários do arquivo
+  isLocalFile?: boolean; // Indica se o arquivo é local
 }
 
 interface FileUploaderProps {
@@ -72,7 +79,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     return null;
   }, [acceptedFileTypes, maxSizeInBytes, maxSizeInMB, isEnglish]);
 
-  const processFiles = useCallback((fileList: FileList) => {
+  const processFiles = useCallback(async (fileList: FileList) => {
     setError(null);
 
     // Check if adding these files would exceed the maximum
@@ -86,6 +93,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const newFiles: UploadedFile[] = [];
     let hasErrors = false;
 
+    // First add all files with uploading status
     Array.from(fileList).forEach(file => {
       const validationError = validateFile(file);
       if (validationError) {
@@ -94,19 +102,184 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         return;
       }
 
+      const tempId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Criar um objeto para armazenar os dados binários do arquivo
+      const reader = new FileReader();
+
+      // Adicionar o arquivo à lista de novos arquivos
       newFiles.push({
-        id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: tempId,
         name: file.name,
         size: file.size,
         type: file.type,
-        file: file
+        file: file,
+        uploading: true
       });
+
+      // Ler o arquivo como DataURL para obter os dados binários em base64
+      reader.readAsDataURL(file);
+
+      // Quando a leitura for concluída, armazenar os dados binários
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+
+        // Atualizar o arquivo com os dados binários
+        const fileIndex = newFiles.findIndex(f => f.id === tempId);
+        if (fileIndex !== -1) {
+          newFiles[fileIndex] = {
+            ...newFiles[fileIndex],
+            buffer: dataUrl, // Armazenar os dados como DataURL
+            isLocalFile: true // Marcar como arquivo local
+          };
+
+          console.log(`Dados binários capturados para ${file.name} (${dataUrl.length} caracteres)`);
+
+          // Atualizar o estado com os dados binários
+          onFilesChange([...files, ...newFiles]);
+        }
+      };
+
+      // Adicionar um handler para erros de leitura
+      reader.onerror = (error) => {
+        console.error(`Erro ao ler arquivo ${file.name}:`, error);
+
+        // Atualizar o arquivo com o erro
+        const fileIndex = newFiles.findIndex(f => f.id === tempId);
+        if (fileIndex !== -1) {
+          newFiles[fileIndex] = {
+            ...newFiles[fileIndex],
+            uploadError: 'Erro ao ler o arquivo'
+          };
+
+          // Atualizar o estado com o erro
+          onFilesChange([...files, ...newFiles]);
+        }
+      };
     });
 
     if (!hasErrors) {
+      // Add the files to state with uploading status
+      onFilesChange([...files, ...newFiles]);
+
+      // Upload each file to Supabase
+      for (let i = 0; i < newFiles.length; i++) {
+        const fileToUpload = newFiles[i];
+        const file = fileToUpload.file;
+
+        if (!file) continue;
+
+        try {
+          // Try to upload the file to Supabase
+          try {
+            const uploadedFile = await uploadReimbursementAttachment(file);
+
+            // Update the file with the upload result
+            const updatedFile = {
+              ...fileToUpload,
+              id: uploadedFile.id,
+              url: uploadedFile.url,
+              uploading: false
+            };
+
+            // Update the file in the array
+            newFiles[i] = updatedFile;
+
+            // Update the state with the current progress
+            onFilesChange([
+              ...files,
+              ...newFiles.map((f, index) => index === i ? updatedFile : f)
+            ]);
+          } catch (uploadError) {
+            console.error('Error uploading file to Supabase:', uploadError);
+
+            // If the error is related to the bucket not existing or RLS policies, use a local fallback
+            if (uploadError instanceof Error &&
+                (uploadError.message.includes('bucket') ||
+                 uploadError.message.includes('not found') ||
+                 uploadError.message.includes('does not exist') ||
+                 uploadError.message.includes('row-level security') ||
+                 uploadError.message.includes('RLS') ||
+                 uploadError.message.includes('policy') ||
+                 uploadError.message.includes('permission denied'))) {
+
+              console.log('Using local file reference as fallback due to storage error:', uploadError.message);
+
+              // Generate a local ID for the file
+              const localId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+              // Create a local URL for the file (this will be temporary)
+              const localUrl = URL.createObjectURL(file);
+
+              // Update the file with local reference
+              const localFile = {
+                ...fileToUpload,
+                id: localId,
+                url: localUrl,
+                uploading: false,
+                isLocalFile: true, // Mark as local file
+                buffer: fileToUpload.buffer // Manter os dados binários
+              };
+
+              // Update the file in the array
+              newFiles[i] = localFile;
+
+              // Update the state with the local file
+              onFilesChange([
+                ...files,
+                ...newFiles.map((f, index) => index === i ? localFile : f)
+              ]);
+
+              // Show warning toast with appropriate message
+              const errorType = uploadError.message.includes('row-level security') ||
+                                uploadError.message.includes('RLS') ||
+                                uploadError.message.includes('policy') ||
+                                uploadError.message.includes('permission denied')
+                ? 'RLS policy'
+                : 'bucket';
+
+              // Use a simple alert instead of toast to avoid any issues
+              alert(
+                isEnglish
+                  ? `File stored locally due to storage ${errorType} issues. The file will be included in your submission, but may not be permanently stored.`
+                  : `Arquivo armazenado localmente devido a problemas de ${errorType === 'RLS policy' ? 'permissão' : 'bucket'} no armazenamento. O arquivo será incluído na sua solicitação, mas pode não ser armazenado permanentemente.`
+              );
+            } else {
+              // For other errors, show the error
+              throw uploadError;
+            }
+          }
+        } catch (err) {
+          console.error('Error processing file:', err);
+
+          // Update the file with the error
+          const errorFile = {
+            ...fileToUpload,
+            uploading: false,
+            uploadError: err instanceof Error ? err.message : 'Erro ao fazer upload'
+          };
+
+          // Update the file in the array
+          newFiles[i] = errorFile;
+
+          // Update the state with the error
+          onFilesChange([
+            ...files,
+            ...newFiles.map((f, index) => index === i ? errorFile : f)
+          ]);
+
+          // Show error alert with more details
+          const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+          alert(isEnglish
+            ? `Error uploading ${fileToUpload.name}: ${errorMessage}`
+            : `Erro ao fazer upload de ${fileToUpload.name}: ${errorMessage}`);
+        }
+      }
+
+      // Final update with all files processed
       onFilesChange([...files, ...newFiles]);
     }
-  }, [files, maxFiles, onFilesChange, validateFile]);
+  }, [files, maxFiles, onFilesChange, validateFile, isEnglish]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -223,15 +396,35 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex items-center justify-between bg-white p-2 rounded border border-gray-200"
+                    className={`flex items-center justify-between bg-white p-2 rounded border ${
+                      file.uploadError ? 'border-red-300 bg-red-50' :
+                      file.uploading ? 'border-blue-300 bg-blue-50' :
+                      'border-gray-200'
+                    }`}
                   >
                     <div className="flex items-center">
-                      {getFileIcon(file.type)}
+                      {file.uploading ? (
+                        <div className="animate-spin">
+                          <FiLoader className="w-5 h-5 text-blue-500" />
+                        </div>
+                      ) : file.uploadError ? (
+                        <FiX className="w-5 h-5 text-red-500" />
+                      ) : (
+                        getFileIcon(file.type)
+                      )}
                       <div className="ml-2">
                         <p className="text-sm font-medium text-gray-700 truncate max-w-xs">
                           {file.name}
                         </p>
-                        <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                        <p className="text-xs text-gray-500">
+                          {file.uploadError ? (
+                            <span className="text-red-500">{file.uploadError}</span>
+                          ) : file.uploading ? (
+                            <span className="text-blue-500">{isEnglish ? 'Uploading...' : 'Enviando...'}</span>
+                          ) : (
+                            formatFileSize(file.size)
+                          )}
+                        </p>
                       </div>
                     </div>
                     <button
@@ -241,8 +434,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                         handleRemoveFile(file.id);
                       }}
                       className="text-gray-400 hover:text-red-500 focus:outline-none"
+                      disabled={file.uploading}
                     >
-                      <FiX className="h-5 w-5" />
+                      <FiX className={`h-5 w-5 ${file.uploading ? 'opacity-50 cursor-not-allowed' : ''}`} />
                     </button>
                   </motion.li>
                 ))}
