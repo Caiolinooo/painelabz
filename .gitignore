@@ -53,6 +53,8 @@ next-env.d.ts
 /painel-abz-migration-new/
 /painel-abz-supabase-migration-clean/
 /painel-abz/
+/temp-files/
+/debug/
 
 # test files
 /test-*.csv
