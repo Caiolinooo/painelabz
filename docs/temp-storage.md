@@ -40,7 +40,26 @@ O armazenamento temporário não requer configuração adicional. Os arquivos s�
 
 ### Google Drive (Opcional)
 
-Para configurar a integração com o Google Drive, siga os passos abaixo:
+Existem duas maneiras de configurar a integração com o Google Drive:
+
+#### Método 1: Usando API Key (Recomendado)
+
+Este método é mais simples e não requer autenticação OAuth.
+
+1. Execute o script de configuração:
+   ```bash
+   npm run setup:drive:api
+   ```
+
+2. Siga as instruções para criar um projeto no Google Cloud Console e configurar uma API Key.
+
+3. Crie uma pasta no Google Drive para armazenar os anexos e obtenha o ID da pasta.
+
+4. As configurações serão salvas no arquivo `.env` do projeto.
+
+#### Método 2: Usando OAuth 2.0
+
+Este método requer um fluxo de autenticação OAuth mais complexo.
 
 1. Execute o script de configuração:
    ```bash

@@ -46,6 +46,7 @@
     "test:email": "tsc && node scripts/test-reimbursement-email.js",
     "test:email:direct": "node scripts/test-email-direct.js",
     "setup:drive": "node scripts/setup-google-drive.js",
+    "setup:drive:api": "node scripts/setup-drive-api.js",
     "cleanup:temp": "node scripts/cleanup-temp-files.js"
   },
   "dependencies": {
@@ -68,6 +69,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.18.3",
     "file-saver": "^2.0.5",
+    "form-data": "^4.0.0",
     "formidable": "^3.5.2",
     "framer-motion": "^12.6.3",
     "googleapis": "^133.0.0",
