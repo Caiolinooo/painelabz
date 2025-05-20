@@ -16,6 +16,7 @@ import LanguageSelector from '@/components/LanguageSelector';
 import PerformanceMonitor from '@/components/Performance/PerformanceMonitor';
 import menuItems, { getTranslatedMenu } from '@/data/menu';
 import { startMeasure, endMeasure, logPerformance } from '@/lib/performance';
+import { PasswordRequiredGuard } from '@/components/Auth/PasswordRequiredGuard';
 
 // Os itens do menu agora são importados de src/data/menu.ts
 
@@ -68,19 +69,20 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen flex bg-abz-background">
-      {/* Sidebar Fixa (Desktop) */}
-      <aside className="w-64 bg-white shadow-md hidden md:flex flex-col flex-shrink-0">
-        {/* Logo no Sidebar */}
-        <div className="flex items-center justify-center h-16 border-b">
-            <Link href="/dashboard">
-            <img
-                src={config.logo}
-                alt={config.companyName + " Logo"}
-                className="h-10 w-auto"
-            />
-            </Link>
-        </div>
+    <PasswordRequiredGuard>
+      <div className="min-h-screen flex bg-abz-background">
+        {/* Sidebar Fixa (Desktop) */}
+        <aside className="w-64 bg-white shadow-md hidden md:flex flex-col flex-shrink-0">
+          {/* Logo no Sidebar */}
+          <div className="flex items-center justify-center h-16 border-b">
+              <Link href="/dashboard">
+              <img
+                  src={config.logo}
+                  alt={config.companyName + " Logo"}
+                  className="h-10 w-auto"
+              />
+              </Link>
+          </div>
 
         {/* Menu do Sidebar */}
         <nav className="flex-grow overflow-y-auto py-4 space-y-1">
@@ -123,11 +125,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
             })}
         </nav>
 
-        {/* Seletor de idioma e Botão de Logout no Sidebar */}
+        {/* Seletor de idioma, Perfil e Botão de Logout no Sidebar */}
         <div className="p-4 border-t space-y-3">
             <div className="flex items-center justify-center">
                 <LanguageSelector variant="inline" />
             </div>
+            <Link
+                href="/profile"
+                className="w-full px-4 py-2 rounded-md text-sm font-medium text-abz-blue bg-gray-100 hover:bg-gray-200 hover:text-abz-blue-dark flex items-center justify-center"
+            >
+                <FiUser className="mr-2" />
+                Meu Perfil
+            </Link>
             <button
                 onClick={handleLogout}
                 className="w-full px-4 py-2 rounded-md text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 hover:text-red-800 flex items-center justify-center"
@@ -159,6 +168,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
                      <div className="flex items-center">
                          {/* Placeholder para botão de menu mobile se for diferente de um sidebar fixo */}
                          <LanguageSelector variant="dropdown" className="mr-2" />
+                         <Link
+                            href="/profile"
+                            className="ml-2 px-3 py-1.5 rounded-md text-sm font-medium text-abz-blue bg-gray-100 hover:bg-gray-200"
+                         >
+                            <FiUser />
+                         </Link>
                          <button
                             onClick={handleLogout}
                             className="ml-2 px-3 py-1.5 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
@@ -183,5 +198,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <PerformanceMonitor />
       </div>
     </div>
+    </PasswordRequiredGuard>
   );
 }

@@ -71,13 +71,19 @@ export default function Login() {
   // Verificar se o usuário já está autenticado
   useEffect(() => {
     if (isAuthenticated) {
-      if (passwordExpired) {
-        router.replace('/set-password');
+      if (passwordExpired || requiresPassword) {
+        // Se a senha estiver expirada ou o usuário precisar definir uma senha,
+        // não redirecionar para o dashboard
+        if (passwordExpired) {
+          router.replace('/set-password');
+        }
+        // Se requiresPassword for true, o modal de definição de senha será exibido
+        // e não devemos redirecionar para o dashboard
       } else {
         router.replace('/dashboard');
       }
     }
-  }, [isAuthenticated, passwordExpired, router]);
+  }, [isAuthenticated, passwordExpired, requiresPassword, router]);
 
   // Garantir que o usuário administrador exista
   useEffect(() => {
@@ -100,8 +106,18 @@ export default function Login() {
     setSuccess('');
 
     if (useEmail) {
-      // Importar a função de validação de email
-      const { validateEmail } = await import('@/lib/schema');
+      // Import the validation function with error handling
+      let validateEmail;
+      try {
+        const schema = await import('@/lib/schema');
+        validateEmail = schema.validateEmail;
+      } catch (error) {
+        console.error('Error importing schema:', error);
+        // Fallback validation function
+        validateEmail = (email: string) => {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        };
+      }
 
       // Validar o email com a função melhorada
       if (!email || !validateEmail(email)) {
@@ -393,6 +409,8 @@ export default function Login() {
 
   // Modal de definição de senha
   const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  // Estado para controlar se a senha foi definida com sucesso
+  const [passwordSet, setPasswordSet] = useState(false);
 
   // Modal de registro rápido
   const [showQuickRegisterModal, setShowQuickRegisterModal] = useState(false);
@@ -413,6 +431,8 @@ export default function Login() {
 
   // Função para lidar com o sucesso da definição de senha
   const handlePasswordSetSuccess = async () => {
+    // Marcar a senha como definida com sucesso
+    setPasswordSet(true);
     // Não fechar o modal automaticamente, deixar o usuário clicar em "Continuar"
     // O redirecionamento para o dashboard será feito quando o usuário fechar o modal
     console.log('Senha definida com sucesso');
@@ -420,8 +440,14 @@ export default function Login() {
 
   // Função para fechar o modal de definição de senha
   const handleCloseSetPasswordModal = () => {
-    setShowSetPasswordModal(false);
-    router.push('/dashboard');
+    // Só permitir fechar o modal se a senha foi definida com sucesso
+    if (passwordSet) {
+      setShowSetPasswordModal(false);
+      router.push('/dashboard');
+    } else {
+      // Se a senha não foi definida, mostrar um alerta
+      setError('É necessário definir uma senha antes de continuar.');
+    }
   };
 
   // Função para lidar com o sucesso do registro rápido

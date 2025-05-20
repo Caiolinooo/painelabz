@@ -74,21 +74,25 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
               ? t('auth.createAccount', 'Criar Conta')
               : t('auth.setPassword', 'Definir Senha')}
           </h2>
-          {passwordSet ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              &times;
-            </button>
-          ) : (
-            <div className="w-6 h-6"></div>
-          )}
+          {/* Remover botão de fechar para impedir que o usuário feche o modal sem definir a senha */}
+          <div className="w-6 h-6"></div>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
+            {/* Aviso de segurança */}
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md text-sm mb-4">
+              <div className="flex items-start">
+                <svg className="h-5 w-5 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p className="font-medium mb-1">Atenção: Definição de senha obrigatória</p>
+                  <p>Por motivos de segurança, você precisa definir uma senha antes de acessar o sistema.</p>
+                </div>
+              </div>
+            </div>
+
             {isNewUser && (
               <div className="text-sm text-gray-600 mb-2">
                 {t('auth.newAccountMessage', 'Para completar seu cadastro, defina uma senha para sua conta.')}
@@ -153,23 +157,22 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
                 disabled={isLoading}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                {t('common.close', 'Fechar')}
+                {t('common.continue', 'Continuar')}
               </button>
             )}
-            <button
-              type={passwordSet ? "button" : "submit"}
-              onClick={passwordSet ? onClose : undefined}
-              disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
-            >
-              {isLoading
-                ? t('common.loading', 'Carregando...')
-                : passwordSet
-                  ? t('common.continue', 'Continuar')
+            {!passwordSet && (
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
+              >
+                {isLoading
+                  ? t('common.loading', 'Carregando...')
                   : isNewUser
                     ? t('auth.createAccount', 'Criar Conta')
                     : t('auth.setPassword', 'Definir Senha')}
-            </button>
+              </button>
+            )}
           </div>
         </form>
       </div>
