@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isPasswordExpired, verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import { Pool } from 'pg';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
-    const token = extractTokenFromHeader(authHeader);
+    const token = extractTokenFromHeader(authHeader || '');
 
     if (!token) {
+      console.log('Token não fornecido');
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -17,52 +18,65 @@ export async function GET(request: NextRequest) {
 
     const payload = verifyToken(token);
     if (!payload) {
+      console.log('Token inválido ou expirado');
       return NextResponse.json(
         { error: 'Token inválido ou expirado' },
         { status: 401 }
       );
     }
 
-    // Conectar ao banco de dados PostgreSQL
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL
-    });
+    console.log('Verificando status da senha para usuário:', payload.userId);
 
-    try {
-      // Buscar o usuário pelo ID
-      console.log('Buscando usuário pelo ID:', payload.userId);
-      const result = await pool.query(`
-        SELECT * FROM "User" WHERE "id" = $1
-      `, [payload.userId]);
+    // Verificar se estamos usando Supabase
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+      // Usar Supabase
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
 
-      // Verificar se o usuário foi encontrado
-      const user = result.rows.length > 0 ? result.rows[0] : null;
-      console.log('Usuário encontrado:', user ? 'Sim' : 'Não');
+      // Buscar o usuário no Supabase
+      const { data: userData, error } = await supabase
+        .from('users_unified')
+        .select('password, password_hash, password_last_changed, role')
+        .eq('id', payload.userId)
+        .single();
 
-      if (!user) {
-        await pool.end();
-        return NextResponse.json(
-          { error: 'Usuário não encontrado' },
-          { status: 404 }
-        );
+      if (error) {
+        console.error('Erro ao buscar usuário no Supabase:', error);
+        return NextResponse.json({ error: 'Erro ao verificar senha' }, { status: 500 });
       }
 
-    // Verificar se a senha expirou (passando o papel do usuário)
-    const expired = isPasswordExpired(user.passwordLastChanged, user.role);
+      // Se o usuário tem senha na coluna password mas não em password_hash, copiar para password_hash
+      if (userData.password && !userData.password_hash) {
+        console.log('Copiando senha da coluna password para password_hash');
+        const { error: updateError } = await supabase
+          .from('users_unified')
+          .update({ password_hash: userData.password })
+          .eq('id', payload.userId);
 
-    // Fechar a conexão com o banco de dados
-    await pool.end();
+        if (updateError) {
+          console.error('Erro ao atualizar password_hash:', updateError);
+        }
+      }
 
-    return NextResponse.json({
-      expired,
-      passwordLastChanged: user.passwordLastChanged,
-      expiryDays: parseInt(process.env.PASSWORD_EXPIRY_DAYS || '365')
-    });
-    } catch (error) {
-      console.error('Erro ao buscar usuário no PostgreSQL:', error);
-      if (pool) await pool.end();
+      // Verificar se a senha expirou
+      const expired = isPasswordExpired(userData.password_last_changed, userData.role);
+
+      return NextResponse.json({
+        expired,
+        passwordLastChanged: userData.password_last_changed,
+        expiryDays: parseInt(process.env.PASSWORD_EXPIRY_DAYS || '365')
+      });
+    } else {
       return NextResponse.json(
-        { error: 'Erro ao buscar usuário' },
+        { error: 'Configuração de banco de dados não encontrada' },
         { status: 500 }
       );
     }

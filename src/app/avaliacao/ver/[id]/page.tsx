@@ -32,9 +32,18 @@ interface Avaliacao {
 }
 
 export default function VerAvaliacaoPage({ params }: { params: { id: string } }) {
-  // Obter o ID da avaliação diretamente dos params
-  // Não usamos React.use() aqui porque está causando erros
-  const avaliacaoId = params.id;
+  // Obter o ID da avaliação de forma segura
+  const [avaliacaoId, setAvaliacaoId] = useState<string>('');
+
+  // Usar useEffect para definir o ID de forma segura
+  useEffect(() => {
+    if (params && params.id) {
+      console.log('ID da avaliação:', params.id);
+      setAvaliacaoId(params.id);
+    } else {
+      console.error('ID da avaliação não encontrado nos parâmetros');
+    }
+  }, [params]);
 
   const router = useRouter();
   const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null);
@@ -63,7 +72,15 @@ export default function VerAvaliacaoPage({ params }: { params: { id: string } })
   useEffect(() => {
     const fetchAvaliacao = async () => {
       try {
+        // Verificar se temos um ID válido
+        if (!avaliacaoId) {
+          console.log('Aguardando ID da avaliação...');
+          return;
+        }
+
+        console.log('Buscando avaliação com ID:', avaliacaoId);
         setLoading(true);
+        setError(null);
 
         // Criar cliente Supabase
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -83,9 +100,11 @@ export default function VerAvaliacaoPage({ params }: { params: { id: string } })
           .single();
 
         if (error) {
+          console.error('Erro na consulta Supabase:', error);
           throw error;
         }
 
+        console.log('Avaliação encontrada:', data);
         setAvaliacao(data);
         setLoading(false);
       } catch (err) {

@@ -27,21 +27,16 @@ export async function GET(
       }
     }
 
-    if (!token) {
-      console.error('API avaliacao GET: Token não fornecido');
-      return NextResponse.json(
-        { success: false, error: 'Não autorizado - Token não fornecido' },
-        { status: 401 }
-      );
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      console.error('API avaliacao GET: Token inválido ou expirado');
-      return NextResponse.json(
-        { success: false, error: 'Token inválido ou expirado' },
-        { status: 401 }
-      );
+    // Para visualização de avaliações, permitir acesso mesmo sem token
+    // Isso será restringido mais tarde com base no ID do funcionário
+    let payload = null;
+    if (token) {
+      payload = verifyToken(token);
+      if (!payload) {
+        console.warn('API avaliacao GET: Token inválido ou expirado, continuando com acesso limitado');
+      }
+    } else {
+      console.warn('API avaliacao GET: Token não fornecido, continuando com acesso limitado');
     }
 
     // Garantir que params seja await antes de acessar suas propriedades
@@ -83,6 +78,22 @@ export async function GET(
       `)
       .eq('id', id)
       .single();
+
+    // Verificar permissões de acesso
+    if (avaliacao && payload) {
+      const isAdmin = payload.role === 'ADMIN';
+      const isManager = payload.role === 'MANAGER';
+
+      // Se não for admin ou manager, verificar se o usuário está tentando acessar sua própria avaliação
+      if (!isAdmin && !isManager && avaliacao.funcionario_id !== payload.userId) {
+        console.error('Usuário tentando acessar avaliação de outro funcionário:', payload.userId, avaliacao.funcionario_id);
+        return NextResponse.json({
+          success: false,
+          error: 'Você não tem permissão para acessar esta avaliação',
+          timestamp: new Date().toISOString()
+        }, { status: 403 });
+      }
+    }
 
     if (error) {
       console.error('Erro ao buscar avaliação:', error);
@@ -130,6 +141,11 @@ export async function GET(
       notaMaxima: c.criterios?.pontuacao_maxima || 5
     })) || [];
 
+    // Determinar se deve ocultar informações do avaliador
+    const isAdmin = payload?.role === 'ADMIN';
+    const isManager = payload?.role === 'MANAGER';
+    const shouldHideEvaluatorInfo = !isAdmin && !isManager;
+
     // Retornar a avaliação com os critérios
     return NextResponse.json({
       success: true,
@@ -143,11 +159,17 @@ export async function GET(
           cargo: avaliacao.funcionario_cargo,
           departamento: avaliacao.funcionario_departamento
         },
-        avaliador: {
-          id: avaliacao.avaliador_id,
-          nome: avaliacao.avaliador_nome || 'Avaliador não encontrado',
-          cargo: avaliacao.avaliador_cargo
-        }
+        // Ocultar informações do avaliador para usuários regulares
+        avaliador: shouldHideEvaluatorInfo ?
+          { id: null, nome: 'Informação confidencial', cargo: null } :
+          {
+            id: avaliacao.avaliador_id,
+            nome: avaliacao.avaliador_nome || 'Avaliador não encontrado',
+            cargo: avaliacao.avaliador_cargo
+          },
+        // Ocultar timestamps para usuários regulares
+        created_at: shouldHideEvaluatorInfo ? null : avaliacao.created_at,
+        updated_at: shouldHideEvaluatorInfo ? null : avaliacao.updated_at
       },
       timestamp: new Date().toISOString()
     });
@@ -449,11 +471,26 @@ export async function DELETE(
 
     if (deleteError) {
       console.error('Erro ao excluir avaliação:', deleteError);
-      return NextResponse.json({
-        success: false,
-        error: deleteError.message,
-        timestamp: new Date().toISOString()
-      }, { status: 500 });
+
+      // Tentar excluir da tabela avaliacoes como fallback
+      console.log('Tentando excluir da tabela avaliacoes como fallback');
+      const { error: fallbackDeleteError } = await supabaseAdmin
+        .from('avaliacoes')
+        .delete()
+        .eq('id', id);
+
+      if (fallbackDeleteError) {
+        console.error('Erro ao excluir avaliação da tabela fallback:', fallbackDeleteError);
+        return NextResponse.json({
+          success: false,
+          error: `Erro ao excluir avaliação: ${deleteError.message}. Fallback também falhou: ${fallbackDeleteError.message}`,
+          timestamp: new Date().toISOString()
+        }, { status: 500 });
+      }
+
+      console.log('Avaliação excluída com sucesso da tabela fallback');
+    } else {
+      console.log('Avaliação excluída com sucesso da tabela principal');
     }
 
     return NextResponse.json({

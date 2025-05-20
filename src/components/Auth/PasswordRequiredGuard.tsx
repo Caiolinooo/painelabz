@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { SetPasswordModal } from './SetPasswordModal';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 
@@ -12,6 +13,7 @@ interface PasswordRequiredGuardProps {
 
 export function PasswordRequiredGuard({ children }: PasswordRequiredGuardProps) {
   const { user, isAuthenticated, isLoading, requiresPassword } = useAuth();
+  const { t } = useI18n();
   const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
   const [passwordSet, setPasswordSet] = useState(false);
   const [isCheckingPassword, setIsCheckingPassword] = useState(true);
@@ -27,12 +29,34 @@ export function PasswordRequiredGuard({ children }: PasswordRequiredGuardProps) 
       }
 
       try {
-        // Verificar se o usuário tem senha definida
-        const response = await fetchWrapper.get('/api/auth/check-has-password');
-        
-        if (response.hasPassword) {
-          setHasPassword(true);
+        // Obter o token do localStorage
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+          console.error('Token não encontrado no localStorage');
+          setIsCheckingPassword(false);
+          return;
+        }
+
+        // Verificar se o usuário tem senha definida usando fetch diretamente
+        const response = await fetch('/api/auth/check-has-password', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.hasPassword) {
+            setHasPassword(true);
+          } else {
+            setHasPassword(false);
+            setShowSetPasswordModal(true);
+          }
         } else {
+          console.error('Erro ao verificar senha do usuário:', response.status);
+          // Se houver erro, assumir que o usuário não tem senha definida
           setHasPassword(false);
           setShowSetPasswordModal(true);
         }
@@ -77,18 +101,34 @@ export function PasswordRequiredGuard({ children }: PasswordRequiredGuardProps) 
     return null;
   }
 
-  return (
-    <>
-      {/* Modal de definição de senha */}
-      <SetPasswordModal
-        isOpen={showSetPasswordModal}
-        onClose={handleCloseSetPasswordModal}
-        onSuccess={handlePasswordSetSuccess}
-        isNewUser={false}
-      />
+  // Se o usuário não tiver senha definida, mostrar apenas o modal
+  if (!hasPassword) {
+    return (
+      <>
+        {/* Modal de definição de senha */}
+        <SetPasswordModal
+          isOpen={showSetPasswordModal}
+          onClose={handleCloseSetPasswordModal}
+          onSuccess={handlePasswordSetSuccess}
+          isNewUser={false}
+        />
 
-      {/* Renderizar os filhos apenas se o usuário tiver senha definida ou o modal estiver aberto */}
-      {(hasPassword || showSetPasswordModal) && children}
-    </>
-  );
+        {/* Fundo escurecido e desfocado para bloquear o acesso ao conteúdo */}
+        <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-md z-40 flex items-center justify-center">
+          <div className="text-white text-center max-w-md p-6">
+            <div className="mb-4">
+              <svg className="h-16 w-16 mx-auto text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold mb-2">{t('auth.securityRequired', 'Segurança Necessária')}</h2>
+            <p className="mb-4">{t('auth.passwordRequiredMessage', 'Por motivos de segurança, você precisa definir uma senha antes de acessar o sistema.')}</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Se o usuário tiver senha definida, renderizar os filhos normalmente
+  return <>{children}</>;
 }

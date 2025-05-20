@@ -1,0 +1,78 @@
+// Dados de exemplo para notícias
+export const mockNews = [
+  {
+    id: '1',
+    title: 'Novo Projeto Iniciado',
+    description: 'A ABZ Group iniciou um novo projeto de desenvolvimento sustentável.',
+    content: 'A ABZ Group tem o prazer de anunciar o início de um novo projeto de desenvolvimento sustentável que visa reduzir o impacto ambiental das operações de petróleo e gás.',
+    date: new Date('2023-10-15').toISOString(),
+    file: '/documents/projeto-sustentavel.pdf',
+    enabled: true,
+    featured: true,
+    category: 'Projetos',
+    author: 'Equipe ABZ',
+    thumbnail: '/images/thumbnails/projeto-sustentavel.jpg',
+    created_at: new Date('2023-10-15').toISOString(),
+    updated_at: new Date('2023-10-15').toISOString()
+  },
+  {
+    id: '2',
+    title: 'Treinamento de Segurança',
+    description: 'Novo treinamento de segurança para todos os funcionários.',
+    content: 'A ABZ Group está implementando um novo programa de treinamento de segurança para todos os funcionários, com foco em prevenção de acidentes e procedimentos de emergência.',
+    date: new Date('2023-09-20').toISOString(),
+    file: '/documents/treinamento-seguranca.pdf',
+    enabled: true,
+    featured: false,
+    category: 'Treinamentos',
+    author: 'Departamento de RH',
+    thumbnail: '/images/thumbnails/treinamento-seguranca.jpg',
+    created_at: new Date('2023-09-20').toISOString(),
+    updated_at: new Date('2023-09-20').toISOString()
+  },
+  {
+    id: '3',
+    title: 'Resultados Financeiros do Q3',
+    description: 'Resultados financeiros do terceiro trimestre de 2023.',
+    content: 'A ABZ Group divulga os resultados financeiros do terceiro trimestre de 2023, mostrando um crescimento de 15% em relação ao mesmo período do ano anterior.',
+    date: new Date('2023-10-05').toISOString(),
+    file: '/documents/resultados-q3.pdf',
+    enabled: true,
+    featured: true,
+    category: 'Financeiro',
+    author: 'Departamento Financeiro',
+    thumbnail: '/images/thumbnails/resultados-financeiros.jpg',
+    created_at: new Date('2023-10-05').toISOString(),
+    updated_at: new Date('2023-10-05').toISOString()
+  },
+  {
+    id: '4',
+    title: 'Nova Parceria Estratégica',
+    description: 'ABZ Group anuncia parceria estratégica com empresa de tecnologia.',
+    content: 'A ABZ Group tem o prazer de anunciar uma nova parceria estratégica com uma empresa líder em tecnologia para desenvolver soluções inovadoras para o setor de petróleo e gás.',
+    date: new Date('2023-08-15').toISOString(),
+    file: '/documents/parceria-estrategica.pdf',
+    enabled: true,
+    featured: false,
+    category: 'Parcerias',
+    author: 'Diretoria Executiva',
+    thumbnail: '/images/thumbnails/parceria.jpg',
+    created_at: new Date('2023-08-15').toISOString(),
+    updated_at: new Date('2023-08-15').toISOString()
+  },
+  {
+    id: '5',
+    title: 'Evento de Confraternização',
+    description: 'Evento de confraternização de fim de ano da ABZ Group.',
+    content: 'A ABZ Group convida todos os funcionários para o evento de confraternização de fim de ano, que será realizado no dia 15 de dezembro de 2023.',
+    date: new Date('2023-11-01').toISOString(),
+    file: '/documents/confraternizacao.pdf',
+    enabled: true,
+    featured: false,
+    category: 'Eventos',
+    author: 'Departamento de RH',
+    thumbnail: '/images/thumbnails/confraternizacao.jpg',
+    created_at: new Date('2023-11-01').toISOString(),
+    updated_at: new Date('2023-11-01').toISOString()
+  }
+];

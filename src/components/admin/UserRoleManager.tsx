@@ -44,6 +44,9 @@ const UserRoleManager: React.FC<UserRoleManagerProps> = ({
         contracheque: true,
         ponto: true,
         admin: true
+      },
+      features: {
+        reimbursement_approval: true
       }
     },
     MANAGER: {
@@ -58,6 +61,9 @@ const UserRoleManager: React.FC<UserRoleManagerProps> = ({
         contracheque: true,
         ponto: true,
         admin: false
+      },
+      features: {
+        reimbursement_approval: true
       }
     },
     USER: {
@@ -72,6 +78,9 @@ const UserRoleManager: React.FC<UserRoleManagerProps> = ({
         contracheque: true,
         ponto: true,
         admin: false
+      },
+      features: {
+        reimbursement_approval: false
       }
     }
   };

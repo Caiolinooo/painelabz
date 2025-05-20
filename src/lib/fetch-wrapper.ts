@@ -21,25 +21,42 @@ export async function fetchWithErrorHandling(url: string, options?: RequestInit)
 
     // Verificar se a resposta é OK (status 2xx)
     if (!response.ok) {
+      // Clonar a resposta para poder ler o corpo múltiplas vezes
+      const responseClone = response.clone();
+
       // Tentar obter o erro como JSON
       try {
         const errorData = await response.json();
         throw new Error(errorData.error || errorData.message || `HTTP error ${response.status}`);
       } catch (jsonError) {
         // Se não conseguir parsear como JSON, usar o texto da resposta
-        const errorText = await response.text();
-        throw new Error(errorText || `HTTP error ${response.status}`);
+        try {
+          const errorText = await responseClone.text();
+          throw new Error(errorText || `HTTP error ${response.status}`);
+        } catch (textError) {
+          // Se também falhar ao ler o texto, apenas lançar o erro com o status
+          throw new Error(`HTTP error ${response.status}`);
+        }
       }
     }
 
     // Verificar se a resposta está vazia
     const contentType = response.headers.get('content-type');
+    // Clonar a resposta para poder ler o corpo múltiplas vezes
+    const responseClone = response.clone();
+
     if (contentType && contentType.includes('application/json')) {
       try {
         return await response.json();
       } catch (jsonError) {
         console.error('Erro ao parsear resposta JSON:', jsonError);
-        throw new Error('Erro ao processar resposta do servidor. A resposta não é um JSON válido.');
+        try {
+          // Tentar ler como texto se falhar como JSON
+          return await responseClone.text();
+        } catch (textError) {
+          console.error('Erro ao ler resposta como texto:', textError);
+          throw new Error('Erro ao processar resposta do servidor.');
+        }
       }
     } else {
       // Se não for JSON, retornar o texto

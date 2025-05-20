@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tokenResult = await verifyToken(token);
-    if (!tokenResult.valid) {
+    const tokenPayload = verifyToken(token);
+    if (!tokenPayload) {
       return NextResponse.json(
         { error: 'Token inválido ou expirado' },
         { status: 401 }
@@ -27,14 +27,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Se for o token de serviço do Supabase, permitir acesso direto
-    if (tokenResult.userId === 'service-account') {
+    if (tokenPayload.userId === 'service-account') {
       console.log('Token de serviço do Supabase detectado, concedendo acesso direto');
     } else {
       // Verificar se o usuário é administrador
       const { data: requestingUser, error: userError } = await supabaseAdmin
         .from('users_unified')
         .select('id, role, email, phone_number')
-        .eq('id', tokenResult.userId)
+        .eq('id', tokenPayload.userId)
         .single();
 
       // Verificar se o usuário é o administrador principal
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
 
           // Continuar com a execução
         } else {
+          console.error('Acesso negado para usuário:', tokenPayload.userId);
           return NextResponse.json(
             { error: 'Acesso negado. Apenas administradores podem acessar esta API.' },
             { status: 403 }

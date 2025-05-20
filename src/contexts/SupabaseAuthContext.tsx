@@ -7,28 +7,34 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { User } from '@supabase/supabase-js';
 import { Tables } from '@/types/supabase';
 import { getToken, saveToken, removeToken } from '@/lib/tokenStorage';
-import jwt from 'jsonwebtoken';
+// Import a browser-compatible JWT library or use a safer approach
 
-// Função para gerar um token JWT
-const generateToken = (user: any) => {
+// Função para gerar um token JWT (deve ser feito no servidor)
+// Esta função é apenas um stub para o cliente, a geração real deve ocorrer via API
+const generateToken = async (user: any) => {
   try {
-    // Usar uma chave secreta para assinar o token
-    const secretKey = process.env.NEXT_PUBLIC_JWT_SECRET || 'abz-secret-key';
+    // No cliente, devemos chamar uma API para gerar o token
+    const response = await fetch('/api/auth/generate-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        email: user.email,
+        phoneNumber: user.phone_number,
+        role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name
+      }),
+    });
 
-    // Criar o payload do token
-    const payload = {
-      userId: user.id,
-      email: user.email,
-      phoneNumber: user.phone_number,
-      role: user.role,
-      firstName: user.first_name,
-      lastName: user.last_name
-    };
+    if (!response.ok) {
+      throw new Error('Falha ao gerar token');
+    }
 
-    // Gerar o token com expiração de 24 horas
-    const token = jwt.sign(payload, secretKey, { expiresIn: '24h' });
-
-    return token;
+    const data = await response.json();
+    return data.token;
   } catch (error) {
     console.error('Erro ao gerar token JWT:', error);
     return '';
@@ -38,6 +44,14 @@ const generateToken = (user: any) => {
 // Tipo para usuário
 export interface UserProfile extends Tables<'users'> {
   accessPermissions?: {
+    modules?: {
+      [key: string]: boolean;
+    };
+    features?: {
+      [key: string]: boolean;
+    };
+  };
+  access_permissions?: {
     modules?: {
       [key: string]: boolean;
     };
@@ -58,6 +72,7 @@ interface AuthContextType {
   loginStep: 'phone' | 'verification' | 'password' | 'complete' | 'unauthorized' | 'pending' | 'quick_register';
   hasPassword: boolean;
   authStatus?: string;
+  hasEvaluationAccess: boolean;
   setLoginStep: (step: 'phone' | 'verification' | 'password' | 'complete' | 'unauthorized' | 'pending' | 'quick_register') => void;
   initiateLogin: (phoneNumber: string, email?: string, inviteCode?: string) => Promise<boolean>;
   loginWithPassword: (identifier: string, password: string, rememberMe?: boolean) => Promise<boolean>;
@@ -1630,7 +1645,36 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
   // Verificar se o usuário é administrador de várias maneiras para garantir acesso
   const isAdmin = useMemo(() => {
-    const hasAdminRole = profile?.role === 'ADMIN';
+    // Verificar se o token JWT indica que o usuário é admin
+    const token = getToken();
+    let tokenPayload = null;
+    if (token) {
+      try {
+        // Usar uma abordagem mais segura para verificar o token no cliente
+        // Decodificar o token sem verificar a assinatura (apenas para uso no cliente)
+        // A verificação real da assinatura deve ser feita no servidor
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          try {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            tokenPayload = JSON.parse(jsonPayload);
+          } catch (parseError) {
+            console.error('Erro ao decodificar token JWT:', parseError);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao processar token JWT:', error);
+      }
+    }
+
+    const hasAdminRole = profile?.role === 'ADMIN' || tokenPayload?.role === 'ADMIN';
     const isAdminEmail = profile?.email === adminEmail || user?.email === adminEmail;
     const hasAdminPermission = !!(profile?.access_permissions?.modules?.admin) ||
                               !!(profile?.accessPermissions?.modules?.admin);
@@ -1645,6 +1689,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     console.log('SupabaseAuthContext - user email:', user?.email);
     console.log('SupabaseAuthContext - profile email:', profile?.email);
     console.log('SupabaseAuthContext - profile role:', profile?.role);
+    console.log('SupabaseAuthContext - token role:', tokenPayload?.role);
     console.log('SupabaseAuthContext - profile permissions:', JSON.stringify(profile?.access_permissions));
     console.log('SupabaseAuthContext - accessPermissions:', JSON.stringify(profile?.accessPermissions));
 
@@ -1695,7 +1740,35 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     // Se for admin, também tem acesso de gerente
     if (isAdmin) return true;
 
-    const hasManagerRole = profile?.role === 'MANAGER';
+    // Verificar se o token JWT indica que o usuário é gerente
+    const token = getToken();
+    let tokenPayload = null;
+    if (token) {
+      try {
+        // Usar uma abordagem mais segura para verificar o token no cliente
+        // Decodificar o token sem verificar a assinatura (apenas para uso no cliente)
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          try {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            tokenPayload = JSON.parse(jsonPayload);
+          } catch (parseError) {
+            console.error('Erro ao decodificar token JWT para gerente:', parseError);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao processar token JWT para gerente:', error);
+      }
+    }
+
+    const hasManagerRole = profile?.role === 'MANAGER' || tokenPayload?.role === 'MANAGER';
     const hasAvaliacaoPermission = !!(profile?.access_permissions?.modules?.avaliacao) ||
                                   !!(profile?.accessPermissions?.modules?.avaliacao);
 
@@ -1704,10 +1777,24 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     // Debug: verificar se o usuário é gerente
     console.log('SupabaseAuthContext - isManager:', result);
     console.log('SupabaseAuthContext - hasManagerRole:', hasManagerRole);
+    console.log('SupabaseAuthContext - token role:', tokenPayload?.role);
     console.log('SupabaseAuthContext - hasAvaliacaoPermission:', hasAvaliacaoPermission);
 
     return result;
   }, [profile, isAdmin]);
+
+  // Verificar se o usuário tem acesso ao módulo de avaliação
+  const hasEvaluationAccess = useMemo(() => {
+    if (!profile) return false;
+    if (isAdmin) return true;
+    if (isManager) return true;
+
+    // Verificar permissões específicas para o módulo de avaliação
+    return !!(
+      profile?.accessPermissions?.modules?.avaliacao ||
+      profile?.access_permissions?.modules?.avaliacao
+    );
+  }, [profile, isAdmin, isManager]);
 
   return (
     <AuthContext.Provider
@@ -1722,6 +1809,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         loginStep,
         hasPassword,
         authStatus,
+        hasEvaluationAccess,
         setLoginStep,
         initiateLogin,
         loginWithPassword,

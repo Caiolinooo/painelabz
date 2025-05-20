@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,16 +9,20 @@ export async function GET(req: NextRequest) {
     const token = extractTokenFromHeader(authHeader || '');
 
     if (!token) {
+      console.log('Token não fornecido');
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const payload = verifyToken(token);
 
     if (!payload) {
+      console.log('Token inválido');
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    // Verificar se estamos usando Supabase ou PostgreSQL direto
+    console.log('Verificando se usuário tem senha definida:', payload.userId);
+
+    // Verificar se estamos usando Supabase
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
       // Usar Supabase
       const supabase = createClient(
@@ -36,7 +39,7 @@ export async function GET(req: NextRequest) {
       // Buscar o usuário no Supabase
       const { data: userData, error } = await supabase
         .from('users_unified')
-        .select('password_hash, password_last_changed')
+        .select('password, password_hash, password_last_changed')
         .eq('id', payload.userId)
         .single();
 
@@ -45,46 +48,32 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Erro ao verificar senha' }, { status: 500 });
       }
 
-      // Verificar se o usuário tem senha definida
-      const hasPassword = !!userData.password_hash;
+      // Verificar se o usuário tem senha definida (verificar tanto password quanto password_hash)
+      const hasPassword = !!userData.password_hash || !!userData.password;
+      console.log('Usuário tem senha definida:', hasPassword);
+
+      // Se o usuário tem senha na coluna password mas não em password_hash, copiar para password_hash
+      if (userData.password && !userData.password_hash) {
+        console.log('Copiando senha da coluna password para password_hash');
+        const { error: updateError } = await supabase
+          .from('users_unified')
+          .update({ password_hash: userData.password })
+          .eq('id', payload.userId);
+
+        if (updateError) {
+          console.error('Erro ao atualizar password_hash:', updateError);
+        }
+      }
 
       return NextResponse.json({
         hasPassword,
         passwordLastChanged: userData.password_last_changed
       });
     } else {
-      // Usar PostgreSQL direto
-      const pool = new Pool({
-        connectionString: process.env.DATABASE_URL
-      });
-
-      try {
-        // Buscar o usuário no banco de dados
-        const result = await pool.query(`
-          SELECT "password_hash", "password_last_changed"
-          FROM "users_unified"
-          WHERE "id" = $1
-        `, [payload.userId]);
-
-        if (result.rows.length === 0) {
-          return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-        }
-
-        const user = result.rows[0];
-
-        // Verificar se o usuário tem senha definida
-        const hasPassword = !!user.password_hash;
-
-        return NextResponse.json({
-          hasPassword,
-          passwordLastChanged: user.password_last_changed
-        });
-      } catch (error) {
-        console.error('Erro ao verificar senha:', error);
-        return NextResponse.json({ error: 'Erro ao verificar senha' }, { status: 500 });
-      } finally {
-        await pool.end();
-      }
+      console.log('Configuração do Supabase não encontrada');
+      return NextResponse.json({
+        error: 'Configuração de banco de dados não encontrada'
+      }, { status: 500 });
     }
   } catch (error) {
     console.error('Erro ao processar requisição:', error);

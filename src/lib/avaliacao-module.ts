@@ -3,7 +3,13 @@
  */
 
 // Importar o módulo de avaliação de desempenho
-const avaliacaoDesempenho = require('../../avaliacao-desempenho/src/index');
+let avaliacaoDesempenho: any;
+try {
+  avaliacaoDesempenho = require('../../avaliacao-desempenho/src/index');
+} catch (error) {
+  console.warn('Erro ao importar módulo de avaliação de desempenho:', error);
+  avaliacaoDesempenho = null;
+}
 // Nota: Este é um stub temporário até que o módulo real seja implementado
 
 // Variável para armazenar a instância inicializada do módulo
@@ -18,11 +24,9 @@ export async function initAvaliacaoModule() {
     try {
       console.log('Inicializando módulo de avaliação de desempenho...');
 
-      // Verificar se o módulo existe
-      if (!avaliacaoDesempenho || typeof avaliacaoDesempenho.init !== 'function') {
-        console.warn('Módulo de avaliação não encontrado ou método init não disponível. Usando stub.');
-        // Criar um stub básico para o módulo
-        avaliacaoModule = {
+      // Criar um stub básico para o módulo
+      const createStub = () => {
+        return {
           version: '0.1.0-stub',
           name: 'avaliacao-desempenho-stub',
           getStatus: () => ({ status: 'online', mode: 'stub' }),
@@ -38,18 +42,30 @@ export async function initAvaliacaoModule() {
           getCriterio: async (id: any) => null,
           getCriteriosByCategoria: async (categoria: string) => []
         };
+      };
+
+      // Verificar se o módulo existe
+      if (!avaliacaoDesempenho || typeof avaliacaoDesempenho.init !== 'function') {
+        console.warn('Módulo de avaliação não encontrado ou método init não disponível. Usando stub.');
+        // Usar o stub básico
+        avaliacaoModule = createStub();
         console.log('Stub do módulo de avaliação criado com sucesso!');
         return avaliacaoModule;
       }
 
       // Tentar inicializar o módulo real
-      avaliacaoModule = await avaliacaoDesempenho.init();
-      console.log('Módulo de avaliação de desempenho inicializado com sucesso!');
+      try {
+        avaliacaoModule = await avaliacaoDesempenho.init();
+        console.log('Módulo de avaliação de desempenho inicializado com sucesso!');
+      } catch (initError) {
+        console.error('Erro ao inicializar módulo de avaliação de desempenho:', initError);
+        // Em caso de erro, criar um stub básico para o módulo
+        console.warn('Criando stub do módulo de avaliação devido a erro de inicialização.');
+        avaliacaoModule = createStub();
+      }
     } catch (error) {
-      console.error('Erro ao inicializar módulo de avaliação de desempenho:', error);
-
+      console.error('Erro geral ao inicializar módulo de avaliação de desempenho:', error);
       // Em caso de erro, criar um stub básico para o módulo
-      console.warn('Criando stub do módulo de avaliação devido a erro de inicialização.');
       avaliacaoModule = {
         version: '0.1.0-stub',
         name: 'avaliacao-desempenho-stub',

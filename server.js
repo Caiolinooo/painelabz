@@ -14,8 +14,35 @@ const hostname = process.env.HOSTNAME || 'localhost';
 // Usar porta 80 em produção, 3000 em desenvolvimento
 const port = parseInt(process.env.PORT || (dev ? '3000' : '80'), 10);
 
-// Inicializar o aplicativo Next.js
-const app = next({ dev, hostname, port });
+// Configure memory limits to prevent memory leaks
+const memoryLimit = process.env.MEMORY_LIMIT || '2048';
+if (!dev) {
+  // Only set memory limits in production
+  try {
+    // Set memory limit for Node.js process
+    process.setMaxListeners(20); // Increase max listeners to prevent warnings
+    console.log(`> Setting memory limit to ${memoryLimit}MB`);
+    // v8 is available in newer Node.js versions
+    if (typeof global.gc === 'function') {
+      // Force garbage collection before setting memory limit
+      global.gc();
+    }
+  } catch (e) {
+    console.warn('Failed to set memory limits:', e.message);
+  }
+}
+
+// Inicializar o aplicativo Next.js with custom configuration
+const app = next({
+  dev,
+  hostname,
+  port,
+  conf: {
+    compress: true, // Enable gzip compression
+    poweredByHeader: false, // Remove X-Powered-By header
+    generateEtags: true, // Generate etags for caching
+  }
+});
 const handle = app.getRequestHandler();
 
 // Preparar o servidor
@@ -86,11 +113,37 @@ app.prepare().then(() => {
     return handle(req, res);
   });
 
+  // Add error handling middleware
+  server.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).send('Internal Server Error');
+  });
+
   // Iniciar o servidor
-  server.listen(port, (err) => {
+  const serverInstance = server.listen(port, (err) => {
     if (err) throw err;
     console.log(`> Servidor pronto em http://${hostname}:${port}`);
     console.log(`> Ambiente: ${process.env.NODE_ENV}`);
+    console.log(`> Node.js version: ${process.version}`);
+    console.log(`> Memory usage: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    serverInstance.close(() => {
+      console.log('HTTP server closed');
+      process.exit(0);
+    });
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    serverInstance.close(() => {
+      console.log('HTTP server closed due to uncaught exception');
+      process.exit(1);
+    });
   });
 }).catch(err => {
   console.error('Erro ao iniciar o servidor:', err);

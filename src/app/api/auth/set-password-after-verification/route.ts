@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,125 +10,140 @@ export async function POST(req: NextRequest) {
     const token = extractTokenFromHeader(authHeader || '');
 
     if (!token) {
+      console.log('Token não fornecido');
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const payload = verifyToken(token);
 
     if (!payload) {
+      console.log('Token inválido');
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
+
+    console.log('Definindo senha para usuário:', payload.userId);
 
     // Obter a senha do corpo da requisição
     const body = await req.json();
     const { password } = body;
 
     if (!password) {
+      console.log('Senha não fornecida');
       return NextResponse.json({ error: 'Senha não fornecida' }, { status: 400 });
     }
 
     // Validar a senha
     if (password.length < 8) {
-      return NextResponse.json({ 
-        error: 'A senha deve ter pelo menos 8 caracteres' 
+      console.log('Senha muito curta');
+      return NextResponse.json({
+        error: 'A senha deve ter pelo menos 8 caracteres'
       }, { status: 400 });
     }
 
     // Gerar hash da senha
     const hashedPassword = await bcrypt.hash(password, 10);
+    const now = new Date().toISOString();
 
-    // Criar pool de conexão com o PostgreSQL
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL
-    });
+    // Verificar se estamos usando Supabase
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+      // Usar Supabase
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
 
-    try {
-      // Atualizar a senha do usuário
-      const now = new Date().toISOString();
-      
       // Verificar se o usuário existe
-      const userResult = await pool.query(`
-        SELECT * FROM "users_unified"
-        WHERE "id" = $1
-      `, [payload.userId]);
+      const { data: userData, error: userError } = await supabase
+        .from('users_unified')
+        .select('*')
+        .eq('id', payload.userId)
+        .single();
 
-      if (userResult.rows.length === 0) {
-        return NextResponse.json({ 
-          error: 'Usuário não encontrado' 
+      if (userError || !userData) {
+        console.error('Erro ao buscar usuário:', userError);
+        return NextResponse.json({
+          error: 'Usuário não encontrado'
         }, { status: 404 });
       }
 
-      // Obter o usuário atual
-      const user = userResult.rows[0];
+      // Preparar o histórico de acesso atualizado
+      const accessHistory = [
+        ...(userData.access_history || []),
+        {
+          timestamp: now,
+          action: 'PASSWORD_SET',
+          details: 'Senha definida pelo usuário após verificação'
+        }
+      ];
 
       // Atualizar a senha do usuário
-      await pool.query(`
-        UPDATE "users_unified"
-        SET
-          "password_hash" = $1,
-          "password_last_changed" = $2,
-          "updated_at" = $2,
-          "access_history" = $3
-        WHERE "id" = $4
-      `, [
-        hashedPassword,
-        now,
-        JSON.stringify([
-          ...(user.access_history || []),
-          {
-            timestamp: now,
-            action: 'PASSWORD_SET',
-            details: 'Senha definida pelo usuário após verificação'
-          }
-        ]),
-        payload.userId
-      ]);
+      const { error: updateError } = await supabase
+        .from('users_unified')
+        .update({
+          password: hashedPassword, // Manter compatibilidade com código existente
+          password_hash: hashedPassword, // Usar nova coluna
+          password_last_changed: now,
+          updated_at: now,
+          access_history: accessHistory
+        })
+        .eq('id', payload.userId);
+
+      if (updateError) {
+        console.error('Erro ao atualizar senha:', updateError);
+        return NextResponse.json({
+          error: 'Erro ao definir senha'
+        }, { status: 500 });
+      }
 
       // Verificar se o usuário é externo (não tem role definida)
-      // Se for, definir como USER e garantir que não tenha acesso ao painel de avaliação
-      if (!user.role || user.role === '') {
-        await pool.query(`
-          UPDATE "users_unified"
-          SET
-            "role" = 'USER',
-            "access_permissions" = $1
-          WHERE "id" = $2
-        `, [
-          JSON.stringify({
-            modules: {
-              admin: false,
-              dashboard: true,
-              manual: true,
-              procedimentos: true,
-              politicas: true,
-              calendario: true,
-              noticias: true,
-              reembolso: true,
-              contracheque: true,
-              ponto: true,
-              avaliacao: false
+      if (!userData.role || userData.role === '') {
+        const { error: roleError } = await supabase
+          .from('users_unified')
+          .update({
+            role: 'USER',
+            access_permissions: {
+              modules: {
+                admin: false,
+                dashboard: true,
+                manual: true,
+                procedimentos: true,
+                politicas: true,
+                calendario: true,
+                noticias: true,
+                reembolso: true,
+                contracheque: true,
+                ponto: true,
+                avaliacao: false
+              }
             }
-          }),
-          payload.userId
-        ]);
+          })
+          .eq('id', payload.userId);
+
+        if (roleError) {
+          console.error('Erro ao atualizar papel do usuário:', roleError);
+          // Não retornar erro, pois a senha já foi definida com sucesso
+        }
       }
 
       return NextResponse.json({
         success: true,
         message: 'Senha definida com sucesso'
       });
-    } catch (error) {
-      console.error('Erro ao definir senha:', error);
-      return NextResponse.json({ 
-        error: 'Erro ao definir senha' 
+    } else {
+      return NextResponse.json({
+        error: 'Configuração de banco de dados não encontrada'
       }, { status: 500 });
-    } finally {
-      await pool.end();
     }
   } catch (error) {
     console.error('Erro ao processar requisição:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
+    return NextResponse.json({
+      error: 'Erro interno do servidor'
     }, { status: 500 });
   }
 }

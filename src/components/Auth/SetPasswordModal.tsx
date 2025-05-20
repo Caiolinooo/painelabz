@@ -38,20 +38,46 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
     setIsLoading(true);
 
     try {
-      // Enviar requisição para definir a senha
-      const response = await fetchWrapper.post('/api/auth/set-password-after-verification', {
-        password
+      // Obter o token do localStorage
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        setError(t('auth.notAuthorized', 'Não autorizado. Faça login novamente.'));
+        return;
+      }
+
+      // Enviar requisição diretamente usando fetch em vez do fetchWrapper
+      const response = await fetch('/api/auth/set-password-after-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password })
       });
 
-      if (response.success) {
-        toast.success(t('auth.passwordSetSuccess', 'Senha definida com sucesso') + ': ' +
-              (isNewUser
-                ? t('auth.accountCreatedDescription', 'Sua conta foi criada com sucesso')
-                : t('auth.passwordUpdatedDescription', 'Sua senha foi atualizada com sucesso')));
-        setPasswordSet(true);
-        onSuccess();
+      // Verificar se a resposta é OK
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.success) {
+          toast.success(t('auth.passwordSetSuccess', 'Senha definida com sucesso') + ': ' +
+                (isNewUser
+                  ? t('auth.accountCreatedDescription', 'Sua conta foi criada com sucesso')
+                  : t('auth.passwordUpdatedDescription', 'Sua senha foi atualizada com sucesso')));
+          setPasswordSet(true);
+          onSuccess();
+        } else {
+          setError(data.error || t('auth.passwordSetError', 'Erro ao definir senha'));
+        }
       } else {
-        setError(response.error || t('auth.passwordSetError', 'Erro ao definir senha'));
+        // Tentar obter a mensagem de erro
+        try {
+          const errorData = await response.json();
+          setError(errorData.error || t('auth.passwordSetError', 'Erro ao definir senha'));
+        } catch (jsonError) {
+          setError(t('auth.passwordSetError', 'Erro ao definir senha'));
+        }
       }
     } catch (error) {
       console.error('Erro ao definir senha:', error);
@@ -66,7 +92,7 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-md flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">

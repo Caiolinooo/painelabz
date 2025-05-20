@@ -37,6 +37,7 @@ const adminRoutes = [
   '/admin/news',
   '/admin/users',
   '/admin/settings',
+  '/admin/reimbursement-settings',
   '/api/admin',
 ];
 

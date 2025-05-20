@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { isValidUUID, generateUUID } from '@/lib/uuid-utils';
 
 /**
  * Rota para listar avaliações
@@ -455,20 +456,85 @@ export async function POST(request: NextRequest) {
 
     // Se houver critérios, salvar as pontuações
     if (data.criterios && data.criterios.length > 0) {
+      // Verificar se os critérios existem no banco de dados
+      // Primeiro, buscar todos os critérios existentes
+      const { data: criteriosExistentes, error: criteriosError } = await supabaseAdmin
+        .from('criterios')
+        .select('id, nome')
+        .is('deleted_at', null);
+
+      if (criteriosError) {
+        console.error('Erro ao buscar critérios existentes:', criteriosError);
+      }
+
+      console.log('Critérios existentes no banco:', criteriosExistentes?.length || 0);
+
+      // Importar os critérios padrão para usar como fallback
+      let criteriosPadrao: any[] = [];
+      try {
+        const { criteriosPadrao: criterios } = await import('@/data/criterios-avaliacao');
+        criteriosPadrao = criterios;
+      } catch (importError) {
+        console.error('Erro ao importar critérios padrão:', importError);
+      }
+
+      // Mapear critérios para pontuações, garantindo que os IDs sejam UUIDs válidos
       const pontuacoes = data.criterios.map((criterio: any) => {
-        // Converter criterioId para string para garantir compatibilidade com UUID
-        const criterioIdStr = String(criterio.criterioId);
+        // Verificar se o criterioId é um UUID válido
+        const isUuidValid = isValidUUID(criterio.criterioId);
+
+        let criterioIdFinal = criterio.criterioId;
+
+        // Se não for UUID, tentar encontrar um critério correspondente no banco
+        if (!isUuidValid && criteriosExistentes && criteriosExistentes.length > 0) {
+          // Tentar encontrar por nome
+          const criterioEncontrado = criteriosExistentes.find(c =>
+            c.nome.toLowerCase() === criterio.nome?.toLowerCase()
+          );
+
+          if (criterioEncontrado) {
+            criterioIdFinal = criterioEncontrado.id;
+            console.log(`Critério "${criterio.nome}" encontrado no banco com ID ${criterioIdFinal}`);
+          } else if (criteriosPadrao.length > 0) {
+            // Se não encontrar, usar um dos critérios padrão com UUID válido
+            const criterioPadrao = criteriosPadrao.find(c =>
+              c.nome.toLowerCase() === criterio.nome?.toLowerCase() ||
+              c.id === criterio.criterioId
+            );
+
+            if (criterioPadrao) {
+              criterioIdFinal = criterioPadrao.id;
+              console.log(`Usando critério padrão para "${criterio.nome}" com ID ${criterioIdFinal}`);
+            } else {
+              // Se ainda não encontrar, usar o primeiro critério padrão
+              criterioIdFinal = criteriosPadrao[0].id;
+              console.log(`Usando primeiro critério padrão para "${criterio.nome}" com ID ${criterioIdFinal}`);
+            }
+          } else {
+            // Se não tiver critérios padrão, gerar um UUID
+            criterioIdFinal = generateUUID();
+            console.log(`Gerando UUID para critério "${criterio.nome}": ${criterioIdFinal}`);
+          }
+        }
+
+        // Garantir que o ID final seja um UUID válido
+        if (!isValidUUID(criterioIdFinal)) {
+          const novoUUID = generateUUID();
+          console.log(`Convertendo ID inválido "${criterioIdFinal}" para UUID "${novoUUID}"`);
+          criterioIdFinal = novoUUID;
+        }
 
         console.log('Preparando pontuação para critério:', {
-          criterioId: criterioIdStr,
+          criterioId: criterioIdFinal,
           originalCriterioId: criterio.criterioId,
+          nome: criterio.nome,
           nota: criterio.nota || 0,
           comentario: criterio.comentario || ''
         });
 
         return {
           avaliacao_id: avaliacao.id,
-          criterio_id: criterioIdStr,
+          criterio_id: criterioIdFinal,
           valor: criterio.nota || 0,
           observacao: criterio.comentario || ''
         };

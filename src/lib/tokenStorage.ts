@@ -78,7 +78,15 @@ export const saveToken = (token: string, expiryInSeconds?: number): void => {
  * Recupera o token do localStorage ou cookies
  * @returns O token JWT ou null se não existir
  */
+// Verificar se estamos no navegador
+const isBrowser = typeof window !== 'undefined';
+
 export const getToken = (): string | null => {
+  // Se não estamos no navegador (SSR), retornar null
+  if (!isBrowser) {
+    return null;
+  }
+
   try {
     // Tentar obter o token da chave principal primeiro
     let token = localStorage.getItem(TOKEN_KEY);
@@ -187,6 +195,11 @@ export const getToken = (): string | null => {
  * Remove o token do localStorage e cookies
  */
 export const removeToken = (): void => {
+  // Se não estamos no navegador (SSR), não fazer nada
+  if (!isBrowser) {
+    return;
+  }
+
   try {
     // Remover do localStorage
     localStorage.removeItem(TOKEN_KEY);
@@ -212,6 +225,11 @@ export const removeToken = (): void => {
  * @returns true se o token for válido, false caso contrário
  */
 export const isTokenValid = (): boolean => {
+  // Se não estamos no navegador (SSR), retornar false
+  if (!isBrowser) {
+    return false;
+  }
+
   const token = getToken();
   if (!token) return false;
 

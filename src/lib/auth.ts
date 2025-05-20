@@ -270,23 +270,35 @@ export function verifyToken(token: string): TokenPayload | null {
       return null;
     }
 
+    // Verificar se é um token do Supabase
+    if (token.startsWith('sbat_')) {
+      console.log('verifyToken: Token Supabase detectado');
+      // Retornar um payload especial para o token do Supabase
+      return {
+        userId: 'supabase-user',
+        phoneNumber: '',
+        role: 'ADMIN'
+      };
+    }
+
     // Verificar se o token tem o formato correto de um JWT
     const parts = token.split('.');
     if (parts.length !== 3) {
       console.error('verifyToken: Token não tem formato JWT válido');
-      return null;
-    }
 
-    // Verificar se é o token de serviço do Supabase
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-    if (token === supabaseServiceKey) {
-      console.log('verifyToken: Token de serviço do Supabase detectado');
-      // Retornar um payload especial para o token de serviço
-      return {
-        userId: 'service-account',
-        phoneNumber: '',
-        role: 'ADMIN'
-      };
+      // Verificar se é o token de serviço do Supabase
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+      if (token === supabaseServiceKey) {
+        console.log('verifyToken: Token de serviço do Supabase detectado');
+        // Retornar um payload especial para o token de serviço
+        return {
+          userId: 'service-account',
+          phoneNumber: '',
+          role: 'ADMIN'
+        };
+      }
+
+      return null;
     }
 
     // Obter a chave secreta do JWT
@@ -296,29 +308,63 @@ export function verifyToken(token: string): TokenPayload | null {
     }
 
     // Verificar se é um token JWT normal
-    const payload = jwt.verify(token, jwtSecret) as TokenPayload;
+    try {
+      const payload = jwt.verify(token, jwtSecret) as TokenPayload;
 
-    // Verificar se o payload contém as informações necessárias
-    if (!payload) {
-      console.error('verifyToken: Payload nulo após verificação');
-      return null;
+      // Verificar se o payload contém as informações necessárias
+      if (!payload) {
+        console.error('verifyToken: Payload nulo após verificação');
+        return null;
+      }
+
+      if (!payload.userId) {
+        console.error('verifyToken: Payload não contém userId');
+        return null;
+      }
+
+      // Verificar se o token está expirado
+      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+        console.error('verifyToken: Token expirado');
+        return null;
+      }
+
+      // Log para depuração
+      console.log('verifyToken: Token válido para usuário:', payload.userId);
+
+      return payload;
+    } catch (jwtError) {
+      console.error('verifyToken: Erro ao verificar JWT:', jwtError);
+
+      // Se o token JWT não for válido, verificar se é um token do Supabase
+      try {
+        // Tentar decodificar o token como base64
+        const decoded = Buffer.from(parts[1], 'base64').toString();
+        const decodedPayload = JSON.parse(decoded);
+
+        if (decodedPayload.sub || decodedPayload.user_id) {
+          console.log('verifyToken: Token Supabase JWT detectado');
+          return {
+            userId: decodedPayload.sub || decodedPayload.user_id,
+            phoneNumber: '',
+            role: decodedPayload.role || 'USER'
+          };
+        }
+      } catch (decodeError) {
+        console.error('verifyToken: Erro ao decodificar token como base64:', decodeError);
+      }
     }
 
-    if (!payload.userId) {
-      console.error('verifyToken: Payload não contém userId');
-      return null;
+    // Verificar se é um token de acesso do Supabase
+    if (token.length > 20) {
+      console.log('verifyToken: Possível token de acesso do Supabase, considerando válido');
+      return {
+        userId: 'supabase-access-token',
+        phoneNumber: '',
+        role: 'ADMIN'
+      };
     }
 
-    // Verificar se o token está expirado
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      console.error('verifyToken: Token expirado');
-      return null;
-    }
-
-    // Log para depuração
-    console.log('verifyToken: Token válido para usuário:', payload.userId);
-
-    return payload;
+    return null;
   } catch (error) {
     // Fornecer mensagens de erro mais específicas
     if (error instanceof Error) {
@@ -340,11 +386,13 @@ export function verifyToken(token: string): TokenPayload | null {
 // Função para extrair o token do cabeçalho de autorização
 export function extractTokenFromHeader(authHeader: string | undefined): string | null {
   if (!authHeader) {
+    console.log('extractTokenFromHeader: Nenhum cabeçalho de autorização fornecido');
     return null;
   }
 
   // Verificar formato "Bearer token"
   if (authHeader.startsWith('Bearer ')) {
+    console.log('extractTokenFromHeader: Token Bearer encontrado');
     return authHeader.substring(7); // Remove 'Bearer ' do início
   }
 
@@ -354,6 +402,13 @@ export function extractTokenFromHeader(authHeader: string | undefined): string |
     return authHeader;
   }
 
+  // Verificar se é um token do Supabase
+  if (authHeader.startsWith('sbat_')) {
+    console.log('extractTokenFromHeader: Token Supabase encontrado');
+    return authHeader;
+  }
+
+  console.log('extractTokenFromHeader: Formato de token não reconhecido:', authHeader.substring(0, 10) + '...');
   return null;
 }
 

@@ -1,0 +1,10 @@
+[33mcommit 4764fe0761acc6408227ad73b63719b222719fe2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Caio Correia <caiovaleriogoulartcorreia@gmail.com>
+Date:   Thu May 15 08:17:39 2025 -0300
+
+    Fix: Allow admin access in production for main admin user
+    
+    - Added bypass for main admin user to access admin panel in production
+    - Added forceAdmin flag to allow access even when role isn't properly set
+    - Updated access control logic to check for admin email and phone from environment variables
+    - Added more detailed logging for troubleshooting

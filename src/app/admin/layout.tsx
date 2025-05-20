@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiImage, FiUser, FiUserCheck } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiImage, FiUser, FiUserCheck, FiDollarSign, FiCheck } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 import Footer from '@/components/Footer';
@@ -20,6 +20,11 @@ const adminMenuItems = [
   { id: 'documents', href: '/admin/documents', label: 'admin.documentsSection', icon: FiFileText },
   { id: 'news', href: '/admin/news', label: 'admin.news', icon: FiEdit },
   { id: 'user-management', href: '/admin/user-management', label: 'admin.usersSection', icon: FiUsers },
+  // Seção de Reembolsos
+  { id: 'reimbursement-dashboard', href: '/reembolso?tab=dashboard', label: 'Meus Reembolsos', icon: FiDollarSign },
+  { id: 'reimbursement-approval', href: '/reembolso?tab=approval', label: 'Aprovar Reembolsos', icon: FiCheck },
+  { id: 'reimbursement-settings', href: '/admin/reimbursement-settings', label: 'Configurações de Reembolso', icon: FiSettings },
+  // Configurações gerais
   { id: 'settings', href: '/admin/settings', label: 'admin.settings', icon: FiSettings },
   { id: 'admin-fix', href: '/admin-fix', label: 'Corrigir Permissões', icon: FiUserCheck },
 ];

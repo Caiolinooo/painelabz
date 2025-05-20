@@ -1,3 +1,14 @@
+import { ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+/**
+ * Combines multiple class names using clsx and tailwind-merge
+ * This is useful for conditionally applying Tailwind CSS classes
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 // Format phone number to support international formats
 export const formatPhone = (value: string): string => {
   if (!value) return value;

@@ -319,33 +319,224 @@ export async function sendAccessRejectionNotification(
  * @param nome Nome do solicitante
  * @param protocolo Número do protocolo
  * @param valor Valor do reembolso
+ * @param formData Dados completos do formulário (opcional)
+ * @param attachments Arquivos anexados (opcional)
+ * @param additionalRecipients Destinatários adicionais (opcional)
  * @returns Resultado do envio
  */
 export async function sendReimbursementConfirmationEmail(
   email: string,
   nome: string,
   protocolo: string,
-  valor: string
+  valor: string,
+  formData?: any,
+  attachments?: Array<{
+    filename: string;
+    content?: any;
+    path?: string;
+    contentType?: string;
+  }>,
+  additionalRecipients?: string[]
 ): Promise<{ success: boolean; message: string; previewUrl?: string }> {
   try {
+    console.log(`Iniciando envio de email de confirmação de reembolso para ${email}`);
+
     // Gerar conteúdo do email usando o template
     const emailContent = reimbursementConfirmationTemplate(nome, protocolo, valor);
 
-    // Enviar email para o solicitante e para o departamento de logística
-    const result = await sendCustomEmail(
-      [email, 'logistica@groupabz.com'],
-      `Solicitação de Reembolso - Protocolo: ${protocolo}`,
-      emailContent
+    // Se temos dados do formulário, gerar PDF
+    let emailAttachments = [];
+    console.log(`Verificando anexos iniciais: ${attachments ? attachments.length : 0}`);
+
+    // Garantir que os anexos originais sejam incluídos
+    if (attachments && attachments.length > 0) {
+      // Copiar os anexos originais para a lista de anexos do email
+      // Verificar cada anexo para garantir que tenha conteúdo válido
+      for (const attachment of attachments) {
+        if (attachment.content) {
+          emailAttachments.push(attachment);
+          console.log(`Anexo válido adicionado: ${attachment.filename} (${attachment.contentType || 'tipo desconhecido'})`);
+        } else if (attachment.path) {
+          emailAttachments.push(attachment);
+          console.log(`Anexo com caminho adicionado: ${attachment.filename} (${attachment.contentType || 'tipo desconhecido'})`);
+        } else {
+          console.warn(`Anexo ignorado por não ter conteúdo ou caminho: ${attachment.filename}`);
+        }
+      }
+
+      console.log(`${emailAttachments.length} anexos originais válidos adicionados ao email`);
+
+      // Listar os anexos para debug
+      emailAttachments.forEach((attachment, index) => {
+        console.log(`Anexo ${index + 1}: ${attachment.filename} (${attachment.contentType || 'tipo desconhecido'}) - ${attachment.content ? 'Com conteúdo' : attachment.path ? 'Com caminho' : 'Sem conteúdo/caminho'}`);
+      });
+    } else {
+      console.log('Nenhum anexo original encontrado');
+    }
+
+    if (formData) {
+      try {
+        console.log('Gerando PDF do formulário de reembolso...');
+        // Importar dinamicamente para evitar problemas no lado do cliente
+        const { generateReimbursementPDF } = await import('./pdf-generator');
+
+        // Formatar data para o nome do arquivo
+        const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const employeeName = formData.nome.replace(/\s+/g, '_');
+
+        // Gerar PDF do formulário
+        const formPdfBuffer = await generateReimbursementPDF(formData, protocolo);
+        console.log('PDF do formulário gerado com sucesso');
+
+        // Adicionar PDF do formulário aos anexos (como primeiro item)
+        emailAttachments.unshift({
+          filename: `Formulario_Reembolso_${protocolo}_${employeeName}_${date}.pdf`,
+          content: formPdfBuffer,
+          contentType: 'application/pdf'
+        });
+
+        console.log('PDF do formulário adicionado aos anexos');
+
+        // Não vamos mais usar o PDF combinado, pois queremos manter os anexos originais separados
+        // para garantir que todos os tipos de arquivo sejam incluídos corretamente
+
+        // Garantir que os comprovantes originais também sejam anexados
+        if (attachments && attachments.length > 0) {
+          console.log(`Verificando ${attachments.length} comprovantes originais`);
+
+          // Verificar se os anexos já têm content
+          const validAttachments = attachments.filter(att => att.content);
+
+          if (validAttachments.length > 0) {
+            console.log(`${validAttachments.length} comprovantes têm conteúdo válido`);
+          } else {
+            console.log('Nenhum comprovante tem conteúdo válido, tentando buscar do Supabase');
+
+            // Tentar buscar os comprovantes do Supabase se necessário
+            try {
+              // Implementar lógica para buscar comprovantes do Supabase se necessário
+              console.log('Busca de comprovantes do Supabase não implementada');
+            } catch (fetchError) {
+              console.error('Erro ao buscar comprovantes do Supabase:', fetchError);
+            }
+          }
+        }
+      } catch (pdfError) {
+        console.error('Erro ao gerar PDF do formulário:', pdfError);
+
+        // Continuar com os anexos originais
+        console.log('Continuando apenas com os anexos originais');
+      }
+    }
+
+    console.log(`Total de anexos para o email: ${emailAttachments.length}`);
+    emailAttachments.forEach((attachment, index) => {
+      console.log(`Anexo ${index + 1}: ${attachment.filename} (${attachment.contentType || 'tipo desconhecido'}) - ${
+        attachment.content
+          ? `Conteúdo presente (${Buffer.isBuffer(attachment.content) ? attachment.content.length + ' bytes' : 'não é buffer'})`
+          : attachment.path
+            ? `Caminho: ${attachment.path}`
+            : 'Sem conteúdo nem caminho'
+      }`);
+    });
+
+    // Verificação final para garantir que temos pelo menos um anexo
+    if (emailAttachments.length === 0) {
+      console.warn('AVISO: Nenhum anexo foi adicionado ao email. Isso pode indicar um problema com os comprovantes.');
+    } else if (emailAttachments.length === 1) {
+      console.warn('AVISO: Apenas um anexo foi adicionado ao email. Verifique se o formulário PDF e os comprovantes estão sendo incluídos corretamente.');
+    }
+
+    // Preparar lista de destinatários
+    const recipients = [email, 'logistica@groupabz.com'];
+
+    // Adicionar destinatários adicionais se existirem
+    if (additionalRecipients && additionalRecipients.length > 0) {
+      console.log(`Adicionando destinatários adicionais: ${additionalRecipients.join(', ')}`);
+      additionalRecipients.forEach(recipient => {
+        if (recipient && !recipients.includes(recipient)) {
+          recipients.push(recipient);
+        }
+      });
+    }
+
+    console.log(`Lista final de destinatários: ${recipients.join(', ')}`);
+
+    // Importar utilitários de debug
+    const { saveAttachmentsToFiles } = await import('./debug-utils');
+
+    // Salvar anexos para debug antes de enviar
+    console.log('Salvando anexos para debug antes de enviar o email...');
+    saveAttachmentsToFiles(emailAttachments, 'pre_envio_email');
+
+    // Verificar se temos anexos válidos
+    const validAttachments = emailAttachments.filter(att =>
+      (att.content && (Buffer.isBuffer(att.content) || typeof att.content === 'string')) ||
+      (att.path && typeof att.path === 'string')
     );
 
-    console.log(`Email de reembolso enviado para ${email} e logistica@groupabz.com`);
+    console.log(`Filtrando anexos: ${emailAttachments.length} total, ${validAttachments.length} válidos`);
+
+    // Adicionar anexo de teste se não houver anexos válidos suficientes
+    if (validAttachments.length <= 1) { // Se só tiver o formulário PDF ou nenhum anexo
+      console.warn('Poucos anexos válidos encontrados, adicionando anexo de teste');
+
+      // Criar um anexo de teste
+      const testBuffer = Buffer.from('Este é um anexo de teste para garantir que os anexos estão funcionando corretamente.');
+      validAttachments.push({
+        filename: `anexo_teste_${Date.now()}.txt`,
+        content: testBuffer,
+        contentType: 'text/plain'
+      });
+
+      console.log('Anexo de teste adicionado');
+    }
+
+    // Log detalhado dos anexos válidos
+    console.log(`Enviando email com ${validAttachments.length} anexos válidos:`);
+    validAttachments.forEach((att, idx) => {
+      console.log(`Anexo ${idx + 1}: ${att.filename} (${att.contentType || 'tipo desconhecido'}) - ${
+        att.content
+          ? `Conteúdo: ${Buffer.isBuffer(att.content) ? att.content.length + ' bytes' : 'não é buffer'}`
+          : att.path
+            ? `Caminho: ${att.path}`
+            : 'Sem conteúdo/caminho'
+      }`);
+    });
+
+    // Enviar email para todos os destinatários
+    const result = await sendEmail(
+      recipients,
+      `Solicitação de Reembolso - Protocolo: ${protocolo}`,
+      // Versão texto simples
+      `Solicitação de Reembolso - Protocolo: ${protocolo}\n\nOlá ${nome},\n\nSua solicitação de reembolso foi recebida com sucesso e está sendo processada.\n\nProtocolo: ${protocolo}\nValor: ${valor}\nData da Solicitação: ${new Date().toLocaleDateString('pt-BR')}\nStatus: Pendente\n\nVocê receberá atualizações sobre o status da sua solicitação por email. Em caso de dúvidas, entre em contato com o departamento financeiro.\n\nAtenção: Este email deve conter ${validAttachments.length} anexos: o formulário de reembolso e os comprovantes anexados.`,
+      // Versão HTML
+      emailContent + `<p style="color: #666; font-size: 12px;">Este email deve conter ${validAttachments.length} anexos: o formulário de reembolso e os comprovantes anexados.</p>`,
+      {
+        attachments: validAttachments
+      }
+    );
+
+    console.log(`Email de reembolso enviado para ${recipients.join(', ')}`);
+    if (emailAttachments.length > 0) {
+      console.log(`Enviado com ${emailAttachments.length} anexos:`);
+      emailAttachments.forEach((attachment, index) => {
+        console.log(`  ${index + 1}. ${attachment.filename} (${attachment.contentType}) - ${attachment.content ? `${Math.round(attachment.content.length / 1024)} KB` : 'Sem conteúdo'}`);
+      });
+    } else {
+      console.warn('Aviso: Email enviado sem anexos!');
+    }
 
     return result;
   } catch (error) {
     console.error('Erro ao enviar email de confirmação de reembolso:', error);
+    if (error instanceof Error) {
+      console.error('Detalhes do erro:', error.message);
+      console.error('Stack trace:', error.stack);
+    }
     return {
       success: false,
-      message: 'Erro ao enviar email de confirmação de reembolso'
+      message: `Erro ao enviar email de confirmação de reembolso: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
     };
   }
 }

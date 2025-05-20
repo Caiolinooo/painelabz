@@ -1,40 +1,62 @@
 import nodemailer from 'nodemailer';
+import { getCredential } from './secure-credentials';
 
 /**
  * Serviço de envio de e-mails
- * Suporta Exchange e Ethereal (para testes)
+ * Suporta Gmail e Ethereal (para testes)
  */
 
-// Configuração do Gmail com otimizações para evitar spam
-const emailConfig = {
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.EMAIL_PORT || '465'),
-  secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para outras portas
-  auth: {
-    user: process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
-    pass: process.env.EMAIL_PASSWORD || 'zbli vdst fmco dtfc'
-  },
-  // Configurações para melhorar a entregabilidade
-  pool: true, // Usar conexões persistentes
-  maxConnections: 5,
-  maxMessages: 100,
-  // Configurações de timeout
-  connectionTimeout: 10000, // 10 segundos
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-  // Desativar verificação de certificado em ambiente de desenvolvimento
-  tls: {
-    rejectUnauthorized: process.env.NODE_ENV === 'production'
-  }
-};
+// Função para obter a configuração de email
+async function getEmailConfig() {
+  // Valores padrão
+  const config = {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '465'),
+    secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para outras portas
+    auth: {
+      user: process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
+      pass: process.env.EMAIL_PASSWORD || ''
+    },
+    // Configurações para melhorar a entregabilidade
+    pool: true, // Usar conexões persistentes
+    maxConnections: 5,
+    maxMessages: 100,
+    // Configurações de timeout
+    connectionTimeout: 10000, // 10 segundos
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    // Desativar verificação de certificado em ambiente de desenvolvimento
+    tls: {
+      rejectUnauthorized: process.env.NODE_ENV === 'production'
+    }
+  };
 
-// Log para debug
-console.log('Configuração de email carregada:', {
-  host: emailConfig.host,
-  port: emailConfig.port,
-  secure: emailConfig.secure,
-  user: emailConfig.auth.user
-});
+  try {
+    // Tentar obter credenciais da tabela app_secrets
+    const emailUser = await getCredential('EMAIL_USER');
+    const emailPassword = await getCredential('EMAIL_PASSWORD');
+
+    if (emailUser) {
+      config.auth.user = emailUser;
+    }
+
+    if (emailPassword) {
+      config.auth.pass = emailPassword;
+    }
+  } catch (error) {
+    console.warn('Erro ao obter credenciais de email da tabela app_secrets, usando valores do ambiente:', error);
+  }
+
+  // Log para debug
+  console.log('Configuração de email carregada:', {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    user: config.auth.user
+  });
+
+  return config;
+}
 
 /**
  * Inicializa o transporte de e-mail
@@ -44,6 +66,9 @@ export async function createTransport() {
   try {
     console.log('Inicializando transporte de email com Gmail');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
+
+    // Obter configuração de email
+    const emailConfig = await getEmailConfig();
 
     // Criar transporter com configuração otimizada para Gmail
     const transporter = nodemailer.createTransport(emailConfig);

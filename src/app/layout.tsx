@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { I18nProvider } from "@/contexts/I18nContext";
-import { SupabaseAuthProvider } from "@/contexts/SupabaseAuthContext";
-import { SiteConfigProvider } from "@/contexts/SiteConfigContext";
-import LanguageDialog from "@/components/LanguageDialog";
-import SiteHead from "@/components/SiteHead";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+
+// Import the ClientProviders component
+import ClientProviders from "@/components/ClientProviders";
+
+// Global error handling is now moved to the GlobalErrorHandler component
 
 // Define plusJakartaSans
 const plusJakartaSans = localFont({
@@ -59,20 +56,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={plusJakartaSans.variable}>
-      <body className="bg-gray-50" suppressHydrationWarning={true}>
-        <SupabaseAuthProvider>
-          <AuthProvider>
-            <I18nProvider>
-              <SiteConfigProvider>
-                <SiteHead />
-                <LanguageDialog />
-                <ToastContainer position="top-right" theme="colored" />
-                {children}
-              </SiteConfigProvider>
-            </I18nProvider>
-          </AuthProvider>
-        </SupabaseAuthProvider>
+    <html lang="pt-BR" className={plusJakartaSans.variable} suppressHydrationWarning>
+      <body className="bg-gray-50" suppressHydrationWarning>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

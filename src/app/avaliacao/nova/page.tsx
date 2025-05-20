@@ -3,10 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import MainLayout from '@/components/Layout/MainLayout';
-import { FiSave, FiX, FiArrowLeft } from 'react-icons/fi';
+import { FiSave, FiX, FiArrowLeft, FiPlus } from 'react-icons/fi';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/contexts/I18nContext';
+import CriterioAvaliacao from '@/components/CriterioAvaliacao';
+import { criteriosPadrao, CriterioAvaliacao as ICriterioAvaliacao } from '@/data/criterios-avaliacao';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 interface Funcionario {
   id: string;
@@ -29,13 +32,24 @@ export default function NovaAvaliacaoPage() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [avaliadores, setAvaliadores] = useState<Funcionario[]>([]);
   const [loadingFuncionarios, setLoadingFuncionarios] = useState(true);
+  const [criterios, setCriterios] = useState<ICriterioAvaliacao[]>([]);
+  const [loadingCriterios, setLoadingCriterios] = useState(true);
+  const [criteriosAvaliacao, setCriteriosAvaliacao] = useState<Array<{
+    criterioId: string;
+    nota: number;
+    comentario: string;
+    nome?: string;
+    descricao?: string;
+    categoria?: string;
+    peso?: number;
+  }>>([]);
 
   // Estado do formulário
   const [formData, setFormData] = useState({
     avaliador_id: '',
     funcionario_id: '', // Alterado de avaliado_id para funcionario_id
     periodo: '',
-    status: 'pending',
+    status: 'pendente',
     observacoes: ''
   });
 
@@ -87,6 +101,63 @@ export default function NovaAvaliacaoPage() {
     fetchFuncionarios();
   }, []);
 
+  // Carregar critérios de avaliação
+  useEffect(() => {
+    const fetchCriterios = async () => {
+      try {
+        setLoadingCriterios(true);
+        console.log('Carregando critérios de avaliação...');
+
+        // Tentar carregar critérios do banco de dados
+        try {
+          const response = await fetchWithToken('/api/avaliacao-desempenho/criterios');
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data && result.data.length > 0) {
+              console.log('Critérios carregados do banco de dados:', result.data.length);
+              setCriterios(result.data);
+              setLoadingCriterios(false);
+              return;
+            }
+          }
+        } catch (apiError) {
+          console.error('Erro ao carregar critérios da API:', apiError);
+        }
+
+        // Se não conseguiu carregar do banco, usar os critérios padrão
+        console.log('Usando critérios padrão');
+        setCriterios(criteriosPadrao);
+        setLoadingCriterios(false);
+      } catch (err) {
+        console.error('Erro ao carregar critérios:', err);
+        // Em caso de erro, usar os critérios padrão
+        setCriterios(criteriosPadrao);
+        setLoadingCriterios(false);
+      }
+    };
+
+    fetchCriterios();
+  }, []);
+
+  // Inicializar critérios de avaliação quando os critérios forem carregados
+  useEffect(() => {
+    if (criterios.length > 0 && criteriosAvaliacao.length === 0) {
+      // Inicializar os critérios de avaliação com os critérios carregados
+      const initialCriterios = criterios.map(criterio => ({
+        criterioId: criterio.id,
+        nota: 0,
+        comentario: '',
+        nome: criterio.nome,
+        descricao: criterio.descricao,
+        categoria: criterio.categoria,
+        peso: criterio.peso
+      }));
+
+      setCriteriosAvaliacao(initialCriterios);
+    }
+  }, [criterios, criteriosAvaliacao.length]);
+
   // Manipular mudanças no formulário
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -94,6 +165,17 @@ export default function NovaAvaliacaoPage() {
       ...prev,
       [name]: value
     }));
+  };
+
+  // Manipular mudanças nos critérios
+  const handleCriterioChange = (id: string, nota: number, comentario: string) => {
+    setCriteriosAvaliacao(prev =>
+      prev.map(criterio =>
+        criterio.criterioId === id
+          ? { ...criterio, nota, comentario }
+          : criterio
+      )
+    );
   };
 
   // Enviar formulário
@@ -111,30 +193,62 @@ export default function NovaAvaliacaoPage() {
         return;
       }
 
-      // Criar cliente Supabase
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      // Preparar dados para envio
+      const avaliacaoData = {
+        avaliador_id: formData.avaliador_id,
+        funcionario_id: formData.funcionario_id,
+        periodo: formData.periodo,
+        status: formData.status,
+        observacoes: formData.observacoes,
+        criterios: criteriosAvaliacao
+      };
 
-      // Criar nova avaliação
-      const { data, error } = await supabase
-        .from('avaliacoes')
-        .insert({
-          avaliador_id: formData.avaliador_id,
-          funcionario_id: formData.funcionario_id, // Alterado de avaliado_id para funcionario_id
-          periodo: formData.periodo,
-          status: formData.status,
-          observacoes: formData.observacoes,
-          created_at: new Date().toISOString(),
-          data_criacao: new Date().toISOString()
-        })
-        .select();
+      console.log('Enviando dados da avaliação:', avaliacaoData);
 
-      if (error) {
-        throw error;
+      // Tentar primeiro a API de avaliação direta
+      try {
+        const response = await fetchWithToken('/api/avaliacao/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(avaliacaoData)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Avaliação criada com sucesso via API direta:', result);
+          setSuccess(true);
+
+          // Redirecionar para a lista após 2 segundos
+          setTimeout(() => {
+            router.push('/avaliacao');
+          }, 2000);
+
+          return; // Encerrar a função aqui se a primeira API funcionou
+        }
+
+        console.log('Falha ao usar API direta, tentando API alternativa...');
+      } catch (apiError) {
+        console.error('Erro ao usar API direta:', apiError);
       }
 
-      console.log('Avaliação criada com sucesso:', data);
+      // Se falhar, tentar a API de avaliação-desempenho
+      const response = await fetchWithToken('/api/avaliacao-desempenho/avaliacoes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(avaliacaoData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Avaliação criada com sucesso:', result);
       setSuccess(true);
 
       // Redirecionar para a lista após 2 segundos
@@ -144,7 +258,7 @@ export default function NovaAvaliacaoPage() {
 
     } catch (err) {
       console.error('Erro ao criar avaliação:', err);
-      setError(t('avaliacao.nova.createError', 'Ocorreu um erro ao criar a avaliação. Por favor, tente novamente.'));
+      setError(`Erro ao criar avaliação: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -271,6 +385,54 @@ export default function NovaAvaliacaoPage() {
               ></textarea>
             </div>
 
+            {/* Seção de Critérios de Avaliação */}
+            <div className="mb-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                {t('avaliacao.criterios.title', 'Critérios de Avaliação')}
+              </h2>
+
+              {loadingCriterios ? (
+                <div className="flex justify-center items-center p-8">
+                  <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
+                  <span className="ml-2 text-gray-600">{t('common.loading', 'Carregando...')}</span>
+                </div>
+              ) : criteriosAvaliacao.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Agrupar critérios por categoria */}
+                  {Array.from(new Set(criteriosAvaliacao.map(c => c.categoria))).map(categoria => (
+                    <div key={categoria} className="mb-6">
+                      <h3 className="text-md font-medium text-gray-800 mb-3 pb-2 border-b">
+                        {categoria}
+                      </h3>
+                      <div className="space-y-4">
+                        {criteriosAvaliacao
+                          .filter(c => c.categoria === categoria)
+                          .map(criterio => (
+                            <CriterioAvaliacao
+                              key={criterio.criterioId}
+                              id={criterio.criterioId}
+                              nome={criterio.nome || ''}
+                              descricao={criterio.descricao || ''}
+                              categoria={criterio.categoria || ''}
+                              peso={criterio.peso || 1}
+                              notaMaxima={5}
+                              initialNota={criterio.nota}
+                              initialComentario={criterio.comentario}
+                              onChange={handleCriterioChange}
+                              readOnly={loading}
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-md">
+                  <p>{t('avaliacao.criterios.noCriterios', 'Nenhum critério de avaliação encontrado. Por favor, adicione critérios para continuar.')}</p>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end space-x-3">
               <Link
                 href="/avaliacao"
@@ -280,7 +442,7 @@ export default function NovaAvaliacaoPage() {
               </Link>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || loadingCriterios || criteriosAvaliacao.length === 0}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 {loading ? (
