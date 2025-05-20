@@ -524,7 +524,7 @@ export async function POST(request: NextRequest) {
 
         // Importar utilitários de armazenamento temporário e Google Drive
         const { storeTemporaryFile, cleanupTemporaryFiles } = await import('@/lib/temp-storage');
-        const { uploadReimbursementFileToDrive } = await import('@/lib/google-drive');
+        const { uploadReimbursementFileToDrive } = await import('@/lib/google-drive-api');
         const { saveAttachmentsToFiles } = await import('@/lib/debug-utils');
 
         // Limpar arquivos temporários antigos
@@ -580,7 +580,7 @@ export async function POST(request: NextRequest) {
 
                 // Tentar fazer upload para o Google Drive se as credenciais estiverem configuradas
                 try {
-                  if (process.env.GOOGLE_DRIVE_CLIENT_ID) {
+                  if (process.env.GOOGLE_DRIVE_API_KEY && process.env.GOOGLE_DRIVE_FOLDER_ID) {
                     console.log(`Tentando fazer upload do arquivo ${storedFile.filename} para o Google Drive...`);
 
                     const driveFile = await uploadReimbursementFileToDrive(
