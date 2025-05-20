@@ -51,6 +51,11 @@ export async function GET(req: NextRequest) {
       // Verificar se o usuário tem senha definida (verificar tanto password quanto password_hash)
       const hasPassword = !!userData.password_hash || !!userData.password;
       console.log('Usuário tem senha definida:', hasPassword);
+      console.log('Detalhes da senha:', {
+        hasPasswordField: !!userData.password,
+        hasPasswordHashField: !!userData.password_hash,
+        passwordLastChanged: userData.password_last_changed
+      });
 
       // Se o usuário tem senha na coluna password mas não em password_hash, copiar para password_hash
       if (userData.password && !userData.password_hash) {
@@ -63,6 +68,36 @@ export async function GET(req: NextRequest) {
         if (updateError) {
           console.error('Erro ao atualizar password_hash:', updateError);
         }
+      }
+
+      // Se o usuário tem senha na coluna password_hash mas não em password, copiar para password
+      if (!userData.password && userData.password_hash) {
+        console.log('Copiando senha da coluna password_hash para password');
+        const { error: updateError } = await supabase
+          .from('users_unified')
+          .update({ password: userData.password_hash })
+          .eq('id', payload.userId);
+
+        if (updateError) {
+          console.error('Erro ao atualizar password:', updateError);
+        }
+      }
+
+      // Verificar se o usuário é administrador e forçar hasPassword = true
+      const { data: userRole, error: roleError } = await supabase
+        .from('users_unified')
+        .select('role')
+        .eq('id', payload.userId)
+        .single();
+
+      if (!roleError && userRole && userRole.role === 'ADMIN') {
+        console.log('Usuário é administrador, garantindo acesso sem verificação de senha');
+        // Para administradores, sempre considerar que tem senha
+        return NextResponse.json({
+          hasPassword: true,
+          passwordLastChanged: userData.password_last_changed,
+          isAdmin: true
+        });
       }
 
       return NextResponse.json({

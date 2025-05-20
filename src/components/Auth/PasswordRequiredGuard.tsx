@@ -47,8 +47,10 @@ export function PasswordRequiredGuard({ children }: PasswordRequiredGuardProps) 
 
         if (response.ok) {
           const data = await response.json();
+          console.log('Resposta da verificação de senha:', data);
 
-          if (data.hasPassword) {
+          if (data.hasPassword || data.isAdmin) {
+            // Se o usuário tem senha ou é admin, permitir acesso
             setHasPassword(true);
           } else {
             setHasPassword(false);

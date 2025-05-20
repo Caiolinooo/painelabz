@@ -94,7 +94,8 @@ export async function GET(
   { params }: { params: { protocolo: string } }
 ) {
   try {
-    const protocolo = params.protocolo;
+    // Usar await para acessar params.protocolo conforme recomendado pelo Next.js
+    const protocolo = await Promise.resolve(params.protocolo);
 
     // Verificar se a tabela de reembolsos existe
     console.log('Verificando existência da tabela de reembolsos...');
@@ -204,7 +205,8 @@ export async function PUT(
       );
     }
 
-    const protocolo = params.protocolo;
+    // Usar await para acessar params.protocolo conforme recomendado pelo Next.js
+    const protocolo = await Promise.resolve(params.protocolo);
     const body = await request.json();
     const { status, observacao } = body;
     const usuarioId = payload.userId; // Usar o ID do usuário autenticado

@@ -369,7 +369,7 @@ export async function GET(
     } catch (storageError) {
       console.error('Error accessing Supabase storage:', storageError);
       // Continue to try local file system
-    }
+    };
 
     // If not found in Supabase storage, try local file system
     // Normalize the path to avoid path traversal attacks
