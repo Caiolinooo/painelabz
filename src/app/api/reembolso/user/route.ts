@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * API endpoint to get reimbursements for a specific user
@@ -13,6 +14,21 @@ export async function GET(request: NextRequest) {
     // Check authentication
     const authHeader = request.headers.get('authorization') || '';
     const token = extractTokenFromHeader(authHeader);
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Token inválido ou expirado' },
+        { status: 401 }
+      );
+    }
 
     // If no token is provided, try to get it from the cookie
     let isAuthenticated = false;
@@ -27,7 +43,7 @@ export async function GET(request: NextRequest) {
         isAuthenticated = true;
         userId = payload.userId;
         userRole = payload.role;
-        userEmail = payload.email || '';
+        // COMENTADO: userEmail = payload.email || ''; // A propriedade email pode não existir no payload do token
         console.log('User authenticated via token:', userId, 'Role:', userRole);
       }
     } else {
@@ -36,7 +52,7 @@ export async function GET(request: NextRequest) {
       if (session) {
         isAuthenticated = true;
         userId = session.user.id;
-        userEmail = session.user.email || '';
+        userEmail = session.user.email || ''; // Obter email da sessão
 
         // Get user role from database
         const { data: userData } = await supabaseAdmin
@@ -118,8 +134,28 @@ export async function GET(request: NextRequest) {
       .from('Reimbursement')
       .select('*', { count: 'exact' });
 
-    // Apply email filter with case-insensitive matching
-    query = query.ilike('email', normalizedEmail);
+    // *** MODIFICAÇÃO AQUI: Buscar reembolsos associados a todos os e-mails do usuário ***
+    let emailsToSearch = [normalizedEmail];
+
+    // Se o usuário não for admin/manager, buscar os emails adicionais na tabela user_emails
+    if (!isAdmin && !isManager) {
+      const { data: userEmailsData, error: userEmailsError } = await supabaseAdmin
+        .from('user_emails')
+        .select('email')
+        .eq('user_id', userId);
+
+      if (userEmailsError) {
+        console.error('Erro ao buscar e-mails adicionais do usuário:', userEmailsError);
+        // Continuar com o email principal se houver erro ao buscar emails adicionais
+      } else if (userEmailsData) {
+        const additionalEmails = userEmailsData.map(item => item.email.toLowerCase().trim());
+        emailsToSearch = [...new Set([...emailsToSearch, ...additionalEmails])]; // Remover duplicatas
+        console.log('Buscando reembolsos associados aos seguintes emails:', emailsToSearch);
+      }
+    }
+
+    // Apply email filter (buscar por qualquer um dos emails na lista)
+    query = query.in('email', emailsToSearch);
 
     // Apply status filter if provided
     if (status && status !== 'all') {
