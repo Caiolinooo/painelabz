@@ -7,9 +7,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = params.id;
+
     // Verificar autenticação
-    const authHeader = request.headers.get('authorization');
-    const token = extractTokenFromHeader(authHeader || '');
+    const authHeader = request.headers.get('authorization') || '';
+    const token = extractTokenFromHeader(authHeader);
 
     if (!token) {
       return NextResponse.json(
@@ -28,7 +30,7 @@ export async function GET(
 
     // Verificar se o usuário está tentando acessar seus próprios dados
     // ou se é um administrador
-    if (payload.userId !== params.id && payload.role !== 'ADMIN') {
+    if (payload.userId !== userId && payload.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -51,7 +53,7 @@ export async function GET(
     const { data, error } = await supabase
       .from('user_phones')
       .select('*')
-      .eq('user_id', params.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {

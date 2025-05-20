@@ -50,6 +50,8 @@ export default function ReimbursementDashboard() {
       return;
     }
 
+    console.log('Email do usuário logado para busca de reembolsos:', user.email);
+
     try {
       setLoading(true);
       setError(null);

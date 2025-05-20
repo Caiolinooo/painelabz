@@ -3,18 +3,48 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
+import { getCredential } from '@/lib/secure-credentials';
 
 // Configurar cliente do Google Drive
-const auth = new google.auth.JWT({
-  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-  key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  scopes: ['https://www.googleapis.com/auth/drive']
-});
+// BUSCAR CREDENCIAIS DA TABELA app_secrets
+async function initializeGoogleDriveClient() {
+  try {
+    const googleServiceAccountEmail = await getCredential('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+    const googleServiceAccountPrivateKey = await getCredential('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY');
 
-const drive = google.drive({ version: 'v3', auth });
+    if (!googleServiceAccountEmail || !googleServiceAccountPrivateKey) {
+      console.error('Credenciais do Google Drive Service Account não encontradas na tabela app_secrets.');
+      // Dependendo da sua lógica de inicialização, você pode querer lançar um erro aqui
+      // ou retornar null e lidar com isso no handler POST.
+      return null;
+    }
+
+    const auth = new google.auth.JWT({
+      email: googleServiceAccountEmail,
+      key: googleServiceAccountPrivateKey.replace(/\\n/g, '\n'), // Ainda pode precisar substituir \n se não foram escapados no banco
+      scopes: ['https://www.googleapis.com/auth/drive']
+    });
+
+    const drive = google.drive({ version: 'v3', auth });
+    return drive;
+  } catch (error) {
+    console.error('Erro ao inicializar cliente do Google Drive:', error);
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Inicializar cliente do Google Drive
+    const drive = await initializeGoogleDriveClient();
+
+    if (!drive) {
+      return NextResponse.json(
+        { error: 'Erro de configuração do Google Drive.' },
+        { status: 500 }
+      );
+    }
+
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = extractTokenFromHeader(authHeader || '');
