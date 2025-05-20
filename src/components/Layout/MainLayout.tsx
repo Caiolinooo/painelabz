@@ -131,11 +131,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <LanguageSelector variant="inline" />
             </div>
             <Link
-                href="/profile"
+                href="/perfil"
                 className="w-full px-4 py-2 rounded-md text-sm font-medium text-abz-blue bg-gray-100 hover:bg-gray-200 hover:text-abz-blue-dark flex items-center justify-center"
             >
                 <FiUser className="mr-2" />
-                Meu Perfil
+                {t('common.profile', 'Meu Perfil')}
             </Link>
             <button
                 onClick={handleLogout}
@@ -169,7 +169,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                          {/* Placeholder para botão de menu mobile se for diferente de um sidebar fixo */}
                          <LanguageSelector variant="dropdown" className="mr-2" />
                          <Link
-                            href="/profile"
+                            href="/perfil"
                             className="ml-2 px-3 py-1.5 rounded-md text-sm font-medium text-abz-blue bg-gray-100 hover:bg-gray-200"
                          >
                             <FiUser />

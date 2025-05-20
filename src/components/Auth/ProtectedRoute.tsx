@@ -23,8 +23,26 @@ export default function ProtectedRoute({
   const isAuthenticated = !!user;
 
   // Usar as verificações de papel do contexto de autenticação
+  const [isAvaliacaoRoute, setIsAvaliacaoRoute] = useState(false);
+
+  // Atualizar isAvaliacaoRoute quando o componente montar
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isAvaliacao = window.location.pathname.includes('/avaliacao');
+      setIsAvaliacaoRoute(isAvaliacao);
+      console.log('ProtectedRoute - Rota de avaliação detectada:', isAvaliacao);
+    }
+  }, []);
+
+  // Verificar se o usuário tem acesso ao módulo de avaliação
+  const hasEvaluationAccess = contextHasAccess('avaliacao');
+
+  // Permitir acesso à rota de avaliação apenas em desenvolvimento ou se o usuário tiver permissão
   const isAdmin = contextIsAdmin;
   const isManager = contextIsManager;
+
+  // Verificar se o usuário tem acesso à rota de avaliação
+  const hasAccessToAvaliacaoRoute = isAdmin || isManager || hasEvaluationAccess || (isAvaliacaoRoute && process.env.NODE_ENV === 'development');
 
   // Usar a função hasAccess do contexto de autenticação
   const hasAccess = contextHasAccess;
@@ -45,8 +63,7 @@ export default function ProtectedRoute({
   // Isso garante que o usuário principal sempre tenha acesso ao painel de administração
   const forceAdmin = shouldBeAdmin && !isAdmin;
 
-  // Verificar se estamos na rota de avaliação
-  const isAvaliacaoRoute = typeof window !== 'undefined' && window.location.pathname.includes('/avaliacao');
+  // isAvaliacaoRoute já foi definido como state acima
 
   useEffect(() => {
     console.log('ProtectedRoute - Estado inicial:', {
@@ -122,10 +139,23 @@ export default function ProtectedRoute({
           isAvaliacaoRoute
         });
 
-        // BYPASS TEMPORÁRIO: Permitir acesso à rota de avaliação para todos os usuários autenticados
+        // Verificar acesso à rota de avaliação
         if (isAvaliacaoRoute) {
-          console.log('BYPASS: Permitindo acesso à rota de avaliação para usuário autenticado');
-          return;
+          console.log('Verificando acesso à rota de avaliação:', {
+            isAdmin,
+            isManager,
+            hasEvaluationAccess,
+            hasAccessToAvaliacaoRoute
+          });
+
+          if (hasAccessToAvaliacaoRoute) {
+            console.log('Acesso permitido à rota de avaliação');
+            return;
+          } else {
+            console.log('Acesso negado à rota de avaliação');
+            router.replace('/dashboard');
+            return;
+          }
         }
 
         // BYPASS TEMPORÁRIO: Permitir acesso à rota de administração para depuração
@@ -178,9 +208,19 @@ export default function ProtectedRoute({
 
           router.replace('/dashboard');
         } else if (moduleName && !hasAccess(moduleName) && !isAdmin) {
-          // Redirecionar para dashboard se o usuário não tiver acesso ao módulo
-          console.log(`Redirecionando para dashboard: sem acesso ao módulo ${moduleName}`);
-          router.replace('/dashboard');
+          // Verificação especial para o módulo de avaliação
+          if (moduleName === 'avaliacao') {
+            if (!hasAccessToAvaliacaoRoute) {
+              console.log(`Redirecionando para dashboard: sem acesso ao módulo de avaliação`);
+              router.replace('/dashboard');
+            } else {
+              console.log(`Acesso permitido ao módulo de avaliação`);
+            }
+          } else {
+            // Redirecionar para dashboard se o usuário não tiver acesso ao módulo
+            console.log(`Redirecionando para dashboard: sem acesso ao módulo ${moduleName}`);
+            router.replace('/dashboard');
+          }
         } else {
           // Adicionar log para depuração
           console.log('Acesso permitido:', { isAdmin, isManager, moduleName, hasAccess: moduleName ? hasAccess(moduleName) : 'N/A' });
@@ -190,7 +230,7 @@ export default function ProtectedRoute({
 
     // Limpar o timer quando o componente for desmontado
     return () => clearTimeout(redirectTimer);
-  }, [isAuthenticated, isAdmin, isManager, isLoading, router, adminOnly, managerOnly, moduleName, hasAccess, isDevelopment, user, shouldBeAdmin, checkingAdmin, isAvaliacaoRoute]);
+  }, [isAuthenticated, isAdmin, isManager, isLoading, router, adminOnly, managerOnly, moduleName, hasAccess, isDevelopment, user, shouldBeAdmin, checkingAdmin, isAvaliacaoRoute, hasAccessToAvaliacaoRoute, hasEvaluationAccess, profile]);
 
   // Função para corrigir as permissões de administrador
   const fixAdminPermissions = async () => {

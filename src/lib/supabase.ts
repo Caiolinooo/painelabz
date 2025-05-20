@@ -1,10 +1,12 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getCredential, initializeSupabaseClient } from './secure-credentials';
 
 // Estas variáveis devem ser definidas no arquivo .env
 // Definindo valores padrão para garantir que o código funcione mesmo sem as variáveis de ambiente
 const supabaseUrl = ***REMOVED*** || 'https://arzvingdtnttiejcvucs.supabase.co';
 const supabaseAnonKey = ***REMOVED*** || '***REMOVED***';
-const supabaseServiceKey = ***REMOVED*** || '***REMOVED***';
+// Inicialmente usar a chave do ambiente, depois tentar buscar da tabela app_secrets
+const supabaseServiceKey = ***REMOVED*** || '';
 
 // Implementar padrão Singleton para evitar múltiplas instâncias do GoTrueClient
 // Usar globalThis para armazenar as instâncias únicas dos clientes
@@ -53,7 +55,7 @@ function getSupabaseClient(): SupabaseClient {
 }
 
 // Função para criar ou retornar a instância do cliente Supabase Admin
-function getSupabaseAdminClient(): SupabaseClient {
+async function getSupabaseAdminClient(): Promise<SupabaseClient> {
   // Usar o objeto global para armazenar a instância
   const globalWithSupabase = globalThis as GlobalWithSupabase;
 
@@ -62,8 +64,28 @@ function getSupabaseAdminClient(): SupabaseClient {
     return globalWithSupabase._supabaseAdminClient;
   }
 
+  // Tentar obter a chave de serviço da tabela app_secrets
+  let serviceKey = supabaseServiceKey;
+
+  // Se não temos a chave no ambiente, tentar buscar da tabela app_secrets
+  if (!serviceKey) {
+    try {
+      // Inicializar o cliente Supabase com a chave do ambiente
+      initializeSupabaseClient(supabaseUrl, serviceKey);
+
+      // Buscar a chave de serviço da tabela app_secrets
+      const secretKey = await getCredential('***REMOVED***');
+      if (secretKey) {
+        serviceKey = secretKey;
+        console.log('Chave de serviço obtida da tabela app_secrets');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar chave de serviço da tabela app_secrets:', error);
+    }
+  }
+
   // Verificar se a chave de serviço está presente
-  if (!supabaseServiceKey) {
+  if (!serviceKey) {
     console.error('ERRO CRÍTICO: Chave de serviço do Supabase ausente!');
   }
 
@@ -75,7 +97,7 @@ function getSupabaseAdminClient(): SupabaseClient {
   // Criar a instância e armazená-la no objeto global
   const instance = createClient(
     supabaseUrl,
-    supabaseServiceKey || supabaseAnonKey,
+    serviceKey || supabaseAnonKey,
     {
       auth: {
         autoRefreshToken: false,
@@ -90,7 +112,28 @@ function getSupabaseAdminClient(): SupabaseClient {
 
 // Exportar as instâncias únicas dos clientes
 export const supabase = getSupabaseClient();
-export const supabaseAdmin = getSupabaseAdminClient();
+// Para o cliente admin, precisamos usar uma função assíncrona
+let _supabaseAdminPromise: Promise<SupabaseClient> | null = null;
+
+export function getSupabaseAdmin(): Promise<SupabaseClient> {
+  if (!_supabaseAdminPromise) {
+    _supabaseAdminPromise = getSupabaseAdminClient();
+  }
+  return _supabaseAdminPromise;
+}
+
+// Para compatibilidade com código existente, criar uma versão síncrona
+// Isso usará a chave do ambiente inicialmente, mas será atualizado quando getSupabaseAdmin() for chamado
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  supabaseServiceKey || supabaseAnonKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 // Adicionar logs para depuração apenas no navegador
 if (isBrowser) {
@@ -154,13 +197,25 @@ export async function signInWithEmail(email: string, password: string) {
 
     // Gerar token JWT
     const jwt = require('jsonwebtoken');
+
+    // Obter a chave JWT da tabela app_secrets ou usar a do ambiente
+    let jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+    try {
+      const secretKey = await getCredential('JWT_SECRET');
+      if (secretKey) {
+        jwtSecret = secretKey;
+      }
+    } catch (error) {
+      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando fallback:', error);
+    }
+
     const token = jwt.sign(
       {
         userId: user.id,
         phoneNumber: user.phone_number,
         role: user.role,
       },
-      process.env.JWT_SECRET || 'fallback-secret',
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
@@ -223,13 +278,25 @@ export async function signInWithPhone(phone: string, password: string) {
 
     // Gerar token JWT
     const jwt = require('jsonwebtoken');
+
+    // Obter a chave JWT da tabela app_secrets ou usar a do ambiente
+    let jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+    try {
+      const secretKey = await getCredential('JWT_SECRET');
+      if (secretKey) {
+        jwtSecret = secretKey;
+      }
+    } catch (error) {
+      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando fallback:', error);
+    }
+
     const token = jwt.sign(
       {
         userId: user.id,
         phoneNumber: user.phone_number,
         role: user.role,
       },
-      process.env.JWT_SECRET || 'fallback-secret',
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
@@ -368,13 +435,25 @@ export async function signUp(email: string, password: string, userData: any) {
 
     // Gerar token JWT
     const jwt = require('jsonwebtoken');
+
+    // Obter a chave JWT da tabela app_secrets ou usar a do ambiente
+    let jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+    try {
+      const secretKey = await getCredential('JWT_SECRET');
+      if (secretKey) {
+        jwtSecret = secretKey;
+      }
+    } catch (error) {
+      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando fallback:', error);
+    }
+
     const token = jwt.sign(
       {
         userId: userId,
         phoneNumber: userData.phoneNumber,
         role: userData.role || 'USER',
       },
-      process.env.JWT_SECRET || 'fallback-secret',
+      jwtSecret,
       { expiresIn: '7d' }
     );
 

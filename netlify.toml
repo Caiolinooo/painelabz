@@ -1,10 +1,15 @@
 [build]
-  command = "npm run build"
+  command = "npm run clean && NEXT_TELEMETRY_DISABLED=1 npm run build"
   publish = ".next"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ./package-lock.json"
 
 [build.environment]
   NODE_VERSION = "18.18.0"
   NPM_VERSION = "9.8.1"
+  # Disable Next.js telemetry
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Increase memory limit for Node.js
+  NODE_OPTIONS = "--max_old_space_size=4096"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
@@ -18,3 +23,43 @@
 [context.production.environment]
   NEXT_IGNORE_ESLINT = "true"
   NEXT_IGNORE_TYPE_CHECK = "true"
+
+# Headers to set on all pages
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache control for static assets
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Redirects and rewrites
+[[redirects]]
+  from = "/*"
+  to = "/_next/static/:splat"
+  status = 200
+  force = true
+  conditions = {Path = ["/_next/static/*"]}
+
+[[redirects]]
+  from = "/*"
+  to = "/api/:splat"
+  status = 200
+  force = true
+  conditions = {Path = ["/api/*"]}
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

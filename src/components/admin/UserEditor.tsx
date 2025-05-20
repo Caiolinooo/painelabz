@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FiSave, FiX, FiUser, FiMail, FiPhone, FiBriefcase, FiUsers } from 'react-icons/fi';
+import { FiSave, FiX, FiUser, FiMail, FiPhone, FiBriefcase, FiUsers, FiPlus, FiTrash2, FiDollarSign } from 'react-icons/fi';
 import { AccessPermissions } from '@/models/User';
+import ServerUserReimbursementSettings from './ServerUserReimbursementSettings';
+import ReimbursementPermissionsEditor from './ReimbursementPermissionsEditor';
 
 // Interface para o usuário no editor
 export interface UserEditorData {
@@ -15,6 +17,10 @@ export interface UserEditorData {
   position?: string;
   department?: string;
   accessPermissions?: AccessPermissions;
+  reimbursement_email_settings?: {
+    enabled: boolean;
+    recipients: string[];
+  };
 }
 
 interface UserEditorProps {
@@ -53,6 +59,10 @@ const UserEditor: React.FC<UserEditorProps> = ({
         ponto: true,
         admin: false
       }
+    },
+    reimbursement_email_settings: {
+      enabled: false,
+      recipients: []
     }
   };
 
@@ -61,6 +71,8 @@ const UserEditor: React.FC<UserEditorProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [showPermissions, setShowPermissions] = useState(false);
+  const [showReimbursementSettings, setShowReimbursementSettings] = useState(false);
+
 
   // Lista de módulos disponíveis
   const availableModules = [
@@ -154,6 +166,12 @@ const UserEditor: React.FC<UserEditorProps> = ({
         }
       }
     }));
+  };
+
+  // Validar email
+  const validateEmail = (email: string): boolean => {
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return re.test(email);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -416,9 +434,48 @@ const UserEditor: React.FC<UserEditorProps> = ({
                     </div>
                   ))}
                 </div>
+
+                {/* Permissões específicas de reembolso */}
+                <ReimbursementPermissionsEditor
+                  permissions={editedUser.accessPermissions || { modules: {}, features: {} }}
+                  onChange={(updatedPermissions) => {
+                    setEditedUser({
+                      ...editedUser,
+                      accessPermissions: updatedPermissions
+                    });
+                  }}
+                  readOnly={editedUser.role === 'ADMIN'} // Administradores têm todas as permissões
+                />
               </div>
             )}
           </div>
+
+          {/* Configurações de Email de Reembolso */}
+          {editedUser.email && (
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={() => setShowReimbursementSettings(!showReimbursementSettings)}
+                className="flex items-center text-abz-blue hover:text-abz-blue-dark font-medium"
+              >
+                <FiMail className="mr-2" />
+                {showReimbursementSettings ? 'Ocultar Configurações de Email' : 'Configurar Email de Reembolso'}
+              </button>
+
+              {showReimbursementSettings && (
+                <ServerUserReimbursementSettings
+                  email={editedUser.email}
+                  initialSettings={editedUser.reimbursement_email_settings}
+                  onSave={(settings) => {
+                    setEditedUser(prev => ({
+                      ...prev,
+                      reimbursement_email_settings: settings
+                    }));
+                  }}
+                />
+              )}
+            </div>
+          )}
 
           {/* Botões de ação */}
           <div className="flex justify-end space-x-3 border-t pt-4">

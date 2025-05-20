@@ -10,8 +10,8 @@ import ProtectedRoute from '@/components/Auth/ProtectedRoute';
 import { useRouter } from 'next/navigation';
 
 export default function AvaliacaoDetailPage({ params }: { params: { id: string } }) {
-  // Usar React.use para evitar o aviso de acesso direto a params
-  const id = React.use(Promise.resolve(params.id));
+  // Usar o ID diretamente dos params para evitar problemas com React.use
+  const id = params.id;
   const { t } = useI18n();
   const { user } = useSupabaseAuth();
   const router = useRouter();

@@ -355,12 +355,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         rememberMe
       });
 
-      // Importar a função de login com tratamento de erros
-      const { loginWithCredentials } = await import('@/lib/api-helpers');
+      // Use dynamic import to avoid circular dependencies
+      const apiHelpers = await import('@/lib/api-helpers');
 
       try {
         // Usar a função de login com tratamento de erros
-        const data = await loginWithCredentials(identifier, password);
+        const data = await apiHelpers.loginWithCredentials(identifier, password);
         console.log('Dados da resposta:', data);
 
         if (data && data.token) {

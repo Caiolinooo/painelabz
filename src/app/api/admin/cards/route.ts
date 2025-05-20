@@ -1,6 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabaseAdmin } from '@/lib/db';
 import { isAdminFromRequest } from '@/lib/auth';
+import dashboardCards from '@/data/cards';
+import { IconType } from 'react-icons';
+import * as Icons from 'react-icons/fi';
+
+// Função para converter cards hardcoded para o formato do banco de dados
+function convertHardcodedCards() {
+  return dashboardCards.map(card => {
+    // Obter o nome do ícone a partir do objeto do ícone
+    let iconName = 'FiGrid';
+
+    // Verificar se o ícone é um componente válido
+    if (card.icon && typeof card.icon === 'function') {
+      // Tentar obter o displayName do componente
+      iconName = card.icon.displayName || 'FiGrid';
+
+      // Garantir que o nome do ícone esteja no formato correto (PascalCase)
+      if (!iconName.startsWith('Fi')) {
+        iconName = `Fi${iconName}`;
+      }
+    }
+
+    return {
+      id: card.id,
+      title: card.title,
+      description: card.description,
+      href: card.href,
+      icon: iconName,
+      color: card.color,
+      hover_color: card.hoverColor,
+      external: card.external,
+      enabled: card.enabled,
+      order: card.order,
+      admin_only: card.adminOnly || false,
+      manager_only: card.managerOnly || false,
+      allowed_roles: card.allowedRoles || null,
+      allowed_user_ids: card.allowedUserIds || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  });
+}
+
+// Função para converter cards do banco de dados para o formato da aplicação
+function convertDatabaseCards(dbCards: any[]) {
+  return dbCards.map(card => {
+    // Converter o nome do ícone para o componente do ícone
+    let icon: IconType = Icons.FiGrid;
+
+    if (card.icon && typeof card.icon === 'string') {
+      // Garantir que o nome do ícone esteja no formato correto (PascalCase)
+      // Se o nome não começar com 'Fi', adicionar o prefixo
+      const iconName = card.icon.startsWith('Fi') ? card.icon : `Fi${card.icon}`;
+
+      // Verificar se o ícone existe no objeto Icons
+      if (Icons[iconName]) {
+        icon = Icons[iconName];
+      } else {
+        console.warn(`Ícone não encontrado: ${iconName}, usando FiGrid como fallback`);
+        icon = Icons.FiGrid;
+      }
+    }
+
+    return {
+      id: card.id,
+      title: card.title,
+      description: card.description,
+      href: card.href,
+      icon: icon,
+      color: card.color,
+      hoverColor: card.hover_color,
+      external: card.external,
+      enabled: card.enabled,
+      order: card.order,
+      adminOnly: card.admin_only,
+      managerOnly: card.manager_only,
+      allowedRoles: card.allowed_roles,
+      allowedUserIds: card.allowed_user_ids
+    };
+  });
+}
 
 // GET - Obter todos os cards
 export async function GET(request: NextRequest) {
@@ -14,12 +94,49 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar todos os cards
-    const cards = await prisma.card.findMany({
-      orderBy: { order: 'asc' }
-    });
+    console.log('Buscando cards...');
 
-    return NextResponse.json(cards);
+    try {
+      // Buscar todos os cards usando Supabase
+      const { data: cards, error } = await supabaseAdmin
+        .from('cards')
+        .select('*')
+        .order('order', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao buscar cards do Supabase:', error);
+
+        // Se o erro for relacionado à tabela não existir, usar os cards hardcoded
+        if (error.message.includes('does not exist') || error.code === '42P01') {
+          console.log('Tabela cards não existe, usando cards hardcoded...');
+          const hardcodedCards = convertHardcodedCards();
+          return NextResponse.json(hardcodedCards);
+        }
+
+        throw error;
+      }
+
+      console.log(`Encontrados ${cards?.length || 0} cards no banco de dados`);
+
+      // Se não houver cards no banco de dados, usar os hardcoded
+      if (!cards || cards.length === 0) {
+        console.log('Nenhum card encontrado no banco de dados, usando cards hardcoded...');
+        const hardcodedCards = convertHardcodedCards();
+        return NextResponse.json(hardcodedCards);
+      }
+
+      // Converter os cards do banco de dados para o formato da aplicação
+      const formattedCards = convertDatabaseCards(cards);
+      return NextResponse.json(formattedCards);
+    } catch (error) {
+      console.error('Erro ao buscar cards:', error);
+
+      // Usar cards hardcoded como fallback
+      console.log('Usando cards hardcoded como fallback...');
+      const hardcodedCards = convertHardcodedCards();
+      console.log('Cards hardcoded convertidos:', hardcodedCards.length);
+      return NextResponse.json(hardcodedCards);
+    }
   } catch (error) {
     console.error('Erro ao obter cards:', error);
     return NextResponse.json(
@@ -52,21 +169,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Criar o card
-    const card = await prisma.card.create({
-      data: {
+    // Criar o card usando Supabase
+    const { data: card, error } = await supabaseAdmin
+      .from('cards')
+      .insert({
+        id: `card-${Date.now()}`, // Gerar ID único
         title: body.title,
         description: body.description || '',
         href: body.href,
         icon: body.icon || 'FiGrid',
         color: body.color || 'blue',
-        hoverColor: body.hoverColor || 'blue',
+        hover_color: body.hoverColor || 'blue', // Nota: Supabase usa snake_case
         enabled: body.enabled !== undefined ? body.enabled : true,
         order: body.order || 0,
-        adminOnly: body.adminOnly || false,
-        external: body.external || false
-      }
-    });
+        admin_only: body.adminOnly || false, // Nota: Supabase usa snake_case
+        external: body.external || false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao criar card no Supabase:', error);
+      return NextResponse.json(
+        { error: `Erro ao criar card: ${error.message}` },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(card, { status: 201 });
   } catch (error) {
@@ -101,22 +231,33 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Atualizar o card
-    const card = await prisma.card.update({
-      where: { id: body.id },
-      data: {
+    // Atualizar o card usando Supabase
+    const { data: card, error } = await supabaseAdmin
+      .from('cards')
+      .update({
         title: body.title,
         description: body.description || '',
         href: body.href,
         icon: body.icon || 'FiGrid',
         color: body.color || 'blue',
-        hoverColor: body.hoverColor || 'blue',
+        hover_color: body.hoverColor || 'blue', // Nota: Supabase usa snake_case
         enabled: body.enabled !== undefined ? body.enabled : true,
         order: body.order || 0,
-        adminOnly: body.adminOnly || false,
-        external: body.external || false
-      }
-    });
+        admin_only: body.adminOnly || false, // Nota: Supabase usa snake_case
+        external: body.external || false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', body.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao atualizar card no Supabase:', error);
+      return NextResponse.json(
+        { error: `Erro ao atualizar card: ${error.message}` },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(card);
   } catch (error) {

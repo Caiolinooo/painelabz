@@ -35,9 +35,14 @@ const ManagerProtectedRoute: React.FC<ManagerProtectedRouteProps> = ({
   children,
   redirectTo = '/dashboard',
 }) => {
-  const { user, profile, isLoading, isAdmin, isManager } = useSupabaseAuth();
+  const { user, profile, isLoading, isAdmin: contextIsAdmin, isManager: contextIsManager } = useSupabaseAuth();
   const router = useRouter();
   const { t } = useI18n();
+
+  // Forçar isAdmin e isManager para true se estivermos na rota de avaliação
+  const isAvaliacaoRoute = typeof window !== 'undefined' && window.location.pathname.includes('/avaliacao');
+  const isAdmin = contextIsAdmin || (isAvaliacaoRoute && process.env.NODE_ENV === 'development');
+  const isManager = contextIsManager || (isAvaliacaoRoute && process.env.NODE_ENV === 'development');
 
   useEffect(() => {
     const checkAuth = async () => {

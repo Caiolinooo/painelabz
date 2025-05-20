@@ -5,8 +5,6 @@ import {
   Currency,
   getExchangeRates,
   convertCurrency,
-  formatCurrencyValue,
-  extractNumericValue,
   currencySymbols
 } from '@/lib/currencyConverter';
 
@@ -77,23 +75,49 @@ export default function CurrencyInput({
 
       setIsConverting(true);
       try {
+        // Verificar se value é uma string válida
+        if (typeof value !== 'string') {
+          console.warn('CurrencyInput: value is not a string', value);
+          setConvertedValues({
+            BRL: '',
+            USD: '',
+            EUR: '',
+            GBP: ''
+          });
+          return;
+        }
+
         // Extrair valor numérico da string formatada
-        const numericValue = extractNumericValue(value);
+        const numericValue = parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+
+        // Verificar se selectedCurrency é válido
+        if (!selectedCurrency || !['BRL', 'USD', 'EUR', 'GBP'].includes(selectedCurrency)) {
+          console.warn('CurrencyInput: invalid currency', selectedCurrency);
+          setSelectedCurrency('BRL');
+          return;
+        }
 
         // Obter taxas de câmbio
         const rates = await getExchangeRates(selectedCurrency);
 
         // Calcular valores convertidos para todas as moedas
         const converted: Record<Currency, string> = {
-          BRL: formatCurrencyValue(convertCurrency(numericValue, selectedCurrency, 'BRL', rates), 'BRL'),
-          USD: formatCurrencyValue(convertCurrency(numericValue, selectedCurrency, 'USD', rates), 'USD'),
-          EUR: formatCurrencyValue(convertCurrency(numericValue, selectedCurrency, 'EUR', rates), 'EUR'),
-          GBP: formatCurrencyValue(convertCurrency(numericValue, selectedCurrency, 'GBP', rates), 'GBP')
+          BRL: formatCurrency(convertCurrency(numericValue, selectedCurrency, 'BRL', rates), 'BRL'),
+          USD: formatCurrency(convertCurrency(numericValue, selectedCurrency, 'USD', rates), 'USD'),
+          EUR: formatCurrency(convertCurrency(numericValue, selectedCurrency, 'EUR', rates), 'EUR'),
+          GBP: formatCurrency(convertCurrency(numericValue, selectedCurrency, 'GBP', rates), 'GBP')
         };
 
         setConvertedValues(converted);
       } catch (error) {
         console.error('Erro ao converter moedas:', error);
+        // Set default values in case of error
+        setConvertedValues({
+          BRL: '',
+          USD: '',
+          EUR: '',
+          GBP: ''
+        });
       } finally {
         setIsConverting(false);
       }
@@ -105,66 +129,120 @@ export default function CurrencyInput({
   // Referência para o input
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Formatar valor ao digitar
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    const cursorPosition = e.target.selectionStart || 0;
+  // Função para manipular a entrada de valores no estilo de aplicativos bancários
+  const handleBankingStyleInput = (input: string): string => {
+    // Verificar se input é undefined ou null
+    if (input === undefined || input === null) return '';
 
-    // Remover caracteres não numéricos, exceto vírgula e ponto
-    const cleanValue = inputValue.replace(/[^\d,.]/g, '');
+    // Remover todos os caracteres não numéricos e vírgulas
+    const cleanInput = input.replace(/[^\d,]/g, '');
 
     // Se estiver vazio, retornar string vazia
-    if (!cleanValue) {
-      onChange('');
+    if (!cleanInput) return '';
+
+    // Verificar se há vírgula
+    if (cleanInput.includes(',')) {
+      // Dividir em parte inteira e decimal
+      const parts = cleanInput.split(',');
+
+      // Garantir que há apenas uma vírgula
+      if (parts.length > 2) {
+        // Manter apenas a primeira vírgula
+        return `${parts[0]},${parts.slice(1).join('')}`;
+      }
+
+      // Formatar a parte inteira e manter a parte decimal como está
+      const integerPart = parts[0] === '' ? '0' : parts[0];
+      const decimalPart = parts[1];
+
+      // Formatar a parte inteira com separadores de milhar
+      const formattedIntegerPart = integerPart === '0' ? '0' :
+        (parseInt(integerPart) || 0).toLocaleString('pt-BR', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        });
+
+      return `${formattedIntegerPart},${decimalPart}`;
+    } else {
+      // Sem vírgula, tratar como valor inteiro
+      const integerValue = cleanInput === '' ? '0' : cleanInput;
+
+      // Formatar com separadores de milhar
+      return integerValue === '0' ? '0' :
+        (parseInt(integerValue) || 0).toLocaleString('pt-BR', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        });
+    }
+  };
+
+  // Manipular a entrada do usuário
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e || !e.target) {
+      console.warn('Event or event.target is undefined in handleInputChange');
       return;
     }
 
-    // Contar quantos caracteres foram removidos antes da posição do cursor
-    const beforeCursor = inputValue.substring(0, cursorPosition);
-    const cleanBeforeCursor = beforeCursor.replace(/[^\d,.]/g, '');
-    const removedCount = beforeCursor.length - cleanBeforeCursor.length;
+    const inputValue = e.target.value || '';
+    const cursorPosition = e.target.selectionStart || 0;
 
-    // Formatar o valor de acordo com a moeda selecionada
-    const numericValue = extractNumericValue(cleanValue);
-    const formattedValue = formatCurrencyValue(numericValue, selectedCurrency);
+    // Remover o símbolo da moeda se presente
+    const valueWithoutCurrencySymbol = inputValue.replace(
+      currencySymbols[selectedCurrency] || 'R$',
+      ''
+    ).trim();
 
-    // Remover o símbolo da moeda para manter consistência com o formato esperado pelo formulário
-    const valueWithoutSymbol = formattedValue.replace(currencySymbols[selectedCurrency], '').trim();
+    // Processar o valor no estilo de aplicativos bancários
+    const processedValue = handleBankingStyleInput(valueWithoutCurrencySymbol);
 
-    // Garantir que o valor esteja em um formato válido para o banco de dados
-    // Substituir vírgula por ponto para garantir que seja um número válido
-    const normalizedValue = valueWithoutSymbol.replace(/\./g, '').replace(',', '.');
+    // Atualizar o valor
+    onChange(processedValue);
 
-    // Armazenar o valor formatado para exibição e o valor normalizado para o banco de dados
-    onChange(valueWithoutSymbol);
-
-    // Calcular a nova posição do cursor
-    // Ajustar a posição do cursor considerando a formatação
+    // Ajustar a posição do cursor após a formatação
     setTimeout(() => {
       if (inputRef.current) {
         // Obter o valor atual formatado
         const currentValue = inputRef.current.value;
 
-        // Calcular quantos caracteres de formatação foram adicionados antes da posição do cursor
-        // (espaços, pontos, vírgulas, etc.)
-        const formattedBeforeCursor = currentValue.substring(0, cursorPosition);
-        const digitsBeforeCursor = cleanBeforeCursor.replace(/[,.]/g, '').length;
+        // Calcular a nova posição do cursor
+        let newPosition = cursorPosition;
 
-        // Contar dígitos no valor formatado atual
-        let digitCount = 0;
-        let newPosition = 0;
-
-        // Percorrer o valor formatado e contar dígitos até atingir o número de dígitos antes do cursor
-        for (let i = 0; i < currentValue.length; i++) {
-          if (/\d/.test(currentValue[i])) {
-            digitCount++;
+        // Se o usuário acabou de digitar uma vírgula, posicionar o cursor após ela
+        if (inputValue.charAt(cursorPosition - 1) === ',') {
+          const commaPosition = currentValue.indexOf(',');
+          if (commaPosition !== -1) {
+            newPosition = commaPosition + 1;
           }
-          if (digitCount > digitsBeforeCursor) {
-            newPosition = i;
-            break;
-          }
-          newPosition = i + 1;
         }
+        // Se o usuário está digitando após a vírgula, manter a posição relativa à vírgula
+        else if (currentValue.includes(',') && valueWithoutCurrencySymbol.includes(',') &&
+                cursorPosition > valueWithoutCurrencySymbol.indexOf(',')) {
+          const commaPosition = currentValue.indexOf(',');
+          const oldCommaPosition = valueWithoutCurrencySymbol.indexOf(',');
+          const charsAfterComma = cursorPosition - oldCommaPosition - 1;
+          newPosition = commaPosition + 1 + charsAfterComma;
+        }
+        // Caso contrário, tentar manter a posição relativa aos dígitos
+        else {
+          // Contar dígitos antes do cursor no valor original
+          const digitsBeforeCursor = valueWithoutCurrencySymbol.substring(0, cursorPosition).replace(/[^\d]/g, '').length;
+
+          // Encontrar a posição correspondente no valor formatado
+          let digitCount = 0;
+          for (let i = 0; i < currentValue.length; i++) {
+            if (/\d/.test(currentValue[i])) {
+              digitCount++;
+              if (digitCount === digitsBeforeCursor) {
+                newPosition = i + 1;
+                break;
+              }
+            }
+          }
+        }
+
+        // Garantir que a posição está dentro dos limites
+        newPosition = Math.min(newPosition, currentValue.length);
+        newPosition = Math.max(newPosition, 0);
 
         // Definir a posição do cursor
         inputRef.current.setSelectionRange(newPosition, newPosition);
@@ -172,21 +250,65 @@ export default function CurrencyInput({
     }, 0);
   };
 
+  // Função para formatar valor monetário
+  const formatCurrency = (amount: number, currency: Currency): string => {
+    const formatter = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    return formatter.format(amount);
+  };
+
   // Mudar a moeda selecionada
   const handleCurrencyChange = (currency: Currency) => {
+    // Verificar se a moeda é válida
+    if (!currency || !['BRL', 'USD', 'EUR', 'GBP'].includes(currency)) {
+      console.warn('CurrencyInput: invalid currency in handleCurrencyChange', currency);
+      currency = 'BRL';
+    }
+
     setSelectedCurrency(currency);
     setShowCurrencySelector(false);
 
     if (onCurrencyChange) {
-      onCurrencyChange(currency);
+      try {
+        onCurrencyChange(currency);
+      } catch (error) {
+        console.error('Error in onCurrencyChange callback:', error);
+      }
     }
 
     // Atualizar o valor formatado para a nova moeda
     if (value) {
-      const numericValue = extractNumericValue(value);
-      const formattedValue = formatCurrencyValue(numericValue, currency);
-      const valueWithoutSymbol = formattedValue.replace(currencySymbols[currency], '').trim();
-      onChange(valueWithoutSymbol);
+      try {
+        // Verificar se value é uma string válida
+        if (typeof value !== 'string') {
+          console.warn('CurrencyInput: value is not a string in handleCurrencyChange', value);
+          return;
+        }
+
+        // Converter o valor para número
+        const numericValue = parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+
+        // Formatar o valor para a nova moeda
+        const formattedValue = formatCurrency(numericValue, currency);
+
+        // Remover o símbolo da moeda
+        const valueWithoutSymbol = formattedValue.replace(
+          currencySymbols[currency] || '',
+          ''
+        ).trim();
+
+        // Processar o valor no estilo de aplicativos bancários
+        const processedValue = handleBankingStyleInput(valueWithoutSymbol);
+
+        onChange(processedValue);
+      } catch (error) {
+        console.error('Error formatting currency value:', error);
+      }
     }
   };
 

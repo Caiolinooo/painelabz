@@ -373,11 +373,11 @@ export default function AvailacaoPage() {
                 description={t('avaliacao.avaliacoes.description', 'Gerencie as avaliações de desempenho')}
                 icon={<FiBarChart2 className="w-6 h-6" />}
                 onClick={() => {
-                  console.log('Navegando para /avaliacao/lista-avaliacoes');
+                  console.log('Navegando para /avaliacao/dashboard');
                   // Forçar navegação completa para garantir que a página seja carregada corretamente
                   // Adicionar timestamp para evitar cache
                   const timestamp = new Date().getTime();
-                  window.location.href = `/avaliacao/lista-avaliacoes?t=${timestamp}`;
+                  window.location.href = `/avaliacao/dashboard?t=${timestamp}`;
                 }}
                 className="bg-white hover:bg-gray-50"
               />
@@ -406,7 +406,7 @@ export default function AvailacaoPage() {
                     // Forçar navegação completa para garantir que a página seja carregada corretamente
                     // Adicionar timestamp para evitar cache
                     const timestamp = new Date().getTime();
-                    window.location.href = `/avaliacao/lista-avaliacoes?t=${timestamp}`;
+                    window.location.href = `/avaliacao/dashboard?t=${timestamp}`;
                   }}
                   className="bg-abz-blue hover:bg-abz-blue-dark text-white px-4 py-2 rounded flex items-center"
                 >
@@ -547,7 +547,7 @@ export default function AvailacaoPage() {
                       </div>
                       <div className="mt-4">
                         <Link
-                          href="/avaliacao/avaliacoes"
+                          href="/avaliacao/dashboard"
                           className="text-abz-blue hover:underline"
                         >
                           {t('avaliacao.avaliacoes.verMais', 'Ver mais avaliações')} →

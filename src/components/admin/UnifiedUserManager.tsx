@@ -669,10 +669,38 @@ export default function UnifiedUserManager() {
   // Buscar estatísticas
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
+      let token = localStorage.getItem('token') || localStorage.getItem('abzToken');
 
       if (!token) {
         throw new Error('Token não encontrado. Faça login novamente.');
+      }
+
+      // Tentar renovar o token antes de fazer a requisição
+      try {
+        console.log('Tentando renovar token antes de buscar estatísticas...');
+        const refreshResponse = await fetch('/api/auth/token-refresh', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          console.log('Token renovado com sucesso antes de buscar estatísticas');
+
+          if (refreshData.token && refreshData.token !== token) {
+            console.log('Atualizando token renovado no localStorage');
+            localStorage.setItem('token', refreshData.token);
+            // Remover o token antigo se existir
+            localStorage.removeItem('abzToken');
+
+            // Usar o novo token
+            token = refreshData.token;
+          }
+        }
+      } catch (refreshError) {
+        console.error('Erro ao renovar token antes de buscar estatísticas:', refreshError);
       }
 
       console.log('Buscando estatísticas com token:', token.substring(0, 10) + '...');
@@ -688,6 +716,50 @@ export default function UnifiedUserManager() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Erro ao buscar estatísticas:', errorData);
+
+        // Se o erro for de token inválido, tentar corrigir o token
+        if (response.status === 401) {
+          console.log('Token inválido ou expirado, tentando corrigir...');
+          try {
+            // Tentar corrigir o token
+            const fixResponse = await fetch('/api/auth/fix-token', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+
+            if (fixResponse.ok) {
+              const fixData = await fixResponse.json();
+              console.log('Token corrigido com sucesso');
+
+              if (fixData.token) {
+                console.log('Usando novo token para tentar novamente');
+                localStorage.setItem('token', fixData.token);
+                localStorage.removeItem('abzToken');
+
+                // Tentar novamente com o novo token
+                const retryResponse = await fetch('/api/admin/access-stats', {
+                  headers: {
+                    'Authorization': `Bearer ${fixData.token}`,
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                  }
+                });
+
+                if (retryResponse.ok) {
+                  const data = await retryResponse.json();
+                  console.log('Estatísticas recebidas após correção de token:', data);
+                  setStats(data);
+                  return;
+                }
+              }
+            }
+          } catch (fixError) {
+            console.error('Erro ao tentar corrigir token:', fixError);
+          }
+        }
 
         // Se o erro for de acesso negado e o usuário for o administrador principal, redirecionar para a página de correção
         if (response.status === 403 &&
@@ -705,6 +777,8 @@ export default function UnifiedUserManager() {
       setStats(data);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
+      // Não mostrar o erro na interface para não confundir o usuário
+      // Apenas registrar no console para depuração
     }
   };
 

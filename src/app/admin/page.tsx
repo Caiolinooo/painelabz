@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings, FiUserCheck, FiRefreshCw } from 'react-icons/fi';
+import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings, FiUserCheck, FiRefreshCw, FiBarChart2 } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -129,6 +129,13 @@ export default function AdminDashboard() {
           icon={FiSettings}
           href="/admin/settings"
           color="border-green-500"
+        />
+        <AdminCard
+          title={t('admin.avaliacao.title', 'Avaliação de Desempenho')}
+          description={t('admin.avaliacao.description', 'Gerencie o módulo de avaliação de desempenho')}
+          icon={FiBarChart2}
+          href="/admin/avaliacao"
+          color="border-teal-500"
         />
       </div>
 
