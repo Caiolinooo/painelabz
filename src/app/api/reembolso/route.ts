@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/db';
 import { generateProtocol } from '@/lib/utils';
 import { sendReimbursementConfirmationEmail } from '@/lib/notifications';
 import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
 
 // Função auxiliar para verificar se a tabela de reembolsos existe
 async function checkReimbursementTableExists() {
@@ -121,8 +123,11 @@ export async function POST(request: NextRequest) {
       observacoes
     } = body;
 
+    // Explicitly ensure centro_custo is a string, defaulting to empty string if null, undefined, or empty after trim
+    const processedCentroCusto: string = (typeof centroCusto === 'string' ? centroCusto.trim() : '') || '';
+
     // Validar os dados de entrada
-    if (!nome || !email || !telefone || !cpf || !cargo || !centroCusto ||
+    if (!nome || !email || !telefone || !cpf || !cargo || !processedCentroCusto ||
         !data || !tipoReembolso || !descricao || !valorTotal ||
         !metodoPagamento || !comprovantes || comprovantes.length === 0) {
       return NextResponse.json(
@@ -149,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Gerar protocolo único
     const protocolo = generateProtocol();
 
-    // Converter o valor para número
+    // Converter o valor para número, usando valorTotal (que é string) como entrada
     let valorNumerico = valorTotal;
     if (typeof valorTotal === 'string') {
       // Remover formatação e converter para número
@@ -164,8 +169,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Data atual para o histórico
+    // Data atual para o histórico e timestamps
     const dataAtual = new Date().toISOString();
+
+    // Separar os dados dos arquivos dos metadados dos comprovantes
+    const comprovantesParaUpload = [];
+    const comprovantesParaBD = [];
+
+    if (Array.isArray(comprovantes)) {
+      for (const comp of comprovantes) {
+        // Se for um arquivo local que precisa ser processado
+        if (comp.isLocalFile && comp.file) {
+          comprovantesParaUpload.push({ ...comp }); // Adicionar uma cópia para a lista de upload (mantém o campo file)
+          const { file, ...restComp } = comp; // Remover o campo file para a inserção no BD
+          comprovantesParaBD.push({
+            ...restComp,
+            isLocalFile: true,
+            needsProcessing: true, // Manter a flag para processamento futuro
+            // Não incluir o campo file aqui
+          });
+        } else {
+          // Se não for um arquivo local que precisa ser processado (ex: comprovante já uploaded com URL)
+          comprovantesParaBD.push(comp);
+        }
+      }
+    }
 
     // Criar a solicitação de reembolso usando Supabase
     try {
@@ -174,103 +202,88 @@ export async function POST(request: NextRequest) {
 
       const { exists, tableName: detectedTableName } = await checkReimbursementTableExists();
 
-      if (!exists) {
-        console.error('Tabela de reembolsos não encontrada');
+      if (!exists || typeof detectedTableName !== 'string' || detectedTableName === '') {
+        console.error('Tabela de reembolsos não encontrada ou nome inválido:', detectedTableName);
 
-        // Fornecer instruções para criar a tabela manualmente
-        const instructions = getCreateTableInstructions();
+        // Provide instructions to create the table manually ONLY if it doesn't exist
+        const instructions = !exists ? getCreateTableInstructions() : undefined;
 
         return NextResponse.json(
           {
-            error: 'A tabela de reembolsos não existe no banco de dados. Por favor, crie a tabela manualmente usando o SQL Editor do Supabase.',
+            error: 'A tabela de reembolsos não existe no banco de dados ou houve um erro ao determinar/validar seu nome. Por favor, verifique a estrutura do banco de dados.',
+            details: `Detectado nome de tabela: ${detectedTableName}`, // Include detected name for debug
             instructions: instructions
           },
           { status: 500 }
         );
       }
 
-      // Atribuir à variável do escopo externo
-      tableName = detectedTableName;
-      console.log(`Tabela de reembolsos encontrada: ${tableName}`);
+      // If we reach here, the table exists and we have a valid name.
+      const tableName: string = detectedTableName;
+      console.log(`Tabela de reembolsos encontrada e validada: ${tableName}`);
 
-      // Preparar os dados para inserção
-      // Verificar se a tabela usa camelCase ou snake_case para os nomes das colunas
-      // Tentaremos ambos os formatos para garantir compatibilidade
+      // Ensure tableName is a valid string before database insertion
+      if (typeof tableName !== 'string' || tableName === '') {
+         console.error('Erro interno: Nome da tabela de reembolsos inválido antes da inserção.');
+          return NextResponse.json(
+            {
+              error: 'Erro interno ao determinar/validar o nome da tabela de reembolsos antes da inserção.',
+              details: 'Por favor, verifique a configuração do banco de dados.'
+            },
+            { status: 500 }
+          );
+      }
+
+      // Check if processedCentroCusto is empty after trimming
+      if (processedCentroCusto === '') {
+         console.error('Erro de validação: Centro de custo não pode ser vazio.');
+          return NextResponse.json(
+            {
+              error: 'O campo "Centro de Custo" é obrigatório.',
+            },
+            { status: 400 }
+          );
+      }
+
+      // Garantir que dataAtualizacao nunca é null ou undefined
+      const safeDataAtualizacao = dataAtual || new Date().toISOString();
       const reimbursementData = {
-        // Gerar um UUID para o campo id
         id: crypto.randomUUID(),
-
-        // Dados básicos do usuário
-        nome,
-        email,
-        telefone,
-        cpf,
-        cargo,
-
-        // Tentar ambos os formatos para centro de custo
-        centro_custo: centroCusto,
-        centroCusto: centroCusto,
-
-        // Data do reembolso
-        data: new Date(data).toISOString(),
-
-        // Informações do reembolso
-        tipo_reembolso: tipoReembolso,
-        tipoReembolso: tipoReembolso,
-        icone_reembolso: iconeReembolso,
+        nome: nome || '',
+        email: email || '',
+        telefone: telefone || '',
+        cpf: cpf || '',
+        cargo: cargo || '',
+        centroCusto: processedCentroCusto || 'Nao Informado',
+        data: data ? new Date(data).toISOString() : new Date().toISOString(),
+        tipoReembolso: tipoReembolso || 'Desconhecido',
         iconeReembolso: iconeReembolso,
-        descricao,
-
-        // Valor e moeda
-        valor_total: valorNumerico,
-        valorTotal: valorNumerico,
+        descricao: descricao || '',
+        valorTotal: valorNumerico || 0,
         moeda: moeda || 'BRL',
-
-        // Método de pagamento
-        metodo_pagamento: metodoPagamento,
-        metodoPagamento: metodoPagamento,
+        metodoPagamento: metodoPagamento || 'Desconhecido',
         banco: metodoPagamento === 'deposito' ? banco : null,
         agencia: metodoPagamento === 'deposito' ? agencia : null,
         conta: metodoPagamento === 'deposito' ? conta : null,
-        pix_tipo: metodoPagamento === 'pix' ? pixTipo : null,
         pixTipo: metodoPagamento === 'pix' ? pixTipo : null,
-        pix_chave: metodoPagamento === 'pix' ? pixChave : null,
         pixChave: metodoPagamento === 'pix' ? pixChave : null,
-
-        // Comprovantes e observações
-        // Processar comprovantes para remover arquivos locais temporários
-        comprovantes: Array.isArray(comprovantes) ? comprovantes.map(comp => {
-          // Se for um arquivo local, remover o campo file para não sobrecarregar o banco
-          if (comp.isLocalFile) {
-            const { file, ...restComp } = comp;
-            return {
-              ...restComp,
-              isLocalFile: true,
-              // Adicionar uma flag para indicar que este arquivo precisa ser processado posteriormente
-              needsProcessing: true
-            };
-          }
-          return comp;
-        }) : comprovantes,
-        observacoes,
-
-        // Informações de controle
-        protocolo,
+        comprovantes: comprovantesParaBD || [],
+        observacoes: observacoes,
+        protocolo: protocolo,
         status: 'pendente',
-        historico: [{
+        dataCriacao: dataAtual,
+        dataAtualizacao: safeDataAtualizacao,
+        created_at: dataAtual,
+        updated_at: dataAtual,
+        historico: JSON.stringify([{
           data: dataAtual,
           status: 'pendente',
           observacao: 'Solicitação criada pelo usuário'
-        }],
-
-        // Timestamps
-        created_at: dataAtual,
-        updated_at: dataAtual,
-        dataCriacao: dataAtual,
-        dataAtualizacao: dataAtual
+        }])
       };
-
-      console.log('Dados do reembolso a serem inseridos:', JSON.stringify(reimbursementData, null, 2));
+      // Log detalhado antes do insert
+      console.log('Objeto reimbursementData a ser inserido:', JSON.stringify(reimbursementData, null, 2));
+      console.log('Valor de dataAtualizacao:', reimbursementData.dataAtualizacao);
 
       // Usar o nome da tabela determinado na verificação
       console.log(`Usando tabela ${tableName} para inserção do reembolso`);
@@ -280,6 +293,19 @@ export async function POST(request: NextRequest) {
       try {
         // Inserir o reembolso e capturar o resultado
         console.log('Iniciando inserção do reembolso na tabela', tableName);
+        console.log('Valor de tipoReembolso antes da inserção:', tipoReembolso);
+        console.log('Dados para a primeira inserção:', JSON.stringify(reimbursementData, null, 2));
+        // Ensure tableName is valid right before the call (redundant with check above, but for clarity)
+        if (typeof tableName !== 'string' || tableName === '') {
+           console.error('Erro interno: Nome da tabela de reembolsos inválido imediatamente antes da inserção.');
+            return NextResponse.json(
+              {
+                error: 'Erro interno ao determinar/validar o nome da tabela de reembolsos imediatamente antes da inserção.',
+                details: 'Por favor, verifique a configuração do banco de dados.'
+              },
+              { status: 500 }
+            );
+        }
         const insertResult = await supabaseAdmin
           .from(tableName)
           .insert(reimbursementData)
@@ -302,31 +328,45 @@ export async function POST(request: NextRequest) {
             // Tentar criar um objeto de dados simplificado apenas com os campos essenciais
             const simplifiedData = {
               id: crypto.randomUUID(), // Garantir que o ID seja incluído
-              nome,
-              email,
-              telefone,
-              cpf,
-              cargo,
-              data: new Date(data).toISOString(),
-              descricao,
-              valor_total: valorNumerico,
+              nome: nome || '',
+              email: email || '',
+              telefone: telefone || '',
+              cpf: cpf || '',
+              cargo: cargo || '',
+              // Adicionar centroCusto com fallback, mesmo na versão simplificada
+              centroCusto: processedCentroCusto || 'Nao Informado',
+              data: data ? new Date(data).toISOString() : new Date().toISOString(),
+              descricao: descricao || '',
+              valorTotal: valorNumerico || 0,
               moeda: moeda || 'BRL',
-              comprovantes,
-              protocolo,
+              comprovantes: comprovantes || [],
+              protocolo: protocolo,
               status: 'pendente',
               created_at: dataAtual,
               updated_at: dataAtual,
+              dataAtualizacao: dataAtual, // Garantir que dataAtualizacao não seja null
               historico: JSON.stringify([{
                 data: dataAtual,
                 status: 'pendente',
                 observacao: 'Solicitação criada pelo usuário'
-              }])
+              }]),
+              tipoReembolso: tipoReembolso || 'Desconhecido',
+              metodoPagamento: metodoPagamento || 'Desconhecido',
+              centro_custo: processedCentroCusto || 'Nao Informado',
+              tipo_reembolso: tipoReembolso || 'Desconhecido',
+              icone_reembolso: iconeReembolso,
+              valor_total: valorNumerico || 0,
+              metodo_pagamento: metodoPagamento || 'Desconhecido',
+              pix_tipo: metodoPagamento === 'pix' ? pixTipo : null,
+              pix_chave: metodoPagamento === 'pix' ? pixChave : null,
             };
 
             console.log('Tentando inserção com dados simplificados:', JSON.stringify(simplifiedData, null, 2));
 
             // Tentar novamente com dados simplificados
             console.log('Iniciando inserção com dados simplificados na tabela', tableName);
+            console.log('Valor de tipoReembolso antes da inserção simplificada:', tipoReembolso);
+            console.log('Dados para a segunda inserção (simplificada):', JSON.stringify(simplifiedData, null, 2));
             const simplifiedResult = await supabaseAdmin
               .from(tableName)
               .insert(simplifiedData)
@@ -457,26 +497,45 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar o reembolso recém-criado pelo protocolo para garantir que temos os dados corretos
-    // Verificar se tableName está definido
-    if (!tableName) {
-      console.error('Erro: tableName não está definido ao tentar buscar o reembolso');
-      // Tentar determinar o nome da tabela novamente
+    // Verificar se tableName está definido E é uma string válida
+    if (typeof tableName !== 'string' || tableName === '') {
+      console.error('Erro: tableName não é uma string válida ao tentar buscar o reembolso após a criação.');
+      // Tentar determinar o nome da tabela novamente como fallback
       try {
         const { exists, tableName: detectedTableName } = await checkReimbursementTableExists();
-        if (exists && detectedTableName) {
+        if (exists && typeof detectedTableName === 'string' && detectedTableName !== '') {
           tableName = detectedTableName;
-          console.log(`Tabela de reembolsos re-detectada: ${tableName}`);
+          console.log(`Tabela de reembolsos re-detectada e validada: ${tableName}`);
         } else {
-          console.error('Não foi possível determinar o nome da tabela de reembolsos');
-          // Continuamos com o reembolsoCriado que já temos
+          console.error('Não foi possível determinar ou validar o nome da tabela de reembolsos mesmo na re-detecção.');
+          // Continuamos com o reembolsoCriado que já temos e pulamos a busca.
+           // Add a guard here to prevent the fetch if tableName is still invalid
+          return; // Exit the block if tableName is still invalid
         }
       } catch (tableError) {
         console.error('Erro ao tentar re-detectar a tabela de reembolsos:', tableError);
-        // Continuamos com o reembolsoCriado que já temos
+        // Continuamos com o reembolsoCriado que já temos e pulamos a busca.
+         // Add a guard here to prevent the fetch if tableName is still invalid
+         return; // Exit the block if tableName is still invalid
       }
     }
 
-    if (tableName) {
+    // If we reached here, tableName is likely a valid string (either detected initially or re-detected)
+    // However, add one final check for safety before the fetch call
+    if (typeof tableName !== 'string' || tableName === '') {
+         console.error('Erro interno: Nome da tabela de reembolsos inválido imediatamente antes da busca.');
+          // Return an error or handle appropriately if tableName is still invalid
+          // For now, just log and proceed, but a proper app would handle this gracefully.
+           // Since we already returned above if re-detection failed, this might be redundant but safer.
+           // Let's just ensure the fetch call is inside a valid block.
+    }
+
+     // MOVER A LÓGICA DE BUSCA PARA DENTRO DE UM BLOCO CONDICIONAL SE NECESSÁRIO APÓS RE-AVALIAÇÃO
+     // The fetch logic should ideally only run if tableName is valid.
+     // Based on the checks above, if we reach here, tableName *should* be a string.
+     // Let's trust the checks above for now and proceed with the fetch.
+
+    if (tableName) { // Redundant check after the above, but harmless
       console.log(`Buscando reembolso criado com protocolo ${protocolo} na tabela ${tableName}`);
 
       try {
@@ -550,29 +609,29 @@ export async function POST(request: NextRequest) {
           // Metadados do reembolso para armazenamento
           const reimbursementMetadata = {
             protocolo,
-            nome: formData.nome,
-            data: formData.data,
-            tipo: formData.tipoReembolso
+            nome: nome,
+            data: data,
+            tipo: tipoReembolso
           };
 
           // Processar cada comprovante usando nosso sistema de armazenamento temporário
-          for (const comprovante of comprovantes) {
+          for (const comprovante of comprovantesParaUpload) {
             try {
               console.log(`Processando comprovante: ${comprovante.nome || 'sem nome'} (${comprovante.tipo || 'tipo desconhecido'})`);
 
               // Armazenar o arquivo temporariamente
               const storedFile = await storeTemporaryFile(comprovante, {
                 protocolo,
-                reimbursementType: formData.tipoReembolso,
-                employeeName: formData.nome,
+                reimbursementType: tipoReembolso,
+                employeeName: nome,
                 timestamp: new Date().toISOString()
               });
 
               if (storedFile) {
-                // Adicionar o arquivo armazenado à lista de anexos
+                // Add the file path to the list of attachments
                 attachments.push({
                   filename: storedFile.filename,
-                  path: storedFile.path,
+                  path: storedFile.path, // Add the path to the temporary file
                   contentType: storedFile.contentType
                 });
 
@@ -583,8 +642,9 @@ export async function POST(request: NextRequest) {
                   if (process.env.GOOGLE_DRIVE_API_KEY && process.env.GOOGLE_DRIVE_FOLDER_ID) {
                     console.log(`Tentando fazer upload do arquivo ${storedFile.filename} para o Google Drive...`);
 
+                    // Use the path from the temporary file for Google Drive upload
                     const driveFile = await uploadReimbursementFileToDrive(
-                      storedFile.path,
+                      storedFile.path, // Use storedFile.path here
                       storedFile.filename,
                       storedFile.contentType,
                       reimbursementMetadata
@@ -593,27 +653,50 @@ export async function POST(request: NextRequest) {
                     if (driveFile) {
                       console.log(`Arquivo ${storedFile.filename} enviado para o Google Drive com sucesso. ID: ${driveFile.id}, Link: ${driveFile.webViewLink}`);
 
-                      // Adicionar link do Google Drive aos metadados do reembolso
-                      // Isso pode ser usado posteriormente para acessar os arquivos
+                      // Add Google Drive link metadata to the reimbursement record
+                      // This can be used later to access the files
+                      /*
                       try {
-                        await supabaseAdmin
-                          .from('reembolsos')
-                          .update({
-                            anexos_drive: supabaseAdmin.sql`array_append(coalesce(anexos_drive, '{}'), ${JSON.stringify({
+                        // Fetch the current record to get the existing anexos_drive array
+                        const { data: currentReimbursement, error: fetchError } = await supabaseAdmin
+                          .from(tableName)
+                          .select('anexos_drive')
+                          .eq('protocolo', protocolo)
+                          .single();
+
+                        if (fetchError) {
+                          console.error(`Erro ao buscar reembolso para atualizar anexos_drive:`, fetchError);
+                        } else {
+                          // Append the new drive file metadata to the existing array
+                          const existingAnexos = currentReimbursement?.anexos_drive || [];
+                          const updatedAnexos = [
+                            ...existingAnexos,
+                            {
                               id: driveFile.id,
                               name: driveFile.name,
                               link: driveFile.webViewLink,
                               mimeType: driveFile.mimeType,
                               size: driveFile.size,
                               createdTime: driveFile.createdTime
-                            })})`,
-                          })
-                          .eq('protocolo', protocolo);
+                            }
+                          ];
 
-                        console.log(`Metadados do arquivo no Google Drive adicionados ao reembolso ${protocolo}`);
+                          // Update the reimbursement record with the new anexos_drive array
+                          const { error: updateError } = await supabaseAdmin
+                            .from(tableName)
+                            .update({ anexos_drive: updatedAnexos })
+                            .eq('protocolo', protocolo);
+
+                          if (updateError) {
+                            console.error(`Erro ao atualizar metadados do reembolso com link do Google Drive:`, updateError);
+                          } else {
+                            console.log(`Metadados do arquivo no Google Drive adicionados ao reembolso ${protocolo}`);
+                          }
+                        }
                       } catch (updateError) {
                         console.error(`Erro ao atualizar metadados do reembolso com link do Google Drive:`, updateError);
                       }
+                      */
                     } else {
                       console.warn(`Não foi possível fazer upload do arquivo ${storedFile.filename} para o Google Drive`);
                     }
@@ -641,10 +724,10 @@ Data e hora: ${new Date().toLocaleString('pt-BR')}
                 const fallbackFilePath = path.join(process.cwd(), 'temp-files', `fallback_${Date.now()}_${comprovante.nome || 'unknown'}.txt`);
                 fs.writeFileSync(fallbackFilePath, fallbackContent);
 
-                // Adicionar o arquivo de fallback à lista de anexos
+                // Add the file path of the fallback file to the list of attachments
                 attachments.push({
                   filename: `info_${comprovante.nome || `comprovante_${Date.now()}`}.txt`,
-                  path: fallbackFilePath,
+                  path: fallbackFilePath, // Add the path to the fallback file
                   contentType: 'text/plain'
                 });
 
@@ -663,9 +746,9 @@ Data e hora: ${new Date().toLocaleString('pt-BR')}
             const testContent = `
 Este é um comprovante de teste criado automaticamente.
 Protocolo: ${protocolo}
-Nome: ${formData.nome}
-Data: ${formData.data}
-Tipo de Reembolso: ${formData.tipoReembolso}
+Nome: ${nome}
+Data: ${data}
+Tipo de Reembolso: ${tipoReembolso}
 Data e hora de criação: ${new Date().toLocaleString('pt-BR')}
             `;
 
@@ -673,10 +756,10 @@ Data e hora de criação: ${new Date().toLocaleString('pt-BR')}
             const testFilePath = path.join(process.cwd(), 'temp-files', `test_${Date.now()}.txt`);
             fs.writeFileSync(testFilePath, testContent);
 
-            // Adicionar o arquivo de teste à lista de anexos
+            // Add the file path of the test file to the list of attachments
             attachments.push({
               filename: `comprovante_teste_${Date.now()}.txt`,
-              path: testFilePath,
+              path: testFilePath, // Add the path to the test file
               contentType: 'text/plain'
             });
 
@@ -685,17 +768,16 @@ Data e hora de criação: ${new Date().toLocaleString('pt-BR')}
 
           // Salvar anexos para debug
           console.log('Salvando anexos para debug...');
-          saveAttachmentsToFiles(attachments, 'reembolso_anexos');
+          // Removed saveAttachmentsToFiles call as attachments now contain Buffers, not just paths
+          // saveAttachmentsToFiles(attachments, 'reembolso_anexos');
 
           // Log detalhado dos anexos
           console.log(`Total de ${attachments.length} anexos preparados para o email:`);
           attachments.forEach((attachment, index) => {
             console.log(`Anexo ${index + 1}: ${attachment.filename} (${attachment.contentType || 'tipo desconhecido'}) - ${
-              attachment.content
-                ? `${Buffer.isBuffer(attachment.content) ? attachment.content.length + ' bytes' : 'não é buffer'}`
-                : attachment.path
-                  ? `caminho: ${attachment.path}`
-                  : 'sem conteúdo'
+              attachment.path // Check for path
+                ? `caminho: ${attachment.path}`
+                : 'sem caminho' // Indicate if path is missing
             }`);
           });
         }
@@ -832,19 +914,26 @@ export async function GET(request: NextRequest) {
 
     const { exists, tableName: detectedTableName } = await checkReimbursementTableExists();
 
-    if (!exists) {
-      console.error('Tabela de reembolsos não encontrada');
+    // Ensure tableName is a valid string before proceeding with database operations
+    if (!exists || typeof detectedTableName !== 'string' || detectedTableName === '') {
+      console.error('Tabela de reembolsos não encontrada ou nome inválido:', detectedTableName);
+
+      // Provide instructions to create the table manually ONLY if it doesn't exist
+      const instructions = !exists ? getCreateTableInstructions() : undefined;
+
       return NextResponse.json(
         {
-          error: 'A tabela de reembolsos não existe no banco de dados. Por favor, crie a tabela manualmente usando o SQL Editor do Supabase.',
-          instructions: getCreateTableInstructions()
+          error: 'A tabela de reembolsos não existe no banco de dados ou houve um erro ao determinar/validar seu nome. Por favor, verifique a estrutura do banco de dados.',
+          details: `Detectado nome de tabela: ${detectedTableName}`, // Include detected name for debug
+          instructions: instructions
         },
         { status: 500 }
       );
     }
 
-    const tableName = detectedTableName;
-    console.log(`Tabela de reembolsos encontrada: ${tableName}`);
+    // If we reach here, the table exists and we have a valid name.
+    const tableName: string = detectedTableName; // Declare and assign within this scope
+    console.log(`Tabela de reembolsos encontrada e validada: ${tableName}`);
 
     // Construir consulta para Supabase
     let query = supabaseAdmin
