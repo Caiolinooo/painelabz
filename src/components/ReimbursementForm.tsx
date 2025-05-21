@@ -86,7 +86,7 @@ export default function ReimbursementForm() {
       comprovantes: [],
       observacoes: null,
       cargo: '',
-      centroCusto: undefined,
+      centroCusto: '',
       cpf: ''
     }
   });
@@ -117,6 +117,13 @@ export default function ReimbursementForm() {
       }
 
       console.log(`Comprovantes anexados: ${data.comprovantes.length}`);
+
+      // ** Client-side validation for centroCusto **
+      if (!data.centroCusto) {
+        setError('centroCusto', { type: 'manual', message: t('reimbursement.form.costCenterRequired') });
+        setSubmitting(false);
+        return;
+      }
 
       // Preparar os dados para envio
       const formData = {
@@ -281,7 +288,7 @@ export default function ReimbursementForm() {
       </AnimatePresence>
 
       {/* Contact Popup */}
-      <AnimatePresence>
+      <AnimatePresence style={{ opacity: 1 }}>
         {showContactPopup && (
           <ContactPopup onClose={() => setShowContactPopup(false)} />
         )}

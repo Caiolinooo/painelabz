@@ -11,7 +11,7 @@ import { PersonalInfoTab } from '@/components/Profile/PersonalInfoTab';
 import { ContactInfoTab } from '@/components/Profile/ContactInfoTab';
 import { SecurityTab } from '@/components/Profile/SecurityTab';
 import { PreferencesTab } from '@/components/Profile/PreferencesTab';
-import { LoadingIndicator } from '@/components/UI/LoadingIndicator';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();

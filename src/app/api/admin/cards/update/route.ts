@@ -215,6 +215,13 @@ export async function POST(request: NextRequest) {
             { success: false, error: 'Card não encontrado e ocorreu um erro ao migrá-lo para o banco de dados' },
             { status: 404 }
           );
+        }
+      } catch (migrationError) {
+        console.error('Erro ao migrar card para o banco de dados:', migrationError);
+        return NextResponse.json(
+          { success: false, error: 'Card não encontrado e ocorreu um erro ao migrá-lo para o banco de dados' },
+          { status: 404 }
+        );
       }
     }
 

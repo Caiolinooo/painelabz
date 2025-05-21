@@ -627,12 +627,12 @@ export default function CardsPage() {
 
   const handleSave = async (card: DashboardCard) => {
     try {
-      // Preparar o card para envio (converter o ícone para string)
-      const cardToSend = {
-        ...card,
-        // Se o ícone for um componente, extrair o displayName
-        icon: typeof card.icon === 'function' ? card.icon.displayName || 'FiGrid' : card.icon
-      };
+        // Preparar o card para envio (converter o ícone para string)
+        const cardToSend = {
+          ...card,
+          // Se o ícone for um componente, extrair o nome do ícone (string)
+          icon: typeof card.icon === 'function' ? (card.icon as any).displayName || 'FiGrid' : card.icon
+        };
 
       console.log('Salvando card:', cardToSend);
       console.log('adminOnly:', cardToSend.adminOnly);
@@ -855,14 +855,14 @@ export default function CardsPage() {
         ...currentCard,
         order: prevOrder,
         // Se o ícone for um componente, extrair o displayName
-        icon: typeof currentCard.icon === 'function' ? currentCard.icon.displayName || 'FiGrid' : currentCard.icon
+        icon: typeof currentCard.icon === 'function' ? (currentCard.icon as any).displayName || 'FiGrid' : currentCard.icon
       };
 
       const prevCardToSend = {
         ...prevCard,
         order: currentOrder,
         // Se o ícone for um componente, extrair o displayName
-        icon: typeof prevCard.icon === 'function' ? prevCard.icon.displayName || 'FiGrid' : prevCard.icon
+        icon: typeof prevCard.icon === 'function' ? (prevCard.icon as any).displayName || 'FiGrid' : prevCard.icon
       };
 
       console.log('Atualizando ordem dos cards:', { currentCardToSend, prevCardToSend });
@@ -947,14 +947,14 @@ export default function CardsPage() {
         ...currentCard,
         order: nextOrder,
         // Se o ícone for um componente, extrair o displayName
-        icon: typeof currentCard.icon === 'function' ? currentCard.icon.displayName || 'FiGrid' : currentCard.icon
+        icon: typeof currentCard.icon === 'function' ? (currentCard.icon as any).displayName || 'FiGrid' : currentCard.icon
       };
 
       const nextCardToSend = {
         ...nextCard,
         order: currentOrder,
-        // Se o ícone for um componente, extrair o displayName
-        icon: typeof nextCard.icon === 'function' ? nextCard.icon.displayName || 'FiGrid' : nextCard.icon
+        // Enviar o nome do ícone como string
+        icon: nextCard.iconName
       };
 
       console.log('Atualizando ordem dos cards:', { currentCardToSend, nextCardToSend });
@@ -1047,8 +1047,6 @@ export default function CardsPage() {
               <p className="text-sm text-red-700">{error}</p>
             </div>
           </div>
-
-
         </div>
       )}
 
@@ -1167,6 +1165,8 @@ export default function CardsPage() {
             </div>
           </div>
         </>
+      ) : (
+        <CreateCardsTable />
       )}
     </div>
   );

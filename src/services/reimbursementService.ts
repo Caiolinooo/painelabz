@@ -38,22 +38,26 @@ export async function uploadReimbursementAttachment(file: File): Promise<Reimbur
         if (!comprovantesBucket) {
           console.warn('Comprovantes bucket does not exist, attempting to create it...');
 
-          // Try to create the bucket
-          try {
-            const { error: createError } = await supabase.storage.createBucket('comprovantes', {
-              public: true
-            });
+          // Try to create the bucket if it doesn't exist
+          /*
+          if (!bucket) {
+            console.warn('Comprovantes bucket does not exist, attempting to create it...');
+            const { data: createdBucket, error: createError } = await supabase
+              .storage
+              .createBucket('comprovantes', {
+                public: true,
+                allowedMimeTypes: ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'],
+                fileSizeLimit: 1024 * 1024 * 10 // 10MB
+              });
 
             if (createError) {
               console.error('Error creating comprovantes bucket:', createError);
-              // Continue with upload attempt anyway
-            } else {
-              console.log('Successfully created comprovantes bucket');
+              throw new Error(`Erro ao criar o bucket comprovantes: ${createError.message}`);
             }
-          } catch (createError) {
-            console.error('Exception creating comprovantes bucket:', createError);
-            // Continue with upload attempt anyway
+            bucket = createdBucket;
+            console.log('Comprovantes bucket created successfully:', bucket);
           }
+          */
         }
       }
     } catch (checkError) {
