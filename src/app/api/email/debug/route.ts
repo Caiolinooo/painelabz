@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { testConnection, sendVerificationEmail } from '@/lib/email';
+import { testEmailConnection, sendVerificationEmail } from '@/lib/email';
 import nodemailer from 'nodemailer';
 
 /**
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const action = searchParams.get('action') || 'test';
     const email = searchParams.get('email') || 'caio.correia@groupabz.com';
-    
+
     // Informações de configuração
     const config = {
       host: process.env.EMAIL_HOST || 'smtp.office365.com',
@@ -24,17 +24,17 @@ export async function GET(request: NextRequest) {
       environment: process.env.NODE_ENV || 'development',
       apiKey: process.env.SENDGRID_API_KEY ? 'Configurado' : 'Não configurado'
     };
-    
+
     // Verificar a ação solicitada
     switch (action) {
       case 'test':
         // Testar conexão com servidor de email
-        const connectionResult = await testConnection();
+        const connectionResult = await testEmailConnection();
         return NextResponse.json({
           ...connectionResult,
           config
         });
-        
+
       case 'send':
         // Enviar email de teste
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
           config,
           code
         });
-        
+
       case 'direct':
         // Testar envio direto com nodemailer
         const transporter = nodemailer.createTransport({
@@ -59,10 +59,10 @@ export async function GET(request: NextRequest) {
             rejectUnauthorized: process.env.NODE_ENV === 'production'
           }
         });
-        
+
         // Verificar conexão
         await transporter.verify();
-        
+
         // Enviar email de teste
         const testCode = Math.floor(100000 + Math.random() * 900000).toString();
         const info = await transporter.sendMail({
@@ -72,14 +72,14 @@ export async function GET(request: NextRequest) {
           text: `Este é um email de teste. Seu código é: ${testCode}`,
           html: `<p>Este é um email de teste.</p><p>Seu código é: <strong>${testCode}</strong></p>`
         });
-        
+
         return NextResponse.json({
           success: true,
           messageId: info.messageId,
           config,
           code: testCode
         });
-        
+
       default:
         // Ação desconhecida
         return NextResponse.json(
@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Erro ao processar solicitação de debug de email:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         message: `Erro ao processar solicitação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         error: error instanceof Error ? error.stack : 'Sem stack trace'
       },
