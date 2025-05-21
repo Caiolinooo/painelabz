@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
-import { generateReimbursementPDF } from '@/lib/pdf';
+import { generateReimbursementPDF } from '@/lib/pdf-generator';
 
 /**
  * API endpoint to approve a reimbursement request
@@ -197,12 +197,14 @@ export async function POST(request: NextRequest) {
       if (status === 'APPROVED') {
         try {
           console.log('Generating PDF for approved reimbursement');
-          const pdfBuffer = await generateReimbursementPDF(reimbursement, reimbursement.protocolo);
+          // Voltar a usar generateReimbursementPDF com os parâmetros corretos
+          const pdfBuffer = await generateReimbursementPDF(reimbursement as any, reimbursement.protocolo);
 
           if (pdfBuffer && pdfBuffer.length > 0) {
-            console.log(`PDF generated successfully, size: ${pdfBuffer.length} bytes`);
+            console.log('PDF generated successfully, adding to attachments');
+            // Add the generated PDF to attachments
             attachments.push({
-              filename: `Reembolso_Aprovado_${reimbursement.protocolo}_${new Date().toISOString().split('T')[0]}.pdf`,
+              filename: `reembolso_${reimbursement.protocolo}.pdf`,
               content: pdfBuffer,
               contentType: 'application/pdf'
             });

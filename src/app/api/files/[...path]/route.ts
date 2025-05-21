@@ -249,127 +249,128 @@ export async function GET(
               .from(bucket)
               .getPublicUrl(fileName);
 
-          if (publicUrlData && publicUrlData.publicUrl) {
-            console.log('Attempting to download via public URL:', publicUrlData.publicUrl);
+            if (publicUrlData && publicUrlData.publicUrl) {
+              console.log('Attempting to download via public URL:', publicUrlData.publicUrl);
 
-            try {
-              // Add cache-busting parameter to avoid cached 400 responses
-              const publicUrl = new URL(publicUrlData.publicUrl);
-              publicUrl.searchParams.append('t', Date.now().toString());
+              try {
+                // Add cache-busting parameter to avoid cached 400 responses
+                const publicUrl = new URL(publicUrlData.publicUrl);
+                publicUrl.searchParams.append('t', Date.now().toString());
 
-              console.log('Using cache-busted URL:', publicUrl.toString());
+                console.log('Using cache-busted URL:', publicUrl.toString());
 
-              // Use fetch with appropriate headers
-              const publicResponse = await fetch(publicUrl.toString(), {
-                method: 'GET',
-                headers: {
-                  'Cache-Control': 'no-cache',
-                  'Pragma': 'no-cache'
-                }
-              });
-
-              if (publicResponse.ok) {
-                console.log('File downloaded via public URL successfully');
-                const blob = await publicResponse.blob();
-                const arrayBuffer = await blob.arrayBuffer();
-
-                // Get file type from path
-                const fileExtension = path.extname(fileName).toLowerCase();
-                const mimeType = getMimeType(fileExtension);
-
-                // Return the file
-                return new NextResponse(arrayBuffer, {
+                // Use fetch with appropriate headers
+                const publicResponse = await fetch(publicUrl.toString(), {
+                  method: 'GET',
                   headers: {
-                    'Content-Type': mimeType,
-                    'Content-Disposition': `attachment; filename="${fileName}"`,
-                  },
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                  }
                 });
-              } else {
-                console.error('Error downloading via public URL:', publicResponse.status, publicResponse.statusText);
 
-                // Try with cleaned filename public URL as last resort
-                const { data: cleanPublicUrlData } = supabaseAdmin
-                  .storage
-                  .from(bucket)
-                  .getPublicUrl(cleanFileName);
+                if (publicResponse.ok) {
+                  console.log('File downloaded via public URL successfully');
+                  const blob = await publicResponse.blob();
+                  const arrayBuffer = await blob.arrayBuffer();
 
-                if (cleanPublicUrlData && cleanPublicUrlData.publicUrl) {
-                  console.log('Attempting with cleaned filename public URL:', cleanPublicUrlData.publicUrl);
+                  // Get file type from path
+                  const fileExtension = path.extname(fileName).toLowerCase();
+                  const mimeType = getMimeType(fileExtension);
 
-                  const cleanPublicUrl = new URL(cleanPublicUrlData.publicUrl);
-                  cleanPublicUrl.searchParams.append('t', Date.now().toString());
-
-                  const cleanPublicResponse = await fetch(cleanPublicUrl.toString(), {
-                    method: 'GET',
+                  // Return the file
+                  return new NextResponse(arrayBuffer, {
                     headers: {
-                      'Cache-Control': 'no-cache',
-                      'Pragma': 'no-cache'
-                    }
+                      'Content-Type': mimeType,
+                      'Content-Disposition': `attachment; filename="${fileName}"`,
+                    },
                   });
+                } else {
+                  console.error('Error downloading via public URL:', publicResponse.status, publicResponse.statusText);
 
-                  if (cleanPublicResponse.ok) {
-                    console.log('File downloaded via cleaned public URL successfully');
-                    const cleanBlob = await cleanPublicResponse.blob();
-                    const cleanArrayBuffer = await cleanBlob.arrayBuffer();
+                  // Try with cleaned filename public URL as last resort
+                  const { data: cleanPublicUrlData } = supabaseAdmin
+                    .storage
+                    .from(bucket)
+                    .getPublicUrl(cleanFileName);
 
-                    // Return the file
-                    return new NextResponse(cleanArrayBuffer, {
+                  if (cleanPublicUrlData && cleanPublicUrlData.publicUrl) {
+                    console.log('Attempting with cleaned filename public URL:', cleanPublicUrlData.publicUrl);
+
+                    const cleanPublicUrl = new URL(cleanPublicUrlData.publicUrl);
+                    cleanPublicUrl.searchParams.append('t', Date.now().toString());
+
+                    const cleanPublicResponse = await fetch(cleanPublicUrl.toString(), {
+                      method: 'GET',
                       headers: {
-                        'Content-Type': getMimeType(path.extname(cleanFileName).toLowerCase()),
-                        'Content-Disposition': `attachment; filename="${cleanFileName}"`,
-                      },
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                      }
                     });
-                  } else {
-                    console.error('Error downloading via cleaned public URL:', cleanPublicResponse.status, cleanPublicResponse.statusText);
-                    // Continue to try local file system
+
+                    if (cleanPublicResponse.ok) {
+                      console.log('File downloaded via cleaned public URL successfully');
+                      const cleanBlob = await cleanPublicResponse.blob();
+                      const cleanArrayBuffer = await cleanBlob.arrayBuffer();
+
+                      // Return the file
+                      return new NextResponse(cleanArrayBuffer, {
+                        headers: {
+                          'Content-Type': getMimeType(path.extname(cleanFileName).toLowerCase()),
+                          'Content-Disposition': `attachment; filename="${cleanFileName}"`,
+                        },
+                      });
+                    } else {
+                      console.error('Error downloading via cleaned public URL:', cleanPublicResponse.status, cleanPublicResponse.statusText);
+                      // Continue to try local file system
+                    }
                   }
                 }
+              } catch (publicUrlError) {
+                console.error('Error fetching from public URL:', publicUrlError);
+                // Continue to try local file system
               }
-            } catch (publicUrlError) {
-              console.error('Error fetching from public URL:', publicUrlError);
-              // Continue to try local file system
             }
+          } else if (fileData) {
+            console.log('File downloaded from Supabase storage with filename only successfully');
+
+            // Get file type from path
+            const fileExtension = path.extname(fileName).toLowerCase();
+            const mimeType = getMimeType(fileExtension);
+
+            // Convert blob to array buffer
+            const arrayBuffer = await fileData.arrayBuffer();
+
+            // Return the file
+            return new NextResponse(arrayBuffer, {
+              headers: {
+                'Content-Type': mimeType,
+                'Content-Disposition': `attachment; filename="${fileName}"`,
+              },
+            });
           }
-        } else if (fileData) {
-          console.log('File downloaded from Supabase storage with filename only successfully');
+        } else if (data) {
+          console.log('File downloaded from Supabase storage successfully');
 
           // Get file type from path
-          const fileExtension = path.extname(fileName).toLowerCase();
+          const fileExtension = path.extname(filePath).toLowerCase();
           const mimeType = getMimeType(fileExtension);
 
           // Convert blob to array buffer
-          const arrayBuffer = await fileData.arrayBuffer();
+          const arrayBuffer = await data.arrayBuffer();
 
           // Return the file
           return new NextResponse(arrayBuffer, {
             headers: {
               'Content-Type': mimeType,
-              'Content-Disposition': `attachment; filename="${fileName}"`,
+              'Content-Disposition': `attachment; filename="${path.basename(filePath)}"`,
             },
           });
         }
-      } else if (data) {
-        console.log('File downloaded from Supabase storage successfully');
-
-        // Get file type from path
-        const fileExtension = path.extname(filePath).toLowerCase();
-        const mimeType = getMimeType(fileExtension);
-
-        // Convert blob to array buffer
-        const arrayBuffer = await data.arrayBuffer();
-
-        // Return the file
-        return new NextResponse(arrayBuffer, {
-          headers: {
-            'Content-Type': mimeType,
-            'Content-Disposition': `attachment; filename="${path.basename(filePath)}"`,
-          },
-        });
       }
     } catch (storageError) {
       console.error('Error accessing Supabase storage:', storageError);
       // Continue to try local file system
-    };
+    }
 
     // If not found in Supabase storage, try local file system
     // Normalize the path to avoid path traversal attacks
