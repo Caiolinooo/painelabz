@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React, { useState } from 'react';
+import { useForm, Controller, SubmitHandler, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSend, FiDownload, FiMail, FiCloud, FiMessageSquare } from 'react-icons/fi';
-import { toast, ToastContainer } from 'react-toastify';
+import { FiSend, FiDownload, FiMessageSquare } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Currency } from '@/lib/currencyConverter';
 import { useI18n } from '@/contexts/I18nContext';
 
-import { formSchema, refinedFormSchema, FormValues, validatePixKey } from '@/lib/schema';
-import { formatCurrency, formatPhone, formatCPF, generateProtocol } from '@/lib/utils';
-import { InputField, TextArea, SelectField, RadioGroup } from './FormFields';
+import type { FormValues } from '@/lib/schema';
+import { refinedFormSchema, validatePixKey } from '@/lib/schema';
+import { formatCurrency, formatPhone, formatCPF } from '@/lib/utils';
+import { InputField, TextArea, SelectField } from './FormFields';
 import PaymentMethodRadio from './PaymentMethodRadio';
 import DescriptionField from './DescriptionField';
 import CurrencyInput from './CurrencyInput';
@@ -44,9 +45,6 @@ const sectionVariants = {
   }
 };
 
-// Estilo para garantir que os elementos sejam sempre visíveis
-const alwaysVisibleStyle = { opacity: 1 };
-
 export default function ReimbursementForm() {
   const { t } = useI18n();
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +53,7 @@ export default function ReimbursementForm() {
   const [showPdfViewer, setShowPdfViewer] = useState(true);
   const [showThankYou, setShowThankYou] = useState(false);
   const [showContactPopup, setShowContactPopup] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>('BRL');
 
   const {
     control,
@@ -67,7 +66,7 @@ export default function ReimbursementForm() {
     setError,
     clearErrors
   } = useForm<FormValues>({
-    resolver: zodResolver(refinedFormSchema),
+    resolver: zodResolver(refinedFormSchema) as Resolver<FormValues>,
     defaultValues: {
       nome: '',
       email: '',
@@ -76,7 +75,7 @@ export default function ReimbursementForm() {
       tipoReembolso: 'alimentacao',
       descricao: '',
       valorTotal: '',
-      moeda: 'BRL',
+      moeda: 'BRL' as Currency,
       metodoPagamento: 'agente',
       banco: null,
       agencia: null,
@@ -94,22 +93,16 @@ export default function ReimbursementForm() {
   // Watch values for conditional rendering with fallbacks for undefined values
   const metodoPagamento = watch('metodoPagamento') || 'agente';
   const pixTipo = watch('pixTipo') || null;
-  const comprovantes = watch('comprovantes') || [];
   const tipoReembolso = watch('tipoReembolso') || 'alimentacao';
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>('BRL');
 
-  // Handle form submission
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
     try {
       setSubmitting(true);
       console.log('Iniciando envio do formulário de reembolso...');
 
-      // Normalizar o valor total para um formato que o banco de dados possa processar
-      // Substituir pontos de milhar e converter vírgula para ponto decimal
       const normalizedValue = data.valorTotal.replace(/\./g, '').replace(',', '.');
       console.log(`Valor normalizado: ${normalizedValue} (original: ${data.valorTotal})`);
 
-      // Verificar se há comprovantes
       if (!data.comprovantes || data.comprovantes.length === 0) {
         toast.error('É necessário anexar pelo menos um comprovante.');
         setSubmitting(false);
@@ -118,34 +111,25 @@ export default function ReimbursementForm() {
 
       console.log(`Comprovantes anexados: ${data.comprovantes.length}`);
 
-      // ** Client-side validation for centroCusto **
       if (!data.centroCusto) {
         setError('centroCusto', { type: 'manual', message: t('reimbursement.form.costCenterRequired') });
         setSubmitting(false);
         return;
       }
 
-      // Preparar os dados para envio
       const formData = {
         ...data,
-        // Substituir o valor formatado pelo valor normalizado
         valorTotal: normalizedValue,
-        // Converter os comprovantes para o formato esperado pela API
         comprovantes: data.comprovantes.map((file: any) => {
-          // Verificar se é um arquivo local (fallback quando o bucket não existe)
           const isLocalFile = file.isLocalFile === true;
-
-          // Processar o buffer se existir
           let base64Buffer = null;
+          
           if (file.buffer) {
             try {
-              // Verificar se o buffer já é uma string DataURL
               if (typeof file.buffer === 'string' && file.buffer.startsWith('data:')) {
-                // Já é uma DataURL, usar diretamente
                 base64Buffer = file.buffer;
                 console.log(`Arquivo ${file.name} já tem DataURL (${base64Buffer.length} caracteres)`);
               } else if (file.buffer instanceof ArrayBuffer) {
-                // Converter ArrayBuffer para string base64
                 const bytes = new Uint8Array(file.buffer);
                 const len = bytes.byteLength;
                 let binary = '';
@@ -164,28 +148,23 @@ export default function ReimbursementForm() {
 
           return {
             nome: file.name,
-            url: file.id, // ID é o nome do arquivo no storage ou um ID local
+            url: file.id,
             tipo: file.type,
             tamanho: file.size,
-            publicUrl: file.url, // URL pública para acesso ao arquivo
-            isLocalFile: isLocalFile, // Indicar se é um arquivo local
-            // Se for um arquivo local, incluir o arquivo original para upload posterior
+            publicUrl: file.url,
+            isLocalFile,
             file: isLocalFile ? file.file : undefined,
-            // Incluir os dados binários do arquivo como base64
             buffer: base64Buffer,
-            // Incluir dados brutos para processamento no servidor
             dados: base64Buffer
           };
         })
       };
 
-      console.log('Enviando dados para a API...');
+      console.log('Enviando dados para a API de criação de reembolso...');
 
-      // Obter token de autenticação
       const token = localStorage.getItem('supabase.auth.token');
 
-      // Enviar para a API
-      const response = await fetch('/api/reembolso', {
+      const response = await fetch('/api/reembolso/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,16 +184,13 @@ export default function ReimbursementForm() {
       const result = await response.json();
       console.log('Resultado do envio:', result);
 
-      // Salvar o protocolo
       setProtocol(result.protocolo);
       console.log(`Protocolo gerado: ${result.protocolo}`);
 
-      // Mostrar mensagem de sucesso
       toast.success('Formulário enviado com sucesso!');
       setSubmitSuccess(true);
       setShowThankYou(true);
 
-      // Resetar o formulário
       reset();
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -224,12 +200,10 @@ export default function ReimbursementForm() {
     }
   };
 
-  // Handle input masking
   const handleCurrencyChange = (value: string) => {
     setValue('valorTotal', value);
   };
 
-  // Handle currency change
   const handleCurrencyTypeChange = (currency: Currency) => {
     setValue('moeda', currency);
     setSelectedCurrency(currency);
@@ -243,7 +217,6 @@ export default function ReimbursementForm() {
     setValue('cpf', formatCPF(e.target.value));
   };
 
-  // Handle PIX key validation
   const validatePixKeyField = () => {
     const pixTipoValue = watch('pixTipo');
     const pixChaveValue = watch('pixChave');
@@ -266,9 +239,7 @@ export default function ReimbursementForm() {
 
   return (
     <>
-
-      {/* PDF Viewer Modal */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showPdfViewer && (
           <PdfViewer
             onClose={() => setShowPdfViewer(false)}
@@ -277,8 +248,7 @@ export default function ReimbursementForm() {
         )}
       </AnimatePresence>
 
-      {/* Thank You Modal */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showThankYou && (
           <ThankYouModal
             protocol={protocol}
@@ -287,14 +257,12 @@ export default function ReimbursementForm() {
         )}
       </AnimatePresence>
 
-      {/* Contact Popup */}
-      <AnimatePresence style={{ opacity: 1 }}>
+      <AnimatePresence mode="wait">
         {showContactPopup && (
           <ContactPopup onClose={() => setShowContactPopup(false)} />
         )}
       </AnimatePresence>
 
-      {/* Main Form */}
       <motion.div
         className="bg-white rounded-lg shadow-lg p-6 md:p-8"
         variants={formContainerVariants}
@@ -314,7 +282,6 @@ export default function ReimbursementForm() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          {/* Seção 1: Dados Pessoais */}
           <motion.div variants={sectionVariants} className="bg-gray-50 p-5 rounded-lg">
             <h3 className="text-lg font-medium text-gray-800 mb-4">{t('reimbursement.form.personalInfo')}</h3>
 
@@ -426,7 +393,6 @@ export default function ReimbursementForm() {
             </div>
           </motion.div>
 
-          {/* Seção 2: Dados do Reembolso */}
           <motion.div variants={sectionVariants} className="bg-gray-50 p-5 rounded-lg">
             <h3 className="text-lg font-medium text-gray-800 mb-4">{t('reimbursement.form.expenseInfo')}</h3>
 
@@ -499,7 +465,6 @@ export default function ReimbursementForm() {
                     label={t('reimbursement.form.bankInfo')}
                     value={field.value}
                     onChange={(value) => {
-                      // Limpar os campos condicionais quando mudar o método de pagamento
                       if (value === 'deposito') {
                         setValue('pixTipo', null);
                         setValue('pixChave', null);
@@ -529,11 +494,13 @@ export default function ReimbursementForm() {
             </div>
 
             {/* Campos condicionais para depósito bancário */}
-            <AnimatePresence style={{ opacity: 1 }}>
+            <AnimatePresence mode="wait">
               {metodoPagamento === 'deposito' && (
-                <div
+                <motion.div
                   className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 border-t border-gray-200 pt-4"
-                  style={{ opacity: 1, position: 'relative', zIndex: 10 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                 >
                   <Controller
                     name="banco"
@@ -579,43 +546,41 @@ export default function ReimbursementForm() {
                       />
                     )}
                   />
-                </div>
+                </motion.div>
               )}
             </AnimatePresence>
 
             {/* Campos condicionais para PIX */}
-            <AnimatePresence style={{ opacity: 1 }}>
+            <AnimatePresence mode="wait">
               {metodoPagamento === 'pix' && (
-                <div
+                <motion.div
                   className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 border-t border-gray-200 pt-4"
-                  style={{ opacity: 1, position: 'relative', zIndex: 10 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                 >
                   <Controller
                     name="pixTipo"
                     control={control}
                     render={({ field }) => (
-                      <div style={{ opacity: 1 }}>
-                        <SelectField
-                          id="pixTipo"
-                          label={t('reimbursement.form.pixKeyType')}
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            // Limpar o campo de chave PIX quando o tipo mudar
-                            setValue('pixChave', '');
-                            clearErrors('pixChave');
-                            // Não precisamos atualizar o estado local, pois já estamos usando watch('pixTipo')
-                          }}
-                          options={[
-                            { value: 'cpf', label: t('locale.code') === 'en-US' ? 'TAX ID' : 'CPF' },
-                            { value: 'email', label: 'Email' },
-                            { value: 'telefone', label: t('locale.code') === 'en-US' ? 'Phone' : 'Telefone' },
-                            { value: 'aleatoria', label: t('locale.code') === 'en-US' ? 'Random Key' : 'Chave Aleatória' }
-                          ]}
-                          error={errors.pixTipo?.message}
-                          required
-                        />
-                      </div>
+                      <SelectField
+                        id="pixTipo"
+                        label={t('reimbursement.form.pixKeyType')}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setValue('pixChave', '');
+                          clearErrors('pixChave');
+                        }}
+                        options={[
+                          { value: 'cpf', label: t('locale.code') === 'en-US' ? 'TAX ID' : 'CPF' },
+                          { value: 'email', label: 'Email' },
+                          { value: 'telefone', label: t('locale.code') === 'en-US' ? 'Phone' : 'Telefone' },
+                          { value: 'aleatoria', label: t('locale.code') === 'en-US' ? 'Random Key' : 'Chave Aleatória' }
+                        ]}
+                        error={errors.pixTipo?.message}
+                        required
+                      />
                     )}
                   />
 
@@ -623,7 +588,6 @@ export default function ReimbursementForm() {
                     name="pixChave"
                     control={control}
                     render={({ field }) => {
-                      // Determinar o tipo de entrada e máscara com base no tipo de PIX
                       let inputType = 'text';
                       let placeholder = t('locale.code') === 'en-US' ? 'Enter your PIX key' : 'Digite sua chave PIX';
                       let mask = undefined;
@@ -649,29 +613,27 @@ export default function ReimbursementForm() {
                       }
 
                       return (
-                        <div style={{ opacity: 1 }}>
-                          <InputField
-                            id="pixChave"
-                            label={t('reimbursement.form.pixKey')}
-                            type={inputType}
-                            value={field.value || ''}
-                            onChange={(e) => {
-                              if (mask && typeof e.target.value === 'string') {
-                                field.onChange(mask(e.target.value));
-                              } else {
-                                field.onChange(e);
-                              }
-                            }}
-                            onBlur={validatePixKeyField}
-                            placeholder={placeholder}
-                            error={errors.pixChave?.message}
-                            required
-                          />
-                        </div>
+                        <InputField
+                          id="pixChave"
+                          label={t('reimbursement.form.pixKey')}
+                          type={inputType}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            if (mask && typeof e.target.value === 'string') {
+                              field.onChange(mask(e.target.value));
+                            } else {
+                              field.onChange(e);
+                            }
+                          }}
+                          onBlur={validatePixKeyField}
+                          placeholder={placeholder}
+                          error={errors.pixChave?.message}
+                          required
+                        />
                       );
                     }}
                   />
-                </div>
+                </motion.div>
               )}
             </AnimatePresence>
 
@@ -725,7 +687,7 @@ export default function ReimbursementForm() {
                 <TextArea
                   id="observacoes"
                   label={t('locale.code') === 'en-US' ? 'Notes (optional)' : 'Observações (opcional)'}
-                  value={field.value}
+                  value={field.value ?? ''}
                   onChange={field.onChange}
                   error={errors.observacoes?.message}
                   rows={3}
@@ -754,7 +716,6 @@ export default function ReimbursementForm() {
             >
               {(isSubmitting || submitting) ? (
                   <>
-                    {/* Loading spinner */}
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
