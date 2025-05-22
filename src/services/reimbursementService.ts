@@ -155,27 +155,55 @@ export async function deleteReimbursementAttachment(fileName: string): Promise<b
 
 /**
  * Fetch reimbursements for a user
- * @param email User's email
+ * @param userId User's ID (preferred method)
+ * @param email User's email (fallback if userId not provided)
  * @param status Optional status filter
  * @param page Page number for pagination
  * @param limit Items per page
  * @returns Promise with the reimbursements
  */
 export async function fetchUserReimbursements(
-  email: string,
+  userId?: string,
+  email?: string,
   status?: string,
   page: number = 1,
   limit: number = 10
 ) {
   try {
-    // Normalize email for case-insensitive search
-    const normalizedEmail = email.toLowerCase().trim();
+    // Check if we have a userId or email
+    if (!userId && !email) {
+      throw new Error('Either userId or email must be provided');
+    }
+
+    // First, check if the user_id column exists
+    const { data: columns, error: columnsError } = await supabase
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', 'Reimbursement')
+      .eq('column_name', 'user_id');
+
+    if (columnsError) {
+      console.error('Error checking user_id column:', columnsError);
+    }
+
+    const hasUserIdColumn = columns && columns.length > 0;
+    console.log(`user_id column ${hasUserIdColumn ? 'exists' : 'does not exist'} in Reimbursement table`);
 
     // Build the query
     let query = supabase
       .from('Reimbursement')
-      .select('*', { count: 'exact' })
-      .ilike('email', `%${normalizedEmail}%`);
+      .select('*', { count: 'exact' });
+
+    // Apply filters based on user_id or email
+    if (hasUserIdColumn && userId) {
+      // If the user_id column exists and we have a userId, use it
+      query = query.eq('user_id', userId);
+    } else if (email) {
+      // Otherwise, fall back to email
+      const normalizedEmail = email.toLowerCase().trim();
+      query = query.ilike('email', `%${normalizedEmail}%`);
+    }
 
     // Add status filter if provided
     if (status) {

@@ -38,25 +38,42 @@ async function checkReimbursementTableExists() {
   }
 }
 
+// Verificar se a coluna user_id existe na tabela
+async function checkUserIdColumnExists(tableName: string) {
+  try {
+    const { data: columns, error: columnsError } = await supabaseAdmin
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', tableName)
+      .eq('column_name', 'user_id');
+
+    if (columnsError) {
+      console.error('Erro ao verificar coluna user_id:', columnsError);
+      return false;
+    }
+
+    return columns && columns.length > 0;
+  } catch (error) {
+    console.error('Erro ao verificar coluna user_id:', error);
+    return false;
+  }
+}
+
 // GET - Verificar se um usuário tem reembolsos
 export async function GET(request: NextRequest) {
   try {
     // Obter parâmetros de consulta
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
+    const userId = searchParams.get('userId');
 
-    if (!email) {
+    if (!email && !userId) {
       return NextResponse.json(
-        { error: 'Email é obrigatório' },
+        { error: 'Email ou userId é obrigatório' },
         { status: 400 }
       );
     }
-
-    console.log(`Verificando reembolsos para o email: ${email}`);
-
-    // Normalizar o email para busca case-insensitive
-    const normalizedEmail = email.toLowerCase().trim();
-    console.log(`Email normalizado: ${normalizedEmail}`);
 
     // Verificar se a tabela de reembolsos existe
     const { exists, tableName } = await checkReimbursementTableExists();
@@ -71,63 +88,88 @@ export async function GET(request: NextRequest) {
 
     console.log(`Tabela de reembolsos encontrada: ${tableName}`);
 
-    // Buscar reembolsos com email exato
-    const { data: exactMatch, error: exactError } = await supabaseAdmin
-      .from(tableName)
-      .select('*')
-      .eq('email', email)
-      .order('created_at', { ascending: false });
+    // Verificar se a coluna user_id existe
+    const hasUserIdColumn = await checkUserIdColumnExists(tableName);
+    console.log(`Coluna user_id ${hasUserIdColumn ? 'existe' : 'não existe'} na tabela ${tableName}`);
 
-    if (exactError) {
-      console.error('Erro ao buscar reembolsos com email exato:', exactError);
-    } else {
-      console.log(`Encontrados ${exactMatch?.length || 0} reembolsos com email exato`);
-    }
+    let reimbursements = [];
 
-    // Buscar reembolsos com email case insensitive exato
-    const { data: caseInsensitiveMatch, error: caseError } = await supabaseAdmin
-      .from(tableName)
-      .select('*')
-      .ilike('email', normalizedEmail)
-      .order('created_at', { ascending: false });
+    // Se temos userId e a coluna user_id existe, buscar por user_id
+    if (userId && hasUserIdColumn) {
+      console.log(`Buscando reembolsos para o userId: ${userId}`);
 
-    if (caseError) {
-      console.error('Erro ao buscar reembolsos com email case insensitive:', caseError);
-    } else {
-      console.log(`Encontrados ${caseInsensitiveMatch?.length || 0} reembolsos com email case insensitive`);
-    }
-
-    // Buscar reembolsos com email parcial (contém)
-    const { data: partialMatch, error: partialError } = await supabaseAdmin
-      .from(tableName)
-      .select('*')
-      .ilike('email', `%${normalizedEmail}%`)
-      .order('created_at', { ascending: false });
-
-    if (partialError) {
-      console.error('Erro ao buscar reembolsos com email parcial:', partialError);
-    } else {
-      console.log(`Encontrados ${partialMatch?.length || 0} reembolsos com email parcial`);
-    }
-
-    // Buscar reembolsos com nome de usuário (parte antes do @)
-    const emailParts = normalizedEmail.split('@');
-    const username = emailParts[0];
-
-    let usernameMatch = [];
-
-    if (username) {
-      const { data: usernameData, error: usernameError } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from(tableName)
         .select('*')
-        .ilike('email', `%${username}%`)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (usernameError) {
-        console.error('Erro ao buscar reembolsos com nome de usuário:', usernameError);
+      if (error) {
+        console.error('Erro ao buscar reembolsos por user_id:', error);
       } else {
-        console.log(`Encontrados ${usernameData?.length || 0} reembolsos com nome de usuário`);
-        usernameMatch = usernameData || [];
+        console.log(`Encontrados ${data?.length || 0} reembolsos com user_id ${userId}`);
+        reimbursements = data || [];
+      }
+    }
+
+    // Se não encontramos reembolsos por user_id ou a coluna não existe, buscar por email
+    if ((!reimbursements || reimbursements.length === 0) && email) {
+      console.log(`Buscando reembolsos para o email: ${email}`);
+
+      // Normalizar o email para busca case-insensitive
+      const normalizedEmail = email.toLowerCase().trim();
+      console.log(`Email normalizado: ${normalizedEmail}`);
+
+      // Buscar reembolsos com email exato
+      const { data: exactMatch, error: exactError } = await supabaseAdmin
+        .from(tableName)
+        .select('*')
+        .eq('email', email)
+        .order('created_at', { ascending: false });
+
+      if (exactError) {
+        console.error('Erro ao buscar reembolsos com email exato:', exactError);
+      } else {
+        console.log(`Encontrados ${exactMatch?.length || 0} reembolsos com email exato`);
+        if (exactMatch && exactMatch.length > 0) {
+          reimbursements = exactMatch;
+        }
+      }
+
+      // Se não encontramos com email exato, tentar com case insensitive
+      if (reimbursements.length === 0) {
+        const { data: caseInsensitiveMatch, error: caseError } = await supabaseAdmin
+          .from(tableName)
+          .select('*')
+          .ilike('email', normalizedEmail)
+          .order('created_at', { ascending: false });
+
+        if (caseError) {
+          console.error('Erro ao buscar reembolsos com email case insensitive:', caseError);
+        } else {
+          console.log(`Encontrados ${caseInsensitiveMatch?.length || 0} reembolsos com email case insensitive`);
+          if (caseInsensitiveMatch && caseInsensitiveMatch.length > 0) {
+            reimbursements = caseInsensitiveMatch;
+          }
+        }
+      }
+
+      // Se ainda não encontramos, tentar com email parcial
+      if (reimbursements.length === 0) {
+        const { data: partialMatch, error: partialError } = await supabaseAdmin
+          .from(tableName)
+          .select('*')
+          .ilike('email', `%${normalizedEmail}%`)
+          .order('created_at', { ascending: false });
+
+        if (partialError) {
+          console.error('Erro ao buscar reembolsos com email parcial:', partialError);
+        } else {
+          console.log(`Encontrados ${partialMatch?.length || 0} reembolsos com email parcial`);
+          if (partialMatch && partialMatch.length > 0) {
+            reimbursements = partialMatch;
+          }
+        }
       }
     }
 
@@ -150,6 +192,7 @@ export async function GET(request: NextRequest) {
         protocolo: item.protocolo,
         nome: item.nome,
         email: item.email,
+        user_id: item.user_id || null,
         data: item.data,
         valorTotal: parseFloat(item.valor_total || item.valorTotal || 0),
         tipoReembolso: item.tipo_reembolso || item.tipoReembolso || 'Não especificado',
@@ -158,32 +201,28 @@ export async function GET(request: NextRequest) {
       }));
     };
 
+    // Processar todos os reembolsos encontrados
+    const processedReimbursements = processResults(reimbursements);
+
     return NextResponse.json({
       email,
-      normalizedEmail,
-      exactMatch: processResults(exactMatch || []),
-      caseInsensitiveMatch: processResults(caseInsensitiveMatch || []),
-      partialMatch: processResults(partialMatch || []),
-      usernameMatch: processResults(usernameMatch || []),
-      sampleEmails: sampleEmails?.map(item => item.email) || [],
-      hasExactMatch: (exactMatch && exactMatch.length > 0) || false,
-      hasCaseInsensitiveMatch: (caseInsensitiveMatch && caseInsensitiveMatch.length > 0) || false,
-      hasPartialMatch: (partialMatch && partialMatch.length > 0) || false,
-      hasUsernameMatch: (usernameMatch && usernameMatch.length > 0) || false,
-      // Include emails found for debugging
-      emailsFound: [
-        ...(exactMatch || []).map(item => item.email),
-        ...(caseInsensitiveMatch || []).filter(item => !(exactMatch || []).some(e => e.id === item.id)).map(item => item.email),
-        ...(partialMatch || []).filter(item =>
-          !(exactMatch || []).some(e => e.id === item.id) &&
-          !(caseInsensitiveMatch || []).some(e => e.id === item.id)
-        ).map(item => item.email),
-        ...(usernameMatch || []).filter(item =>
-          !(exactMatch || []).some(e => e.id === item.id) &&
-          !(caseInsensitiveMatch || []).some(e => e.id === item.id) &&
-          !(partialMatch || []).some(e => e.id === item.id)
-        ).map(item => item.email)
-      ]
+      userId,
+      hasReimbursements: reimbursements.length > 0,
+      count: {
+        total: reimbursements.length,
+        byUserId: userId && hasUserIdColumn ? reimbursements.length : 0,
+        byEmail: (!userId || !hasUserIdColumn) && email ? reimbursements.length : 0
+      },
+      reimbursements: processedReimbursements,
+      // Manter compatibilidade com o formato anterior
+      exactMatch: email ? processResults(exactMatch || []) : [],
+      caseInsensitiveMatch: email ? processResults(caseInsensitiveMatch || []) : [],
+      partialMatch: email ? processResults(partialMatch || []) : [],
+      usernameMatch: email ? processResults(usernameMatch || []) : [],
+      hasExactMatch: email ? (exactMatch && exactMatch.length > 0) || false : false,
+      hasCaseInsensitiveMatch: email ? (caseInsensitiveMatch && caseInsensitiveMatch.length > 0) || false : false,
+      hasPartialMatch: email ? (partialMatch && partialMatch.length > 0) || false : false,
+      hasUsernameMatch: email ? (usernameMatch && usernameMatch.length > 0) || false : false
     });
   } catch (error) {
     console.error('Erro ao verificar reembolsos do usuário:', error);

@@ -59,70 +59,83 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryEmail = searchParams.get('email');
 
-    // 3. Verificar permissões e determinar emails permitidos
+    // 3. Verificar permissões
     const isAdmin = userRole === 'ADMIN';
     const isManager = userRole === 'MANAGER';
 
-    let allowedEmails: string[] = [];
+    // Verificar se a coluna user_id existe na tabela Reimbursement
+    const { data: columns, error: columnsError } = await supabaseAdmin
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', 'Reimbursement')
+      .eq('column_name', 'user_id');
+
+    if (columnsError) {
+      console.error('Erro ao verificar coluna user_id:', columnsError);
+    }
+
+    const hasUserIdColumn = columns && columns.length > 0;
+    console.log(`Coluna user_id ${hasUserIdColumn ? 'existe' : 'não existe'} na tabela Reimbursement`);
+
+    // Se a coluna user_id não existir, tentar adicioná-la
+    if (!hasUserIdColumn) {
+      console.log('Tentando adicionar coluna user_id...');
+      try {
+        const addColumnResponse = await fetch('/api/reembolso/add-user-id-column', {
+          method: 'GET',
+        });
+
+        if (addColumnResponse.ok) {
+          console.log('Coluna user_id adicionada com sucesso');
+        } else {
+          console.error('Erro ao adicionar coluna user_id');
+        }
+      } catch (error) {
+        console.error('Erro ao chamar API para adicionar coluna user_id:', error);
+      }
+    }
+
+    // Determinar se devemos usar email ou user_id para filtrar
+    let queryUserId: string | null = null;
+    let queryUserEmail: string | null = null;
 
     if (isAdmin || isManager) {
-      // Admins e gerentes podem ver reembolsos de qualquer email (se fornecido na query)
+      // Admins e gerentes podem ver reembolsos de qualquer usuário
       if (queryEmail) {
-        allowedEmails.push(queryEmail.toLowerCase().trim());
-        console.log(`Admin/Manager buscando por email específico: ${queryEmail}`);
+        // Se um email específico for fornecido, buscar o user_id correspondente
+        const { data: userData, error: userError } = await supabaseAdmin
+          .from('users_unified')
+          .select('id')
+          .eq('email', queryEmail.toLowerCase().trim());
+
+        if (!userError && userData && userData.length > 0) {
+          queryUserId = userData[0].id;
+          console.log(`Admin/Manager buscando por user_id específico: ${queryUserId} (email: ${queryEmail})`);
+        } else {
+          // Se não encontrar o usuário pelo email principal, tentar buscar em user_emails
+          const { data: userEmailsData, error: emailsError } = await supabaseAdmin
+            .from('user_emails')
+            .select('user_id')
+            .eq('email', queryEmail.toLowerCase().trim());
+
+          if (!emailsError && userEmailsData && userEmailsData.length > 0) {
+            queryUserId = userEmailsData[0].user_id;
+            console.log(`Admin/Manager buscando por user_id específico: ${queryUserId} (email adicional: ${queryEmail})`);
+          } else {
+            // Se não encontrar o usuário, usar o email para busca (compatibilidade com dados antigos)
+            queryUserEmail = queryEmail.toLowerCase().trim();
+            console.log(`Admin/Manager buscando por email específico: ${queryUserEmail} (user_id não encontrado)`);
+          }
+        }
       } else {
-        // Se nenhum email for especificado na query, eles podem ver todos (não aplicamos filtro de email)
+        // Se nenhum email for especificado, eles podem ver todos os reembolsos
         console.log('Admin/Manager buscando todos os reembolsos');
-        // Não adicionamos emails ao allowedEmails, a query não terá filtro de email
       }
     } else {
       // Usuários normais só podem ver seus próprios reembolsos
-      // Buscar todos os emails associados a este userId na tabela user_emails
-      const { data: userEmailsData, error: userEmailsError } = await supabaseAdmin
-        .from('user_emails')
-        .select('email')
-        .eq('user_id', userId);
-
-      if (userEmailsError) {
-        console.error('Erro ao buscar e-mails adicionais do usuário:', userEmailsError);
-        // Se houver erro, continuar apenas com o email principal (se disponível)
-        if (userEmail) {
-          allowedEmails.push(userEmail.toLowerCase().trim());
-        }
-      } else if (userEmailsData) {
-        // Adicionar email principal (se disponível) e emails adicionais
-        if (userEmail) {
-          allowedEmails.push(userEmail.toLowerCase().trim());
-        }
-        const additionalEmails = userEmailsData.map(item => item.email.toLowerCase().trim());
-        allowedEmails = [...new Set([...allowedEmails, ...additionalEmails])]; // Remover duplicatas
-        console.log('Usuário normal buscando reembolsos associados aos seguintes emails:', allowedEmails);
-      } else if (userEmail) {
-         // Se não houver emails adicionais, usar apenas o email principal
-         allowedEmails.push(userEmail.toLowerCase().trim());
-         console.log('Usuário normal buscando reembolsos associados ao email principal:', userEmail);
-      } else {
-        // Se não houver email principal nem adicionais, não há emails para buscar
-        console.log('Usuário sem emails associados, retornando lista vazia');
-        return NextResponse.json({
-          data: [],
-          pagination: {
-            page: 1,
-            limit: 10,
-            total: 0,
-            hasMore: false
-          }
-        });
-      }
-
-      // Se o queryEmail for fornecido por um usuário normal, verificar se ele está na lista de allowedEmails
-      if (queryEmail && !allowedEmails.includes(queryEmail.toLowerCase().trim())) {
-         console.error(`Usuário normal (${userEmail}) tentando acessar reembolsos de um email (${queryEmail}) que não está associado à sua conta.`);
-         return NextResponse.json(
-            { error: 'Não autorizado a ver reembolsos de outro usuário' },
-            { status: 403 }
-         );
-      }
+      console.log(`Usuário normal (${userId}) buscando seus próprios reembolsos`);
+      queryUserId = userId;
     }
 
     // 4. Obter parâmetros de paginação e filtro
@@ -136,7 +149,8 @@ export async function GET(request: NextRequest) {
     const to = from + limit - 1;
 
     console.log('Buscando reembolsos com parâmetros:', {
-      allowedEmails,
+      queryUserId,
+      queryUserEmail,
       status: status || 'all',
       page,
       limit,
@@ -149,12 +163,16 @@ export async function GET(request: NextRequest) {
       .from('Reimbursement')
       .select('*', { count: 'exact' });
 
-    // Aplicar filtro de email apenas se allowedEmails não estiver vazio (i.e., não admin/manager buscando todos)
-    if (allowedEmails.length > 0) {
-       query = query.in('email', allowedEmails);
-    } else if (queryEmail) {
-       // Se for admin/manager buscando por email específico, aplicar filtro
-       query = query.eq('email', queryEmail.toLowerCase().trim());
+    // Aplicar filtros baseados em user_id ou email
+    if (hasUserIdColumn && queryUserId) {
+      // Se a coluna user_id existir e tivermos um user_id para filtrar, usar user_id
+      query = query.eq('user_id', queryUserId);
+    } else if (queryUserEmail) {
+      // Se tivermos um email específico para filtrar, usar email
+      query = query.eq('email', queryUserEmail);
+    } else if (!isAdmin && !isManager) {
+      // Se for um usuário normal sem user_id ou email para filtrar, usar o email do usuário
+      query = query.eq('email', userEmail);
     }
 
     // Aplicar filtro de status se fornecido
