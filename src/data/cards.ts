@@ -37,7 +37,7 @@ export interface DashboardCard {
 }
 
 // Função para obter os cards do dashboard com traduções
-export function getTranslatedCards(t: (key: string, params?: Record<string, any>) => string) {
+export function getTranslatedCards(t: (key: string) => string): DashboardCard[] {
   return [
     {
       id: 'manual',
@@ -85,8 +85,8 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       href: '/procedimentos',
       icon: FiBriefcase,
       iconName: 'FiBriefcase',
-      color: 'bg-abz-orange',
-      hoverColor: 'hover:bg-abz-orange-dark',
+      color: 'bg-abz-cyan',
+      hoverColor: 'hover:bg-abz-cyan-dark',
       external: false,
       enabled: true,
       order: 4
@@ -98,8 +98,8 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       href: '/calendario',
       icon: FiCalendar,
       iconName: 'FiCalendar',
-      color: 'bg-abz-teal',
-      hoverColor: 'hover:bg-abz-teal-dark',
+      color: 'bg-abz-red',
+      hoverColor: 'hover:bg-abz-red-dark',
       external: false,
       enabled: true,
       order: 5
@@ -111,8 +111,8 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       href: '/noticias',
       icon: FiRss,
       iconName: 'FiRss',
-      color: 'bg-abz-red',
-      hoverColor: 'hover:bg-abz-red-dark',
+      color: 'bg-abz-pink',
+      hoverColor: 'hover:bg-abz-pink-dark',
       external: false,
       enabled: true,
       order: 6
@@ -124,8 +124,8 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       href: '/reembolso',
       icon: FiDollarSign,
       iconName: 'FiDollarSign',
-      color: 'bg-abz-blue',
-      hoverColor: 'hover:bg-abz-blue-dark',
+      color: 'bg-abz-yellow',
+      hoverColor: 'hover:bg-abz-yellow-dark',
       external: false,
       enabled: true,
       order: 7
@@ -137,8 +137,8 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       href: '/contracheque',
       icon: FiDollarSign,
       iconName: 'FiDollarSign',
-      color: 'bg-abz-green',
-      hoverColor: 'hover:bg-abz-green-dark',
+      color: 'bg-abz-orange',
+      hoverColor: 'hover:bg-abz-orange-dark',
       external: false,
       enabled: true,
       order: 8
@@ -150,16 +150,16 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       href: '/ponto',
       icon: FiClock,
       iconName: 'FiClock',
-      color: 'bg-abz-purple',
-      hoverColor: 'hover:bg-abz-purple-dark',
+      color: 'bg-abz-teal',
+      hoverColor: 'hover:bg-abz-teal-dark',
       external: false,
       enabled: true,
       order: 9
     },
     {
       id: 'avaliacao',
-      title: t('avaliacao.title') || t('cards.avaliacao', 'Avaliação de Desempenho'),
-      description: t('avaliacao.description') || t('cards.avaliacaoDesc', 'Gerencie avaliações de desempenho dos colaboradores'),
+      title: t('avaliacao.title'),
+      description: t('avaliacao.description'),
       href: '/avaliacao',
       icon: FiBarChart2,
       iconName: 'FiBarChart2',
@@ -172,8 +172,8 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
     },
     {
       id: 'admin',
-      title: t('admin.title') || 'Admin',
-      description: t('admin.dashboard') || 'Painel administrativo',
+      title: t('admin.title'),
+      description: t('admin.dashboard'),
       href: '/admin',
       icon: FiUser,
       iconName: 'FiUser',
@@ -184,156 +184,10 @@ export function getTranslatedCards(t: (key: string, params?: Record<string, any>
       order: 11,
       adminOnly: true
     }
-  ] as DashboardCard[];
+  ];
 }
 
 // Lista de cards do dashboard (versão estática para compatibilidade)
-const dashboardCards: DashboardCard[] = [
-  {
-    id: 'manual',
-    title: 'Manual do Colaborador',
-    description: 'Acesse o manual completo do colaborador.',
-    href: '/manual',
-    icon: FiBookOpen,
-    iconName: 'FiBookOpen',
-    color: 'bg-abz-blue',
-    hoverColor: 'hover:bg-abz-blue-dark',
-    external: false,
-    enabled: true,
-    order: 1
-  },
-  {
-    id: 'procedimentos-logistica',
-    title: 'Procedimentos de Logística',
-    description: 'Consulte os procedimentos padrões da área.',
-    href: '/procedimentos-logistica',
-    icon: FiClipboard,
-    iconName: 'FiClipboard',
-    color: 'bg-abz-green',
-    hoverColor: 'hover:bg-abz-green-dark',
-    external: false,
-    enabled: true,
-    order: 2
-  },
-  {
-    id: 'politicas',
-    title: 'Políticas',
-    description: 'Visualize as políticas de HSE e Qualidade.',
-    href: '/politicas',
-    icon: FiFileText,
-    iconName: 'FiFileText',
-    color: 'bg-abz-purple',
-    hoverColor: 'hover:bg-abz-purple-dark',
-    external: false,
-    enabled: true,
-    order: 3
-  },
-  {
-    id: 'procedimentos',
-    title: 'Procedimentos Gerais',
-    description: 'Documentos e diretrizes gerais.',
-    href: '/procedimentos',
-    icon: FiBriefcase,
-    iconName: 'FiBriefcase',
-    color: 'bg-abz-cyan',
-    hoverColor: 'hover:bg-abz-cyan-dark',
-    external: false,
-    enabled: true,
-    order: 4
-  },
-  {
-    id: 'calendario',
-    title: 'Calendário',
-    description: 'Veja feriados nacionais e locais.',
-    href: '/calendario',
-    icon: FiCalendar,
-    iconName: 'FiCalendar',
-    color: 'bg-abz-red',
-    hoverColor: 'hover:bg-abz-red-dark',
-    external: false,
-    enabled: true,
-    order: 5
-  },
-  {
-    id: 'noticias',
-    title: 'ABZ News',
-    description: 'Últimas notícias e comunicados.',
-    href: '/noticias',
-    icon: FiRss,
-    iconName: 'FiRss',
-    color: 'bg-abz-pink',
-    hoverColor: 'hover:bg-abz-pink-dark',
-    external: false,
-    enabled: true,
-    order: 6
-  },
-  {
-    id: 'reembolso',
-    title: 'Reembolso',
-    description: 'Solicite reembolsos de despesas.',
-    href: '/reembolso',
-    icon: FiDollarSign,
-    iconName: 'FiDollarSign',
-    color: 'bg-abz-yellow',
-    hoverColor: 'hover:bg-abz-yellow-dark',
-    external: false,
-    enabled: true,
-    order: 7
-  },
-  {
-    id: 'contracheque',
-    title: 'Contracheque',
-    description: 'Acesse seus contracheques.',
-    href: '/contracheque',
-    icon: FiDollarSign,
-    iconName: 'FiDollarSign',
-    color: 'bg-abz-orange',
-    hoverColor: 'hover:bg-abz-orange-dark',
-    external: false,
-    enabled: true,
-    order: 8
-  },
-  {
-    id: 'ponto',
-    title: 'Ponto',
-    description: 'Registre seu ponto.',
-    href: '/ponto',
-    icon: FiClock,
-    iconName: 'FiClock',
-    color: 'bg-abz-teal',
-    hoverColor: 'hover:bg-abz-teal-dark',
-    external: false,
-    enabled: true,
-    order: 9
-  },
-  {
-    id: 'avaliacao',
-    title: 'Avaliação de Desempenho',
-    description: 'Gerencie avaliações de desempenho dos colaboradores.',
-    href: '/avaliacao',
-    icon: FiBarChart2,
-    iconName: 'FiBarChart2',
-    color: 'bg-abz-blue',
-    hoverColor: 'hover:bg-abz-blue-dark',
-    external: false,
-    enabled: true,
-    order: 10,
-    managerOnly: true
-  },
-  {
-    id: 'admin',
-    title: 'Admin',
-    description: 'Painel administrativo',
-    href: '/admin',
-    icon: FiUser,
-    iconName: 'FiUser',
-    color: 'bg-abz-indigo',
-    hoverColor: 'hover:bg-abz-indigo-dark',
-    external: false,
-    enabled: true,
-    order: 11,
-    adminOnly: true
-  }
-];
+const dashboardCards: DashboardCard[] = getTranslatedCards(key => key);
 
 export default dashboardCards;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller, SubmitHandler, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +9,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Currency } from '@/lib/currencyConverter';
 import { useI18n } from '@/contexts/I18nContext';
+import { UserProfile } from '@/contexts/SupabaseAuthContext';
 
 import type { FormValues } from '@/lib/schema';
 import { refinedFormSchema, validatePixKey } from '@/lib/schema';
@@ -45,7 +46,11 @@ const sectionVariants = {
   }
 };
 
-export default function ReimbursementForm() {
+interface ReimbursementFormProps {
+  profile?: UserProfile | null;
+}
+
+export default function ReimbursementForm({ profile }: ReimbursementFormProps) {
   const { t } = useI18n();
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -54,6 +59,7 @@ export default function ReimbursementForm() {
   const [showThankYou, setShowThankYou] = useState(false);
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>('BRL');
+  const [fieldsPopulated, setFieldsPopulated] = useState(false);
 
   const {
     control,
@@ -95,6 +101,66 @@ export default function ReimbursementForm() {
   const pixTipo = watch('pixTipo') || null;
   const tipoReembolso = watch('tipoReembolso') || 'alimentacao';
 
+  // Auto-populate form fields with user profile data
+  useEffect(() => {
+    if (profile && !fieldsPopulated) {
+      console.log('Auto-populating form fields with user profile data');
+
+      // Map profile fields to form fields
+      if (profile.first_name && profile.last_name) {
+        const fullName = `${profile.first_name} ${profile.last_name}`.trim();
+        setValue('nome', fullName);
+        console.log('Auto-populated name:', fullName);
+      }
+
+      if (profile.email) {
+        setValue('email', profile.email);
+        console.log('Auto-populated email:', profile.email);
+      }
+
+      if (profile.phone_number) {
+        const formattedPhone = formatPhone(profile.phone_number);
+        setValue('telefone', formattedPhone);
+        console.log('Auto-populated phone:', formattedPhone);
+      }
+
+      if (profile.position) {
+        setValue('cargo', profile.position);
+        console.log('Auto-populated position:', profile.position);
+      }
+
+      if (profile.department) {
+        // Map department to a cost center if possible
+        let costCenter = '';
+        const department = profile.department.toLowerCase();
+
+        if (department.includes('luz') || department.includes('maritima')) {
+          costCenter = 'luz_maritima';
+        } else if (department.includes('fms')) {
+          costCenter = 'fms';
+        } else if (department.includes('msi')) {
+          costCenter = 'msi';
+        } else if (department.includes('omega')) {
+          costCenter = 'omega';
+        } else if (department.includes('constellation')) {
+          costCenter = 'constellation';
+        } else if (department.includes('sentinel')) {
+          costCenter = 'sentinel';
+        } else if (department.includes('ahk')) {
+          costCenter = 'ahk';
+        }
+
+        if (costCenter) {
+          setValue('centroCusto', costCenter);
+          console.log('Auto-populated cost center from department:', costCenter);
+        }
+      }
+
+      // Mark fields as populated to prevent re-population on re-renders
+      setFieldsPopulated(true);
+    }
+  }, [profile, fieldsPopulated, setValue]);
+
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     try {
       setSubmitting(true);
@@ -123,7 +189,7 @@ export default function ReimbursementForm() {
         comprovantes: data.comprovantes.map((file: any) => {
           const isLocalFile = file.isLocalFile === true;
           let base64Buffer = null;
-          
+
           if (file.buffer) {
             try {
               if (typeof file.buffer === 'string' && file.buffer.startsWith('data:')) {

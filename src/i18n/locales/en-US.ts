@@ -62,6 +62,7 @@ export default {
     currentPassword: 'Current password',
     passwordMismatch: 'Passwords do not match',
     passwordChanged: 'Password changed successfully',
+    backToLogin: 'Back to Login',
     passwordExpired: 'Your password has expired and needs to be changed',
     profile: 'Profile',
     settings: 'Settings',

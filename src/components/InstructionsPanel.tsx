@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -51,16 +53,16 @@ const InstructionsPanel: React.FC = () => {
         <div className="p-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between sticky bottom-0 z-10">
           <AnimatePresence>
             {reachedBottom && showContactButtons && (
-                <motion.div 
+                <motion.div
                     className="flex items-center space-x-3 mb-4 sm:mb-0"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                  >
                     <span className="text-sm text-gray-600">Ainda com dúvidas?</span>
-                    <a 
+                    <a
                         href="https://wa.me/5522992074646" // Replace with your WhatsApp number
-                        target="_blank" 
+                        target="_blank"
                         rel="noopener noreferrer"
                         className={whatsappButtonStyle}
                     >
@@ -82,4 +84,4 @@ const InstructionsPanel: React.FC = () => {
   );
 };
 
-export default InstructionsPanel; 
+export default InstructionsPanel;

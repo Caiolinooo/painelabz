@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import ClientButton from '@/components/ClientButton';
 
 export default function TestUsersPage() {
   const [loading, setLoading] = useState(true);
@@ -96,12 +97,12 @@ export default function TestUsersPage() {
       )}
 
       <div className="mt-4">
-        <button
+        <ClientButton
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="bg-blue-600 text-white hover:bg-blue-700"
         >
           Testar Novamente
-        </button>
+        </ClientButton>
       </div>
     </div>
   );

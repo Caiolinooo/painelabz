@@ -34,6 +34,22 @@ const nextConfig = {
       };
     }
 
+    // Corrigir problema de MIME Type para arquivos CSS
+    config.module.rules.forEach((rule) => {
+      if (rule.oneOf) {
+        rule.oneOf.forEach((oneOfRule) => {
+          if (
+            oneOfRule.test &&
+            oneOfRule.test.toString().includes('css') &&
+            oneOfRule.issuer &&
+            oneOfRule.issuer.not
+          ) {
+            delete oneOfRule.issuer;
+          }
+        });
+      }
+    });
+
     // Otimizações para o Fast Refresh
     if (!isServer) {
       // Use a single runtime chunk to avoid "Cannot read properties of undefined (reading 'call')" errors

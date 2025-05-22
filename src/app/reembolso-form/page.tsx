@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import ReimbursementForm from '@/components/ReimbursementForm';
+import ReimbursementFormWrapper from '@/components/ReimbursementFormWrapper';
 import Footer from '@/components/Footer';
 import { motion } from 'framer-motion';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,8 +10,6 @@ import 'react-toastify/dist/ReactToastify.css';
 export default function PublicReimbursementPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100">
-
-
       <div className="container mx-auto py-12 px-4">
         {/* Animated header with logo */}
         <motion.header
@@ -31,8 +29,8 @@ export default function PublicReimbursementPage() {
           </div>
         </motion.header>
 
-        {/* Main form */}
-        <ReimbursementForm />
+        {/* Main form with profile data if available */}
+        <ReimbursementFormWrapper />
 
         {/* Footer */}
         <motion.div

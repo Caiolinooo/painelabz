@@ -24,16 +24,19 @@ export async function PUT(request: NextRequest) {
     }
 
     // Obter dados do corpo da requisição
-    const body = await request.json();
-    const { first_name, last_name, position, department } = body;
+    const updateData: any = await request.json();
+    console.log('Dados recebidos para atualização:', updateData);
 
-    // Validar dados
-    if (!first_name || !last_name) {
-      return NextResponse.json(
-        { error: 'Nome e sobrenome são obrigatórios' },
-        { status: 400 }
-      );
-    }
+    // Remover campos que não devem ser atualizados diretamente ou que são validados separadamente
+    delete updateData.id; // Não permitir alteração de ID
+    delete updateData.email; // Email deve ser atualizado por outro endpoint se necessário
+    delete updateData.phone_number; // Telefone deve ser atualizado por outro endpoint se necessário
+    delete updateData.created_at; // Não permitir alteração da data de criação
+    delete updateData.updated_at; // A data de atualização será definida abaixo
+
+    // Adicionar data de atualização
+    updateData.updated_at = new Date().toISOString();
+    console.log('Dados após remoção de campos protegidos:', updateData);
 
     // Inicializar cliente Supabase
     const supabase = createClient(
@@ -47,22 +50,60 @@ export async function PUT(request: NextRequest) {
       }
     );
 
-    // Atualizar perfil do usuário
-    const { error } = await supabase
+    // Primeiro, buscar dados existentes do usuário
+    const { data: existingUser, error: fetchError } = await supabase
       .from('users_unified')
-      .update({
-        first_name,
-        last_name,
-        position,
-        department,
-        updated_at: new Date().toISOString()
-      })
+      .select('*')
+      .eq('id', payload.userId)
+      .single();
+
+    if (fetchError) {
+      console.error('Erro ao buscar dados existentes do usuário:', {
+        error: fetchError,
+        message: fetchError.message,
+        details: fetchError.details,
+        hint: fetchError.hint,
+        code: fetchError.code
+      });
+      return NextResponse.json(
+        { 
+          error: 'Erro ao buscar dados do usuário',
+          details: fetchError.message
+        },
+        { status: 500 }
+      );
+    }
+
+    // Mesclar dados existentes com atualizações
+    const mergedData = {
+      ...existingUser,
+      ...updateData,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('Dados mesclados para atualização:', mergedData);
+
+    // Atualizar perfil do usuário com os dados mesclados
+    const { error: updateError } = await supabase
+      .from('users_unified')
+      .update(mergedData)
       .eq('id', payload.userId);
 
-    if (error) {
-      console.error('Erro ao atualizar perfil:', error);
+    if (updateError) {
+      console.error('Erro ao atualizar perfil:', {
+        error: updateError,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        code: updateError.code
+      });
       return NextResponse.json(
-        { error: 'Erro ao atualizar perfil' },
+        { 
+          error: 'Erro ao atualizar perfil',
+          details: updateError.message,
+          code: updateError.code,
+          hint: updateError.hint
+        },
         { status: 500 }
       );
     }
@@ -72,7 +113,11 @@ export async function PUT(request: NextRequest) {
       message: 'Perfil atualizado com sucesso'
     });
   } catch (error) {
-    console.error('Erro ao processar requisição:', error);
+    console.error('Erro ao processar requisição:', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

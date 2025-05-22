@@ -44,43 +44,61 @@ export function ContactInfoTab({ user }: ContactInfoTabProps) {
       if (!user?.id) return;
       
       setIsLoading(true);
+      console.log('Fetching contact info for user:', user?.id);
       
       try {
         const token = localStorage.getItem('token');
+        console.log('Token found:', !!token);
         
         if (!token) {
           toast.error(t('common.notAuthorized', 'Não autorizado'));
+          setIsLoading(false);
           return;
         }
 
         // Buscar e-mails
+        console.log('Fetching emails...');
         const emailsResponse = await fetch(`/api/users-unified/${user.id}/emails`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+        console.log('Emails response status:', emailsResponse.status);
 
         // Buscar telefones
+        console.log('Fetching phones...');
         const phonesResponse = await fetch(`/api/users-unified/${user.id}/phones`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+        console.log('Phones response status:', phonesResponse.status);
 
         if (emailsResponse.ok) {
           const emailsData = await emailsResponse.json();
+          console.log('Emails data received:', emailsData);
           setEmails(emailsData.data || []);
+        } else {
+           const errorData = await emailsResponse.json();
+           console.error('Error fetching emails:', errorData);
+           toast.error(errorData.error || t('profile.loadError', 'Erro ao carregar e-mails'));
         }
 
         if (phonesResponse.ok) {
           const phonesData = await phonesResponse.json();
+          console.log('Phones data received:', phonesData);
           setPhones(phonesData.data || []);
+        } else {
+           const errorData = await phonesResponse.json();
+           console.error('Error fetching phones:', errorData);
+           toast.error(errorData.error || t('profile.loadError', 'Erro ao carregar telefones'));
         }
       } catch (error) {
-        console.error('Erro ao carregar informações de contato:', error);
+        console.error('Erro geral ao carregar informações de contato:', error);
         toast.error(t('profile.loadError', 'Erro ao carregar informações'));
       } finally {
         setIsLoading(false);
+        console.log('Finished fetching contact info');
       }
     };
 
@@ -89,18 +107,25 @@ export function ContactInfoTab({ user }: ContactInfoTabProps) {
 
   // Adicionar novo e-mail
   const handleAddEmail = async () => {
-    if (!newEmail.email) return;
+    if (!newEmail.email) {
+      console.log('New email is empty, not adding');
+      return;
+    }
     
     setIsSubmittingEmail(true);
+    console.log('Adding new email:', newEmail);
     
     try {
       const token = localStorage.getItem('token');
+      console.log('Token found for add email:', !!token);
       
       if (!token) {
         toast.error(t('common.notAuthorized', 'Não autorizado'));
+        setIsSubmittingEmail(false);
         return;
       }
 
+      console.log('Sending POST request to add email...');
       const response = await fetch(`/api/users-unified/${user.id}/emails`, {
         method: 'POST',
         headers: {
@@ -109,39 +134,50 @@ export function ContactInfoTab({ user }: ContactInfoTabProps) {
         },
         body: JSON.stringify(newEmail)
       });
+      console.log('Add email response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Email added successfully:', data);
         setEmails(prev => [...prev, data.data]);
         setNewEmail({ email: '', label: '' });
         setIsAddingEmail(false);
         toast.success(t('profile.emailAdded', 'E-mail adicionado com sucesso'));
       } else {
         const error = await response.json();
+        console.error('Error adding email:', error);
         toast.error(error.error || t('profile.emailAddError', 'Erro ao adicionar e-mail'));
       }
     } catch (error) {
-      console.error('Erro ao adicionar e-mail:', error);
+      console.error('Erro geral ao adicionar e-mail:', error);
       toast.error(t('profile.emailAddError', 'Erro ao adicionar e-mail'));
     } finally {
       setIsSubmittingEmail(false);
+      console.log('Finished adding email');
     }
   };
 
   // Adicionar novo telefone
   const handleAddPhone = async () => {
-    if (!newPhone.phone_number) return;
+    if (!newPhone.phone_number) {
+      console.log('New phone number is empty, not adding');
+      return;
+    }
     
     setIsSubmittingPhone(true);
+    console.log('Adding new phone:', newPhone);
     
     try {
       const token = localStorage.getItem('token');
+      console.log('Token found for add phone:', !!token);
       
       if (!token) {
         toast.error(t('common.notAuthorized', 'Não autorizado'));
+        setIsSubmittingPhone(false);
         return;
       }
 
+      console.log('Sending POST request to add phone...');
       const response = await fetch(`/api/users-unified/${user.id}/phones`, {
         method: 'POST',
         headers: {
@@ -150,82 +186,102 @@ export function ContactInfoTab({ user }: ContactInfoTabProps) {
         },
         body: JSON.stringify(newPhone)
       });
+      console.log('Add phone response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Phone added successfully:', data);
         setPhones(prev => [...prev, data.data]);
         setNewPhone({ phone_number: '', label: '' });
         setIsAddingPhone(false);
         toast.success(t('profile.phoneAdded', 'Telefone adicionado com sucesso'));
       } else {
         const error = await response.json();
+        console.error('Error adding phone:', error);
         toast.error(error.error || t('profile.phoneAddError', 'Erro ao adicionar telefone'));
       }
     } catch (error) {
-      console.error('Erro ao adicionar telefone:', error);
+      console.error('Erro geral ao adicionar telefone:', error);
       toast.error(t('profile.phoneAddError', 'Erro ao adicionar telefone'));
     } finally {
       setIsSubmittingPhone(false);
+      console.log('Finished adding phone');
     }
   };
 
   // Remover e-mail
   const handleRemoveEmail = async (id: string) => {
+    console.log('Removing email with ID:', id);
     try {
       const token = localStorage.getItem('token');
+      console.log('Token found for remove email:', !!token);
       
       if (!token) {
         toast.error(t('common.notAuthorized', 'Não autorizado'));
         return;
       }
 
+      console.log(`Sending DELETE request to remove email ID ${id}...`);
       const response = await fetch(`/api/users-unified/${user.id}/emails/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      console.log('Remove email response status:', response.status);
 
       if (response.ok) {
+        console.log('Email removed successfully');
         setEmails(prev => prev.filter(email => email.id !== id));
         toast.success(t('profile.emailRemoved', 'E-mail removido com sucesso'));
       } else {
         const error = await response.json();
+        console.error('Error removing email:', error);
         toast.error(error.error || t('profile.emailRemoveError', 'Erro ao remover e-mail'));
       }
     } catch (error) {
-      console.error('Erro ao remover e-mail:', error);
+      console.error('Erro geral ao remover e-mail:', error);
       toast.error(t('profile.emailRemoveError', 'Erro ao remover e-mail'));
+    } finally {
+      console.log('Finished removing email');
     }
   };
 
   // Remover telefone
   const handleRemovePhone = async (id: string) => {
+    console.log('Removing phone with ID:', id);
     try {
       const token = localStorage.getItem('token');
+      console.log('Token found for remove phone:', !!token);
       
       if (!token) {
         toast.error(t('common.notAuthorized', 'Não autorizado'));
         return;
       }
 
+      console.log(`Sending DELETE request to remove phone ID ${id}...`);
       const response = await fetch(`/api/users-unified/${user.id}/phones/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      console.log('Remove phone response status:', response.status);
 
       if (response.ok) {
+        console.log('Phone removed successfully');
         setPhones(prev => prev.filter(phone => phone.id !== id));
         toast.success(t('profile.phoneRemoved', 'Telefone removido com sucesso'));
       } else {
         const error = await response.json();
+        console.error('Error removing phone:', error);
         toast.error(error.error || t('profile.phoneRemoveError', 'Erro ao remover telefone'));
       }
     } catch (error) {
-      console.error('Erro ao remover telefone:', error);
+      console.error('Erro geral ao remover telefone:', error);
       toast.error(t('profile.phoneRemoveError', 'Erro ao remover telefone'));
+    } finally {
+      console.log('Finished removing phone');
     }
   };
 

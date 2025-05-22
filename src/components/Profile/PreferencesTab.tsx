@@ -1,19 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useI18n } from '@/contexts/I18nContext';
 import { useToast } from '@/hooks/useToast';
 import { FiSave, FiLoader, FiGlobe, FiMoon, FiBell } from 'react-icons/fi';
+import { Button } from '@/components/ui/button';
 
 interface PreferencesTabProps {
-  user: any;
+  user?: any; // Tornando o parâmetro opcional
 }
 
-export function PreferencesTab({ user }: PreferencesTabProps) {
+export function PreferencesTab({ user = null }: PreferencesTabProps) {
   const { t, locale, setLocale } = useI18n();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [preferences, setPreferences] = useState({
+  type Theme = 'light' | 'dark' | 'system';
+  type Language = string;
+
+  const [preferences, setPreferences] = useState<{
+    language: Language;
+    theme: Theme;
+    notifications: {
+      email: boolean;
+      browser: boolean;
+      sms: boolean;
+    };
+  }>({
     language: locale || 'pt-BR',
     theme: 'light',
     notifications: {
@@ -23,15 +35,36 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
     }
   });
 
+  // Aplica o tema no <html>
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = window.document.documentElement;
+    if (preferences.theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else if (preferences.theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      // Sistema
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      } else {
+        root.classList.add('light');
+        root.classList.remove('dark');
+      }
+    }
+  }, [preferences.theme]);
+
+  const handleThemeChange = (theme: Theme) => {
+    setPreferences(prev => ({ ...prev, theme }));
+  };
+
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLocale = e.target.value;
     setPreferences(prev => ({ ...prev, language: newLocale }));
-    setLocale(newLocale);
-  };
-
-  const handleThemeChange = (theme: string) => {
-    setPreferences(prev => ({ ...prev, theme }));
-    // Implementar lógica para mudar o tema
+    setLocale(newLocale as any);
   };
 
   const handleNotificationChange = (type: string, value: boolean) => {
@@ -50,16 +83,38 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
 
     try {
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         toast.error(t('common.notAuthorized', 'Não autorizado'));
         return;
       }
 
-      // Simular uma chamada de API para salvar as preferências
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Estruturar os dados corretamente para o backend
+      const updateData = {
+        preferences: preferences // Aninhar as preferências em um campo específico
+      };
 
-      toast.success(t('profile.preferencesUpdated', 'Preferências atualizadas com sucesso'));
+      console.log('Enviando dados para atualização:', updateData);
+
+      const response = await fetch('/api/users-unified/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      console.log('Status da resposta:', response.status);
+      const responseData = await response.json();
+      console.log('Resposta completa:', responseData);
+
+      if (response.ok) {
+        toast.success(t('profile.preferencesUpdated', 'Preferências atualizadas com sucesso'));
+      } else {
+        console.error('Erro retornado pela API:', responseData);
+        toast.error(responseData.error || t('profile.preferencesUpdateError', 'Erro ao atualizar preferências'));
+      }
     } catch (error) {
       console.error('Erro ao atualizar preferências:', error);
       toast.error(t('profile.preferencesUpdateError', 'Erro ao atualizar preferências'));
@@ -73,7 +128,7 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
       <h2 className="text-lg font-medium text-gray-900 mb-4">
         {t('profile.preferences', 'Preferências')}
       </h2>
-      
+
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Idioma */}
         <div>
@@ -81,7 +136,7 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
             <FiGlobe className="h-5 w-5 mr-2 text-gray-600" />
             {t('profile.language', 'Idioma')}
           </h3>
-          
+
           <div className="max-w-xs">
             <select
               value={preferences.language}
@@ -97,61 +152,52 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
             </p>
           </div>
         </div>
-        
+
         {/* Tema */}
         <div>
           <h3 className="text-md font-medium text-gray-800 mb-3 flex items-center">
             <FiMoon className="h-5 w-5 mr-2 text-gray-600" />
             {t('profile.theme', 'Tema')}
           </h3>
-          
+
           <div className="flex space-x-4">
-            <button
+            <Button
               type="button"
               onClick={() => handleThemeChange('light')}
-              className={`px-4 py-2 rounded-md ${
-                preferences.theme === 'light'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700'
-              }`}
+              variant={preferences.theme === 'light' ? 'default' : 'outline'}
+              className={preferences.theme === 'light' ? 'bg-abz-blue text-white' : ''}
             >
               {t('profile.lightTheme', 'Claro')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => handleThemeChange('dark')}
-              className={`px-4 py-2 rounded-md ${
-                preferences.theme === 'dark'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700'
-              }`}
+              variant={preferences.theme === 'dark' ? 'default' : 'outline'}
+              className={preferences.theme === 'dark' ? 'bg-abz-blue text-white' : ''}
             >
               {t('profile.darkTheme', 'Escuro')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => handleThemeChange('system')}
-              className={`px-4 py-2 rounded-md ${
-                preferences.theme === 'system'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700'
-              }`}
+              variant={preferences.theme === 'system' ? 'default' : 'outline'}
+              className={preferences.theme === 'system' ? 'bg-abz-blue text-white' : ''}
             >
               {t('profile.systemTheme', 'Sistema')}
-            </button>
+            </Button>
           </div>
           <p className="text-sm text-gray-500 mt-2">
             {t('profile.themeDescription', 'Escolha o tema de exibição do sistema')}
           </p>
         </div>
-        
+
         {/* Notificações */}
         <div>
           <h3 className="text-md font-medium text-gray-800 mb-3 flex items-center">
             <FiBell className="h-5 w-5 mr-2 text-gray-600" />
             {t('profile.notifications', 'Notificações')}
           </h3>
-          
+
           <div className="space-y-3">
             <div className="flex items-center">
               <input
@@ -165,7 +211,7 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
                 {t('profile.emailNotifications', 'Receber notificações por e-mail')}
               </label>
             </div>
-            
+
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -178,7 +224,7 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
                 {t('profile.browserNotifications', 'Receber notificações no navegador')}
               </label>
             </div>
-            
+
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -193,12 +239,12 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
             </div>
           </div>
         </div>
-        
+
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
             disabled={isLoading}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="bg-abz-blue hover:bg-abz-blue-dark"
           >
             {isLoading ? (
               <>
@@ -211,7 +257,7 @@ export function PreferencesTab({ user }: PreferencesTabProps) {
                 {t('common.save', 'Salvar')}
               </>
             )}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

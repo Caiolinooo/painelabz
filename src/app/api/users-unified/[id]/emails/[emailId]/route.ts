@@ -7,6 +7,9 @@ export async function DELETE(
   { params }: { params: { id: string; emailId: string } }
 ) {
   try {
+    // Aguardar os parâmetros da rota antes de acessá-los
+    const { id, emailId } = params;
+
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = extractTokenFromHeader(authHeader || '');
@@ -28,7 +31,7 @@ export async function DELETE(
 
     // Verificar se o usuário está tentando modificar seus próprios dados
     // ou se é um administrador
-    if (payload.userId !== params.id && payload.role !== 'ADMIN') {
+    if (payload.userId !== id && payload.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -51,8 +54,8 @@ export async function DELETE(
     const { data: emailData, error: emailError } = await supabase
       .from('user_emails')
       .select('*')
-      .eq('id', params.emailId)
-      .eq('user_id', params.id)
+      .eq('id', emailId)
+      .eq('user_id', id)
       .single();
 
     if (emailError || !emailData) {
@@ -74,8 +77,8 @@ export async function DELETE(
     const { error } = await supabase
       .from('user_emails')
       .delete()
-      .eq('id', params.emailId)
-      .eq('user_id', params.id);
+      .eq('id', emailId)
+      .eq('user_id', id);
 
     if (error) {
       console.error('Erro ao remover e-mail:', error);
@@ -103,6 +106,9 @@ export async function PUT(
   { params }: { params: { id: string; emailId: string } }
 ) {
   try {
+    // Aguardar os parâmetros da rota antes de acessá-los
+    const { id, emailId } = params;
+
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = extractTokenFromHeader(authHeader || '');
@@ -124,7 +130,7 @@ export async function PUT(
 
     // Verificar se o usuário está tentando modificar seus próprios dados
     // ou se é um administrador
-    if (payload.userId !== params.id && payload.role !== 'ADMIN') {
+    if (payload.userId !== id && payload.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -151,8 +157,8 @@ export async function PUT(
     const { data: emailData, error: emailError } = await supabase
       .from('user_emails')
       .select('*')
-      .eq('id', params.emailId)
-      .eq('user_id', params.id)
+      .eq('id', emailId)
+      .eq('user_id', id)
       .single();
 
     if (emailError || !emailData) {
@@ -167,7 +173,7 @@ export async function PUT(
       await supabase
         .from('user_emails')
         .update({ is_primary: false })
-        .eq('user_id', params.id)
+        .eq('user_id', id)
         .eq('is_primary', true);
     }
 
@@ -179,8 +185,8 @@ export async function PUT(
         is_primary: is_primary !== undefined ? is_primary : emailData.is_primary,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.emailId)
-      .eq('user_id', params.id)
+      .eq('id', emailId)
+      .eq('user_id', id)
       .select()
       .single();
 

@@ -1,144 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
-import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
-import { createClient } from '@supabase/supabase-js';
+import { extractTokenFromHeader, verifyToken, TokenPayload } from '@/lib/auth'; // Importar TokenPayload
 
 /**
- * API endpoint to get reimbursements for a specific user
- * This endpoint handles fetching reimbursements with proper authentication
+ * API endpoint para obter reembolsos para um usuário específico.
+ * Este endpoint lida com a busca de reembolsos com autenticação adequada e permissões baseadas no papel do usuário.
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('User reimbursements request received');
+    console.log('Requisição de reembolsos do usuário recebida');
 
-    // Check authentication
+    // 1. Verificar autenticação e obter payload do token
     const authHeader = request.headers.get('authorization') || '';
     const token = extractTokenFromHeader(authHeader);
 
     if (!token) {
+      console.error('Não autorizado: Token não fornecido');
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
       );
     }
 
-    const payload = verifyToken(token);
+    const payload: TokenPayload | null = verifyToken(token); // Usar o tipo importado
     if (!payload) {
+      console.error('Não autorizado: Token inválido ou expirado');
       return NextResponse.json(
         { error: 'Token inválido ou expirado' },
         { status: 401 }
       );
     }
 
-    // If no token is provided, try to get it from the cookie
-    let isAuthenticated = false;
-    let userId = '';
-    let userRole = '';
-    let userEmail = '';
+    const userId = payload.userId;
+    const userRole = payload.role;
+    // Obter o email principal do usuário logado a partir do payload do token ou do banco de dados
+    // Priorizar o email do payload se existir, caso contrário buscar no banco
+    let userEmail = payload.email || '';
 
-    if (token) {
-      // Verify token if provided
-      const payload = verifyToken(token);
-      if (payload) {
-        isAuthenticated = true;
-        userId = payload.userId;
-        userRole = payload.role;
-        // COMENTADO: userEmail = payload.email || ''; // A propriedade email pode não existir no payload do token
-        console.log('User authenticated via token:', userId, 'Role:', userRole);
-      }
-    } else {
-      // Try to get session from Supabase
-      const { data: { session } } = await supabaseAdmin.auth.getSession();
-      if (session) {
-        isAuthenticated = true;
-        userId = session.user.id;
-        userEmail = session.user.email || ''; // Obter email da sessão
+    // Se o email não estiver no payload, buscar no banco
+    if (!userEmail) {
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('users_unified') // Assumindo que o email principal está nesta tabela
+        .select('email')
+        .eq('id', userId)
+        .single();
 
-        // Get user role from database
-        const { data: userData } = await supabaseAdmin
-          .from('users')
-          .select('role, email')
-          .eq('id', userId)
-          .single();
-
-        userRole = userData?.role || '';
-        userEmail = userData?.email || userEmail;
-        console.log('User authenticated via session:', userId, 'Role:', userRole);
+      if (userError) {
+        console.error('Erro ao buscar email do usuário logado:', userError);
+        // Continuar mesmo sem o email principal, a busca será feita pelos emails adicionais
+      } else {
+        userEmail = userData?.email || '';
       }
     }
 
-    // Check if user is authenticated
-    if (!isAuthenticated) {
-      console.error('User not authenticated');
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      );
-    }
+    console.log('Usuário autenticado:', userId, 'Papel:', userRole, 'Email principal:', userEmail);
 
-    // Get email from query parameter
+    // 2. Obter email do parâmetro de query (usado principalmente para admins/gerentes buscarem por email)
     const { searchParams } = new URL(request.url);
     const queryEmail = searchParams.get('email');
 
-    // Use the email from the query parameter or from the authenticated user
-    const email = queryEmail || userEmail;
-
-    if (!email) {
-      console.error('No email provided');
-      return NextResponse.json(
-        { error: 'Email não fornecido' },
-        { status: 400 }
-      );
-    }
-
-    console.log(`Fetching reimbursements for email: ${email}`);
-
-    // Normalize email for case-insensitive search
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Check if the user is an admin or manager (they can see all reimbursements)
+    // 3. Verificar permissões e determinar emails permitidos
     const isAdmin = userRole === 'ADMIN';
     const isManager = userRole === 'MANAGER';
 
-    // If the user is not an admin or manager, they can only see their own reimbursements
-    if (!isAdmin && !isManager && normalizedEmail !== userEmail.toLowerCase().trim()) {
-      console.error('User trying to access reimbursements of another user');
-      return NextResponse.json(
-        { error: 'Não autorizado a ver reembolsos de outro usuário' },
-        { status: 403 }
-      );
-    }
+    let allowedEmails: string[] = [];
 
-    // Get query parameters for pagination and filtering
-    // Using a different variable name to avoid redeclaration
-    const { searchParams: paginationParams } = new URL(request.url);
-    const status = paginationParams.get('status');
-    const page = parseInt(paginationParams.get('page') || '1', 10);
-    const limit = parseInt(paginationParams.get('limit') || '10', 10);
-
-    // Calculate pagination range
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    console.log('Fetching reimbursements with params:', {
-      email: normalizedEmail,
-      status: status || 'all',
-      page,
-      limit,
-      from,
-      to
-    });
-
-    // Build the query with proper filters
-    let query = supabaseAdmin
-      .from('Reimbursement')
-      .select('*', { count: 'exact' });
-
-    // *** MODIFICAÇÃO AQUI: Buscar reembolsos associados a todos os e-mails do usuário ***
-    let emailsToSearch = [normalizedEmail];
-
-    // Se o usuário não for admin/manager, buscar os emails adicionais na tabela user_emails
-    if (!isAdmin && !isManager) {
+    if (isAdmin || isManager) {
+      // Admins e gerentes podem ver reembolsos de qualquer email (se fornecido na query)
+      if (queryEmail) {
+        allowedEmails.push(queryEmail.toLowerCase().trim());
+        console.log(`Admin/Manager buscando por email específico: ${queryEmail}`);
+      } else {
+        // Se nenhum email for especificado na query, eles podem ver todos (não aplicamos filtro de email)
+        console.log('Admin/Manager buscando todos os reembolsos');
+        // Não adicionamos emails ao allowedEmails, a query não terá filtro de email
+      }
+    } else {
+      // Usuários normais só podem ver seus próprios reembolsos
+      // Buscar todos os emails associados a este userId na tabela user_emails
       const { data: userEmailsData, error: userEmailsError } = await supabaseAdmin
         .from('user_emails')
         .select('email')
@@ -146,117 +85,113 @@ export async function GET(request: NextRequest) {
 
       if (userEmailsError) {
         console.error('Erro ao buscar e-mails adicionais do usuário:', userEmailsError);
-        // Continuar com o email principal se houver erro ao buscar emails adicionais
+        // Se houver erro, continuar apenas com o email principal (se disponível)
+        if (userEmail) {
+          allowedEmails.push(userEmail.toLowerCase().trim());
+        }
       } else if (userEmailsData) {
+        // Adicionar email principal (se disponível) e emails adicionais
+        if (userEmail) {
+          allowedEmails.push(userEmail.toLowerCase().trim());
+        }
         const additionalEmails = userEmailsData.map(item => item.email.toLowerCase().trim());
-        emailsToSearch = [...new Set([...emailsToSearch, ...additionalEmails])]; // Remover duplicatas
-        console.log('Buscando reembolsos associados aos seguintes emails:', emailsToSearch);
-      }
-    }
-
-    // Apply email filter (buscar por qualquer um dos emails na lista)
-    query = query.in('email', emailsToSearch);
-
-    // Apply status filter if provided
-    if (status && status !== 'all') {
-      query = query.eq('status', status);
-    }
-
-    // Apply pagination and ordering
-    query = query
-      .order('created_at', { ascending: false })
-      .range(from, to);
-
-    // Execute the query
-    const { data: reimbursements, error: queryError, count } = await query;
-
-    if (queryError) {
-      console.error('Error querying reimbursements:', queryError);
-
-      // Try a more permissive query as fallback
-      console.log('Trying fallback query with partial email match...');
-
-      const { data: fallbackData, error: fallbackError } = await supabaseAdmin
-        .from('Reimbursement')
-        .select('*')
-        .ilike('email', `%${normalizedEmail}%`)
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (fallbackError) {
-        console.error('Fallback query also failed:', fallbackError);
-        return NextResponse.json(
-          { error: 'Failed to fetch reimbursements', details: fallbackError.message },
-          { status: 500 }
-        );
-      }
-
-      if (fallbackData && fallbackData.length > 0) {
-        console.log(`Found ${fallbackData.length} reimbursements with fallback query`);
+        allowedEmails = [...new Set([...allowedEmails, ...additionalEmails])]; // Remover duplicatas
+        console.log('Usuário normal buscando reembolsos associados aos seguintes emails:', allowedEmails);
+      } else if (userEmail) {
+         // Se não houver emails adicionais, usar apenas o email principal
+         allowedEmails.push(userEmail.toLowerCase().trim());
+         console.log('Usuário normal buscando reembolsos associados ao email principal:', userEmail);
+      } else {
+        // Se não houver email principal nem adicionais, não há emails para buscar
+        console.log('Usuário sem emails associados, retornando lista vazia');
         return NextResponse.json({
-          data: fallbackData,
+          data: [],
           pagination: {
-            page,
-            limit,
-            total: fallbackData.length,
+            page: 1,
+            limit: 10,
+            total: 0,
             hasMore: false
           }
         });
       }
 
-      // If fallback also returned no results, return empty array
-      return NextResponse.json({
-        data: [],
-        pagination: {
-          page,
-          limit,
-          total: 0,
-          hasMore: false
-        }
-      });
+      // Se o queryEmail for fornecido por um usuário normal, verificar se ele está na lista de allowedEmails
+      if (queryEmail && !allowedEmails.includes(queryEmail.toLowerCase().trim())) {
+         console.error(`Usuário normal (${userEmail}) tentando acessar reembolsos de um email (${queryEmail}) que não está associado à sua conta.`);
+         return NextResponse.json(
+            { error: 'Não autorizado a ver reembolsos de outro usuário' },
+            { status: 403 }
+         );
+      }
     }
 
-    if (reimbursements && reimbursements.length > 0) {
-      console.log(`Found ${reimbursements.length} reimbursements, total count: ${count}`);
-      return NextResponse.json({
-        data: reimbursements,
-        pagination: {
-          page,
-          limit,
-          total: count || reimbursements.length,
-          hasMore: count ? (from + limit < count) : false
-        }
-      });
-    }
+    // 4. Obter parâmetros de paginação e filtro
+    const { searchParams: paginationParams } = new URL(request.url);
+    const status = paginationParams.get('status');
+    const page = parseInt(paginationParams.get('page') || '1', 10);
+    const limit = parseInt(paginationParams.get('limit') || '10', 10);
 
-    // If no results with exact match, try a more permissive search
-    console.log('No results with exact match, trying partial match...');
+    // Calcular range de paginação
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    const { data: partialMatchData, error: partialMatchError } = await supabaseAdmin
+    console.log('Buscando reembolsos com parâmetros:', {
+      allowedEmails,
+      status: status || 'all',
+      page,
+      limit,
+      from,
+      to
+    });
+
+    // 5. Construir e executar a query
+    let query = supabaseAdmin
       .from('Reimbursement')
-      .select('*')
-      .ilike('email', `%${normalizedEmail}%`)
+      .select('*', { count: 'exact' });
+
+    // Aplicar filtro de email apenas se allowedEmails não estiver vazio (i.e., não admin/manager buscando todos)
+    if (allowedEmails.length > 0) {
+       query = query.in('email', allowedEmails);
+    } else if (queryEmail) {
+       // Se for admin/manager buscando por email específico, aplicar filtro
+       query = query.eq('email', queryEmail.toLowerCase().trim());
+    }
+
+    // Aplicar filtro de status se fornecido
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    // Aplicar paginação e ordenação
+    query = query
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (!partialMatchError && partialMatchData && partialMatchData.length > 0) {
-      console.log(`Found ${partialMatchData.length} reimbursements with partial email match`);
-      return NextResponse.json({
-        data: partialMatchData,
-        pagination: {
-          page,
-          limit,
-          total: partialMatchData.length,
-          hasMore: false
-        }
-      });
+    // Executar a query
+    const { data: reimbursements, error: queryError, count } = await query;
+
+    if (queryError) {
+      console.error('Erro ao consultar reembolsos:', queryError);
+      return NextResponse.json(
+        { error: 'Falha ao buscar reembolsos', details: queryError.message },
+        { status: 500 }
+      );
     }
 
-    // No reimbursements found
-    console.log('No reimbursements found for email:', email);
-    return NextResponse.json([]);
+    console.log(`Encontrados ${reimbursements?.length || 0} reembolsos, total: ${count}`);
+
+    return NextResponse.json({
+      data: reimbursements || [],
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        hasMore: count ? (from + limit < count) : false
+      }
+    });
+
   } catch (error) {
-    console.error('Error fetching user reimbursements:', error);
+    console.error('Erro ao buscar reembolsos do usuário:', error);
     return NextResponse.json(
       { error: String(error) },
       { status: 500 }
