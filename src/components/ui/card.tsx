@@ -1,23 +1,4 @@
-                // Usar os dados da resposta como fallback
-                const profileData: UserProfile = {
-                  id: refreshData.user.id,
-                  email: refreshData.user.email,
-                  phone_number: refreshData.user.phoneNumber,
-                  first_name: refreshData.user.firstName,
-                  last_name: refreshData.user.lastName,
-                  role: refreshData.user.role,
-                  active: refreshData.user.active !== undefined ? refreshData.user.active : true,
-                  created_at: refreshData.user.createdAt,
-                  updated_at: refreshData.user.updatedAt,
-                  access_permissions: refreshData.user.access_permissions || refreshData.user.accessPermissions || {},
-                  position: refreshData.user.position,
-                  department: refreshData.user.department,
-                  avatar: refreshData.user.avatar,
-                  password_last_changed: refreshData.user.password_last_changed,
-                  accessPermissions: refreshData.user.accessPermissions || refreshData.user.access_permissions || {}
-                };
-
-                setProfile(profileData);"use client"
+                "use client"
 
 import * as React from "react"
 
