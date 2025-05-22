@@ -7,7 +7,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = params.id;
+    // Aguardar os parâmetros da rota antes de acessá-los
+    const { id } = params;
+    const userId = id;
 
     // Verificar autenticação
     const authHeader = request.headers.get('authorization') || '';
@@ -79,6 +81,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Aguardar os parâmetros da rota antes de acessá-los
+    const { id } = params;
+
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = extractTokenFromHeader(authHeader || '');
@@ -100,7 +105,7 @@ export async function POST(
 
     // Verificar se o usuário está tentando modificar seus próprios dados
     // ou se é um administrador
-    if (payload.userId !== params.id && payload.role !== 'ADMIN') {
+    if (payload.userId !== id && payload.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -149,7 +154,7 @@ export async function POST(
     const { data, error } = await supabase
       .from('user_phones')
       .insert({
-        user_id: params.id,
+        user_id: id,
         phone_number,
         label: label || null,
         is_verified: false,

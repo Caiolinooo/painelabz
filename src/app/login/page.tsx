@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiArrowRight, FiGlobe, FiAlertTriangle, FiKey } from 'react-icons/fi';
+import { FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiArrowRight, FiGlobe, FiAlertTriangle, FiKey, FiArrowLeft } from 'react-icons/fi';
 import { FaLinkedin, FaGithub, FaInstagram } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -17,6 +17,7 @@ import { QuickRegisterForm } from '@/components/Auth/QuickRegisterForm';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { Button } from '@/components/ui/button';
 
 export default function Login() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -32,6 +33,7 @@ export default function Login() {
   const [useEmail, setUseEmail] = useState(false);
   const [showInviteField, setShowInviteField] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
 
@@ -610,13 +612,22 @@ export default function Login() {
               />
 
               <div>
-                <button
+                <Button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full justify-center rounded-md bg-abz-blue px-3 py-2.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-abz-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-abz-blue transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-abz-blue hover:bg-abz-blue-dark"
                 >
-                  {isLoading ? t('auth.sending') : t('auth.continue')}
-                </button>
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      {t('auth.sending')}
+                    </>
+                  ) : (
+                    <>
+                      {t('auth.continue')} <FiArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
               </div>
             </form>
           )}
@@ -652,15 +663,24 @@ export default function Login() {
               </div>
 
               <div className="flex flex-col space-y-3">
-                <button
+                <Button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full justify-center rounded-md bg-abz-blue px-3 py-2.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-abz-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-abz-blue transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-abz-blue hover:bg-abz-blue-dark"
                 >
-                  {isLoading ? t('auth.verifying') : t('auth.verifyCode')}
-                </button>
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      {t('auth.verifying')}
+                    </>
+                  ) : (
+                    <>
+                      {t('auth.verifyCode')} <FiArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
 
-                <button
+                <Button
                   type="button"
                   onClick={async () => {
                     setVerificationCode('');
@@ -689,10 +709,18 @@ export default function Login() {
                     }
                   }}
                   disabled={isLoading || localLoading}
-                  className="flex w-full justify-center rounded-md bg-gray-100 px-3 py-2.5 text-sm font-medium leading-6 text-gray-700 shadow-sm hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                  variant="outline"
+                  className="w-full"
                 >
-                  {isLoading || localLoading ? t('auth.sending') : t('auth.resendCode')}
-                </button>
+                  {isLoading || localLoading ? (
+                    <>
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+                      {t('auth.sending')}
+                    </>
+                  ) : (
+                    t('auth.resendCode')
+                  )}
+                </Button>
 
                 {process.env.NODE_ENV !== 'production' && (
                   <div className="mt-2 text-center">
@@ -706,7 +734,7 @@ export default function Login() {
                   </div>
                 )}
 
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setPhoneNumber('');
@@ -717,10 +745,12 @@ export default function Login() {
                     // Isso é feito no contexto, mas podemos forçar aqui
                     window.location.href = '/login';
                   }}
-                  className="flex w-full justify-center text-sm font-medium text-abz-blue hover:text-abz-blue-dark transition-colors duration-200"
+                  variant="link"
+                  className="w-full text-abz-blue hover:text-abz-blue-dark"
                 >
+                  <FiArrowLeft className="mr-2 h-4 w-4" />
                   {t('auth.backToStart')}
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -738,7 +768,7 @@ export default function Login() {
                 </p>
               </div>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   // Reiniciar o processo de login
@@ -747,10 +777,12 @@ export default function Login() {
                   // Forçar um recarregamento da página para reiniciar o processo
                   window.location.href = '/login';
                 }}
-                className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+                variant="outline"
+                className="w-full"
               >
+                <FiArrowLeft className="mr-2 h-4 w-4" />
                 {t('auth.backToStart')}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -767,7 +799,7 @@ export default function Login() {
                 </p>
               </div>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   // Reiniciar o processo de login
@@ -781,16 +813,26 @@ export default function Login() {
                   // Forçar um recarregamento da página para reiniciar o processo
                   window.location.href = '/login';
                 }}
-                className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+                variant="outline"
+                className="w-full"
               >
+                <FiArrowLeft className="mr-2 h-4 w-4" />
                 {t('auth.backToStart')}
-              </button>
+              </Button>
             </div>
           )}
 
           {/* Formulário de Recuperação de Senha */}
           {showForgotPassword && (
-            <ForgotPasswordForm onCancel={() => setShowForgotPassword(false)} />
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h2 className="text-xl font-semibold mb-4">Recuperação de Senha</h2>
+                <ForgotPasswordForm
+                  onCancel={() => setShowForgotPassword(false)}
+                  initialEmail={forgotPasswordEmail}
+                />
+              </div>
+            </div>
           )}
 
           {/* Formulário de Login com Senha */}
@@ -842,7 +884,10 @@ export default function Login() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowForgotPassword(true)}
+                      onClick={() => {
+                        setForgotPasswordEmail(email);
+                        setShowForgotPassword(true);
+                      }}
                       className="text-xs text-abz-blue hover:text-abz-blue-dark"
                     >
                       {t('auth.forgotPassword')}
@@ -851,17 +896,26 @@ export default function Login() {
                 </div>
 
                 <div className="flex flex-col space-y-3">
-                  <button
+                  <Button
                     type="submit"
                     disabled={isLoading}
-                    className="flex w-full justify-center rounded-md bg-abz-blue px-3 py-2.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-abz-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-abz-blue transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-abz-blue hover:bg-abz-blue-dark"
                   >
-                    {isLoading ? t('auth.loggingIn') : t('auth.login')}
-                  </button>
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                        {t('auth.loggingIn')}
+                      </>
+                    ) : (
+                      <>
+                        {t('auth.login')} <FiArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
 
                   {/* Botão de código de verificação removido para usuários já cadastrados */}
 
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setPhoneNumber('');
@@ -872,10 +926,12 @@ export default function Login() {
                       // Voltar para a etapa de telefone
                       window.location.reload();
                     }}
-                    className="flex w-full justify-center text-sm font-medium text-abz-blue hover:text-abz-blue-dark transition-colors duration-200"
+                    variant="link"
+                    className="w-full text-abz-blue hover:text-abz-blue-dark"
                   >
+                    <FiArrowLeft className="mr-2 h-4 w-4" />
                     {t('auth.backToStart')}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </>
@@ -1023,24 +1079,34 @@ export default function Login() {
               </div>
 
               <div>
-                <button
+                <Button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full justify-center rounded-md bg-abz-blue px-3 py-2.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-abz-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-abz-blue transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-abz-blue hover:bg-abz-blue-dark"
                 >
-                  {isLoading ? t('register.loading', 'Registrando...') : t('register.submit', 'Registrar')}
-                </button>
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      {t('register.loading', 'Registrando...')}
+                    </>
+                  ) : (
+                    <>
+                      {t('register.submit', 'Registrar')} <FiArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
               </div>
 
               <div className="flex items-center justify-center">
-                <button
+                <Button
                   type="button"
                   onClick={() => setLoginStep('phone')}
-                  className="text-sm text-abz-blue hover:text-abz-blue-dark flex items-center"
+                  variant="link"
+                  className="text-abz-blue hover:text-abz-blue-dark"
                 >
-                  <FiArrowRight className="mr-1 rotate-180" />
+                  <FiArrowLeft className="mr-2 h-4 w-4" />
                   {t('auth.backToIdentifier', 'Voltar para identificação')}
-                </button>
+                </Button>
               </div>
             </form>
           )}

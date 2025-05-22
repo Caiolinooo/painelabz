@@ -47,6 +47,14 @@ export default function ReimbursementApproval() {
   useEffect(() => {
     // Forçar a verificação de permissões para garantir que o componente seja exibido corretamente
     console.log('Verificando permissões de aprovação para o componente...');
+    console.log('Dados do usuário:', {
+      id: user?.id,
+      email: user?.email,
+      isAdmin,
+      role: profile?.role,
+      accessPermissions: profile?.accessPermissions,
+      access_permissions: profile?.access_permissions
+    });
 
     // Administradores sempre têm permissão
     if (isAdmin) {
@@ -78,8 +86,18 @@ export default function ReimbursementApproval() {
       access_permissions: profile?.access_permissions
     });
 
+    // Verificar se o email do usuário é o email do administrador
+    const adminEmail = 'caio.correia@groupabz.com'; // Email do administrador
+    const isAdminEmail = user?.email === adminEmail;
+
+    if (isAdminEmail) {
+      console.log('Email do usuário corresponde ao email do administrador, concedendo permissão');
+      setHasApprovalPermission(true);
+      return;
+    }
+
     setHasApprovalPermission(hasFeaturePermission);
-  }, [isAdmin, profile]);
+  }, [isAdmin, profile, user]);
 
   // Carregar solicitações de reembolso usando a função auxiliar de autenticação
 
@@ -120,12 +138,22 @@ export default function ReimbursementApproval() {
 
   // Carregar solicitações quando o componente montar ou os filtros mudarem
   useEffect(() => {
+    // Verificar se o email do usuário é o email do administrador
+    const adminEmail = 'caio.correia@groupabz.com'; // Email do administrador
+    const isAdminEmail = user?.email === adminEmail;
+
     // Permitir que administradores e gerentes também carreguem os reembolsos
-    if (hasApprovalPermission || isAdmin || profile?.role === 'MANAGER') {
-      console.log('Carregando reembolsos para aprovação...');
+    if (hasApprovalPermission || isAdmin || profile?.role === 'MANAGER' || isAdminEmail) {
+      console.log('Carregando reembolsos para aprovação...', {
+        hasApprovalPermission,
+        isAdmin,
+        role: profile?.role,
+        email: user?.email,
+        isAdminEmail
+      });
       fetchReimbursements();
     }
-  }, [hasApprovalPermission, isAdmin, profile?.role, statusFilter, page, limit, searchTerm]);
+  }, [hasApprovalPermission, isAdmin, profile?.role, statusFilter, page, limit, searchTerm, user?.email]);
 
   // Função para aprovar uma solicitação
   const handleApprove = async (id: string) => {
@@ -351,7 +379,20 @@ export default function ReimbursementApproval() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  if (!hasApprovalPermission && !isAdmin && profile?.role !== 'MANAGER') {
+  // Verificar se o email do usuário é o email do administrador
+  const adminEmail = 'caio.correia@groupabz.com'; // Email do administrador
+  const isAdminEmail = user?.email === adminEmail;
+
+  // Verificar se o usuário tem permissão para acessar a página
+  if (!hasApprovalPermission && !isAdmin && profile?.role !== 'MANAGER' && !isAdminEmail) {
+    console.log('Acesso negado ao componente de aprovação:', {
+      hasApprovalPermission,
+      isAdmin,
+      role: profile?.role,
+      email: user?.email,
+      isAdminEmail
+    });
+
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
         <FiX className="h-12 w-12 text-red-500 mx-auto mb-4" />

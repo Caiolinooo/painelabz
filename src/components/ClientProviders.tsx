@@ -10,6 +10,9 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { I18nProvider } from '@/contexts/I18nContext';
 import { SupabaseAuthProvider } from '@/contexts/SupabaseAuthContext';
 import { SiteConfigProvider } from '@/contexts/SiteConfigContext';
+import MaterialIconProvider from '@/components/MaterialIconProvider';
+import IconWrapper from '@/components/IconWrapper';
+import IconTransformer from '@/components/IconTransformer';
 import LanguageDialog from '@/components/LanguageDialog';
 import SiteHead from '@/components/SiteHead';
 
@@ -30,11 +33,20 @@ export default function ClientProviders({ children }: { children: React.ReactNod
         <AuthProvider>
           <I18nProvider>
             <SiteConfigProvider>
-              <SiteHead />
-              {/* Only render components that might cause hydration issues when mounted on client */}
-              {isMounted && <LanguageDialog />}
-              {isMounted && <ToastContainer position="top-right" theme="colored" />}
-              {children}
+              <MaterialIconProvider>
+                <IconWrapper>
+                  {/* Garantir que o IconTransformer seja carregado o mais cedo possível */}
+                  {isMounted && <IconTransformer key="icon-transformer" />}
+                  <SiteHead />
+                  {/* Only render components that might cause hydration issues when mounted on client */}
+                  {isMounted && <LanguageDialog />}
+                  {isMounted && <ToastContainer position="top-right" theme="colored" />}
+                  {/* Envolver o conteúdo em um div para garantir que o IconTransformer seja aplicado */}
+                  <div className="icon-transformer-wrapper">
+                    {children}
+                  </div>
+                </IconWrapper>
+              </MaterialIconProvider>
             </SiteConfigProvider>
           </I18nProvider>
         </AuthProvider>

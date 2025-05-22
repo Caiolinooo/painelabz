@@ -1,64 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { generatePasswordResetToken, sendPasswordResetEmail, sendPasswordResetSMS } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+import { sendPasswordResetSMS } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, phoneNumber } = body;
+    const { phoneNumber } = body;
 
     // Validar os dados de entrada
-    if (!email && !phoneNumber) {
+    if (!phoneNumber) {
       return NextResponse.json(
-        { error: 'Email ou número de telefone é obrigatório' },
+        { error: 'Número de telefone é obrigatório' },
         { status: 400 }
       );
     }
 
-    // Buscar o usuário pelo email ou número de telefone
-    const where = email ? { email } : { phoneNumber };
-    const user = await prisma.user.findFirst({ where });
+    // Para email, usamos diretamente o método resetPasswordForEmail do Supabase no cliente
+    // Esta API é apenas para SMS, que não é suportado nativamente pelo Supabase
+
+    // Buscar o usuário pelo número de telefone
+    const { data: user, error: userError } = await supabase
+      .from('users_unified')
+      .select('id, phone_number, active')
+      .eq('phone_number', phoneNumber)
+      .single();
 
     // Se o usuário não for encontrado, retornar sucesso para evitar enumeração de usuários
-    // Isso é uma prática de segurança para não revelar quais emails/telefones estão cadastrados
-    if (!user) {
-      console.log('Usuário não encontrado para recuperação de senha:', query);
+    if (userError || !user) {
+      console.log('Usuário não encontrado para recuperação de senha:', phoneNumber);
       return NextResponse.json({
         success: true,
-        message: 'Se o email/telefone estiver cadastrado, você receberá instruções para redefinir sua senha.'
+        message: 'Se o telefone estiver cadastrado, você receberá instruções para redefinir sua senha.'
       });
     }
 
     // Verificar se o usuário está ativo
     if (!user.active) {
-      console.log('Usuário inativo tentando recuperar senha:', user.phoneNumber);
+      console.log('Usuário inativo tentando recuperar senha:', phoneNumber);
       return NextResponse.json({
         success: true,
-        message: 'Se o email/telefone estiver cadastrado, você receberá instruções para redefinir sua senha.'
+        message: 'Se o telefone estiver cadastrado, você receberá instruções para redefinir sua senha.'
       });
     }
 
-    // Gerar token de redefinição de senha
-    const { token, expiresAt } = generatePasswordResetToken();
-
-    // Atualizar o usuário com o token de redefinição
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordToken: token,
-        resetPasswordExpires: expiresAt
+    // Gerar um link de redefinição de senha usando Supabase
+    const { data, error } = await supabase.auth.resetPasswordForEmail(
+      user.email, // Precisamos do email do usuário para o Supabase
+      {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
       }
-    });
+    );
 
-    // Enviar email ou SMS com o link de redefinição
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
-
-    let sendResult;
-    if (email) {
-      sendResult = await sendPasswordResetEmail(email, resetUrl);
-    } else {
-      sendResult = await sendPasswordResetSMS(phoneNumber, resetUrl);
+    if (error) {
+      console.error('Erro ao gerar link de redefinição:', error);
+      return NextResponse.json(
+        { error: 'Erro ao gerar link de redefinição. Por favor, tente novamente.' },
+        { status: 500 }
+      );
     }
+
+    // Enviar SMS com o link de redefinição
+    // Como o Supabase não suporta SMS diretamente, usamos nossa função personalizada
+    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`;
+    const sendResult = await sendPasswordResetSMS(phoneNumber, resetUrl);
 
     if (!sendResult.success) {
       console.error('Erro ao enviar instruções de redefinição:', sendResult.message);
@@ -69,20 +73,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Registrar no histórico de acesso
-    const accessHistory = user.accessHistory || [];
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        accessHistory: [
-          ...accessHistory,
+    const timestamp = new Date().toISOString();
+    const { error: historyError } = await supabase
+      .from('users_unified')
+      .update({
+        access_history: [
+          ...(user.access_history || []),
           {
-            timestamp: new Date(),
+            timestamp,
             action: 'PASSWORD_RESET_REQUEST',
-            details: `Solicitação de redefinição de senha via ${email ? 'email' : 'SMS'}`
+            details: 'Solicitação de redefinição de senha via SMS'
           }
         ]
-      }
-    });
+      })
+      .eq('id', user.id);
+
+    if (historyError) {
+      console.error('Erro ao registrar histórico de acesso:', historyError);
+    }
 
     return NextResponse.json({
       success: true,

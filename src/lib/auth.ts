@@ -21,6 +21,7 @@ export interface TokenPayload {
   userId: string;
   phoneNumber: string;
   role: string;
+  email?: string; // Adicionar propriedade email (opcional)
 }
 
 // Função para buscar usuário usando PostgreSQL diretamente
@@ -157,51 +158,14 @@ export function generatePasswordResetToken(): { token: string; expiresAt: Date }
 
 // Função para enviar email de redefinição de senha
 export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<{ success: boolean; message: string }> {
-  // Em ambiente de desenvolvimento, simular envio
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[DEV MODE] Enviando email de redefinição para ${email} com URL: ${resetUrl}`);
-    return {
-      success: true,
-      message: 'Email simulado enviado com sucesso (modo de desenvolvimento)'
-    };
-  }
-
   try {
-    // Usar o serviço de email centralizado
-    const { sendEmail } = await import('./email');
+    // Usar o serviço de email Gmail diretamente
+    const { sendPasswordResetEmail: sendGmailPasswordResetEmail } = await import('./email-gmail');
 
-    // Preparar o conteúdo do email
-    const text = `Redefinição de Senha - ABZ Group\n\nVocê solicitou a redefinição de senha para sua conta no ABZ Group.\n\nAcesse o link para redefinir sua senha: ${resetUrl}\n\nSe você não solicitou esta redefinição, ignore este email.\n\nEste link é válido por 1 hora.\n\nAtenciosamente,\nEquipe ABZ Group`;
+    console.log(`Enviando email de redefinição para ${email} com URL: ${resetUrl}`);
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background-color: #0066cc; padding: 20px; text-align: center;">
-          <h1 style="color: white; margin: 0;">ABZ Group</h1>
-        </div>
-        <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
-          <h2>Redefinição de Senha</h2>
-          <p>Você solicitou a redefinição de senha para sua conta no ABZ Group.</p>
-          <p>Clique no botão abaixo para redefinir sua senha:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Redefinir Senha</a>
-          </div>
-          <p>Se você não solicitou esta redefinição, ignore este email.</p>
-          <p>Este link é válido por 1 hora.</p>
-          <p>Atenciosamente,<br>Equipe ABZ Group</p>
-        </div>
-        <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-          &copy; ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.
-        </div>
-      </div>
-    `;
-
-    // Enviar o email usando o serviço centralizado
-    const result = await sendEmail(
-      email,
-      'Redefinição de Senha - ABZ Group',
-      text,
-      html
-    );
+    // Enviar o email usando o serviço Gmail
+    const result = await sendGmailPasswordResetEmail(email, resetUrl);
 
     if (result.success) {
       return {
@@ -215,7 +179,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
     console.error('Erro ao enviar email de redefinição:', error);
     return {
       success: false,
-      message: 'Erro ao enviar email de redefinição'
+      message: `Erro ao enviar email de redefinição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
     };
   }
 }
@@ -333,13 +297,15 @@ export function verifyToken(token: string): TokenPayload | null {
 
       return payload;
     } catch (jwtError) {
-      console.error('verifyToken: Erro ao verificar JWT:', jwtError);
+      console.error('verifyToken: Erro ao verificar JWT:', jwtError); // Log do erro JWT
 
       // Se o token JWT não for válido, verificar se é um token do Supabase
       try {
+        console.log('verifyToken: Tentando verificar como token Supabase...'); // Log antes de verificar como Supabase
         // Tentar decodificar o token como base64
         const decoded = Buffer.from(parts[1], 'base64').toString();
         const decodedPayload = JSON.parse(decoded);
+        console.log('verifyToken: Payload decodificado do Supabase:', decodedPayload); // Log do payload decodificado
 
         if (decodedPayload.sub || decodedPayload.user_id) {
           console.log('verifyToken: Token Supabase JWT detectado');
@@ -350,7 +316,7 @@ export function verifyToken(token: string): TokenPayload | null {
           };
         }
       } catch (decodeError) {
-        console.error('verifyToken: Erro ao decodificar token como base64:', decodeError);
+        console.error('verifyToken: Erro ao decodificar token como base64:', decodeError); // Log do erro de decodificação
       }
     }
 
@@ -364,6 +330,7 @@ export function verifyToken(token: string): TokenPayload | null {
       };
     }
 
+    console.log('verifyToken: Token não reconhecido por nenhum método'); // Log se o token não foi reconhecido
     return null;
   } catch (error) {
     // Fornecer mensagens de erro mais específicas

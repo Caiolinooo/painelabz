@@ -23,9 +23,17 @@ export async function POST(req: NextRequest) {
 
     console.log('Definindo senha para usuário:', payload.userId);
 
-    // Obter a senha do corpo da requisição
+    // Obter os dados do corpo da requisição
     const body = await req.json();
-    const { password } = body;
+    const { password, firstName, lastName, phoneNumber } = body;
+
+    console.log('Dados recebidos para definição de senha:', {
+      userId: payload.userId,
+      hasPassword: !!password,
+      hasFirstName: !!firstName,
+      hasLastName: !!lastName,
+      hasPhoneNumber: !!phoneNumber
+    });
 
     if (!password) {
       console.log('Senha não fornecida');
@@ -38,6 +46,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         error: 'A senha deve ter pelo menos 8 caracteres'
       }, { status: 400 });
+    }
+
+    // Validar campos adicionais se fornecidos
+    if (firstName !== undefined && !firstName.trim()) {
+      return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 });
+    }
+
+    if (lastName !== undefined && !lastName.trim()) {
+      return NextResponse.json({ error: 'Sobrenome é obrigatório' }, { status: 400 });
+    }
+
+    if (phoneNumber !== undefined && !phoneNumber.trim()) {
+      return NextResponse.json({ error: 'Telefone é obrigatório' }, { status: 400 });
     }
 
     // Gerar hash da senha
@@ -82,16 +103,38 @@ export async function POST(req: NextRequest) {
         }
       ];
 
-      // Atualizar a senha do usuário
+      // Preparar os dados para atualização
+      const updateData: any = {
+        password: hashedPassword, // Manter compatibilidade com código existente
+        password_hash: hashedPassword, // Usar nova coluna
+        password_last_changed: now,
+        updated_at: now,
+        access_history: accessHistory
+      };
+
+      // Adicionar campos adicionais se fornecidos
+      if (firstName !== undefined) {
+        updateData.first_name = firstName.trim();
+      }
+
+      if (lastName !== undefined) {
+        updateData.last_name = lastName.trim();
+      }
+
+      if (phoneNumber !== undefined) {
+        updateData.phone_number = phoneNumber.trim();
+      }
+
+      console.log('Atualizando usuário com dados:', {
+        ...updateData,
+        password: '[REDACTED]',
+        password_hash: '[REDACTED]'
+      });
+
+      // Atualizar o usuário
       const { error: updateError } = await supabase
         .from('users_unified')
-        .update({
-          password: hashedPassword, // Manter compatibilidade com código existente
-          password_hash: hashedPassword, // Usar nova coluna
-          password_last_changed: now,
-          updated_at: now,
-          access_history: accessHistory
-        })
+        .update(updateData)
         .eq('id', payload.userId);
 
       if (updateError) {

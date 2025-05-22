@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { FiMail, FiPhone, FiArrowRight, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiPhone, FiArrowRight, FiCheck, FiAlertCircle, FiArrowLeft } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
 
 interface ForgotPasswordFormProps {
   onCancel: () => void;
+  initialEmail?: string;
 }
 
-export default function ForgotPasswordForm({ onCancel }: ForgotPasswordFormProps) {
-  const [identifier, setIdentifier] = useState('');
+export default function ForgotPasswordForm({ onCancel, initialEmail = '' }: ForgotPasswordFormProps) {
+  const [identifier, setIdentifier] = useState(initialEmail);
   const [useEmail, setUseEmail] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,23 +44,53 @@ export default function ForgotPasswordForm({ onCancel }: ForgotPasswordFormProps
     }
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          [useEmail ? 'email' : 'phoneNumber']: identifier,
-        }),
-      });
+        // Usar o Supabase para enviar o email de recuperação de senha
+        if (useEmail) {
+          console.log('Enviando email de recuperação para:', identifier);
 
-      const data = await response.json();
+          // Usar nossa API personalizada para garantir o uso do Gmail
+          const response = await fetch('/api/email/password-reset', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: identifier,
+              resetUrl: `${window.location.origin}/reset-password`,
+            }),
+          });
 
-      if (response.ok) {
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            console.error('Erro ao solicitar recuperação de senha:', data);
+            setError(data.message || t('auth.requestError'));
+            return;
+          }
+
+          console.log('Email de recuperação enviado com sucesso');
+        } else {
+          // Para telefone, precisamos usar a API personalizada
+          const response = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phoneNumber: identifier,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            setError(data.error || t('auth.requestError'));
+            return;
+          }
+        }
+
+        // Se chegou aqui, foi bem-sucedido
         setSuccess(true);
-      } else {
-        setError(data.error || t('auth.requestError'));
-      }
     } catch (error) {
       console.error('Erro ao solicitar recuperação de senha:', error);
       setError(t('auth.requestError'));
@@ -86,13 +119,16 @@ export default function ForgotPasswordForm({ onCancel }: ForgotPasswordFormProps
                 </p>
               </div>
               <div className="mt-4">
-                <button
+                <Button
                   type="button"
                   onClick={onCancel}
-                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  variant="outline"
+                  size="sm"
+                  className="text-green-700 bg-green-50 border-green-200 hover:bg-green-100 hover:text-green-800"
                 >
+                  <FiArrowLeft className="mr-2 h-4 w-4" />
                   {t('common.backToLogin')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -150,24 +186,22 @@ export default function ForgotPasswordForm({ onCancel }: ForgotPasswordFormProps
           </div>
 
           <div className="flex items-center justify-between space-x-4">
-            <button
+            <Button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+              variant="outline"
+              className="flex-1"
             >
               {t('common.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={isLoading}
-              className="flex-1 flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-abz-blue hover:bg-abz-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue disabled:opacity-70 disabled:cursor-not-allowed"
+              className="flex-1 bg-abz-blue hover:bg-abz-blue-dark"
             >
               {isLoading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                   {t('common.loading')}
                 </>
               ) : (
@@ -175,7 +209,7 @@ export default function ForgotPasswordForm({ onCancel }: ForgotPasswordFormProps
                   {t('auth.sendResetLink')} <FiArrowRight className="ml-2" />
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
       )}

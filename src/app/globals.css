@@ -80,6 +80,7 @@ body {
 
 .bg-primary {
   background-color: var(--primary-color);
+  color: white; /* Ensure text is white on primary background */
 }
 
 .border-primary {
@@ -92,8 +93,53 @@ body {
 
 .bg-secondary {
   background-color: var(--secondary-color);
+  color: white; /* Ensure text is white on secondary background */
 }
 
 .border-secondary {
   border-color: var(--secondary-color);
+}
+
+/* Fix for button text color */
+.bg-abz-blue, .hover\:bg-abz-blue:hover {
+  color: white !important;
+}
+
+.bg-abz-blue-dark, .hover\:bg-abz-blue-dark:hover {
+  color: white !important;
+}
+
+/* Estilos para ícones do Material Design */
+.material-icon-replacement {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.material-icon-replacement .material-icons {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Estilos para tags de ícones personalizadas - esconder para evitar renderização incorreta */
+book, description, policy, calendar_today, newspaper,
+receipt, payments, schedule, assessment, admin_panel_settings,
+dashboard, people, person, settings, menu, close, logout,
+layers, list, edit, image, check, alert, info, warning,
+error, success {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }

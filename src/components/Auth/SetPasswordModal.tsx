@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import useToast from '@/hooks/useToast';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 interface SetPasswordModalProps {
   isOpen: boolean;
@@ -13,15 +14,52 @@ interface SetPasswordModalProps {
 export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false }: SetPasswordModalProps) {
   const { t } = useI18n();
   const { toast } = useToast();
+  const { user, profile } = useSupabaseAuth();
+
+  // Campos de senha
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Campos de informações pessoais
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+
+  // Estados de UI
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordSet, setPasswordSet] = useState(false);
 
+  // Preencher campos com dados existentes, se disponíveis
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name || '');
+      setLastName(profile.last_name || '');
+      setPhoneNumber(profile.phone_number || '');
+    }
+  }, [profile]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Validar campos obrigatórios
+    if (isNewUser) {
+      if (!firstName.trim()) {
+        setError(t('auth.firstNameRequired', 'O nome é obrigatório'));
+        return;
+      }
+
+      if (!lastName.trim()) {
+        setError(t('auth.lastNameRequired', 'O sobrenome é obrigatório'));
+        return;
+      }
+
+      if (!phoneNumber.trim()) {
+        setError(t('auth.phoneNumberRequired', 'O telefone é obrigatório'));
+        return;
+      }
+    }
 
     // Validar senha
     if (password.length < 8) {
@@ -46,14 +84,30 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
         return;
       }
 
-      // Enviar requisição diretamente usando fetch em vez do fetchWrapper
+      // Preparar os dados para envio
+      const requestData = {
+        password,
+        // Incluir informações adicionais apenas se for um novo usuário
+        ...(isNewUser && {
+          firstName,
+          lastName,
+          phoneNumber
+        })
+      };
+
+      console.log('Enviando dados para definição de senha:', {
+        ...requestData,
+        password: '********' // Não logar a senha real
+      });
+
+      // Enviar requisição diretamente usando fetch
       const response = await fetch('/api/auth/set-password-after-verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ password })
+        body: JSON.stringify(requestData)
       });
 
       // Verificar se a resposta é OK
@@ -121,7 +175,7 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
 
             {isNewUser && (
               <div className="text-sm text-gray-600 mb-2">
-                {t('auth.newAccountMessage', 'Para completar seu cadastro, defina uma senha para sua conta.')}
+                {t('auth.newAccountMessage', 'Para completar seu cadastro, preencha seus dados pessoais e defina uma senha para sua conta.')}
               </div>
             )}
 
@@ -136,6 +190,64 @@ export function SetPasswordModal({ isOpen, onClose, onSuccess, isNewUser = false
                 {error}
               </div>
             )}
+
+            {/* Campos de informações pessoais - apenas para novos usuários */}
+            {isNewUser && (
+              <div className="space-y-4 mb-4">
+                <h3 className="text-md font-medium text-gray-700">Informações Pessoais</h3>
+
+                <div className="space-y-2">
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                    {t('auth.firstName', 'Nome')}
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder={t('auth.firstNamePlaceholder', 'Digite seu nome')}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                    {t('auth.lastName', 'Sobrenome')}
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder={t('auth.lastNamePlaceholder', 'Digite seu sobrenome')}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                    {t('auth.phoneNumber', 'Telefone')}
+                  </label>
+                  <input
+                    id="phoneNumber"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder={t('auth.phoneNumberPlaceholder', 'Digite seu telefone')}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="text-xs text-gray-500">
+                    {t('auth.phoneNumberFormat', 'Formato: +55 (DDD) XXXXX-XXXX')}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Campos de senha */}
+            <h3 className="text-md font-medium text-gray-700 mb-2">Definição de Senha</h3>
 
             <div className="space-y-2">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">

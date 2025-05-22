@@ -1,3 +1,5 @@
-// Arquivo gerado automaticamente - NÃO EDITAR MANUALMENTE
+// Configurações de segurança
+// Este arquivo será substituído pelo script migrate-credentials.js
+
 export const SECURITY_SALT = 'abz-security-salt';
-export const SUPABASE_KEY_HASH = 'd158854ec0e3d38c6735d632706ce225';
+export const SUPABASE_KEY_HASH = ''; // Será preenchido pelo script

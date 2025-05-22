@@ -83,6 +83,7 @@ interface AuthContextType {
   checkPasswordStatus: () => Promise<boolean>;
   hasAccess: (module: string) => boolean;
   hasFeature: (feature: string) => boolean;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -1675,7 +1676,12 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     }
 
     const hasAdminRole = profile?.role === 'ADMIN' || tokenPayload?.role === 'ADMIN';
-    const isAdminEmail = profile?.email === adminEmail || user?.email === adminEmail;
+
+    // Verificar se o email é o email do administrador principal (caio.correia@groupabz.com)
+    // Não permitir que outros emails sejam considerados admin apenas por serem iguais ao adminEmail
+    const isAdminEmail = (profile?.email === 'caio.correia@groupabz.com' || user?.email === 'caio.correia@groupabz.com');
+
+    // Verificar permissões explícitas de admin
     const hasAdminPermission = !!(profile?.access_permissions?.modules?.admin) ||
                               !!(profile?.accessPermissions?.modules?.admin);
 
@@ -1699,18 +1705,22 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   // Se o usuário for o administrador principal mas não tiver o papel de ADMIN, atualizar o perfil
   useEffect(() => {
     const updateAdminProfile = async () => {
-      if ((profile?.email === adminEmail || user?.email === adminEmail) && profile?.role !== 'ADMIN') {
-        console.log('Atualizando perfil do administrador...');
+      // Verificar se o email é exatamente o email do administrador principal
+      const isMainAdmin = profile?.email === 'caio.correia@groupabz.com' || user?.email === 'caio.correia@groupabz.com';
+
+      if (isMainAdmin && profile?.role !== 'ADMIN') {
+        console.log('Atualizando perfil do administrador principal...');
         try {
           const { error } = await supabase
-            .from('users')
+            .from('users_unified')
             .update({
               role: 'ADMIN',
               access_permissions: {
                 ...(profile?.access_permissions || {}),
                 modules: {
                   ...(profile?.access_permissions?.modules || {}),
-                  admin: true
+                  admin: true,
+                  avaliacao: true
                 }
               },
               updated_at: new Date().toISOString()
@@ -1719,6 +1729,31 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
           if (error) {
             console.error('Erro ao atualizar perfil do administrador:', error);
+
+            // Tentar atualizar na tabela users como fallback
+            const { error: legacyError } = await supabase
+              .from('users')
+              .update({
+                role: 'ADMIN',
+                access_permissions: {
+                  ...(profile?.access_permissions || {}),
+                  modules: {
+                    ...(profile?.access_permissions?.modules || {}),
+                    admin: true,
+                    avaliacao: true
+                  }
+                },
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', profile?.id);
+
+            if (legacyError) {
+              console.error('Erro ao atualizar perfil do administrador na tabela legacy:', legacyError);
+            } else {
+              console.log('Perfil do administrador atualizado com sucesso na tabela legacy!');
+              // Recarregar a página para aplicar as alterações
+              window.location.reload();
+            }
           } else {
             console.log('Perfil do administrador atualizado com sucesso!');
             // Recarregar a página para aplicar as alterações
@@ -1733,7 +1768,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     if (profile && !isLoading) {
       updateAdminProfile();
     }
-  }, [profile, user, adminEmail, isLoading]);
+  }, [profile, user, isLoading]);
 
   // Verificar se o usuário é gerente de várias maneiras para garantir acesso
   const isManager = useMemo(() => {
@@ -1893,6 +1928,38 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             profile?.accessPermissions?.features?.[feature] ||
             profile?.access_permissions?.features?.[feature]
           );
+        },
+        refreshProfile: async () => {
+          try {
+            if (!user?.id) return;
+
+            console.log('Atualizando perfil do usuário...');
+
+            // Buscar o perfil atualizado no Supabase
+            const { data, error } = await supabase
+              .from('users_unified')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+
+            if (error) {
+              console.error('Erro ao atualizar perfil:', error);
+              return;
+            }
+
+            if (data) {
+              // Converter para o formato de perfil
+              const profileData: UserProfile = {
+                ...data,
+                accessPermissions: data.access_permissions || {}
+              };
+
+              setProfile(profileData);
+              console.log('Perfil do usuário atualizado com sucesso');
+            }
+          } catch (error) {
+            console.error('Erro ao atualizar perfil:', error);
+          }
         },
         signOut,
         logout

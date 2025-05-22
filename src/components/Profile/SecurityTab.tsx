@@ -254,23 +254,16 @@ export function SecurityTab({ user }: SecurityTabProps) {
           </form>
         </div>
         
-        {/* Autenticação de dois fatores */}
+        {/* Autenticação de dois fatores (em breve) */}
         <div>
           <h3 className="text-md font-medium text-gray-800 mb-3 flex items-center">
             <FiShield className="h-5 w-5 mr-2 text-gray-600" />
             {t('profile.twoFactorAuth', 'Autenticação de dois fatores')}
           </h3>
-          
           <div className="bg-gray-50 p-4 rounded-md">
             <p className="text-sm text-gray-600 mb-3">
-              {t('profile.twoFactorDescription', 'A autenticação de dois fatores adiciona uma camada extra de segurança à sua conta, exigindo um código além da sua senha ao fazer login.')}
+              {t('profile.twoFactorComingSoon', 'Em breve você poderá ativar a autenticação de dois fatores para sua conta.')}
             </p>
-            
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {t('profile.setupTwoFactor', 'Configurar autenticação de dois fatores')}
-            </button>
           </div>
         </div>
       </div>

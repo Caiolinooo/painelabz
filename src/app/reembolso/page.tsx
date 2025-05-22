@@ -6,63 +6,19 @@ import { FiDollarSign, FiList, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import MainLayout from '@/components/Layout/MainLayout';
-import ReimbursementForm from '@/components/ReimbursementForm';
+import ReimbursementFormWrapper from '@/components/ReimbursementFormWrapper';
 import ErrorBoundary from '@/components/ErrorBoundary';
-// Import the component directly to avoid chunk loading issues
+// Import the components directly to avoid chunk loading issues
 import ReimbursementDashboardComponent from '@/components/ReimbursementDashboard';
+import ReimbursementApprovalComponent from '@/components/ReimbursementApproval';
 
 // Define a type for the dynamic import result
 type DynamicImportResult = { default: React.ComponentType<any> };
 
-const ReimbursementApproval = React.lazy(() => {
-  // Add a small delay to ensure all dependencies are loaded
-  return new Promise<DynamicImportResult>((resolve) => {
-    // Use a setTimeout to break potential circular dependencies
-    setTimeout(() => {
-      import('@/components/ReimbursementApproval')
-        .then(mod => {
-          // Safely handle the module import
-          const Component = mod.default || mod;
-          resolve({ default: Component });
-        })
-        .catch(err => {
-          console.error('Error loading ReimbursementApproval:', err);
-          // Log more detailed error information
-          console.error('Error details:', {
-            name: err.name,
-            message: err.message,
-            stack: err.stack,
-            cause: err.cause
-          });
-
-          // Create a more informative error component
-          const FallbackComponent: React.FC = () => (
-            <div className="p-6 text-center">
-              <div className="text-red-500 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <h3 className="text-lg font-semibold">Erro ao carregar a página de aprovação</h3>
-              </div>
-              <p className="text-gray-600 mb-4">
-                Ocorreu um erro ao carregar o componente de aprovação de reembolsos. Isso pode ser devido a um problema de conexão ou um erro no código.
-              </p>
-              <p className="text-gray-500 text-sm mb-4">
-                Detalhes técnicos: {err.message || 'Erro desconhecido'}
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Tentar novamente
-              </button>
-            </div>
-          );
-          resolve({ default: FallbackComponent });
-        });
-    }, 100);
-  });
-});
+// Criar um componente wrapper para usar com React.Suspense
+const ReimbursementApproval = () => {
+  return <ReimbursementApprovalComponent />;
+};
 
 type TabType = 'request' | 'dashboard' | 'approval';
 
@@ -146,10 +102,28 @@ export default function ReembolsoPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'request':
-        return <ReimbursementForm />;
+        return <ReimbursementFormWrapper />;
       case 'dashboard':
         return (
-          <ErrorBoundary>
+          <ErrorBoundary fallback={
+            <div className="p-4 text-center">
+              <div className="text-red-500 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 className="text-lg font-semibold">Erro ao carregar o dashboard</h3>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Ocorreu um erro ao carregar o dashboard de reembolsos.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          }>
             <ReimbursementDashboardComponent />
           </ErrorBoundary>
         );
@@ -166,7 +140,25 @@ export default function ReembolsoPage() {
               </p>
             </div>
           }>
-            <ErrorBoundary>
+            <ErrorBoundary fallback={
+              <div className="p-4 text-center">
+                <div className="text-red-500 mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 className="text-lg font-semibold">Erro ao carregar a página de aprovação</h3>
+                </div>
+                <p className="text-gray-600 mb-4">
+                  Ocorreu um erro ao carregar o componente de aprovação de reembolsos.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            }>
               <ReimbursementApproval />
             </ErrorBoundary>
           </React.Suspense>
@@ -180,7 +172,7 @@ export default function ReembolsoPage() {
           </div>
         );
       default:
-        return <ReimbursementForm />;
+        return <ReimbursementFormWrapper />;
     }
   };
 
@@ -243,7 +235,25 @@ export default function ReembolsoPage() {
 
         {/* Tab Content */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <ErrorBoundary>
+          <ErrorBoundary fallback={
+            <div className="p-4 text-center">
+              <div className="text-red-500 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 className="text-lg font-semibold">Erro ao carregar o conteúdo</h3>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Ocorreu um erro ao carregar o conteúdo da página.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          }>
             {renderTabContent()}
           </ErrorBoundary>
         </div>

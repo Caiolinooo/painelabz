@@ -197,6 +197,7 @@ export default {
     currentPassword: 'Senha atual',
     passwordMismatch: 'As senhas não coincidem',
     passwordChanged: 'Senha alterada com sucesso',
+    backToLogin: 'Voltar para o Login',
     passwordExpired: 'Sua senha expirou e precisa ser alterada',
     profile: 'Perfil',
     settings: 'Configurações',
