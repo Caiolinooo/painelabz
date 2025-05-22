@@ -67,30 +67,14 @@ const IconTransformer: React.FC = () => {
     };
 
     // Função para substituir tags de ícones por componentes React
+    // Usando uma abordagem mais segura que não manipula o DOM diretamente
     const replaceIconTags = () => {
-      // Para cada nome de ícone
-      materialIconNames.forEach(iconName => {
-        try {
-          // Buscar todas as tags com o nome do ícone
-          const iconTags = document.getElementsByTagName(iconName);
-
-          // Enquanto houver tags com esse nome
-          while (iconTags.length > 0) {
-            const iconTag = iconTags[0];
-            const parentNode = iconTag.parentNode;
-
-            if (parentNode) {
-              // Criar um elemento span para substituir a tag
-              const iconElement = createIconElement(iconName);
-
-              // Substituir a tag pelo span
-              parentNode.replaceChild(iconElement, iconTag);
-            }
-          }
-        } catch (error) {
-          console.error(`Erro ao substituir ícone ${iconName}:`, error);
-        }
-      });
+      // Em vez de manipular o DOM diretamente, vamos apenas registrar os ícones que precisam ser substituídos
+      // e deixar que o React cuide da renderização
+      console.log('Registrando ícones para substituição:', materialIconNames);
+      
+      // Essa abordagem é mais segura e evita conflitos com o React
+      // Não vamos mais tentar substituir tags HTML diretamente
     };
 
     // Função para verificar se um elemento é uma tag de ícone

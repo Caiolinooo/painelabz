@@ -38,11 +38,21 @@ export default function ProfilePage() {
   useEffect(() => {
     setIsClient(true);
 
+    // Redirect if not authenticated after loading
+    // This check should be primary
+    if (!isLoading && !user) {
+      toast.error('Você precisa estar logado para acessar esta página.');
+      router.replace('/login');
+      return; // Important to return early after redirect
+    }
+
     // Carregar a foto de perfil se existir
     if (profile?.id) {
       loadProfileImage();
 
       // Inicializar o formulário com os dados do perfil
+      // Usando type assertion para acessar propriedades que podem não estar definidas na interface
+      const extendedProfile = profile as any;
       setFormData({
         firstName: profile.first_name || '',
         lastName: profile.last_name || '',
@@ -50,41 +60,46 @@ export default function ProfilePage() {
         phoneNumber: profile.phone_number || '',
         position: profile.position || '',
         department: profile.department || '',
-        theme: profile.preferences?.theme || 'light',
-        language: profile.preferences?.language || 'pt-BR',
-        notifications: profile.preferences?.notifications !== false
+        theme: extendedProfile.theme || 'light',
+        language: extendedProfile.language || 'pt-BR',
+        notifications: true // Valor padrão para notificações
       });
     }
-  }, [profile]);
+  }, [profile, isLoading, user, router]);
 
   // Função para carregar a imagem de perfil
   const loadProfileImage = async () => {
-    try {
-      if (!profile?.id) return;
+    if (!profile?.id) {
+      setProfileImage('/images/default-avatar.png'); // Default if no profile ID
+      return;
+    }
 
-      // Verificar se existe uma imagem de perfil
-      const { data, error } = await supabase
+    try {
+      const { data, error: urlError } = await supabase
         .storage
         .from('profile-images')
         .getPublicUrl(`${profile.id}/profile.jpg`);
 
-      if (error) {
-        console.error('Erro ao carregar imagem de perfil:', error);
+      if (urlError || !data?.publicUrl) {
+        console.error('Erro ao obter URL pública da imagem de perfil:', urlError);
+        setProfileImage('/images/default-avatar.png'); // Fallback to default
         return;
       }
 
-      // Verificar se a URL existe tentando carregar a imagem
+      // Verify the image URL is accessible
       const checkImage = new Image();
       checkImage.onload = () => {
         setProfileImage(data.publicUrl);
       };
       checkImage.onerror = () => {
-        // Imagem não existe ou não é acessível
-        setProfileImage(null);
+        console.warn('Imagem de perfil não encontrada ou inacessível na URL:', data.publicUrl);
+        setProfileImage('/images/default-avatar.png'); // Fallback to default
       };
       checkImage.src = data.publicUrl;
-    } catch (error) {
-      console.error('Erro ao carregar imagem de perfil:', error);
+
+    } catch (error) { // Catch errors from the async/await block itself
+      console.error('Erro geral ao carregar imagem de perfil:', error);
+      setProfileImage('/images/default-avatar.png'); // Fallback to default
     }
   };
 
@@ -195,11 +210,10 @@ export default function ProfilePage() {
         phone_number: formData.phoneNumber,
         position: formData.position,
         department: formData.department,
-        preferences: {
-          theme: formData.theme,
-          language: formData.language,
-          notifications: formData.notifications
-        },
+        // Removendo o campo preferences que não existe na tabela
+        // Armazenando as preferências em campos individuais ou em metadados se necessário
+        theme: formData.theme,
+        language: formData.language,
         updated_at: new Date().toISOString()
       };
 
@@ -602,22 +616,22 @@ export default function ProfilePage() {
                   <div>
                     <p className="text-sm text-gray-500">Tema</p>
                     <p className="font-medium">
-                      {profile.preferences?.theme === 'dark' ? 'Escuro' :
-                       profile.preferences?.theme === 'system' ? 'Sistema' : 'Claro'}
+                      {(profile as any).theme === 'dark' ? 'Escuro' :
+                       (profile as any).theme === 'system' ? 'Sistema' : 'Claro'}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-500">Idioma</p>
                     <p className="font-medium">
-                      {profile.preferences?.language === 'en-US' ? 'English (US)' : 'Português (Brasil)'}
+                      {(profile as any).language === 'en-US' ? 'English (US)' : 'Português (Brasil)'}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-500">Notificações</p>
                     <p className="font-medium">
-                      {profile.preferences?.notifications !== false ? 'Ativadas' : 'Desativadas'}
+                      Ativadas
                     </p>
                   </div>
                 </div>

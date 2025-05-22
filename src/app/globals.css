@@ -43,6 +43,16 @@ img {
   .abz-button-danger {
     @apply bg-red-600 text-white rounded-md px-4 py-2 font-medium hover:bg-red-700 transition-colors;
   }
+  
+  /* Ensure text is visible on ABZ blue background buttons */
+  .bg-abz-blue {
+    @apply text-white;
+  }
+  
+  /* Fix for login button text visibility */
+  button.bg-abz-blue {
+    color: white !important;
+  }
 }
 
 /* Definições básicas da fonte e cores */

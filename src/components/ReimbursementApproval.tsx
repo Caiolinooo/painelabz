@@ -26,7 +26,7 @@ interface Reimbursement {
 export default function ReimbursementApproval() {
   const { t } = useI18n();
   const router = useRouter();
-  const { user, isAdmin, profile } = useSupabaseAuth();
+  const { user, isAdmin, isManager, hasApprovalPermission } = useSupabaseAuth();
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,6 @@ export default function ReimbursementApproval() {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [hasApprovalPermission, setHasApprovalPermission] = useState(false);
 
   // Estado para o modal de rejeição
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -51,9 +50,9 @@ export default function ReimbursementApproval() {
       id: user?.id,
       email: user?.email,
       isAdmin,
-      role: profile?.role,
-      accessPermissions: profile?.accessPermissions,
-      access_permissions: profile?.access_permissions
+      role: user?.role,
+      accessPermissions: user?.accessPermissions,
+      access_permissions: user?.access_permissions
     });
 
     // IMPORTANTE: Garantir que todos os administradores e gerentes tenham acesso
@@ -62,31 +61,28 @@ export default function ReimbursementApproval() {
     // Administradores sempre têm permissão
     if (isAdmin) {
       console.log('Usuário é administrador, concedendo permissão de aprovação');
-      setHasApprovalPermission(true);
       return;
     }
 
     // Verificar se o usuário é gerente
-    const isManager = profile?.role === 'MANAGER';
     if (isManager) {
       console.log('Usuário é gerente, concedendo permissão de aprovação');
-      setHasApprovalPermission(true);
       return;
     }
 
     // Verificar permissões específicas
     const hasFeaturePermission = !!(
-      profile?.accessPermissions?.features?.reimbursement_approval ||
-      profile?.access_permissions?.features?.reimbursement_approval
+      user?.accessPermissions?.features?.reimbursement_approval ||
+      user?.access_permissions?.features?.reimbursement_approval
     );
 
     console.log('Verificando permissões de aprovação:', {
       isAdmin,
       isManager,
       hasFeaturePermission,
-      role: profile?.role,
-      accessPermissions: profile?.accessPermissions,
-      access_permissions: profile?.access_permissions
+      role: user?.role,
+      accessPermissions: user?.accessPermissions,
+      access_permissions: user?.access_permissions
     });
 
     // Verificar se o email do usuário é o email do administrador ou de um gerente conhecido
@@ -105,7 +101,6 @@ export default function ReimbursementApproval() {
 
     if (isAdminOrManagerEmail) {
       console.log('Email do usuário corresponde a um email de administrador/gerente, concedendo permissão');
-      setHasApprovalPermission(true);
       return;
     }
 
@@ -117,13 +112,12 @@ export default function ReimbursementApproval() {
 
     if (isGroupAbzDomain) {
       console.log('Email do usuário pertence ao domínio da empresa, concedendo permissão');
-      setHasApprovalPermission(true);
       return;
     }
 
     // Se chegou até aqui, verificar permissões específicas
-    setHasApprovalPermission(hasFeaturePermission);
-  }, [isAdmin, profile, user]);
+    return;
+  }, [isAdmin, isManager, user]);
 
   // Carregar solicitações de reembolso usando a função auxiliar de autenticação
 
@@ -145,7 +139,7 @@ export default function ReimbursementApproval() {
       }
 
       // Usar a função fetchWithAuth para fazer a requisição autenticada
-      const response = await fetchWithAuth(`/api/reembolso?${queryParams.toString()}`);
+      const response = await fetchWithAuth(`/api/reembolso/user?${queryParams.toString()}`);
 
       if (!response.ok) {
         throw new Error(`Erro ao carregar solicitações de reembolso: ${response.status}`);
@@ -169,17 +163,17 @@ export default function ReimbursementApproval() {
     const isAdminEmail = user?.email === adminEmail;
 
     // Permitir que administradores e gerentes também carreguem os reembolsos
-    if (hasApprovalPermission || isAdmin || profile?.role === 'MANAGER' || isAdminEmail) {
+    if (hasApprovalPermission || isAdmin || isManager || isAdminEmail) {
       console.log('Carregando reembolsos para aprovação...', {
         hasApprovalPermission,
         isAdmin,
-        role: profile?.role,
+        role: user?.role,
         email: user?.email,
         isAdminEmail
       });
       fetchReimbursements();
     }
-  }, [hasApprovalPermission, isAdmin, profile?.role, statusFilter, page, limit, searchTerm, user?.email]);
+  }, [hasApprovalPermission, isAdmin, isManager, statusFilter, page, limit, searchTerm, user?.email]);
 
   // Função para aprovar uma solicitação
   const handleApprove = async (id: string) => {
@@ -433,11 +427,11 @@ export default function ReimbursementApproval() {
   // A verificação real de permissão será feita ao carregar os dados
 
   // Forçar permissão para todos os usuários
-  if (!hasApprovalPermission && !isAdmin && profile?.role !== 'MANAGER' && !isAdminEmail && !isAdminOrManagerEmail && !isGroupAbzDomain) {
+  if (!hasApprovalPermission && !isAdmin && !isManager && !isAdminEmail && !isAdminOrManagerEmail && !isGroupAbzDomain) {
     console.log('Acesso negado ao componente de aprovação, mas permitindo acesso para diagnóstico:', {
       hasApprovalPermission,
       isAdmin,
-      role: profile?.role,
+      role: user?.role,
       email: user?.email,
       isAdminEmail,
       isAdminOrManagerEmail,
@@ -460,9 +454,9 @@ export default function ReimbursementApproval() {
           <ul className="space-y-1 text-gray-700">
             <li><strong>ID:</strong> {user?.id || 'Não disponível'}</li>
             <li><strong>Email:</strong> {user?.email || 'Não disponível'}</li>
-            <li><strong>Função:</strong> {profile?.role || 'Não disponível'}</li>
+            <li><strong>Função:</strong> {user?.role || 'Não disponível'}</li>
             <li><strong>Admin:</strong> {isAdmin ? 'Sim' : 'Não'}</li>
-            <li><strong>Gerente:</strong> {profile?.role === 'MANAGER' ? 'Sim' : 'Não'}</li>
+            <li><strong>Gerente:</strong> {isManager ? 'Sim' : 'Não'}</li>
             <li><strong>Permissão específica:</strong> {hasApprovalPermission ? 'Sim' : 'Não'}</li>
           </ul>
         </div>

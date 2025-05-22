@@ -31,22 +31,15 @@ const materialIconNames = [
  */
 const processChildren = (children: ReactNode): ReactNode => {
   return Children.map(children, child => {
-    // Se for uma string e for um nome de ícone do Material Design
-    if (typeof child === 'string' && materialIconNames.includes(child)) {
-      return <MaterialIcon name={child} />;
+    // Se for uma string, não tentar processá-la como um ícone
+    if (typeof child === 'string') {
+      return child;
     }
 
     // Se for um elemento React válido
     if (isValidElement(child)) {
-      // Verificar se o nome da tag é um ícone do Material Design
-      const elementType = child.type;
-      if (
-        typeof elementType === 'string' &&
-        materialIconNames.includes(elementType)
-      ) {
-        // Substituir a tag pelo componente MaterialIcon
-        return <MaterialIcon name={elementType} {...child.props} />;
-      }
+      // Não tentamos mais substituir tags HTML diretamente
+      // Em vez disso, apenas processamos os filhos recursivamente
 
       // Se tiver filhos, processar recursivamente
       if (child.props.children) {

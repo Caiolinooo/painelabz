@@ -17,6 +17,22 @@ import {
 } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 
+// Mapa de nomes de ícones para componentes de ícones
+export const iconMap: { [key: string]: IconType } = {
+  FiBookOpen,
+  FiClipboard,
+  FiFileText,
+  FiBriefcase,
+  FiCalendar,
+  FiRss,
+  FiDollarSign,
+  FiClock,
+  FiUser,
+  FiBarChart2,
+  // Adicione outros ícones do react-icons/fi aqui se necessário
+  // Exemplo: FiAlertCircle: FiAlertCircle,
+};
+
 export interface DashboardCard {
   id: string;
   title: string;
