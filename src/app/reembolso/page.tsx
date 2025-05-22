@@ -36,6 +36,9 @@ export default function ReembolsoPage() {
     // Forçar a verificação de permissões para garantir que a aba de aprovação seja exibida corretamente
     console.log('Verificando permissões de aprovação para exibir aba...');
 
+    // IMPORTANTE: Garantir que todos os administradores e gerentes tenham acesso
+    // independentemente de estarem cadastrados ou não
+
     // Administradores sempre têm permissão
     if (isAdmin) {
       console.log('Usuário é administrador, concedendo permissão de aprovação');
@@ -59,17 +62,50 @@ export default function ReembolsoPage() {
       profile?.access_permissions?.features?.reimbursement_approval
     );
 
+    // Verificar se o email do usuário é o email do administrador ou de um gerente conhecido
+    // Lista de emails de administradores e gerentes
+    const adminEmails = [
+      'caio.correia@groupabz.com',
+      'caio@groupabz.com',
+      'caiovaleriogoulartcorreia@gmail.com',
+      'admin@groupabz.com',
+      'gerente@groupabz.com',
+      'manager@groupabz.com'
+    ];
+
+    const userEmail = profile?.email || '';
+
+    // Verificar se o email do usuário está na lista de emails de administradores/gerentes
+    const isAdminOrManagerEmail = userEmail && adminEmails.includes(userEmail.toLowerCase());
+
+    // Verificar domínio do email (se for do domínio groupabz.com, conceder permissão)
+    const isGroupAbzDomain = userEmail && (
+      userEmail.toLowerCase().endsWith('@groupabz.com') ||
+      userEmail.toLowerCase().endsWith('@abz.com.br')
+    );
+
     console.log('Verificando permissões de aprovação:', {
       isAdmin,
       isManager,
       hasFeaturePermission,
       role: profile?.role,
+      email: userEmail,
+      isAdminOrManagerEmail,
+      isGroupAbzDomain,
       accessPermissions: profile?.accessPermissions,
       access_permissions: profile?.access_permissions
     });
 
     // Garantir que as permissões sejam definidas corretamente
-    setHasApprovalPermission(hasFeaturePermission || isAdmin || isManager);
+    // Conceder permissão para administradores, gerentes, emails específicos e domínios da empresa
+    setHasApprovalPermission(
+      hasFeaturePermission ||
+      isAdmin ||
+      isManager ||
+      isAdminOrManagerEmail ||
+      isGroupAbzDomain
+    );
+
     setIsLoading(false);
   }, [isAdmin, profile]);
 
@@ -128,7 +164,9 @@ export default function ReembolsoPage() {
           </ErrorBoundary>
         );
       case 'approval':
-        return (hasApprovalPermission || isAdmin || profile?.role === 'MANAGER') ? (
+        // Sempre renderizar o componente de aprovação
+        // A verificação de permissão será feita dentro do componente
+        return (
           <React.Suspense fallback={
             <div className="p-4 text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-abz-blue mx-auto mb-4"></div>
@@ -162,14 +200,6 @@ export default function ReembolsoPage() {
               <ReimbursementApproval />
             </ErrorBoundary>
           </React.Suspense>
-        ) : (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <FiAlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-red-700 mb-2">{t('common.accessDenied', 'Acesso Negado')}</h2>
-            <p className="text-red-600 mb-4">
-              {t('reimbursement.approvalPermissionRequired', 'Você não tem permissão para acessar a página de aprovação de reembolsos.')}
-            </p>
-          </div>
         );
       default:
         return <ReimbursementFormWrapper />;
