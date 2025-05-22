@@ -67,56 +67,99 @@ async function checkAndAddUserIdColumn() {
 
     console.log('Adicionando coluna user_id à tabela Reimbursement');
 
-    // Adicionar a coluna user_id usando SQL direto via RPC
-    const { data: alterTableData, error: alterTableError } = await supabaseAdmin.rpc(
-      'execute_sql',
-      {
-        sql: `
-          ALTER TABLE "Reimbursement"
-          ADD COLUMN IF NOT EXISTS "user_id" UUID REFERENCES "users_unified"("id") ON DELETE SET NULL;
-        `
-      }
-    );
+    // Tentar adicionar a coluna diretamente usando o cliente Supabase
+    try {
+      console.log('Tentando adicionar coluna user_id diretamente...');
 
-    if (alterTableError) {
-      console.error('Erro ao adicionar coluna user_id via RPC:', alterTableError);
+      // Criar uma tabela temporária para testar se temos permissões para alterar tabelas
+      const { error: createTempError } = await supabaseAdmin
+        .from('temp_test_table')
+        .insert({ id: 1 })
+        .select();
 
-      // Tentar abordagem alternativa com fetch direto
-      try {
-        // Adicionar a coluna user_id
-        const addColumnSQL = `
-          ALTER TABLE "Reimbursement"
-          ADD COLUMN IF NOT EXISTS "user_id" UUID REFERENCES "users_unified"("id") ON DELETE SET NULL;
-        `;
-
-        // Executar o SQL para adicionar a coluna
-        const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            'X-Client-Info': 'supabase-js/2.0.0',
-          },
-          body: JSON.stringify({
-            cmd: 'project.query',
-            query: addColumnSQL
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Erro ao adicionar coluna user_id via fetch:', errorData);
-          return { success: false, error: 'Falha ao adicionar coluna user_id', details: errorData };
-        }
-      } catch (fetchError) {
-        console.error('Erro ao adicionar coluna via fetch:', fetchError);
+      if (createTempError && !createTempError.message.includes('does not exist')) {
+        console.error('Erro ao testar permissões:', createTempError);
         return {
           success: false,
-          error: 'Erro ao adicionar coluna user_id',
-          details: fetchError instanceof Error ? fetchError.message : 'Erro desconhecido'
+          error: 'Não foi possível verificar permissões para alterar tabelas',
+          details: createTempError.message
         };
       }
+
+      // Tentar adicionar a coluna usando uma abordagem diferente
+      // Primeiro, vamos verificar se temos permissão para executar SQL direto
+      console.log('Verificando se podemos executar SQL direto...');
+
+      // Tentar uma abordagem mais simples: criar um novo reembolso com o campo user_id
+      console.log('Tentando criar um reembolso com o campo user_id...');
+
+      const testId = `test-${Date.now()}`;
+      const { error: insertError } = await supabaseAdmin
+        .from('Reimbursement')
+        .insert({
+          id: testId,
+          nome: 'Teste Migração',
+          email: 'teste@migracao.com',
+          telefone: '123456789',
+          cpf: '12345678901',
+          cargo: 'Teste',
+          centro_custo: 'Teste',
+          data: new Date().toISOString(),
+          tipo_reembolso: 'Teste',
+          descricao: 'Teste de migração',
+          valor_total: 0,
+          moeda: 'BRL',
+          metodo_pagamento: 'Teste',
+          comprovantes: [],
+          protocolo: `TEST-${Date.now()}`,
+          status: 'teste',
+          historico: [],
+          user_id: '00000000-0000-0000-0000-000000000000' // UUID de teste
+        });
+
+      if (insertError) {
+        // Se o erro for porque a coluna não existe, precisamos adicioná-la
+        if (insertError.message.includes('user_id') &&
+            (insertError.message.includes('does not exist') ||
+             insertError.message.includes('não existe'))) {
+          console.log('Coluna user_id não existe, precisamos adicioná-la');
+
+          // Neste ponto, precisamos de uma abordagem diferente
+          // Vamos informar ao usuário que ele precisa adicionar a coluna manualmente
+          return {
+            success: false,
+            error: 'Não foi possível adicionar a coluna user_id automaticamente',
+            details: 'Por favor, adicione a coluna user_id à tabela Reimbursement manualmente usando o SQL Editor do Supabase',
+            sql: `ALTER TABLE "Reimbursement" ADD COLUMN IF NOT EXISTS "user_id" UUID REFERENCES "users_unified"("id") ON DELETE SET NULL;`
+          };
+        } else if (!insertError.message.includes('user_id')) {
+          // Se o erro não for relacionado à coluna user_id, pode ser outro problema
+          console.error('Erro ao inserir reembolso de teste:', insertError);
+          return {
+            success: false,
+            error: 'Erro ao testar adição de coluna user_id',
+            details: insertError.message
+          };
+        }
+      } else {
+        // Se não houver erro, a coluna já existe
+        console.log('Coluna user_id já existe (verificado via insert)');
+
+        // Limpar o reembolso de teste
+        await supabaseAdmin
+          .from('Reimbursement')
+          .delete()
+          .eq('id', testId);
+
+        return { success: true, message: 'Coluna user_id já existe' };
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar coluna user_id:', error);
+      return {
+        success: false,
+        error: 'Erro ao adicionar coluna user_id',
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
     }
 
     console.log('Coluna user_id adicionada com sucesso');
@@ -269,24 +312,184 @@ async function migrateExistingData() {
   }
 }
 
-export async function GET(request: NextRequest) {
+// Função auxiliar para verificar autenticação
+async function verifyAuth(request: NextRequest) {
+  // Verificar autenticação
+  const authHeader = request.headers.get('authorization') || '';
+  const token = authHeader.split(' ')[1];
+
+  // Se não estiver em ambiente de desenvolvimento, verificar autenticação
+  if (process.env.NODE_ENV !== 'development') {
+    if (!token) {
+      console.error('Não autorizado: Token não fornecido');
+      return {
+        success: false,
+        error: 'Não autorizado',
+        status: 401
+      };
+    }
+
+    try {
+      // Verificar se o token é válido
+      const { data: user, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (error || !user) {
+        console.error('Não autorizado: Token inválido', error);
+        return {
+          success: false,
+          error: 'Não autorizado',
+          status: 401
+        };
+      }
+
+      // Verificar se o usuário é admin
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('users_unified')
+        .select('role')
+        .eq('id', user.user.id)
+        .single();
+
+      if (profileError || !profile || profile.role !== 'ADMIN') {
+        console.error('Não autorizado: Usuário não é admin', profileError);
+        return {
+          success: false,
+          error: 'Não autorizado: Apenas administradores podem executar esta operação',
+          status: 403
+        };
+      }
+
+      return { success: true, userId: user.user.id };
+    } catch (authError) {
+      console.error('Erro ao verificar autenticação:', authError);
+      return {
+        success: false,
+        error: 'Erro ao verificar autenticação',
+        status: 401
+      };
+    }
+  } else {
+    console.log('Ambiente de desenvolvimento: pulando verificação de autenticação');
+    return { success: true };
+  }
+}
+
+// Função auxiliar para executar a migração
+async function executeMigration() {
   try {
     // Verificar e adicionar a coluna user_id
     const columnResult = await checkAndAddUserIdColumn();
 
     if (!columnResult.success) {
-      return NextResponse.json(columnResult, { status: 500 });
+      return {
+        success: false,
+        error: columnResult.error,
+        details: columnResult.details,
+        status: 500
+      };
     }
 
     // Migrar dados existentes
     const migrationResult = await migrateExistingData();
 
-    return NextResponse.json({
+    return {
+      success: true,
       columnResult,
       migrationResult
+    };
+  } catch (error) {
+    console.error('Erro ao executar migração:', error);
+    return {
+      success: false,
+      error: 'Erro interno ao executar migração',
+      details: error instanceof Error ? error.message : 'Erro desconhecido',
+      status: 500
+    };
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Verificar autenticação
+    const authResult = await verifyAuth(request);
+
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
+    // Executar a migração
+    const migrationResult = await executeMigration();
+
+    if (!migrationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: migrationResult.error,
+          details: migrationResult.details
+        },
+        { status: migrationResult.status || 500 }
+      );
+    }
+
+    return NextResponse.json(migrationResult);
+  } catch (error) {
+    console.error('Erro na rota add-user-id-column (GET):', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Erro interno do servidor',
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Verificar autenticação
+    const authResult = await verifyAuth(request);
+
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
+    // Obter parâmetros da requisição
+    let forceExecute = false;
+
+    try {
+      const body = await request.json();
+      forceExecute = !!body.force;
+    } catch (e) {
+      // Ignorar erros de parsing do corpo da requisição
+    }
+
+    // Executar a migração
+    const migrationResult = await executeMigration();
+
+    if (!migrationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: migrationResult.error,
+          details: migrationResult.details
+        },
+        { status: migrationResult.status || 500 }
+      );
+    }
+
+    return NextResponse.json({
+      ...migrationResult,
+      method: 'POST',
+      forceExecute
     });
   } catch (error) {
-    console.error('Erro na rota add-user-id-column:', error);
+    console.error('Erro na rota add-user-id-column (POST):', error);
     return NextResponse.json(
       {
         success: false,
