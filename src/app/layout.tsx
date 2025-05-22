@@ -6,11 +6,8 @@ import "./globals.css";
 
 // Import the ClientProviders component
 import ClientProviders from "@/components/ClientProviders";
-// Import the ThemeEnforcer component
-import dynamic from "next/dynamic";
-
-// Importar o ThemeEnforcer de forma dinâmica para garantir que ele seja executado apenas no cliente
-const ThemeEnforcer = dynamic(() => import("@/components/ThemeEnforcer"), { ssr: false });
+// Import the ThemeEnforcerWrapper component
+import ThemeEnforcerWrapper from "@/components/ThemeEnforcerWrapper";
 
 // Global error handling is now moved to the GlobalErrorHandler component
 
@@ -85,7 +82,7 @@ export default function RootLayout({
           <ErrorBoundary fallback={<ErrorFallback />}>
             {children}
           </ErrorBoundary>
-          <ThemeEnforcer />
+          <ThemeEnforcerWrapper />
         </ClientProviders>
       </body>
     </html>

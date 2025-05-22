@@ -12,7 +12,7 @@ import {
   FiLoader
 } from 'react-icons/fi';
 import Link from 'next/link';
-import dashboardCards, { getTranslatedCards, DashboardCard } from '@/data/cards';
+import dashboardCards, { getTranslatedCards, DashboardCard, iconMap } from '@/data/cards';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
@@ -82,10 +82,18 @@ export default function Dashboard() {
           let title = currentLanguage === 'en-US' && card.titleEn ? card.titleEn : card.title;
           let description = currentLanguage === 'en-US' && card.descriptionEn ? card.descriptionEn : card.description;
 
+          // Resolve icon component from iconName string
+          let resolvedIcon = iconMap[card.icon]; // card.icon is expected to be a string like 'FiBookOpen'
+          if (!resolvedIcon) {
+            console.warn(`Icon not found in map: ${card.icon}. Using default.`);
+            resolvedIcon = FiAlertCircle; // Fallback icon
+          }
+
           return {
             ...card,
             title,
             description,
+            icon: resolvedIcon, // Use the resolved icon component
           };
         });
 

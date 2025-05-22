@@ -68,6 +68,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isManager: boolean;
+  hasApprovalPermission: boolean;
   passwordExpired: boolean;
   loginStep: 'phone' | 'verification' | 'password' | 'complete' | 'unauthorized' | 'pending' | 'quick_register';
   hasPassword: boolean;
@@ -170,20 +171,24 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               } else {
                 console.error('Erro ao buscar perfil após renovação de token:', error);
 
-                // Usar os dados da resposta como fallback
-                const profileData: UserProfile = {
-                  id: refreshData.user.id,
-                  email: refreshData.user.email,
-                  phone_number: refreshData.user.phoneNumber,
-                  first_name: refreshData.user.firstName,
-                  last_name: refreshData.user.lastName,
-                  role: refreshData.user.role,
-                  active: true,
-                  created_at: refreshData.user.createdAt,
-                  updated_at: refreshData.user.updatedAt,
-                  access_permissions: refreshData.user.accessPermissions || {},
-                  accessPermissions: refreshData.user.accessPermissions || {}
-                };
+                                // Usar os dados da resposta como fallback
+                                const profileData: UserProfile = {
+                                  id: refreshData.user.id,
+                                  email: refreshData.user.email,
+                                  phone_number: refreshData.user.phoneNumber,
+                                  first_name: refreshData.user.firstName,
+                                  last_name: refreshData.user.lastName,
+                                  role: refreshData.user.role,
+                                  active: refreshData.user.active !== undefined ? refreshData.user.active : true,
+                                  created_at: refreshData.user.createdAt,
+                                  updated_at: refreshData.user.updatedAt,
+                                  access_permissions: refreshData.user.access_permissions || refreshData.user.accessPermissions || {},
+                                  position: refreshData.user.position,
+                                  department: refreshData.user.department,
+                                  avatar: refreshData.user.avatar,
+                                  password_last_changed: refreshData.user.password_last_changed,
+                                  accessPermissions: refreshData.user.accessPermissions || refreshData.user.access_permissions || {}
+                                }; 
 
                 setProfile(profileData);
                 console.log('Perfil do usuário definido a partir dos dados da resposta de renovação');
@@ -251,7 +256,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
                   created_at: fixData.user.createdAt,
                   updated_at: fixData.user.updatedAt,
                   access_permissions: fixData.user.accessPermissions || {},
-                  accessPermissions: fixData.user.accessPermissions || {}
+                  accessPermissions: fixData.user.accessPermissions || {},
+                  position: fixData.user.position,
+                  department: fixData.user.department,
+                  avatar: fixData.user.avatar,
+                  password_last_changed: fixData.user.password_last_changed,
                 };
 
                 setProfile(profileData);
@@ -282,24 +291,26 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           // Verificar se o token está próximo de expirar (menos de 5 minutos)
-          const expiresAt = new Date(session.expires_at * 1000);
-          const now = new Date();
-          const fiveMinutes = 5 * 60 * 1000; // 5 minutos em milissegundos
+          if (session.expires_at) {
+            const expiresAt = new Date(session.expires_at * 1000);
+            const now = new Date();
+            const fiveMinutes = 5 * 60 * 1000; // 5 minutos em milissegundos
 
-          if (expiresAt.getTime() - now.getTime() < fiveMinutes) {
-            console.log('Token Supabase próximo de expirar, renovando...');
-            const { data, error } = await supabase.auth.refreshSession();
+            if (expiresAt.getTime() - now.getTime() < fiveMinutes) {
+              console.log('Token Supabase próximo de expirar, renovando...');
+              const { data, error } = await supabase.auth.refreshSession();
 
-            if (error) {
-              console.error('Erro ao renovar sessão Supabase:', error);
-            } else if (data.session) {
-              console.log('Sessão Supabase renovada com sucesso');
+              if (error) {
+                console.error('Erro ao renovar sessão Supabase:', error);
+              } else if (data.session) {
+                console.log('Sessão Supabase renovada com sucesso');
+              }
             }
           }
-        }
 
-        // Também renovar o token JWT personalizado
-        await refreshCustomToken();
+          // Também renovar o token JWT personalizado
+          await refreshCustomToken();
+        }
       } catch (error) {
         console.error('Erro ao verificar sessão:', error);
       }
@@ -922,7 +933,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Gerar token JWT
-      const token = generateToken(userData);
+      const token = await generateToken(userData);
 
       // Salvar o token
       saveToken(token);
@@ -996,7 +1007,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Gerar token JWT
-      const token = generateToken(userData);
+      const token = await generateToken(userData);
 
       // Salvar o token
       saveToken(token);
@@ -1312,7 +1323,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
                 console.error('Erro ao buscar permissões do usuário:', permissionsError);
 
                 // Definir permissões padrão
-                const defaultModules = {
+                const defaultModules: Record<string, boolean> = {
                   dashboard: true,
                   manual: true,
                   procedimentos: true,
@@ -1500,7 +1511,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               console.error('Erro ao buscar permissões do usuário:', permissionsError);
 
               // Definir permissões padrão
-              const defaultModules = {
+              const defaultModules: Record<string, boolean> = {
                 dashboard: true,
                 manual: true,
                 procedimentos: true,
@@ -1777,7 +1788,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     // Verificar se o token JWT indica que o usuário é gerente
     const token = getToken();
-    let tokenPayload = null;
+    let tokenPayload: any = null;
     if (token) {
       try {
         // Usar uma abordagem mais segura para verificar o token no cliente
@@ -1804,19 +1815,38 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     }
 
     const hasManagerRole = profile?.role === 'MANAGER' || tokenPayload?.role === 'MANAGER';
-    const hasAvaliacaoPermission = !!(profile?.access_permissions?.modules?.avaliacao) ||
+    const hasAvaliacaoPermissionModule = !!(profile?.access_permissions?.modules?.avaliacao) ||
                                   !!(profile?.accessPermissions?.modules?.avaliacao);
 
-    const result = hasManagerRole || hasAvaliacaoPermission;
+    const result = hasManagerRole || hasAvaliacaoPermissionModule;
 
     // Debug: verificar se o usuário é gerente
-    console.log('SupabaseAuthContext - isManager:', result);
-    console.log('SupabaseAuthContext - hasManagerRole:', hasManagerRole);
-    console.log('SupabaseAuthContext - token role:', tokenPayload?.role);
-    console.log('SupabaseAuthContext - hasAvaliacaoPermission:', hasAvaliacaoPermission);
+    // console.log('SupabaseAuthContext - isManager:', result);
+    // console.log('SupabaseAuthContext - hasManagerRole:', hasManagerRole);
+    // console.log('SupabaseAuthContext - token role:', tokenPayload?.role);
+    // console.log('SupabaseAuthContext - hasAvaliacaoPermissionModule for isManager calc:', hasAvaliacaoPermissionModule);
 
     return result;
   }, [profile, isAdmin]);
+
+  // Verificar se o usuário tem permissão para aprovar reembolsos
+  const hasApprovalPermission = useMemo(() => {
+    if (!profile) return false;
+    // Admins sempre têm permissão
+    if (isAdmin) return true;
+    // Gerentes (conforme definido por isManager) também têm essa permissão
+    if (isManager) return true; 
+
+    // Verificar permissões específicas para aprovação de reembolso
+    const specificPermission = !!(
+      profile.accessPermissions?.features?.reimbursement_approval ||
+      profile.access_permissions?.features?.reimbursement_approval
+    );
+    // Para depuração
+    // console.log(`SupabaseAuthContext - hasApprovalPermission check: isAdmin=${isAdmin}, isManager=${isManager}, specificPermission=${specificPermission}`);
+    // console.log('Profile for permission check:', profile);
+    return specificPermission; // Se não for admin/manager, depende apenas da flag específica
+  }, [profile, isAdmin, isManager]);
 
   // Verificar se o usuário tem acesso ao módulo de avaliação
   const hasEvaluationAccess = useMemo(() => {
@@ -1826,8 +1856,8 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     // Verificar permissões específicas para o módulo de avaliação
     return !!(
-      profile?.accessPermissions?.modules?.avaliacao ||
-      profile?.access_permissions?.modules?.avaliacao
+      profile.accessPermissions?.modules?.avaliacao ||
+      profile.access_permissions?.modules?.avaliacao
     );
   }, [profile, isAdmin, isManager]);
 
@@ -1840,6 +1870,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         isAdmin,
         isManager,
+        hasApprovalPermission,
         passwordExpired,
         loginStep,
         hasPassword,
