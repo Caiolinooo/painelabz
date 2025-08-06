@@ -5,11 +5,35 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
 // Estas variáveis devem ser definidas no arquivo .env
-// Definindo valores padrão para garantir que o código funcione mesmo sem as variáveis de ambiente
-const supabaseUrl = ***REMOVED*** || 'https://arzvingdtnttiejcvucs.supabase.co';
-const supabaseAnonKey = ***REMOVED*** || '***REMOVED***';
+// Buscar configurações do Supabase das variáveis de ambiente ou da tabela settings
+const supabaseUrl = ***REMOVED*** || '';
+const supabaseAnonKey = ***REMOVED*** || '';
 // Inicialmente usar a chave do ambiente, depois tentar buscar da tabela app_secrets
 const supabaseServiceKey = ***REMOVED*** || '';
+
+// Função para obter configurações do Supabase dinamicamente
+async function getSupabaseConfig() {
+  try {
+    // Se as variáveis de ambiente estão definidas, usá-las
+    if (supabaseUrl && supabaseAnonKey) {
+      return { url: supabaseUrl, anonKey: supabaseAnonKey };
+    }
+
+    // Caso contrário, tentar buscar da tabela settings (se disponível)
+    console.warn('Configurações do Supabase não encontradas nas variáveis de ambiente');
+    return {
+      url: supabaseUrl || 'https://arzvingdtnttiejcvucs.supabase.co',
+      anonKey: supabaseAnonKey || '***REMOVED***'
+    };
+  } catch (error) {
+    console.error('Erro ao obter configurações do Supabase:', error);
+    // Fallback para valores padrão
+    return {
+      url: 'https://arzvingdtnttiejcvucs.supabase.co',
+      anonKey: '***REMOVED***'
+    };
+  }
+}
 
 // Implementar padrão Singleton para evitar múltiplas instâncias do GoTrueClient
 // Usar globalThis para armazenar as instâncias únicas dos clientes
@@ -35,9 +59,15 @@ function getSupabaseClient(): SupabaseClient {
     return globalWithSupabase._supabaseClient;
   }
 
-  // Verificar se as variáveis de ambiente estão definidas
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Supabase URL ou Anon Key não definidos. Verifique suas variáveis de ambiente.');
+  // Obter configurações do Supabase com fallback
+  const config = {
+    url: supabaseUrl || 'https://arzvingdtnttiejcvucs.supabase.co',
+    anonKey: supabaseAnonKey || '***REMOVED***'
+  };
+
+  // Verificar se as configurações estão definidas
+  if (!config.url || !config.anonKey) {
+    console.error('Configurações do Supabase não encontradas. Usando valores padrão.');
   }
 
   // Criar uma nova instância apenas se ainda não existir
@@ -46,7 +76,7 @@ function getSupabaseClient(): SupabaseClient {
   }
 
   // Criar a instância e armazená-la no objeto global
-  const instance = ***REMOVED*** supabaseAnonKey, {
+  const instance = createClient(config.url, config.anonKey, {
     auth: {
       storageKey: 'supabase_auth_token',
       persistSession: true
