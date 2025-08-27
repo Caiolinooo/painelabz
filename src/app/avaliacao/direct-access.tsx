@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Componente para acesso direto ao módulo de avaliação
@@ -29,11 +29,6 @@ export function DirectAccess({ children }: { children: React.ReactNode }) {
         }
         
         console.log('DirectAccess - ID do usuário:', userId);
-        
-        // Criar cliente Supabase
-        const supabaseUrl = ***REMOVED*** || '';
-        const supabaseKey = ***REMOVED*** || '';
-        const supabase = ***REMOVED*** supabaseKey);
         
         // Buscar o usuário no banco de dados
         const { data: userData, error: userError } = await supabase
