@@ -97,8 +97,20 @@ export async function getCredential(key: string): Promise<string | null> {
   
   // Verificar se o cliente Supabase está inicializado
   if (!supabaseClient) {
-    console.error('Cliente Supabase não inicializado. Chame initializeSupabaseClient primeiro.');
-    return null;
+    // Tentativa de auto-inicialização em ambiente de servidor (Netlify/Next API)
+    try {
+      const url = ***REMOVED*** || '';
+      const serviceKey = ***REMOVED*** || process.env.NEXT_PRIVATE_***REMOVED*** || '';
+      if (url && serviceKey) {
+        initializeSupabaseClient(url, serviceKey);
+      } else {
+        console.error('Cliente Supabase não inicializado. Variáveis de ambiente ausentes (NEXT_PUBLIC_SUPABASE_URL/***REMOVED***).');
+        return null;
+      }
+    } catch (e) {
+      console.error('Falha ao auto-inicializar cliente Supabase para secure-credentials:', e);
+      return null;
+    }
   }
   
   try {
