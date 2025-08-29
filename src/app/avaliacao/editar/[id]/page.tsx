@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import MainLayout from '@/components/Layout/MainLayout';
 import { FiSave, FiX, FiArrowLeft, FiAlertTriangle } from 'react-icons/fi';
 import Link from 'next/link';
@@ -73,11 +73,6 @@ export default function EditarAvaliacaoPage({ params }: { params: { id: string }
     const fetchData = async () => {
       try {
         setLoading(true);
-
-        // Criar cliente Supabase
-        const supabaseUrl = ***REMOVED*** || '';
-        const supabaseKey = ***REMOVED*** || '';
-        const supabase = ***REMOVED*** supabaseKey);
 
         // Buscar avaliação pelo ID
         const { data: avaliacaoData, error: avaliacaoError } = await supabase
@@ -163,10 +158,6 @@ export default function EditarAvaliacaoPage({ params }: { params: { id: string }
       }
 
       // Criar cliente Supabase
-      const supabaseUrl = ***REMOVED*** || '';
-      const supabaseKey = ***REMOVED*** || '';
-      const supabase = ***REMOVED*** supabaseKey);
-
       // Atualizar avaliação
       const { error } = await supabase
         .from('avaliacoes')

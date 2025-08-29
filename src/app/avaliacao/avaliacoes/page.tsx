@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import MainLayout from '@/components/Layout/MainLayout';
 import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiAlertTriangle } from 'react-icons/fi';
 import Link from 'next/link';
@@ -28,11 +28,6 @@ export default function AvaliacoesPage() {
     const fetchAvaliacoes = async () => {
       try {
         setLoading(true);
-
-        // Criar cliente Supabase
-        const supabaseUrl = ***REMOVED*** || '';
-        const supabaseKey = ***REMOVED*** || '';
-        const supabase = ***REMOVED*** supabaseKey);
 
         // Buscar avaliações
         let data;
