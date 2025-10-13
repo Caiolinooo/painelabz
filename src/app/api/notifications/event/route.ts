@@ -2,23 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 
-const supabaseUrl = ***REMOVED***!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabaseAdmin = ***REMOVED*** supabaseServiceKey);
+const supabaseUrl = ***REMOVED***;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Configurar transporte de email
-const transporter = nodemailer.createTransporter({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: '***REMOVED***',
-    pass: process.env.GMAIL_APP_PASSWORD
-  }
-});
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase environment variables');
+}
+
+const supabaseAdmin = supabaseUrl && supabaseServiceKey
+  ? ***REMOVED*** supabaseServiceKey)
+  : null;
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Supabase configuration is missing' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const {
       eventId,
@@ -38,6 +41,17 @@ export async function POST(request: NextRequest) {
       notificationsSent: 0,
       errors: []
     };
+
+    // Configurar transporte de email
+    const transporter = nodemailer.createTransporter({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: '***REMOVED***',
+        pass: process.env.GMAIL_APP_PASSWORD
+      }
+    });
 
     // Formatar data
     const eventDate = new Date(startDate);
