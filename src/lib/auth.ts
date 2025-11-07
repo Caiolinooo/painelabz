@@ -1598,9 +1598,20 @@ export async function loginWithPassword(identifier: string, password: string, re
       };
     }
 
+    // ========== VALIDAÇÕES DE USUÁRIO ==========
+    console.log('\n========== VALIDAÇÕES DE USUÁRIO ==========');
+    console.log('📧 Email do usuário:', user.email);
+    console.log('📱 Telefone:', user.phone_number);
+    console.log('👤 Nome:', user.first_name, user.last_name);
+    console.log('🎭 Role:', user.role);
+    console.log('✅ Ativo:', user.active);
+    console.log('📬 Email verificado:', user.email_verified);
+    console.log('🔐 Tem senha (password):', !!user.password);
+    console.log('🔐 Tem senha (password_hash):', !!user.password_hash);
+
     // Verificar se o usuário tem senha definida
-    if (!user.password) {
-      console.log('Usuário não possui senha definida');
+    if (!user.password && !user.password_hash) {
+      console.log('❌ FALHA: Usuário não possui senha definida');
       return {
         success: false,
         message: 'Usuário não possui senha definida.'
@@ -1614,10 +1625,12 @@ export async function loginWithPassword(identifier: string, password: string, re
     const adminPhone = ***REMOVED*** || '+5522997847289';
     const isMainAdmin = user.email === adminEmail || user.phone_number === adminPhone;
 
+    console.log('👑 É admin principal?', isMainAdmin);
+
     // Bloqueia apenas se email_verified for explicitamente false (novo usuário não verificado)
     // Permite se for true (verificado) ou null/undefined (usuário existente antes da verificação)
     if (user.email_verified === false && !isMainAdmin) {
-      console.log('Email não verificado para novo usuário');
+      console.log('❌ FALHA: Email não verificado para novo usuário');
       return {
         success: false,
         message: 'Seu e-mail ainda não foi verificado. Verifique sua caixa de entrada e clique no link de verificação.',
@@ -1626,9 +1639,11 @@ export async function loginWithPassword(identifier: string, password: string, re
       };
     }
 
+    console.log('✅ PASSOU: Verificação de email');
+
     // Verificar se a conta está ativa
     if (!user.active) {
-      console.log('Conta do usuário está desativada');
+      console.log('❌ FALHA: Conta do usuário está desativada');
       return {
         success: false,
         message: 'Sua conta está desativada. Entre em contato com o suporte.',
@@ -1651,30 +1666,47 @@ export async function loginWithPassword(identifier: string, password: string, re
       };
     }
 
-    // Verificar se a senha está correta
+    console.log('✅ PASSOU: Conta está ativa');
+
+    // ========== VERIFICAÇÃO DE SENHA ==========
+    console.log('\n========== VERIFICAÇÃO DE SENHA ==========');
     console.log('Verificando senha para o usuário:', user.email || user.phone_number);
     console.log('Senha fornecida (primeiros caracteres):', password.substring(0, 3) + '...');
-    console.log('Campo password:', user.password ? user.password.substring(0, 20) + '...' : 'Não definido');
-    console.log('Campo password_hash:', user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'Não definido');
+    console.log('Tamanho da senha fornecida:', password.length);
+    console.log('Campo password:', user.password ? user.password.substring(0, 30) + '...' : 'Não definido');
+    console.log('Campo password_hash:', user.password_hash ? user.password_hash.substring(0, 30) + '...' : 'Não definido');
 
     // Verificar a senha usando bcrypt - tentar primeiro o campo 'password', depois 'password_hash'
     let isPasswordValid = false;
     let usedField = '';
 
     if (user.password) {
-      isPasswordValid = await bcrypt.compare(password, user.password);
-      usedField = 'password';
-      console.log('Tentativa com campo "password":', isPasswordValid ? 'Válida' : 'Inválida');
+      console.log('🔍 Tentando verificar com campo "password"...');
+      try {
+        isPasswordValid = await bcrypt.compare(password, user.password);
+        usedField = 'password';
+        console.log('Resultado com "password":', isPasswordValid ? '✅ Válida' : '❌ Inválida');
+      } catch (error) {
+        console.log('❌ Erro ao comparar com "password":', error instanceof Error ? error.message : String(error));
+      }
     }
 
     // Se não funcionou com 'password', tentar com 'password_hash'
     if (!isPasswordValid && user.password_hash) {
-      isPasswordValid = await bcrypt.compare(password, user.password_hash);
-      usedField = 'password_hash';
-      console.log('Tentativa com campo "password_hash":', isPasswordValid ? 'Válida' : 'Inválida');
+      console.log('🔍 Tentando verificar com campo "password_hash"...');
+      try {
+        isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        usedField = 'password_hash';
+        console.log('Resultado com "password_hash":', isPasswordValid ? '✅ Válida' : '❌ Inválida');
+      } catch (error) {
+        console.log('❌ Erro ao comparar com "password_hash":', error instanceof Error ? error.message : String(error));
+      }
     }
 
-    console.log('Resultado final da verificação de senha:', isPasswordValid ? `Válida (usando ${usedField})` : 'Inválida');
+    console.log('\n📊 RESULTADO FINAL DA VERIFICAÇÃO:');
+    console.log('Senha válida?', isPasswordValid ? '✅ SIM' : '❌ NÃO');
+    console.log('Campo usado:', usedField || 'Nenhum');
+    console.log('==========================================\n');
 
     if (!isPasswordValid) {
       console.log('Senha inválida para o usuário:', user.phone_number);
