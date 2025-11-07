@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // Obter URLs e chaves para informações de debug
 const supabaseUrl = ***REMOVED*** || '';
 const supabaseServiceKey = ***REMOVED*** || '';
