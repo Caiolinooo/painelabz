@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email-gmail';
 
+export const dynamic = 'force-dynamic';
+
 const supabaseAdmin = createClient(
   ***REMOVED***!,
   ***REMOVED***!
