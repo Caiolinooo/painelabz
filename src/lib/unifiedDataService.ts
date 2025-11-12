@@ -4,13 +4,14 @@
  */
 
 import { IconType } from 'react-icons';
-import { 
-  FiGrid, FiBookOpen, FiClipboard, FiFileText, FiBriefcase, 
+import {
+  FiGrid, FiBookOpen, FiClipboard, FiFileText, FiBriefcase,
   FiCalendar, FiRss, FiDollarSign, FiSettings, FiUsers,
   FiBarChart2, FiPlay, FiMessageSquare, FiUser, FiActivity,
   FiClock, FiKey, FiUserCheck, FiUserX, FiBell, FiAward,
   FiSmartphone, FiDatabase, FiTool, FiLayers, FiList, FiEdit
 } from 'react-icons/fi';
+import { supabase } from './supabase';
 
 // Interface unificada para items (cards e menus)
 export interface UnifiedItem {
@@ -408,17 +409,11 @@ class UnifiedDataService {
     try {
       console.log('🔄 Loading items from Supabase...');
 
-      // Importar supabase client dinamicamente para evitar problemas de SSR
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabaseUrl = ***REMOVED***!;
-      const supabaseKey = ***REMOVED***!;
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.warn('🔄 Supabase credentials not found, using fallback');
+      // Usar o singleton do Supabase já importado no topo do arquivo
+      if (!supabase) {
+        console.warn('🔄 Supabase client not available, using fallback');
         return [];
       }
-
-      const supabase = ***REMOVED*** supabaseKey);
 
       // Buscar menu items do banco
       const { data: menuItems, error } = await supabase
