@@ -31,8 +31,10 @@ export default function ViewEvaluationClient({
   const { user } = useSupabaseAuth();
   const [isManagerView, setIsManagerView] = useState(false);
   const [respostas, setRespostas] = useState<Record<string, any>>(evaluation.respostas || {});
+  const [notasGerente, setNotasGerente] = useState<Record<string, number>>(evaluation.notas_gerente || {});
   const [activeTab, setActiveTab] = useState<'questionnaire' | 'charts'>('questionnaire');
   const [comentarioGerente, setComentarioGerente] = useState(evaluation.comentario_gerente || '');
+  const [comentarioFinalFuncionario, setComentarioFinalFuncionario] = useState(evaluation.comentario_final_funcionario || '');
   const [showManagerActions, setShowManagerActions] = useState(false);
 
   useEffect(() => {
@@ -48,12 +50,22 @@ export default function ViewEvaluationClient({
     }));
   };
 
+  const handleNotaGerenteChange = (questionId: string, nota: number) => {
+    setNotasGerente(prev => ({
+      ...prev,
+      [questionId]: nota
+    }));
+  };
+
   const handleSave = async () => {
     try {
       const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** respostas })
+        body: ***REMOVED*** 
+          respostas,
+          notas_gerente: notasGerente 
+        })
       });
 
       if (response.ok) {
@@ -66,11 +78,62 @@ export default function ViewEvaluationClient({
     }
   };
 
-  const handleManagerAction = async (action: 'approve' | 'return') => {
+  const handleFinalComment = async () => {
+    if (!comentarioFinalFuncionario.trim()) {
+      alert('Por favor, adicione seu comentário final sobre a avaliação');
+      return;
+    }
+
+    try {
+      const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
+      const response = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/final-comment`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: ***REMOVED***
+          comentario_final: comentarioFinalFuncionario
+        })
+      });
+
+      if (response.ok) {
+        alert('Comentário final enviado com sucesso! Aguardando finalização do gerente.');
+        router.push('/avaliacao');
+        router.refresh();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Erro ao enviar comentário final');
+      }
+    } catch (error) {
+      console.error('Erro ao enviar comentário final:', error);
+      alert('Erro ao enviar comentário final');
+    }
+  };
+
+  const handleManagerAction = async (action: 'approve' | 'return' | 'finalize') => {
     try {
       const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
 
-      if (action === 'approve') {
+      if (action === 'finalize') {
+        // Finalizar avaliação após comentário do funcionário
+        const response = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/finalize`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          alert('Avaliação finalizada com sucesso!');
+          router.push('/avaliacao');
+          router.refresh();
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Erro ao finalizar avaliação');
+        }
+      } else if (action === 'approve') {
         // Usar a nova API de aprovação
         const response = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/approve`, {
           method: 'POST',
@@ -79,7 +142,8 @@ export default function ViewEvaluationClient({
             'Content-Type': 'application/json'
           },
           body: ***REMOVED***
-            comentario_avaliador: comentarioGerente
+            comentario_avaliador: comentarioGerente,
+            notas_gerente: notasGerente
           })
         });
 
@@ -92,19 +156,23 @@ export default function ViewEvaluationClient({
           alert(data.error || 'Erro ao aprovar avaliação');
         }
       } else {
-        // Devolver para ajustes (manter API antiga)
+        // Devolver para ajustes
         const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: ***REMOVED***
-            status: 'devolvida_para_ajustes',
+            status: 'devolvida',
             comentario_gerente: comentarioGerente
           })
         });
 
         if (response.ok) {
           alert('Avaliação devolvida para ajustes!');
+          router.push('/avaliacao');
           router.refresh();
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Erro ao devolver avaliação');
         }
       }
     } catch (error) {
@@ -143,10 +211,15 @@ export default function ViewEvaluationClient({
   }
 
   const readOnly = evaluation.status === 'concluida';
-  const isDevolvida = evaluation.status === 'devolvida_para_ajustes';
-  const isPendingManagerReview = evaluation.status === 'pendente_aprovacao_gerente';
-  const canEmployeeEdit = evaluation.status === 'pendente_autoavaliacao' || evaluation.status === 'devolvida_para_ajustes';
-  const canManagerReview = isManagerView && isPendingManagerReview;
+  const isDevolvida = evaluation.status === 'devolvida';
+  const isPendingManagerReview = evaluation.status === 'aguardando_aprovacao';
+  const isAwaitingFinalComment = evaluation.status === 'aprovada_aguardando_comentario';
+  const isAwaitingFinalization = evaluation.status === 'aguardando_finalizacao';
+  const canEmployeeEdit = ['pendente', 'em_andamento', 'devolvida'].includes(evaluation.status) && evaluation.status !== 'concluida';
+  const canEmployeeComment = isAwaitingFinalComment;
+  const canManagerReview = isManagerView && isPendingManagerReview && evaluation.status !== 'concluida';
+  const canManagerFinalize = isManagerView && isAwaitingFinalization;
+  const isEmployee = user?.id === evaluation.funcionario_id;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
@@ -295,11 +368,14 @@ export default function ViewEvaluationClient({
               onChange={handleRespostaChange}
               isManager={isManagerView}
               readOnly={readOnly}
+              notasGerente={notasGerente}
+              onNotaGerenteChange={handleNotaGerenteChange}
             />
           ) : (
             <EvaluationCharts
               respostas={respostas}
               questionarioData={QUESTIONARIO_PADRAO}
+              notasGerente={notasGerente}
             />
           )}
         </motion.div>
@@ -313,6 +389,19 @@ export default function ViewEvaluationClient({
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-6">Observações e Comentários</h3>
           
+          {/* Comentário Final do Funcionário */}
+          {(evaluation.comentario_final_funcionario || isAwaitingFinalization) && (
+            <div className="mb-6 p-6 rounded-xl border-2 bg-green-50 border-green-300">
+              <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                💬 Comentário Final do Colaborador
+              </h4>
+              <div className="text-gray-700 leading-relaxed">
+                {evaluation.comentario_final_funcionario || 'Aguardando comentário final...'}
+              </div>
+            </div>
+          )}
+
           {/* Comentários do Gerente - Destaque se avaliação foi devolvida */}
           {(evaluation.comentario_gerente || isDevolvida) && (
             <div className={`mb-6 p-6 rounded-xl border-2 ${
@@ -329,6 +418,26 @@ export default function ViewEvaluationClient({
               <div className="text-gray-700 leading-relaxed">
                 {evaluation.comentario_gerente || 'Aguardando comentários do gerente...'}
               </div>
+            </div>
+          )}
+
+          {/* Interface para Funcionário Adicionar Comentário Final */}
+          {isEmployee && canEmployeeComment && (
+            <div className="mb-6 p-6 bg-green-50 border-2 border-green-200 rounded-xl">
+              <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                💬 Seu Comentário Final sobre a Avaliação
+              </h4>
+              <p className="text-sm text-gray-600 mb-3">
+                O gerente aprovou sua avaliação. Adicione seu comentário final antes da finalização.
+              </p>
+              <textarea
+                value={comentarioFinalFuncionario}
+                onChange={(e) => setComentarioFinalFuncionario(e.target.value)}
+                placeholder="Adicione suas considerações finais sobre a avaliação..."
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all resize-none"
+                rows={4}
+              />
             </div>
           )}
 
@@ -379,47 +488,86 @@ export default function ViewEvaluationClient({
         </motion.div>
 
         {/* Action Buttons */}
-        {!readOnly && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mt-8 flex justify-end gap-4"
-          >
-            {/* Botões para Colaborador */}
-            {!isManagerView && canEmployeeEdit && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-8 bg-white rounded-xl shadow-lg p-6 border-2 border-gray-200"
+        >
+          <div className="flex flex-wrap justify-end gap-4">
+            {/* Botão Preencher Avaliação (Colaborador) */}
+            {isEmployee && canEmployeeEdit && evaluation.status !== 'concluida' && (
+              <Link
+                href={`/avaliacao/preencher/${evaluation.id}`}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
+              >
+                <FiSave className="w-5 h-5" />
+                Preencher Avaliação
+              </Link>
+            )}
+
+            {/* Botão Enviar Comentário Final (Colaborador) */}
+            {isEmployee && canEmployeeComment && (
+              <button
+                onClick={handleFinalComment}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
+              >
+                <FiCheckCircle className="w-5 h-5" />
+                Enviar Comentário Final
+              </button>
+            )}
+
+            {/* Botões para Gerente - Finalização */}
+            {canManagerFinalize && (
               <>
                 <button
-                  onClick={handleSave}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+                  onClick={() => {
+                    if (confirm('Deseja devolver esta avaliação para o colaborador revisar o comentário final?')) {
+                      handleManagerAction('return');
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold"
                 >
-                  <FiSave className="w-5 h-5" />
-                  Salvar Rascunho
+                  🔄 Devolver para Revisão
                 </button>
                 <button
-                  onClick={handleSubmitForReview}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+                  onClick={() => {
+                    if (confirm('Tem certeza que deseja finalizar e concluir esta avaliação definitivamente?')) {
+                      handleManagerAction('finalize');
+                    }
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
                 >
                   <FiCheckCircle className="w-5 h-5" />
-                  Enviar para Aprovação
+                  Finalizar e Concluir
                 </button>
               </>
             )}
 
-            {/* Botões para Gerente */}
+            {/* Botões para Gerente - Aprovação Inicial */}
             {canManagerReview && (
               <>
                 <button
-                  onClick={() => handleManagerAction('return')}
-                  disabled={!comentarioGerente.trim()}
-                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
-                  title={!comentarioGerente.trim() ? 'Adicione comentários para devolver' : ''}
+                  onClick={() => {
+                    if (!comentarioGerente.trim()) {
+                      alert('Adicione comentários para devolver a avaliação');
+                      return;
+                    }
+                    if (confirm('Tem certeza que deseja devolver esta avaliação para ajustes?')) {
+                      handleManagerAction('return');
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold"
                 >
                   🔄 Devolver para Ajustes
                 </button>
                 <button
-                  onClick={() => handleManagerAction('approve')}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+                  onClick={() => {
+                    if (confirm('Tem certeza que deseja aprovar e finalizar esta avaliação?')) {
+                      handleManagerAction('approve');
+                    }
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
                 >
                   <FiCheckCircle className="w-5 h-5" />
                   Aprovar e Finalizar
@@ -427,18 +575,26 @@ export default function ViewEvaluationClient({
               </>
             )}
 
-            {/* Botão de Salvar Genérico */}
-            {isManagerView && !canManagerReview && !readOnly && (
-              <button
-                onClick={handleSave}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <FiSave className="w-5 h-5" />
-                Salvar Alterações
-              </button>
+            {/* Mensagem se não houver ações disponíveis */}
+            {!canEmployeeEdit && !canManagerReview && !readOnly && (
+              <p className="text-gray-600 italic">
+                Aguardando ação de outra parte
+              </p>
             )}
-          </motion.div>
-        )}
+
+            {readOnly && (
+              <p className="text-green-600 font-semibold flex items-center gap-2">
+                <FiCheckCircle className="w-5 h-5" />
+                Avaliação Concluída
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-500 text-right mt-4">
+            {isEmployee && canEmployeeEdit && 'Clique em "Preencher Avaliação" para responder o questionário'}
+            {canManagerReview && 'Revise as respostas e aprove ou devolva para ajustes'}
+          </p>
+        </motion.div>
       </div>
     </div>
   );

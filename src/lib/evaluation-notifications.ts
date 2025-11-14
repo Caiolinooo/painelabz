@@ -55,8 +55,18 @@ export async function createEvaluationNotification(params: CreateEvaluationNotif
       break;
 
     case 'evaluation_revised':
-      title = '📝 Avaliação Revisada';
-      message = `${employeeName} revisou a avaliação conforme seus comentários. Pronta para avaliação final.`;
+      if (employeeName) {
+        // Notificação para gerente quando funcionário adiciona comentário
+        title = '💬 Comentário Final Adicionado';
+        message = `${employeeName} adicionou o comentário final na avaliação. Revise e finalize a avaliação.`;
+      } else if (managerName) {
+        // Notificação para funcionário quando gerente aprova
+        title = '✅ Avaliação Aprovada pelo Gerente';
+        message = `${managerName} aprovou sua avaliação. Adicione seu comentário final para concluir o processo.`;
+      } else {
+        title = '📝 Avaliação Revisada';
+        message = 'A avaliação foi revisada. Verifique os detalhes.';
+      }
       priority = 'high';
       break;
 
@@ -78,7 +88,7 @@ export async function createEvaluationNotification(params: CreateEvaluationNotif
     // Verificar se o usuário existe
     const { data: user, error: userError } = await supabaseAdmin
       .from('users_unified')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name, email')
       .eq('id', userId)
       .single();
 
@@ -87,7 +97,7 @@ export async function createEvaluationNotification(params: CreateEvaluationNotif
       return false;
     }
 
-    // Criar notificação diretamente no banco
+    // Criar notificação diretamente no banco usando supabaseAdmin (bypass RLS)
     const notificationData = {
       user_id: userId,
       type: 'evaluation',
@@ -104,15 +114,41 @@ export async function createEvaluationNotification(params: CreateEvaluationNotif
       }),
       action_url: type === 'period_opened' ? `/avaliacao` : `/avaliacao/ver/${evaluationId}`,
       priority,
+      read: false,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       created_at: new Date().toISOString()
     };
 
-    const { data: newNotification, error: insertError } = await supabaseAdmin
-      .from('notifications')
-      .insert(notificationData)
-      .select()
-      .single();
+    // Tentar usar RPC primeiro, se falhar usar insert direto
+    let newNotification;
+    let insertError;
+    
+    try {
+      const rpcResult = await supabaseAdmin.rpc('create_notification_bypass_rls', {
+        p_user_id: userId,
+        p_type: 'evaluation',
+        p_title: title,
+        p_message: message || '',
+        p_data: notificationData.data,
+        p_action_url: notificationData.action_url,
+        p_priority: priority,
+        p_expires_at: notificationData.expires_at
+      });
+      
+      newNotification = rpcResult.data;
+      insertError = rpcResult.error;
+    } catch (rpcError) {
+      // Se RPC não existir, tentar insert direto
+      console.warn('RPC não encontrado, tentando insert direto');
+      const directResult = await supabaseAdmin
+        .from('notifications')
+        .insert(notificationData)
+        .select()
+        .single();
+      
+      newNotification = directResult.data;
+      insertError = directResult.error;
+    }
 
     if (insertError) {
       console.error('Erro ao inserir notificação:', insertError);
@@ -128,6 +164,42 @@ export async function createEvaluationNotification(params: CreateEvaluationNotif
       });
     } catch (pushError) {
       console.warn('Falha ao enviar push (não bloqueante):', pushError);
+    }
+
+    // Enviar email (não bloqueante)
+    try {
+      const { sendEmail } = await import('@/lib/email');
+      const userEmail = user.email || `${user.id}@temp.com`;
+      
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>${title}</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #0066cc;">${title}</h2>
+            <p>${message}</p>
+            <div style="margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${notificationData.action_url}" 
+                 style="***REMOVED*** #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Ver Detalhes
+              </a>
+            </div>
+            <p style="color: #666; font-size: 12px; margin-top: 30px;">
+              Esta é uma notificação automática do sistema de avaliações ABZ Group.
+            </p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      await sendEmail(userEmail, title, message || '', emailHtml);
+      console.log(`📧 Email enviado para ${userEmail}`);
+    } catch (emailError) {
+      console.warn('Falha ao enviar email (não bloqueante):', emailError);
     }
 
     console.log(`✅ Notificação de avaliação criada: ${type} para ${user.first_name}`);
