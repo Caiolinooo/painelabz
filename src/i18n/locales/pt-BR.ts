@@ -182,7 +182,48 @@ export default {
     historicoAvaliacoes: 'Histórico de Avaliações',
     semAvaliacoes: 'Este funcionário ainda não possui avaliações registradas',
     noAvaliacoes: 'Nenhuma avaliação registrada',
-    avaliacaoGerenteLogado: 'Você está criando esta avaliação como gerente avaliador'
+    avaliacaoGerenteLogado: 'Você está criando esta avaliação como gerente avaliador',
+    teamEvaluations: 'Avaliações da Equipe',
+    performanceEvaluations: 'Avaliações de Desempenho',
+    manageTeamEvaluations: 'Gerencie e acompanhe as avaliações dos seus colaboradores',
+    trackDevelopment: 'Acompanhe seu desenvolvimento e evolução profissional',
+    backToDashboard: 'Voltar ao Dashboard',
+    pending: 'Pendentes',
+    awaitingMyReview: 'Aguardando Minha Revisão',
+    awaitingManager: 'Aguardando Gerente',
+    completed: 'Concluídas',
+    requiresAction: 'Requer Ação',
+    activePeriodsTitle: 'Períodos Ativos - Preencha Sua Avaliação',
+    activePeriodsDesc: 'Estes períodos de avaliação estão ativos agora. Clique para iniciar ou continuar sua autoavaliação.',
+    upcomingPeriodsTitle: 'Próximos Períodos',
+    upcomingPeriodsDesc: 'Estes períodos iniciarão em breve. Fique atento às datas!',
+    searchEmployee: 'Buscar por funcionário...',
+    allPeriods: 'Todos os Períodos',
+    awaitingYourReview: 'Avaliações Aguardando Sua Revisão',
+    awaitingYourReviewCount: 'Você tem {count} avaliação(ões) aguardando sua aprovação',
+    pendingResponse: 'Pendentes de Resposta',
+    noEvaluationsFound: 'Nenhuma avaliação encontrada',
+    noEvaluationsDesc: 'Não há avaliações correspondentes aos filtros selecionados',
+    clearFilters: 'Limpar Filtros',
+    unknown: 'Desconhecido',
+    managerNotAssigned: 'Gestor não atribuído',
+    startsIn: 'Inicia em',
+    endsIn: 'Encerra em',
+    day: 'dia',
+    days: 'dias',
+    activePeriod: 'Período Ativo',
+    evaluationPeriod: 'Período de Avaliação',
+    performanceCycle: 'Ciclo de avaliação de desempenho',
+    selfEvaluationDeadline: 'Prazo Autoavaliação',
+    evaluationCompleted: 'Avaliação Concluída',
+    awaitingManagerEvaluation: 'Aguardando Avaliação do Gestor',
+    continueEvaluation: 'Continuar Avaliação',
+    startMyEvaluation: 'Iniciar Minha Avaliação',
+    availableSoon: 'Disponível em breve',
+    loading: 'Carregando...',
+    evaluationFinalizedByManager: 'Esta avaliação foi finalizada pelo seu gestor',
+    evaluationAlreadyStarted: 'Você já iniciou esta avaliação',
+    selfEvaluationSent: 'Sua autoavaliação foi enviada e está aguardando revisão',
   },
 
   auth: {
@@ -441,19 +482,27 @@ export default {
   },
   menu: {
     dashboard: 'Painel',
+    manual: 'Manual do Colaborador',
     manualLogistico: 'Manual Logístico',
     procedimentoLogistica: 'Procedimento Logística',
+    procedimentos: 'Procedimentos',
     politicas: 'Políticas',
     procedimentosGerais: 'Procedimentos Gerais',
     calendario: 'Calendário',
     abzNews: 'ABZ News',
+    noticias: 'Notícias',
     reembolso: 'Reembolso',
     contracheque: 'Contracheque',
     ponto: 'Ponto',
     folhaPagamento: 'Folha de Pagamento',
     avaliacao: 'Avaliação de Desempenho',
     administracao: 'Administração',
+    admin: 'Administração',
     usuariosAutorizados: 'Usuários Autorizados',
+    academy: 'ABZ Academy',
+    social: 'ABZ Social',
+    contatos: 'Contatos',
+    folha: 'Folha de Pagamento',
   },
   cards: {
     // Traduções padrão para os cards do menu
@@ -914,6 +963,7 @@ export default {
     tituloExibidoNoPainelPrincipal: 'Título exibido no painel principal',
     tituloDoMenuLateral: 'Título do Menu Lateral',
     tituloExibidoNoMenuLateral: 'Título exibido no menu lateral (sidebar)',
+    deixeVazioParaNaoExibir: 'Deixe vazio para não exibir',
     emailDeContato: 'E-mail de Contato',
     descricaoDoSite: 'Descrição do Site',
     descricaoDoPainelPrincipal: 'Descrição do Painel Principal',
@@ -1154,6 +1204,73 @@ export default {
     noPermissionAccess: 'Você não tem permissão para acessar as avaliações.',
     evaluator: 'Avaliador',
     period: 'Período',
+    managerialEvaluation: 'Avaliação Gerencial',
+    selfEvaluation: 'Autoavaliação (Colaborador)',
+    exportPDF: 'Exportar PDF',
+    exportingPDF: 'Exportando...',
+    pdfExported: 'PDF exportado com sucesso!',
+    errorExportingPDF: 'Erro ao exportar PDF',
+    pdfTitle: 'Avaliação de Desempenho',
+    question: 'Questão',
+    score: 'Nota',
+    comment: 'Comentário',
+    noComment: 'Sem comentário',
+    generatedAt: 'Gerado em',
+    alreadyCompleted: 'Esta avaliação já foi concluída e não pode mais ser editada.',
+    completed: 'Avaliação Concluída',
+    alreadyCompletedMessage: 'Esta avaliação já foi finalizada e não pode mais ser editada.',
+    viewEvaluation: 'Visualizar Avaliação',
+    fillAtLeastOne: 'Por favor, preencha pelo menos uma questão antes de enviar',
+    errorSavingDraft: 'Erro ao salvar rascunho',
+    draftSaved: 'Rascunho salvo com sucesso!',
+    errorSaving: 'Erro ao salvar avaliação',
+    errorApproving: 'Erro ao aprovar avaliação',
+    approvedSuccess: 'Avaliação aprovada com sucesso!',
+    errorSubmitting: 'Erro ao submeter avaliação',
+    sentForApproval: 'Avaliação enviada para aprovação do gestor!',
+    employee: 'Colaborador',
+    yourRole: 'Sua função',
+    managerEvaluator: 'Gestor Avaliador',
+    instructions: 'Instruções',
+    instructionManager1: 'Avalie o desempenho do colaborador respondendo as questões de avaliação gerencial',
+    instructionManager2: 'Revise a autoavaliação do colaborador se necessário',
+    instructionManager3: 'Forneça feedback construtivo nos comentários',
+    instructionEmployee1: 'Preencha todas as questões sobre seu desempenho',
+    instructionEmployee2: 'Seja honesto e objetivo nas suas respostas',
+    instructionEmployee3: 'Forneça exemplos concretos quando possível',
+    canSaveDraft: 'Você pode salvar como rascunho e continuar depois',
+    saving: 'Salvando...',
+    saveDraft: 'Salvar Rascunho',
+    sending: 'Enviando...',
+    finalize: 'Finalizar Avaliação',
+    sendForApproval: 'Enviar para Aprovação',
+    finalizeNote: 'Ao finalizar, a avaliação será marcada como concluída',
+    sendNote: 'Ao enviar, a avaliação será enviada para seu gestor revisar',
+    confirmSubmit: 'Confirmar Envio',
+    confirmSubmitTitle: 'Confirmar Envio da Avaliação',
+    confirmSubmitMessage: 'Tem certeza que deseja enviar esta avaliação para aprovação? Após o envio, você não poderá mais editá-la.',
+    confirmFinalizeTitle: 'Confirmar Finalização',
+    confirmFinalizeMessage: 'Tem certeza que deseja finalizar esta avaliação? Esta ação não pode ser desfeita e a avaliação será marcada como concluída.',
+    cancel: 'Cancelar',
+    confirm: 'Confirmar',
+    selfEvaluationSection: 'Autoavaliação (Colaborador)',
+    selfEvaluationDesc: 'Questões 11-14 • Sua percepção sobre seu desempenho',
+    managerEvaluationSection: 'Avaliação Gerencial',
+    managerEvaluationDesc: 'Questões 15-17 • Avaliação do gestor direto',
+    rating: 'Avaliação',
+    commentsLabel: 'Comentários ou Justificativa',
+    commentsPlaceholder: 'Descreva evidências, exemplos ou contextos relevantes...',
+    requiredField: '* Campo obrigatório',
+    optionalField: 'Opcional',
+    managerNoteLabel: '📊 Nota do Gerente para esta resposta',
+    managerNoteDesc: 'Avalie a qualidade e completude da resposta do colaborador',
+    ratingScale: {
+      level1: 'Frequentemente não alcançou a expectativa',
+      level2: 'Não alcançou a expectativa',
+      level3: 'Alcançou a expectativa',
+      level4: 'Frequentemente excedeu a expectativa',
+      level5: 'Consistentemente excedeu a expectativa'
+    },
     dashboard: {
       title: 'Avaliações de Desempenho',
     },
@@ -1392,6 +1509,7 @@ export default {
     rights: 'os direitos',
     reserved: 'reservados',
     developedBy: 'Desenvolvido por',
+    developer: 'Caio Valerio Goulart Correia',
     backToDashboard: 'Voltar para o Dashboard',
     processing: 'Processando...',
     saveSettings: 'Salvar Configurações',
@@ -1421,6 +1539,7 @@ export default {
     comingSoon: 'Em breve! Esta funcionalidade está em desenvolvimento.',
     backToLogin: 'Voltar ao Login',
     allRights: 'Todos',
+    allRightsReserved: 'Todos os direitos reservados',
     administrators: 'Administradores',
     managers: 'Gerentes',
     users: 'Usuários',
@@ -1602,6 +1721,64 @@ export default {
       normal: 'Normal',
       high: 'Alta',
       urgent: 'Urgente'
+    },
+    evaluation: {
+      periodOpened: {
+        title: '🚀 Novo Período de Avaliação',
+        message: 'O período de avaliação "{periodName}" foi aberto! Acesse para iniciar sua autoavaliação.'
+      },
+      evaluationCreated: {
+        title: '📝 Nova Avaliação Disponível',
+        message: 'Uma nova avaliação de desempenho foi criada para o período: {periodName}. Acesse para iniciar sua autoavaliação.'
+      },
+      selfEvaluationCompleted: {
+        title: '✅ Autoavaliação Concluída',
+        message: '{employeeName} completou a autoavaliação e está aguardando sua revisão como gestor.'
+      },
+      managerReviewPending: {
+        title: '👨💼 Revisão Gerencial Pendente',
+        message: 'Você tem uma avaliação de {employeeName} aguardando sua revisão e aprovação.'
+      },
+      evaluationReturned: {
+        title: '🔄 Avaliação Devolvida para Ajustes',
+        message: 'Sua avaliação foi devolvida pelo gestor {managerName} para ajustes. Verifique os comentários e reenvie.'
+      },
+      evaluationRevised: {
+        titleByEmployee: '💬 Comentário Final Adicionado',
+        messageByEmployee: '{employeeName} adicionou o comentário final na avaliação. Revise e finalize a avaliação.',
+        titleByManager: '✅ Avaliação Aprovada pelo Gerente',
+        messageByManager: '{managerName} aprovou sua avaliação. Adicione seu comentário final para concluir o processo.',
+        titleGeneric: '📝 Avaliação Revisada',
+        messageGeneric: 'A avaliação foi revisada. Verifique os detalhes.'
+      },
+      evaluationCompleted: {
+        title: '🎉 Avaliação Finalizada',
+        message: 'Sua avaliação de desempenho foi finalizada por {managerName}! Visualize os resultados e feedback.'
+      }
+    },
+    reimbursement: {
+      submitted: {
+        title: '📝 Reembolso Enviado',
+        message: 'Sua solicitação de reembolso (Protocolo: {protocol}) foi enviada com sucesso.'
+      },
+      approved: {
+        title: '✅ Reembolso Aprovado',
+        message: 'Seu reembolso (Protocolo: {protocol}) foi aprovado! Valor: {amount}'
+      },
+      rejected: {
+        title: '❌ Reembolso Rejeitado',
+        message: 'Seu reembolso (Protocolo: {protocol}) foi rejeitado. Motivo: {reason}'
+      }
+    },
+    system: {
+      welcome: {
+        title: '👋 Bem-vindo ao Sistema',
+        message: 'Olá {name}! Seu acesso foi aprovado.'
+      },
+      passwordExpiry: {
+        title: '⚠️ Senha Expirando',
+        message: 'Sua senha expira em {days} dias. Por favor, altere sua senha.'
+      }
     }
   },
 
@@ -2545,4 +2722,102 @@ export default {
     digitePeloMenos2CaracteresBuscar: 'Digite pelo menos 2 caracteres para buscar',
     useCtrlKAbrirBuscaRapidamente: 'Use Ctrl+K para abrir a busca rapidamente',
   },
+
+  // Templates de Email
+  emailTemplates: {
+    subjects: {
+      accessApproved: 'Acesso Aprovado - ABZ Group',
+      accessRejected: 'Solicitação de Acesso Negada - ABZ Group',
+      inviteCode: 'Convite para ABZ Group',
+      reimbursementSubmitted: 'Solicitação de Reembolso - Protocolo: {protocol}',
+      reimbursementApproved: 'Reembolso Aprovado - Protocolo: {protocol}',
+      reimbursementRejected: 'Reembolso Não Aprovado - Protocolo: {protocol}',
+      welcome: 'Bem-vindo ao ABZ Group',
+      passwordExpiry: 'Sua Senha Irá Expirar em Breve',
+      evaluationNotification: 'Notificação de Avaliação - ABZ Group'
+    },
+    greetings: {
+      hello: 'Olá',
+      dear: 'Prezado(a)'
+    },
+    closings: {
+      regards: 'Atenciosamente',
+      team: 'Equipe ABZ Group',
+      bestRegards: 'Cordialmente'
+    },
+    common: {
+      viewDetails: 'Ver Detalhes',
+      contactSupport: 'Entre em contato com o suporte',
+      automaticNotification: 'Esta é uma notificação automática do sistema.',
+      doNotReply: 'Por favor, não responda a este email.',
+      needHelp: 'Precisa de ajuda?',
+      accessSystem: 'Acessar Sistema'
+    },
+    reimbursement: {
+      confirmation: {
+        title: 'Confirmação de Solicitação de Reembolso',
+        intro: 'Sua solicitação de reembolso foi recebida com sucesso e está sendo processada.',
+        protocolLabel: 'Protocolo',
+        valueLabel: 'Valor',
+        dateLabel: 'Data da Solicitação',
+        statusLabel: 'Status',
+        statusPending: 'Pendente',
+        footer: 'Você receberá atualizações sobre o status da sua solicitação por email. Em caso de dúvidas, entre em contato com o departamento financeiro.'
+      },
+      approval: {
+        title: 'Reembolso Aprovado',
+        intro: 'Temos o prazer de informar que sua solicitação de reembolso foi aprovada!',
+        paymentMethodLabel: 'Método de Pagamento',
+        observationLabel: 'Observação',
+        footer: 'O pagamento será processado conforme o método selecionado. Em caso de dúvidas, entre em contato com o departamento financeiro.'
+      },
+      rejection: {
+        title: 'Reembolso Não Aprovado',
+        intro: 'Informamos que sua solicitação de reembolso não foi aprovada.',
+        reasonLabel: 'Motivo',
+        footer: 'Se você tiver dúvidas sobre esta decisão, entre em contato com o departamento financeiro.'
+      }
+    },
+    access: {
+      approved: {
+        title: 'Acesso Aprovado',
+        intro: 'Seu acesso ao sistema ABZ Group foi aprovado por {adminName}!',
+        instructions: 'Você já pode fazer login no sistema usando suas credenciais.',
+        footer: 'Bem-vindo à equipe ABZ Group!'
+      },
+      rejected: {
+        title: 'Solicitação de Acesso Negada',
+        intro: 'Sua solicitação de acesso ao sistema ABZ Group foi negada por {adminName}.',
+        reasonLabel: 'Motivo',
+        reasonNotSpecified: 'Não especificado',
+        footer: 'Se você acredita que isso é um erro, entre em contato com o administrador do sistema.'
+      }
+    },
+    invite: {
+      title: 'Você foi convidado para o ABZ Group',
+      intro: 'Você recebeu um convite para se juntar ao sistema ABZ Group.',
+      codeLabel: 'Código de Convite',
+      expiryLabel: 'Validade',
+      maxUsesLabel: 'Usos Permitidos',
+      instructions: 'Use o código acima para completar seu cadastro no sistema.',
+      registerButton: 'Completar Cadastro',
+      footer: 'Este convite é pessoal e intransferível.'
+    },
+    welcome: {
+      title: 'Bem-vindo ao ABZ Group',
+      intro: 'Olá {name}, seja bem-vindo ao sistema ABZ Group!',
+      accessInfo: 'Seu acesso foi criado com sucesso. Use as informações abaixo para fazer login:',
+      loginUrlLabel: 'URL de Acesso',
+      temporaryPasswordLabel: 'Senha Temporária',
+      temporaryPasswordNote: 'Por segurança, você será solicitado a alterar sua senha no primeiro acesso.',
+      footer: 'Se você tiver alguma dúvida, entre em contato com o suporte.'
+    },
+    passwordExpiry: {
+      title: 'Sua Senha Está Prestes a Expirar',
+      intro: 'Sua senha expirará em {days} dias.',
+      instructions: 'Por favor, altere sua senha antes que ela expire para evitar interrupções no acesso ao sistema.',
+      changePasswordButton: 'Alterar Senha',
+      footer: 'Esta é uma medida de segurança para proteger sua conta.'
+    }
+  }
 };

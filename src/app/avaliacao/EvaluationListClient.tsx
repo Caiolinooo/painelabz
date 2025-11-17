@@ -9,6 +9,7 @@ import WelcomeModal from '@/components/avaliacao/WelcomeModal';
 import ActivePeriodCard from '@/components/avaliacao/ActivePeriodCard';
 import MainLayout from '@/components/Layout/MainLayout';
 import { motion } from 'framer-motion';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface PeriodWithEvaluation {
   period: EvaluationPeriod;
@@ -33,6 +34,7 @@ export default function EvaluationListClient({
   upcomingPeriods = [],
   currentUser
 }: EvaluationListClientProps) {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [showWelcome, setShowWelcome] = useState(true);
@@ -78,15 +80,15 @@ export default function EvaluationListClient({
   }, [currentUser?.id]);
 
   const getEmployeeName = (id: string) => {
-    if (!id) return 'Desconhecido';
+    if (!id) return t('avaliacao.unknown');
     const employee = initialEmployees.find(e => e.id === id);
-    return (employee as any)?.name || 'Desconhecido';
+    return (employee as any)?.name || t('avaliacao.unknown');
   };
   
   const getManagerName = (id: string) => {
-    if (!id) return 'Gestor não atribuído';
+    if (!id) return t('avaliacao.managerNotAssigned');
     const manager = initialEmployees.find(e => e.id === id);
-    return (manager as any)?.name || 'Gestor não atribuído';
+    return (manager as any)?.name || t('avaliacao.managerNotAssigned');
   };
   
   const getPeriodName = (id: string) => {
@@ -133,7 +135,7 @@ export default function EvaluationListClient({
   const stats = [
     {
       icon: <FiClock className="w-6 h-6" />,
-      label: 'Pendentes',
+      label: t('avaliacao.pending'),
       value: pending.length,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
@@ -141,7 +143,7 @@ export default function EvaluationListClient({
     },
     {
       icon: <FiTrendingUp className="w-6 h-6" />,
-      label: isEvaluationManager ? 'Aguardando Minha Revisão' : 'Aguardando Gerente',
+      label: isEvaluationManager ? t('avaliacao.awaitingMyReview') : t('avaliacao.awaitingManager'),
       value: isEvaluationManager ? myPendingReviews.length : awaitingManager.length,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -149,7 +151,7 @@ export default function EvaluationListClient({
     },
     {
       icon: <FiCheckCircle className="w-6 h-6" />,
-      label: 'Concluídas',
+      label: t('avaliacao.completed'),
       value: completed.length,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -157,7 +159,7 @@ export default function EvaluationListClient({
     },
     {
       icon: <FiAlertCircle className="w-6 h-6" />,
-      label: 'Requer Ação',
+      label: t('avaliacao.requiresAction'),
       value: needsAction.length,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
@@ -186,18 +188,18 @@ export default function EvaluationListClient({
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors w-fit"
           >
             <FiArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Voltar ao Dashboard</span>
+            <span className="font-medium">{t('avaliacao.backToDashboard')}</span>
           </Link>
 
           {/* Título */}
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              {isEvaluationManager ? 'Avaliações da Equipe' : 'Avaliações de Desempenho'}
+              {isEvaluationManager ? t('avaliacao.teamEvaluations') : t('avaliacao.performanceEvaluations')}
             </h1>
             <p className="text-gray-600">
               {isEvaluationManager 
-                ? 'Gerencie e acompanhe as avaliações dos seus colaboradores'
-                : 'Acompanhe seu desenvolvimento e evolução profissional'
+                ? t('avaliacao.manageTeamEvaluations')
+                : t('avaliacao.trackDevelopment')
               }
             </p>
           </div>
@@ -239,10 +241,10 @@ export default function EvaluationListClient({
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <FiCalendar className="text-green-600" />
-                    Períodos Ativos - Preencha Sua Avaliação
+                    {t('avaliacao.activePeriodsTitle')}
                   </h2>
                   <p className="text-gray-600 mb-4">
-                    Estes períodos de avaliação estão ativos agora. Clique para iniciar ou continuar sua autoavaliação.
+                    {t('avaliacao.activePeriodsDesc')}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {activePeriods.filter(item => item?.period?.id).map((item, index) => (
@@ -264,10 +266,10 @@ export default function EvaluationListClient({
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <FiClock className="text-blue-600" />
-                    Próximos Períodos
+                    {t('avaliacao.upcomingPeriodsTitle')}
                   </h2>
                   <p className="text-gray-600 mb-4">
-                    Estes períodos iniciarão em breve. Fique atento às datas!
+                    {t('avaliacao.upcomingPeriodsDesc')}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {upcomingPeriods.filter(item => item?.period?.id).map((item, index) => (
@@ -298,7 +300,7 @@ export default function EvaluationListClient({
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Buscar por funcionário..."
+                  placeholder={t('avaliacao.searchEmployee')}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
@@ -309,7 +311,7 @@ export default function EvaluationListClient({
                 value={selectedPeriod}
                 onChange={e => setSelectedPeriod(e.target.value)}
               >
-                <option value="">Todos os Períodos</option>
+                <option value="">{t('avaliacao.allPeriods')}</option>
                 {initialPeriods.map(p => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
                 ))}
@@ -328,10 +330,10 @@ export default function EvaluationListClient({
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 mb-4 text-white">
                 <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
                   <FiTrendingUp className="w-7 h-7" />
-                  Avaliações Aguardando Sua Revisão
+                  {t('avaliacao.awaitingYourReview')}
                 </h2>
                 <p className="text-blue-100">
-                  Você tem {myPendingReviews.length} avaliação(ões) aguardando sua aprovação
+                  {t('avaliacao.awaitingYourReviewCount').replace('{count}', myPendingReviews.length.toString())}
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -362,7 +364,7 @@ export default function EvaluationListClient({
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <FiClock className="text-yellow-600" />
-                Pendentes de Resposta
+                {t('avaliacao.pendingResponse')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {pending.map((ev, index) => (
@@ -392,7 +394,7 @@ export default function EvaluationListClient({
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <FiTrendingUp className="text-blue-600" />
-                Aguardando Gerente
+                {t('avaliacao.awaitingManager')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {awaitingManagerFiltered.map((ev, index) => (
@@ -422,7 +424,7 @@ export default function EvaluationListClient({
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <FiCheckCircle className="text-green-600" />
-                Concluídas
+                {t('avaliacao.completed')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {completed.map((ev, index) => (
@@ -454,10 +456,10 @@ export default function EvaluationListClient({
                   <FiCheckCircle className="w-12 h-12 text-gray-400" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  Nenhuma avaliação encontrada
+                  {t('avaliacao.noEvaluationsFound')}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Não há avaliações correspondentes aos filtros selecionados
+                  {t('avaliacao.noEvaluationsDesc')}
                 </p>
                 <button
                   onClick={() => {
@@ -466,7 +468,7 @@ export default function EvaluationListClient({
                   }}
                   className="abz-button-secondary"
                 >
-                  Limpar Filtros
+                  {t('avaliacao.clearFilters')}
                 </button>
               </div>
             </motion.div>

@@ -5,7 +5,7 @@ import { Evaluation, EvaluationCriterion, User } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import { FiUser, FiCalendar, FiArrowLeft, FiSave, FiCheckCircle } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiArrowLeft, FiSave, FiCheckCircle, FiDownload } from 'react-icons/fi';
 import QuestionarioAvaliacaoCardBased from '@/components/avaliacao/QuestionarioAvaliacaoCardBased';
 import EvaluationCharts from '@/components/avaliacao/EvaluationCharts';
 import StatusBadge from '@/components/avaliacao/StatusBadge';
@@ -13,6 +13,8 @@ import { QUESTIONARIO_PADRAO } from '@/lib/schemas/evaluation-schemas';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useI18n } from '@/contexts/I18nContext';
+import { exportEvaluationToPDF, downloadEvaluationPDF } from '@/lib/evaluation-pdf-export';
 
 interface ViewEvaluationClientProps {
   evaluation: Evaluation;
@@ -29,6 +31,8 @@ export default function ViewEvaluationClient({
 }: ViewEvaluationClientProps) {
   const router = useRouter();
   const { user } = useSupabaseAuth();
+  const { t, locale } = useI18n();
+  const [isExporting, setIsExporting] = useState(false);
   const [isManagerView, setIsManagerView] = useState(false);
   const [respostas, setRespostas] = useState<Record<string, any>>(evaluation.respostas || {});
   const [notasGerente, setNotasGerente] = useState<Record<string, number>>(evaluation.notas_gerente || {});
@@ -199,6 +203,41 @@ export default function ViewEvaluationClient({
     } catch (error) {
       console.error('Erro ao enviar avaliação:', error);
       alert('Erro ao enviar avaliação');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      
+      const pdf = await exportEvaluationToPDF(evaluation, {
+        locale,
+        translations: {
+          title: t('evaluation.pdfTitle'),
+          employee: t('evaluation.employee'),
+          evaluator: t('evaluation.evaluator'),
+          period: t('evaluation.period'),
+          status: t('common.status'),
+          date: t('common.date'),
+          selfEvaluation: t('evaluation.selfEvaluation'),
+          managerialEvaluation: t('evaluation.managerialEvaluation'),
+          question: t('evaluation.question'),
+          score: t('evaluation.score'),
+          comment: t('evaluation.comment'),
+          noComment: t('evaluation.noComment'),
+          generatedAt: t('evaluation.generatedAt')
+        }
+      });
+
+      const fileName = `avaliacao-${employee?.name?.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      downloadEvaluationPDF(pdf, fileName);
+      
+      alert(t('evaluation.pdfExported'));
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      alert(t('evaluation.errorExportingPDF'));
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -494,7 +533,18 @@ export default function ViewEvaluationClient({
           transition={{ delay: 0.4 }}
           className="mt-8 bg-white rounded-xl shadow-lg p-6 border-2 border-gray-200"
         >
-          <div className="flex flex-wrap justify-end gap-4">
+          <div className="flex flex-wrap justify-between items-center gap-4">
+            {/* Botão Exportar PDF */}
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FiDownload className="w-5 h-5" />
+              {isExporting ? t('evaluation.exportingPDF') : t('evaluation.exportPDF')}
+            </button>
+
+            <div className="flex flex-wrap justify-end gap-4">
             {/* Botão Preencher Avaliação (Colaborador) */}
             {isEmployee && canEmployeeEdit && evaluation.status !== 'concluida' && (
               <Link
@@ -588,6 +638,7 @@ export default function ViewEvaluationClient({
                 Avaliação Concluída
               </p>
             )}
+            </div>
           </div>
 
           <p className="text-xs text-gray-500 text-right mt-4">

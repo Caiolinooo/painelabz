@@ -49,6 +49,39 @@ const mainMenuItems = [
   { id: 'noticias', href: '/noticias', label: 'common.news', icon: FiMessageSquare },
 ];
 
+// Mapeamento de títulos do banco de dados para chaves de tradução
+const titleToTranslationKey: Record<string, string> = {
+  'Employee Manual': 'menu.manual',
+  'Manual do Colaborador': 'menu.manual',
+  'Policies': 'menu.politicas',
+  'Políticas': 'menu.politicas',
+  'Calendar': 'menu.calendario',
+  'Calendário': 'menu.calendario',
+  'News': 'menu.noticias',
+  'Notícias': 'menu.noticias',
+  'ABZ News': 'menu.noticias',
+  'Reimbursement': 'menu.reembolso',
+  'Reembolso': 'menu.reembolso',
+  'Payslip': 'menu.contracheque',
+  'Contracheque': 'menu.contracheque',
+  'Time Clock': 'menu.ponto',
+  'Ponto': 'menu.ponto',
+  'Performance Evaluation': 'menu.avaliacao',
+  'Avaliação de Desempenho': 'menu.avaliacao',
+  'Payroll': 'menu.folhaPagamento',
+  'Folha de Pagamento': 'menu.folhaPagamento',
+  'Procedimentos de Logística': 'menu.procedimentoLogistica',
+  'Logistics Procedures': 'menu.procedimentoLogistica',
+  'Procedimentos Gerais': 'menu.procedimentosGerais',
+  'General Procedures': 'menu.procedimentosGerais',
+  'Dashboard': 'menu.dashboard',
+  'Painel': 'menu.dashboard',
+  'Administration': 'menu.admin',
+  'Administração': 'menu.admin',
+  'ABZ Academy': 'menu.academy',
+  'ABZ Social': 'menu.social',
+};
+
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -86,6 +119,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
       unifiedDataService.clearCache();
       console.log('🔄 Cache limpo devido à mudança de locale para:', locale);
     });
+    // Limpar cache local também
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('unified-data-cache-menu');
+    }
     // Forçar re-render para atualizar os textos
     forceUpdate({});
   }, [locale]);
@@ -239,7 +276,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   title={config?.title || "Painel ABZ Group"}
                 >
                   <FiGrid className="h-6 w-6 text-abz-blue" />
-                  <span className="text-lg font-semibold text-abz-blue-dark">{config?.sidebarTitle || "Painel ABZ"}</span>
+                  {(config?.sidebarTitle || config?.title) && (
+                    <span className="text-lg font-semibold text-abz-blue-dark">{config?.sidebarTitle || config?.title || "Painel ABZ"}</span>
+                  )}
                 </Link>
                 <button
                   className="hidden md:inline-flex rounded-md p-2 text-white bg-abz-blue hover:bg-abz-blue-dark transition-colors shadow-sm"
@@ -283,17 +322,35 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 // Garantir que o ícone seja um componente válido
                 const IconComponent = item.icon || FiGrid;
 
-              // Obter o texto a ser exibido - o hook useUnifiedData já traduz os itens
-              let displayLabel = item.title || item.id;
+              // Obter o texto a ser exibido com base no locale
+              let displayLabel: string;
 
-              // Para itens do menu principal (hardcoded), tentar traduzir via t()
-              if (menuItems.length === 0 && (item as any).label) {
-                displayLabel = t((item as any).label) || item.title || item.id;
+              // Se for item hardcoded com label, traduzir via t()
+              if ((item as any).label) {
+                displayLabel = t((item as any).label);
               }
-
-              // Para itens do menu hardcoded (quando não vem do banco), tentar traduzir
-              if ((item as any).label && !item.title_pt && !item.title_en) {
-                displayLabel = t((item as any).label) || item.title || item.id;
+              // Se vier do banco de dados
+              else {
+                // Primeiro, tentar mapear o título para uma chave de tradução
+                const titleKey = titleToTranslationKey[item.title];
+                if (titleKey) {
+                  displayLabel = t(titleKey);
+                }
+                // Depois, tentar traduzir usando o ID
+                else if (item.id) {
+                  const translationKey = `menu.${item.id}`;
+                  const translated = t(translationKey);
+                  
+                  if (translated && translated !== translationKey) {
+                    displayLabel = translated;
+                  } else {
+                    displayLabel = item.title || item.id;
+                  }
+                }
+                // Fallback final
+                else {
+                  displayLabel = item.title || item.id;
+                }
               }
 
               // Debug para o primeiro item
@@ -303,8 +360,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   locale: locale,
                   displayLabel: displayLabel,
                   itemTitle: item.title,
+                  title_pt: item.title_pt,
+                  title_en: item.title_en,
                   label: (item as any).label,
-                  isFromDatabase: menuItems.length > 0
+                  isFromDatabase: menuItems.length > 0,
+                  fullItem: item
                 });
               }
 
@@ -430,7 +490,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 >
                   <FiMenu className="h-6 w-6" />
                 </button>
-                <span className="ml-3 text-lg font-semibold text-abz-blue-dark">{config?.sidebarTitle || "Painel ABZ"}</span>
+                {(config?.sidebarTitle || config?.title) && (
+                  <span className="ml-3 text-lg font-semibold text-abz-blue-dark">{config?.sidebarTitle || config?.title || "Painel ABZ"}</span>
+                )}
               </div>
               <div className="flex items-center space-x-2">
                 {user && <NotificationHUD userId={user.id} position="top-right" evaluationPendingCount={pendingCount} />}

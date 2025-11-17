@@ -49,6 +49,7 @@ export default function LanguageSelector({
   };
 
   const handleSelectLanguage = async (localeCode: Locale) => {
+    console.log('🔴 CLIQUE DETECTADO! Locale selecionado:', localeCode);
     console.log('🌐 LanguageSelector: Selecionando idioma:', localeCode);
     console.log('🌐 LanguageSelector: Idioma atual:', locale);
 
@@ -57,11 +58,7 @@ export default function LanguageSelector({
       setIsChanging(true);
       setLocale(localeCode);
       console.log('🌐 LanguageSelector: Idioma alterado para:', localeCode);
-
-      // Small delay to show the change is happening
-      setTimeout(() => {
-        setIsChanging(false);
-      }, 500);
+      // Não precisa resetar isChanging pois a página vai recarregar
     } else {
       console.log(t('components.languageselectorIdiomaJaEOAtualNaoAlterando'));
     }
