@@ -66,7 +66,7 @@ const NewsCommentSection: React.FC<Props> = ({ postId, userId }) => {
       const res = await fetch(`/api/news/posts/${postId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** userId, content: text })
+        body: ***REMOVED*** user_id: userId, content: text })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('newsSystem.errorSendingComment', 'Erro ao enviar comentário'));
