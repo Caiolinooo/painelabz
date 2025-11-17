@@ -7,6 +7,8 @@ import { FiSave, FiSend, FiArrowLeft, FiAlertCircle } from 'react-icons/fi';
 import QuestionarioAvaliacaoCardBased from '@/components/avaliacao/QuestionarioAvaliacaoCardBased';
 import { Evaluation } from '@/types';
 import { QUESTIONARIO_PADRAO } from '@/lib/schemas/evaluation-schemas';
+import { useI18n } from '@/contexts/I18nContext';
+import { useAlert } from '@/contexts/AlertContext';
 
 interface FillEvaluationClientProps {
   evaluation: Evaluation;
@@ -20,20 +22,27 @@ export default function FillEvaluationClient({
   userId
 }: FillEvaluationClientProps) {
   const router = useRouter();
+  const { t } = useI18n();
+  const { showAlert } = useAlert();
   const [respostas, setRespostas] = useState<Record<string, any>>(
     evaluation.respostas || {}
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Verificar se avaliação está concluída e bloquear edição
   useEffect(() => {
     if (evaluation.status === 'concluida') {
-      alert('Esta avaliação já foi concluída e não pode mais ser editada.');
-      router.push(`/avaliacao/ver/${evaluation.id}`);
+      showAlert({
+        type: 'warning',
+        title: t('evaluation.completed'),
+        message: t('evaluation.alreadyCompleted'),
+        onConfirm: () => router.push(`/avaliacao/ver/${evaluation.id}`)
+      });
     }
-  }, [evaluation.status, evaluation.id, router]);
+  }, [evaluation.status, evaluation.id, router, t, showAlert]);
 
   // Bloquear renderização se avaliação estiver concluída
   if (evaluation.status === 'concluida') {
@@ -42,16 +51,16 @@ export default function FillEvaluationClient({
         <div className="bg-white rounded-2xl shadow-lg p-8 border-2 border-yellow-200 max-w-md">
           <div className="flex items-center gap-3 mb-4">
             <FiAlertCircle className="w-8 h-8 text-yellow-600" />
-            <h2 className="text-xl font-bold text-gray-900">Avaliação Concluída</h2>
+            <h2 className="text-xl font-bold text-gray-900">{t('evaluation.completed')}</h2>
           </div>
           <p className="text-gray-700 mb-6">
-            Esta avaliação já foi finalizada e não pode mais ser editada.
+            {t('evaluation.alreadyCompletedMessage')}
           </p>
           <button
             onClick={() => router.push(`/avaliacao/ver/${evaluation.id}`)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
           >
-            Visualizar Avaliação
+            {t('evaluation.viewEvaluation')}
           </button>
         </div>
       </div>
@@ -80,7 +89,7 @@ export default function FillEvaluationClient({
     );
 
     if (!hasAnyResponse) {
-      setError('Por favor, preencha pelo menos uma questão antes de enviar');
+      setError(t('evaluation.fillAtLeastOne'));
       return false;
     }
 
@@ -90,7 +99,7 @@ export default function FillEvaluationClient({
   const handleSaveDraft = async () => {
     // Verificação adicional antes de salvar
     if (evaluation.status === 'concluida') {
-      setError('Esta avaliação já foi concluída e não pode mais ser editada.');
+      setError(t('evaluation.alreadyCompleted'));
       return;
     }
 
@@ -112,28 +121,34 @@ export default function FillEvaluationClient({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Erro ao salvar rascunho');
+        throw new Error(data.error || t('evaluation.errorSavingDraft'));
       }
 
-      setSuccessMessage('Rascunho salvo com sucesso!');
+      setSuccessMessage(t('evaluation.draftSaved'));
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar rascunho');
+      setError(err instanceof Error ? err.message : t('evaluation.errorSavingDraft'));
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleSubmit = async () => {
-    // Verificação adicional antes de submeter
+  const handleSubmitClick = () => {
+    // Verificação adicional antes de mostrar modal
     if (evaluation.status === 'concluida') {
-      setError('Esta avaliação já foi concluída e não pode mais ser editada.');
+      setError(t('evaluation.alreadyCompleted'));
       return;
     }
 
     if (!validateRespostas()) {
       return;
     }
+
+    setShowConfirmModal(true);
+  };
+
+  const handleSubmit = async () => {
+    setShowConfirmModal(false);
 
     try {
       setIsSaving(true);
@@ -156,7 +171,7 @@ export default function FillEvaluationClient({
 
         if (!saveResponse.ok) {
           const data = await saveResponse.json();
-          throw new Error(data.error || 'Erro ao salvar avaliação');
+          throw new Error(data.error || t('evaluation.errorSaving'));
         }
 
         // Depois aprovar
@@ -173,12 +188,18 @@ export default function FillEvaluationClient({
 
         if (!approveResponse.ok) {
           const data = await approveResponse.json();
-          throw new Error(data.error || 'Erro ao aprovar avaliação');
+          throw new Error(data.error || t('evaluation.errorApproving'));
         }
 
-        alert('Avaliação aprovada com sucesso!');
-        router.push('/avaliacao');
-        router.refresh();
+        showAlert({
+          type: 'success',
+          title: t('common.success'),
+          message: t('evaluation.approvedSuccess'),
+          onConfirm: () => {
+            router.push('/avaliacao');
+            router.refresh();
+          }
+        });
       } else {
         // Colaborador submete para revisão
         const submitResponse = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/submit`, {
@@ -194,15 +215,21 @@ export default function FillEvaluationClient({
 
         if (!submitResponse.ok) {
           const data = await submitResponse.json();
-          throw new Error(data.error || 'Erro ao submeter avaliação');
+          throw new Error(data.error || t('evaluation.errorSubmitting'));
         }
 
-        alert('Avaliação enviada para aprovação do gestor!');
-        router.push('/avaliacao');
-        router.refresh();
+        showAlert({
+          type: 'success',
+          title: t('common.success'),
+          message: t('evaluation.sentForApproval'),
+          onConfirm: () => {
+            router.push('/avaliacao');
+            router.refresh();
+          }
+        });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao enviar avaliação');
+      setError(err instanceof Error ? err.message : t('evaluation.errorSubmitting'));
     } finally {
       setIsSaving(false);
     }
@@ -222,23 +249,23 @@ export default function FillEvaluationClient({
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
           >
             <FiArrowLeft className="w-5 h-5" />
-            Voltar
+            {t('common.back')}
           </button>
 
           <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-200">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {isManager ? 'Avaliação Gerencial' : 'Autoavaliação'}
+              {isManager ? t('evaluation.managerialEvaluation') : t('evaluation.selfEvaluation')}
             </h1>
             <div className="flex flex-wrap gap-4 text-sm text-gray-600">
               <div>
-                <span className="font-semibold">Período:</span> {evaluation.periodo?.nome || evaluation.periodo || 'N/A'}
+                <span className="font-semibold">{t('evaluation.period')}:</span> {evaluation.periodo?.nome || evaluation.periodo || 'N/A'}
               </div>
               <div>
-                <span className="font-semibold">Colaborador:</span> {evaluation.funcionario?.name || 'N/A'}
+                <span className="font-semibold">{t('evaluation.employee')}:</span> {evaluation.funcionario?.name || 'N/A'}
               </div>
               {isManager && (
                 <div>
-                  <span className="font-semibold">Sua função:</span> Gestor Avaliador
+                  <span className="font-semibold">{t('evaluation.yourRole')}:</span> {t('evaluation.managerEvaluator')}
                 </div>
               )}
             </div>
@@ -274,43 +301,43 @@ export default function FillEvaluationClient({
           className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-8"
         >
           <h2 className="text-lg font-bold text-gray-900 mb-3">
-            📋 Instruções
+            📋 {t('evaluation.instructions')}
           </h2>
           <ul className="space-y-2 text-sm text-gray-700">
             {isManager ? (
               <>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">•</span>
-                  Avalie o desempenho do colaborador respondendo as questões de avaliação gerencial
+                  {t('evaluation.instructionManager1')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">•</span>
-                  Revise a autoavaliação do colaborador se necessário
+                  {t('evaluation.instructionManager2')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">•</span>
-                  Forneça feedback construtivo nos comentários
+                  {t('evaluation.instructionManager3')}
                 </li>
               </>
             ) : (
               <>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">•</span>
-                  Preencha todas as questões sobre seu desempenho
+                  {t('evaluation.instructionEmployee1')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">•</span>
-                  Seja honesto e objetivo nas suas respostas
+                  {t('evaluation.instructionEmployee2')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">•</span>
-                  Forneça exemplos concretos quando possível
+                  {t('evaluation.instructionEmployee3')}
                 </li>
               </>
             )}
             <li className="flex items-start gap-2">
               <span className="text-blue-600 font-bold">•</span>
-              Você pode salvar como rascunho e continuar depois
+              {t('evaluation.canSaveDraft')}
             </li>
           </ul>
         </motion.div>
@@ -344,26 +371,65 @@ export default function FillEvaluationClient({
               className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiSave className="w-5 h-5" />
-              {isSaving ? 'Salvando...' : 'Salvar Rascunho'}
+              {isSaving ? t('evaluation.saving') : t('evaluation.saveDraft')}
             </button>
 
             <button
-              onClick={handleSubmit}
+              onClick={handleSubmitClick}
               disabled={isSaving}
               className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiSend className="w-5 h-5" />
-              {isSaving ? 'Enviando...' : isManager ? 'Finalizar Avaliação' : 'Enviar para Aprovação'}
+              {isSaving ? t('evaluation.sending') : isManager ? t('evaluation.finalize') : t('evaluation.sendForApproval')}
             </button>
           </div>
 
           <p className="text-xs text-gray-500 text-right mt-4">
             {isManager 
-              ? 'Ao finalizar, a avaliação será marcada como concluída'
-              : 'Ao enviar, a avaliação será enviada para seu gestor revisar'
+              ? t('evaluation.finalizeNote')
+              : t('evaluation.sendNote')
             }
           </p>
         </motion.div>
+
+        {/* Modal de Confirmação */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <FiAlertCircle className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  {isManager ? t('evaluation.confirmFinalizeTitle') : t('evaluation.confirmSubmitTitle')}
+                </h3>
+              </div>
+
+              <p className="text-gray-700 mb-6">
+                {isManager ? t('evaluation.confirmFinalizeMessage') : t('evaluation.confirmSubmitMessage')}
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+                >
+                  {t('evaluation.cancel')}
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all"
+                >
+                  {t('evaluation.confirm')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
   );

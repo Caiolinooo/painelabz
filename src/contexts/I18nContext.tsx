@@ -9,6 +9,7 @@ interface I18nContextType {
   t: (key: string, defaultValue?: string) => string;
   locales: Record<Locale, any>;
   availableLocales: Locale[];
+  version: number;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
@@ -21,6 +22,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
   // Initialize with default locale to avoid hydration mismatch
   const [locale, setLocaleState] = useState<Locale>('pt-BR');
   const [mounted, setMounted] = useState(false);
+  const [version, setVersion] = useState(0);
 
   // Set mounted state and initialize locale on client side
   useEffect(() => {
@@ -55,6 +57,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
 
     // Update state
     setLocaleState(newLocale);
+    setVersion(v => v + 1); // Incrementar versão para forçar re-render
 
     // Save to localStorage
     if (typeof window !== 'undefined') {
@@ -85,6 +88,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
         t,
         locales,
         availableLocales,
+        version,
       }}
     >
       {mounted ? children : <div style={{ display: 'none' }} />}

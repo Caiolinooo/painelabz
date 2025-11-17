@@ -9,6 +9,7 @@ import GlobalErrorHandler from './GlobalErrorHandler';
 import { I18nProvider } from '@/contexts/I18nContext';
 import { SupabaseAuthProvider } from '@/contexts/SupabaseAuthContext';
 import { SiteConfigProvider } from '@/contexts/SiteConfigContext';
+import { AlertProvider } from '@/contexts/AlertContext';
 // Using our new safer approach for Material Design icons
 import MaterialDesignIcon from '@/components/MaterialDesignIcon';
 import LanguageDialog from '@/components/LanguageDialog';
@@ -74,11 +75,13 @@ export default function ClientProviders({ children }: { children: React.ReactNod
       <SupabaseAuthProvider>
         <I18nProvider>
           <SiteConfigProvider>
-            <SiteHead />
-            {isMounted && <LanguageDialog />}
-            {isMounted && <ToastContainer position="top-right" theme="colored" />}
-            <ProfilePromptGate isMounted={isMounted} pathname={pathname} />
-            {children}
+            <AlertProvider>
+              <SiteHead />
+              {isMounted && <LanguageDialog />}
+              {isMounted && <ToastContainer position="top-right" theme="colored" />}
+              <ProfilePromptGate isMounted={isMounted} pathname={pathname} />
+              {children}
+            </AlertProvider>
           </SiteConfigProvider>
         </I18nProvider>
       </SupabaseAuthProvider>

@@ -13,11 +13,11 @@ export default function Footer() {
     <footer className="bg-white border-t border-gray-200 py-4 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col sm:flex-row justify-between items-center">
         <p className="text-center sm:text-left text-sm text-gray-500 mb-2 sm:mb-0">
-          {config.footerText || `© ${new Date().getFullYear()} ${config.companyName} - ${t('common.all')} ${t('common.rights')} ${t('common.reserved')}`}
+          {config.footerText || `© ${new Date().getFullYear()} ${config.companyName || 'ABZ Group'}. ${t('common.allRightsReserved')}.`}
         </p>
         <div className="flex flex-col sm:flex-row items-center">
           <p className="text-center sm:text-right text-xs text-gray-400 mb-2 sm:mb-0 sm:mr-4">
-            {t('common.developedBy')}: <span className="font-semibold">Caio Valerio Goulart Correia</span>
+            {t('common.developedBy')}: <span className="font-semibold">{t('common.developer')}</span>
           </p>
           <div className="flex space-x-4 mt-2 sm:mt-0">
             <a href="https://www.linkedin.com/in/caio-goulart/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">

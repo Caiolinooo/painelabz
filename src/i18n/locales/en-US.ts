@@ -83,7 +83,9 @@ export default {
     allRights: 'All',
     rights: 'rights',
     reserved: 'reserved',
+    allRightsReserved: 'All rights reserved',
     developedBy: 'Developed by',
+    developer: 'Caio Valerio Goulart Correia',
     administrators: 'Administrators',
     managers: 'Managers',
     users: 'Users',
@@ -411,19 +413,27 @@ export default {
   },
   menu: {
     dashboard: 'Dashboard',
+    manual: 'Employee Manual',
     manualLogistico: 'Logistics Manual',
     procedimentoLogistica: 'Logistics Procedure',
+    procedimentos: 'Procedures',
     politicas: 'Policies',
     procedimentosGerais: 'General Procedures',
     calendario: 'Calendar',
     abzNews: 'ABZ News',
+    noticias: 'News',
     reembolso: 'Reimbursement',
     contracheque: 'Payslip',
     ponto: 'Time Clock',
     folhaPagamento: 'Payroll',
     avaliacao: 'Performance Evaluation',
     administracao: 'Administration',
+    admin: 'Administration',
     usuariosAutorizados: 'Authorized Users',
+    academy: 'ABZ Academy',
+    social: 'ABZ Social',
+    contatos: 'Contacts',
+    folha: 'Payroll',
   },
   cards: {
     // Traduções padrão para os cards do menu
@@ -872,6 +882,7 @@ export default {
     tituloExibidoNoPainelPrincipal: 'Title displayed on the main panel',
     tituloDoMenuLateral: 'Sidebar Title',
     tituloExibidoNoMenuLateral: 'Title displayed on the sidebar menu',
+    deixeVazioParaNaoExibir: 'Leave empty to hide',
     emailDeContato: 'Contact Email',
     descricaoDoSite: 'Site Description',
     descricaoDoPainelPrincipal: 'Main Panel Description',
@@ -1115,6 +1126,50 @@ export default {
     noPermissionAccess: 'You do not have permission to access evaluations.',
     evaluator: 'Evaluator',
     period: 'Period',
+    autoavaliacao: 'Self-Evaluation',
+    pontosFortes: 'Strengths',
+    managerialEvaluation: 'Managerial Evaluation',
+    selfEvaluation: 'Self-Evaluation',
+    exportPDF: 'Export PDF',
+    exportingPDF: 'Exporting...',
+    pdfExported: 'PDF exported successfully!',
+    errorExportingPDF: 'Error exporting PDF',
+    pdfTitle: 'Performance Evaluation',
+    question: 'Question',
+    score: 'Score',
+    comment: 'Comment',
+    noComment: 'No comment',
+    generatedAt: 'Generated at',
+    alreadyCompleted: 'This evaluation has already been completed and can no longer be edited.',
+    completed: 'Evaluation Completed',
+    alreadyCompletedMessage: 'This evaluation has already been finalized and can no longer be edited.',
+    viewEvaluation: 'View Evaluation',
+    fillAtLeastOne: 'Please fill in at least one question before submitting',
+    errorSavingDraft: 'Error saving draft',
+    draftSaved: 'Draft saved successfully!',
+    errorSaving: 'Error saving evaluation',
+    errorApproving: 'Error approving evaluation',
+    approvedSuccess: 'Evaluation approved successfully!',
+    errorSubmitting: 'Error submitting evaluation',
+    sentForApproval: 'Evaluation sent for manager approval!',
+    employee: 'Employee',
+    yourRole: 'Your role',
+    managerEvaluator: 'Manager Evaluator',
+    instructions: 'Instructions',
+    instructionManager1: 'Evaluate the employee\'s performance by answering the managerial evaluation questions',
+    instructionManager2: 'Review the employee\'s self-evaluation if necessary',
+    instructionManager3: 'Provide constructive feedback in the comments',
+    instructionEmployee1: 'Fill in all questions about your performance',
+    instructionEmployee2: 'Be honest and objective in your answers',
+    instructionEmployee3: 'Provide concrete examples when possible',
+    canSaveDraft: 'You can save as draft and continue later',
+    saving: 'Saving...',
+    saveDraft: 'Save Draft',
+    sending: 'Sending...',
+    finalize: 'Finalize Evaluation',
+    sendForApproval: 'Send for Approval',
+    finalizeNote: 'Upon finalizing, the evaluation will be marked as completed',
+    sendNote: 'Upon sending, the evaluation will be sent to your manager for review',
     dashboard: {
       title: 'Performance Evaluations',
     },
@@ -1461,7 +1516,31 @@ export default {
     historicoAvaliacoes: 'Evaluation History',
     semAvaliacoes: 'This employee has no evaluations registered yet',
     noAvaliacoes: 'No evaluations registered',
-    avaliacaoGerenteLogado: 'You are creating this evaluation as the evaluator manager'
+    avaliacaoGerenteLogado: 'You are creating this evaluation as the evaluator manager',
+    teamEvaluations: 'Team Evaluations',
+    performanceEvaluations: 'Performance Evaluations',
+    manageTeamEvaluations: 'Manage and track your team members\' evaluations',
+    trackDevelopment: 'Track your professional development and growth',
+    backToDashboard: 'Back to Dashboard',
+    pending: 'Pending',
+    awaitingMyReview: 'Awaiting My Review',
+    awaitingManager: 'Awaiting Manager',
+    completed: 'Completed',
+    requiresAction: 'Requires Action',
+    activePeriodsTitle: 'Active Periods - Fill Your Evaluation',
+    activePeriodsDesc: 'These evaluation periods are active now. Click to start or continue your self-evaluation.',
+    upcomingPeriodsTitle: 'Upcoming Periods',
+    upcomingPeriodsDesc: 'These periods will start soon. Stay tuned for the dates!',
+    searchEmployee: 'Search by employee...',
+    allPeriods: 'All Periods',
+    awaitingYourReview: 'Evaluations Awaiting Your Review',
+    awaitingYourReviewCount: 'You have {count} evaluation(s) awaiting your approval',
+    pendingResponse: 'Pending Response',
+    noEvaluationsFound: 'No evaluations found',
+    noEvaluationsDesc: 'There are no evaluations matching the selected filters',
+    clearFilters: 'Clear Filters',
+    unknown: 'Unknown',
+    managerNotAssigned: 'Manager not assigned',
   },
   payroll: {
     title: 'Payroll',
@@ -1625,6 +1704,64 @@ export default {
       normal: 'Normal',
       high: 'High',
       urgent: 'Urgent'
+    },
+    evaluation: {
+      periodOpened: {
+        title: '🚀 New Evaluation Period',
+        message: 'The evaluation period "{periodName}" has been opened! Access to start your self-evaluation.'
+      },
+      evaluationCreated: {
+        title: '📝 New Evaluation Available',
+        message: 'A new performance evaluation has been created for the period: {periodName}. Access to start your self-evaluation.'
+      },
+      selfEvaluationCompleted: {
+        title: '✅ Self-Evaluation Completed',
+        message: '{employeeName} completed the self-evaluation and is awaiting your review as manager.'
+      },
+      managerReviewPending: {
+        title: '👨💼 Manager Review Pending',
+        message: 'You have an evaluation from {employeeName} awaiting your review and approval.'
+      },
+      evaluationReturned: {
+        title: '🔄 Evaluation Returned for Adjustments',
+        message: 'Your evaluation was returned by manager {managerName} for adjustments. Check the comments and resubmit.'
+      },
+      evaluationRevised: {
+        titleByEmployee: '💬 Final Comment Added',
+        messageByEmployee: '{employeeName} added the final comment to the evaluation. Review and finalize the evaluation.',
+        titleByManager: '✅ Evaluation Approved by Manager',
+        messageByManager: '{managerName} approved your evaluation. Add your final comment to complete the process.',
+        titleGeneric: '📝 Evaluation Revised',
+        messageGeneric: 'The evaluation has been revised. Check the details.'
+      },
+      evaluationCompleted: {
+        title: '🎉 Evaluation Completed',
+        message: 'Your performance evaluation has been completed by {managerName}! View the results and feedback.'
+      }
+    },
+    reimbursement: {
+      submitted: {
+        title: '📝 Reimbursement Submitted',
+        message: 'Your reimbursement request (Protocol: {protocol}) was submitted successfully.'
+      },
+      approved: {
+        title: '✅ Reimbursement Approved',
+        message: 'Your reimbursement (Protocol: {protocol}) was approved! Amount: {amount}'
+      },
+      rejected: {
+        title: '❌ Reimbursement Rejected',
+        message: 'Your reimbursement (Protocol: {protocol}) was rejected. Reason: {reason}'
+      }
+    },
+    system: {
+      welcome: {
+        title: '👋 Welcome to the System',
+        message: 'Hello {name}! Your access has been approved.'
+      },
+      passwordExpiry: {
+        title: '⚠️ Password Expiring',
+        message: 'Your password expires in {days} days. Please change your password.'
+      }
     }
   },
 
@@ -2282,4 +2419,102 @@ export default {
     digitePeloMenos2CaracteresBuscar: 'Type at least 2 characters to search',
     useCtrlKAbrirBuscaRapidamente: 'Use Ctrl+K to open search quickly',
   },
+
+  // Email Templates
+  emailTemplates: {
+    subjects: {
+      accessApproved: 'Access Approved - ABZ Group',
+      accessRejected: 'Access Request Denied - ABZ Group',
+      inviteCode: 'Invitation to ABZ Group',
+      reimbursementSubmitted: 'Reimbursement Request - Protocol: {protocol}',
+      reimbursementApproved: 'Reimbursement Approved - Protocol: {protocol}',
+      reimbursementRejected: 'Reimbursement Not Approved - Protocol: {protocol}',
+      welcome: 'Welcome to ABZ Group',
+      passwordExpiry: 'Your Password Will Expire Soon',
+      evaluationNotification: 'Evaluation Notification - ABZ Group'
+    },
+    greetings: {
+      hello: 'Hello',
+      dear: 'Dear'
+    },
+    closings: {
+      regards: 'Best regards',
+      team: 'ABZ Group Team',
+      bestRegards: 'Kind regards'
+    },
+    common: {
+      viewDetails: 'View Details',
+      contactSupport: 'Contact support',
+      automaticNotification: 'This is an automatic system notification.',
+      doNotReply: 'Please do not reply to this email.',
+      needHelp: 'Need help?',
+      accessSystem: 'Access System'
+    },
+    reimbursement: {
+      confirmation: {
+        title: 'Reimbursement Request Confirmation',
+        intro: 'Your reimbursement request has been received successfully and is being processed.',
+        protocolLabel: 'Protocol',
+        valueLabel: 'Amount',
+        dateLabel: 'Request Date',
+        statusLabel: 'Status',
+        statusPending: 'Pending',
+        footer: 'You will receive updates about your request status by email. If you have any questions, please contact the finance department.'
+      },
+      approval: {
+        title: 'Reimbursement Approved',
+        intro: 'We are pleased to inform you that your reimbursement request has been approved!',
+        paymentMethodLabel: 'Payment Method',
+        observationLabel: 'Note',
+        footer: 'Payment will be processed according to the selected method. If you have any questions, please contact the finance department.'
+      },
+      rejection: {
+        title: 'Reimbursement Not Approved',
+        intro: 'We inform you that your reimbursement request was not approved.',
+        reasonLabel: 'Reason',
+        footer: 'If you have questions about this decision, please contact the finance department.'
+      }
+    },
+    access: {
+      approved: {
+        title: 'Access Approved',
+        intro: 'Your access to the ABZ Group system has been approved by {adminName}!',
+        instructions: 'You can now log in to the system using your credentials.',
+        footer: 'Welcome to the ABZ Group team!'
+      },
+      rejected: {
+        title: 'Access Request Denied',
+        intro: 'Your access request to the ABZ Group system was denied by {adminName}.',
+        reasonLabel: 'Reason',
+        reasonNotSpecified: 'Not specified',
+        footer: 'If you believe this is an error, please contact the system administrator.'
+      }
+    },
+    invite: {
+      title: 'You have been invited to ABZ Group',
+      intro: 'You have received an invitation to join the ABZ Group system.',
+      codeLabel: 'Invitation Code',
+      expiryLabel: 'Valid Until',
+      maxUsesLabel: 'Allowed Uses',
+      instructions: 'Use the code above to complete your registration in the system.',
+      registerButton: 'Complete Registration',
+      footer: 'This invitation is personal and non-transferable.'
+    },
+    welcome: {
+      title: 'Welcome to ABZ Group',
+      intro: 'Hello {name}, welcome to the ABZ Group system!',
+      accessInfo: 'Your access has been created successfully. Use the information below to log in:',
+      loginUrlLabel: 'Access URL',
+      temporaryPasswordLabel: 'Temporary Password',
+      temporaryPasswordNote: 'For security, you will be asked to change your password on first access.',
+      footer: 'If you have any questions, please contact support.'
+    },
+    passwordExpiry: {
+      title: 'Your Password is About to Expire',
+      intro: 'Your password will expire in {days} days.',
+      instructions: 'Please change your password before it expires to avoid interruptions in system access.',
+      changePasswordButton: 'Change Password',
+      footer: 'This is a security measure to protect your account.'
+    }
+  }
 };
