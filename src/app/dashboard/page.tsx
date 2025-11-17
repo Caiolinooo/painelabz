@@ -244,12 +244,16 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <h2 className="text-3xl font-extrabold text-abz-blue-dark">
-                {config?.dashboardTitle || t('dashboard.logisticsPanel', 'Painel de Logística ABZ Group')}
-              </h2>
-              <p className="mt-2 text-sm text-gray-500">
-                {config?.dashboardDescription || t('dashboard.welcomeMessage', 'Bem-vindo ao Hub da ABZ Group. Reunimos as principais ferramentas em um único local para facilitar o dia a dia dos nossos colaboradores.')}
-              </p>
+              {config?.dashboardTitle && config.dashboardTitle.trim() !== '' && (
+                <h2 className="text-3xl font-extrabold text-abz-blue-dark">
+                  {config.dashboardTitle}
+                </h2>
+              )}
+              {config?.dashboardDescription && config.dashboardDescription.trim() !== '' && (
+                <p className="mt-2 text-sm text-gray-500">
+                  {config.dashboardDescription}
+                </p>
+              )}
             </div>
 
             {/* Busca Global */}

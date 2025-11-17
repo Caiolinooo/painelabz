@@ -33,7 +33,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
   showBanner = true,
   evaluationPendingCount = 0
 }) => {
-  const { t } = useI18n();
+  const { t, locale, version } = useI18n();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -353,11 +353,20 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
-    if (diffInMinutes < 1) return 'Agora';
+    if (diffInMinutes < 1) return locale === 'pt-BR' ? 'Agora' : 'Now';
     if (diffInMinutes < 60) return `${diffInMinutes}m`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
     return `${Math.floor(diffInMinutes / 1440)}d`;
   };
+
+  // Re-render quando locale mudar
+  useEffect(() => {
+    // Forçar atualização das traduções
+    if (isOpen) {
+      setIsOpen(false);
+      setTimeout(() => setIsOpen(true), 50);
+    }
+  }, [version]);
 
   // Posicionamento do dropdown
   const getPositionClasses = () => {
@@ -410,66 +419,20 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
         <div className={`absolute ${getPositionClasses()} w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden`}>
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">Notificações</h3>
+            <h3 className="font-semibold text-gray-900">{t('notifications.title')}</h3>
             <div className="flex items-center space-x-2">
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
                   className="text-sm text-blue-600 hover:text-blue-700"
                 >
-                  Marcar todas como lidas
+                  {t('notifications.markAllAsRead')}
                 </button>
               )}
               <button
-                onClick={async () => {
-                  try {
-                    if (notifications.length === 0) {
-                      alert('Nenhuma notificação para apagar.');
-                      return;
-                    }
-                    
-                    const ok = window.confirm(`Apagar todas as ${notifications.length} notificações? Esta ação não pode ser desfeita.`);
-                    if (!ok) return;
-                    
-                    setLoading(true);
-                    const res = await fetch('/api/notifications/purge', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: ***REMOVED*** user_id: userId, olderThanDays: 0, onlyRead: false })
-                    });
-                    
-                    if (res.ok) {
-                      const result = await res.json();
-                      console.log('Purge result:', result);
-                      
-                      // Limpar todas as notificações
-                      setNotifications([]);
-                      setUnreadCount(0);
-                      
-                      // Recarregar para sincronizar com servidor
-                      setTimeout(() => loadNotifications(1, true), 100);
-                      alert(`${result.deletedCount || notifications.length} notificações apagadas com sucesso!`);
-                    } else {
-                      const error = await res.text();
-                      console.error('Falha ao apagar notificações:', error);
-                      alert('Erro ao apagar notificações. Tente novamente.');
-                    }
-                  } catch (e) {
-                    console.error('Erro ao apagar notificações:', e);
-                    alert('Erro ao apagar notificações. Tente novamente.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading || notifications.length === 0}
-                className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={`Apagar todas as ${notifications.length} notificações`}
-              >
-                {loading ? 'Apagando...' : `Apagar Todas (${notifications.length})`}
-              </button>
-              <button
                 onClick={() => setIsOpen(false)}
                 className="p-1 hover:bg-gray-100 rounded"
+                aria-label={t('common.close')}
               >
                 <FiX className="w-4 h-4" />
               </button>
@@ -481,7 +444,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <FiBell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Nenhuma notificação</p>
+                <p>{t('notifications.noNotifications')}</p>
               </div>
             ) : (
               <>

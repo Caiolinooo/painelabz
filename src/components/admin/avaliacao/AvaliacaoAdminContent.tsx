@@ -67,49 +67,7 @@ export default function AvaliacaoAdminContent() {
       alert('Falha na requisição: ' + e.message);
     }
   };
-                <button
-                  onClick={() => setActiveTab('config')}
-                  className={`py-4 px-6 text-center border-b-2 font-medium text-sm whitespace-nowrap ${
-                    activeTab === 'config'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <FiSettings className="inline-block mr-2" />
-                  Configuração
-                </button>
-              {activeTab === 'config' && (
-                <div className="space-y-6">
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Configuração de Cálculo</h2>
-                  <div className="p-4 border rounded-md bg-gray-50 space-y-4">
-                    <p className="text-sm text-gray-600">
-                      Controle do método de cálculo das médias. O ambiente deve ter <code className="px-1 bg-yellow-200 rounded">EVALUACAO_WEIGHTED_ENABLED=true</code> para permitir uso de pesos.
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-800">Cálculo Ponderado</p>
-                        <p className="text-xs text-gray-500">Quando ativo, usa pesos configurados por pergunta (default 1).</p>
-                      </div>
-                      <button
-                        onClick={toggleWeighted}
-                        disabled={settingsLoading}
-                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
-                          settings?.calculo?.method === 'weighted' && weightedEnvEnabled
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                            : 'bg-gray-300 hover:bg-gray-400 text-gray-800'
-                        }`}
-                      >
-                        {settingsLoading ? 'Atualizando...' : settings?.calculo?.method === 'weighted' && weightedEnvEnabled ? 'Ativado' : 'Desativado'}
-                      </button>
-                    </div>
-                    {!weightedEnvEnabled && (
-                      <div className="text-xs text-red-600">
-                        A flag de ambiente não está ativa. Mesmo que o método esteja setado para weighted, o cálculo continuará simples.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+
   const { user, profile, isLoading, isAdmin } = useSupabaseAuth();
   const router = useRouter();
 
@@ -150,7 +108,7 @@ export default function AvaliacaoAdminContent() {
 
   return (
     <MainLayout>
-      <div className="w-full px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">
             {t('admin.avaliacao.title', 'Administração do Módulo de Avaliação')}
@@ -256,6 +214,17 @@ export default function AvaliacaoAdminContent() {
                 <FiDatabase className="inline-block mr-2" />
                 {t('admin.avaliacao.tabs.database', 'Banco de Dados')}
               </button>
+              <button
+                onClick={() => setActiveTab('config')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === 'config'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <FiSettings className="inline-block mr-2" />
+                Configuração
+              </button>
             </nav>
           </div>
 
@@ -330,6 +299,39 @@ export default function AvaliacaoAdminContent() {
                     <FiUsers className="mr-2 -ml-1 h-5 w-5" />
                     {t('admin.avaliacao.funcionarios.manage', 'Gerenciar Funcionários')}
                   </Link>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'config' && (
+              <div className="space-y-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Configuração de Cálculo</h2>
+                <div className="p-4 border rounded-md bg-gray-50 space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Controle do método de cálculo das médias. O ambiente deve ter <code className="px-1 bg-yellow-200 rounded">EVALUACAO_WEIGHTED_ENABLED=true</code> para permitir uso de pesos.
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800">Cálculo Ponderado</p>
+                      <p className="text-xs text-gray-500">Quando ativo, usa pesos configurados por pergunta (default 1).</p>
+                    </div>
+                    <button
+                      onClick={toggleWeighted}
+                      disabled={settingsLoading}
+                      className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+                        settings?.calculo?.method === 'weighted' && weightedEnvEnabled
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-gray-300 hover:bg-gray-400 text-gray-800'
+                      }`}
+                    >
+                      {settingsLoading ? 'Atualizando...' : settings?.calculo?.method === 'weighted' && weightedEnvEnabled ? 'Ativado' : 'Desativado'}
+                    </button>
+                  </div>
+                  {!weightedEnvEnabled && (
+                    <div className="text-xs text-red-600">
+                      A flag de ambiente não está ativa. Mesmo que o método esteja setado para weighted, o cálculo continuará simples.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
