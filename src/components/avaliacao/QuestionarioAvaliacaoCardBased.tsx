@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronDown, FiChevronUp, FiUser, FiUsers } from 'react-icons/fi';
 import { QUESTIONARIO_PADRAO, ESCALA_AVALIACAO } from '@/lib/schemas/evaluation-schemas';
 import StarRating from '@/components/StarRating';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface QuestionarioAvaliacaoCardBasedProps {
   respostas: Record<string, any>;
@@ -25,6 +26,7 @@ export default function QuestionarioAvaliacaoCardBased({
   notasGerente = {},
   onNotaGerenteChange
 }: QuestionarioAvaliacaoCardBasedProps) {
+  const { t } = useI18n();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     autoavaliacao: true,
     gerencial: isManager
@@ -114,7 +116,7 @@ export default function QuestionarioAvaliacaoCardBased({
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-semibold text-gray-700">
-                Avaliação:
+                {t('evaluation.rating')}:
               </label>
               {resposta?.nota && (
                 <span className={`text-lg font-bold ${
@@ -130,11 +132,11 @@ export default function QuestionarioAvaliacaoCardBased({
               {renderStarRating(question.id, resposta?.nota || 0, isReadOnly)}
             </div>
             <div className="text-xs text-gray-600 space-y-1">
-              <p><strong>1</strong> - Frequentemente não alcançou a expectativa</p>
-              <p><strong>2</strong> - Não alcançou a expectativa</p>
-              <p><strong>3</strong> - Alcançou a expectativa</p>
-              <p><strong>4</strong> - Frequentemente excedeu a expectativa</p>
-              <p><strong>5</strong> - Consistentemente excedeu a expectativa</p>
+              <p><strong>1</strong> - {t('evaluation.ratingScale.level1')}</p>
+              <p><strong>2</strong> - {t('evaluation.ratingScale.level2')}</p>
+              <p><strong>3</strong> - {t('evaluation.ratingScale.level3')}</p>
+              <p><strong>4</strong> - {t('evaluation.ratingScale.level4')}</p>
+              <p><strong>5</strong> - {t('evaluation.ratingScale.level5')}</p>
             </div>
           </div>
         )}
@@ -142,7 +144,7 @@ export default function QuestionarioAvaliacaoCardBased({
         {/* Comentário */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Comentários ou Justificativa:
+            {t('evaluation.commentsLabel')}:
           </label>
           <textarea
             value={resposta?.comentario || ''}
@@ -151,12 +153,12 @@ export default function QuestionarioAvaliacaoCardBased({
               comentario: e.target.value 
             })}
             readOnly={isReadOnly}
-            placeholder="Descreva evidências, exemplos ou contextos relevantes..."
+            placeholder={t('evaluation.commentsPlaceholder')}
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
             rows={4}
           />
           <p className="text-xs text-gray-500 mt-2">
-            {question.obrigatorio ? '* Campo obrigatório' : 'Opcional'}
+            {question.obrigatorio ? t('evaluation.requiredField') : t('evaluation.optionalField')}
           </p>
         </div>
 
@@ -164,7 +166,7 @@ export default function QuestionarioAvaliacaoCardBased({
         {isManager && isCollaboratorQuestion && onNotaGerenteChange && (
           <div className="mt-6 pt-6 border-t-2 border-purple-200 bg-purple-50 -mx-6 -mb-6 px-6 pb-6 rounded-b-xl">
             <label className="block text-sm font-semibold text-purple-700 mb-3">
-              📊 Nota do Gerente para esta resposta:
+              {t('evaluation.managerNoteLabel')}:
             </label>
             <div className="flex items-center gap-4">
               <StarRating
@@ -187,7 +189,7 @@ export default function QuestionarioAvaliacaoCardBased({
               )}
             </div>
             <p className="text-xs text-purple-600 mt-2">
-              Avalie a qualidade e completude da resposta do colaborador
+              {t('evaluation.managerNoteDesc')}
             </p>
           </div>
         )}
@@ -209,10 +211,10 @@ export default function QuestionarioAvaliacaoCardBased({
             </div>
             <div className="text-left">
               <h2 className="text-2xl font-bold text-gray-900">
-                Autoavaliação (Colaborador)
+                {t('evaluation.selfEvaluationSection')}
               </h2>
               <p className="text-sm text-gray-600">
-                Questões 11-14  Sua percepção sobre seu desempenho
+                {t('evaluation.selfEvaluationDesc')}
               </p>
             </div>
           </div>
@@ -254,10 +256,10 @@ export default function QuestionarioAvaliacaoCardBased({
               </div>
               <div className="text-left">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Avaliação Gerencial
+                  {t('evaluation.managerEvaluationSection')}
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Questões 15-17  Avaliação do gestor direto
+                  {t('evaluation.managerEvaluationDesc')}
                 </p>
               </div>
             </div>

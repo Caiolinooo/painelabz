@@ -26,7 +26,7 @@ const defaultConfig: SiteConfig = {
 // GET - Obter a configuração do site
 export async function GET() {
   try {
-    console.log('Buscando configurações do site');
+    console.log('🔍 [API GET] Buscando configurações do site');
 
     const { data, error } = await supabaseAdmin
       .from('SiteConfig')
@@ -35,27 +35,28 @@ export async function GET() {
       .maybeSingle();
 
     if (error) {
-      console.error('Erro ao buscar configuração:', error);
-      console.log('Retornando configuração padrão devido ao erro');
+      console.error('❌ [API GET] Erro ao buscar configuração:', error);
+      console.log('⚠️ [API GET] Retornando configuração padrão devido ao erro');
       return NextResponse.json(defaultConfig);
     }
 
     if (!data) {
-      console.log('Configuração não encontrada, retornando valores padrão');
+      console.log('⚠️ [API GET] Configuração não encontrada, retornando valores padrão');
       return NextResponse.json(defaultConfig);
     }
 
-    console.log('Configuração encontrada:', data);
+    console.log('✅ [API GET] Configuração encontrada no banco:', {
+      id: data.id,
+      title: data.title,
+      sidebarTitle: data.sidebarTitle,
+      dashboardTitle: data.dashboardTitle,
+      dashboardDescription: data.dashboardDescription
+    });
 
-    // Garantir que todos os campos necessários estejam presentes
-    const completeConfig = {
-      ...defaultConfig,
-      ...data
-    };
-
-    return NextResponse.json(completeConfig);
+    // NÃO misturar com defaultConfig - retornar EXATAMENTE o que está no banco
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Erro ao obter configuração:', error);
+    console.error('❌ [API GET] Erro ao obter configuração:', error);
     // Em caso de erro, retornar a configuração padrão em vez de um erro
     return NextResponse.json(defaultConfig);
   }
@@ -77,15 +78,16 @@ export async function PUT(request: NextRequest) {
       footerText,
       dashboardTitle,
       dashboardDescription,
+      sidebarTitle,
       googleClientId,
       googleClientSecret,
       googleRedirectUri
     } = body;
 
-    // Validar os dados de entrada obrigatórios
-    if (!title || !description || !companyName || !contactEmail) {
+    // Validar os dados de entrada obrigatórios (apenas title e companyName)
+    if (!title || !companyName) {
       return NextResponse.json(
-        { error: 'Campos obrigatórios: title, description, companyName, contactEmail' },
+        { error: 'Campos obrigatórios: title, companyName' },
         { status: 400 }
       );
     }
@@ -117,6 +119,7 @@ export async function PUT(request: NextRequest) {
       footerText,
       dashboardTitle,
       dashboardDescription,
+      sidebarTitle,
       googleClientId,
       googleClientSecret,
       googleRedirectUri,
@@ -148,9 +151,12 @@ export async function PUT(request: NextRequest) {
       result = data;
     } else {
       // Atualizar configuração existente
-      console.log('Atualizando configuração com cores:', {
-        primaryColor,
-        secondaryColor
+      console.log('📝 [API PUT] Atualizando configuração existente');
+      console.log('📝 [API PUT] Dados a serem salvos:', {
+        title: configData.title,
+        sidebarTitle: configData.sidebarTitle,
+        dashboardTitle: configData.dashboardTitle,
+        dashboardDescription: configData.dashboardDescription
       });
 
       const { data, error: updateError } = await supabaseAdmin
@@ -161,16 +167,26 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (updateError) {
-        console.error('Erro ao atualizar configuração:', updateError);
+        console.error('❌ [API PUT] Erro ao atualizar configuração:', updateError);
+        console.error('❌ [API PUT] Dados enviados:', configData);
         return NextResponse.json(
-          { error: 'Erro ao atualizar configuração' },
+          { error: 'Erro ao atualizar configuração', details: updateError.message, hint: updateError.hint },
           { status: 500 }
         );
       }
 
+      console.log('✅ [API PUT] Configuração atualizada com sucesso:', {
+        id: data.id,
+        title: data.title,
+        sidebarTitle: data.sidebarTitle,
+        dashboardTitle: data.dashboardTitle,
+        dashboardDescription: data.dashboardDescription
+      });
+
       result = data;
     }
 
+    console.log('✅ [API PUT] Retornando resultado final:', result);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Erro ao atualizar configuração:', error);

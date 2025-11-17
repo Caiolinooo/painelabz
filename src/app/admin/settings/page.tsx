@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const { t } = useI18n();
 
   const siteConfig = useSiteConfig();
+  const currentSiteTitle = siteConfig?.config?.title || 'Painel ABZ';
   const [config, setConfig] = useState<SiteConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,6 +37,7 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [selectedLocale, setSelectedLocale] = useState<'pt-BR' | 'en-US' | 'es-ES'>('pt-BR');
 
   // Calendário da empresa (ICS)
   const [calUrlInput, setCalUrlInput] = useState<string>('');
@@ -71,21 +73,21 @@ export default function SettingsPage() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          // Configuração não encontrada, criar uma padrão
+          // Configuração não encontrada, criar uma padrão usando título do site atual
           const defaultConfig = {
             id: 'default',
-            title: 'Painel ABZ Group',
-            description: 'Painel centralizado para colaboradores da ABZ Group',
-            logo: '/images/LC1_Azul.png',
-            favicon: '/favicon.ico',
-            primaryColor: '#005dff',
-            secondaryColor: '#6339F5',
-            companyName: 'ABZ Group',
-            contactEmail: 'contato@groupabz.com',
-            footerText: '© 2024 ABZ Group. Todos os direitos reservados.',
-            dashboardTitle: t('admin.painelDeLogisticaAbzGroup'),
-            dashboardDescription: t('admin.bemvindoAoCentroDeRecursosParaColaboradoresDaLogis'),
-            sidebarTitle: 'Painel ABZ',
+            title: currentSiteTitle,
+            description: siteConfig?.config?.description || '',
+            logo: siteConfig?.config?.logo || '/images/LC1_Azul.png',
+            favicon: siteConfig?.config?.favicon || '/favicon.ico',
+            primaryColor: siteConfig?.config?.primaryColor || '#005dff',
+            secondaryColor: siteConfig?.config?.secondaryColor || '#6339F5',
+            companyName: siteConfig?.config?.companyName || 'ABZ Group',
+            contactEmail: siteConfig?.config?.contactEmail || 'contato@groupabz.com',
+            footerText: siteConfig?.config?.footerText || '© 2024 ABZ Group. Todos os direitos reservados.',
+            dashboardTitle: siteConfig?.config?.dashboardTitle || '',
+            dashboardDescription: siteConfig?.config?.dashboardDescription || '',
+            sidebarTitle: siteConfig?.config?.sidebarTitle || currentSiteTitle,
             updatedAt: new Date().toISOString(),
           };
 
@@ -118,21 +120,21 @@ export default function SettingsPage() {
       console.error(t('admin.erroAoCarregarConfiguracoes'), error);
       setError(t('admin.erroAoCarregarConfiguracoesPorFavorTenteNovamente'));
 
-      // Definir configuração padrão mesmo em caso de erro
+      // Definir configuração padrão mesmo em caso de erro usando título do site atual
       setConfig({
         id: 'default',
-        title: 'Painel ABZ Group',
-        description: 'Painel centralizado para colaboradores da ABZ Group',
-        logo: '/images/LC1_Azul.png',
-        favicon: '/favicon.ico',
-        primaryColor: '#005dff',
-        secondaryColor: '#6339F5',
-        companyName: 'ABZ Group',
-        contactEmail: 'contato@groupabz.com',
-        footerText: '© 2024 ABZ Group. Todos os direitos reservados.',
-        dashboardTitle: t('admin.painelDeLogisticaAbzGroup'),
-        dashboardDescription: t('admin.bemvindoAoCentroDeRecursosParaColaboradoresDaLogis'),
-        sidebarTitle: 'Painel ABZ',
+        title: currentSiteTitle,
+        description: siteConfig?.config?.description || '',
+        logo: siteConfig?.config?.logo || '/images/LC1_Azul.png',
+        favicon: siteConfig?.config?.favicon || '/favicon.ico',
+        primaryColor: siteConfig?.config?.primaryColor || '#005dff',
+        secondaryColor: siteConfig?.config?.secondaryColor || '#6339F5',
+        companyName: siteConfig?.config?.companyName || 'ABZ Group',
+        contactEmail: siteConfig?.config?.contactEmail || 'contato@groupabz.com',
+        footerText: siteConfig?.config?.footerText || '© 2024 ABZ Group. Todos os direitos reservados.',
+        dashboardTitle: siteConfig?.config?.dashboardTitle || '',
+        dashboardDescription: siteConfig?.config?.dashboardDescription || '',
+        sidebarTitle: siteConfig?.config?.sidebarTitle || currentSiteTitle,
         updatedAt: new Date().toISOString(),
       });
     } finally {
@@ -187,6 +189,60 @@ export default function SettingsPage() {
       console.error(`Erro ao fazer upload do ${type}`, error);
       return null;
     }
+  };
+
+  // Função para correção automática (API)
+  const handleAutoFix = async () => {
+    setIsSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/config/fix', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Correção automática concluída:', data);
+        setSuccess('✅ Correção automática concluída! Recarregando...');
+
+        // Recarregar configurações
+        await fetchConfig();
+
+        // Atualizar contexto
+        if (siteConfig?.refreshConfig) {
+          await siteConfig.refreshConfig();
+        }
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        const errorData = await response.json();
+        setError(`Erro na correção automática: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Erro na correção automática:', error);
+      setError('Erro ao executar correção automática');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Função para limpar valores padrão manualmente
+  const handleClearDefaults = async () => {
+    if (!config) return;
+
+    const clearedConfig = {
+      ...config,
+      sidebarTitle: '',
+      dashboardTitle: '',
+      dashboardDescription: ''
+    };
+
+    setConfig(clearedConfig);
+    setSuccess('Valores padrão limpos! Clique em "Salvar" para confirmar.');
   };
 
   // Função para salvar configurações
@@ -291,6 +347,33 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {/* Botão de Correção Automática */}
+      <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300 rounded-lg p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-red-900 mb-2">
+              🔧 Correção Automática de Configurações
+            </h3>
+            <p className="text-sm text-red-700 mb-4">
+              Se os títulos e descrições não estão sendo salvos corretamente ou aparecem valores antigos,
+              clique aqui para corrigir automaticamente. Esta ação irá:
+            </p>
+            <ul className="text-sm text-red-600 list-disc list-inside mb-4 space-y-1">
+              <li>Adicionar campos faltantes no banco de dados</li>
+              <li>Limpar todos os valores padrão antigos (ABZ, Painel, etc.)</li>
+              <li>Recarregar as configurações</li>
+            </ul>
+          </div>
+          <button
+            onClick={handleAutoFix}
+            disabled={isSaving}
+            className="ml-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+          >
+            {isSaving ? 'Corrigindo...' : '🔧 CORRIGIR AGORA'}
+          </button>
+        </div>
+      </div>
+
       {/* Mensagem de erro */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
@@ -311,19 +394,67 @@ export default function SettingsPage() {
           <h2 className="text-lg font-medium text-gray-900 mb-4">{t('admin.configuracoesBasicas')}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Seletor de Idioma */}
+            <div className="md:col-span-2 mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Idioma para Configuração
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocale('pt-BR')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedLocale === 'pt-BR'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  🇧🇷 Português
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocale('en-US')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedLocale === 'en-US'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  🇺🇸 English
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocale('es-ES')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedLocale === 'es-ES'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  🇪🇸 Español
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Selecione o idioma para configurar os textos. Os textos serão exibidos de acordo com o idioma selecionado pelo usuário.
+              </p>
+            </div>
+
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('admin.tituloDoSite')}
+                {t('admin.tituloDoSite')} ({selectedLocale})
               </label>
               <input
                 type="text"
                 id="title"
-                name="title"
-                value={config.title}
+                name={`title_${selectedLocale}`}
+                value={config[`title_${selectedLocale}` as keyof SiteConfig] as string || config.title}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                required
+                placeholder={selectedLocale === 'pt-BR' ? currentSiteTitle : selectedLocale === 'en-US' ? currentSiteTitle : currentSiteTitle}
               />
+              <p className="mt-1 text-xs text-gray-500">
+                {t('admin.deixeVazioParaNaoExibir')}
+              </p>
             </div>
 
             <div>
@@ -349,12 +480,14 @@ export default function SettingsPage() {
                 type="text"
                 id="dashboardTitle"
                 name="dashboardTitle"
-                value={config.dashboardTitle}
+                value={config.dashboardTitle || ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                placeholder="Painel de Logística ABZ Group"
+                placeholder=""
               />
-              <p className="mt-1 text-xs text-gray-500">{t('admin.tituloExibidoNoPainelPrincipal')}</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {t('admin.tituloExibidoNoPainelPrincipal')}. {t('admin.deixeVazioParaNaoExibir')}
+              </p>
             </div>
 
             <div>
@@ -368,9 +501,11 @@ export default function SettingsPage() {
                 value={config.sidebarTitle || ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                placeholder="Painel ABZ"
+                placeholder={currentSiteTitle}
               />
-              <p className="mt-1 text-xs text-gray-500">{t('admin.tituloExibidoNoMenuLateral')}</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {t('admin.tituloExibidoNoMenuLateral')}. {t('admin.deixeVazioParaNaoExibir')}
+              </p>
             </div>
 
             <div>
@@ -398,7 +533,11 @@ export default function SettingsPage() {
                 onChange={handleChange}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                placeholder=""
               />
+              <p className="mt-1 text-xs text-gray-500">
+                {t('admin.deixeVazioParaNaoExibir')}
+              </p>
             </div>
 
             <div className="md:col-span-2">
@@ -408,12 +547,15 @@ export default function SettingsPage() {
               <textarea
                 id="dashboardDescription"
                 name="dashboardDescription"
-                value={config.dashboardDescription}
+                value={config.dashboardDescription || ''}
                 onChange={handleChange}
                 rows={2}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                placeholder="Bem-vindo ao centro de recursos para colaboradores da logística."
+                placeholder=""
               />
+              <p className="mt-1 text-xs text-gray-500">
+                {t('admin.deixeVazioParaNaoExibir')}
+              </p>
             </div>
 
             <div className="md:col-span-2">
@@ -433,23 +575,33 @@ export default function SettingsPage() {
         </div>
 
         {/* Botões de ação */}
-        <div className="px-4 py-3 bg-gray-50 text-right sm:px-6 flex justify-end space-x-3">
+        <div className="px-4 py-3 bg-gray-50 text-right sm:px-6 flex justify-between">
           <button
             type="button"
-            onClick={fetchConfig}
-            className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+            onClick={handleClearDefaults}
+            className="inline-flex justify-center py-2 px-4 border border-orange-300 shadow-sm text-sm font-medium rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
           >
             <FiRefreshCw className="mr-2 h-4 w-4" />
-            {t('admin.recarregar')}
+            Limpar Títulos e Descrições
           </button>
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-abz-blue hover:bg-abz-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue disabled:opacity-70"
-          >
-            <FiSave className="mr-2 h-4 w-4" />
-            {isSaving ? t('admin.salvando') : t('admin.salvarConfiguracoes')}
-          </button>
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={fetchConfig}
+              className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+            >
+              <FiRefreshCw className="mr-2 h-4 w-4" />
+              {t('admin.recarregar')}
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-abz-blue hover:bg-abz-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue disabled:opacity-70"
+            >
+              <FiSave className="mr-2 h-4 w-4" />
+              {isSaving ? t('admin.salvando') : t('admin.salvarConfiguracoes')}
+            </button>
+          </div>
         </div>
       </form>
     </div>
