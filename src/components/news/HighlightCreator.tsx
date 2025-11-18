@@ -28,13 +28,29 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Validação de arquivos
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+  const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+    if (!file) return;
+
+    // Validar tamanho
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`Arquivo muito grande: ${(file.size / 1024 / 1024).toFixed(2)} MB. Máximo: 50 MB`);
+      return;
     }
+
+    // Validar tipo
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error(`Tipo de arquivo não permitido: ${file.type}`);
+      return;
+    }
+
+    setSelectedFile(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
   };
 
   const handleSubmit = async () => {
@@ -50,17 +66,29 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
       formData.append('folder', 'highlights');
       formData.append('file', selectedFile);
 
+      console.log('📤 Fazendo upload de destaque para o Supabase Storage...');
+
       const uploadResp = await fetch('/api/news/upload', {
         method: 'POST',
         body: formData
       });
 
       if (!uploadResp.ok) {
-        throw new Error(t('components.erroAoFazerUploadDaMidia'));
+        const errorData = await uploadResp.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('❌ Falha no upload:', errorData);
+
+        const errorMessage = errorData.error || t('components.erroAoFazerUploadDaMidia');
+        const errorDetails = errorData.details ? `\n${errorData.details}` : '';
+        const suggestion = errorData.suggestion ? `\n\n${errorData.suggestion}` : '';
+
+        toast.error(`${errorMessage}${errorDetails}${suggestion}`);
+        throw new Error(errorMessage);
       }
 
       const uploadData = await uploadResp.json();
       const mediaUrls = (uploadData.files || []).map((f: any) => f.url);
+
+      console.log('✅ Upload de destaque concluído:', mediaUrls);
 
       // Calcular data de expiração
       let expiresAt = null;
