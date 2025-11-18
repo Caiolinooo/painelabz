@@ -1688,23 +1688,32 @@ export async function updateUserPassword(userId: string, password: string): Prom
 // Função para verificar senha do usuário
 export async function verifyUserPassword(userId: string, password: string): Promise<boolean> {
   try {
+    console.log('🔐 DEBUG verifyUserPassword - Verificando senha para userId:', userId);
+    console.log('🔐 DEBUG verifyUserPassword - Senha fornecida (primeiros 3 chars):', password.substring(0, 3) + '...');
+
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL
     });
 
     try {
       const result = await pool.query(`
-        SELECT "password"
+        SELECT "password", "email", "first_name", "last_name"
         FROM "users_unified"
         WHERE "id" = $1
       `, [userId]);
 
       if (result.rows.length === 0) {
+        console.log('❌ DEBUG verifyUserPassword - Usuário não encontrado');
         return false;
       }
 
-      const hashedPassword = result.rows[0].password;
+      const user = result.rows[0];
+      const hashedPassword = user.password;
+      console.log('🔐 DEBUG verifyUserPassword - Usuário:', user.first_name, user.last_name, user.email);
+      console.log('🔐 DEBUG verifyUserPassword - Hash do banco (primeiros 20 chars):', hashedPassword ? hashedPassword.substring(0, 20) + '...' : 'NULL');
+
       const isValid = await bcrypt.compare(password, hashedPassword);
+      console.log('🔐 DEBUG verifyUserPassword - Resultado da comparação:', isValid ? '✅ PASSOU' : '❌ FALHOU');
 
       return isValid;
     } catch (error) {
