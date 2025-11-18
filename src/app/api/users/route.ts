@@ -230,6 +230,8 @@ export async function POST(request: NextRequest) {
           position,
           department,
           active: true,
+          is_authorized: true, // Usuários criados pelo admin são automaticamente autorizados
+          authorization_status: 'active', // Status de autorização ativo
           email_verified: true, // Usuários criados pelo admin não precisam verificar email
           password_last_changed: now.toISOString(),
           access_permissions: defaultPermissions[userRole as 'ADMIN' | 'MANAGER' | 'USER'],
