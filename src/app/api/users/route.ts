@@ -115,10 +115,13 @@ export async function POST(request: NextRequest) {
 
     // Verificar se a senha foi fornecida, caso contrário, gerar uma senha aleatória temporária
     let userPassword = password;
+    console.log('🔐 DEBUG - Senha fornecida?', !!password);
     if (!userPassword) {
       // Gerar uma senha aleatória de 10 caracteres
       userPassword = crypto.randomBytes(5).toString('hex');
-      console.log(`Senha aleatória gerada para o usuário ${firstName} ${lastName}: ${userPassword}`);
+      console.log(`🔐 Senha aleatória gerada para o usuário ${firstName} ${lastName}: ${userPassword}`);
+    } else {
+      console.log(`🔐 Usando senha fornecida para ${firstName} ${lastName} (primeiros 3 chars): ${userPassword.substring(0, 3)}...`);
     }
 
     // Verificar se o usuário já existe
@@ -201,7 +204,9 @@ export async function POST(request: NextRequest) {
     const userRole = ['ADMIN', 'USER', 'MANAGER'].includes(role) ? role : 'USER';
 
     // Gerar hash da senha
+    console.log('🔐 DEBUG - Gerando hash da senha. Senha original (primeiros 3 chars):', userPassword.substring(0, 3) + '...');
     const hashedPassword = await bcrypt.hash(userPassword, 10);
+    console.log('🔐 DEBUG - Hash gerado (primeiros 20 chars):', hashedPassword.substring(0, 20) + '...');
 
     // Criar o usuário usando SQL direto para evitar o erro de tipo
     const userId = crypto.randomUUID();
@@ -244,6 +249,25 @@ export async function POST(request: NextRequest) {
 
       if (createError) {
         throw new Error(`Erro ao criar usuário: ${createError.message}`);
+      }
+
+      console.log('✅ Usuário criado no banco de dados. ID:', userId);
+
+      // Verificar se a senha foi salva corretamente
+      const { data: verifyUser, error: verifyError } = await supabaseAdmin
+        .from('users_unified')
+        .select('id, password')
+        .eq('id', userId)
+        .single();
+
+      if (verifyUser && verifyUser.password) {
+        console.log('🔐 DEBUG - Senha salva no banco (primeiros 20 chars):', verifyUser.password.substring(0, 20) + '...');
+
+        // Testar se a senha funciona imediatamente
+        const testMatch = await bcrypt.compare(userPassword, verifyUser.password);
+        console.log('🔐 DEBUG - Teste de comparação imediata:', testMatch ? '✅ PASSOU' : '❌ FALHOU');
+      } else {
+        console.error('❌ DEBUG - Erro ao verificar senha salva:', verifyError);
       }
 
       // Armazenar o usuário criado para uso posterior
