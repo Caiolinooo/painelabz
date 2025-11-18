@@ -53,13 +53,32 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
     onClose();
   };
 
+  // Validação de arquivos
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+  const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
+
   // Selecionar arquivos
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    // Validar arquivos
+    for (const file of files) {
+      // Verificar tamanho
+      if (file.size > MAX_FILE_SIZE) {
+        alert(t('newsSystem.fileTooLarge', `Arquivo "${file.name}" excede o tamanho máximo de 50 MB.\n\nTamanho: ${(file.size / 1024 / 1024).toFixed(2)} MB`));
+        return;
+      }
+
+      // Verificar tipo
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        alert(t('newsSystem.invalidFileType', `Tipo de arquivo não permitido: ${file.type}\n\nArquivo: ${file.name}\n\nTipos permitidos: JPEG, PNG, GIF, WebP, MP4, WebM`));
+        return;
+      }
+    }
+
     setSelectedFiles(files);
-    
+
     // Criar URLs de preview
     const urls = files.map(file => URL.createObjectURL(file));
     setPreviewUrls(urls);
@@ -96,7 +115,7 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
     setIsUploading(true);
 
     try {
-      // Upload real de imagens via API local (/api/upload) que salva em public/uploads
+      // Upload real de imagens via API local (/api/news/upload) que salva no Supabase Storage
       let mediaUrls: string[] = [];
       if (selectedFiles.length > 0) {
         const form = new FormData();
@@ -104,13 +123,26 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
         selectedFiles.forEach((file) => {
           form.append('file', file);
         });
+
+        console.log('📤 Iniciando upload de imagens para o Supabase Storage...');
+
         const uploadResp = await fetch('/api/news/upload', { method: 'POST', body: form });
+
         if (uploadResp.ok) {
           const uploadData = await uploadResp.json();
           mediaUrls = (uploadData.files || []).map((f: any) => f.url);
+          console.log('✅ Upload concluído com sucesso:', mediaUrls);
         } else {
-          console.warn('Falha no upload, usando previews');
-          mediaUrls = previewUrls;
+          // Tentar obter detalhes do erro
+          const errorData = await uploadResp.json().catch(() => ({ error: 'Erro desconhecido' }));
+          console.error('❌ Falha no upload:', errorData);
+
+          // Mostrar erro detalhado ao usuário
+          const errorMessage = errorData.error || 'Erro ao fazer upload das imagens';
+          const errorDetails = errorData.details ? `\n\nDetalhes: ${errorData.details}` : '';
+          const suggestion = errorData.suggestion ? `\n\n💡 ${errorData.suggestion}` : '';
+
+          throw new Error(`${errorMessage}${errorDetails}${suggestion}`);
         }
       } else {
         mediaUrls = previewUrls;
