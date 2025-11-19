@@ -1,9 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Buscar service key da tabela app_secrets
+async function getServiceKeyFromDB() {
+  const supabaseUrl = ***REMOVED***!;
+  const anonKey = ***REMOVED***!;
+
+  const tempClient = ***REMOVED*** anonKey);
+
+  try {
+    const { data, error } = await tempClient
+      .from('app_secrets')
+      .select('value')
+      .or('key.eq.SUPABASE_SERVICE_ROLE_KEY,key.eq.***REMOVED***')
+      .single();
+
+    if (error || !data) {
+      console.error('Erro ao buscar service key do BD:', error);
+      return null;
+    }
+
+    return data.value;
+  } catch (e) {
+    console.error('Exceção ao buscar service key:', e);
+    return null;
+  }
+}
+
+// Inicializar cliente Supabase com service role key
+async function getSupabaseAdmin() {
+  const supabaseUrl = ***REMOVED***;
+  let supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+
+  // Se não tiver nas env vars, buscar do banco
+  if (!supabaseServiceKey) {
+    console.log('[UPLOAD] Service key não encontrada em env vars, buscando do BD...');
+    supabaseServiceKey = await getServiceKeyFromDB();
+  }
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error(`Configuração do Supabase ausente. URL: ${!!supabaseUrl}, Service Key: ${!!supabaseServiceKey}`);
+  }
+
+  return ***REMOVED*** supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
 
 // POST - Upload de mídias de notícias para o Supabase Storage (bucket 'news')
 export async function POST(request: NextRequest) {
@@ -12,6 +61,12 @@ export async function POST(request: NextRequest) {
   try {
     debugLogs.push('📥 Recebendo requisição de upload...');
     console.log('📥 [NEWS UPLOAD] Recebendo requisição de upload...');
+
+    // Inicializar cliente Supabase Admin
+    debugLogs.push('🔧 Inicializando cliente Supabase Admin...');
+    const supabaseAdmin = await getSupabaseAdmin();
+    debugLogs.push('✅ Cliente Supabase Admin inicializado');
+
     const formData = await request.formData();
 
     // Coletar arquivos (aceita chaves 'file' e 'files')
@@ -42,16 +97,7 @@ export async function POST(request: NextRequest) {
     debugLogs.push(`📁 Pasta de destino: ${folder}`);
     console.log(`📁 [NEWS UPLOAD] Pasta de destino: ${folder}`);
 
-    // Garantir que o bucket 'news' exista (ignorar erro se já existir)
-    try {
-      // createBucket falha se existir; podemos tentar e ignorar 'Bucket already exists'
-      // Nota: Alguns ambientes bloqueiam createBucket com anon; ideal com service role
-      // Este supabaseAdmin deve estar com service role
-      // @ts-ignore
-      await (supabaseAdmin as any).storage.createBucket('news', { public: true });
-    } catch (e) {
-      // ignore
-    }
+    // Não precisa criar bucket, já existe
 
     const uploaded: Array<{ originalName: string; path: string; url: string; type: string; size: number }> = [];
 
