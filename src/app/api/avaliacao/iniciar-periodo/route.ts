@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar token diretamente
     const decoded = verifyToken(token);
-    
+
     if (!decoded || !decoded.userId) {
       console.error('❌ Token inválido ou sem userId');
       return NextResponse.json(
@@ -80,14 +80,14 @@ export async function POST(request: NextRequest) {
     // Verificar se o período já começou
     const hoje = new Date().toISOString().split('T')[0];
     const dataInicio = new Date(periodo.data_inicio).toISOString().split('T')[0];
-    
+
     console.log('📅 Verificando datas:', { hoje, dataInicio });
 
     if (dataInicio > hoje) {
       console.warn('⚠️ Período ainda não iniciou');
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Este período ainda não iniciou',
           hint: `O período inicia em ${new Date(periodo.data_inicio).toLocaleDateString('pt-BR')}`
         },
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Verificar se já existe avaliação para este usuário neste período
     console.log('🔍 Verificando avaliação existente para:', { funcionario_id: userId, periodo_id });
-    
+
     const { data: avaliacaoExistente, error: avaliacaoError } = await supabaseAdmin
       .from('avaliacoes_desempenho')
       .select('*')
@@ -126,25 +126,25 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Nenhuma avaliação existente, criando nova...');
 
-    // 3. Buscar gerente configurado para o usuário
-    console.log('🔍 Buscando gerente para colaborador:', userId);
-    
-    const { data: mapping, error: mappingError } = await supabaseAdmin
+    // 3. Buscar gerentes configurados para o usuário
+    console.log('🔍 Buscando gerentes para colaborador:', userId);
+
+    const { data: mappings, error: mappingError } = await supabaseAdmin
       .from('avaliacao_colaborador_gerente')
       .select('gerente_id')
       .eq('colaborador_id', userId)
       .or(`periodo_id.eq.${periodo_id},periodo_id.is.null`)
-      .maybeSingle();
+      .eq('ativo', true);
 
-    if (mappingError && mappingError.code !== 'PGRST116') {
-      console.error('❌ Erro ao buscar gerente:', mappingError);
+    if (mappingError) {
+      console.error('❌ Erro ao buscar gerentes:', mappingError);
       return NextResponse.json(
-        { success: false, error: 'Erro ao buscar gerente configurado' },
+        { success: false, error: 'Erro ao buscar gerentes configurados' },
         { status: 500 }
       );
     }
 
-    if (!mapping || !mapping.gerente_id) {
+    if (!mappings || mappings.length === 0) {
       console.warn('⚠️ Gerente não configurado para este usuário');
       return NextResponse.json(
         {
@@ -156,89 +156,102 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Gerente encontrado:', mapping.gerente_id);
+    // Remover duplicatas de gerentes
+    const uniqueManagerIds = Array.from(new Set(mappings.map(m => m.gerente_id)));
+    console.log(`✅ Encontrados ${uniqueManagerIds.length} gerentes`);
 
-    // 4. Criar nova avaliação
-    console.log('📝 Criando nova avaliação...');
-    
-    const { data: novaAvaliacao, error: createError } = await supabaseAdmin
-      .from('avaliacoes_desempenho')
-      .insert({
-        funcionario_id: userId,
-        avaliador_id: mapping.gerente_id,
-        periodo_id: periodo_id,
-        periodo: periodo.nome,
-        data_inicio: periodo.data_inicio,
-        data_fim: periodo.data_fim,
-        status: 'pendente',
-        pontuacao_total: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    const createdEvaluations = [];
+    let isNew = false;
 
-    if (createError) {
-      console.error('❌ Erro ao criar avaliação:', createError);
-      return NextResponse.json(
-        { success: false, error: 'Erro ao criar avaliação' },
-        { status: 500 }
-      );
-    }
+    // 4. Criar/Buscar avaliação para cada gerente
+    for (const managerId of uniqueManagerIds) {
+      // Verificar se já existe
+      const { data: existingEval } = await supabaseAdmin
+        .from('avaliacoes_desempenho')
+        .select('*')
+        .eq('funcionario_id', userId)
+        .eq('periodo_id', periodo_id)
+        .eq('avaliador_id', managerId)
+        .maybeSingle();
 
-    console.log('✅ Avaliação criada com sucesso:', novaAvaliacao.id);
+      if (existingEval) {
+        createdEvaluations.push(existingEval);
+        continue;
+      }
 
-    // 5. Enviar notificações
-    try {
-      console.log('📧 Enviando notificações...');
-      
-      // Notificar colaborador
-      await supabaseAdmin.from('notifications').insert({
-        user_id: userId,
-        type: 'avaliacao_criada',
-        title: 'Nova Avaliação de Desempenho',
-        message: `Sua avaliação para o período "${periodo.nome}" está disponível. Preencha sua autoavaliação até ${new Date(periodo.data_limite_autoavaliacao).toLocaleDateString('pt-BR')}.`,
-        data: {
-          avaliacao_id: novaAvaliacao.id,
-          periodo_id: periodo_id,
-          periodo_nome: periodo.nome,
-          data_limite: periodo.data_limite_autoavaliacao,
-        },
-        action_url: `/avaliacao/preencher/${novaAvaliacao.id}`,
-        priority: 'high',
-        read_at: null,
-        created_at: new Date().toISOString(),
-      });
-
-      // Notificar gerente
-      await supabaseAdmin.from('notifications').insert({
-        user_id: mapping.gerente_id,
-        type: 'avaliacao_criada',
-        title: 'Nova Avaliação para Colaborador',
-        message: `Nova avaliação criada para o período "${periodo.nome}". Aguardando autoavaliação do colaborador.`,
-        data: {
-          avaliacao_id: novaAvaliacao.id,
-          periodo_id: periodo_id,
-          periodo_nome: periodo.nome,
+      // Criar nova
+      const { data: novaAvaliacao, error: createError } = await supabaseAdmin
+        .from('avaliacoes_desempenho')
+        .insert({
           funcionario_id: userId,
-        },
-        action_url: `/avaliacao`,
-        priority: 'normal',
-        read_at: null,
-        created_at: new Date().toISOString(),
-      });
+          avaliador_id: managerId,
+          periodo_id: periodo_id,
+          periodo: periodo.nome,
+          data_inicio: periodo.data_inicio,
+          data_fim: periodo.data_fim,
+          status: 'pendente',
+          pontuacao_total: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
-      console.log('✅ Notificações enviadas com sucesso');
-    } catch (notifError: any) {
-      console.error('⚠️ Erro ao enviar notificações:', notifError.message);
-      // Não falhar a criação da avaliação se a notificação falhar
+      if (createError) {
+        console.error(`❌ Erro ao criar avaliação para gerente ${managerId}:`, createError);
+        continue;
+      }
+
+      createdEvaluations.push(novaAvaliacao);
+      isNew = true;
+
+      // Enviar notificações
+      try {
+        // Notificar colaborador
+        await supabaseAdmin.from('notifications').insert({
+          user_id: userId,
+          type: 'avaliacao_criada',
+          title: 'Nova Avaliação de Desempenho',
+          message: `Sua avaliação para o período "${periodo.nome}" está disponível. Preencha sua autoavaliação até ${new Date(periodo.data_limite_autoavaliacao).toLocaleDateString('pt-BR')}.`,
+          data: {
+            avaliacao_id: novaAvaliacao.id,
+            periodo_id: periodo_id,
+            periodo_nome: periodo.nome,
+            data_limite: periodo.data_limite_autoavaliacao,
+          },
+          action_url: `/avaliacao/preencher/${novaAvaliacao.id}`,
+          priority: 'high',
+          read_at: null,
+          created_at: new Date().toISOString(),
+        });
+
+        // Notificar gerente
+        await supabaseAdmin.from('notifications').insert({
+          user_id: managerId,
+          type: 'avaliacao_criada',
+          title: 'Nova Avaliação para Colaborador',
+          message: `Nova avaliação criada para o período "${periodo.nome}". Aguardando autoavaliação do colaborador.`,
+          data: {
+            avaliacao_id: novaAvaliacao.id,
+            periodo_id: periodo_id,
+            periodo_nome: periodo.nome,
+            funcionario_id: userId,
+          },
+          action_url: `/avaliacao`,
+          priority: 'normal',
+          read_at: null,
+          created_at: new Date().toISOString(),
+        });
+      } catch (notifError: any) {
+        console.error('⚠️ Erro ao enviar notificações:', notifError.message);
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Avaliação criada com sucesso',
-      avaliacao: novaAvaliacao,
-      isNew: true
+      message: 'Avaliações processadas com sucesso',
+      avaliacoes: createdEvaluations,
+      isNew
     });
 
   } catch (error: any) {

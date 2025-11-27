@@ -35,17 +35,45 @@ export default function ViewEvaluationClient({
   const [isExporting, setIsExporting] = useState(false);
   const [isManagerView, setIsManagerView] = useState(false);
   const [respostas, setRespostas] = useState<Record<string, any>>(evaluation.respostas || {});
-  const [notasGerente, setNotasGerente] = useState<Record<string, number>>(evaluation.notas_gerente || {});
   const [activeTab, setActiveTab] = useState<'questionnaire' | 'charts'>('questionnaire');
   const [comentarioGerente, setComentarioGerente] = useState(evaluation.comentario_gerente || '');
   const [comentarioFinalFuncionario, setComentarioFinalFuncionario] = useState(evaluation.comentario_final_funcionario || '');
   const [showManagerActions, setShowManagerActions] = useState(false);
 
+  const [notasGerente, setNotasGerente] = useState<Record<string, number>>({});
+
   useEffect(() => {
     if (user && evaluation) {
       setIsManagerView(user.id === evaluation.avaliador_id || user.role === 'ADMIN');
+
+      // Initialize manager notes from existing responses (Q15-Q24)
+      const notasIniciais: Record<string, number> = {};
+      if (evaluation.respostas) {
+        Object.keys(evaluation.respostas).forEach(key => {
+          if (evaluation.respostas[key]?.nota) {
+            notasIniciais[key] = evaluation.respostas[key].nota;
+          }
+        });
+      }
+      setNotasGerente(notasIniciais);
     }
   }, [user, evaluation]);
+
+  const handleNotaGerenteChange = (questionId: string, nota: number) => {
+    setNotasGerente(prev => ({
+      ...prev,
+      [questionId]: nota
+    }));
+
+    // Also update the main responses object to include the note
+    setRespostas(prev => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        nota
+      }
+    }));
+  };
 
   const handleRespostaChange = (questionId: string, value: any) => {
     setRespostas(prev => ({
@@ -54,21 +82,13 @@ export default function ViewEvaluationClient({
     }));
   };
 
-  const handleNotaGerenteChange = (questionId: string, nota: number) => {
-    setNotasGerente(prev => ({
-      ...prev,
-      [questionId]: nota
-    }));
-  };
-
   const handleSave = async () => {
     try {
       const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          respostas,
-          notas_gerente: notasGerente 
+        body: JSON.stringify({
+          respostas
         })
       });
 
@@ -147,7 +167,7 @@ export default function ViewEvaluationClient({
           },
           body: JSON.stringify({
             comentario_avaliador: comentarioGerente,
-            notas_gerente: notasGerente
+            respostas: respostas  // Enviar respostas completas (Q15-Q24)
           })
         });
 
@@ -190,9 +210,9 @@ export default function ViewEvaluationClient({
       const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           respostas,
-          status: 'pendente_aprovacao_gerente' 
+          status: 'pendente_aprovacao_gerente'
         })
       });
 
@@ -209,33 +229,155 @@ export default function ViewEvaluationClient({
   const handleExportPDF = async () => {
     try {
       setIsExporting(true);
-      
-      const pdf = await exportEvaluationToPDF(evaluation, {
-        locale,
-        translations: {
-          title: t('evaluation.pdfTitle'),
-          employee: t('evaluation.employee'),
-          evaluator: t('evaluation.evaluator'),
-          period: t('evaluation.period'),
-          status: t('common.status'),
-          date: t('common.date'),
-          selfEvaluation: t('evaluation.selfEvaluation'),
-          managerialEvaluation: t('evaluation.managerialEvaluation'),
-          question: t('evaluation.question'),
-          score: t('evaluation.score'),
-          comment: t('evaluation.comment'),
-          noComment: t('evaluation.noComment'),
-          generatedAt: t('evaluation.generatedAt')
+
+      // Enrich evaluation object with employee and manager data for PDF
+      const enrichedEvaluation = {
+        ...evaluation,
+        funcionario: employee ? {
+          id: employee.id,
+          name: `${employee.firstName} ${employee.lastName}`,
+          email: employee.email
+        } : undefined,
+        avaliador: manager ? {
+          id: manager.id,
+          name: `${manager.firstName} ${manager.lastName}`,
+          email: manager.email
+        } : undefined
+      };
+
+      // Capture charts if on the charts tab
+      let chartsImage: string | undefined;
+      try {
+        // Temporarily switch to charts tab if needed
+        const wasOnCharts = activeTab === 'charts';
+        if (!wasOnCharts) {
+          setActiveTab('charts');
+          // Wait for tab transition
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
+
+        // Dynamically import html2canvas
+        const html2canvas = (await import('html2canvas')).default;
+
+        const chartsContainer = document.getElementById('evaluation-charts-container');
+        if (chartsContainer) {
+          const canvas = await html2canvas(chartsContainer, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true
+          });
+          chartsImage = canvas.toDataURL('image/png');
+        }
+
+        // Restore original tab if needed
+        if (!wasOnCharts) {
+          setActiveTab('questionnaire');
+        }
+      } catch (chartError) {
+        console.warn('Failed to capture charts:', chartError);
+        // Continue without charts
+      }
+
+      // Fetch logo
+      let logoImage: string | undefined;
+      try {
+        const response = await fetch('/images/logo.png');
+        if (response.ok) {
+          const blob = await response.blob();
+          logoImage = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load logo', e);
+      }
+
+      const pdf = await exportEvaluationToPDF(enrichedEvaluation, {
+        locale,
+        logoImage,
+        translations: {
+          title: t('avaliacao.pdfTitle'),
+          employee: t('avaliacao.employee'),
+          employeeLabel: t('avaliacao.employeeLabel'),
+          employeeEmail: t('avaliacao.employeeEmail'),
+          evaluator: t('avaliacao.avaliador'), // Fixed key
+          period: t('avaliacao.period'),
+          periodLabel: t('avaliacao.periodLabel'),
+          date: t('avaliacao.date'),
+          status: t('avaliacao.status.title'), // Fixed key
+          score: t('avaliacao.score'),
+          selfEvaluation: t('avaliacao.selfEvaluation'),
+          managerialEvaluation: t('avaliacao.managerialEvaluation'),
+          question: t('avaliacao.question'),
+          comment: t('avaliacao.comment'),
+          noComment: t('avaliacao.noComment'),
+          noAnswer: t('avaliacao.noAnswer'),
+          generatedAt: t('avaliacao.generatedAt'),
+          finalGrade: t('avaliacao.finalGrade'),
+          executiveSummary: t('avaliacao.executiveSummary'),
+          generalScore: t('avaliacao.generalScore'),
+          evaluationStats: t('avaliacao.evaluationStats'),
+          competenciesEvaluated: t('avaliacao.competenciesEvaluated'),
+          progress: t('avaliacao.progress'),
+          strongPoints: t('avaliacao.strongPoints'),
+          improvementAreas: t('avaliacao.improvementAreas'),
+          highlights: t('avaliacao.highlights'),
+          highestScore: t('avaliacao.highestScore'),
+          attentionRequired: t('avaliacao.attentionRequired'),
+          detailedAnalysis: t('avaliacao.detailedAnalysis'),
+          id: t('avaliacao.id'),
+          competency: t('avaliacao.competency'),
+          grade: t('avaliacao.grade'),
+          level: t('avaliacao.level'),
+          evaluationInfo: t('avaliacao.evaluationInfo'),
+          evaluationPeriod: t('avaliacao.evaluationPeriod'),
+          approvalDate: t('avaliacao.approvalDate'),
+          selfEvaluationTitle: t('avaliacao.selfEvaluationTitle'),
+          competencyQuestion: t('avaliacao.competencyQuestion'),
+          response: t('avaliacao.response'),
+          managerEvaluationTitle: t('avaliacao.managerEvaluationTitle'),
+          observation: t('avaliacao.observacoes'), // Fixed key
+          commentsTitle: t('avaliacao.commentsTitle'),
+          employeeObservations: t('avaliacao.employeeObservations'),
+          managerComments: t('avaliacao.managerComments'),
+          finalEmployeeComment: t('avaliacao.finalEmployeeComment'),
+          chartsTitle: t('avaliacao.chartsTitle'),
+          developmentPlanTitle: t('avaliacao.developmentPlanTitle'),
+          developmentPlanIntro: t('avaliacao.developmentPlanIntro'),
+          currentGrade: t('avaliacao.currentGrade'),
+          recommendation: t('avaliacao.recommendation'),
+          recommendationText: t('avaliacao.recommendationText'),
+          page: t('avaliacao.page'),
+          of: t('avaliacao.of'),
+          confidential: t('avaliacao.confidential'),
+          managerQuestionsAnswered: t('avaliacao.managerQuestionsAnswered'),
+          collaboratorAnswersIntro: t('avaliacao.collaboratorAnswersIntro'),
+        },
+        statusTranslations: {
+          'pendente': t('avaliacao.status.pending'),
+          'em_andamento': t('avaliacao.status.inProgress'),
+          'aguardando_aprovacao': t('avaliacao.status.aguardando_aprovacao'),
+          'aprovada_aguardando_comentario': t('avaliacao.status.aprovada_aguardando_comentario'),
+          'aguardando_finalizacao': t('avaliacao.status.aguardando_finalizacao'),
+          'concluida': t('avaliacao.status.completed'),
+          'devolvida': t('avaliacao.status.devolvida'),
+          'pending_response': t('avaliacao.status.pending_response')
+        },
+        chartsImage
       });
 
-      const fileName = `avaliacao-${employee?.name?.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const firstName = employee?.firstName || 'Funcionario';
+      const lastName = employee?.lastName || '';
+      const fileName = `avaliacao-${firstName}-${lastName}-${new Date().toISOString().split('T')[0]}.pdf`;
       downloadEvaluationPDF(pdf, fileName);
-      
-      alert(t('evaluation.pdfExported'));
+
+      alert(t('avaliacao.pdfExported'));
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
-      alert(t('evaluation.errorExportingPDF'));
+      alert(t('avaliacao.errorExportingPDF'));
     } finally {
       setIsExporting(false);
     }
@@ -269,14 +411,14 @@ export default function ViewEvaluationClient({
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <Link 
+          <Link
             href="/avaliacao"
             className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
           >
             <FiArrowLeft />
             Voltar para lista
           </Link>
-          
+
           <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-gray-200">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <h1 className="text-4xl font-bold text-gray-900">
@@ -288,10 +430,10 @@ export default function ViewEvaluationClient({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex items-start gap-3">
                 <div className="relative">
-                  {(employee?.avatar || employee?.drive_photo_url) ? (
-                    <img 
-                      src={employee.avatar || employee.drive_photo_url} 
-                      alt={employee.name}
+                  {(employee?.avatar || (employee as any)?.drive_photo_url) ? (
+                    <img
+                      src={employee.avatar || (employee as any).drive_photo_url}
+                      alt={`${employee.firstName} ${employee.lastName}`}
                       className="w-14 h-14 rounded-full object-cover border-2 border-blue-500 shadow-md"
                     />
                   ) : (
@@ -302,17 +444,17 @@ export default function ViewEvaluationClient({
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Colaborador</p>
-                  <p className="text-lg font-semibold text-gray-900">{employee?.name}</p>
+                  <p className="text-lg font-semibold text-gray-900">{employee?.firstName} {employee?.lastName}</p>
                   <p className="text-sm text-gray-500">{employee?.email}</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
                 <div className="relative">
-                  {(manager?.avatar || manager?.drive_photo_url) ? (
-                    <img 
-                      src={manager.avatar || manager.drive_photo_url} 
-                      alt={manager.name}
+                  {(manager?.avatar || (manager as any)?.drive_photo_url) ? (
+                    <img
+                      src={manager.avatar || (manager as any).drive_photo_url}
+                      alt={`${manager.firstName} ${manager.lastName}`}
                       className="w-14 h-14 rounded-full object-cover border-2 border-purple-500 shadow-md"
                     />
                   ) : (
@@ -324,7 +466,7 @@ export default function ViewEvaluationClient({
                 <div>
                   <p className="text-sm text-gray-600">Avaliador</p>
                   <p className="text-lg font-semibold text-gray-900">
-                    {manager?.name || 'Não atribuído'}
+                    {manager ? `${manager.firstName} ${manager.lastName}` : 'Não atribuído'}
                   </p>
                   {manager?.email && (
                     <p className="text-sm text-gray-500">{manager.email}</p>
@@ -338,10 +480,10 @@ export default function ViewEvaluationClient({
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Período</p>
-                  <p className="text-lg font-semibold text-gray-900">{evaluation.periodo?.nome || evaluation.periodo || 'N/A'}</p>
+                  <p className="text-lg font-semibold text-gray-900">{typeof evaluation.periodo === 'string' ? evaluation.periodo : (evaluation.periodo?.nome || 'N/A')}</p>
                   <p className="text-sm text-gray-500">
-                    {format(new Date(evaluation.data_inicio), 'dd/MM/yyyy', { locale: ptBR })} até{' '}
-                    {format(new Date(evaluation.data_fim), 'dd/MM/yyyy', { locale: ptBR })}
+                    {evaluation.data_inicio ? format(new Date(evaluation.data_inicio), 'dd/MM/yyyy', { locale: ptBR }) : '-'} até{' '}
+                    {evaluation.data_fim ? format(new Date(evaluation.data_fim), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                   </p>
                 </div>
               </div>
@@ -375,21 +517,19 @@ export default function ViewEvaluationClient({
         >
           <button
             onClick={() => setActiveTab('questionnaire')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-              activeTab === 'questionnaire'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'questionnaire'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-gray-600 hover:bg-gray-100'
+              }`}
           >
             Questionário
           </button>
           <button
             onClick={() => setActiveTab('charts')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-              activeTab === 'charts'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'charts'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-gray-600 hover:bg-gray-100'
+              }`}
           >
             Análises e Gráficos
           </button>
@@ -397,6 +537,7 @@ export default function ViewEvaluationClient({
 
         {/* Content */}
         <motion.div
+          id="evaluation-charts-container"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -407,8 +548,7 @@ export default function ViewEvaluationClient({
               onChange={handleRespostaChange}
               isManager={isManagerView}
               readOnly={readOnly}
-              notasGerente={notasGerente}
-              onNotaGerenteChange={handleNotaGerenteChange}
+              {...({ notasGerente, onNotaGerenteChange: handleNotaGerenteChange } as any)}
             />
           ) : (
             <EvaluationCharts
@@ -427,7 +567,7 @@ export default function ViewEvaluationClient({
           className="mt-8 bg-white rounded-xl shadow-lg p-8 border-2 border-gray-200"
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-6">Observações e Comentários</h3>
-          
+
           {/* Comentário Final do Funcionário */}
           {(evaluation.comentario_final_funcionario || isAwaitingFinalization) && (
             <div className="mb-6 p-6 rounded-xl border-2 bg-green-50 border-green-300">
@@ -443,15 +583,13 @@ export default function ViewEvaluationClient({
 
           {/* Comentários do Gerente - Destaque se avaliação foi devolvida */}
           {(evaluation.comentario_gerente || isDevolvida) && (
-            <div className={`mb-6 p-6 rounded-xl border-2 ${
-              isDevolvida 
-                ? 'bg-orange-50 border-orange-300' 
-                : 'bg-purple-50 border-purple-200'
-            }`}>
+            <div className={`mb-6 p-6 rounded-xl border-2 ${isDevolvida
+              ? 'bg-orange-50 border-orange-300'
+              : 'bg-purple-50 border-purple-200'
+              }`}>
               <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <span className={`w-3 h-3 rounded-full ${
-                  isDevolvida ? 'bg-orange-500' : 'bg-purple-500'
-                }`}></span>
+                <span className={`w-3 h-3 rounded-full ${isDevolvida ? 'bg-orange-500' : 'bg-purple-500'
+                  }`}></span>
                 {isDevolvida ? '🔄 Comentários para Ajustes' : 'Comentários do Gerente'}
               </h4>
               <div className="text-gray-700 leading-relaxed">
@@ -545,99 +683,99 @@ export default function ViewEvaluationClient({
             </button>
 
             <div className="flex flex-wrap justify-end gap-4">
-            {/* Botão Preencher Avaliação (Colaborador) */}
-            {isEmployee && canEmployeeEdit && evaluation.status !== 'concluida' && (
-              <Link
-                href={`/avaliacao/preencher/${evaluation.id}`}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
-              >
-                <FiSave className="w-5 h-5" />
-                Preencher Avaliação
-              </Link>
-            )}
-
-            {/* Botão Enviar Comentário Final (Colaborador) */}
-            {isEmployee && canEmployeeComment && (
-              <button
-                onClick={handleFinalComment}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
-              >
-                <FiCheckCircle className="w-5 h-5" />
-                Enviar Comentário Final
-              </button>
-            )}
-
-            {/* Botões para Gerente - Finalização */}
-            {canManagerFinalize && (
-              <>
-                <button
-                  onClick={() => {
-                    if (confirm('Deseja devolver esta avaliação para o colaborador revisar o comentário final?')) {
-                      handleManagerAction('return');
-                    }
-                  }}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold"
+              {/* Botão Preencher Avaliação (Colaborador) */}
+              {isEmployee && canEmployeeEdit && evaluation.status !== 'concluida' && (
+                <Link
+                  href={`/avaliacao/preencher/${evaluation.id}`}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
                 >
-                  🔄 Devolver para Revisão
-                </button>
+                  <FiSave className="w-5 h-5" />
+                  Preencher Avaliação
+                </Link>
+              )}
+
+              {/* Botão Enviar Comentário Final (Colaborador) */}
+              {isEmployee && canEmployeeComment && (
                 <button
-                  onClick={() => {
-                    if (confirm('Tem certeza que deseja finalizar e concluir esta avaliação definitivamente?')) {
-                      handleManagerAction('finalize');
-                    }
-                  }}
+                  onClick={handleFinalComment}
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
                 >
                   <FiCheckCircle className="w-5 h-5" />
-                  Finalizar e Concluir
+                  Enviar Comentário Final
                 </button>
-              </>
-            )}
+              )}
 
-            {/* Botões para Gerente - Aprovação Inicial */}
-            {canManagerReview && (
-              <>
-                <button
-                  onClick={() => {
-                    if (!comentarioGerente.trim()) {
-                      alert('Adicione comentários para devolver a avaliação');
-                      return;
-                    }
-                    if (confirm('Tem certeza que deseja devolver esta avaliação para ajustes?')) {
-                      handleManagerAction('return');
-                    }
-                  }}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold"
-                >
-                  🔄 Devolver para Ajustes
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm('Tem certeza que deseja aprovar e finalizar esta avaliação?')) {
-                      handleManagerAction('approve');
-                    }
-                  }}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
-                >
+              {/* Botões para Gerente - Finalização */}
+              {canManagerFinalize && (
+                <>
+                  <button
+                    onClick={() => {
+                      if (confirm('Deseja devolver esta avaliação para o colaborador revisar o comentário final?')) {
+                        handleManagerAction('return');
+                      }
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold"
+                  >
+                    🔄 Devolver para Revisão
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('Tem certeza que deseja finalizar e concluir esta avaliação definitivamente?')) {
+                        handleManagerAction('finalize');
+                      }
+                    }}
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
+                  >
+                    <FiCheckCircle className="w-5 h-5" />
+                    Finalizar e Concluir
+                  </button>
+                </>
+              )}
+
+              {/* Botões para Gerente - Aprovação Inicial */}
+              {canManagerReview && (
+                <>
+                  <button
+                    onClick={() => {
+                      if (!comentarioGerente.trim()) {
+                        alert('Adicione comentários para devolver a avaliação');
+                        return;
+                      }
+                      if (confirm('Tem certeza que deseja devolver esta avaliação para ajustes?')) {
+                        handleManagerAction('return');
+                      }
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold"
+                  >
+                    🔄 Devolver para Ajustes
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('Tem certeza que deseja aprovar e finalizar esta avaliação?')) {
+                        handleManagerAction('approve');
+                      }
+                    }}
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold"
+                  >
+                    <FiCheckCircle className="w-5 h-5" />
+                    Aprovar e Finalizar
+                  </button>
+                </>
+              )}
+
+              {/* Mensagem se não houver ações disponíveis */}
+              {!canEmployeeEdit && !canManagerReview && !readOnly && (
+                <p className="text-gray-600 italic">
+                  Aguardando ação de outra parte
+                </p>
+              )}
+
+              {readOnly && (
+                <p className="text-green-600 font-semibold flex items-center gap-2">
                   <FiCheckCircle className="w-5 h-5" />
-                  Aprovar e Finalizar
-                </button>
-              </>
-            )}
-
-            {/* Mensagem se não houver ações disponíveis */}
-            {!canEmployeeEdit && !canManagerReview && !readOnly && (
-              <p className="text-gray-600 italic">
-                Aguardando ação de outra parte
-              </p>
-            )}
-
-            {readOnly && (
-              <p className="text-green-600 font-semibold flex items-center gap-2">
-                <FiCheckCircle className="w-5 h-5" />
-                Avaliação Concluída
-              </p>
-            )}
+                  Avaliação Concluída
+                </p>
+              )}
             </div>
           </div>
 

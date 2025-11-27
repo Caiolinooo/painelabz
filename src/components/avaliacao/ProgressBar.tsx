@@ -53,7 +53,7 @@ export default function ProgressBar({
             'h-full transition-all duration-500 ease-out rounded-full',
             colorClasses[color]
           )}
-          style={{ width: ${validPercentage}% }}
+          style={{ width: `${validPercentage}%` }}
         />
       </div>
     </div>

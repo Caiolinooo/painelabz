@@ -40,7 +40,7 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { comentario_avaliador, notas_gerente } = body;
+    const { comentario_avaliador, respostas } = body;
 
     console.log(`API approve: Aprovando avaliação ${id} por gerente ${payload.userId}`);
 
@@ -71,10 +71,11 @@ export async function POST(
       updated_at: new Date().toISOString()
     };
 
-    if (notas_gerente) {
-      updateData.notas_gerente = {
-        ...avaliacao.notas_gerente,
-        ...notas_gerente
+    // Salvar respostas completas do gerente (Q15-Q24)
+    if (respostas) {
+      updateData.respostas = {
+        ...avaliacao.respostas,
+        ...respostas
       };
     }
 

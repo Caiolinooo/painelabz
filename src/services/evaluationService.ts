@@ -80,7 +80,7 @@ export const getEvaluationById = async (id: string): Promise<Evaluation | null> 
     `)
     .eq('id', id)
     .single();
-  
+
   if (error) throw error;
   return data as Evaluation | null;
 };
@@ -145,82 +145,82 @@ export const getEvaluationCriteria = async (): Promise<EvaluationCriterion[]> =>
  * pode ser funcionário ou avaliador em uma avaliação.
  */
 export const getEmployees = async (): Promise<User[]> => {
-    const { data, error } = await supabase
-      .from('users_unified')
-      .select('id, name, email, role, department');
-  
-    if (error) {
-      console.error('Error fetching employees:', error);
-      throw error;
-    }
-  
-    return data as User[];
-  };
+  const { data, error } = await supabase
+    .from('users_unified')
+    .select('id, name, email, role, department');
+
+  if (error) {
+    console.error('Error fetching employees:', error);
+    throw error;
+  }
+
+  return data as User[];
+};
 
 /**
  * Busca o mapeamento de gerentes e colaboradores.
  */
 export const getManagerMappings = async () => {
-    const { data, error } = await supabase.from('avaliacao_colaborador_gerente').select(`
+  const { data, error } = await supabase.from('avaliacao_colaborador_gerente').select(`
       id,
       colaborador:colaborador_id ( id, name ),
       gerente:gerente_id ( id, name ),
       periodo:periodo_id ( id, nome )
     `);
-  
-    if (error) throw error;
-    return data;
-  };
-  
-  /**
-   * Cria um novo mapeamento de gerente.
-   */
-  export const createManagerMapping = async (colaboradorId: string, gerenteId: string, periodoId?: string) => {
-    const { data, error } = await supabase.from('avaliacao_colaborador_gerente').insert([{
-      colaborador_id: colaboradorId,
-      gerente_id: gerenteId,
-      periodo_id: periodoId,
-    }]);
-  
-    if (error) throw error;
-    return data;
-  };
 
-  /**
- * Deleta um mapeamento de gerente.
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * Cria um novo mapeamento de gerente.
  */
+export const createManagerMapping = async (colaboradorId: string, gerenteId: string, periodoId?: string) => {
+  const { data, error } = await supabase.from('avaliacao_colaborador_gerente').insert([{
+    colaborador_id: colaboradorId,
+    gerente_id: gerenteId,
+    periodo_id: periodoId,
+  }]);
+
+  if (error) throw error;
+  return data;
+};
+
+/**
+* Deleta um mapeamento de gerente.
+*/
 export const deleteManagerMapping = async (id: string) => {
   const { error } = await supabase.from('avaliacao_colaborador_gerente').delete().eq('id', id);
   if (error) throw error;
 };
 export const getEligibleUsers = async (periodoId?: string) => {
-    let query = supabase.from('avaliacao_usuarios_elegiveis').select(`
+  let query = supabase.from('avaliacao_usuarios_elegiveis').select(`
       id,
       usuario:usuario_id ( id, name, email ),
       periodo:periodo_id ( id, nome )
     `);
-  
-    if (periodoId) {
-      query = query.eq('periodo_id', periodoId);
-    }
-  
-    const { data, error } = await query;
-    if (error) throw error;
-    return data;
-  };
-  
-  /**
-   * Adiciona um usuário à lista de elegíveis.
-   */
-  export const addEligibleUser = async (usuarioId: string, periodoId?: string) => {
-    const { data, error } = await supabase.from('avaliacao_usuarios_elegiveis').insert([{
-      usuario_id: usuarioId,
-      periodo_id: periodoId,
-    }]);
-  
-    if (error) throw error;
-    return data;
-  };
+
+  if (periodoId) {
+    query = query.eq('periodo_id', periodoId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * Adiciona um usuário à lista de elegíveis.
+ */
+export const addEligibleUser = async (usuarioId: string, periodoId?: string) => {
+  const { data, error } = await supabase.from('avaliacao_usuarios_elegiveis').insert([{
+    usuario_id: usuarioId,
+    periodo_id: periodoId,
+  }]);
+
+  if (error) throw error;
+  return data;
+};
 
 /**
  * Busca períodos disponíveis para o usuário (ativos ou próximos)
@@ -271,48 +271,81 @@ export const getAvailablePeriods = async (userId: string): Promise<{
 /**
  * Verifica se o usuário já possui avaliação para um período específico
  */
-export const getMyEvaluationForPeriod = async (
-  userId: string, 
+/**
+ * Busca todas as avaliações do usuário para um período específico
+ */
+export const getAllMyEvaluationsForPeriod = async (
+  userId: string,
   periodoId: string
-): Promise<Evaluation | null> => {
+): Promise<Evaluation[]> => {
   const { data, error } = await supabase
     .from('avaliacoes_desempenho')
     .select('*')
     .eq('funcionario_id', userId)
-    .eq('periodo_id', periodoId)
-    .maybeSingle();
+    .eq('periodo_id', periodoId);
 
-  if (error && error.code !== 'PGRST116') { // Ignora erro "not found"
-    console.error('Erro ao buscar avaliação do período:', error);
+  if (error) {
+    console.error('Erro ao buscar avaliações do período:', error);
     throw error;
   }
 
-  return data as Evaluation | null;
+  return (data || []) as Evaluation[];
 };
 
 /**
- * Busca o gerente configurado para um usuário em um período
+ * Mantida para compatibilidade, retorna a primeira encontrada ou null
+ */
+export const getMyEvaluationForPeriod = async (
+  userId: string,
+  periodoId: string
+): Promise<Evaluation | null> => {
+  const evaluations = await getAllMyEvaluationsForPeriod(userId, periodoId);
+  return evaluations.length > 0 ? evaluations[0] : null;
+};
+
+/**
+ * Busca os gerentes configurados para um usuário em um período
+ */
+export const getManagersForUser = async (
+  userId: string,
+  periodoId?: string
+): Promise<User[]> => {
+  let query = supabase
+    .from('avaliacao_colaborador_gerente')
+    .select('gerente:gerente_id(*)')
+    .eq('colaborador_id', userId)
+    .eq('ativo', true);
+
+  if (periodoId) {
+    // Busca gerentes específicos do período OU globais (periodo_id is null)
+    // Note: This logic might need adjustment depending on business rule. 
+    // Usually specific overrides global. For now, let's fetch both and filter if needed.
+    query = query.or(`periodo_id.eq.${periodoId},periodo_id.is.null`);
+  } else {
+    query = query.is('periodo_id', null);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Erro ao buscar gerentes:', error);
+    throw error;
+  }
+
+  // Remove duplicates if any (though DB constraint should prevent it)
+  const managers = data?.map((item: any) => item.gerente).filter(Boolean) || [];
+  const uniqueManagers = Array.from(new Map(managers.map((m: User) => [m.id, m])).values());
+
+  return uniqueManagers as User[];
+};
+
+/**
+ * Mantida para compatibilidade, retorna o primeiro gerente encontrado
  */
 export const getManagerForUser = async (
   userId: string,
   periodoId?: string
 ): Promise<User | null> => {
-  let query = supabase
-    .from('avaliacao_colaborador_gerente')
-    .select('gerente:gerente_id(*)');
-
-  if (periodoId) {
-    query = query.eq('periodo_id', periodoId);
-  }
-
-  query = query.eq('colaborador_id', userId).maybeSingle();
-
-  const { data, error } = await query;
-
-  if (error && error.code !== 'PGRST116') {
-    console.error('Erro ao buscar gerente:', error);
-    throw error;
-  }
-
-  return data?.gerente || null;
+  const managers = await getManagersForUser(userId, periodoId);
+  return managers.length > 0 ? managers[0] : null;
 };

@@ -146,7 +146,7 @@ export interface AvaliacaoMetricas {
   total_avaliacoes: number;
   por_status: Record<EvaluationStatus, number>;
   por_competencia: Record<string, number>;
- taxa_conclusao: number;
+  taxa_conclusao: number;
   tempo_medio_conclusao: number;
 }
 
@@ -240,8 +240,8 @@ export const COMPETENCIAS_PADRAO: Competencia[] = [
 export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
   {
     id: 'Q11',
-    pergunta: 'Pontos Fortes',
-    titulo: 'Pontos Fortes',
+    pergunta: 'Competências',
+    titulo: 'Competências',
     descricao: 'Descreva seus principais pontos fortes e competências que você considera mais desenvolvidas',
     tipo: 'collaborator',
     obrigatoria: true,
@@ -249,17 +249,17 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
   },
   {
     id: 'Q12',
-    pergunta: 'Áreas de Melhoria',
-    titulo: 'Áreas de Melhoria',
-    descricao: 'Identifique as áreas onde você acredita que precisa desenvolver mais',
+    pergunta: 'Plano de Desenvolvimento',
+    titulo: 'Plano de Desenvolvimento',
+    descricao: 'Quais são seus planos para desenvolvimento profissional no próximo período?',
     tipo: 'collaborator',
     obrigatoria: true,
     categoria: 'Autoavaliação'
   },
   {
     id: 'Q13',
-    pergunta: 'Objetivos Alcançados',
-    titulo: 'Objetivos Alcançados',
+    pergunta: 'Resultados',
+    titulo: 'Resultados',
     descricao: 'Descreva os principais objetivos que você alcançou no período avaliado',
     tipo: 'collaborator',
     obrigatoria: true,
@@ -267,9 +267,9 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
   },
   {
     id: 'Q14',
-    pergunta: 'Planos de Desenvolvimento',
-    titulo: 'Planos de Desenvolvimento',
-    descricao: 'Quais são seus planos para desenvolvimento profissional no próximo período?',
+    pergunta: 'Objetivos e Metas',
+    titulo: 'Objetivos e Metas',
+    descricao: 'Quais são os seus objetivos e metas profissionais para o proximo ano',
     tipo: 'collaborator',
     obrigatoria: true,
     categoria: 'Autoavaliação'

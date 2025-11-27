@@ -40,7 +40,11 @@ export default function ActivePeriodCard({
     try {
       // Se já existe avaliação, redirecionar para preenchimento
       if (existingEvaluationId) {
-        router.push(`/avaliacao/preencher/${existingEvaluationId}`);
+        if (existingEvaluationId === 'multiple') {
+          router.push('/avaliacao');
+        } else {
+          router.push(`/avaliacao/preencher/${existingEvaluationId}`);
+        }
         return;
       }
 
@@ -113,11 +117,10 @@ export default function ActivePeriodCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className={`bg-white rounded-xl border-2 ${
-        type === 'active' 
-          ? 'border-green-200 shadow-md hover:shadow-lg' 
-          : 'border-blue-200 shadow-sm hover:shadow-md'
-      } transition-all p-6 group`}
+      className={`bg-white rounded-xl border-2 ${type === 'active'
+        ? 'border-green-200 shadow-md hover:shadow-lg'
+        : 'border-blue-200 shadow-sm hover:shadow-md'
+        } transition-all p-6 group`}
     >
       {/* Header com Badge */}
       <div className="flex items-start justify-between mb-4">
@@ -145,7 +148,7 @@ export default function ActivePeriodCard({
             {format(dataFim, 'dd/MM/yyyy', { locale: ptBR })}
           </span>
         </div>
-        
+
         {period.data_limite_autoavaliacao && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <FiClock className="w-4 h-4 text-orange-400" />
@@ -163,9 +166,9 @@ export default function ActivePeriodCard({
           <FiCheckCircle className="w-5 h-5" />
           <span>Avaliação Concluída</span>
         </div>
-      ) : evaluationStatus === 'aguardando_aprovacao' || 
-         evaluationStatus === 'aprovada_aguardando_comentario' || 
-         evaluationStatus === 'aguardando_finalizacao' ? (
+      ) : evaluationStatus === 'aguardando_aprovacao' ||
+        evaluationStatus === 'aprovada_aguardando_comentario' ||
+        evaluationStatus === 'aguardando_finalizacao' ? (
         <div className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-yellow-50 border-2 border-yellow-200 text-yellow-700">
           <FiClock className="w-5 h-5" />
           <span>Aguardando Avaliação do Gestor</span>
@@ -176,18 +179,22 @@ export default function ActivePeriodCard({
           whileTap={{ scale: 0.98 }}
           onClick={handleIniciarAvaliacao}
           disabled={isLoading}
-          className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-            existingEvaluationId
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : type === 'active'
+          className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${existingEvaluationId
+            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+            : type === 'active'
               ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md'
               : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           {isLoading ? (
             <>
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Carregando...</span>
+            </>
+          ) : existingEvaluationId === 'multiple' ? (
+            <>
+              <FiArrowRight className="w-5 h-5" />
+              <span>Ver Avaliações</span>
             </>
           ) : existingEvaluationId ? (
             <>
@@ -214,22 +221,22 @@ export default function ActivePeriodCard({
           Esta avaliação foi finalizada pelo seu gestor
         </p>
       )}
-      {existingEvaluationId && 
-       evaluationStatus !== 'aguardando_aprovacao' && 
-       evaluationStatus !== 'aprovada_aguardando_comentario' && 
-       evaluationStatus !== 'aguardando_finalizacao' && 
-       evaluationStatus !== 'concluida' && (
-        <p className="text-xs text-center text-gray-500 mt-2">
-          Você já iniciou esta avaliação
-        </p>
-      )}
-      {(evaluationStatus === 'aguardando_aprovacao' || 
-        evaluationStatus === 'aprovada_aguardando_comentario' || 
+      {existingEvaluationId &&
+        evaluationStatus !== 'aguardando_aprovacao' &&
+        evaluationStatus !== 'aprovada_aguardando_comentario' &&
+        evaluationStatus !== 'aguardando_finalizacao' &&
+        evaluationStatus !== 'concluida' && (
+          <p className="text-xs text-center text-gray-500 mt-2">
+            Você já iniciou esta avaliação
+          </p>
+        )}
+      {(evaluationStatus === 'aguardando_aprovacao' ||
+        evaluationStatus === 'aprovada_aguardando_comentario' ||
         evaluationStatus === 'aguardando_finalizacao') && (
-        <p className="text-xs text-center text-gray-500 mt-2">
-          Sua autoavaliação foi enviada e está aguardando revisão
-        </p>
-      )}
+          <p className="text-xs text-center text-gray-500 mt-2">
+            Sua autoavaliação foi enviada e está aguardando revisão
+          </p>
+        )}
     </motion.div>
   );
 }
