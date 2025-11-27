@@ -108,9 +108,47 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
         if (uploadResp.ok) {
           const uploadData = await uploadResp.json();
           mediaUrls = (uploadData.files || []).map((f: any) => f.url);
+
+          // Mostrar logs de debug de sucesso
+          if (uploadData.debugLogs) {
+            console.log('📋 [UPLOAD DEBUG LOGS]');
+            uploadData.debugLogs.forEach((log: string) => console.log(log));
+          }
         } else {
-          console.warn('Falha no upload, usando previews');
-          mediaUrls = previewUrls;
+          // Tentar obter detalhes do erro
+          const errorData = await uploadResp.json().catch(() => null);
+
+          console.error('❌ [UPLOAD FAILED]');
+          console.error('Status:', uploadResp.status);
+          console.error('Status Text:', uploadResp.statusText);
+
+          if (errorData) {
+            console.error('Erro:', errorData.error);
+            console.error('Detalhes:', errorData.details);
+            console.error('Error Name:', errorData.errorName);
+            console.error('Status Code:', errorData.statusCode);
+            console.error('Arquivo:', errorData.file);
+            console.error('Caminho:', errorData.path);
+
+            // Mostrar logs de debug
+            if (errorData.debugLogs) {
+              console.error('📋 [DEBUG LOGS DO SERVIDOR]');
+              errorData.debugLogs.forEach((log: string) => console.error(log));
+            }
+
+            // Mostrar erro do Supabase
+            if (errorData.supabaseError) {
+              console.error('🗄️ [SUPABASE ERROR]');
+              console.error('Message:', errorData.supabaseError.message);
+              console.error('Name:', errorData.supabaseError.name);
+              console.error('Status Code:', errorData.supabaseError.statusCode);
+              console.error('Error:', errorData.supabaseError.error);
+            }
+
+            throw new Error(errorData.details || errorData.error || 'Erro desconhecido no upload');
+          }
+
+          throw new Error('Erro ao fazer upload da mídia');
         }
       } else {
         mediaUrls = previewUrls;
