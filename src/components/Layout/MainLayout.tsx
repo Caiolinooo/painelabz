@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  FiHome, 
-  FiUser, 
-  FiSettings, 
-  FiLogOut, 
-  FiMenu, 
-  FiX, 
+import {
+  FiHome,
+  FiUser,
+  FiSettings,
+  FiLogOut,
+  FiMenu,
+  FiX,
   FiGrid,
   FiFileText,
   FiDollarSign,
@@ -27,6 +27,7 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useMenuItems } from '@/hooks/useUnifiedData';
+import { getIconComponent } from '@/lib/iconMapper';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import LanguageSelector from '@/components/LanguageSelector';
 import Footer from '@/components/Footer';
@@ -195,9 +196,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
         console.log('🔴 Badge: Sem usuário logado');
         return;
       }
-      
+
       console.log('🔵 Badge: Buscando avaliações pendentes para:', user.id, 'Role:', profile?.role);
-      
+
       try {
         const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
         if (!token) {
@@ -208,12 +209,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         const response = await fetch('/api/avaliacao-desempenho/avaliacoes/pending-review', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         console.log('🔵 Badge: Response status:', response.status);
-        
+
         const data = await response.json();
         console.log('🔵 Badge: Data recebida:', data);
-        
+
         if (data.success) {
           const count = data.count || 0;
           console.log(`✅ Badge: ${count} avaliações pendentes`);
@@ -317,86 +318,85 @@ export default function MainLayout({ children }: MainLayoutProps) {
               (menuItems.length > 0 ? menuItems : mainMenuItems)
                 .filter(item => item.id !== 'admin') // Nunca mostrar item admin no menu
                 .map((item) => {
-                const isActive = pathname ? (pathname === item.href || pathname.startsWith(item.href + '/')) : false;
-                
-                // Garantir que o ícone seja um componente válido
-                const IconComponent = item.icon || FiGrid;
+                  const isActive = pathname ? (pathname === item.href || pathname.startsWith(item.href + '/')) : false;
 
-              // Obter o texto a ser exibido com base no locale
-              let displayLabel: string;
+                  // Garantir que o ícone seja um componente válido
+                  const IconComponent = item.icon || getIconComponent((item as any).icon_name || (item as any).iconName);
 
-              // Se for item hardcoded com label, traduzir via t()
-              if ((item as any).label) {
-                displayLabel = t((item as any).label);
-              }
-              // Se vier do banco de dados
-              else {
-                // Primeiro, tentar mapear o título para uma chave de tradução
-                const titleKey = titleToTranslationKey[item.title];
-                if (titleKey) {
-                  displayLabel = t(titleKey);
-                }
-                // Depois, tentar traduzir usando o ID
-                else if (item.id) {
-                  const translationKey = `menu.${item.id}`;
-                  const translated = t(translationKey);
-                  
-                  if (translated && translated !== translationKey) {
-                    displayLabel = translated;
-                  } else {
-                    displayLabel = item.title || item.id;
+                  // Obter o texto a ser exibido com base no locale
+                  let displayLabel: string;
+
+                  // Se for item hardcoded com label, traduzir via t()
+                  if ((item as any).label) {
+                    displayLabel = t((item as any).label);
                   }
-                }
-                // Fallback final
-                else {
-                  displayLabel = item.title || item.id;
-                }
-              }
+                  // Se vier do banco de dados
+                  else {
+                    // Primeiro, tentar mapear o título para uma chave de tradução
+                    const titleKey = titleToTranslationKey[(item as any).title];
+                    if (titleKey) {
+                      displayLabel = t(titleKey);
+                    }
+                    // Depois, tentar traduzir usando o ID
+                    else if (item.id) {
+                      const translationKey = `menu.${item.id}`;
+                      const translated = t(translationKey);
 
-              // Debug para o primeiro item
-              if (item.id === menuItems[0]?.id) {
-                console.log('🔍 Menu Item Debug:', {
-                  id: item.id,
-                  locale: locale,
-                  displayLabel: displayLabel,
-                  itemTitle: item.title,
-                  title_pt: item.title_pt,
-                  title_en: item.title_en,
-                  label: (item as any).label,
-                  isFromDatabase: menuItems.length > 0,
-                  fullItem: item
-                });
-              }
+                      if (translated && translated !== translationKey) {
+                        displayLabel = translated;
+                      } else {
+                        displayLabel = item.title || item.id;
+                      }
+                    }
+                    // Fallback final
+                    else {
+                      displayLabel = (item as any).title || item.id;
+                    }
+                  }
 
-              // Verificação de segurança para garantir que href não é undefined
-              if (!item.href) {
-                console.warn('Menu item sem href encontrado:', item);
-                return null;
-              }
+                  // Debug para o primeiro item
+                  if (item.id === menuItems[0]?.id) {
+                    console.log('🔍 Menu Item Debug:', {
+                      id: item.id,
+                      locale: locale,
+                      displayLabel: displayLabel,
+                      itemTitle: (item as any).title,
+                      title_pt: (item as any).title_pt,
+                      title_en: (item as any).title_en,
+                      label: (item as any).label,
+                      isFromDatabase: menuItems.length > 0,
+                      fullItem: item
+                    });
+                  }
 
-              const showBadge = item.id === 'avaliacao' && pendingCount > 0 && (profile?.role === 'MANAGER' || profile?.role === 'ADMIN');
+                  // Verificação de segurança para garantir que href não é undefined
+                  if (!item.href) {
+                    console.warn('Menu item sem href encontrado:', item);
+                    return null;
+                  }
 
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  title={displayLabel}
-                  className={`flex items-center ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-2.5 rounded-md text-sm font-medium transition-colors duration-150 relative ${
-                    isActive
-                      ? 'bg-abz-blue text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-abz-blue-dark'
-                  }`}
-                >
-                  <IconComponent className={`${isCollapsed ? '' : 'mr-3'} h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
-                  {!isCollapsed && <span className="whitespace-nowrap">{displayLabel}</span>}
-                  {showBadge && (
-                    <span className={`${isCollapsed ? 'absolute -top-1 -right-1' : 'ml-auto'} inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full`}>
-                      {pendingCount}
-                    </span>
-                  )}
-                </Link>
-              );
-            })
+                  const showBadge = item.id === 'avaliacao' && pendingCount > 0 && (profile?.role === 'MANAGER' || profile?.role === 'ADMIN');
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      title={displayLabel}
+                      className={`flex items-center ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-2.5 rounded-md text-sm font-medium transition-colors duration-150 relative ${isActive
+                        ? 'bg-abz-blue text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-abz-blue-dark'
+                        }`}
+                    >
+                      <IconComponent className={`${isCollapsed ? '' : 'mr-3'} h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                      {!isCollapsed && <span className="whitespace-nowrap">{displayLabel}</span>}
+                      {showBadge && (
+                        <span className={`${isCollapsed ? 'absolute -top-1 -right-1' : 'ml-auto'} inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full`}>
+                          {pendingCount}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })
             )}
           </nav>
 
@@ -427,7 +427,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </div>
               </Link>
             )}
-            
+
             <div className={`flex ${isCollapsed ? 'flex-col space-y-2' : 'space-x-2'}`}>
               {isAdmin && (
                 <Link
@@ -439,7 +439,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   {!isCollapsed && 'Admin'}
                 </Link>
               )}
-              
+
               <button
                 onClick={handleLogout}
                 className={`${isCollapsed ? 'p-2' : 'px-3 py-2'} text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center justify-center`}
@@ -460,7 +460,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {/* Overlay para mobile */}
         {isMobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
             onClick={toggleMobileMenu}
           />

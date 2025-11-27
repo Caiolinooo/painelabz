@@ -32,7 +32,7 @@ export default function EvaluationCharts({
   // Filtrar questões por tipo
   const managerQuestions = questionarioData.filter(q => q.tipo === 'manager');
   const collaboratorQuestions = questionarioData.filter(q => q.tipo === 'collaborator');
-  
+
   // Preparar dados para radar chart - QUESTÕES DO GERENTE
   const radarDataManager = managerQuestions
     .filter(q => respostas[q.id]?.nota)
@@ -82,26 +82,29 @@ export default function EvaluationCharts({
     }
   });
 
-  // Calcular média - TODAS AS NOTAS
+  // Calcular média - APENAS NOTAS DO QUESTIONÁRIO DO GERENTE
   const managerResponses = managerQuestions
     .map(q => respostas[q.id])
     .filter((r: any) => r?.nota);
 
+  // Notas do gerente em questões do colaborador NÃO entram na média geral
+  /* 
   const collaboratorNotes = collaboratorQuestions
     .map(q => notasGerente[q.id])
     .filter((n): n is number => typeof n === 'number' && n > 0);
+  */
 
   const allNotes = [
-    ...managerResponses.map((r: any) => r.nota),
-    ...collaboratorNotes
+    ...managerResponses.map((r: any) => r.nota)
   ];
-    
+
   const average = allNotes.length > 0
     ? allNotes.reduce((sum: number, n: number) => sum + n, 0) / allNotes.length
     : 0;
 
-  const totalQuestions = managerQuestions.length + collaboratorQuestions.length;
-  const answeredQuestions = managerResponses.length + collaboratorNotes.length;
+  // Total apenas do questionário do gerente
+  const totalQuestions = managerQuestions.length;
+  const answeredQuestions = managerResponses.length;
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -128,15 +131,15 @@ export default function EvaluationCharts({
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
-          <p className="text-sm font-medium opacity-90 mb-2">Média Geral</p>
+          <p className="text-sm font-medium opacity-90 mb-2">Média Geral (Gerente)</p>
           <p className="text-4xl font-bold">{average.toFixed(1)}</p>
           <p className="text-sm opacity-75 mt-2">de 5.0 pontos</p>
         </div>
 
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
-          <p className="text-sm font-medium opacity-90 mb-2">Questões Avaliadas</p>
+          <p className="text-sm font-medium opacity-90 mb-2">Questões Respondidas</p>
           <p className="text-4xl font-bold">{answeredQuestions}</p>
-          <p className="text-sm opacity-75 mt-2">de {totalQuestions} questões totais</p>
+          <p className="text-sm opacity-75 mt-2">de {totalQuestions} questões do gerente</p>
         </div>
 
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
@@ -162,17 +165,17 @@ export default function EvaluationCharts({
             Desempenho por Competência
           </h3>
           {radarData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
+            <ResponsiveContainer width="100%" height={400}>
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                 <PolarGrid stroke="#e5e7eb" />
-                <PolarAngleAxis 
-                  dataKey="subject" 
-                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                <PolarAngleAxis
+                  dataKey="subject"
+                  tick={{ fill: '#374151', fontSize: 14, fontWeight: 600 }}
                 />
-                <PolarRadiusAxis 
-                  angle={90} 
-                  domain={[0, 5]} 
-                  tick={{ fill: '#6b7280' }}
+                <PolarRadiusAxis
+                  angle={90}
+                  domain={[0, 5]}
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
                 />
                 <Radar
                   name="Avaliação"
@@ -185,7 +188,7 @@ export default function EvaluationCharts({
               </RadarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-400">
+            <div className="h-[400px] flex items-center justify-center text-gray-400">
               <p>Nenhum dado disponível</p>
             </div>
           )}
@@ -203,17 +206,17 @@ export default function EvaluationCharts({
             Distribuição de Notas
           </h3>
           {managerResponses.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={scoreDistribution}>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={scoreDistribution} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="range" 
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
+                <XAxis
+                  dataKey="range"
+                  tick={{ fill: '#374151', fontSize: 13, fontWeight: 500 }}
                   angle={-15}
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fill: '#6b7280' }} />
+                <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                   {scoreDistribution.map((entry, index) => (
@@ -223,7 +226,7 @@ export default function EvaluationCharts({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-400">
+            <div className="h-[400px] flex items-center justify-center text-gray-400">
               <p>Nenhum dado disponível</p>
             </div>
           )}
@@ -238,7 +241,7 @@ export default function EvaluationCharts({
         className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-200"
       >
         <h3 className="text-xl font-bold text-gray-900 mb-4">Detalhamento por Questão</h3>
-        
+
         {/* Questões do Gerente */}
         {radarDataManager.length > 0 && (
           <div className="mb-6">
@@ -259,11 +262,10 @@ export default function EvaluationCharts({
                       <p className="text-sm font-medium text-gray-700 truncate">
                         {item.fullName}
                       </p>
-                      <span className={`text-sm font-bold ${
-                        item.value >= 4 ? 'text-green-600' :
+                      <span className={`text-sm font-bold ${item.value >= 4 ? 'text-green-600' :
                         item.value >= 3 ? 'text-blue-600' :
-                        item.value >= 2 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
+                          item.value >= 2 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
                         {item.value.toFixed(1)}
                       </span>
                     </div>
@@ -272,11 +274,10 @@ export default function EvaluationCharts({
                         initial={{ width: 0 }}
                         animate={{ width: `${(item.value / 5) * 100}%` }}
                         transition={{ delay: 0.5 + index * 0.05, duration: 0.5 }}
-                        className={`h-full rounded-full ${
-                          item.value >= 4 ? 'bg-green-500' :
+                        className={`h-full rounded-full ${item.value >= 4 ? 'bg-green-500' :
                           item.value >= 3 ? 'bg-blue-500' :
-                          item.value >= 2 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}
+                            item.value >= 2 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
                       />
                     </div>
                   </div>
@@ -306,11 +307,10 @@ export default function EvaluationCharts({
                       <p className="text-sm font-medium text-gray-700 truncate">
                         {item.fullName}
                       </p>
-                      <span className={`text-sm font-bold ${
-                        item.value >= 4 ? 'text-green-600' :
+                      <span className={`text-sm font-bold ${item.value >= 4 ? 'text-green-600' :
                         item.value >= 3 ? 'text-blue-600' :
-                        item.value >= 2 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
+                          item.value >= 2 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
                         {item.value.toFixed(1)}
                       </span>
                     </div>
@@ -319,11 +319,10 @@ export default function EvaluationCharts({
                         initial={{ width: 0 }}
                         animate={{ width: `${(item.value / 5) * 100}%` }}
                         transition={{ delay: 0.5 + (radarDataManager.length + index) * 0.05, duration: 0.5 }}
-                        className={`h-full rounded-full ${
-                          item.value >= 4 ? 'bg-green-500' :
+                        className={`h-full rounded-full ${item.value >= 4 ? 'bg-green-500' :
                           item.value >= 3 ? 'bg-blue-500' :
-                          item.value >= 2 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}
+                            item.value >= 2 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
                       />
                     </div>
                   </div>

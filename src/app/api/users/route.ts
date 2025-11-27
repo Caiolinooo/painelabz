@@ -226,10 +226,13 @@ export async function POST(request: NextRequest) {
           last_name: lastName,
           email,
           password: hashedPassword,
+          password_hash: hashedPassword,
           role: userRole,
           position,
           department,
           active: true,
+          is_authorized: true,
+          authorization_status: 'active',
           email_verified: true, // Usuários criados pelo admin não precisam verificar email
           password_last_changed: now.toISOString(),
           access_permissions: defaultPermissions[userRole as 'ADMIN' | 'MANAGER' | 'USER'],

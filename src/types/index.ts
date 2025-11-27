@@ -16,7 +16,10 @@ export interface Evaluation {
   respostas: Record<string, any>;
   nota_final: number | null;
   comentario_avaliador: string | null;
+  comentario_gerente: string | null;
+  comentario_final_funcionario: string | null;
   observacoes: string | null;
+  data_aprovacao: string | null;
   created_at: string;
   updated_at: string;
   dados_colaborador?: any;

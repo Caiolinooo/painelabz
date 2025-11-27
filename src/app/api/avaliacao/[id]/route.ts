@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
-import { 
+import {
   notifyEmployeeEvaluationCompleted,
   notifyManagerSelfEvaluationCompleted,
   notifyManagerEvaluationPending,
@@ -20,7 +20,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
+
     // Verificar autenticação via cookies
     const cookieStore = await cookies();
     const token = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value;
@@ -47,8 +47,8 @@ export async function GET(
       .from('avaliacoes_desempenho')
       .select(`
         *,
-        funcionario:users_unified!avaliacoes_desempenho_funcionario_id_fkey(id, name, email),
-        avaliador:users_unified!avaliacoes_desempenho_avaliador_id_fkey(id, name, email),
+        funcionario:users_unified!avaliacoes_desempenho_funcionario_id_fkey(id, first_name, last_name, email),
+        avaliador:users_unified!avaliacoes_desempenho_avaliador_id_fkey(id, first_name, last_name, email),
         periodo:periodos_avaliacao(id, nome, data_inicio, data_fim)
       `)
       .eq('id', id)
@@ -101,7 +101,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    
+
     // Verificar autenticação via cookies
     const cookieStore = await cookies();
     const token = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value;
@@ -124,7 +124,7 @@ export async function PATCH(
 
     const userId = decoded.userId;
     const body = await request.json();
-    const { respostas, notas_gerente, status, solicitar_ajustes } = body;
+    const { respostas, status, solicitar_ajustes } = body;
 
     // Usar instância síncrona do supabaseAdmin
 
@@ -156,8 +156,8 @@ export async function PATCH(
     // 2.1. Bloquear edição de avaliações concluídas
     if (avaliacaoAtual.status === 'concluida') {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Esta avaliação já foi concluída e não pode mais ser editada',
           hint: 'Apenas administradores podem excluir avaliações concluídas'
         },
@@ -167,13 +167,13 @@ export async function PATCH(
 
     // 3. Validar transições de status
     const statusAtual = avaliacaoAtual.status;
-    
+
     // Colaborador pode editar se status for: pendente, em_andamento, devolvida, aprovada_aguardando_comentario
     const statusEditaveisColaborador = ['pendente', 'em_andamento', 'devolvida', 'aprovada_aguardando_comentario'];
     if (isCollaborator && !isManager && !statusEditaveisColaborador.includes(statusAtual)) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Você não pode mais editar esta avaliação',
           hint: 'A avaliação já foi enviada para aprovação do gerente'
         },
@@ -184,8 +184,8 @@ export async function PATCH(
     // Gerente só pode editar se status for aguardando_aprovacao ou aguardando_finalizacao
     if (isManager && !isCollaborator && !['aguardando_aprovacao', 'aguardando_finalizacao'].includes(statusAtual)) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Esta avaliação ainda não está disponível para revisão gerencial',
           hint: statusAtual === 'pendente' || statusAtual === 'em_andamento'
             ? 'Aguardando o colaborador finalizar a autoavaliação'
@@ -208,14 +208,6 @@ export async function PATCH(
       };
     }
 
-    if (notas_gerente !== undefined) {
-      // Mesclar notas do gerente existentes com novas
-      updateData.notas_gerente = {
-        ...avaliacaoAtual.notas_gerente,
-        ...notas_gerente
-      };
-    }
-
     if (status !== undefined) {
       // Validar transições permitidas (status corretos do banco)
       const transicoesPermitidas: Record<string, string[]> = {
@@ -231,12 +223,12 @@ export async function PATCH(
 
       if (
         statusAtual !== status &&
-        (!transicoesPermitidas[statusAtual] || 
-         !transicoesPermitidas[statusAtual].includes(status))
+        (!transicoesPermitidas[statusAtual] ||
+          !transicoesPermitidas[statusAtual].includes(status))
       ) {
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: `Transição de status inválida: ${statusAtual} → ${status}`,
             hint: `Transições permitidas: ${transicoesPermitidas[statusAtual]?.join(', ') || 'nenhuma'}`
           },
@@ -249,22 +241,16 @@ export async function PATCH(
       // Se status mudar para concluída, calcular nota final
       if (status === 'concluida') {
         const respostasCompletas = updateData.respostas || avaliacaoAtual.respostas;
-        const notasGerenteCompletas = updateData.notas_gerente || avaliacaoAtual.notas_gerente || {};
-        
-        // Coletar notas das questões do gerente (Q15-Q17)
-        const notasQuestoesGerente = Object.values(respostasCompletas)
-          .map((r: any) => r.nota)
+
+        // Coletar apenas notas das questões gerenciais (Q15-Q24)
+        // Q11-Q14 (colaborador) não têm notas, apenas comentários
+        const notasGerenciais = Object.values(respostasCompletas)
+          .map((r: any) => r?.nota)
           .filter((n): n is number => typeof n === 'number' && n > 0);
 
-        // Coletar notas do gerente para questões do colaborador (Q11-Q14)
-        const notasAvaliacaoColaborador = Object.values(notasGerenteCompletas)
-          .filter((n): n is number => typeof n === 'number' && n > 0);
-
-        const todasNotas = [...notasQuestoesGerente, ...notasAvaliacaoColaborador];
-
-        if (todasNotas.length > 0) {
+        if (notasGerenciais.length > 0) {
           updateData.nota_final = (
-            todasNotas.reduce((sum, n) => sum + n, 0) / todasNotas.length
+            notasGerenciais.reduce((sum, n) => sum + n, 0) / notasGerenciais.length
           ).toFixed(2);
         }
       }
@@ -292,22 +278,25 @@ export async function PATCH(
         // Buscar dados do colaborador e gerente para notificações
         const { data: employee } = await supabaseAdmin
           .from('users_unified')
-          .select('id, name')
+          .select('id, first_name, last_name')
           .eq('id', avaliacaoAtualizada.funcionario_id)
           .single();
 
         const { data: manager } = await supabaseAdmin
           .from('users_unified')
-          .select('id, name')
+          .select('id, first_name, last_name')
           .eq('id', avaliacaoAtualizada.avaliador_id)
           .single();
+
+        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Colaborador';
+        const managerName = manager ? `${manager.first_name} ${manager.last_name}` : 'Gestor';
 
         // Notificar quando colaborador envia autoavaliação para aprovação
         if (status === 'aguardando_aprovacao' && manager && (statusAtual === 'pendente' || statusAtual === 'em_andamento')) {
           await notifyManagerSelfEvaluationCompleted(
             manager.id,
             avaliacaoAtualizada.id,
-            employee?.name || 'Colaborador'
+            employeeName
           );
         }
 
@@ -316,7 +305,7 @@ export async function PATCH(
           await notifyEmployeeEvaluationReturned(
             employee.id,
             avaliacaoAtualizada.id,
-            manager?.name || 'Gestor',
+            managerName,
             avaliacaoAtualizada.respostas?.['Q15']?.comentario || ''
           );
         }
@@ -326,7 +315,7 @@ export async function PATCH(
           await notifyManagerEvaluationRevised(
             manager.id,
             avaliacaoAtualizada.id,
-            employee?.name || 'Colaborador'
+            employeeName
           );
         }
 
@@ -335,7 +324,7 @@ export async function PATCH(
           await notifyEmployeeEvaluationCompleted(
             employee.id,
             avaliacaoAtualizada.id,
-            manager?.name || 'Gestor'
+            managerName
           );
         }
       } catch (notificationError) {

@@ -13,8 +13,6 @@ interface QuestionarioAvaliacaoCardBasedProps {
   isManager?: boolean;
   readOnly?: boolean;
   isEmployeeLeader?: boolean; // Se o funcionário sendo avaliado é líder
-  notasGerente?: Record<string, number>; // Notas do gerente para questões do colaborador
-  onNotaGerenteChange?: (questionId: string, nota: number) => void;
 }
 
 export default function QuestionarioAvaliacaoCardBased({
@@ -22,9 +20,7 @@ export default function QuestionarioAvaliacaoCardBased({
   onChange,
   isManager = false,
   readOnly = false,
-  isEmployeeLeader = false,
-  notasGerente = {},
-  onNotaGerenteChange
+  isEmployeeLeader = false
 }: QuestionarioAvaliacaoCardBasedProps) {
   const { t } = useI18n();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -90,7 +86,6 @@ export default function QuestionarioAvaliacaoCardBased({
   const renderQuestion = (question: typeof QUESTIONARIO_PADRAO[0], isReadOnly: boolean = readOnly) => {
     const resposta = respostas[question.id];
     const isCollaboratorQuestion = question.tipo === 'collaborator';
-    const notaGerente = notasGerente[question.id];
 
     return (
       <motion.div
@@ -161,38 +156,6 @@ export default function QuestionarioAvaliacaoCardBased({
             {question.obrigatorio ? t('evaluation.requiredField') : t('evaluation.optionalField')}
           </p>
         </div>
-
-        {/* Nota do Gerente (apenas para questões do colaborador quando gerente está avaliando) */}
-        {isManager && isCollaboratorQuestion && onNotaGerenteChange && (
-          <div className="mt-6 pt-6 border-t-2 border-purple-200 bg-purple-50 -mx-6 -mb-6 px-6 pb-6 rounded-b-xl">
-            <label className="block text-sm font-semibold text-purple-700 mb-3">
-              {t('evaluation.managerNoteLabel')}:
-            </label>
-            <div className="flex items-center gap-4">
-              <StarRating
-                maxRating={5}
-                initialRating={notaGerente || 0}
-                onChange={(nota) => onNotaGerenteChange(question.id, nota)}
-                size="lg"
-                readOnly={readOnly}
-                showLabel={true}
-                showTooltip={!readOnly}
-              />
-              {notaGerente && (
-                <span className={`text-2xl font-bold ${
-                  notaGerente >= 4 ? 'text-green-600' :
-                  notaGerente >= 3 ? 'text-blue-600' :
-                  notaGerente >= 2 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
-                  {notaGerente}/5
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-purple-600 mt-2">
-              {t('evaluation.managerNoteDesc')}
-            </p>
-          </div>
-        )}
       </motion.div>
     );
   };

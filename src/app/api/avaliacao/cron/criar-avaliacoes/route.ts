@@ -100,10 +100,10 @@ export async function POST(request: NextRequest) {
         // Criar avaliação para cada usuário
         for (const usuario of usuarios) {
           try {
-            // Buscar gerente do usuário
-            const gerente = await buscarGerenteUsuario(usuario.id, periodo.id);
+            // Buscar gerentes do usuário
+            const gerentes = await buscarGerentesUsuario(usuario.id, periodo.id);
 
-            if (!gerente) {
+            if (!gerentes || gerentes.length === 0) {
               console.log(`   ⚠️  Usuário ${usuario.first_name} ${usuario.last_name} sem gerente configurado`);
               errosUsuario.push({
                 usuario_id: usuario.id,
@@ -113,30 +113,43 @@ export async function POST(request: NextRequest) {
               continue;
             }
 
-            // Criar avaliação
-            const avaliacaoCriada = await criarAvaliacao({
-              funcionario_id: usuario.id,
-              avaliador_id: gerente.id,
-              periodo_id: periodo.id,
-              periodo: periodo.nome,
-              data_inicio: periodo.data_inicio,
-              data_fim: periodo.data_fim,
-            });
+            // Criar avaliação para cada gerente
+            for (const gerente of gerentes) {
+              try {
+                // Criar avaliação
+                const avaliacaoCriada = await criarAvaliacao({
+                  funcionario_id: usuario.id,
+                  avaliador_id: gerente.id,
+                  periodo_id: periodo.id,
+                  periodo: periodo.nome,
+                  data_inicio: periodo.data_inicio,
+                  data_fim: periodo.data_fim,
+                });
 
-            if (avaliacaoCriada) {
-              avaliacoesCriadas++;
+                if (avaliacaoCriada) {
+                  avaliacoesCriadas++;
 
-              // Enviar notificações
-              await enviarNotificacoes({
-                avaliacao_id: avaliacaoCriada.id,
-                funcionario_id: usuario.id,
-                avaliador_id: gerente.id,
-                periodo: periodo.nome,
-                data_limite: periodo.data_limite_autoavaliacao,
-              });
+                  // Enviar notificações
+                  await enviarNotificacoes({
+                    avaliacao_id: avaliacaoCriada.id,
+                    funcionario_id: usuario.id,
+                    avaliador_id: gerente.id,
+                    periodo: periodo.nome,
+                    data_limite: periodo.data_limite_autoavaliacao,
+                  });
+                }
+              } catch (evalError: any) {
+                console.error(`   ❌ Erro ao criar avaliação para ${usuario.first_name} com gerente ${gerente.name}:`, evalError.message);
+                errosUsuario.push({
+                  usuario_id: usuario.id,
+                  usuario_nome: `${usuario.first_name} ${usuario.last_name}`,
+                  gerente_nome: gerente.name,
+                  erro: evalError.message,
+                });
+              }
             }
           } catch (userError: any) {
-            console.error(`   ❌ Erro ao criar avaliação para ${usuario.first_name}:`, userError.message);
+            console.error(`   ❌ Erro ao processar usuário ${usuario.first_name}:`, userError.message);
             errosUsuario.push({
               usuario_id: usuario.id,
               usuario_nome: `${usuario.first_name} ${usuario.last_name}`,
@@ -260,33 +273,29 @@ async function buscarUsuariosElegiveis(periodo: any): Promise<any[]> {
 }
 
 /**
- * Busca o gerente de um usuário
+ * Busca os gerentes de um usuário
  */
-async function buscarGerenteUsuario(usuarioId: string, periodoId: string): Promise<any | null> {
-  if (!supabase) return null;
-  // Tentar buscar gerente específico do período
-  const { data: mapeamento } = await supabase
+async function buscarGerentesUsuario(usuarioId: string, periodoId: string): Promise<any[]> {
+  if (!supabase) return [];
+
+  // Buscar gerentes específicos do período OU globais (periodo_id is null)
+  const { data: mapeamentos, error } = await supabase
     .from('avaliacao_colaborador_gerente')
     .select('gerente_id, users_unified!avaliacao_colaborador_gerente_gerente_id_fkey(*)')
     .eq('colaborador_id', usuarioId)
-    .eq('periodo_id', periodoId)
     .eq('ativo', true)
-    .single();
+    .or(`periodo_id.eq.${periodoId},periodo_id.is.null`);
 
-  if (mapeamento && mapeamento.users_unified) {
-    return mapeamento.users_unified;
+  if (error) {
+    console.error('Erro ao buscar gerentes:', error);
+    return [];
   }
 
-  // Buscar gerente padrão (sem período específico)
-  const { data: mapeamentoPadrao } = await supabase
-    .from('avaliacao_colaborador_gerente')
-    .select('gerente_id, users_unified!avaliacao_colaborador_gerente_gerente_id_fkey(*)')
-    .eq('colaborador_id', usuarioId)
-    .is('periodo_id', null)
-    .eq('ativo', true)
-    .single();
+  // Extrair usuários gerentes e remover duplicatas
+  const gerentes = mapeamentos?.map((m: any) => m.users_unified).filter(Boolean) || [];
+  const uniqueGerentes = Array.from(new Map(gerentes.map((g: any) => [g.id, g])).values());
 
-  return mapeamentoPadrao?.users_unified || null;
+  return uniqueGerentes;
 }
 
 /**

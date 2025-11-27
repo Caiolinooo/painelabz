@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiCheck, FiEdit2, FiMessageSquare, FiUser, FiCalendar, FiStar, FiEye } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
-import { WorkflowAvaliacaoService } from '@/lib/services/workflow-avaliacao';
 import { getCriteriosPorTipoUsuario } from '@/data/criterios-avaliacao';
 import { isUsuarioLider } from '@/lib/utils/lideranca';
 import SeletorEstrelas, { ExibicaoEstrelas } from './SeletorEstrelas';
@@ -14,16 +13,11 @@ interface AvaliacaoParaAprovacao {
   funcionario_id: string;
   funcionario_nome: string;
   funcionario_email: string;
-  etapa_atual: string;
+  status: string;
   data_autoavaliacao: string;
   periodo_nome: string;
-  autoavaliacao: {
-    questao_11_pontos_fortes: string;
-    questao_12_areas_melhoria: string;
-    questao_13_objetivos_alcancados: string;
-    questao_14_planos_desenvolvimento: string;
-    autoavaliacao_criterios: Record<string, number>;
-  };
+  respostas: Record<string, any>;
+  comentario_gerente?: string;
 }
 
 interface InterfaceAprovacaoGerenteProps {
@@ -48,25 +42,20 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
     try {
       setLoading(true);
 
-      // Buscar avaliações aguardando aprovação do gerente
+      // Buscar avaliações aguardando aprovação do gerente na tabela CORRETA (avaliacoes_desempenho)
       const { data: avaliacoes, error } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .select(`
           id,
           funcionario_id,
-          etapa_atual,
+          status,
           data_autoavaliacao,
-          users_unified!funcionario_id(name, email),
-          periodos_avaliacao(nome),
-          autoavaliacoes(
-            questao_11_pontos_fortes,
-            questao_12_areas_melhoria,
-            questao_13_objetivos_alcancados,
-            questao_14_planos_desenvolvimento,
-            autoavaliacao_criterios
-          )
+          respostas,
+          comentario_avaliador,
+          funcionario:users_unified!avaliacoes_desempenho_funcionario_id_fkey(first_name, last_name, email),
+          periodo:periodos_avaliacao(nome)
         `)
-        .eq('etapa_atual', 'aguardando_gerente')
+        .eq('status', 'aguardando_aprovacao')
         .order('data_autoavaliacao', { ascending: true });
 
       if (error) {
@@ -74,22 +63,22 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
         return;
       }
 
-      const avaliacoesFormatadas = avaliacoes?.map(avaliacao => ({
-        id: avaliacao.id,
-        funcionario_id: avaliacao.funcionario_id,
-        funcionario_nome: (avaliacao.users_unified as any)?.name || 'Nome não encontrado',
-        funcionario_email: (avaliacao.users_unified as any)?.email || 'Email não encontrado',
-        etapa_atual: avaliacao.etapa_atual,
-        data_autoavaliacao: avaliacao.data_autoavaliacao,
-        periodo_nome: (avaliacao.periodos_avaliacao as any)?.nome || 'Período não encontrado',
-        autoavaliacao: avaliacao.autoavaliacoes?.[0] || {
-          questao_11_pontos_fortes: '',
-          questao_12_areas_melhoria: '',
-          questao_13_objetivos_alcancados: '',
-          questao_14_planos_desenvolvimento: '',
-          autoavaliacao_criterios: {}
-        }
-      })) || [];
+      const avaliacoesFormatadas = avaliacoes?.map(avaliacao => {
+        const func = avaliacao.funcionario as any;
+        const nomeCompleto = func ? `${func.first_name} ${func.last_name}` : 'Nome não encontrado';
+
+        return {
+          id: avaliacao.id,
+          funcionario_id: avaliacao.funcionario_id,
+          funcionario_nome: nomeCompleto,
+          funcionario_email: func?.email || 'Email não encontrado',
+          status: avaliacao.status,
+          data_autoavaliacao: avaliacao.data_autoavaliacao,
+          periodo_nome: (avaliacao.periodo as any)?.nome || 'Período não encontrado',
+          respostas: avaliacao.respostas || {},
+          comentario_gerente: avaliacao.comentario_avaliador
+        };
+      }) || [];
 
       setAvaliacoesPendentes(avaliacoesFormatadas);
     } catch (error) {
@@ -101,20 +90,25 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
 
   const abrirModalAprovacao = async (avaliacao: AvaliacaoParaAprovacao) => {
     setAvaliacaoSelecionada(avaliacao);
-    setComentarios('');
+    // Carregar comentário existente se houver
+    setComentarios(avaliacao.comentario_gerente || avaliacao.respostas['Q15']?.comentario || '');
+
+    // Inicializar notas do gerente com base nas respostas existentes (Q15-Q24)
+    const notasIniciais: Record<string, number> = {};
+    // Mapear respostas Q15-Q24 para notas
+    Object.keys(avaliacao.respostas).forEach(key => {
+      if (avaliacao.respostas[key]?.nota) {
+        notasIniciais[key] = avaliacao.respostas[key].nota;
+      }
+    });
+    setNotasGerente(notasIniciais);
+
     setModoEdicao(false);
 
     // Verificar se o funcionário é líder para carregar critérios corretos
     const funcionarioEhLider = await isUsuarioLider(avaliacao.funcionario_id);
     const criteriosDisponiveis = getCriteriosPorTipoUsuario(funcionarioEhLider);
     setCriterios(criteriosDisponiveis);
-
-    // Inicializar notas do gerente com as notas da autoavaliação
-    const notasIniciais: Record<string, number> = {};
-    criteriosDisponiveis.forEach(criterio => {
-      notasIniciais[criterio.id] = avaliacao.autoavaliacao.autoavaliacao_criterios[criterio.id] || 0;
-    });
-    setNotasGerente(notasIniciais);
 
     setShowModal(true);
   };
@@ -125,25 +119,71 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
     try {
       setLoading(true);
 
-      const edicoes = modoEdicao ? { 
-        pontuacao_total: calcularPontuacaoTotal(),
-        notas_gerente: notasGerente 
-      } : undefined;
+      const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
 
-      const sucesso = await WorkflowAvaliacaoService.aprovarAvaliacao(
-        avaliacaoSelecionada.id,
-        gerenteId,
-        aprovada,
-        comentarios,
-        edicoes
-      );
+      let url = `/api/avaliacao-desempenho/avaliacoes/${avaliacaoSelecionada.id}/approve`;
+      let body: any = {
+        comentario_avaliador: comentarios,
+        respostas: {
+          ...avaliacaoSelecionada.respostas,
+          // Atualizar Q15 com o comentário
+          'Q15': { ...avaliacaoSelecionada.respostas['Q15'], comentario: comentarios }
+        }
+      };
 
-      if (sucesso) {
+      // Se for devolver (não aprovada), usar endpoint de devolução ou patch
+      if (!aprovada) {
+        // Devolver para ajustes
+        url = `/api/avaliacao/${avaliacaoSelecionada.id}`;
+        body = {
+          status: 'devolvida',
+          comentario_gerente: comentarios
+        };
+
+        const response = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          await carregarAvaliacoesPendentes();
+          setShowModal(false);
+          alert('Avaliação devolvida para ajustes!');
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Erro ao devolver avaliação');
+        }
+        return;
+      }
+
+      // Se for aprovar
+      // Adicionar notas do gerente ao body
+      if (modoEdicao) {
+        Object.entries(notasGerente).forEach(([key, valor]) => {
+          body.respostas[key] = { ...body.respostas[key], nota: valor };
+        });
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (response.ok) {
         await carregarAvaliacoesPendentes();
         setShowModal(false);
-        alert(aprovada ? 'Avaliação aprovada com sucesso!' : 'Avaliação editada com sucesso!');
+        alert('Avaliação aprovada com sucesso!');
       } else {
-        alert('Erro ao processar avaliação');
+        const data = await response.json();
+        alert(data.error || 'Erro ao processar avaliação');
       }
     } catch (error) {
       console.error('Erro ao processar avaliação:', error);
@@ -155,11 +195,12 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
 
   const calcularPontuacaoTotal = () => {
     const notas = Object.values(notasGerente);
-    const soma = notas.reduce((acc, nota) => acc + nota, 0);
-    return notas.length > 0 ? (soma / notas.length) : 0;
+    if (notas.length === 0) return 0;
+    return notas.reduce((a, b) => a + b, 0) / notas.length;
   };
 
   const formatarData = (data: string) => {
+    if (!data) return 'Data não disponível';
     return new Date(data).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -233,7 +274,7 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
                   <div className="bg-gray-50 rounded-lg p-4 mb-4">
                     <h4 className="font-medium text-gray-900 mb-2">Principais resultados obtidos e metas atingidas:</h4>
                     <p className="text-sm text-gray-700 line-clamp-2">
-                      {avaliacao.autoavaliacao.questao_11_pontos_fortes || 'Não informado'}
+                      {avaliacao.respostas['Q11']?.comentario || 'Não informado'}
                     </p>
                   </div>
                 </div>
@@ -257,7 +298,7 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
       {showModal && avaliacaoSelecionada && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
@@ -281,36 +322,35 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
 
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h5 className="font-medium text-gray-900 mb-2">Questão 11: Principais resultados obtidos e metas atingidas durante o ano</h5>
-                  <p className="text-gray-700">{avaliacaoSelecionada.autoavaliacao.questao_11_pontos_fortes}</p>
+                  <p className="text-gray-700">{avaliacaoSelecionada.respostas['Q11']?.comentario || 'Não respondido'}</p>
                 </div>
 
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <h5 className="font-medium text-gray-900 mb-2">Questão 12: Melhorias obtidas desde a última avaliação</h5>
-                  <p className="text-gray-700">{avaliacaoSelecionada.autoavaliacao.questao_12_areas_melhoria}</p>
+                  <p className="text-gray-700">{avaliacaoSelecionada.respostas['Q12']?.comentario || 'Não respondido'}</p>
                 </div>
 
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <h5 className="font-medium text-gray-900 mb-2">Questão 13: Aspectos que precisam de desenvolvimento e LNT</h5>
-                  <p className="text-gray-700">{avaliacaoSelecionada.autoavaliacao.questao_13_objetivos_alcancados}</p>
+                  <p className="text-gray-700">{avaliacaoSelecionada.respostas['Q13']?.comentario || 'Não respondido'}</p>
                 </div>
 
                 <div className="bg-green-50 p-4 rounded-lg">
                   <h5 className="font-medium text-gray-900 mb-2">Questão 14: Objetivos para o próximo ano</h5>
-                  <p className="text-gray-700">{avaliacaoSelecionada.autoavaliacao.questao_14_planos_desenvolvimento}</p>
+                  <p className="text-gray-700">{avaliacaoSelecionada.respostas['Q14']?.comentario || 'Não respondido'}</p>
                 </div>
               </div>
 
-              {/* Avaliação por Critérios */}
+              {/* Avaliação por Critérios (Q15-Q24) */}
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-lg font-semibold text-gray-900">Avaliação por Critérios</h4>
+                  <h4 className="text-lg font-semibold text-gray-900">Avaliação por Critérios (Gerente)</h4>
                   <button
                     onClick={() => setModoEdicao(!modoEdicao)}
-                    className={`flex items-center px-3 py-1 rounded-lg text-sm transition-colors ${
-                      modoEdicao 
-                        ? 'bg-orange-100 text-orange-700' 
+                    className={`flex items-center px-3 py-1 rounded-lg text-sm transition-colors ${modoEdicao
+                        ? 'bg-orange-100 text-orange-700'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     <FiEdit2 className="mr-1" size={14} />
                     {modoEdicao ? 'Modo Edição Ativo' : 'Editar Notas'}
@@ -335,32 +375,29 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
                       </div>
 
                       <div className="space-y-3">
-                        {/* Autoavaliação do Colaborador */}
-                        <div className="bg-blue-50 p-3 rounded-lg">
-                          <p className="text-xs font-medium text-blue-900 mb-2">Autoavaliação do Colaborador:</p>
-                          <ExibicaoEstrelas
-                            valor={avaliacaoSelecionada.autoavaliacao.autoavaliacao_criterios[criterio.id] || 0}
-                            tamanho="sm"
-                            mostrarValor={true}
-                            mostrarLabel={true}
-                          />
-                        </div>
-
-                        {/* Avaliação do Gerente (modo edição) */}
-                        {modoEdicao && (
-                          <div className="bg-green-50 p-3 rounded-lg">
-                            <p className="text-xs font-medium text-green-900 mb-2">Sua Avaliação (Gerente):</p>
+                        {/* Avaliação do Gerente (modo edição ou visualização) */}
+                        <div className="bg-green-50 p-3 rounded-lg">
+                          <p className="text-xs font-medium text-green-900 mb-2">Sua Avaliação (Gerente):</p>
+                          {modoEdicao ? (
                             <SeletorEstrelas
                               valor={notasGerente[criterio.id] || 0}
-                              onChange={(nota) => setNotasGerente(prev => ({
-                                ...prev,
-                                [criterio.id]: nota
-                              }))}
+                              onChange={(nota) => {
+                                setNotasGerente(prev => ({
+                                  ...prev,
+                                  [criterio.id]: nota
+                                }));
+                              }}
                               tamanho="sm"
                               mostrarLegenda={false}
                             />
-                          </div>
-                        )}
+                          ) : (
+                            <ExibicaoEstrelas
+                              valor={notasGerente[criterio.id] || 0}
+                              tamanho="sm"
+                              mostrarValor={true}
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -369,7 +406,7 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
                 {modoEdicao && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-700">
-                      <strong>Pontuação Total:</strong> {calcularPontuacaoTotal().toFixed(2)} / 5.00
+                      <strong>Pontuação Total Estimada:</strong> {calcularPontuacaoTotal().toFixed(2)} / 5.00
                     </p>
                   </div>
                 )}
@@ -406,16 +443,14 @@ export default function InterfaceAprovacaoGerente({ gerenteId }: InterfaceAprova
                 >
                   Cancelar
                 </button>
-                {modoEdicao && (
-                  <button
-                    onClick={() => handleAprovacao(false)}
-                    disabled={loading}
-                    className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
-                  >
-                    <FiEdit2 className="mr-2" size={16} />
-                    Salvar Edições
-                  </button>
-                )}
+                <button
+                  onClick={() => handleAprovacao(false)}
+                  disabled={loading}
+                  className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
+                >
+                  <FiEdit2 className="mr-2" size={16} />
+                  Devolver para Ajustes
+                </button>
                 <button
                   onClick={() => handleAprovacao(true)}
                   disabled={loading}

@@ -157,24 +157,7 @@ export default function FillEvaluationClient({
       const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
       
       if (isManager) {
-        // Gerente aprova a avaliação
-        // Primeiro salvar respostas
-        const saveResponse = await fetch(`/api/avaliacao/${evaluation.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: ***REMOVED***
-            respostas
-          }),
-        });
-
-        if (!saveResponse.ok) {
-          const data = await saveResponse.json();
-          throw new Error(data.error || t('evaluation.errorSaving'));
-        }
-
-        // Depois aprovar
+        // Gerente aprova a avaliação e salva suas respostas (Q15-Q24)
         const approveResponse = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/approve`, {
           method: 'POST',
           headers: {
@@ -182,7 +165,8 @@ export default function FillEvaluationClient({
             'Content-Type': 'application/json',
           },
           body: ***REMOVED***
-            comentario_avaliador: respostas['Q15']?.comentario || ''
+            comentario_avaliador: respostas['Q15']?.comentario || '',
+            respostas: respostas  // Enviar respostas completas (Q15-Q24)
           }),
         });
 

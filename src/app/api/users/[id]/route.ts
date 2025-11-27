@@ -47,10 +47,25 @@ export async function GET(
       );
     }
 
+    // Mapear para camelCase para corresponder à interface User
+    const mappedUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      role: user.role,
+      position: user.position,
+      department: user.department,
+      avatar: user.avatar,
+      drive_photo_url: user.drive_photo_url,
+      phoneNumber: user.phone_number
+    };
+
     // Retornar dados básicos
     return NextResponse.json({
       success: true,
-      data: user
+      data: mappedUser
     });
   } catch (error) {
     console.error('Erro ao obter usuário:', error);
@@ -169,7 +184,9 @@ export async function PUT(
 
     if (password) {
       // Gerar hash da senha
-      updateData.password = await bcrypt.hash(password, 10);
+      const hashed = await bcrypt.hash(password, 10);
+      updateData.password = hashed;
+      updateData.password_hash = hashed;
       updateData.password_last_changed = now;
     }
 

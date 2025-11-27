@@ -48,6 +48,10 @@ export interface TokenPayload {
   email?: string; // Adicionar propriedade email (opcional)
   exp?: number; // Adicionar propriedade exp para expiração
   iat?: number; // Adicionar propriedade iat para issued at
+  // Propriedades alternativas para compatibilidade com diferentes formatos de token
+  sub?: string; // Subject (padrão JWT)
+  user_id?: string; // Alternativa comum em alguns sistemas
+  id?: string; // Outra alternativa comum
 }
 
 // Interface para o resultado da verificação de token em requisições
@@ -57,7 +61,7 @@ export interface TokenVerificationResult {
 }
 
 // Função para verificar token a partir de uma requisição
-export function verifyRequestToken(request: Request | {headers: {get: (name: string) => string | null}}): TokenVerificationResult {
+export function verifyRequestToken(request: Request | { headers: { get: (name: string) => string | null } }): TokenVerificationResult {
   try {
     const authHeader = request.headers.get('authorization');
     const token = extractTokenFromHeader(authHeader || undefined);
@@ -87,7 +91,7 @@ export interface AdminCheckResult {
 }
 
 // Função para verificar se o usuário da requisição é administrador
-export async function isAdminFromRequest(request: Request | {headers: {get: (name: string) => string | null}}): Promise<AdminCheckResult> {
+export async function isAdminFromRequest(request: Request | { headers: { get: (name: string) => string | null } }): Promise<AdminCheckResult> {
   try {
     // Verificar o token da requisição
     const tokenResult = verifyRequestToken(request);
@@ -132,7 +136,7 @@ export interface TokenFromRequestResult {
 }
 
 // Função para verificar token e obter usuário de uma requisição
-export async function verifyTokenFromRequest(request: Request | {headers: {get: (name: string) => string | null}}): Promise<TokenFromRequestResult> {
+export async function verifyTokenFromRequest(request: Request | { headers: { get: (name: string) => string | null } }): Promise<TokenFromRequestResult> {
   try {
     // Verificar o token da requisição
     const tokenResult = verifyRequestToken(request);
@@ -522,7 +526,7 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
     }
 
     // Verificar se o usuário tem senha
-    if (user && (user as any).password) {
+    if (user && userHasPassword(user)) {
       console.log('Usuário encontrado e tem senha cadastrada:', user.phone_number);
       return {
         success: true,
@@ -673,9 +677,9 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
           authorizationStatus: (user as any).authorization_status,
           email: user.email
         });
-        
+
         // Check if this is an incomplete registration (has basic info but needs completion)
-        if (!(user as any).password_hash && !(user as any).password) {
+        if (!userHasPassword(user)) {
           console.log('Usuário sem senha encontrado - direcionando para registro');
           return {
             success: false,
@@ -683,10 +687,10 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
             authStatus: (user as any).authorization_status === 'pending' ? 'pending_registration' : 'incomplete_registration'
           };
         }
-        
+
         return {
           success: false,
-          message: (user as any).authorization_status === 'pending' 
+          message: (user as any).authorization_status === 'pending'
             ? 'Sua solicitação de acesso está pendente de aprovação.'
             : 'Sua conta está desativada. Entre em contato com o suporte.',
           authStatus: (user as any).authorization_status === 'pending' ? 'pending' : 'inactive'
@@ -699,7 +703,7 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
         return {
           success: true,
           message: 'Usuário encontrado mas não autorizado a receber código',
-          hasPassword: !!(user as any).password,
+          hasPassword: userHasPassword(user),
           authStatus: 'unauthorized'
         };
       }
@@ -709,7 +713,7 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
     // que cria usuários temporários para qualquer tipo de usuário
 
     // Verificar se o usuário já tem senha definida
-    if (user && (user as any).password) {
+    if (user && userHasPassword(user)) {
       // Verificar se o usuário está ativo
       if (!(user as any).active) {
         return {
@@ -952,10 +956,10 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
           authorizationStatus: (user as any).authorization_status,
           email: user.email
         });
-        
+
         return {
           success: false,
-          message: (user as any).authorization_status === 'pending' 
+          message: (user as any).authorization_status === 'pending'
             ? 'Sua solicitação de acesso está pendente de aprovação.'
             : 'Sua conta está desativada. Entre em contato com o suporte.',
           authStatus: (user as any).authorization_status === 'pending' ? 'pending' : 'inactive'
@@ -1000,7 +1004,7 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
       message: 'Login realizado com sucesso.',
       user,
       token,
-      isNewUser: !(user as any).password // É novo usuário se não tem senha
+      isNewUser: !userHasPassword(user) // É novo usuário se não tem senha
     };
   } catch (error) {
     console.error('Erro ao verificar código de login:', error);
@@ -1133,6 +1137,111 @@ export async function getAuthorizationStatus(userId: string): Promise<string> {
     console.error('Erro ao obter status de autorização:', error);
     return 'unknown';
   }
+}
+
+const BLOCKED_AUTHORIZATION_STATUSES = new Set([
+  'pending',
+  'revoked',
+  'denied',
+  'rejected',
+  'banned',
+  'blocked',
+  'suspended'
+]);
+
+function hasBlockedAuthorizationStatus(status?: string | null): boolean {
+  if (!status) {
+    return false;
+  }
+
+  return BLOCKED_AUTHORIZATION_STATUSES.has(status.toLowerCase());
+}
+
+async function markUserAsAuthorized(userId: string): Promise<boolean> {
+  try {
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
+
+    try {
+      await pool.query(`
+        UPDATE "users_unified"
+        SET
+          "is_authorized" = TRUE,
+          "authorization_status" = CASE
+            WHEN "authorization_status" IS NULL OR "authorization_status" = '' THEN 'active'
+            ELSE "authorization_status"
+          END,
+          "updated_at" = CURRENT_TIMESTAMP
+        WHERE "id" = $1
+      `, [userId]);
+
+      return true;
+    } finally {
+      await pool.end();
+    }
+  } catch (error) {
+    console.error('Erro ao sincronizar campo de autorização do usuário:', error);
+    return false;
+  }
+}
+
+async function ensureUserAuthorizedForLogin(user: any): Promise<boolean> {
+  if (!user) {
+    return false;
+  }
+
+  if (user.is_authorized === true) {
+    return true;
+  }
+
+  if (hasBlockedAuthorizationStatus(user.authorization_status)) {
+    return false;
+  }
+
+  const synced = await markUserAsAuthorized(user.id);
+
+  if (!synced) {
+    return false;
+  }
+
+  user.is_authorized = true;
+
+  if (!user.authorization_status) {
+    user.authorization_status = 'active';
+  }
+
+  return true;
+}
+
+function normalizeHashedPassword(row: any): string | null {
+  if (!row) {
+    return null;
+  }
+
+  const raw = row.password ?? row.password_hash ?? null;
+
+  if (!raw) {
+    return null;
+  }
+
+  if (typeof raw === 'string') {
+    return raw;
+  }
+
+  if (raw instanceof Buffer) {
+    return raw.toString('utf-8');
+  }
+
+  if (typeof raw.toString === 'function') {
+    return raw.toString();
+  }
+
+  return String(raw);
+}
+
+function userHasPassword(user: any): boolean {
+  return !!normalizeHashedPassword(user);
 }
 
 // Função para buscar usuário por ID usando Supabase (para evitar conflito de import)
@@ -1659,6 +1768,7 @@ export async function updateUserPassword(userId: string, password: string): Prom
         UPDATE "users_unified"
         SET
           "password" = $1,
+          "password_hash" = $1,
           "updated_at" = CURRENT_TIMESTAMP
         WHERE "id" = $2
       `, [hashedPassword, userId]);
@@ -1694,7 +1804,7 @@ export async function verifyUserPassword(userId: string, password: string): Prom
 
     try {
       const result = await pool.query(`
-        SELECT "password"
+        SELECT "password", "password_hash"
         FROM "users_unified"
         WHERE "id" = $1
       `, [userId]);
@@ -1703,7 +1813,13 @@ export async function verifyUserPassword(userId: string, password: string): Prom
         return false;
       }
 
-      const hashedPassword = result.rows[0].password;
+      const hashedPassword = normalizeHashedPassword(result.rows[0]);
+
+      if (!hashedPassword) {
+        console.warn('Usuário encontrado sem hash de senha armazenado:', userId);
+        return false;
+      }
+
       const isValid = await bcrypt.compare(password, hashedPassword);
 
       return isValid;
@@ -1742,6 +1858,7 @@ export async function createUser(userData: any): Promise<User | null> {
           "first_name",
           "last_name",
           "password",
+          "password_hash",
           "role",
           "position",
           "department",
@@ -1752,7 +1869,7 @@ export async function createUser(userData: any): Promise<User | null> {
           "access_history",
           "created_at",
           "updated_at"
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $15)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
         RETURNING *
       `, [
         userId,
@@ -1760,6 +1877,7 @@ export async function createUser(userData: any): Promise<User | null> {
         userData.email,
         userData.firstName,
         userData.lastName,
+        hashedPassword,
         hashedPassword,
         userData.role || 'USER',
         userData.position || '',
@@ -1831,8 +1949,10 @@ export async function loginWithPassword(identifier: string, password: string, re
       };
     }
 
-    // Verificar se o usuário está autorizado
-    if (!(user as any).is_authorized) {
+    // Verificar se o usuário está autorizado (sincronizando flag legado quando necessário)
+    const userIsAuthorized = await ensureUserAuthorizedForLogin(user as any);
+
+    if (!userIsAuthorized) {
       return {
         success: false,
         message: 'Sua conta não está autorizada. Entre em contato com o suporte.'
@@ -1840,7 +1960,7 @@ export async function loginWithPassword(identifier: string, password: string, re
     }
 
     // Verificar se o usuário tem senha
-    if (!(user as any).password) {
+    if (!userHasPassword(user)) {
       return {
         success: false,
         message: 'Este usuário não tem senha definida. Por favor, solicite um código de verificação.'
@@ -1919,8 +2039,10 @@ export async function loginWithEmail(email: string, password: string): Promise<{
       };
     }
 
-    // Verificar se o usuário está autorizado
-    if (!(user as any).is_authorized) {
+    // Verificar se o usuário está autorizado (sincronizando flag legado quando necessário)
+    const userIsAuthorized = await ensureUserAuthorizedForLogin(user as any);
+
+    if (!userIsAuthorized) {
       return {
         success: false,
         message: 'Sua conta não está autorizada. Entre em contato com o suporte.'
@@ -1928,7 +2050,7 @@ export async function loginWithEmail(email: string, password: string): Promise<{
     }
 
     // Verificar se o usuário tem senha
-    if (!(user as any).password) {
+    if (!userHasPassword(user)) {
       return {
         success: false,
         message: 'Este usuário não tem senha definida. Por favor, solicite um código de verificação.'
@@ -2003,8 +2125,10 @@ export async function loginWithPhone(phoneNumber: string, password: string): Pro
       };
     }
 
-    // Verificar se o usuário está autorizado
-    if (!(user as any).is_authorized) {
+    // Verificar se o usuário está autorizado (sincronizando flag legado quando necessário)
+    const userIsAuthorized = await ensureUserAuthorizedForLogin(user as any);
+
+    if (!userIsAuthorized) {
       return {
         success: false,
         message: 'Sua conta não está autorizada. Entre em contato com o suporte.'
@@ -2012,7 +2136,7 @@ export async function loginWithPhone(phoneNumber: string, password: string): Pro
     }
 
     // Verificar se o usuário tem senha
-    if (!(user as any).password) {
+    if (!userHasPassword(user)) {
       return {
         success: false,
         message: 'Este usuário não tem senha definida. Por favor, solicite um código de verificação.'
@@ -2124,7 +2248,9 @@ export async function validateToken(token: string): Promise<{ success: boolean; 
       };
     }
 
-    if (!(user as any).is_authorized) {
+    const userIsAuthorized = await ensureUserAuthorizedForLogin(user as any);
+
+    if (!userIsAuthorized) {
       return {
         success: false,
         message: 'Usuário não autorizado.'

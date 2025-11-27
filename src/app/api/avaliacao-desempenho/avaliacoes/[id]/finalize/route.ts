@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { notifyEmployeeEvaluationCompleted } from '@/lib/evaluation-notifications';
+import { QUESTIONARIO_PADRAO } from '@/lib/schemas/evaluation-schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,20 +68,18 @@ export async function POST(
       );
     }
 
-    // Calcular nota final
+    // Calcular nota final baseada apenas nas questões gerenciais (Q15-Q24)
     const respostas = avaliacao.respostas || {};
-    const notasGerente = avaliacao.notas_gerente || {};
-    
-    const notasQuestoesGerente = Object.values(respostas)
-      .map((r: any) => r?.nota)
+    const managerQuestionIds = QUESTIONARIO_PADRAO
+      .filter(q => q.tipo === 'manager')
+      .map(q => q.id);
+
+    const notasGerenciais = managerQuestionIds
+      .map(id => respostas[id]?.nota)
       .filter((n): n is number => typeof n === 'number' && n > 0);
 
-    const notasAvaliacaoColaborador = Object.values(notasGerente)
-      .filter((n): n is number => typeof n === 'number' && n > 0);
-
-    const todasNotas = [...notasQuestoesGerente, ...notasAvaliacaoColaborador];
-    const nota_final = todasNotas.length > 0
-      ? (todasNotas.reduce((sum, n) => sum + n, 0) / todasNotas.length).toFixed(2)
+    const nota_final = notasGerenciais.length > 0
+      ? (notasGerenciais.reduce((sum, n) => sum + n, 0) / notasGerenciais.length).toFixed(2)
       : null;
 
     const { error: updateError } = await supabaseAdmin
