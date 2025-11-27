@@ -58,17 +58,24 @@ export default async function EvaluationPage() {
     if (!userId && decoded) {
       // Verificar se é um token especial do Supabase
       if (decoded.userId === 'supabase-user' || decoded.userId === 'supabase-access-token' || decoded.userId === 'service-account') {
-        console.log('⚠️ EvaluationPage - Token do Supabase detectado, tentando buscar sessão alternativa');
-        // Aqui podemos tentar obter o usuário de outra forma
-        // Por enquanto, vamos redirecionar mas com um log específico
-        console.log('❌ EvaluationPage - Token do Supabase não suportado nesta rota, necessário token de aplicação');
-        redirect('/login?redirect=/avaliacao');
-      }
+        console.log('⚠️ EvaluationPage - Token do Supabase detectado, validando com Supabase Admin');
 
-      // Verificar outras propriedades que podem conter o userId
-      userId = decoded.sub || decoded.user_id || decoded.id;
-      if (userId) {
-        console.log('✅ EvaluationPage - userId encontrado em propriedade alternativa:', userId);
+        // Validar o token usando o cliente Admin do Supabase
+        const { data: { user: supabaseUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+        if (authError || !supabaseUser) {
+          console.log('❌ EvaluationPage - Token do Supabase inválido ou expirado:', authError?.message);
+          redirect('/login?redirect=/avaliacao');
+        }
+
+        console.log('✅ EvaluationPage - Token do Supabase validado com sucesso. ID real:', supabaseUser.id);
+        userId = supabaseUser.id;
+      } else {
+        // Verificar outras propriedades que podem conter o userId
+        userId = decoded.sub || decoded.user_id || decoded.id;
+        if (userId) {
+          console.log('✅ EvaluationPage - userId encontrado em propriedade alternativa:', userId);
+        }
       }
     }
 
