@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { canEditAcademy, canModerateAcademy, canEditSocial, canModerateSocial } from '@/lib/permissions';
+import { canEditAcademy, canModerateAcademy, canEditSocial, canModerateSocial, hasFeaturePermission } from '@/lib/permissions';
 import { verifyTokenFromRequest } from '@/lib/auth';
 
 export interface AuthenticatedUser {
@@ -78,6 +78,10 @@ export function checkPermissions(user: AuthenticatedUser, permission: string): b
       return user.role === 'ADMIN';
     case 'manager':
       return user.role === 'ADMIN' || user.role === 'MANAGER';
+    case 'news_editor':
+      return hasFeaturePermission(user, 'news_editor') || hasFeaturePermission(user, 'news_manager') || user.role === 'ADMIN' || user.role === 'MANAGER';
+    case 'news_manager':
+      return hasFeaturePermission(user, 'news_manager') || user.role === 'ADMIN' || user.role === 'MANAGER';
     default:
       return false;
   }

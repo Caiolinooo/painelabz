@@ -15,4 +15,5 @@ if (!isProduction) {
 }
 
 // Exportar as funções do Gmail
-export * from './email-gmail';
+// Exportar as funções do Exchange
+export * from './email-exchange';

@@ -82,7 +82,8 @@ export const PUT = withPermission('manager', async (
       scheduled_for,
       featured,
       pinned,
-      status
+      status,
+      metadata
     } = body;
 
     console.log(`🔄 API News Post - Atualizando post: ${postId}`);
@@ -101,6 +102,26 @@ export const PUT = withPermission('manager', async (
       );
     }
 
+    // Sincronizar com Calendário se for um evento
+    if (existingPost.metadata?.eventId && (title || content)) {
+      try {
+        const eventUpdate: any = {
+          updated_at: new Date().toISOString()
+        };
+        if (title) eventUpdate.summary = title;
+        if (content) eventUpdate.description = content; // Simplificação
+
+        await supabaseAdmin
+          .from('calendar_events')
+          .update(eventUpdate)
+          .eq('id', existingPost.metadata.eventId);
+
+        console.log(`📅 Evento de calendário sincronizado: ${existingPost.metadata.eventId}`);
+      } catch (syncError) {
+        console.error('Erro ao sincronizar com calendário:', syncError);
+      }
+    }
+
     // Preparar dados de atualização
     const updateData: any = {
       updated_at: new Date().toISOString()
@@ -117,6 +138,7 @@ export const PUT = withPermission('manager', async (
     if (scheduled_for !== undefined) updateData.scheduled_for = scheduled_for;
     if (featured !== undefined) updateData.featured = featured;
     if (pinned !== undefined) updateData.pinned = pinned;
+    if (metadata !== undefined) updateData.metadata = metadata;
     if (status !== undefined) {
       updateData.status = status;
       // Se estiver publicando pela primeira vez, definir published_at
@@ -178,10 +200,10 @@ export const DELETE = withPermission('manager', async (
     const { postId } = await params;
     console.log(`🔄 API News Post - Excluindo post: ${postId}`);
 
-    // Verificar se o post existe
+    // Verificar se o post existe e obter media_urls
     const { data: existingPost, error: fetchError } = await supabaseAdmin
       .from('news_posts')
-      .select('title')
+      .select('title, metadata, media_urls')
       .eq('id', postId)
       .single();
 
@@ -190,6 +212,62 @@ export const DELETE = withPermission('manager', async (
         { error: 'Post não encontrado' },
         { status: 404 }
       );
+    }
+
+    // Limpar arquivos de mídia do Storage
+    if (existingPost.media_urls) {
+      try {
+        const mediaUrls = typeof existingPost.media_urls === 'string'
+          ? JSON.parse(existingPost.media_urls)
+          : existingPost.media_urls;
+
+        if (Array.isArray(mediaUrls) && mediaUrls.length > 0) {
+          console.log(`🗑️ Removendo ${mediaUrls.length} arquivo(s) de mídia do Storage...`);
+
+          for (const url of mediaUrls) {
+            try {
+              // Extrair o caminho do arquivo da URL
+              // Formato esperado: https://[project].supabase.co/storage/v1/object/public/news-media/posts/[filename]
+              const urlParts = url.split('/storage/v1/object/public/');
+              if (urlParts.length > 1) {
+                const [bucket, ...pathParts] = urlParts[1].split('/');
+                const filePath = pathParts.join('/');
+
+                console.log(`  - Removendo: ${bucket}/${filePath}`);
+
+                const { error: storageError } = await supabaseAdmin
+                  .storage
+                  .from(bucket)
+                  .remove([filePath]);
+
+                if (storageError) {
+                  console.error(`  ❌ Erro ao remover arquivo: ${filePath}`, storageError);
+                } else {
+                  console.log(`  ✅ Arquivo removido: ${filePath}`);
+                }
+              }
+            } catch (urlError) {
+              console.error('  ❌ Erro ao processar URL:', url, urlError);
+            }
+          }
+        }
+      } catch (mediaError) {
+        console.error('❌ Erro ao limpar arquivos de mídia:', mediaError);
+        // Continuar com a exclusão do post mesmo se houver erro na limpeza de mídia
+      }
+    }
+
+    // Sincronizar exclusão com Calendário
+    if (existingPost.metadata?.eventId) {
+      try {
+        await supabaseAdmin
+          .from('calendar_events')
+          .delete()
+          .eq('id', existingPost.metadata.eventId);
+        console.log(`📅 Evento de calendário removido: ${existingPost.metadata.eventId}`);
+      } catch (syncError) {
+        console.error('Erro ao remover evento do calendário:', syncError);
+      }
     }
 
     // Excluir o post (cascata irá remover likes, comentários e visualizações)
@@ -207,9 +285,9 @@ export const DELETE = withPermission('manager', async (
     }
 
     console.log(`✅ Post excluído: ${existingPost.title}`);
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Post excluído com sucesso' 
+    return NextResponse.json({
+      success: true,
+      message: 'Post excluído com sucesso'
     });
 
   } catch (error) {

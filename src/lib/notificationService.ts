@@ -17,7 +17,7 @@ export const createNotification = async (notification: Notification) => {
       user_id: notification.user_id,
       title: notification.title,
       message: notification.message,
-      link: notification.link,
+      action_url: notification.link,
       is_read: false,
     },
   ]);

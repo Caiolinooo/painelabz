@@ -159,11 +159,10 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
             <button
               key={role.id}
               onClick={() => setSelectedRole(role.id as any)}
-              className={`p-3 rounded-lg border text-left transition-colors ${
-                selectedRole === role.id
+              className={`p-3 rounded-lg border text-left transition-colors ${selectedRole === role.id
                   ? 'border-blue-500 bg-blue-50 text-blue-900'
                   : 'border-gray-200 hover:border-gray-300'
-              }`}
+                }`}
             >
               <div className="font-medium">{role.label}</div>
               <div className="text-sm text-gray-500">{role.description}</div>
@@ -178,7 +177,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
         <p className="text-sm text-gray-500 mb-4">
           Configure quais módulos os usuários com role <strong>{selectedRole}</strong> podem acessar.
         </p>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {availableModules.map((module) => (
             <div key={module.id} className="flex items-center p-3 border rounded-lg">
@@ -206,7 +205,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
         <p className="text-sm text-gray-500 mb-4">
           Configure permissões especiais para funcionalidades específicas.
         </p>
-        
+
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 border rounded-lg">
             <div>
@@ -220,7 +219,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-3 border rounded-lg">
             <div>
               <div className="font-medium text-gray-900">Visualizar Reembolsos</div>
@@ -233,7 +232,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-3 border rounded-lg">
             <div>
               <div className="font-medium text-gray-900">Editar Configurações de Reembolso</div>
@@ -243,6 +242,32 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
               type="checkbox"
               checked={safeFeatures.reimbursement_edit || false}
               onChange={(e) => handleFeatureChange('reimbursement_edit', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <div className="font-medium text-gray-900">Editor de Notícias</div>
+              <div className="text-sm text-gray-500">Permite criar e editar notícias</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={safeFeatures.news_editor || false}
+              onChange={(e) => handleFeatureChange('news_editor', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <div className="font-medium text-gray-900">Gerente de Notícias</div>
+              <div className="text-sm text-gray-500">Permite gerenciar, publicar e excluir notícias</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={safeFeatures.news_manager || false}
+              onChange={(e) => handleFeatureChange('news_manager', e.target.checked)}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
           </div>
@@ -259,7 +284,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
           <FiRefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Recarregar
         </button>
-        
+
         <button
           onClick={saveRolePermissions}
           disabled={saving}

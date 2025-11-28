@@ -1,6 +1,6 @@
 {
   "name": "painel-abz",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -67,6 +67,8 @@
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@genkit-ai/mcp": "^1.23.0",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.1",

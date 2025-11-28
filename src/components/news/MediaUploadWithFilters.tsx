@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
+import { compressVideo, needsCompression } from '@/lib/videoCompression';
 
 interface MediaUploadWithFiltersProps {
   isOpen: boolean;
@@ -46,6 +47,8 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
   const [caption, setCaption] = useState<string>('');
   const [location, setLocation] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,13 +63,58 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
     }
   }, [isOpen]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
+    if (!file) return;
+
+    try {
+      let processedFile = file;
+
+      // Comprimir vídeos grandes
+      if (file.type.startsWith('video/') && file.size > 50 * 1024 * 1024) {
+        setIsCompressing(true);
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        setCompressionProgress(`Vídeo grande detectado (${sizeMB}MB). Comprimindo...`);
+
+        try {
+          processedFile = await compressVideo(
+            file,
+            45,
+            (msg) => setCompressionProgress(msg)
+          );
+          toast.success(`Vídeo comprimido de ${sizeMB}MB para ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+        } catch (error) {
+          console.error('Erro ao comprimir:', error);
+          const useOriginal = confirm(
+            `Não foi possível comprimir o vídeo.\n\nTentar enviar o arquivo original? (Pode falhar se > 50MB)`
+          );
+          if (!useOriginal) {
+            setIsCompressing(false);
+            setCompressionProgress('');
+            if (e.target) e.target.value = '';
+            return;
+          }
+        } finally {
+          setIsCompressing(false);
+          setCompressionProgress('');
+        }
+      }
+
+      // Validação final
+      if (processedFile.size > 50 * 1024 * 1024) {
+        toast.error(`Arquivo muito grande: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB. Limite: 50MB`);
+        if (e.target) e.target.value = '';
+        return;
+      }
+
+      setSelectedFile(processedFile);
+      const url = URL.createObjectURL(processedFile);
       setPreviewUrl(url);
       setStep('filter');
+    } catch (error) {
+      console.error('Erro ao processar arquivo:', error);
+      toast.error('Erro ao processar arquivo');
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -191,8 +239,28 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-auto">
+          {/* Compression Progress Overlay */}
+          {isCompressing && (
+            <div className="flex items-center justify-center h-full p-8">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 mb-6 mx-auto">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Comprimindo Vídeo</h3>
+                <p className="text-gray-600 mb-4">
+                  Estamos otimizando seu vídeo para upload. Isso pode levar alguns minutos...
+                </p>
+                {compressionProgress && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-800 font-medium">{compressionProgress}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Upload Step */}
-          {step === 'upload' && (
+          {!isCompressing && step === 'upload' && (
             <div className="flex items-center justify-center h-full p-8">
               <div className="text-center">
                 <div className="mb-6">
@@ -222,16 +290,25 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
           )}
 
           {/* Filter Step */}
-          {step === 'filter' && previewUrl && (
+          {!isCompressing && step === 'filter' && previewUrl && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
               {/* Preview grande */}
               <div className="md:col-span-2">
                 <div className="relative aspect-square bg-black rounded-lg overflow-hidden">
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className={`w-full h-full object-contain ${selectedFilter}`}
-                  />
+                  {selectedFile?.type.startsWith('video/') ? (
+                    <video
+                      src={previewUrl}
+                      className={`w-full h-full object-contain ${selectedFilter}`}
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className={`w-full h-full object-contain ${selectedFilter}`}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -242,11 +319,10 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
                   <button
                     key={filter.name}
                     onClick={() => setSelectedFilter(filter.class)}
-                    className={`w-full text-left p-2 rounded-lg transition-colors ${
-                      selectedFilter === filter.class
-                        ? 'bg-blue-100 border-2 border-blue-600'
-                        : 'hover:bg-gray-100 border-2 border-transparent'
-                    }`}
+                    className={`w-full text-left p-2 rounded-lg transition-colors ${selectedFilter === filter.class
+                      ? 'bg-blue-100 border-2 border-blue-600'
+                      : 'hover:bg-gray-100 border-2 border-transparent'
+                      }`}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
@@ -268,15 +344,24 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
           )}
 
           {/* Caption Step */}
-          {step === 'caption' && previewUrl && (
+          {!isCompressing && step === 'caption' && previewUrl && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
               {/* Preview */}
               <div className="relative aspect-square bg-black rounded-lg overflow-hidden">
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className={`w-full h-full object-contain ${selectedFilter}`}
-                />
+                {selectedFile?.type.startsWith('video/') ? (
+                  <video
+                    src={previewUrl}
+                    className={`w-full h-full object-contain ${selectedFilter}`}
+                    controls
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className={`w-full h-full object-contain ${selectedFilter}`}
+                  />
+                )}
               </div>
 
               {/* Caption form */}

@@ -1,86 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { testEmailConnection, sendEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * API para testar a conexão com o Gmail usando configuração simplificada
- * @route GET /api/email/test-gmail
+ * API para testar a conexão com o Exchange/Office 365
+ * @route GET /api/email/test-gmail (mantido o nome para compatibilidade)
  */
 export async function GET(request: NextRequest) {
   try {
     // Obter parâmetros da URL
     const searchParams = request.nextUrl.searchParams;
     const email = searchParams.get('email') || '***REMOVED***';
-    
-    console.log('Testando conexão com Gmail usando configuração simplificada...');
-    
-    // Configuração simplificada do Gmail
-    const user = process.env.EMAIL_USER || '***REMOVED***';
-    const pass = process.env.EMAIL_PASSWORD || 'zbli vdst fmco dtfc';
-    
-    console.log('Configuração:', {
-      service: 'gmail',
-      user,
-      // Não logar a senha por segurança
-    });
-    
-    // Criar transporter com configuração simplificada
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user,
-        pass
-      }
-    });
-    
-    // Verificar conexão
-    console.log('Verificando conexão...');
-    await transporter.verify();
+
+    console.log('Testando conexão com Exchange/Office 365...');
+
+    // Testar conexão
+    const connectionResult = await testEmailConnection();
+
+    if (!connectionResult.success) {
+      throw new Error(connectionResult.message);
+    }
+
     console.log('Conexão verificada com sucesso!');
-    
+
     // Enviar email de teste
     if (email) {
       console.log(`Enviando email de teste para ${email}...`);
-      
-      const info = await transporter.sendMail({
-        from: `"ABZ Group Test" <${user}>`,
-        to: email,
-        subject: "Teste de Email - ABZ Group",
-        text: "Este é um email de teste do sistema ABZ Group.",
-        html: "<p>Este é um email de teste do sistema <strong>ABZ Group</strong>.</p>"
-      });
-      
-      console.log('Email enviado com sucesso:', info.messageId);
-      
+
+      const result = await sendEmail(
+        email,
+        "Teste de Email - ABZ Group (Exchange)",
+        "Este é um email de teste do sistema ABZ Group via Exchange.",
+        "<p>Este é um email de teste do sistema <strong>ABZ Group</strong> via Exchange.</p>"
+      );
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      console.log('Email enviado com sucesso:', result.messageId);
+
       return NextResponse.json({
         success: true,
         message: 'Conexão verificada e email enviado com sucesso',
-        messageId: info.messageId,
-        config: {
-          service: 'gmail',
-          user,
-          email
-        }
+        messageId: result.messageId,
+        config: connectionResult.config
       });
     }
-    
+
     return NextResponse.json({
       success: true,
-      message: 'Conexão com Gmail verificada com sucesso',
-      config: {
-        service: 'gmail',
-        user
-      }
+      message: 'Conexão com Exchange verificada com sucesso',
+      config: connectionResult.config
     });
   } catch (error) {
-    console.error('Erro ao testar conexão com Gmail:', error);
-    
-    if (error instanceof Error) {
-      console.error('Detalhes do erro:', error.message);
-      console.error('Stack trace:', error.stack);
-    }
-    
+    console.error('Erro ao testar conexão com Exchange:', error);
+
     return NextResponse.json(
       {
         success: false,

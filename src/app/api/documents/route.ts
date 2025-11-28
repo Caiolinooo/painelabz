@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { withPermission } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
 
-    let query = supabase.from('documents').select('*');
+    let query = supabaseAdmin.from('documents').select('*');
 
     if (category) {
       query = query.eq('category', category);
@@ -48,7 +48,7 @@ export const POST = withPermission('manager', async (request: NextRequest) => {
       return NextResponse.json({ error: 'Todos os campos são obrigatórios' }, { status: 400 });
     }
 
-    const { data: document, error } = await supabase
+    const { data: document, error } = await supabaseAdmin
       .from('documents')
       .insert({
         title,

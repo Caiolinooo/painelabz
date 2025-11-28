@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { FiX, FiArrowLeft, FiImage, FiVideo, FiSmile, FiMapPin, FiTag, FiUsers, FiCheck } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import { compressVideo, needsCompression } from '@/lib/videoCompression';
 
 interface InstagramStylePostCreatorProps {
   userId: string;
@@ -34,6 +35,8 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
     visibility: 'public'
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Resetar estado ao fechar
@@ -54,16 +57,87 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
   };
 
   // Selecionar arquivos
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const filesArray = Array.from(event.target.files || []);
+    if (filesArray.length === 0) return;
 
-    setSelectedFiles(files);
-    
-    // Criar URLs de preview
-    const urls = files.map(file => URL.createObjectURL(file));
-    setPreviewUrls(urls);
-    setCurrentStep('edit');
+    try {
+      const processedFiles: File[] = [];
+      let needsCompression = false;
+
+      // Verificar se algum arquivo precisa de compressão
+      for (const file of filesArray) {
+        if (file.type.startsWith('video/') && file.size > 50 * 1024 * 1024) {
+          needsCompression = true;
+          break;
+        }
+      }
+
+      // Se precisa de compressão, mostrar indicador
+      if (needsCompression) {
+        setIsCompressing(true);
+        setCompressionProgress('Preparando compressão...');
+      }
+
+      for (const file of filesArray) {
+        // Comprimir vídeos grandes
+        if (file.type.startsWith('video/') && file.size > 50 * 1024 * 1024) {
+          const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+          setCompressionProgress(`Comprimindo ${file.name} (${sizeMB}MB)...`);
+
+          try {
+            const compressed = await compressVideo(
+              file,
+              45, // Target 45MB
+              (msg) => setCompressionProgress(msg)
+            );
+            processedFiles.push(compressed);
+          } catch (error) {
+            console.error('Erro ao comprimir:', error);
+            const useOriginal = confirm(
+              `Não foi possível comprimir "${file.name}".\n\nTentar enviar o arquivo original? (Pode falhar se > 50MB)`
+            );
+            if (useOriginal) {
+              processedFiles.push(file);
+            } else {
+              setIsCompressing(false);
+              setCompressionProgress('');
+              if (event.target) event.target.value = '';
+              return;
+            }
+          }
+        } else {
+          processedFiles.push(file);
+        }
+      }
+
+      // Validação final de tamanho
+      const oversized = processedFiles.filter(f => f.size > 50 * 1024 * 1024);
+      if (oversized.length > 0) {
+        alert(
+          `Arquivos ainda muito grandes:\n\n${oversized.map(f =>
+            `${f.name} (${(f.size / 1024 / 1024).toFixed(2)}MB)`
+          ).join('\n')}\n\nPor favor, comprima manualmente.`
+        );
+        if (event.target) event.target.value = '';
+        setIsCompressing(false);
+        setCompressionProgress('');
+        return;
+      }
+
+      setSelectedFiles(processedFiles);
+      const urls = processedFiles.map(file => URL.createObjectURL(file));
+      setPreviewUrls(urls);
+      setCurrentStep('edit');
+
+    } catch (error) {
+      console.error('Erro ao processar arquivos:', error);
+      alert('Erro ao processar arquivos. Tente novamente.');
+      if (event.target) event.target.value = '';
+    } finally {
+      setIsCompressing(false);
+      setCompressionProgress('');
+    }
   };
 
   // Próximo passo
@@ -225,7 +299,7 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
               {currentStep === 'sharing' && t('newsSystem.sharing')}
             </h2>
           </div>
-          
+
           <div className="flex items-center space-x-3">
             {currentStep !== 'select' && currentStep !== 'sharing' && (
               <button
@@ -247,8 +321,31 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
 
         {/* Content */}
         <div className="flex-1 flex">
+          {/* Compression Progress Overlay */}
+          {isCompressing && (
+            <div className="flex-1 flex items-center justify-center p-8 bg-white">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 mb-6 mx-auto">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-gray-900">Comprimindo Vídeo</h3>
+                <p className="text-gray-600 mb-4">
+                  Estamos otimizando seu vídeo para upload. Isso pode levar alguns minutos...
+                </p>
+                {compressionProgress && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-800 font-medium">{compressionProgress}</p>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  💡 Dica: Vídeos menores uploadam mais rápido e economizam dados!
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Step: Select */}
-          {currentStep === 'select' && (
+          {!isCompressing && currentStep === 'select' && (
             <div className="flex-1 flex flex-col items-center justify-center p-8">
               <div className="text-center">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
@@ -263,7 +360,7 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
                 >
                   {t('newsSystem.selectFromComputer')}
                 </button>
-                
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -277,7 +374,7 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
           )}
 
           {/* Step: Edit */}
-          {currentStep === 'edit' && (
+          {!isCompressing && currentStep === 'edit' && (
             <div className="flex-1 flex">
               {/* Image Preview */}
               <div className="flex-1 bg-black flex items-center justify-center">
@@ -289,7 +386,7 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
                   />
                 )}
               </div>
-              
+
               {/* Thumbnails */}
               {previewUrls.length > 1 && (
                 <div className="w-20 bg-gray-50 p-2 space-y-2 overflow-y-auto">
@@ -297,9 +394,8 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${
-                        index === currentImageIndex ? 'border-blue-500' : 'border-transparent'
-                      }`}
+                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${index === currentImageIndex ? 'border-blue-500' : 'border-transparent'
+                        }`}
                     >
                       <img
                         src={url}
@@ -314,7 +410,7 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
           )}
 
           {/* Step: Caption */}
-          {currentStep === 'caption' && (
+          {!isCompressing && currentStep === 'caption' && (
             <div className="flex-1 flex">
               {/* Image Preview */}
               <div className="w-1/2 bg-black flex items-center justify-center">
@@ -326,14 +422,14 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
                   />
                 )}
               </div>
-              
+
               {/* Caption Form */}
               <div className="w-1/2 p-6 space-y-4">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"></div>
                   <span className="font-medium">Sua publicação</span>
                 </div>
-                
+
                 <div>
                   <textarea
                     value={postData.content}
@@ -351,12 +447,12 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
                     <FiMapPin className="w-5 h-5 text-gray-400" />
                     <span className="text-gray-700">Adicionar localização</span>
                   </button>
-                  
+
                   <button className="flex items-center space-x-3 w-full p-3 hover:bg-gray-50 rounded-lg">
                     <FiTag className="w-5 h-5 text-gray-400" />
                     <span className="text-gray-700">Marcar pessoas</span>
                   </button>
-                  
+
                   <button className="flex items-center space-x-3 w-full p-3 hover:bg-gray-50 rounded-lg">
                     <FiUsers className="w-5 h-5 text-gray-400" />
                     <span className="text-gray-700">Configurações de audiência</span>
@@ -380,7 +476,7 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
           )}
 
           {/* Step: Sharing */}
-          {currentStep === 'sharing' && (
+          {!isCompressing && currentStep === 'sharing' && (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 mx-auto">

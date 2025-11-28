@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
-
-// Configuração OAuth2 do Google Calendar
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,310 +12,152 @@ export async function GET(request: NextRequest) {
     const maxResults = parseInt(searchParams.get('maxResults') || '50');
 
     if (!userId) {
-      return NextResponse.json({
-        error: 'userId é obrigatório'
-      }, { status: 400 });
+      return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
     }
 
-    console.log(`📅 Buscando eventos do calendário para usuário ${userId}`);
+    let query = supabaseAdmin
+      .from('calendar_events')
+      .select('*')
+      .eq('user_id', userId)
+      .order('start_time', { ascending: true })
+      .limit(maxResults);
 
-    // TODO: Buscar tokens do usuário no banco de dados
-    // const { data: userTokens, error: tokenError } = await supabaseAdmin
-    //   .from('user_google_tokens')
-    //   .select('tokens')
-    //   .eq('user_id', userId)
-    //   .single();
-
-    // if (tokenError || !userTokens) {
-    //   return NextResponse.json({
-    //     error: 'Usuário não autenticado com Google Calendar',
-    //     needsAuth: true
-    //   }, { status: 401 });
-    // }
-
-    // Por enquanto, vamos simular eventos
-    const mockEvents = [
-      {
-        id: 'event-1',
-        summary: 'Reunião de Equipe',
-        description: 'Reunião semanal da equipe de logística',
-        start: {
-          dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          timeZone: 'America/Sao_Paulo'
-        },
-        end: {
-          dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
-          timeZone: 'America/Sao_Paulo'
-        },
-        location: 'Sala de Reuniões - ABZ Group',
-        attendees: [
-          { email: '***REMOVED***', responseStatus: 'accepted' }
-        ],
-        creator: {
-          email: '***REMOVED***',
-          displayName: 'Caio Correia'
-        },
-        organizer: {
-          email: '***REMOVED***',
-          displayName: 'Caio Correia'
-        }
-      },
-      {
-        id: 'event-2',
-        summary: 'Treinamento de Segurança',
-        description: 'Treinamento obrigatório sobre normas de segurança',
-        start: {
-          dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-          timeZone: 'America/Sao_Paulo'
-        },
-        end: {
-          dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(),
-          timeZone: 'America/Sao_Paulo'
-        },
-        location: 'Auditório Principal',
-        attendees: [
-          { email: '***REMOVED***', responseStatus: 'needsAction' }
-        ],
-        creator: {
-          email: 'rh@groupabz.com',
-          displayName: 'Recursos Humanos'
-        },
-        organizer: {
-          email: 'rh@groupabz.com',
-          displayName: 'Recursos Humanos'
-        }
-      },
-      {
-        id: 'event-3',
-        summary: 'Avaliação de Desempenho',
-        description: 'Reunião individual para avaliação de desempenho',
-        start: {
-          dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-          timeZone: 'America/Sao_Paulo'
-        },
-        end: {
-          dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
-          timeZone: 'America/Sao_Paulo'
-        },
-        location: 'Sala do Gerente',
-        attendees: [
-          { email: '***REMOVED***', responseStatus: 'tentative' }
-        ],
-        creator: {
-          email: 'gerencia@groupabz.com',
-          displayName: 'Gerência'
-        },
-        organizer: {
-          email: 'gerencia@groupabz.com',
-          displayName: 'Gerência'
-        }
-      }
-    ];
-
-    // Aplicar filtros de data se fornecidos
-    let filteredEvents = mockEvents;
-    
     if (timeMin) {
-      const minDate = new Date(timeMin);
-      filteredEvents = filteredEvents.filter(event => 
-        new Date(event.start.dateTime) >= minDate
-      );
+      query = query.gte('start_time', timeMin);
     }
-
     if (timeMax) {
-      const maxDate = new Date(timeMax);
-      filteredEvents = filteredEvents.filter(event => 
-        new Date(event.start.dateTime) <= maxDate
-      );
+      query = query.lte('start_time', timeMax);
     }
 
-    // Limitar resultados
-    filteredEvents = filteredEvents.slice(0, maxResults);
+    const { data: events, error } = await query;
 
-    console.log(`✅ ${filteredEvents.length} eventos encontrados`);
+    if (error) {
+      throw error;
+    }
+
+    // Map to Google Calendar format for compatibility
+    const mappedEvents = events.map(event => ({
+      id: event.id,
+      summary: event.summary,
+      description: event.description,
+      start: { dateTime: event.start_time, timeZone: 'America/Sao_Paulo' },
+      end: { dateTime: event.end_time, timeZone: 'America/Sao_Paulo' },
+      location: event.location,
+      attendees: event.attendees?.map((email: string) => ({ email, responseStatus: 'needsAction' })) || [],
+      created: event.created_at,
+      updated: event.updated_at
+    }));
 
     return NextResponse.json({
-      events: filteredEvents,
-      total: filteredEvents.length,
-      nextSyncToken: 'mock-sync-token',
-      message: 'Eventos simulados - integração com Google Calendar em desenvolvimento'
+      events: mappedEvents,
+      total: mappedEvents.length
     });
 
   } catch (error) {
-    console.error('Erro ao buscar eventos do calendário:', error);
-    return NextResponse.json({
-      error: 'Erro interno ao buscar eventos',
-      details: error instanceof Error ? error.message : 'Erro desconhecido'
-    }, { status: 500 });
+    console.error('Erro ao buscar eventos:', error);
+    return NextResponse.json({ error: 'Erro interno ao buscar eventos' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      userId,
-      summary,
-      description,
-      start,
-      end,
-      location,
-      attendees,
-      reminders
-    } = body;
+    const { userId, summary, description, start, end, location, attendees, reminders } = body;
 
     if (!userId || !summary || !start || !end) {
-      return NextResponse.json({
-        error: 'userId, summary, start e end são obrigatórios'
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 });
     }
 
-    console.log(`📅 Criando evento no calendário para usuário ${userId}`);
+    const { data: event, error } = await supabaseAdmin
+      .from('calendar_events')
+      .insert({
+        user_id: userId,
+        summary,
+        description,
+        start_time: start,
+        end_time: end,
+        location,
+        attendees: attendees || [],
+        reminders: reminders || {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
 
-    // TODO: Buscar tokens do usuário e criar evento real no Google Calendar
-    // Por enquanto, vamos simular a criação
-    const mockEvent = {
-      id: `event-${Date.now()}`,
-      summary,
-      description,
-      start: {
-        dateTime: start,
-        timeZone: 'America/Sao_Paulo'
-      },
-      end: {
-        dateTime: end,
-        timeZone: 'America/Sao_Paulo'
-      },
-      location,
-      attendees: attendees?.map((email: string) => ({
-        email,
-        responseStatus: 'needsAction'
-      })) || [],
-      creator: {
-        email: '***REMOVED***',
-        displayName: 'Sistema ABZ'
-      },
-      organizer: {
-        email: '***REMOVED***',
-        displayName: 'Sistema ABZ'
-      },
-      reminders: reminders || {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 24 * 60 },
-          { method: 'popup', minutes: 10 }
-        ]
-      },
-      created: new Date().toISOString(),
-      updated: new Date().toISOString()
-    };
-
-    console.log(`✅ Evento criado com sucesso: ${mockEvent.id}`);
+    if (error) throw error;
 
     return NextResponse.json({
       message: 'Evento criado com sucesso',
-      event: mockEvent,
-      note: 'Evento simulado - integração com Google Calendar em desenvolvimento'
+      event: {
+        ...event,
+        id: event.id
+      }
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Erro ao criar evento no calendário:', error);
-    return NextResponse.json({
-      error: 'Erro interno ao criar evento',
-      details: error instanceof Error ? error.message : 'Erro desconhecido'
-    }, { status: 500 });
+    console.error('Erro ao criar evento:', error);
+    return NextResponse.json({ error: 'Erro interno ao criar evento' }, { status: 500 });
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      userId,
-      eventId,
-      summary,
-      description,
-      start,
-      end,
-      location,
-      attendees
-    } = body;
+    const { eventId, summary, description, start, end, location, attendees } = body;
 
-    if (!userId || !eventId) {
-      return NextResponse.json({
-        error: 'userId e eventId são obrigatórios'
-      }, { status: 400 });
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId é obrigatório' }, { status: 400 });
     }
 
-    console.log(`📅 Atualizando evento ${eventId} para usuário ${userId}`);
+    const { data: event, error } = await supabaseAdmin
+      .from('calendar_events')
+      .update({
+        summary,
+        description,
+        start_time: start,
+        end_time: end,
+        location,
+        attendees,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', eventId)
+      .select()
+      .single();
 
-    // TODO: Implementar atualização real no Google Calendar
-    const updatedEvent = {
-      id: eventId,
-      summary: summary || 'Evento Atualizado',
-      description,
-      start: {
-        dateTime: start,
-        timeZone: 'America/Sao_Paulo'
-      },
-      end: {
-        dateTime: end,
-        timeZone: 'America/Sao_Paulo'
-      },
-      location,
-      attendees: attendees?.map((email: string) => ({
-        email,
-        responseStatus: 'needsAction'
-      })) || [],
-      updated: new Date().toISOString()
-    };
-
-    console.log(`✅ Evento atualizado com sucesso: ${eventId}`);
+    if (error) throw error;
 
     return NextResponse.json({
       message: 'Evento atualizado com sucesso',
-      event: updatedEvent,
-      note: 'Evento simulado - integração com Google Calendar em desenvolvimento'
+      event
     });
 
   } catch (error) {
-    console.error('Erro ao atualizar evento no calendário:', error);
-    return NextResponse.json({
-      error: 'Erro interno ao atualizar evento',
-      details: error instanceof Error ? error.message : 'Erro desconhecido'
-    }, { status: 500 });
+    console.error('Erro ao atualizar evento:', error);
+    return NextResponse.json({ error: 'Erro interno ao atualizar evento' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const eventId = searchParams.get('eventId');
 
-    if (!userId || !eventId) {
-      return NextResponse.json({
-        error: 'userId e eventId são obrigatórios'
-      }, { status: 400 });
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId é obrigatório' }, { status: 400 });
     }
 
-    console.log(`📅 Removendo evento ${eventId} para usuário ${userId}`);
+    const { error } = await supabaseAdmin
+      .from('calendar_events')
+      .delete()
+      .eq('id', eventId);
 
-    // TODO: Implementar remoção real no Google Calendar
+    if (error) throw error;
 
-    console.log(`✅ Evento removido com sucesso: ${eventId}`);
-
-    return NextResponse.json({
-      message: 'Evento removido com sucesso',
-      eventId,
-      note: 'Evento simulado - integração com Google Calendar em desenvolvimento'
-    });
+    return NextResponse.json({ message: 'Evento removido com sucesso' });
 
   } catch (error) {
-    console.error('Erro ao remover evento do calendário:', error);
-    return NextResponse.json({
-      error: 'Erro interno ao remover evento',
-      details: error instanceof Error ? error.message : 'Erro desconhecido'
-    }, { status: 500 });
+    console.error('Erro ao remover evento:', error);
+    return NextResponse.json({ error: 'Erro interno ao remover evento' }, { status: 500 });
   }
 }

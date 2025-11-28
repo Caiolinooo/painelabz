@@ -236,13 +236,48 @@ export class AvaliacaoWorkflowService {
           funcionario_nome: funcionarioNome,
           data_limite: dataLimite
         },
-        lida: false,
-        enviada_push: false,
-        enviada_email: false
       });
     } catch (error) {
       console.error('Erro ao notificar avaliador sobre período iniciado:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Helper to fetch data and send status update notifications
+   */
+  private static async notifyStatusChange(
+    avaliacaoId: string,
+    statusAnterior: string,
+    novoStatus: string
+  ): Promise<void> {
+    try {
+      const { data: avaliacao } = await supabaseAdmin
+        .from('avaliacoes_desempenho')
+        .select(`
+          *,
+          funcionario:users_unified!funcionario_id(id, first_name, last_name, email),
+          avaliador:users_unified!avaliador_id(id, first_name, last_name, email)
+        `)
+        .eq('id', avaliacaoId)
+        .single();
+
+      if (avaliacao) {
+        // Cast para os tipos corretos
+        const avaliacaoTyped = avaliacao as unknown as AvaliacaoWorkflow;
+        const funcionarioTyped = avaliacao.funcionario as unknown as Usuario;
+        const avaliadorTyped = avaliacao.avaliador as unknown as Usuario;
+
+        await this.sendStatusUpdateNotifications(
+          avaliacaoTyped,
+          statusAnterior,
+          novoStatus,
+          funcionarioTyped,
+          avaliadorTyped
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados para notificação:', error);
     }
   }
 
@@ -284,21 +319,18 @@ export class AvaliacaoWorkflowService {
               funcionario_nome: funcionario ? `${funcionario.first_name} ${funcionario.last_name}` : 'Funcionário',
               data_limite: avaliacao.data_fim
             },
-            lida: false,
-            enviada_push: false,
-            enviada_email: false
           });
           console.log(`AvaliacaoWorkflowService: Notificação de conclusão enviada para avaliador ${avaliador.id}`);
         }
-      } else if (novoStatus === 'em_andamento') {
-        // Notificar o funcionário que a avaliação está em andamento
-        if (funcionario) {
+      } else if (novoStatus === 'aguardando_aprovacao') {
+        // Notificar o gerente que a avaliação foi submetida
+        if (avaliador) {
           await NotificacoesAvaliacaoService.notificarAutoavaliacaoRecebida(
-            avaliador ? avaliador.id : '',
+            avaliador.id,
             avaliacao.id,
-            `${funcionario.first_name} ${funcionario.last_name}`
+            funcionario ? `${funcionario.first_name} ${funcionario.last_name}` : 'Colaborador'
           );
-          console.log(`AvaliacaoWorkflowService: Notificação de andamento enviada para funcionário ${funcionario.id}`);
+          console.log(`AvaliacaoWorkflowService: Notificação de submissão enviada para avaliador ${avaliador.id}`);
         }
       } else if (novoStatus === 'cancelada') {
         // Notificar ambos sobre o cancelamento
@@ -314,9 +346,6 @@ export class AvaliacaoWorkflowService {
               gerente_nome: avaliador ? `${avaliador.first_name} ${avaliador.last_name}` : 'Avaliador',
               data_limite: avaliacao.data_fim
             },
-            lida: false,
-            enviada_push: false,
-            enviada_email: false
           });
           console.log(`AvaliacaoWorkflowService: Notificação de cancelamento enviada para funcionário ${funcionario.id}`);
         }
@@ -333,13 +362,27 @@ export class AvaliacaoWorkflowService {
               funcionario_nome: funcionario ? `${funcionario.first_name} ${funcionario.last_name}` : 'Funcionário',
               data_limite: avaliacao.data_fim
             },
-            lida: false,
-            enviada_push: false,
-            enviada_email: false
           });
           console.log(`AvaliacaoWorkflowService: Notificação de cancelamento enviada para avaliador ${avaliador.id}`);
         }
+      } else if (novoStatus === 'devolvida' || novoStatus === 'aguardando_correcao') {
+        // Notificar o funcionário que a avaliação foi devolvida
+        if (funcionario) {
+          await NotificacoesAvaliacaoService.criarNotificacao({
+            usuario_id: funcionario.id,
+            tipo: 'avaliacao_editada',
+            titulo: 'Avaliação Devolvida para Ajustes',
+            mensagem: `Sua avaliação foi devolvida pelo gestor para ajustes. Verifique os comentários e faça as alterações necessárias.`,
+            dados_avaliacao: {
+              avaliacao_id: avaliacao.id,
+              gerente_nome: avaliador ? `${avaliador.first_name} ${avaliador.last_name}` : 'Gestor',
+              data_limite: avaliacao.data_fim
+            },
+          });
+          console.log(`AvaliacaoWorkflowService: Notificação de devolução enviada para funcionário ${funcionario.id}`);
+        }
       }
+
     } catch (error) {
       console.error('AvaliacaoWorkflowService: Erro ao enviar notificações de atualização de status:', error);
       throw error;
@@ -508,9 +551,6 @@ export class AvaliacaoWorkflowService {
                 funcionario_nome: funcionario ? `${funcionario.first_name} ${funcionario.last_name}` : 'Funcionário',
                 data_limite: avaliacao.data_fim
               },
-              lida: false,
-              enviada_push: false,
-              enviada_email: false
             });
             console.log(`AvaliacaoWorkflowService: Lembrete enviado para avaliador ${avaliador.id}`);
             lembretesEnviados++;
@@ -565,7 +605,8 @@ export class AvaliacaoWorkflowService {
       }
 
       // Enviar notificação para o avaliador
-      await this.sendStatusUpdateNotifications(avaliacaoId, 'autoavaliacao_salva');
+      // Enviar notificação para o avaliador (apenas se status mudou, mas aqui é apenas salvar rascunho)
+      // await this.notifyStatusChange(avaliacaoId, 'pendente', 'em_andamento');
 
       console.log('AvaliacaoWorkflowService: Autoavaliação salva com sucesso');
       return true;
@@ -602,7 +643,8 @@ export class AvaliacaoWorkflowService {
       }
 
       // Enviar notificação para o colaborador
-      await this.sendStatusUpdateNotifications(avaliacaoId, 'avaliacao_gerente_salva');
+      // Enviar notificação para o colaborador (apenas salvar rascunho)
+      // await this.notifyStatusChange(avaliacaoId, 'em_andamento', 'em_andamento');
 
       console.log('AvaliacaoWorkflowService: Avaliação do gerente salva com sucesso');
       return true;
@@ -640,7 +682,7 @@ export class AvaliacaoWorkflowService {
       }
 
       // Enviar notificação para o avaliador
-      await this.sendStatusUpdateNotifications(avaliacaoId, 'submetida');
+      await this.notifyStatusChange(avaliacaoId, 'em_andamento', 'aguardando_aprovacao');
 
       console.log('AvaliacaoWorkflowService: Avaliação submetida com sucesso');
       return true;
@@ -680,7 +722,7 @@ export class AvaliacaoWorkflowService {
       }
 
       // Enviar notificação para o colaborador
-      await this.sendStatusUpdateNotifications(avaliacaoId, 'aprovada');
+      await this.notifyStatusChange(avaliacaoId, 'aguardando_aprovacao', 'concluida');
 
       console.log('AvaliacaoWorkflowService: Avaliação aprovada com sucesso');
       return true;
@@ -718,7 +760,7 @@ export class AvaliacaoWorkflowService {
       }
 
       // Enviar notificação para o colaborador
-      await this.sendStatusUpdateNotifications(avaliacaoId, 'devolvida');
+      await this.notifyStatusChange(avaliacaoId, 'aguardando_aprovacao', 'devolvida');
 
       console.log('AvaliacaoWorkflowService: Avaliação devolvida com sucesso');
       return true;
@@ -754,7 +796,7 @@ export class AvaliacaoWorkflowService {
       }
 
       // Enviar notificação para o avaliador
-      await this.sendStatusUpdateNotifications(avaliacaoId, 'reenviada');
+      await this.notifyStatusChange(avaliacaoId, 'devolvida', 'aguardando_aprovacao');
 
       console.log('AvaliacaoWorkflowService: Avaliação reenviada com sucesso');
       return true;

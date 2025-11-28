@@ -207,40 +207,24 @@ export async function POST(request: NextRequest) {
 
       // Enviar notificações
       try {
+        // Importar dinamicamente para evitar problemas de dependência circular
+        const { createEvaluationNotification } = await import('@/lib/evaluation-notifications');
+
         // Notificar colaborador
-        await supabaseAdmin.from('notifications').insert({
-          user_id: userId,
-          type: 'avaliacao_criada',
-          title: 'Nova Avaliação de Desempenho',
-          message: `Sua avaliação para o período "${periodo.nome}" está disponível. Preencha sua autoavaliação até ${new Date(periodo.data_limite_autoavaliacao).toLocaleDateString('pt-BR')}.`,
-          data: {
-            avaliacao_id: novaAvaliacao.id,
-            periodo_id: periodo_id,
-            periodo_nome: periodo.nome,
-            data_limite: periodo.data_limite_autoavaliacao,
-          },
-          action_url: `/avaliacao/preencher/${novaAvaliacao.id}`,
-          priority: 'high',
-          read_at: null,
-          created_at: new Date().toISOString(),
+        await createEvaluationNotification({
+          userId: userId,
+          type: 'evaluation_created',
+          evaluationId: novaAvaliacao.id,
+          periodId: periodo_id,
+          periodName: periodo.nome
         });
 
         // Notificar gerente
-        await supabaseAdmin.from('notifications').insert({
-          user_id: managerId,
-          type: 'avaliacao_criada',
-          title: 'Nova Avaliação para Colaborador',
-          message: `Nova avaliação criada para o período "${periodo.nome}". Aguardando autoavaliação do colaborador.`,
-          data: {
-            avaliacao_id: novaAvaliacao.id,
-            periodo_id: periodo_id,
-            periodo_nome: periodo.nome,
-            funcionario_id: userId,
-          },
-          action_url: `/avaliacao`,
-          priority: 'normal',
-          read_at: null,
-          created_at: new Date().toISOString(),
+        await createEvaluationNotification({
+          userId: managerId,
+          type: 'manager_review_pending',
+          evaluationId: novaAvaliacao.id,
+          employeeName: 'Colaborador' // Idealmente buscar o nome do colaborador
         });
       } catch (notifError: any) {
         console.error('⚠️ Erro ao enviar notificações:', notifError.message);

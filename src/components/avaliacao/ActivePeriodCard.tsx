@@ -7,6 +7,7 @@ import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { EvaluationPeriod } from '@/types';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 interface ActivePeriodCardProps {
   period: EvaluationPeriod;
@@ -34,6 +35,8 @@ export default function ActivePeriodCard({
   const diasParaIniciar = differenceInDays(dataInicio, hoje);
   const diasParaEncerrar = differenceInDays(dataLimiteAuto, hoje);
 
+
+
   const handleIniciarAvaliacao = async () => {
     setIsLoading(true);
 
@@ -49,13 +52,17 @@ export default function ActivePeriodCard({
       }
 
       // Caso contrário, criar nova avaliação
-      const response = await fetch('/api/avaliacao/iniciar-periodo', {
+      const response = await fetchWithToken('/api/avaliacao/iniciar-periodo', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: ***REMOVED*** periodo_id: period.id })
       });
+
+      if (response.status === 401) {
+        console.log('Sessão expirada, redirecionando para login...');
+        const currentPath = window.location.pathname;
+        router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+        return;
+      }
 
       const data = await response.json();
 

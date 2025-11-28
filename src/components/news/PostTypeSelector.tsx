@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React from 'react';
-import { FiX, FiImage, FiVideo, FiCalendar, FiStar, FiFileText } from 'react-icons/fi';
+import { FiX, FiImage, FiFilm, FiCalendar, FiStar, FiFileText } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -16,6 +16,8 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
   onClose,
   onSelectType
 }) => {
+  const { t } = useI18n();
+
   if (!isOpen) return null;
 
   const postTypes = [
@@ -29,7 +31,7 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
     },
     {
       id: 'video' as const,
-      icon: FiVideo,
+      icon: FiFilm,
       title: t('components.video'),
       description: t('components.compartilheVideos'),
       color: 'from-purple-500 to-purple-600',

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2 } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox } from 'react-icons/fi';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -38,6 +38,7 @@ const adminMenuItems = [
   // Configurações gerais
   { id: 'automation', href: '/admin/automation', label: 'admin.automation', icon: FiSettings },
   { id: 'settings', href: '/admin/settings', label: 'admin.settings', icon: FiSettings },
+  { id: 'builder', href: '/admin/builder', label: 'Module Builder', icon: FiBox },
   { id: 'admin-fix', href: '/admin-fix', label: 'admin.fixPermissions', icon: FiUserCheck },
 ];
 
@@ -116,6 +117,7 @@ const adminMenuGroups = [
     label: 'admin.system',
     items: [
       { id: 'setup', href: '/admin/setup', label: 'admin.systemSetup', icon: FiTool },
+      { id: 'builder', href: '/admin/builder', label: 'Module Builder', icon: FiBox },
       { id: 'automation', href: '/admin/automation', label: 'admin.automation', icon: FiSettings },
       { id: 'settings', href: '/admin/settings', label: 'admin.settings', icon: FiSettings },
       { id: 'acl-management', href: '/admin/acl-management', label: 'admin.acl', icon: FiKey },
@@ -147,6 +149,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setIsCollapsed(v);
     localStorage.setItem('admin-sidebar-collapsed', JSON.stringify(v));
   };
+
+  // Fetch dynamic modules
+  const [dynamicModules, setDynamicModules] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    const fetchModules = async () => {
+      try {
+        const res = await fetch('/api/admin/modules');
+        if (res.ok) {
+          const data = await res.json();
+          setDynamicModules(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dynamic modules', error);
+      }
+    };
+    if (isAdmin) {
+      fetchModules();
+    }
+  }, [isAdmin]);
+
+  // Combine static and dynamic menu groups
+  const allMenuGroups = React.useMemo(() => {
+    if (dynamicModules.length === 0) return adminMenuGroups;
+
+    const dynamicGroup = {
+      id: 'modules',
+      label: 'Modules',
+      items: dynamicModules.map(m => ({
+        id: m.key,
+        href: `/admin/modules/${m.key}`,
+        label: m.title,
+        icon: FiBox // Default icon, could be dynamic if we parsed the string
+      }))
+    };
+
+    // Insert after 'content' group or at the end
+    return [...adminMenuGroups, dynamicGroup];
+  }, [dynamicModules]);
 
   // Medir o tempo de renderização do layout
   React.useEffect(() => {
@@ -190,7 +230,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 onClick={toggleSidebar}
                 title={isCollapsed ? t('common.expandMenu', 'Expandir menu') as string : t('common.collapseMenu', 'Recolher menu') as string}
               >
-                {isCollapsed ? <FiChevronRight className="h-5 w-5"/> : <FiChevronLeft className="h-5 w-5"/>}
+                {isCollapsed ? <FiChevronRight className="h-5 w-5" /> : <FiChevronLeft className="h-5 w-5" />}
               </button>
               <button
                 className="md:hidden text-gray-500 hover:text-gray-700"
@@ -203,7 +243,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Menu de navegação */}
           <nav className="flex-grow overflow-y-auto py-4 space-y-3 px-2">
-            {adminMenuGroups.map((group) => {
+            {allMenuGroups.map((group) => {
               // Traduzir label do grupo
               const groupLabel = t(group.label) || group.label.split('.').pop() || group.id;
 
@@ -231,11 +271,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           key={item.id}
                           href={item.href}
                           title={displayLabel}
-                          className={`flex items-center ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-2.5 rounded-md text-sm font-medium transition-colors duration-150 ${
-                            isActive
-                              ? 'bg-abz-blue text-white shadow-sm'
-                              : 'text-gray-600 hover:bg-gray-100 hover:text-abz-blue-dark'
-                          }`}
+                          className={`flex items-center ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-2.5 rounded-md text-sm font-medium transition-colors duration-150 ${isActive
+                            ? 'bg-abz-blue text-white shadow-sm'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-abz-blue-dark'
+                            }`}
                         >
                           <IconComponent className={`${isCollapsed ? '' : 'mr-3'} h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-500'}`} />
                           {!isCollapsed && <span className="whitespace-nowrap">{displayLabel}</span>}
@@ -296,7 +335,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Conteúdo principal */}
-        <div className="flex-1 flex flex-col min-h-screen" style={{marginLeft: typeof window === 'undefined' ? undefined : (window.innerWidth >= 768 ? (isCollapsed ? 64 : 256) : 0)}}>
+        <div className="flex-1 flex flex-col min-h-screen" style={{ marginLeft: typeof window === 'undefined' ? undefined : (window.innerWidth >= 768 ? (isCollapsed ? 64 : 256) : 0) }}>
           {/* Notificações globais fixas (desktop) */}
           <div className="hidden md:block fixed top-4 right-4 z-50">
             {user && <NotificationHUD userId={user.id} position="top-right" />}

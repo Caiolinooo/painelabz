@@ -12,7 +12,7 @@ import nodemailer from 'nodemailer';
 function validateEmailConfig() {
   const requiredVars = ['EMAIL_USER', 'EMAIL_PASSWORD'];
   const missing = requiredVars.filter(varName => !process.env[varName]);
-  
+
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
@@ -24,8 +24,8 @@ const emailConfig = {
   port: parseInt(process.env.EMAIL_PORT || '587'),
   secure: process.env.EMAIL_SECURE === 'true', // geralmente false para porta 587 (STARTTLS)
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
+    user: process.env.EMAIL_USER || '***REMOVED***',
+    pass: process.env.EMAIL_PASSWORD || 'Abz@2025'
   },
   // Log detalhado para depuração
   debug: process.env.NODE_ENV !== 'production',
