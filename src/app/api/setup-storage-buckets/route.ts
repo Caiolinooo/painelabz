@@ -13,14 +13,14 @@ export async function POST(request: Request) {
   try {
     // Verificar se o usuário é administrador
     const { isAdmin } = await isAdminFromRequest(request);
-    
+
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores podem executar esta operação.' },
         { status: 403 }
       );
     }
-    
+
     // Lista de buckets a serem criados
     const buckets = [
       {
@@ -32,11 +32,16 @@ export async function POST(request: Request) {
         name: 'comprovantes',
         public: false,
         description: 'Comprovantes de reembolso'
+      },
+      {
+        name: 'documents',
+        public: true,
+        description: 'Documentos do sistema modular'
       }
     ];
-    
+
     const results = [];
-    
+
     // Criar cada bucket
     for (const bucket of buckets) {
       try {
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
           });
           continue;
         }
-        
+
         // Se o bucket já existe, pular para o próximo
         if (existingBucket) {
           results.push({
@@ -61,7 +66,7 @@ export async function POST(request: Request) {
             status: 'skipped',
             message: 'Bucket já existe'
           });
-          
+
           // Atualizar as configurações do bucket
           const { error: updateError } = await (supabaseAdmin as any)
             .storage
@@ -82,10 +87,10 @@ export async function POST(request: Request) {
               message: 'Configurações do bucket atualizadas'
             });
           }
-          
+
           continue;
         }
-        
+
         // Criar o bucket
         const { error: createError } = await (supabaseAdmin as any)
           .storage
@@ -101,13 +106,13 @@ export async function POST(request: Request) {
           });
           continue;
         }
-        
+
         results.push({
           bucket: bucket.name,
           status: 'created',
           message: 'Bucket criado com sucesso'
         });
-        
+
         // Configurar políticas de acesso para o bucket profile-images
         if (bucket.name === 'profile-images') {
           // Política para permitir que usuários leiam suas próprias imagens
@@ -117,7 +122,7 @@ export async function POST(request: Request) {
             definition: `(bucket_id = 'profile-images'::text) AND (auth.uid() = SPLIT_PART(name, '/', 1)::uuid OR auth.role() = 'service_role'::text)`,
             operation: 'SELECT'
           });
-          
+
           if (policyError) {
             results.push({
               bucket: bucket.name,
@@ -131,7 +136,7 @@ export async function POST(request: Request) {
               message: 'Política de leitura criada com sucesso'
             });
           }
-          
+
           // Política para permitir que usuários façam upload/insert de suas próprias imagens
           const { error: updatePolicyError } = await (supabaseAdmin as any).rpc('create_storage_policy', {
             bucket_name: 'profile-images',
@@ -139,7 +144,7 @@ export async function POST(request: Request) {
             definition: `(bucket_id = 'profile-images'::text) AND (auth.uid() = SPLIT_PART(name, '/', 1)::uuid OR auth.role() = 'service_role'::text)`,
             operation: 'INSERT'
           });
-          
+
           if (updatePolicyError) {
             results.push({
               bucket: bucket.name,
@@ -206,7 +211,7 @@ export async function POST(request: Request) {
         });
       }
     }
-    
+
     return NextResponse.json({
       success: true,
       message: 'Operação concluída',

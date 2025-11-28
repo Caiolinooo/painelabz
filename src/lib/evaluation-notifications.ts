@@ -15,8 +15,13 @@ interface CreateEvaluationNotificationParams {
 /**
  * Cria uma notificação relacionada a avaliação de desempenho
  */
+import { sendGlobalNotification } from './global-notifications';
+
+/**
+ * Cria uma notificação relacionada a avaliação de desempenho
+ */
 export async function createEvaluationNotification(params: CreateEvaluationNotificationParams): Promise<boolean> {
-  const { userId, type, evaluationId, employeeName, managerName, periodName } = params;
+  const { userId, type, evaluationId, employeeName, managerName, periodName, comments } = params;
 
   // Definir título e mensagem baseado no tipo
   let title = '';
@@ -80,134 +85,28 @@ export async function createEvaluationNotification(params: CreateEvaluationNotif
       return false;
   }
 
-  try {
-    // Importar supabaseAdmin dinamicamente para evitar problemas de contexto
-    const { supabaseAdmin } = await import('@/lib/supabase');
-    const { sendPushToUserIds } = await import('@/lib/push');
+  const actionUrl = type === 'period_opened' ? `/avaliacao` : `/avaliacao/ver/${evaluationId}`;
 
-    // Verificar se o usuário existe
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users_unified')
-      .select('id, first_name, last_name, email')
-      .eq('id', userId)
-      .single();
+  const result = await sendGlobalNotification({
+    userId,
+    submodule: 'evaluation',
+    type,
+    title,
+    message,
+    data: {
+      evaluation_id: evaluationId,
+      period_id: params.periodId,
+      employee_name: employeeName,
+      manager_name: managerName,
+      period_name: periodName,
+      comments: comments
+    },
+    actionUrl,
+    priority,
+    channels: ['in-app', 'email', 'push']
+  });
 
-    if (userError || !user) {
-      console.error('Usuário não encontrado para notificação:', userId);
-      return false;
-    }
-
-    // Criar notificação diretamente no banco usando supabaseAdmin (bypass RLS)
-    const notificationData = {
-      user_id: userId,
-      type: 'evaluation',
-      title,
-      message: message || '',
-      data: JSON.stringify({
-        evaluation_id: evaluationId,
-        period_id: params.periodId,
-        type,
-        employee_name: employeeName,
-        manager_name: managerName,
-        period_name: periodName,
-        comments: params.comments
-      }),
-      action_url: type === 'period_opened' ? `/avaliacao` : `/avaliacao/ver/${evaluationId}`,
-      priority,
-      read: false,
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      created_at: new Date().toISOString()
-    };
-
-    // Tentar usar RPC primeiro, se falhar usar insert direto
-    let newNotification;
-    let insertError;
-    
-    try {
-      const rpcResult = await supabaseAdmin.rpc('create_notification_bypass_rls', {
-        p_user_id: userId,
-        p_type: 'evaluation',
-        p_title: title,
-        p_message: message || '',
-        p_data: notificationData.data,
-        p_action_url: notificationData.action_url,
-        p_priority: priority,
-        p_expires_at: notificationData.expires_at
-      });
-      
-      newNotification = rpcResult.data;
-      insertError = rpcResult.error;
-    } catch (rpcError) {
-      // Se RPC não existir, tentar insert direto
-      console.warn('RPC não encontrado, tentando insert direto');
-      const directResult = await supabaseAdmin
-        .from('notifications')
-        .insert(notificationData)
-        .select()
-        .single();
-      
-      newNotification = directResult.data;
-      insertError = directResult.error;
-    }
-
-    if (insertError) {
-      console.error('Erro ao inserir notificação:', insertError);
-      return false;
-    }
-
-    // Enviar push notification (não bloqueante)
-    try {
-      await sendPushToUserIds([userId], { 
-        title, 
-        body: message || '', 
-        url: notificationData.action_url 
-      });
-    } catch (pushError) {
-      console.warn('Falha ao enviar push (não bloqueante):', pushError);
-    }
-
-    // Enviar email (não bloqueante)
-    try {
-      const { sendEmail } = await import('@/lib/email');
-      const userEmail = user.email || `${user.id}@temp.com`;
-      
-      const emailHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>${title}</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #0066cc;">${title}</h2>
-            <p>${message}</p>
-            <div style="margin: 30px 0;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${notificationData.action_url}" 
-                 style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                Ver Detalhes
-              </a>
-            </div>
-            <p style="color: #666; font-size: 12px; margin-top: 30px;">
-              Esta é uma notificação automática do sistema de avaliações ABZ Group.
-            </p>
-          </div>
-        </body>
-        </html>
-      `;
-      
-      await sendEmail(userEmail, title, message || '', emailHtml);
-      console.log(`📧 Email enviado para ${userEmail}`);
-    } catch (emailError) {
-      console.warn('Falha ao enviar email (não bloqueante):', emailError);
-    }
-
-    console.log(`✅ Notificação de avaliação criada: ${type} para ${user.first_name}`);
-    return true;
-  } catch (error) {
-    console.error('Erro ao criar notificação de avaliação:', error);
-    return false;
-  }
+  return result.success;
 }
 
 /**
@@ -219,7 +118,7 @@ export async function notifyPeriodOpened(
   periodName: string
 ): Promise<boolean> {
   const results = await Promise.allSettled(
-    userIds.map(userId => 
+    userIds.map(userId =>
       createEvaluationNotification({
         userId,
         type: 'period_opened',
@@ -228,7 +127,7 @@ export async function notifyPeriodOpened(
       })
     )
   );
-  
+
   const successful = results.filter(r => r.status === 'fulfilled').length;
   console.log(`✅ Notificações de período aberto enviadas: ${successful}/${userIds.length}`);
   return successful > 0;

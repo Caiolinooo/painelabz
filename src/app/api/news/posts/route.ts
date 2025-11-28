@@ -165,8 +165,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Criar novo post de notícia (somente ADMIN ou MANAGER)
-export const POST = withPermission('manager', async (request: NextRequest) => {
+// POST - Criar novo post de notícia (somente ADMIN, MANAGER ou EDITOR DE NOTÍCIAS)
+export const POST = withPermission('news_editor', async (request: NextRequest) => {
   try {
     const body = await request.json();
     const {
@@ -182,7 +182,8 @@ export const POST = withPermission('manager', async (request: NextRequest) => {
       scheduled_for,
       featured = false,
       pinned = false,
-      status = 'draft'
+      status = 'draft',
+      metadata = {}
     } = body;
 
     if (!title || !author_id) {
@@ -240,6 +241,7 @@ export const POST = withPermission('manager', async (request: NextRequest) => {
       status,
       featured,
       pinned,
+      metadata: metadata || {},
       likes_count: 0,
       comments_count: 0,
       views_count: 0,
@@ -312,7 +314,7 @@ export const POST = withPermission('manager', async (request: NextRequest) => {
             title: resolvedTitle,
             message: resolvedMessage,
             data: { post_id: newPost.id, category_id: category_id || null, featured: !!featured },
-            action_url: `/news?post=${newPost.id}`,
+            action_url: `/news/post/${newPost.id}`,
             priority: (notifSettings.defaultPriority as any) || 'normal',
             created_at: new Date().toISOString()
           }));
@@ -330,7 +332,7 @@ export const POST = withPermission('manager', async (request: NextRequest) => {
           });
 
           if (emailsToSend.length > 0) {
-            const postUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/news?post=${newPost.id}`;
+            const postUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/news/post/${newPost.id}`;
             const subject = resolvedTitle;
             const html = newsPostTemplate(author?.first_name || 'Alguém', title, excerpt || '', postUrl);
             await Promise.allSettled(emailsToSend.map((u: any) => sendCustomEmail(u.email, subject, html)));
@@ -350,7 +352,7 @@ export const POST = withPermission('manager', async (request: NextRequest) => {
             await sendPushToUserIds(pushUsers, {
               title: resolvedTitle,
               body: resolvedMessage,
-              url: `/news?post=${newPost.id}`
+              url: `/news/post/${newPost.id}`
             });
           }
 

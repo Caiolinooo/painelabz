@@ -48,6 +48,8 @@ export interface PermissionFeatures {
   'chat.manage_channels'?: boolean;
   'chat.delete_messages'?: boolean;
   'chat.admin'?: boolean;
+  'news_editor'?: boolean;
+  'news_manager'?: boolean;
   [key: string]: boolean | undefined;
 }
 
@@ -261,6 +263,10 @@ export const PERMISSIONS = {
   SOCIAL: {
     EDITOR: 'social_editor',
     MODERATOR: 'social_moderator'
+  },
+  NEWS: {
+    EDITOR: 'news_editor',
+    MANAGER: 'news_manager'
   }
 } as const;
 
@@ -283,6 +289,14 @@ export const PERMISSION_DESCRIPTIONS = {
   social_moderator: {
     title: 'Moderador Social',
     description: 'Pode moderar posts, comentários e conteúdo social'
+  },
+  news_editor: {
+    title: 'Editor de Notícias',
+    description: 'Pode criar e editar notícias'
+  },
+  news_manager: {
+    title: 'Gerente de Notícias',
+    description: 'Pode gerenciar, publicar e excluir notícias'
   }
 } as const;
 

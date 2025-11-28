@@ -16,6 +16,7 @@ import NewsPostEditor from './NewsPostEditor';
 import NewsPostEditorFullScreen from './NewsPostEditorFullScreen';
 import useNewsRealtime from '@/hooks/useNewsRealtime';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import NewsHighlights from './NewsHighlights';
 
 interface NewsCategory { id: string; name: string; color: string; }
 
@@ -25,7 +26,7 @@ interface NewsPost {
   content: string;
   excerpt: string;
   media_urls: string[];
-  external_links: Array<{url: string, title: string}>;
+  external_links: Array<{ url: string, title: string }>;
   author: {
     id: string;
     first_name: string;
@@ -181,7 +182,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
 
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
 
-  const { hasPermission } = useACLPermissions(userId);
+  const { hasPermission, canCreateNews } = useACLPermissions(userId);
 
   // Carregar posts
   const loadPosts = async (pageNum: number = 1, reset: boolean = false) => {
@@ -256,10 +257,10 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
     setPosts(prev => prev.map(post =>
       post.id === postId
         ? {
-            ...post,
-            likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
-            user_liked: !post.user_liked
-          }
+          ...post,
+          likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
+          user_liked: !post.user_liked
+        }
         : post
     ));
 
@@ -277,10 +278,10 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         setPosts(prev => prev.map(post =>
           post.id === postId
             ? {
-                ...post,
-                likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
-                user_liked: !post.user_liked
-              }
+              ...post,
+              likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
+              user_liked: !post.user_liked
+            }
             : post
         ));
       }
@@ -290,10 +291,10 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
       setPosts(prev => prev.map(post =>
         post.id === postId
           ? {
-              ...post,
-              likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
-              user_liked: !post.user_liked
-            }
+            ...post,
+            likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
+            user_liked: !post.user_liked
+          }
           : post
       ));
     }
@@ -341,223 +342,236 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
 
   // Compartilhar post
   const handleShare = async (post: NewsPost) => {
+    const url = `${window.location.origin}/noticias?id=${post.id}`;
+    const shareData: ShareData = {
+      title: post.title,
+      text: post.excerpt || post.title,
+      url: url
+    };
+
     try {
-      const shareData: ShareData = {
-        title: post.title,
-        text: post.excerpt || post.title,
-        url: `${window.location.origin}/noticias?id=${post.id}`
-      };
-      if (navigator.share) {
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(shareData.url || '');
-        alert('Link copiado para a área de transferência');
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copiado para a área de transferência!');
       }
     } catch (e) {
       console.error('Falha ao compartilhar:', e);
+      // Fallback manual se clipboard falhar
+      prompt('Copie o link abaixo:', url);
     }
   };
 
   // Renderizar post individual
   const renderPost = (post: NewsPost) => {
     return (
-    <div key={post.id} className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-      {/* Header do Post */}
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <FiUser className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="font-semibold text-gray-900">
-                {post.author.first_name} {post.author.last_name}
-              </h3>
-              {post.category && (
-                <span
-                  className="px-2 py-1 text-xs rounded-full text-white"
-                  style={{ backgroundColor: post.category.color }}
-                >
-                  {post.category.name}
-                </span>
-              )}
-              {post.featured && (
-                <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                  Destaque
-                </span>
-              )}
+      <div key={post.id} className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        {/* Header do Post */}
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <FiUser className="w-5 h-5 text-white" />
             </div>
-            <div className="flex items-center text-sm text-gray-500 space-x-2">
-              <FiCalendar className="w-4 h-4" />
-              <span>{formatDate(post.published_at)}</span>
-              <span>•</span>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="font-semibold text-gray-900">
+                  {post.author.first_name} {post.author.last_name}
+                </h3>
+                {post.category && (
+                  <span
+                    className="px-2 py-1 text-xs rounded-full text-white"
+                    style={{ backgroundColor: post.category.color }}
+                  >
+                    {post.category.name}
+                  </span>
+                )}
+                {post.featured && (
+                  <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                    Destaque
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center text-sm text-gray-500 space-x-2">
+                <FiCalendar className="w-4 h-4" />
+                <span>{formatDate(post.published_at)}</span>
+                <span>•</span>
 
-              <FiEye className="w-4 h-4" />
-              <span>{post.views_count} visualizações</span>
+                <FiEye className="w-4 h-4" />
+                <span>{post.views_count} visualizações</span>
+              </div>
             </div>
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setOpenMenuPostId(openMenuPostId === post.id ? null : post.id)}
+              className="p-2 hover:bg-gray-100 rounded-full"
+            >
+              <FiMoreHorizontal className="w-5 h-5 text-gray-500" />
+            </button>
+            {openMenuPostId === post.id && (
+              <div className="absolute right-0 mt-2 w-44 bg-white border rounded shadow z-10">
+                {/* Copiar link */}
+                <button
+                  onClick={() => handleShare(post)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                >Copiar link</button>
+
+                {/* Editar post inline (somente autorizado) */}
+                {(hasPermission('news.edit') || hasPermission('news.publish')) && (
+                  <button
+                    onClick={() => { setEditingPost(post); setShowEditModal(true); setOpenMenuPostId(null); }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                  >Editar</button>
+                )}
+
+                {/* Excluir post (somente autorizado) */}
+                {(hasPermission('news.delete') || hasPermission('news.publish')) && (
+                  <button
+                    onClick={() => handleDeletePost(post.id)}
+                    className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >Excluir</button>
+                )}
+              </div>
+            )}
           </div>
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setOpenMenuPostId(openMenuPostId === post.id ? null : post.id)}
-            className="p-2 hover:bg-gray-100 rounded-full"
-          >
-            <FiMoreHorizontal className="w-5 h-5 text-gray-500" />
-          </button>
-          {openMenuPostId === post.id && (
-            <div className="absolute right-0 mt-2 w-44 bg-white border rounded shadow z-10">
-              {/* Copiar link */}
-              <button
-                onClick={() => handleShare(post)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-              >Copiar link</button>
 
-              {/* Editar post inline (somente autorizado) */}
-              {(hasPermission('news.edit') || hasPermission('news.publish')) && (
-                <button
-                  onClick={() => { setEditingPost(post); setShowEditModal(true); setOpenMenuPostId(null); }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                >Editar</button>
-              )}
+        {/* Conteúdo do Post */}
+        <div className="px-4 pb-3">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h2>
+          <p className="text-gray-700 leading-relaxed">{post.excerpt}</p>
 
-              {/* Excluir post (somente autorizado) */}
-              {(hasPermission('news.delete') || hasPermission('news.publish')) && (
-                <button
-                  onClick={() => handleDeletePost(post.id)}
-                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                >Excluir</button>
-              )}
+          {/* Tags */}
+          {Array.isArray(post.tags) && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {post.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Links Externos */}
+          {Array.isArray(post.external_links) && post.external_links.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {post.external_links.map((link, index) => (
+                <a
+                  key={index}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="text-sm font-medium text-blue-600">{link.title}</div>
+                  <div className="text-xs text-gray-500">{link.url}</div>
+                </a>
+              ))}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Conteúdo do Post */}
-      <div className="px-4 pb-3">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h2>
-        <p className="text-gray-700 leading-relaxed">{post.excerpt}</p>
-
-        {/* Tags */}
-        {Array.isArray(post.tags) && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {post.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Links Externos */}
-        {Array.isArray(post.external_links) && post.external_links.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {post.external_links.map((link, index) => (
-              <a
-                key={index}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="text-sm font-medium text-blue-600">{link.title}</div>
-                <div className="text-xs text-gray-500">{link.url}</div>
-              </a>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Mídia */}
-      {post.media_urls.length > 0 && (
-        <div className="relative">
-          <div className="grid grid-cols-1 gap-2">
-            {post.media_urls.map((url, index) => (
-              <div
-                key={index}
-                className="relative"
-                onDoubleClick={() => handleDoubleClick(post.id)}
-              >
-                <img
-                  src={url}
-                  alt={t('components.midiaIndex1', `Mídia ${index + 1}`)}
-                  className="w-full h-auto cursor-pointer select-none"
-                />
-                {/* Animação de coração para duplo clique */}
+        {/* Mídia */}
+        {post.media_urls.length > 0 && (
+          <div className="relative">
+            <div className="grid grid-cols-1 gap-2">
+              {post.media_urls.map((url, index) => (
                 <div
-                  id={`heart-animation-${post.id}`}
-                  className="absolute inset-0 flex items-center justify-center hidden pointer-events-none"
+                  key={index}
+                  className="relative"
+                  onDoubleClick={() => handleDoubleClick(post.id)}
                 >
-                  <FiHeart className="w-20 h-20 text-red-500 fill-current" />
+                  {/* Detectar se é vídeo pela extensão ou tipo MIME */}
+                  {url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                    <video
+                      src={url}
+                      className="w-full h-auto cursor-pointer select-none"
+                      controls
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={url}
+                      alt={t('components.midiaIndex1', `Mídia ${index + 1}`)}
+                      className="w-full h-auto cursor-pointer select-none"
+                    />
+                  )}
+                  {/* Animação de coração para duplo clique */}
+                  <div
+                    id={`heart-animation-${post.id}`}
+                    className="absolute inset-0 flex items-center justify-center hidden pointer-events-none"
+                  >
+                    <FiHeart className="w-20 h-20 text-red-500 fill-current" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Ações */}
-      <div className="px-4 py-3 border-t border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <button
-              onClick={() => handleLike(post.id)}
-              className={`flex items-center space-x-2 group ${
-                post.user_liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
-              } transition-all duration-200`}
-              disabled={!userId}
-            >
-              <div className="relative">
-                <FiHeart
-                  className={`w-5 h-5 transition-all duration-200 ${
-                    post.user_liked
+        {/* Ações */}
+        <div className="px-4 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <button
+                onClick={() => handleLike(post.id)}
+                className={`flex items-center space-x-2 group ${post.user_liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                  } transition-all duration-200`}
+                disabled={!userId}
+              >
+                <div className="relative">
+                  <FiHeart
+                    className={`w-5 h-5 transition-all duration-200 ${post.user_liked
                       ? 'fill-current scale-110'
                       : 'group-hover:scale-110'
-                  }`}
-                />
-                {post.user_liked && (
-                  <div className="absolute inset-0 animate-ping">
-                    <FiHeart className="w-5 h-5 text-red-300 fill-current" />
-                  </div>
-                )}
-              </div>
-              <span className="text-sm font-medium">{post.likes_count}</span>
-            </button>
+                      }`}
+                  />
+                  {post.user_liked && (
+                    <div className="absolute inset-0 animate-ping">
+                      <FiHeart className="w-5 h-5 text-red-300 fill-current" />
+                    </div>
+                  )}
+                </div>
+                <span className="text-sm font-medium">{post.likes_count}</span>
+              </button>
 
-            <button
-              onClick={() => setExpandedComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-              className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
-            >
-              <FiMessageCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">{post.comments_count}</span>
-            </button>
+              <button
+                onClick={() => setExpandedComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
+                className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
+              >
+                <FiMessageCircle className="w-5 h-5" />
+                <span className="text-sm font-medium">{post.comments_count}</span>
+              </button>
 
-            <button
-              onClick={() => handleShare(post)}
-              className="flex items-center space-x-2 text-gray-500 hover:text-green-500 transition-colors"
-            >
-              <FiShare2 className="w-5 h-5" />
-              <span className="text-sm font-medium">Compartilhar</span>
+              <button
+                onClick={() => handleShare(post)}
+                className="flex items-center space-x-2 text-gray-500 hover:text-green-500 transition-colors"
+              >
+                <FiShare2 className="w-5 h-5" />
+                <span className="text-sm font-medium">Compartilhar</span>
+              </button>
+            </div>
+
+            <button className="text-gray-500 hover:text-yellow-500 transition-colors">
+              <FiBookmark className="w-5 h-5" />
             </button>
           </div>
-
-          <button className="text-gray-500 hover:text-yellow-500 transition-colors">
-            <FiBookmark className="w-5 h-5" />
-          </button>
         </div>
+
+        {/* Comentários */}
+        {expandedComments[post.id] && (
+          <div className="border-t border-gray-100">
+            <NewsCommentSection postId={post.id} userId={userId || ''} />
+          </div>
+        )}
+
       </div>
-
-      {/* Comentários */}
-      {expandedComments[post.id] && (
-        <div className="border-t border-gray-100">
-          <NewsCommentSection postId={post.id} userId={userId || ''} />
-        </div>
-      )}
-
-    </div>
-  );
+    );
   };
 
   if (error) {
@@ -577,6 +591,9 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto">
+      {/* Highlights / Stories */}
+      <NewsHighlights userId={userId || ''} canCreate={canCreateNews} />
+
       {/* Create Post Card - Instagram Style */}
       {userId && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">

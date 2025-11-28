@@ -4,7 +4,7 @@ import { sendEmail } from '@/lib/email';
 /**
  * Tipos de notificação para avaliação
  */
-export type TipoNotificacaoAvaliacao = 
+export type TipoNotificacaoAvaliacao =
   | 'periodo_iniciado'
   | 'autoavaliacao_pendente'
   | 'autoavaliacao_prazo'
@@ -42,32 +42,27 @@ export class NotificacoesAvaliacaoService {
   /**
    * Cria uma notificação no banco de dados e envia por email
    */
+  /**
+   * Cria uma notificação no banco de dados e envia por email
+   */
   static async criarNotificacao(notificacao: Omit<NotificacaoAvaliacao, 'id' | 'created_at'>): Promise<string | null> {
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: notificacao.usuario_id,
-          type: notificacao.tipo,
-          title: notificacao.titulo,
-          message: notificacao.mensagem,
-          data: notificacao.dados_avaliacao,
-          action_url: `/avaliacao`,
-          priority: 'normal',
-          read_at: null
-        })
-        .select('id')
-        .single();
+      // Importar dinamicamente para evitar dependência circular
+      const { sendGlobalNotification } = await import('@/lib/global-notifications');
 
-      if (error) {
-        console.error('Erro ao criar notificação:', error);
-        return null;
-      }
+      const result = await sendGlobalNotification({
+        userId: notificacao.usuario_id,
+        submodule: 'evaluation',
+        type: notificacao.tipo,
+        title: notificacao.titulo,
+        message: notificacao.mensagem,
+        data: notificacao.dados_avaliacao,
+        actionUrl: '/avaliacao',
+        priority: 'normal',
+        channels: ['in-app', 'email', 'push']
+      });
 
-      // Enviar email após criar notificação
-      await this.enviarNotificacaoEmail(notificacao);
-
-      return data.id;
+      return result.success ? 'success' : null;
     } catch (error) {
       console.error('Erro ao criar notificação:', error);
       return null;
@@ -193,9 +188,6 @@ Equipe ABZ Group
       // Inserir todas as notificações
       for (const notificacao of notificacoes) {
         await this.criarNotificacao(notificacao);
-        
-        // Enviar notificação push se disponível
-        await this.enviarNotificacaoPush(notificacao);
       }
 
     } catch (error) {
@@ -207,8 +199,8 @@ Equipe ABZ Group
    * Notifica funcionário sobre autoavaliação pendente
    */
   static async notificarAutoavaliacaoPendente(
-    funcionarioId: string, 
-    avaliacaoId: string, 
+    funcionarioId: string,
+    avaliacaoId: string,
     dataLimite: string
   ): Promise<void> {
     try {
@@ -257,7 +249,6 @@ Equipe ABZ Group
       };
 
       await this.criarNotificacao(notificacao);
-      await this.enviarNotificacaoPush(notificacao);
     } catch (error) {
       console.error('Erro ao notificar autoavaliação recebida:', error);
     }
@@ -273,7 +264,7 @@ Equipe ABZ Group
     comentarios?: string
   ): Promise<void> {
     try {
-      const mensagem = comentarios 
+      const mensagem = comentarios
         ? `Sua avaliação foi aprovada por ${gerenteNome}. Comentários: ${comentarios}`
         : `Sua avaliação foi aprovada por ${gerenteNome}.`;
 
@@ -292,7 +283,6 @@ Equipe ABZ Group
       };
 
       await this.criarNotificacao(notificacao);
-      await this.enviarNotificacaoPush(notificacao);
     } catch (error) {
       console.error('Erro ao notificar avaliação aprovada:', error);
     }
@@ -308,7 +298,7 @@ Equipe ABZ Group
     comentarios?: string
   ): Promise<void> {
     try {
-      const mensagem = comentarios 
+      const mensagem = comentarios
         ? `Sua avaliação foi editada por ${gerenteNome}. Comentários: ${comentarios}`
         : `Sua avaliação foi editada por ${gerenteNome}.`;
 
@@ -327,7 +317,6 @@ Equipe ABZ Group
       };
 
       await this.criarNotificacao(notificacao);
-      await this.enviarNotificacaoPush(notificacao);
     } catch (error) {
       console.error('Erro ao notificar avaliação editada:', error);
     }
@@ -424,12 +413,12 @@ Equipe ABZ Group
       if (!avaliacoesPendentes) return;
 
       for (const avaliacao of avaliacoesPendentes) {
-        const dataLimite = avaliacao.etapa_atual === 'autoavaliacao' 
+        const dataLimite = avaliacao.etapa_atual === 'autoavaliacao'
           ? avaliacao.periodos_avaliacao.data_limite_autoavaliacao
           : avaliacao.periodos_avaliacao.data_limite_aprovacao;
 
         const limite = new Date(dataLimite);
-        
+
         // Se o prazo é amanhã, enviar lembrete
         if (limite.toDateString() === amanha.toDateString()) {
           if (avaliacao.etapa_atual === 'autoavaliacao') {

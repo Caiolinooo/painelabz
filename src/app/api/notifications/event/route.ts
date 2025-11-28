@@ -1,17 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import nodemailer from 'nodemailer';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables');
-}
-
-const supabaseAdmin = supabaseUrl && supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey)
-  : null;
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,23 +23,19 @@ export async function POST(request: NextRequest) {
     } = body;
 
     console.log('📧 Enviando notificações de evento:', title);
+    console.log('📋 Dados recebidos:', {
+      eventId,
+      sendEmail,
+      sendInternalNotification,
+      attendeesCount: attendees?.length || 0,
+      attendees
+    });
 
     const results = {
       emailsSent: 0,
       notificationsSent: 0,
-      errors: []
+      errors: [] as string[]
     };
-
-    // Configurar transporte de email
-    const transporter = nodemailer.createTransporter({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user: 'apiabzgroup@gmail.com',
-        pass: process.env.GMAIL_APP_PASSWORD
-      }
-    });
 
     // Formatar data
     const eventDate = new Date(startDate);
@@ -61,14 +45,17 @@ export async function POST(request: NextRequest) {
     });
 
     // Enviar emails se solicitado
+    console.log(`📬 Verificando envio de emails: sendEmail=${sendEmail}, attendees=${attendees?.length || 0}`);
     if (sendEmail && attendees && attendees.length > 0) {
+      const { sendEmail: sendEmailService } = await import('@/lib/email');
+
       for (const email of attendees) {
         try {
-          await transporter.sendMail({
-            from: '"ABZ Group" <apiabzgroup@gmail.com>',
-            to: email,
-            subject: `📅 Convite: ${title}`,
-            html: `
+          await sendEmailService(
+            email,
+            `📅 Convite: ${title}`,
+            `Você foi convidado para o evento: ${title}. Data: ${formattedDate}`,
+            `
               <!DOCTYPE html>
               <html>
               <head>
@@ -127,8 +114,8 @@ export async function POST(request: NextRequest) {
               </body>
               </html>
             `
-          });
-          
+          );
+
           results.emailsSent++;
           console.log(`✅ Email enviado para ${email}`);
         } catch (error) {
@@ -139,6 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Enviar notificações internas se solicitado
+    console.log(`🔔 Verificando notificações internas: sendInternalNotification=${sendInternalNotification}, attendees=${attendees?.length || 0}`);
     if (sendInternalNotification && attendees && attendees.length > 0) {
       // Buscar IDs dos usuários pelos emails
       const { data: users, error: usersError } = await supabaseAdmin

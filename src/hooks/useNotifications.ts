@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { resilientApiCall, logError } from '@/lib/apiRetry';
+import { supabase } from '@/lib/supabase';
 
 interface Notification {
   id: string;
@@ -135,7 +136,7 @@ export function useNotifications(userId?: string): UseNotificationsReturn {
       }
 
       const newNotification = await response.json();
-      
+
       // Adicionar à lista local
       setNotifications(prev => [newNotification, ...prev]);
       setUnreadCount(prev => prev + 1);
@@ -165,14 +166,14 @@ export function useNotifications(userId?: string): UseNotificationsReturn {
       }
 
       // Atualizar estado local
-      setNotifications(prev => 
-        prev.map(notif => 
-          notif.id === notificationId 
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === notificationId
             ? { ...notif, read_at: new Date().toISOString() }
             : notif
         )
       );
-      
+
       setUnreadCount(prev => Math.max(0, prev - 1));
 
       return true;
@@ -192,9 +193,9 @@ export function useNotifications(userId?: string): UseNotificationsReturn {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           user_id: userId,
-          type 
+          type
         }),
       });
 
@@ -205,14 +206,14 @@ export function useNotifications(userId?: string): UseNotificationsReturn {
       const data = await response.json();
 
       // Atualizar estado local
-      setNotifications(prev => 
-        prev.map(notif => 
+      setNotifications(prev =>
+        prev.map(notif =>
           (!type || notif.type === type) && !notif.read_at
             ? { ...notif, read_at: new Date().toISOString() }
             : notif
         )
       );
-      
+
       setUnreadCount(data.newUnreadCount);
 
       return true;
@@ -234,38 +235,33 @@ export function useNotifications(userId?: string): UseNotificationsReturn {
     }
   }, [userId, loadNotifications]);
 
-  // Indústria: polling consciente de visibilidade + refresh em foco
+  // Realtime subscription
   useEffect(() => {
     if (!userId) return;
 
-    let intervalId: any;
-    const BASE_INTERVAL = 60000; // 60s
-
-    const tick = () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        refreshNotifications();
-      }
-    };
-
-    // interval only when visible
-    intervalId = setInterval(tick, BASE_INTERVAL);
-
-    const onFocus = () => refreshNotifications();
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        refreshNotifications();
-      }
-    };
-
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibility);
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`
+        },
+        (payload: any) => {
+          const newNotification = payload.new as Notification;
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          setLastUpdated(new Date());
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (intervalId) clearInterval(intervalId);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibility);
+      supabase.removeChannel(channel);
     };
-  }, [userId, refreshNotifications]);
+  }, [userId]);
 
   // Cleanup
   useEffect(() => {

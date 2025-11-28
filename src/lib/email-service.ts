@@ -10,12 +10,12 @@ import { getCredential } from './secure-credentials';
 async function getEmailConfig() {
   // Valores padrão
   const config = {
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '465'),
-    secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para outras portas
+    host: process.env.EMAIL_HOST || 'smtp.office365.com',
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: process.env.EMAIL_SECURE === 'true', // false para 587
     auth: {
-      user: process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
-      pass: process.env.EMAIL_PASSWORD || ''
+      user: process.env.EMAIL_USER || 'apiabz@groupabz.com',
+      pass: process.env.EMAIL_PASSWORD || 'Abz@2025'
     },
     // Configurações para melhorar a entregabilidade
     pool: true, // Usar conexões persistentes
@@ -64,7 +64,7 @@ async function getEmailConfig() {
  */
 export async function createTransport() {
   try {
-    console.log('Inicializando transporte de email com Gmail');
+    console.log('Inicializando transporte de email com Exchange/Office 365');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
 
     // Obter configuração de email
@@ -76,41 +76,19 @@ export async function createTransport() {
     // Verificar conexão
     console.log('Verificando conexão com o servidor SMTP...');
     await transporter.verify();
-    console.log('Conexão com o servidor SMTP verificada com sucesso');
+    console.log('✅ Conexão com o servidor SMTP verificada com sucesso');
 
     return transporter;
   } catch (error) {
-    console.error('Erro ao inicializar transporte de email:', error);
+    console.error('❌ ERRO CRÍTICO - Falha ao conectar com Exchange/Office365!');
+    console.error('❌ Detalhes do erro:', error);
+    console.error('❌ Verifique:');
+    console.error('   1. EMAIL_HOST:', process.env.EMAIL_HOST);
+    console.error('   2. EMAIL_PORT:', process.env.EMAIL_PORT);
+    console.error('   3. EMAIL_USER:', process.env.EMAIL_USER);
+    console.error('   4. EMAIL_PASSWORD está configurado?', !!process.env.EMAIL_PASSWORD);
 
-    // Tentar criar uma conta de teste Ethereal
-    try {
-      console.log('Tentando criar conta de teste Ethereal...');
-      const testAccount = await nodemailer.createTestAccount();
-
-      const etherealTransporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass
-        }
-      });
-
-      console.log('Conta de teste Ethereal criada:', {
-        user: testAccount.user,
-        pass: testAccount.pass
-      });
-
-      // Verificar conexão
-      await etherealTransporter.verify();
-      console.log('Conexão com Ethereal verificada com sucesso');
-
-      return etherealTransporter;
-    } catch (fallbackError) {
-      console.error('Erro ao criar conta de teste Ethereal:', fallbackError);
-      throw new Error('Não foi possível inicializar nenhum transporte de email');
-    }
+    throw new Error(`Falha ao conectar com servidor Exchange: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
   }
 }
 

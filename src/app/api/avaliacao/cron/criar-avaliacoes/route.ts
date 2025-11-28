@@ -345,6 +345,7 @@ async function enviarNotificacoes(dados: any): Promise<void> {
         periodo: dados.periodo,
         data_limite: dados.data_limite,
       },
+      action_url: `/avaliacao/ver/${dados.avaliacao_id}`,
       read: false,
       created_at: new Date().toISOString(),
     });
@@ -359,6 +360,7 @@ async function enviarNotificacoes(dados: any): Promise<void> {
         avaliacao_id: dados.avaliacao_id,
         periodo: dados.periodo,
       },
+      action_url: `/avaliacao/ver/${dados.avaliacao_id}`,
       read: false,
       created_at: new Date().toISOString(),
     });

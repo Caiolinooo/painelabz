@@ -107,7 +107,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Erro ao fazer upload de arquivo:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      {
+        error: 'Erro interno do servidor ao fazer upload',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

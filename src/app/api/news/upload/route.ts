@@ -97,6 +97,34 @@ export async function POST(request: NextRequest) {
     debugLogs.push(`📁 Pasta de destino: ${folder}`);
     console.log(`📁 [NEWS UPLOAD] Pasta de destino: ${folder}`);
 
+    // Validar tamanho dos arquivos (limite padrão do Supabase: 50MB)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB em bytes
+
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        const maxSizeMB = (MAX_FILE_SIZE / 1024 / 1024).toFixed(0);
+
+        debugLogs.push(`❌ Arquivo muito grande: ${file.name} (${sizeMB}MB)`);
+        debugLogs.push(`   Tamanho máximo permitido: ${maxSizeMB}MB`);
+
+        console.error(`❌ [NEWS UPLOAD] Arquivo muito grande: ${file.name}`);
+        console.error(`   Tamanho: ${sizeMB}MB`);
+        console.error(`   Limite: ${maxSizeMB}MB`);
+
+        return NextResponse.json({
+          error: 'Arquivo muito grande',
+          details: `O arquivo "${file.name}" tem ${sizeMB}MB e excede o limite de ${maxSizeMB}MB.`,
+          fileName: file.name,
+          fileSize: file.size,
+          fileSizeMB: sizeMB,
+          maxSize: MAX_FILE_SIZE,
+          maxSizeMB: maxSizeMB,
+          debugLogs
+        }, { status: 413 });
+      }
+    }
+
     // Não precisa criar bucket, já existe
 
     const uploaded: Array<{ originalName: string; path: string; url: string; type: string; size: number }> = [];
