@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiArrowLeft } from 'react-icons/fi';
 import NewsPostCard from '@/components/news/NewsPostCard';
-import { useSupabaseAuth } from '@/providers/SupabaseAuthProvider';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { NewsPost } from '@/types/news';
 import { fetchWithToken } from '@/lib/tokenStorage';
 
