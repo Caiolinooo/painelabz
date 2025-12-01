@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
+import RichTextEditor from './RichTextEditor';
 
 interface TextPostCreatorProps {
   isOpen: boolean;
@@ -64,7 +65,7 @@ const TextPostCreator: React.FC<TextPostCreatorProps> = ({
         toast.success(t('newsSystem.postCreated', 'Publicação criada com sucesso!'));
         onPostCreated(createdPost);
         onClose();
-        
+
         // Reset
         setTitle('');
         setContent('');
@@ -130,28 +131,18 @@ const TextPostCreator: React.FC<TextPostCreatorProps> = ({
             />
           </div>
 
-          {/* Conteúdo */}
+          {/* Conteúdo com Editor Rico */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('newsSystem.content', 'Conteúdo')} *
             </label>
-            <textarea
+            <RichTextEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={setContent}
               placeholder={t('newsSystem.whatAreYouThinking', 'O que você está pensando?')}
-              rows={8}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              maxLength={1024}
+              showPreview={true}
             />
-            <div className="mt-2 text-sm text-gray-500 text-right">
-              {content.length} {t('common.characters', 'caracteres')}
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              💡 {t('newsSystem.textPostTip', 'Dica: Use quebras de linha para organizar melhor seu texto.')}
-            </p>
           </div>
         </div>
 

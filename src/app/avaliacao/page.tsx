@@ -15,26 +15,27 @@ import { supabaseAdmin } from '@/lib/supabase';
 import EvaluationListClient from './EvaluationListClient';
 
 export default async function EvaluationPage() {
-  // O middleware já validou o token e adicionou ao header Authorization
-  // Vamos ler diretamente do header ao invés dos cookies
-  const { headers: requestHeaders } = await import('next/headers');
-  const headersList = await requestHeaders();
-  const authHeader = headersList.get('authorization');
-
-  console.log('🔍 EvaluationPage - Authorization header:', authHeader ? 'Presente' : 'Ausente');
-
-  // Fallback: tentar ler dos cookies se o header não estiver presente
+  // Priorizar cookies (fonte primária de autenticação para server components)
+  // Depois tentar headers como fallback
   let token: string | undefined = undefined;
 
-  if (authHeader) {
-    // Extrair token do header "Bearer TOKEN"
-    token = authHeader.replace('Bearer ', '');
-    console.log('✅ EvaluationPage - Token extraído do header Authorization');
-  } else {
-    // Tentar ler dos cookies como fallback
-    const cookieStore = await cookies();
-    token = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value;
-    console.log('🔍 EvaluationPage - Token dos cookies:', token ? 'Presente' : 'Ausente');
+  // Primeiro: verificar cookies (setados pela API de login)
+  const cookieStore = await cookies();
+  token = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value;
+  console.log('🔍 EvaluationPage - Token dos cookies:', token ? 'Presente' : 'Ausente');
+
+  // Fallback: tentar ler do header Authorization (se middleware setou)
+  if (!token) {
+    const { headers: requestHeaders } = await import('next/headers');
+    const headersList = await requestHeaders();
+    const authHeader = headersList.get('authorization');
+    console.log('🔍 EvaluationPage - Authorization header:', authHeader ? 'Presente' : 'Ausente');
+
+    if (authHeader) {
+      // Extrair token do header "Bearer TOKEN"
+      token = authHeader.replace('Bearer ', '');
+      console.log('✅ EvaluationPage - Token extraído do header Authorization');
+    }
   }
 
   console.log('🔍 EvaluationPage - Token encontrado:', token ? `Sim (primeiros 20 chars: ${token.substring(0, 20)}...)` : 'Não');

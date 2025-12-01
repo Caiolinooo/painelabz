@@ -43,11 +43,18 @@ export async function GET(
       );
     }
 
-    // Incrementar contador de visualizações
-    await supabaseAdmin
-      .from('news_posts')
-      .update({ views_count: post.views_count + 1 })
-      .eq('id', postId);
+    // Tracking de visualização REAL (sessão-based)
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+
+    // Importar dinamicamente para evitar problemas com edge runtime
+    const { trackPostView } = await import('@/lib/viewTracking');
+
+    // Registrar view (só incrementa se for nova sessão)
+    await trackPostView(postId, undefined, ip, userAgent).catch(err => {
+      console.error('Erro ao registrar view:', err);
+      // Não bloqueia a resposta se o tracking falhar
+    });
 
     console.log(`✅ Post carregado: ${post.title}`);
     return NextResponse.json(post);

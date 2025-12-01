@@ -645,47 +645,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           return false;
         }
 
-        // Verificar se é o administrador
-        if (identifier === '***REMOVED***' || identifier === '+5522997847289') {
-          console.log('Tentativa de login do administrador falhou, tentando criar conta...');
-
-          // Tentar criar a conta do administrador usando o Supabase diretamente
-          try {
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: '***REMOVED***',
-              password: 'Caio@2122@', // Usar a senha correta do administrador
-            });
-
-            if (signUpError) {
-              console.error('Erro ao criar conta de administrador:', signUpError);
-              return false;
-            }
-
-            console.log('Conta de administrador criada com sucesso, tentando login novamente...');
-
-            // Tentar login novamente
-            const secondResponse = await fetchWrapper.post('/api/auth/login', {
-              email: '***REMOVED***',
-              password: 'Caio@2122@'
-            });
-
-            if (secondResponse.token) {
-              localStorage.setItem('auth', 'true');
-              localStorage.setItem('token', secondResponse.token);
-              localStorage.setItem('user', JSON.stringify(secondResponse.user));
-
-              setUser(secondResponse.user);
-              setLoginStep('complete');
-
-              await checkPasswordStatus();
-
-              return true;
-            }
-          } catch (adminError) {
-            console.error('Erro ao criar/logar como administrador:', adminError);
-          }
-        }
-
+        // Para qualquer outro erro, rejeitar o login
         return false;
       }
     } catch (error) {
