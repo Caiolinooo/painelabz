@@ -8,23 +8,21 @@ import { supabaseAdmin } from '@/lib/supabase';
  * @returns Promise<{isBanned: boolean, banInfo?: any}>
  */
 export async function checkIfUserIsBanned(
-  email?: string, 
-  phoneNumber?: string, 
+  email?: string,
   cpf?: string
-): Promise<{isBanned: boolean, banInfo?: any}> {
+): Promise<{ isBanned: boolean, banInfo?: any }> {
   try {
-    if (!email && !phoneNumber && !cpf) {
+    if (!email && !cpf) {
       return { isBanned: false };
     }
 
     // Construir query para verificar banimento
     let query = supabaseAdmin.from('banned_users').select('*');
-    
+
     const conditions = [];
     if (email) conditions.push(`email.eq.${email}`);
-    if (phoneNumber) conditions.push(`phone_number.eq.${phoneNumber}`);
     if (cpf) conditions.push(`cpf.eq.${cpf}`);
-    
+
     if (conditions.length > 0) {
       query = query.or(conditions.join(','));
     }
@@ -37,9 +35,9 @@ export async function checkIfUserIsBanned(
     }
 
     if (bannedUsers && bannedUsers.length > 0) {
-      return { 
-        isBanned: true, 
-        banInfo: bannedUsers[0] 
+      return {
+        isBanned: true,
+        banInfo: bannedUsers[0]
       };
     }
 
@@ -60,20 +58,18 @@ export async function banUser(
   userData: {
     id: string;
     email?: string;
-    phone_number?: string;
     cpf?: string;
     first_name?: string;
     last_name?: string;
   },
   bannedBy: string,
   reason: string = 'Usuário banido pelo administrador'
-): Promise<{success: boolean, error?: string}> {
+): Promise<{ success: boolean, error?: string }> {
   try {
     const { error } = await supabaseAdmin
       .from('banned_users')
       .insert({
         email: userData.email,
-        phone_number: userData.phone_number,
         cpf: userData.cpf,
         banned_by: bannedBy,
         ban_reason: reason,
@@ -104,18 +100,16 @@ export async function banUser(
  * @param cpf CPF do usuário
  */
 export async function unbanUser(
-  email?: string, 
-  phoneNumber?: string, 
+  email?: string,
   cpf?: string
-): Promise<{success: boolean, error?: string}> {
+): Promise<{ success: boolean, error?: string }> {
   try {
-    if (!email && !phoneNumber && !cpf) {
+    if (!email && !cpf) {
       return { success: false, error: 'Nenhum identificador fornecido' };
     }
 
     const conditions = [];
     if (email) conditions.push(`email.eq.${email}`);
-    if (phoneNumber) conditions.push(`phone_number.eq.${phoneNumber}`);
     if (cpf) conditions.push(`cpf.eq.${cpf}`);
 
     const { error } = await supabaseAdmin
@@ -138,7 +132,7 @@ export async function unbanUser(
 /**
  * Lista todos os usuários banidos
  */
-export async function getBannedUsers(): Promise<{success: boolean, data?: any[], error?: string}> {
+export async function getBannedUsers(): Promise<{ success: boolean, data?: any[], error?: string }> {
   try {
     const { data, error } = await supabaseAdmin
       .from('banned_users')

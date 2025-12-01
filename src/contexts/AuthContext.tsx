@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // CRÍTICO: Verificar se estamos em processo de logout
         const isLoggingOut = localStorage.getItem('logout_in_progress') === 'true' ||
-                             sessionStorage.getItem('logout_in_progress') === 'true';
+          sessionStorage.getItem('logout_in_progress') === 'true';
 
         if (isLoggingOut) {
           console.log('🚫 AuthContext - Logout em progresso - não restaurar sessão');
@@ -290,17 +290,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       console.log('Iniciando login com:', {
-        phoneNumber: phoneNumber || 'Não fornecido',
         email: email || 'Não fornecido',
         inviteCode: inviteCode || 'Não fornecido'
       });
+
+      // Phone login is disabled
+      if (phoneNumber) {
+        console.warn('Phone login is disabled');
+        return false;
+      }
 
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ phoneNumber, email, inviteCode }),
+        body: JSON.stringify({ email, inviteCode }),
       });
 
       console.log('Resposta do servidor para iniciar login:', {
@@ -387,8 +392,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const isEmail = identifier.includes('@');
+
+      if (!isEmail) {
+        console.error('Login allowed only with email');
+        return false;
+      }
+
       console.log('Tentando login com senha no frontend:', {
-        [isEmail ? 'email' : 'phoneNumber']: identifier,
+        email: identifier,
         password: password.substring(0, 3) + '...',
         rememberMe
       });
@@ -454,13 +465,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log(`Verificando código: ${code} para ${email || phoneNumber}`);
 
+      // Phone verification is disabled
+      if (phoneNumber) {
+        console.warn('Phone verification is disabled');
+        return false;
+      }
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phoneNumber,
           verificationCode: code,
           email,
           inviteCode
@@ -695,8 +711,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = useMemo(() => {
     // Verificar se o usuário é o administrador principal
     const adminEmail = 'caio.correia@groupabz.com';
-    const adminPhone = '+5522997847289';
-    const isMainAdmin = user?.email === adminEmail || user?.phoneNumber === adminPhone;
+    const isMainAdmin = user?.email === adminEmail;
 
     // Verificar se o usuário tem permissão de admin nas permissões de acesso
     const hasAdminPermission = user?.accessPermissions?.modules?.admin === true;

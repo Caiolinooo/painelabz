@@ -17,7 +17,6 @@ import {
 interface UserData {
   name: string;
   email: string;
-  phoneNumber: string;
   position: string;
   department: string;
   protocol: string;
@@ -443,13 +442,12 @@ export async function sendReimbursementConfirmationEmail(
 
     console.log(`Total de anexos para o email: ${emailAttachments.length}`);
     emailAttachments.forEach((attachment, index) => {
-      console.log(`Anexo ${index + 1}: ${attachment.filename} (${attachment.contentType || 'tipo desconhecido'}) - ${
-        attachment.content
-          ? `Conteúdo presente (${Buffer.isBuffer(attachment.content) ? attachment.content.length + ' bytes' : 'não é buffer'})`
-          : attachment.path
-            ? `Caminho: ${attachment.path}`
-            : 'Sem conteúdo nem caminho'
-      }`);
+      console.log(`Anexo ${index + 1}: ${attachment.filename} (${attachment.contentType || 'tipo desconhecido'}) - ${attachment.content
+        ? `Conteúdo presente (${Buffer.isBuffer(attachment.content) ? attachment.content.length + ' bytes' : 'não é buffer'})`
+        : attachment.path
+          ? `Caminho: ${attachment.path}`
+          : 'Sem conteúdo nem caminho'
+        }`);
     });
 
     // Verificação final para garantir que temos pelo menos um anexo
@@ -494,13 +492,12 @@ export async function sendReimbursementConfirmationEmail(
     // Log detalhado dos anexos válidos
     console.log(`Enviando email com ${validAttachments.length} anexos válidos:`);
     validAttachments.forEach((att, idx) => {
-      console.log(`Anexo ${idx + 1}: ${att.filename} (${att.contentType || 'tipo desconhecido'}) - ${
-        att.content
-          ? `Conteúdo: ${Buffer.isBuffer(att.content) ? att.content.length + ' bytes' : 'não é buffer'}`
-          : att.path
-            ? `Caminho: ${att.path}`
-            : 'Sem conteúdo/caminho'
-      }`);
+      console.log(`Anexo ${idx + 1}: ${att.filename} (${att.contentType || 'tipo desconhecido'}) - ${att.content
+        ? `Conteúdo: ${Buffer.isBuffer(att.content) ? att.content.length + ' bytes' : 'não é buffer'}`
+        : att.path
+          ? `Caminho: ${att.path}`
+          : 'Sem conteúdo/caminho'
+        }`);
     });
 
     // Enviar email para todos os destinatários

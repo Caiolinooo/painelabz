@@ -21,7 +21,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from '@/components/ui/button';
 
 export default function Login() {
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +30,6 @@ export default function Login() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [useEmail, setUseEmail] = useState(false);
   const [showInviteField, setShowInviteField] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
@@ -46,7 +44,7 @@ export default function Login() {
   const [quickRegisterPhone, setQuickRegisterPhone] = useState('');
   const [cpf, setCpf] = useState('');
   const [cargo, setCargo] = useState('');
-  
+
   const {
     initiateLogin,
     loginWithPassword,
@@ -59,7 +57,7 @@ export default function Login() {
     authStatus,
     setLoginStep
   } = useSupabaseAuth();
-  
+
   // Debug: Log do estado loginStep
   console.log('🎯 DEBUG Frontend - loginStep atual:', loginStep);
   console.log('🎯 DEBUG Frontend - authStatus atual:', authStatus);
@@ -75,8 +73,8 @@ export default function Login() {
     if (inviteParam) {
       setInviteCode(inviteParam);
       setShowInviteField(true);
-      // Se temos um código de convite, vamos preferir o login por email
-      setUseEmail(true);
+      setInviteCode(inviteParam);
+      setShowInviteField(true);
     }
   }, [searchParams]);
 
@@ -88,7 +86,7 @@ export default function Login() {
 
     // Também verificar flag de logout no storage
     const isLoggingOut = localStorage.getItem('logout_in_progress') === 'true' ||
-                         sessionStorage.getItem('logout_in_progress') === 'true';
+      sessionStorage.getItem('logout_in_progress') === 'true';
 
     // Se estamos vindo de um logout, limpar os parâmetros da URL para permitir login novamente
     if (isFromLogout || hasTimestamp || isLoggingOut) {
@@ -147,91 +145,53 @@ export default function Login() {
     };
   }, []);
 
-  // Função para iniciar o login com número de telefone ou email
+  // Função para iniciar o login com email
   const handlePhoneSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (useEmail) {
-      // Import the validation function with error handling
-      let validateEmail;
-      try {
-        const schema = await import('@/lib/schema');
-        validateEmail = schema.validateEmail;
-      } catch (error) {
-        console.error('Error importing schema:', error);
-        // Fallback validation function
-        validateEmail = (email: string) => {
-          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        };
+    // Import the validation function with error handling
+    let validateEmail;
+    try {
+      const schema = await import('@/lib/schema');
+      validateEmail = schema.validateEmail;
+    } catch (error) {
+      console.error('Error importing schema:', error);
+      // Fallback validation function
+      validateEmail = (email: string) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      };
+    }
+
+    // Validar o email
+    if (!email) {
+      setError(t('auth.invalidEmail'));
+      return;
+    }
+
+    // Verificar se é o email do administrador
+    if (email === 'caio.correia@groupabz.com' || email === 'apiabz@groupabz.com') {
+      console.log('Email do administrador detectado, iniciando login normal');
+
+      // Iniciar o processo de login normal, que redirecionará para a tela de senha
+      const initSuccess = await initiateLogin(
+        '',  // phoneNumber vazio
+        email,
+        inviteCode || undefined
+      );
+
+      if (initSuccess) {
+        console.log('Login iniciado com sucesso para o administrador');
       }
-
-      // Validar o email com a função melhorada - temporariamente comentado para debugging
-      if (!email) {
-        setError(t('auth.invalidEmail'));
-        return;
-      }
-      
-      // TODO: Reativar validação após teste
-      // if (!validateEmail(email)) {
-      //   setError(t('auth.invalidEmail'));
-      //   return;
-      // }
-
-      // Verificar se é o email do administrador
-      if (email === 'caio.correia@groupabz.com' || email === 'apiabz@groupabz.com') {
-        console.log('Email do administrador detectado, iniciando login normal');
-
-        // Iniciar o processo de login normal, que redirecionará para a tela de senha
-        const initSuccess = await initiateLogin(
-          '',  // phoneNumber vazio para login por email
-          email,
-          inviteCode || undefined
-        );
-
-        if (initSuccess) {
-          console.log('Login iniciado com sucesso para o administrador');
-          // Não precisamos mais forçar a mudança para a etapa de senha,
-          // pois o backend já retorna hasPassword: true para o admin
-        }
-        return;
-      }
-    } else {
-      // Validar o número de telefone
-      if (!phoneNumber || phoneNumber.length < 10 || !phoneNumber.startsWith('+') || !/^\+[0-9]+$/.test(phoneNumber)) {
-        setError(t('auth.invalidPhoneNumber'));
-        return;
-      }
-
-      // Verificar se é o telefone do administrador
-      if (phoneNumber === '+5522997847289' || phoneNumber === '22997847289' || phoneNumber === '997847289') {
-        console.log('Telefone do administrador detectado, iniciando login normal');
-        // Padronizar o formato do telefone
-        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+55' + (phoneNumber.startsWith('22') ? phoneNumber : '22' + phoneNumber);
-        setPhoneNumber(formattedPhone);
-
-        // Iniciar o processo de login normal, que redirecionará para a tela de senha
-        const initSuccess = await initiateLogin(
-          formattedPhone,
-          undefined,  // email vazio para login por telefone
-          inviteCode || undefined
-        );
-
-        if (initSuccess) {
-          console.log('Login iniciado com sucesso para o administrador');
-          // Não precisamos mais forçar a mudança para a etapa de senha,
-          // pois o backend já retorna hasPassword: true para o admin
-        }
-        return;
-      }
+      return;
     }
 
     try {
       // Iniciar o processo de login
       const success = await initiateLogin(
-        useEmail ? '' : phoneNumber,
-        useEmail ? email : undefined,
+        '', // phoneNumber vazio
+        email,
         inviteCode || undefined
       );
 
@@ -246,8 +206,7 @@ export default function Login() {
         setError('Sua conta está desativada. Entre em contato com o suporte.');
       } else if (authStatus === 'pending_registration' || authStatus === 'incomplete_registration') {
         // Usuário existe mas registro não foi completado
-        const identifier = useEmail ? email : phoneNumber;
-        console.log(`Email/telefone encontrado mas registro incompleto: ${identifier}. Direcionando para completar registro.`);
+        console.log(`Email encontrado mas registro incompleto: ${email}. Direcionando para completar registro.`);
         console.log('DEBUG: authStatus detectado:', authStatus);
         console.log('DEBUG: AuthContext já deve ter mudado loginStep para quick_register automaticamente');
 
@@ -258,17 +217,16 @@ export default function Login() {
         // Não precisamos chamar setLoginStep aqui, pois o AuthContext já fez isso automaticamente
         console.log('DEBUG: loginStep será alterado pelo AuthContext automaticamente');
       } else if (authStatus === 'new_email' || authStatus === 'new_phone') {
-        // Redirecionar para a página de registro com o email/telefone preenchido
-        const identifier = useEmail ? email : phoneNumber;
-        console.log(`Email/telefone não cadastrado: ${identifier}. Redirecionando para registro.`);
+        // Redirecionar para a página de registro com o email preenchido
+        console.log(`Email não cadastrado: ${email}. Redirecionando para registro.`);
 
         // Mostrar formulário de registro rápido em vez de redirecionar
         setError('');
-        setSuccess(t('auth.notRegisteredYet', 'Este email/telefone ainda não está cadastrado. Por favor, complete seu cadastro abaixo.'));
+        setSuccess(t('auth.notRegisteredYet', 'Este email ainda não está cadastrado. Por favor, complete seu cadastro abaixo.'));
 
         // AuthContext deve gerenciar o loginStep automaticamente baseado no authStatus
       } else {
-        setError(useEmail ? t('auth.invalidEmail') : t('auth.invalidPhoneNumber'));
+        setError(t('auth.invalidEmail'));
       }
     } catch (error) {
       console.error('Erro ao iniciar login:', error);
@@ -290,9 +248,9 @@ export default function Login() {
     try {
       // Verificar o código
       const success = await verifyCode(
-        useEmail ? '' : phoneNumber,
+        '', // phoneNumber vazio
         verificationCode,
-        useEmail ? email : undefined,
+        email,
         inviteCode || undefined
       );
 
@@ -325,35 +283,23 @@ export default function Login() {
         return;
       }
 
-      // Determinar se estamos usando email ou telefone
-      const identifier = useEmail ? email : phoneNumber;
+      // Determinar se estamos usando email
+      const identifier = email;
 
       if (!identifier) {
-        setError(useEmail ? t('auth.invalidEmail') : t('auth.invalidPhoneNumber'));
+        setError(t('auth.invalidEmail'));
         return;
       }
 
-      // Verificar se é o administrador e padronizar o identificador
+      // Verificar se é o administrador
       if (identifier === 'caio.correia@groupabz.com' ||
-          identifier === 'apiabz@groupabz.com' ||
-          identifier === '+5522997847289' ||
-          identifier === '22997847289' ||
-          identifier === '997847289') {
+        identifier === 'apiabz@groupabz.com') {
         console.log('Usuário administrador detectado');
-        // Padronizar o formato do telefone se for um número
-        if (!identifier.includes('@')) {
-          const formattedPhone = identifier.startsWith('+') ? identifier : '+55' + (identifier.startsWith('22') ? identifier : '22' + identifier);
-          if (useEmail) {
-            setEmail('caio.correia@groupabz.com');
-          } else {
-            setPhoneNumber(formattedPhone);
-          }
-        }
         // Não definimos mais a senha automaticamente, o usuário precisa digitar
       }
 
       console.log('Tentando login com senha:', {
-        [useEmail ? 'email' : 'phoneNumber']: identifier,
+        email: identifier,
         password: password.substring(0, 3) + '...',
         rememberMe
       });
@@ -422,9 +368,9 @@ export default function Login() {
       }
 
       // Formatar o número de telefone para o formato internacional
-      let formattedPhone = phoneNumber;
-      if (!useEmail && phoneNumber) {
-        formattedPhone = phoneNumber.replace(/\s/g, '').replace(/[\(\)\-]/g, '');
+      let formattedPhone = quickRegisterPhone;
+      if (quickRegisterPhone) {
+        formattedPhone = quickRegisterPhone.replace(/\s/g, '').replace(/[\(\)\-]/g, '');
 
         // Se não começar com +, adicionar +55 (Brasil)
         if (!formattedPhone.startsWith('+')) {
@@ -445,8 +391,8 @@ export default function Login() {
       const userData = {
         firstName,
         lastName,
-        email: useEmail ? email : '',
-        phoneNumber: quickRegisterPhone || (useEmail ? '' : formattedPhone),
+        email: email,
+        phoneNumber: formattedPhone,
         cpf: cpfNumbers,
         position: cargo,
         password,
@@ -467,7 +413,7 @@ export default function Login() {
         // Se a conta estiver ativa, fazer login automaticamente
         if (data.accountActive) {
           // Fazer login com a senha
-          const identifier = useEmail ? email : formattedPhone;
+          const identifier = email;
           const loginSuccess = await loginWithPassword(identifier, password, rememberMe);
 
           if (loginSuccess) {
@@ -561,11 +507,11 @@ export default function Login() {
         </div>
         <h2 className="mt-4 sm:mt-6 text-center text-xl sm:text-2xl font-bold leading-8 sm:leading-9 tracking-tight text-abz-blue-dark">
           {loginStep === 'phone' ? t('auth.accessAccount') :
-           loginStep === 'verification' ? t('auth.verifyPhone') :
-           loginStep === 'password' ? t('auth.enterPassword') :
-           loginStep === 'pending' ? t('auth.pendingRequest') :
-           loginStep === 'unauthorized' ? t('auth.unauthorizedAccess') :
-           loginStep === 'quick_register' ? t('register.title', 'Complete seu cadastro') : t('auth.accessAccount')}
+            loginStep === 'verification' ? t('auth.verifyPhone') :
+              loginStep === 'password' ? t('auth.enterPassword') :
+                loginStep === 'pending' ? t('auth.pendingRequest') :
+                  loginStep === 'unauthorized' ? t('auth.unauthorizedAccess') :
+                    loginStep === 'quick_register' ? t('register.title', 'Complete seu cadastro') : t('auth.accessAccount')}
         </h2>
         <div className="mt-3 flex justify-center">
           <LanguageSelector variant="inline" />
@@ -588,89 +534,30 @@ export default function Login() {
           {/* Formulário de Telefone */}
           {loginStep === 'phone' && (
             <form onSubmit={handlePhoneSubmit} className="space-y-6">
-              <div className="flex items-center justify-center space-x-4 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setUseEmail(false)}
-                  className={`flex items-center px-4 py-2 rounded-md ${!useEmail ? 'bg-abz-blue text-white' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  <FiPhone className="mr-2" />
-                  {t('auth.phoneLogin')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUseEmail(true)}
-                  className={`flex items-center px-4 py-2 rounded-md ${useEmail ? 'bg-abz-blue text-white' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  <FiUser className="mr-2" />
-                  {t('auth.emailLogin')}
-                </button>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
+                  {t('auth.email')}
+                </label>
+                <div className="mt-2 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiUser className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder={t('auth.emailPlaceholder')}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  {t('auth.enterEmail')}
+                </p>
               </div>
-
-              {!useEmail ? (
-                <div>
-                  <label htmlFor="phoneNumber" className="block text-sm font-medium leading-6 text-gray-900">
-                    {t('auth.phoneNumber')}
-                  </label>
-                  <div className="mt-2 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <FiPhone className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="login-phone-number"
-                      name="phoneNumber"
-                      type="tel"
-                      autoComplete="tel"
-                      required={!useEmail}
-                      placeholder="+5511999999999"
-                      value={phoneNumber}
-                      onChange={(e) => {
-                        // Formatar o número de telefone para garantir que esteja no formato correto
-                        let value = e.target.value;
-
-                        // Remover todos os caracteres não numéricos, exceto o sinal de +
-                        value = value.replace(/[^0-9+]/g, '');
-
-                        // Garantir que o número comece com +
-                        if (value && !value.startsWith('+')) {
-                          value = '+' + value;
-                        }
-
-                        setPhoneNumber(value);
-                      }}
-                      className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500">
-                    {t('auth.phoneNumberHelp')}
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
-                    {t('auth.email')}
-                  </label>
-                  <div className="mt-2 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <FiUser className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      required={useEmail}
-                      placeholder={t('auth.emailPlaceholder')}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-abz-blue sm:text-sm sm:leading-6"
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500">
-                    {t('auth.enterEmail')}
-                  </p>
-                </div>
-              )}
 
               <InviteCodeInput
                 inviteCode={inviteCode}
@@ -758,8 +645,8 @@ export default function Login() {
 
                     try {
                       // Chamar a API de reenvio de código
-                      const identifier = useEmail ? email : phoneNumber;
-                      const method = useEmail ? 'email' : 'sms';
+                      const identifier = email;
+                      const method = 'email';
 
                       // Usar o wrapper de fetch para tratar erros de parsing JSON
                       const data = await fetchWrapper.post('/api/auth/resend-code', { identifier, method });
@@ -805,7 +692,6 @@ export default function Login() {
                 <Button
                   type="button"
                   onClick={() => {
-                    setPhoneNumber('');
                     setVerificationCode('');
                     setError('');
                     setSuccess('');
@@ -873,7 +759,6 @@ export default function Login() {
                   // Reiniciar o processo de login
                   setError('');
                   setSuccess('');
-                  setPhoneNumber('');
                   setEmail('');
                   setVerificationCode('');
                   setPassword('');
@@ -986,7 +871,6 @@ export default function Login() {
                   <Button
                     type="button"
                     onClick={() => {
-                      setPhoneNumber('');
                       setEmail('');
                       setPassword('');
                       setError('');
@@ -1054,17 +938,17 @@ export default function Login() {
 
               <div>
                 <label htmlFor="identifier" className="block text-sm font-medium leading-6 text-gray-900">
-                  {useEmail ? t('auth.email', 'Email') : t('auth.phoneNumber', 'Telefone')}
+                  {t('auth.email', 'Email')}
                 </label>
                 <div className="mt-2 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    {useEmail ? <FiUser className="h-4 w-4 text-gray-400" /> : <FiPhone className="h-4 w-4 text-gray-400" />}
+                    <FiUser className="h-4 w-4 text-gray-400" />
                   </div>
                   <input
                     id="identifier"
                     name="identifier"
-                    type={useEmail ? "email" : "tel"}
-                    value={useEmail ? email : phoneNumber}
+                    type="email"
+                    value={email}
                     readOnly
                     className="block w-full rounded-md border-0 py-2 pl-9 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 bg-gray-100 text-sm"
                   />

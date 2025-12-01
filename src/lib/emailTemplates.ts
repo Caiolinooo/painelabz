@@ -148,7 +148,7 @@ export const accessApprovalTemplate = (adminName: string) => {
       Sua solicitação de acesso ao sistema ${config.companyName} foi <strong>aprovada</strong> por ${adminName}.
     </p>
     <p>
-      Você já pode acessar o sistema utilizando seu email ou número de telefone.
+      Você já pode acessar o sistema utilizando seu email.
     </p>
     <div style="text-align: center;">
       <a href="${config.appUrl}/login" class="button">
@@ -662,7 +662,6 @@ export const inviteTemplate = (inviteCode: string, registerUrl: string, expiryTe
 export const adminNotificationTemplate = (userData: {
   name: string;
   email: string;
-  phoneNumber: string;
   position: string;
   department: string;
   protocol: string;
@@ -689,10 +688,7 @@ export const adminNotificationTemplate = (userData: {
           <td style="padding: 8px 0; font-weight: bold;">Email:</td>
           <td style="padding: 8px 0;">${userData.email || 'Não informado'}</td>
         </tr>
-        <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Telefone:</td>
-          <td style="padding: 8px 0;">${userData.phoneNumber || 'Não informado'}</td>
-        </tr>
+
         <tr>
           <td style="padding: 8px 0; font-weight: bold;">Cargo:</td>
           <td style="padding: 8px 0;">${userData.position || 'Não informado'}</td>

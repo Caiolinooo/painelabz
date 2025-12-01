@@ -8,36 +8,35 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phoneNumber, verificationCode, password, email, inviteCode, rememberMe } = body;
+    const { verificationCode, password, email, inviteCode, rememberMe } = body;
 
-    console.log('Recebida solicitação de login:', { phoneNumber, email, hasPassword: !!password, hasVerificationCode: !!verificationCode, hasInviteCode: !!inviteCode });
+
+    console.log('Recebida solicitação de login:', { email, hasPassword: !!password, hasVerificationCode: !!verificationCode, hasInviteCode: !!inviteCode });
     console.log('Senha (primeiros caracteres):', password ? password.substring(0, 3) + '...' : 'Não fornecida');
     console.log('Código de verificação:', verificationCode || 'Não fornecido');
 
     // Validar os dados de entrada
-    if (!phoneNumber && !email) {
+    if (!email) {
       return NextResponse.json(
-        { error: 'Número de telefone ou email é obrigatório' },
+        { error: 'Email é obrigatório' },
         { status: 400 }
       );
     }
 
     // Verificar se é o administrador
     const adminEmail = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
-    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
     const isAdminEmail = email === adminEmail;
-    const isAdminPhone = phoneNumber === adminPhone;
-    const isAdmin = isAdminEmail || isAdminPhone;
+    const isAdmin = isAdminEmail;
 
-    console.log('Verificando se é login de administrador:', { isAdminEmail, isAdminPhone, isAdmin });
+    console.log('Verificando se é login de administrador:', { isAdminEmail, isAdmin });
 
     // Se for o administrador e tiver senha, tentar login direto
     if (isAdmin && password) {
       console.log('Tentando login de administrador com senha');
 
       try {
-        const identifier = isAdminEmail ? adminEmail : adminPhone;
+        const identifier = adminEmail;
         const result = await loginWithPassword(identifier, password, rememberMe || false);
         console.log('Resultado do login de administrador:', result);
 
@@ -66,8 +65,8 @@ export async function POST(request: NextRequest) {
     // Se tiver senha, tentar login com senha
     if (password) {
       // Verificar se o usuário existe antes de tentar fazer login com senha
-      // Usar o email se fornecido, caso contrário usar o número de telefone
-      const identifier = email || phoneNumber;
+      // Usar o email
+      const identifier = email;
       console.log('Tentando login com senha para:', identifier);
       console.log('Senha fornecida (primeiros caracteres):', password.substring(0, 3) + '...');
 
@@ -99,15 +98,15 @@ export async function POST(request: NextRequest) {
 
     // Se não tiver código de verificação, iniciar o processo de login
     if (!verificationCode) {
-      console.log('Iniciando processo de login para:', email || phoneNumber);
+      console.log('Iniciando processo de login para:', email);
 
-      const result = await initiatePhoneLogin(phoneNumber, email, inviteCode);
+      const result = await initiatePhoneLogin('', email, inviteCode);
       console.log('Resultado do início do login:', result);
 
       // Em ambiente de desenvolvimento, incluir o código para facilitar testes
       if (process.env.NODE_ENV !== 'production' && result.success) {
         // Obter o código mais recente para o identificador
-        const identifier = email || phoneNumber;
+        const identifier = email;
         const code = getLatestCode(identifier);
 
         if (code) {
@@ -128,14 +127,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Se tiver código de verificação, verificar e completar o login
-    console.log(`Verificando código de verificação: ${verificationCode} para ${email || phoneNumber}`);
+    console.log(`Verificando código de verificação: ${verificationCode} para ${email}`);
 
     // Verificar se o código está no serviço em memória
     const { getActiveCodes } = await import('@/lib/code-service');
     const activeCodes = getActiveCodes();
     console.log('Códigos ativos em memória antes da verificação:', JSON.stringify(activeCodes, null, 2));
 
-    const result = await verifyPhoneLogin(phoneNumber, verificationCode, email, inviteCode);
+    const result = await verifyPhoneLogin('', verificationCode, email, inviteCode);
     console.log('Resultado da verificação do código:', result);
 
     if (!result.success) {

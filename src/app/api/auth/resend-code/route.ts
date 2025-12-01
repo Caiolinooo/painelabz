@@ -19,61 +19,46 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o método é válido
-    if (method && method !== 'email' && method !== 'sms') {
+    if (method && method !== 'email') {
       return NextResponse.json(
-        { error: 'Método inválido. Use "email" ou "sms"' },
+        { error: 'Método inválido. Apenas "email" é suportado.' },
         { status: 400 }
       );
     }
 
-    // Determinar se o identificador é um email ou telefone
+    // Determinar se o identificador é um email (única opção suportada agora)
     const isEmail = identifier.includes('@');
+
+    if (!isEmail) {
+      return NextResponse.json(
+        { error: 'Apenas email é suportado para login.' },
+        { status: 400 }
+      );
+    }
 
     // Buscar o usuário
     let user;
 
     try {
       // Buscar o usuário pelo identificador
-      console.log(`Buscando usuário por ${isEmail ? 'email' : 'telefone'}: ${identifier}`);
+      console.log(`Buscando usuário por email: ${identifier}`);
 
-      if (isEmail) {
-        const { data, error } = await supabaseAdmin
-          .from('users_unified')
-          .select('*')
-          .eq('email', identifier)
-          .single();
+      const { data, error } = await supabaseAdmin
+        .from('users_unified')
+        .select('*')
+        .eq('email', identifier)
+        .single();
 
-        if (error) {
-          console.error('Erro ao buscar usuário pelo email:', error);
-        } else if (data) {
-          user = {
-            id: data.id,
-            email: data.email,
-            phoneNumber: data.phone_number,
-            firstName: data.first_name,
-            lastName: data.last_name
-          };
-          console.log('Usuário encontrado:', user.id);
-        }
-      } else {
-        const { data, error } = await supabaseAdmin
-          .from('users_unified')
-          .select('*')
-          .eq('phone_number', identifier)
-          .single();
-
-        if (error) {
-          console.error('Erro ao buscar usuário pelo telefone:', error);
-        } else if (data) {
-          user = {
-            id: data.id,
-            email: data.email,
-            phoneNumber: data.phone_number,
-            firstName: data.first_name,
-            lastName: data.last_name
-          };
-          console.log('Usuário encontrado:', user.id);
-        }
+      if (error) {
+        console.error('Erro ao buscar usuário pelo email:', error);
+      } else if (data) {
+        user = {
+          id: data.id,
+          email: data.email,
+          firstName: data.first_name,
+          lastName: data.last_name
+        };
+        console.log('Usuário encontrado:', user.id);
       }
     } catch (error) {
       console.error('Erro ao buscar usuário:', error);
@@ -87,26 +72,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Determinar o método de envio
-    // Se o método não foi especificado, usar o padrão com base no identificador
-    const sendMethod = method || (isEmail ? 'email' : 'sms');
+    const sendMethod = 'email';
 
     // Verificar se o usuário tem o método de contato escolhido
-    if (sendMethod === 'email' && !user.email) {
+    if (!user.email) {
       return NextResponse.json(
         { error: 'Usuário não tem email cadastrado' },
         { status: 400 }
       );
     }
 
-    if (sendMethod === 'sms' && !user.phoneNumber) {
-      return NextResponse.json(
-        { error: 'Usuário não tem telefone cadastrado' },
-        { status: 400 }
-      );
-    }
-
     // Reenviar o código
-    const sendTo = sendMethod === 'email' ? user.email : user.phoneNumber;
+    const sendTo = user.email;
     const result = await resendVerificationCode(user.id, sendMethod);
 
     if (!result.success) {

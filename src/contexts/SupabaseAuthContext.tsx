@@ -215,24 +215,24 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               } else {
                 console.error('Erro ao buscar perfil após renovação de token:', error);
 
-                                // Usar os dados da resposta como fallback
-                                const profileData: UserProfile = {
-                                  id: refreshData.user.id,
-                                  email: refreshData.user.email,
-                                  phone_number: refreshData.user.phoneNumber,
-                                  first_name: refreshData.user.firstName,
-                                  last_name: refreshData.user.lastName,
-                                  role: refreshData.user.role,
-                                  active: refreshData.user.active !== undefined ? refreshData.user.active : true,
-                                  created_at: refreshData.user.createdAt,
-                                  updated_at: refreshData.user.updatedAt,
-                                  access_permissions: refreshData.user.access_permissions || refreshData.user.accessPermissions || {},
-                                  position: refreshData.user.position,
-                                  department: refreshData.user.department,
-                                  avatar: refreshData.user.avatar,
-                                  password_last_changed: refreshData.user.password_last_changed,
-                                  accessPermissions: refreshData.user.accessPermissions || refreshData.user.access_permissions || {}
-                                }; 
+                // Usar os dados da resposta como fallback
+                const profileData: UserProfile = {
+                  id: refreshData.user.id,
+                  email: refreshData.user.email,
+                  phone_number: refreshData.user.phoneNumber,
+                  first_name: refreshData.user.firstName,
+                  last_name: refreshData.user.lastName,
+                  role: refreshData.user.role,
+                  active: refreshData.user.active !== undefined ? refreshData.user.active : true,
+                  created_at: refreshData.user.createdAt,
+                  updated_at: refreshData.user.updatedAt,
+                  access_permissions: refreshData.user.access_permissions || refreshData.user.accessPermissions || {},
+                  position: refreshData.user.position,
+                  department: refreshData.user.department,
+                  avatar: refreshData.user.avatar,
+                  password_last_changed: refreshData.user.password_last_changed,
+                  accessPermissions: refreshData.user.accessPermissions || refreshData.user.access_permissions || {}
+                };
 
                 setProfile(profileData);
                 console.log('Perfil do usuário definido a partir dos dados da resposta de renovação');
@@ -540,31 +540,15 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         setHasPassword(!!userData.password);
         setLoginStep('password');
         return true;
-      } else if (phoneNumber) {
-        // Verificar se o telefone existe na tabela users_unified
-        const { data: userData, error: userError } = await supabase
-          .from('users_unified')
-          .select('*')
-          .eq('phone_number', phoneNumber)
-          .single();
-
-        if (userError) {
-          // Telefone não encontrado
-          setAuthStatus('new_phone');
-          return false;
-        }
-
-        // Verificar se o usuário está ativo
-        if (!userData.active) {
-          setAuthStatus('inactive');
-          return false;
-        }
-
-        // Telefone encontrado, verificar se tem senha
-        setHasPassword(!!userData.password);
-        setLoginStep('password');
-        return true;
       }
+
+      // Phone login is disabled
+      if (phoneNumber) {
+        console.warn('Phone login is disabled');
+        return false;
+      }
+
+      return false;
 
       return false;
     } catch (error) {
@@ -582,9 +566,14 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       console.log('Tentando login com senha para:', identifier);
       const isEmail = identifier.includes('@');
 
+      if (!isEmail) {
+        console.error('Login allowed only with email');
+        return false;
+      }
+
       // Preparar os dados para envio
       const loginData = {
-        [isEmail ? 'email' : 'phoneNumber']: identifier,
+        email: identifier,
         password,
         rememberMe
       };
@@ -714,11 +703,16 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       console.log('Iniciando login com OTP para:', identifier);
       const isEmail = identifier.includes('@');
 
+      if (!isEmail) {
+        console.error('OTP login allowed only with email');
+        return { success: false, hasPassword: false, status: 'invalid_identifier' };
+      }
+
       // Verificar se o usuário existe
       const { data: userData, error: userError } = await supabase
         .from('users_unified')
         .select('*')
-        .eq(isEmail ? 'email' : 'phone_number', identifier)
+        .eq('email', identifier)
         .single();
 
       if (userError) {
@@ -745,7 +739,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       const { data: otpData, error: otpError } = await supabase
         .from('verification_codes')
         .insert({
-          [isEmail ? 'email' : 'phone_number']: identifier,
+          email: identifier,
           code: Math.floor(100000 + Math.random() * 900000).toString(), // Código de 6 dígitos
           expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutos
           used: false
@@ -760,57 +754,29 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Código OTP gerado com sucesso:', otpData.code);
 
-      // Enviar o código por email ou SMS
-      if (isEmail) {
-        // Enviar por email
-        try {
-          const emailResponse = await fetch('/api/auth/send-email', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: identifier,
-              code: otpData.code,
-              type: 'verification'
-            }),
-          });
+      // Enviar o código por email
+      try {
+        const emailResponse = await fetch('/api/auth/send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: identifier,
+            code: otpData.code,
+            type: 'verification'
+          }),
+        });
 
-          if (!emailResponse.ok) {
-            console.error('Erro ao enviar email:', await emailResponse.text());
-            return { success: false, hasPassword, status: 'email_error' };
-          }
-
-          console.log('Email enviado com sucesso');
-        } catch (emailError) {
-          console.error('Exceção ao enviar email:', emailError);
+        if (!emailResponse.ok) {
+          console.error('Erro ao enviar email:', await emailResponse.text());
           return { success: false, hasPassword, status: 'email_error' };
         }
-      } else {
-        // Enviar por SMS
-        try {
-          const smsResponse = await fetch('/api/auth/send-sms', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              phoneNumber: identifier,
-              code: otpData.code,
-              type: 'verification'
-            }),
-          });
 
-          if (!smsResponse.ok) {
-            console.error('Erro ao enviar SMS:', await smsResponse.text());
-            return { success: false, hasPassword, status: 'sms_error' };
-          }
-
-          console.log('SMS enviado com sucesso');
-        } catch (smsError) {
-          console.error('Exceção ao enviar SMS:', smsError);
-          return { success: false, hasPassword, status: 'sms_error' };
-        }
+        console.log('Email enviado com sucesso');
+      } catch (emailError) {
+        console.error('Exceção ao enviar email:', emailError);
+        return { success: false, hasPassword, status: 'email_error' };
       }
 
       return { success: true, hasPassword, status: 'otp_sent' };
@@ -1198,7 +1164,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       try {
         // CRÍTICO: Verificar se estamos em processo de logout
         const isLoggingOut = localStorage.getItem('logout_in_progress') === 'true' ||
-                             sessionStorage.getItem('logout_in_progress') === 'true';
+          sessionStorage.getItem('logout_in_progress') === 'true';
 
         if (isLoggingOut) {
           console.log('🚫 Logout em progresso - não restaurar sessão');
@@ -1777,7 +1743,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     // Verificar permissões explícitas de admin
     const hasAdminPermission = !!(profile?.access_permissions?.modules?.admin) ||
-                              !!(profile?.accessPermissions?.modules?.admin);
+      !!(profile?.accessPermissions?.modules?.admin);
 
     const result = hasAdminRole || isAdminEmail || hasAdminPermission;
 
@@ -1875,7 +1841,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     const hasManagerRole = profile?.role === 'MANAGER' || tokenPayload?.role === 'MANAGER';
     const hasAvaliacaoPermissionModule = !!(profile?.access_permissions?.modules?.avaliacao) ||
-                                  !!(profile?.accessPermissions?.modules?.avaliacao);
+      !!(profile?.accessPermissions?.modules?.avaliacao);
 
     const result = hasManagerRole || hasAvaliacaoPermissionModule;
 
@@ -1894,7 +1860,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     // Admins sempre têm permissão
     if (isAdmin) return true;
     // Gerentes (conforme definido por isManager) também têm essa permissão
-    if (isManager) return true; 
+    if (isManager) return true;
 
     // Verificar permissões específicas para aprovação de reembolso
     const specificPermission = !!(

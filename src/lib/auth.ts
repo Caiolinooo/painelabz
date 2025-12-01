@@ -510,19 +510,9 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
       console.log('Resultado da busca por email:', user ? 'Encontrado' : 'Não encontrado');
     }
 
-    // Se não encontrou pelo email ou não tinha email, tenta pelo telefone
-    if (!user && phoneNumber) {
-      console.log('Buscando usuário pelo telefone:', phoneNumber);
-      user = await findUserByQuery({ phoneNumber });
-      console.log('Resultado da busca por telefone:', user ? 'Encontrado' : 'Não encontrado');
-    }
-
-    // Se ainda não encontrou, tenta buscar por qualquer um dos dois
-    if (!user && email && phoneNumber) {
-      console.log('Tentando busca combinada por email ou telefone');
-      const query = { email, phoneNumber };
-      user = await findUserByQuery(query);
-      console.log('Resultado da busca combinada:', user ? 'Encontrado' : 'Não encontrado');
+    // Phone login is disabled
+    if (phoneNumber) {
+      console.warn('Phone login is disabled, ignoring phoneNumber parameter');
     }
 
     // Verificar se o usuário tem senha
@@ -538,15 +528,13 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
     // Verificar autorização para todos os usuários (existentes ou não)
     // Isso garante que apenas usuários autorizados recebam códigos de verificação
     const authCheck = await checkUserAuthorization(email, phoneNumber, inviteCode);
-    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const adminEmail = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
 
     // Verificar se é o administrador
-    const isAdminPhone = phoneNumber === adminPhone;
     const isAdminEmail = email === adminEmail;
-    const isAdmin = isAdminPhone || isAdminEmail;
+    const isAdmin = isAdminEmail;
 
-    console.log('Verificando se é administrador:', { isAdminPhone, isAdminEmail, isAdmin });
+    console.log('Verificando se é administrador:', { isAdminEmail, isAdmin });
 
     // Se for o administrador, retornar que tem senha para ir direto para a tela de senha
     if (isAdmin) {
@@ -730,19 +718,23 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
       };
     }
 
-    // Determinar o método de envio (SMS ou Email)
-    let method: 'sms' | 'email' = 'sms';
+    // Determinar o método de envio (Apenas Email)
+    let method: 'sms' | 'email' = 'email';
 
     // Se o usuário tem email e foi fornecido, usar email
     if (email && user.email) {
       method = 'email';
       console.log('Usando email para enviar código:', user.email);
     } else {
-      console.log('Usando SMS para enviar código:', phoneNumber);
+      console.error('Email não fornecido ou usuário sem email. Login por telefone desativado.');
+      return {
+        success: false,
+        message: 'Login por telefone desativado. Por favor, use seu email.'
+      };
     }
 
     // Enviar código de verificação
-    const sendTo = method === 'email' ? user.email : phoneNumber;
+    const sendTo = user.email;
     console.log(`Enviando código de verificação por ${method} para:`, sendTo);
 
     const sendResult = await sendVerificationCode(sendTo, user.id, method);
@@ -770,13 +762,13 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
       console.error('Falha ao enviar código de verificação:', sendResult.message);
       return {
         success: false,
-        message: `Erro ao enviar código de verificação por ${method === 'sms' ? 'SMS' : 'Email'}: ${sendResult.message}`
+        message: `Erro ao enviar código de verificação por Email: ${sendResult.message}`
       };
     }
 
     return {
       success: true,
-      message: `Código de verificação enviado com sucesso por ${method === 'sms' ? 'SMS' : 'Email'}.`,
+      message: `Código de verificação enviado com sucesso por Email.`,
       method,
       previewUrl: sendResult.previewUrl
     };
@@ -796,8 +788,12 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
   try {
     // Buscar o usuário pelo número de telefone ou email
     let user;
-    let method: 'sms' | 'email' = 'sms';
-    let identifier = phoneNumber;
+    let method: 'sms' | 'email' = 'email';
+    let identifier = email || '';
+
+    if (phoneNumber) {
+      console.warn('Phone login is disabled, ignoring phoneNumber parameter');
+    }
 
     console.log('Verificando código para login com:', { phoneNumber, email });
 
@@ -814,39 +810,11 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
       }
     }
 
-    // Se não encontrou por email ou não tinha email, buscar por telefone
-    if (!user && phoneNumber) {
-      console.log('Buscando usuário pelo telefone:', phoneNumber);
-      user = await findUserByQuery({ phoneNumber });
-      if (user) {
-        console.log('Usuário encontrado pelo telefone:', user.id);
-      } else {
-        console.log('Usuário não encontrado pelo telefone');
-      }
-    }
-
-    // Se ainda não encontrou, tenta buscar por qualquer um dos dois
-    if (!user && email && phoneNumber) {
-      console.log('Tentando busca combinada por email ou telefone');
-      const query = { email, phoneNumber };
-      user = await findUserByQuery(query);
-      if (user) {
-        console.log('Usuário encontrado pela busca combinada:', user.id);
-        // Determinar o método com base em qual campo corresponde
-        if (user.email === email) {
-          method = 'email';
-          identifier = email;
-        }
-      } else {
-        console.log('Usuário não encontrado pela busca combinada');
-      }
-    }
-
     if (!user) {
       // Verificar se o usuário está autorizado antes de criar uma conta
       const authCheck = await checkUserAuthorization(email, phoneNumber, inviteCode);
 
-      if (!authCheck.authorized && phoneNumber !== process.env.ADMIN_PHONE_NUMBER) {
+      if (!authCheck.authorized) {
         // Se o status for pendente, informar que está aguardando aprovação
         if (authCheck.status === 'pending') {
           return {
@@ -873,7 +841,7 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
       const userId = uuidv4();
 
       // Determinar o papel do usuário
-      const role = phoneNumber === process.env.ADMIN_PHONE_NUMBER ? 'ADMIN' : 'USER';
+      const role = 'USER';
 
       // Gerar um número de telefone único se não for fornecido
       const uniquePhoneNumber = phoneNumber || `temp-${userId.substring(0, 8)}`;
@@ -909,11 +877,11 @@ export async function verifyPhoneLogin(phoneNumber: string, code: string, email?
           userId,
           uniquePhoneNumber,
           email,
-          role === 'ADMIN' ? 'Admin' : 'Novo',
-          role === 'ADMIN' ? 'ABZ' : 'Usuário',
+          'Novo',
+          'Usuário',
           role,
-          role === 'ADMIN' ? 'Administrador do Sistema' : 'Usuário',
-          role === 'ADMIN' ? 'TI' : 'Geral',
+          'Usuário',
+          'Geral',
           true,
           true, // is_authorized
           'active', // authorization_status
