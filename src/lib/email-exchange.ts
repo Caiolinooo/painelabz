@@ -97,51 +97,24 @@ export async function createTransport() {
 
     return transporter;
   } catch (error) {
-    console.error('Erro ao inicializar transporte de email Exchange:', error);
+    console.error('ERRO CRÍTICO - Falha ao inicializar transporte de email Exchange');
+    console.error('Detalhes:', error instanceof Error ? error.message : 'Erro desconhecido');
 
     if (error instanceof Error) {
-      console.error('Detalhes do erro:', error.message);
       console.error('Stack trace:', error.stack);
     }
 
-    // Tentar criar uma conta de teste Ethereal como fallback
-    try {
-      console.log('Tentando criar conta de teste Ethereal como fallback...');
-      const testAccount = await nodemailer.createTestAccount();
+    console.error('Verifique as configurações de email no arquivo .env:');
+    console.error('  EMAIL_HOST:', emailConfig.host);
+    console.error('  EMAIL_PORT:', emailConfig.port);
+    console.error('  EMAIL_USER:', emailConfig.auth.user);
+    console.error('  EMAIL_PASSWORD:', emailConfig.auth.pass ? 'Configurado' : 'NÃO CONFIGURADO');
 
-      const etherealTransporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass
-        },
-        debug: true,
-        logger: true
-      });
-
-      console.log('Conta de teste Ethereal criada:', {
-        user: testAccount.user,
-        pass: testAccount.pass,
-        previewURL: `https://ethereal.email/message/`
-      });
-
-      // Verificar conexão
-      await etherealTransporter.verify();
-      console.log('Conexão com Ethereal verificada com sucesso');
-
-      return etherealTransporter;
-    } catch (fallbackError) {
-      console.error('Erro ao criar conta de teste Ethereal:', fallbackError);
-
-      if (fallbackError instanceof Error) {
-        console.error('Detalhes do erro fallback:', fallbackError.message);
-        console.error('Stack trace fallback:', fallbackError.stack);
-      }
-
-      throw new Error(`Não foi possível inicializar nenhum transporte de email: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    }
+    throw new Error(
+      `Falha ao conectar com servidor Exchange/Office365. ` +
+      `Verifique as credenciais e configurações de rede. ` +
+      `Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+    );
   }
 }
 
@@ -186,19 +159,35 @@ export async function sendEmail(
       attachments: options?.attachments,
       // Cabeçalhos otimizados para Exchange/Office 365
       headers: {
-        // Prioridade normal (evitar alta prioridade para não acionar filtros de spam)
+        // Prioridade normal (IMPORTANTE: não usar 'high' ou 'urgent')
         'X-Priority': '3',
         'X-MSMail-Priority': 'Normal',
         'Importance': 'Normal',
-        // Identificação do remetente
-        'X-Mailer': 'ABZ Group Mailer',
+
+        // Identificação do remetente (importante para SPF/DKIM)
+        'X-Mailer': 'ABZ Group Internal System v3.0',
         'X-Sender': process.env.EMAIL_USER || 'apiabz@groupabz.com',
-        // Opção de descadastramento
+        'Return-Path': process.env.EMAIL_USER || 'apiabz@groupabz.com',
+
+        // Opção de descadastramento (RFC 8058)
         'List-Unsubscribe': `<mailto:${process.env.EMAIL_USER || 'apiabz@groupabz.com'}?subject=Unsubscribe>`,
-        // Cabeçalhos específicos para Exchange
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+
+        // Cabeçalhos específicos para Exchange/Office365
         'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN, AutoReply',
-        // Cabeçalho para indicar que é um email transacional
-        'X-Email-Type': 'transactional'
+
+        // Indicar tipo de email (importante para filtros)
+        'X-Email-Type': 'transactional',
+        'X-Email-Source': 'ABZ-Internal-System',
+
+        // MIME versão (compatibilidade)
+        'MIME-Version': '1.0',
+
+        // Prevenir tracking (boa prática)
+        'X-No-Archive': 'True',
+
+        // Message ID único
+        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2, 15)}@groupabz.com>`
       },
       // Configurações adicionais
       encoding: 'utf-8',
