@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { initiatePhoneLogin, verifyPhoneLogin, loginWithPassword } from '@/lib/auth';
 // import { Pool } from 'pg'; // Removido - não utilizado
 import { getLatestCode } from '@/lib/code-service';
@@ -54,6 +55,23 @@ export async function POST(request: NextRequest) {
             { error: result.message },
             { status: 401 }
           );
+        }
+
+        // Configurar cookie de autenticação (apenas se token existe)
+        if (result.token) {
+          const cookieStore = await cookies();
+          const maxAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60; // 7 dias ou 1 dia em segundos
+          const authToken: string = result.token; // Type narrowing explícito
+
+          cookieStore.set('abzToken', authToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: maxAge,
+            path: '/'
+          });
+
+          console.log('🍪 Cookie abzToken configurado com sucesso. Max-Age:', maxAge, 'segundos');
         }
 
         return NextResponse.json({
