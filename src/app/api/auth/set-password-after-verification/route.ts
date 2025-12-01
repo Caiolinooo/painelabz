@@ -27,14 +27,13 @@ export async function POST(req: NextRequest) {
 
     // Obter os dados do corpo da requisição
     const body = await req.json();
-    const { password, firstName, lastName, phoneNumber } = body;
+    const { password, firstName, lastName } = body;
 
     console.log('Dados recebidos para definição de senha:', {
       userId: payload.userId,
       hasPassword: !!password,
       hasFirstName: !!firstName,
-      hasLastName: !!lastName,
-      hasPhoneNumber: !!phoneNumber
+      hasLastName: !!lastName
     });
 
     if (!password) {
@@ -59,9 +58,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Sobrenome é obrigatório' }, { status: 400 });
     }
 
-    if (phoneNumber !== undefined && !phoneNumber.trim()) {
-      return NextResponse.json({ error: 'Telefone é obrigatório' }, { status: 400 });
-    }
+
 
     // Gerar hash da senha
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -123,9 +120,7 @@ export async function POST(req: NextRequest) {
         updateData.last_name = lastName.trim();
       }
 
-      if (phoneNumber !== undefined) {
-        updateData.phone_number = phoneNumber.trim();
-      }
+
 
       console.log('Atualizando usuário com dados:', {
         ...updateData,

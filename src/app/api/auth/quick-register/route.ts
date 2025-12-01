@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       email,
-      phoneNumber,
       firstName,
       lastName,
       cpf,
@@ -39,7 +38,6 @@ export async function POST(request: NextRequest) {
 
     console.log('Dados recebidos para registro rápido:', {
       email,
-      phoneNumber,
       firstName,
       lastName,
       hasPassword: !!password,
@@ -47,9 +45,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Validar os dados de entrada
-    if ((!email && !phoneNumber) || !firstName || !lastName || !cpf || !position || !password) {
+    if (!email || !firstName || !lastName || !cpf || !position || !password) {
       return NextResponse.json(
-        { error: 'Todos os campos obrigatórios devem ser preenchidos (nome, sobrenome, CPF, cargo, telefone/email e senha)' },
+        { error: 'Todos os campos obrigatórios devem ser preenchidos (nome, sobrenome, CPF, cargo, email e senha)' },
         { status: 400 }
       );
     }
@@ -63,9 +61,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o usuário está banido permanentemente
-    const banCheck = await checkIfUserIsBanned(email, phoneNumber, cpf);
+    const banCheck = await checkIfUserIsBanned(email, cpf);
     if (banCheck.isBanned) {
-      console.log('Tentativa de registro de usuário banido:', { email, phoneNumber, cpf });
+      console.log('Tentativa de registro de usuário banido:', { email, cpf });
       return NextResponse.json(
         {
           error: 'Este usuário foi banido permanentemente e não pode se cadastrar novamente. Entre em contato com o administrador se acredita que isso é um erro.',
@@ -95,29 +93,18 @@ export async function POST(request: NextRequest) {
       emailError = error;
     }
 
-    if (phoneNumber && !existingUser) {
-      const { data, error } = await supabase
-        .from('users_unified')
-        .select('*')
-        .eq('phone_number', phoneNumber)
-        .single();
-
-      existingUser = data;
-      phoneError = error;
-    }
-
     // Se o usuário existe, verificar se pode completar o registro
     if (existingUser) {
       // Verificar se é um registro incompleto (sem senha ou pendente)
-      const isIncompleteRegistration = !existingUser.password_hash && 
-                                      (existingUser.authorization_status === 'pending' || !existingUser.active);
-      
+      const isIncompleteRegistration = !existingUser.password_hash &&
+        (existingUser.authorization_status === 'pending' || !existingUser.active);
+
       if (isIncompleteRegistration) {
         console.log('Completando registro de usuário existente:', existingUser.id);
-        
+
         // Hash da nova senha
         const hashedPassword = await bcrypt.hash(password, 10);
-        
+
         // Verificar se o código de convite é válido
         let isInviteValid = false;
         let inviteData = null;
@@ -155,7 +142,7 @@ export async function POST(request: NextRequest) {
             }
           }
         }
-        
+
         // Atualizar o usuário existente com as novas informações
         const { data: updatedUserData, error: updateError } = await supabase
           .from('users_unified')
@@ -266,7 +253,6 @@ export async function POST(request: NextRequest) {
             {
               name: `${firstName} ${lastName}`,
               email: email || 'Não informado',
-              phoneNumber: phoneNumber || 'Não informado',
               position: 'Não informado',
               department: 'Não informado',
               protocol: existingUser.protocol || 'N/A'
@@ -287,7 +273,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Usuário já possui registro completo
         return NextResponse.json(
-          { error: 'Usuário já cadastrado com este e-mail ou telefone' },
+          { error: 'Usuário já cadastrado com este e-mail' },
           { status: 400 }
         );
       }
@@ -310,13 +296,11 @@ export async function POST(request: NextRequest) {
     // Criar usuário na autenticação do Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: email || undefined,
-      phone: phoneNumber || undefined,
       password,
       options: {
         data: {
           first_name: firstName,
           last_name: lastName,
-          phone_number: phoneNumber,
           role: 'USER'
         }
       }
@@ -393,7 +377,7 @@ export async function POST(request: NextRequest) {
       .insert({
         id: authData.user.id,
         email: email || null,
-        phone_number: phoneNumber || null,
+        phone_number: null,
         first_name: firstName,
         last_name: lastName,
         cpf: cpf,
@@ -534,7 +518,6 @@ export async function POST(request: NextRequest) {
         {
           name: `${firstName} ${lastName}`,
           email: email || 'Não informado',
-          phoneNumber: phoneNumber || 'Não informado',
           position: 'Não informado',
           department: 'Não informado',
           protocol

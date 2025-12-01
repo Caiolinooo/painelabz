@@ -68,22 +68,22 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative z-[10000]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Criar Publicação</h2>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Criar Publicação</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <FiX className="w-6 h-6" />
           </button>
@@ -103,10 +103,8 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
                 className={`group relative overflow-hidden rounded-xl p-6 text-left transition-all duration-300 transform hover:scale-105 hover:shadow-xl bg-gradient-to-br ${type.color} ${type.hoverColor}`}
               >
                 <div className="relative z-10">
-                  <div className="flex items-center mb-3">
-                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-3 rounded-full">
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
+                  <div className="bg-white bg-opacity-20 backdrop-blur-sm p-3 rounded-full">
+                    <Icon className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="text-xl font-bold text-white mb-2">{type.title}</h3>
                   <p className="text-white text-opacity-90 text-sm">{type.description}</p>
@@ -120,7 +118,7 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           Escolha o tipo de conteúdo que deseja compartilhar
         </div>
       </motion.div>

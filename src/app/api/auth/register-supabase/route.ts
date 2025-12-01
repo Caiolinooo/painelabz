@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       email,
-      phoneNumber,
       firstName,
       lastName,
       position,
@@ -39,7 +38,6 @@ export async function POST(request: NextRequest) {
 
     // Normalizar e validar
     const normalizedEmail = (email || '').trim().toLowerCase();
-    const normalizedPhone = (phoneNumber || '').trim();
     const normalizedCpf = (cpf || '').trim();
 
     // Gerar número de protocolo cedo para estar disponível em todas as respostas de sucesso
@@ -47,7 +45,6 @@ export async function POST(request: NextRequest) {
 
     console.log('Dados recebidos para registro:', {
       email: normalizedEmail,
-      phoneNumber: normalizedPhone,
       firstName,
       lastName,
       position,
@@ -57,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Validar os dados de entrada
-    if (!normalizedEmail || !normalizedPhone || !firstName || !lastName) {
+    if (!normalizedEmail || !firstName || !lastName) {
       return NextResponse.json(
         { error: 'Todos os campos obrigatórios devem ser preenchidos' },
         { status: 400 }
@@ -65,9 +62,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o usuário está banido permanentemente
-    const banCheck = await checkIfUserIsBanned(normalizedEmail, normalizedPhone, normalizedCpf);
+    const banCheck = await checkIfUserIsBanned(normalizedEmail, normalizedCpf);
     if (banCheck.isBanned) {
-      console.log('Tentativa de registro de usuário banido:', { email: normalizedEmail, phone: normalizedPhone, cpf: normalizedCpf });
+      console.log('Tentativa de registro de usuário banido:', { email: normalizedEmail, cpf: normalizedCpf });
       return NextResponse.json(
         {
           error: 'Este usuário foi banido permanentemente e não pode se cadastrar novamente. Entre em contato com o administrador se acredita que isso é um erro.',
@@ -88,105 +85,7 @@ export async function POST(request: NextRequest) {
       .eq('email', normalizedEmail)
       .single();
 
-    const { data: existingUserByPhone, error: phoneError } = await supabase
-      .from('users_unified')
-      .select('*')
-      .eq('phone_number', normalizedPhone)
-      .single();
 
-    if (existingUserByEmail) {
-      // Se já existe, mas email não verificado, reenviar link de verificação e não bloquear fluxo
-      if (!existingUserByEmail.email_verified) {
-        try {
-          const emailVerificationToken = uuidv4();
-          const { error: updErr } = await supabase
-            .from('users_unified')
-            .update({
-              email_verification_token: emailVerificationToken,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingUserByEmail.id);
-
-          if (updErr) {
-            console.error('Falha ao atualizar token para reenvio de verificação:', updErr);
-          }
-
-          const { sendEmailVerificationLink } = await import('@/lib/email-verification');
-          const sendResult = await sendEmailVerificationLink(
-            existingUserByEmail.email,
-            existingUserByEmail.first_name || 'usuário',
-            emailVerificationToken,
-            request.headers
-          );
-
-          console.log('409 handled as resend verification (EMAIL_EXISTS_UNVERIFIED):', { userId: existingUserByEmail.id });
-          return NextResponse.json({
-            success: true,
-            message: 'E-mail já cadastrado, mas não verificado. Reenviamos o link de verificação para sua caixa de entrada.',
-            previewUrl: sendResult.previewUrl,
-            emailVerificationRequired: true,
-            protocol
-          });
-        } catch (e) {
-          console.error('Erro ao reenviar verificação para conta existente:', e);
-          return NextResponse.json(
-            { error: 'E-mail já cadastrado. Use login ou a recuperação de senha.' },
-            { status: 409 }
-          );
-        }
-      }
-
-      console.log('409 EMAIL_EXISTS_VERIFIED:', { email: normalizedEmail });
-      return NextResponse.json(
-        { error: 'E-mail já cadastrado. Use login ou a recuperação de senha.', code: 'EMAIL_EXISTS_VERIFIED' },
-        { status: 409 }
-      );
-    }
-
-    if (existingUserByPhone) {
-      // Se o telefone pertence à mesma conta e o email não verificado, reenvie verificação
-      if (existingUserByPhone.email === normalizedEmail && !existingUserByPhone.email_verified) {
-        try {
-          const emailVerificationToken = uuidv4();
-          const { error: updErr2 } = await supabase
-            .from('users_unified')
-            .update({
-              email_verification_token: emailVerificationToken,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingUserByPhone.id);
-          if (updErr2) {
-            console.error('Falha ao atualizar token (via phone duplicate):', updErr2);
-          }
-          const { sendEmailVerificationLink } = await import('@/lib/email-verification');
-          const sendResult2 = await sendEmailVerificationLink(
-            existingUserByPhone.email,
-            existingUserByPhone.first_name || 'usuário',
-            emailVerificationToken,
-            request.headers
-          );
-          console.log('409 handled as resend verification (PHONE_EXISTS_SAME_EMAIL_UNVERIFIED):', { userId: existingUserByPhone.id });
-          return NextResponse.json({
-            success: true,
-            message: 'Telefone já cadastrado para esta conta. Reenviamos o link de verificação de e-mail.',
-            previewUrl: sendResult2.previewUrl,
-            emailVerificationRequired: true,
-            protocol
-          });
-        } catch (e2) {
-          console.error('Erro ao reenviar verificação (via phone duplicate):', e2);
-          return NextResponse.json(
-            { error: 'Telefone já cadastrado. Use outro número ou atualize o cadastro existente.', code: 'PHONE_EXISTS' },
-            { status: 409 }
-          );
-        }
-      }
-      console.log('409 PHONE_EXISTS:', { phone: normalizedPhone, emailTried: normalizedEmail, ownerEmail: existingUserByPhone.email });
-      return NextResponse.json(
-        { error: 'Telefone já cadastrado. Use outro número ou atualize o cadastro existente.', code: 'PHONE_EXISTS' },
-        { status: 409 }
-      );
-    }
 
     // Gerar código de verificação
     const verificationCode = generateVerificationCode();
@@ -196,7 +95,7 @@ export async function POST(request: NextRequest) {
     const verificationCodeExpires = new Date();
     verificationCodeExpires.setMinutes(verificationCodeExpires.getMinutes() + expiryMinutes);
 
-    
+
 
     // Gerar senha temporária
     const temporaryPassword = uuidv4().substring(0, 8);
@@ -250,7 +149,7 @@ export async function POST(request: NextRequest) {
     // Base de dados do usuário (sem id) para reuso em reconciliação e fluxo normal
     const baseUserData = {
       email: normalizedEmail,
-      phone_number: normalizedPhone,
+      phone_number: null,
       first_name: firstName,
       last_name: lastName,
       position: position || 'Não informado',
@@ -276,11 +175,10 @@ export async function POST(request: NextRequest) {
       user_metadata: {
         first_name: firstName,
         last_name: lastName,
-        phone_number: normalizedPhone,
         role: 'USER'
       }
     });
-    
+
     if (authError) {
       console.error('Erro ao criar usuário na autenticação (admin.createUser):', authError);
       const msg = (authError.message || '').toLowerCase();
