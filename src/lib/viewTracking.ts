@@ -1,15 +1,26 @@
 // lib/viewTracking.ts - Sistema de tracking de visualizações reais
-import { createHash } from 'crypto';
 import { supabaseAdmin } from './supabase';
 
 /**
  * Gera um ID de sessão único baseado em IP + User-Agent
- * Isso permite identificar visualizações únicas sem armazenar dados pessoais
+ * Usa Web Crypto API para compatibilidade com edge runtime
  */
-export function generateSessionId(ip?: string, userAgent?: string): string {
+export async function generateSessionId(ip?: string, userAgent?: string): Promise<string> {
     const salt = process.env.VIEW_TRACKING_SALT || 'default-salt-change-in-production';
     const data = `${ip || 'unknown'}-${userAgent || 'unknown'}-${salt}`;
-    return createHash('sha256').update(data).digest('hex');
+
+    // Usar Web Crypto API (disponível em edge runtime)
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
+
+    // Hash SHA-256
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+
+    // Converter para hex
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    return hashHex;
 }
 
 /**
@@ -23,7 +34,7 @@ export async function trackPostView(
     userAgent?: string
 ): Promise<boolean> {
     try {
-        const sessionId = generateSessionId(ip, userAgent);
+        const sessionId = await generateSessionId(ip, userAgent);
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
         // Verificar se já existe view hoje para essa sessão
@@ -35,6 +46,29 @@ export async function trackPostView(
             .gte('viewed_at', `${today}T00:00:00.000Z`)
             .lte('viewed_at', `${today}T23:59:59.999Z`)
             .maybeSingle();
+
+        // Se a tabela não existe ainda, fazer fallback para incremento simples
+        if (checkError && checkError.code === 'PGRST116') {
+            console.warn('⚠️ Tabela news_post_views não existe. Execute a migration! Usando fallback...');
+
+            // Fallback: incrementar sempre (comportamento antigo até migration ser executada)
+            const { data: post } = await supabaseAdmin
+                .from('news_posts')
+                .select('views_count')
+                .eq('id', postId)
+                .single();
+
+            if (post) {
+                await supabaseAdmin
+                    .from('news_posts')
+                    .update({ views_count: (post.views_count || 0) + 1 })
+                    .eq('id', postId);
+
+                console.log(`✅ View incrementada (fallback) para post ${postId}`);
+                return true;
+            }
+            return false;
+        }
 
         if (checkError) {
             console.error('Erro ao verificar view existente:', checkError);
@@ -63,27 +97,17 @@ export async function trackPostView(
         }
 
         // Incrementar contador no post
-        const { error: updateError } = await supabaseAdmin
+        const { data: post } = await supabaseAdmin
             .from('news_posts')
-            .update({
-                views_count: supabaseAdmin.rpc('increment', { row_id: postId })
-            })
-            .eq('id', postId);
+            .select('views_count')
+            .eq('id', postId)
+            .single();
 
-        if (updateError) {
-            // Fallback: incrementar manualmente
-            const { data: post } = await supabaseAdmin
+        if (post) {
+            await supabaseAdmin
                 .from('news_posts')
-                .select('views_count')
-                .eq('id', postId)
-                .single();
-
-            if (post) {
-                await supabaseAdmin
-                    .from('news_posts')
-                    .update({ views_count: post.views_count + 1 })
-                    .eq('id', postId);
-            }
+                .update({ views_count: (post.views_count || 0) + 1 })
+                .eq('id', postId);
         }
 
         console.log(`✅ Nova view registrada para post ${postId}`);
