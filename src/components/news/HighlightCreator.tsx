@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
+import TagInput from './TagInput';
 
 interface HighlightCreatorProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
   const [isVideo, setIsVideo] = useState(false);
   const [isPermanent, setIsPermanent] = useState(false);
   const [expiresIn, setExpiresIn] = useState('24'); // horas
+  const [tags, setTags] = useState<string[]>(['destaque', 'highlight']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +84,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
         external_links: [],
         author_id: userId,
         category_id: null,
-        tags: ['destaque', 'highlight'],
+        tags: tags,
         visibility_settings: {
           public: true,
           roles: [],
@@ -266,6 +268,19 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
                 </select>
               </div>
             )}
+          </div>
+
+          {/* TagInput field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tags (opcional)
+            </label>
+            <TagInput
+              tags={tags}
+              onChange={setTags}
+              suggestions={['destaque', 'highlight', 'importante', 'urgente', 'anúncio']}
+              maxTags={5}
+            />
           </div>
 
           {/* Info Box */}

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { FiHeart, FiMessageCircle, FiShare2, FiBookmark, FiMoreHorizontal, FiEye, FiCalendar, FiUser } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
+import { formatViewsWithText } from '@/lib/formatters';
 import { useToast } from '@/hooks/useToast';
 import { useACLPermissions } from '@/hooks/useACLPermissions';
 import { NewsPost } from '@/types/news';
@@ -158,7 +159,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
                             <span>{formatDate(post.published_at)}</span>
                             <span>•</span>
                             <FiEye className="w-4 h-4" />
-                            <span>{post.views_count} visualizações</span>
+                            <span>{formatViewsWithText(post.views_count || 0)}</span>
                         </div>
                     </div>
                 </div>

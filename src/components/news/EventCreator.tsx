@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
+import TagInput from './TagInput';
 
 interface EventCreatorProps {
   isOpen: boolean;
@@ -33,12 +34,13 @@ const EventCreator: React.FC<EventCreatorProps> = ({
     sendEmail: true,
     sendNotification: true
   });
+  const [tags, setTags] = useState<string[]>(['evento', 'calendar']);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -47,7 +49,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title || !formData.startDate || !formData.startTime) {
       toast.error(t('components.preenchaOsCamposObrigatorios'));
       return;
@@ -57,7 +59,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
     try {
       // Criar evento no calendário
       const startDateTime = `${formData.startDate}T${formData.startTime}:00`;
-      const endDateTime = formData.endDate && formData.endTime 
+      const endDateTime = formData.endDate && formData.endTime
         ? `${formData.endDate}T${formData.endTime}:00`
         : startDateTime;
 
@@ -105,7 +107,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
         external_links: [],
         author_id: userId,
         category_id: null,
-        tags: ['evento', 'calendar'],
+        tags: tags,
         visibility_settings: {
           public: true,
           roles: [],
@@ -155,7 +157,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
       toast.success('Evento criado com sucesso!');
       onEventCreated(createdPost);
       onClose();
-      
+
       // Reset form
       setFormData({
         title: '',
@@ -169,6 +171,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
         sendEmail: true,
         sendNotification: true
       });
+      setTags(['evento', 'calendar']);
     } catch (error) {
       console.error('Erro ao criar evento:', error);
       toast.error('Erro ao criar evento');
@@ -332,6 +335,14 @@ const EventCreator: React.FC<EventCreatorProps> = ({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
+
+          {/* Tags */}
+          <TagInput
+            tags={tags}
+            onChange={setTags}
+            suggestions={['evento', 'calendar', 'reunião', 'workshop', 'treinamento', 'conferência']}
+            maxTags={5}
+          />
 
           {/* Opções de Notificação */}
           <div className="space-y-2 pt-4 border-t">
