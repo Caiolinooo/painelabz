@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/avaliacao/cron/enviar-lembretes",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/avaliacao/cron/criar-avaliacoes",
       "schedule": "0 9 * * *"
     }
