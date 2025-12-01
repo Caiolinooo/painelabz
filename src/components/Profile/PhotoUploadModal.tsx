@@ -11,9 +11,10 @@ interface PhotoUploadModalProps {
   onClose: () => void;
   userId: string;
   currentPhotoUrl: string | null;
+  onSuccess?: () => void;
 }
 
-export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: PhotoUploadModalProps) {
+export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl, onSuccess }: PhotoUploadModalProps) {
   const { t } = useI18n();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +39,7 @@ export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: P
     }
 
     setSelectedFile(file);
-    
+
     // Criar URL de preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -49,12 +50,12 @@ export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: P
 
   const handleUpload = async () => {
     if (!selectedFile || !userId) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         toast.error(t('common.notAuthorized', 'Não autorizado'));
         return;
@@ -77,7 +78,12 @@ export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: P
         const data = await response.json();
         toast.success(t('profile.photoUploaded', 'Foto de perfil atualizada com sucesso'));
         onClose();
-        
+
+        // Chamar callback de sucesso se existir
+        if (onSuccess) {
+          onSuccess();
+        }
+
         // Não recarregar a página, deixar o componente pai atualizar
         // window.location.reload();
       } else {
@@ -113,7 +119,7 @@ export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: P
             <FiX className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="space-y-6">
           {/* Área de preview */}
           <div className="flex flex-col items-center">
@@ -138,7 +144,7 @@ export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: P
                 <FiCamera className="h-16 w-16 text-gray-400" />
               )}
             </div>
-            
+
             <input
               type="file"
               ref={fileInputRef}
@@ -146,7 +152,7 @@ export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: P
               accept="image/*"
               className="hidden"
             />
-            
+
             <button
               onClick={triggerFileInput}
               className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -154,18 +160,18 @@ export function PhotoUploadModal({ isOpen, onClose, userId, currentPhotoUrl }: P
               <FiUpload className="h-5 w-5 mr-2" />
               {t('profile.selectPhoto', 'Selecionar foto')}
             </button>
-            
+
             {selectedFile && (
               <div className="text-sm text-gray-600 mt-2">
                 {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
               </div>
             )}
           </div>
-          
+
           <div className="text-sm text-gray-600">
             <p>{t('profile.photoRequirements', 'A foto deve ter no máximo 5MB e estar nos formatos JPG, PNG ou GIF.')}</p>
           </div>
-          
+
           <div className="flex justify-end space-x-3">
             <button
               onClick={onClose}

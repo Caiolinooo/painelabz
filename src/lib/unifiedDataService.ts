@@ -21,20 +21,20 @@ export interface UnifiedItem {
   external: boolean;
   enabled: boolean;
   order: number;
-  
+
   // Permissões
   adminOnly?: boolean;
   managerOnly?: boolean;
   allowedRoles?: string[];
   allowedUserIds?: string[];
   moduleKey?: string;
-  
+
   // Configurações específicas
   showInDashboard?: boolean;
   showInMenu?: boolean;
   showInAdminMenu?: boolean;
   category?: string;
-  
+
   // Metadados
   createdAt?: string;
   updatedAt?: string;
@@ -354,12 +354,12 @@ class UnifiedDataService {
       return items;
     } catch (error) {
       console.error('🔄 Error loading unified items:', error);
-      
+
       // Fallback para hardcoded em caso de erro
       if (this.config.fallbackToHardcoded) {
         return [...this.hardcodedItems];
       }
-      
+
       return [];
     }
   }
@@ -400,25 +400,49 @@ class UnifiedDataService {
       }
 
       // Converter para UnifiedItem
-      const items: UnifiedItem[] = menuItems.map((item: any) => ({
-        id: item.id,
-        title: item.label, // Será traduzido depois
-        title_pt: item.title_pt || item.label,
-        title_en: item.title_en || item.label,
-        description: '', // MenuItem não tem description
-        href: item.href,
-        icon: FiGrid, // Será mapeado depois
-        iconName: item.icon || 'FiGrid',
-        external: item.external || false,
-        enabled: item.enabled,
-        order: item.order,
-        adminOnly: item.adminOnly || false,
-        managerOnly: item.managerOnly || false,
-        allowedRoles: item.allowedRoles,
-        allowedUserIds: item.allowedUserIds,
-        showInMenu: true,
-        source: 'supabase' as const
-      }));
+      const items: UnifiedItem[] = menuItems.map((item: any) => {
+        // Tentar encontrar item hardcoded correspondente para usar ícone correto
+        const hardcodedItem = this.hardcodedItems.find(h => h.id === item.id);
+
+        // Determinar ícone e nome do ícone
+        // Priorizar o que vem do banco, mas se for genérico ou inexistente, usar hardcoded
+        let iconName = item.icon || 'FiGrid';
+        let icon = FiGrid;
+
+        if (hardcodedItem) {
+          // Se o ícone do banco for o padrão ou vazio, usar o do hardcoded
+          if (!item.icon || item.icon === 'FiGrid') {
+            iconName = hardcodedItem.iconName;
+            icon = hardcodedItem.icon;
+          } else {
+            // Se tem ícone específico no banco, usar ele
+            icon = getIconComponent(iconName);
+          }
+        } else {
+          // Se não tem hardcoded, usar o do banco
+          icon = getIconComponent(iconName);
+        }
+
+        return {
+          id: item.id,
+          title: item.label, // Será traduzido depois
+          title_pt: item.title_pt || item.label,
+          title_en: item.title_en || item.label,
+          description: '', // MenuItem não tem description
+          href: item.href,
+          icon: icon,
+          iconName: iconName,
+          external: item.external || false,
+          enabled: item.enabled,
+          order: item.order,
+          adminOnly: item.adminOnly || false,
+          managerOnly: item.managerOnly || false,
+          allowedRoles: item.allowedRoles,
+          allowedUserIds: item.allowedUserIds,
+          showInMenu: true,
+          source: 'supabase' as const
+        };
+      });
 
       console.log(`🔄 Loaded ${items.length} items from Supabase`);
       return items;
@@ -487,7 +511,7 @@ class UnifiedDataService {
 
     try {
       console.log('🔄 Syncing hardcoded items to Supabase...');
-      
+
       for (const item of this.hardcodedItems) {
         await this.upsertItem(item);
       }

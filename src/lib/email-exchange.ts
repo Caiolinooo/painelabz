@@ -40,15 +40,12 @@ const emailConfig = {
   socketTimeout: 10000,
   // Configurações de segurança para Exchange/Office 365
   tls: {
-    rejectUnauthorized: process.env.NODE_ENV === 'production',
-    ciphers: 'SSLv3',
-    minVersion: 'TLSv1.2'
+    rejectUnauthorized: false, // Mais permissivo para evitar problemas
+    minVersion: 'TLSv1.2' as const
   },
   // Configurações específicas para Exchange/Office 365
-  requireTLS: true, // Exigir TLS
-  opportunisticTLS: true, // Usar TLS quando disponível
-  // Identificação do servidor
-  name: 'ABZ Group Mailer'
+  requireTLS: true, // Exigir TL S
+  opportunisticTLS: true // Usar TLS quando disponível
 } as const;
 
 // Validate configuration on import (only in server environment)
@@ -62,7 +59,7 @@ if (typeof window === 'undefined') {
 }
 
 // Log para debug
-console.log('Configuração de email Exchange/Office 365 carregada:', {
+console.log('Configuração de email carregada:', {
   host: emailConfig.host,
   port: emailConfig.port,
   secure: emailConfig.secure,
@@ -205,23 +202,10 @@ export async function sendEmail(
     const messageId = (info as any)?.messageId || 'unknown';
     console.log('E-mail enviado com sucesso. ID:', messageId);
 
-    // Obter URL de preview (disponível apenas com Ethereal)
-    let previewUrl: string | undefined;
-    try {
-      const testUrl = nodemailer.getTestMessageUrl(info as any);
-      if (testUrl && typeof testUrl === 'string') {
-        previewUrl = testUrl;
-        console.log('URL de preview:', previewUrl);
-      }
-    } catch (previewError) {
-      // Ignorar erro (normal para Exchange)
-    }
-
     return {
       success: true,
       message: 'Email enviado com sucesso',
-      messageId,
-      previewUrl
+      messageId
     };
   } catch (error) {
     console.error('Erro ao enviar e-mail:', error);

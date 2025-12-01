@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useI18n } from '@/contexts/I18nContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { FiCamera, FiUser } from 'react-icons/fi';
 import { PhotoUploadModal } from './PhotoUploadModal';
 
@@ -12,12 +13,13 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({ user }: ProfileHeaderProps) {
   const { t } = useI18n();
+  const { refreshProfile } = useSupabaseAuth();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const fullName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
   const position = user?.position || t('profile.noPosition', 'Cargo não informado');
   const department = user?.department || t('profile.noDepartment', 'Departamento não informado');
-  
+
   // Usar a foto do Google Drive se disponível, caso contrário usar o avatar ou um placeholder
   const photoUrl = user?.drive_photo_url || user?.avatar || null;
 
@@ -46,7 +48,7 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
             <FiCamera className="h-5 w-5" />
           </button>
         </div>
-        
+
         <div className="text-center md:text-left">
           <h1 className="text-2xl font-bold text-gray-900">{fullName}</h1>
           <p className="text-gray-600">{position}</p>
@@ -57,12 +59,13 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
           )}
         </div>
       </div>
-      
+
       <PhotoUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         userId={user?.id}
         currentPhotoUrl={photoUrl}
+        onSuccess={refreshProfile}
       />
     </>
   );

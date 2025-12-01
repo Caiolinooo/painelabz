@@ -31,35 +31,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Verificando se é login de administrador:', { isAdminEmail, isAdmin });
 
-    // Se for o administrador e tiver senha, tentar login direto
-    if (isAdmin && password) {
-      console.log('Tentando login de administrador com senha');
-
-      try {
-        const identifier = adminEmail;
-        const result = await loginWithPassword(identifier, password, rememberMe || false);
-        console.log('Resultado do login de administrador:', result);
-
-        if (!result.success) {
-          return NextResponse.json(
-            { error: result.message },
-            { status: 401 }
-          );
-        }
-
-        return NextResponse.json({
-          token: result.token,
-          refreshToken: result.refreshToken,
-          user: result.user,
-          message: result.message
-        });
-      } catch (error) {
-        console.error('Erro ao fazer login de administrador:', error);
-        return NextResponse.json(
-          { error: 'Erro interno ao processar login de administrador' },
-          { status: 500 }
-        );
-      }
+    // Verificação de administrador removida para unificar o fluxo de login
+    // O administrador seguirá o mesmo fluxo de segurança que os outros usuários
+    if (isAdminEmail) {
+      console.log('Administrador fazendo login (fluxo unificado)');
     }
 
     // Se tiver senha, tentar login com senha

@@ -8,7 +8,7 @@ import { useI18n } from '@/contexts/I18nContext';
 interface PostTypeSelectorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectType: (type: 'photo' | 'video' | 'event' | 'highlight' | 'text') => void;
+  onSelectType: (type: 'media' | 'event' | 'highlight' | 'text') => void;
 }
 
 const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
@@ -22,20 +22,12 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
 
   const postTypes = [
     {
-      id: 'photo' as const,
+      id: 'media' as const,
       icon: FiImage,
-      title: 'Foto',
-      description: 'Compartilhe fotos com filtros',
-      color: 'from-blue-500 to-blue-600',
-      hoverColor: 'hover:from-blue-600 hover:to-blue-700'
-    },
-    {
-      id: 'video' as const,
-      icon: FiFilm,
-      title: t('components.video'),
-      description: t('components.compartilheVideos'),
-      color: 'from-purple-500 to-purple-600',
-      hoverColor: 'hover:from-purple-600 hover:to-purple-700'
+      title: 'Foto/Vídeo',
+      description: 'Compartilhe fotos ou vídeos',
+      color: 'from-blue-500 to-purple-600',
+      hoverColor: 'hover:from-blue-600 hover:to-purple-700'
     },
     {
       id: 'event' as const,
@@ -49,7 +41,7 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
       id: 'highlight' as const,
       icon: FiStar,
       title: 'Destaque',
-      description: 'Crie um destaque fixo (como Instagram)',
+      description: 'Destaque fixo com foto ou vídeo',
       color: 'from-yellow-500 to-orange-500',
       hoverColor: 'hover:from-yellow-600 hover:to-orange-600'
     },
@@ -75,15 +67,15 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative z-[10000]"
+        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative z-[10000]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Criar Publicação</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Criar Publicação</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
           >
             <FiX className="w-6 h-6" />
           </button>
@@ -118,11 +110,11 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="mt-6 text-center text-sm text-gray-500">
           Escolha o tipo de conteúdo que deseja compartilhar
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div >
   );
 };
 

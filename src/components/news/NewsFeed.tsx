@@ -91,11 +91,11 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
   const [editingExcerpt, setEditingExcerpt] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const handlePostTypeSelect = (type: 'photo' | 'video' | 'event' | 'highlight' | 'text') => {
+  const handlePostTypeSelect = (type: 'media' | 'event' | 'highlight' | 'text') => {
     switch (type) {
-      case 'photo':
-      case 'video':
-        setSelectedMediaType(type);
+      case 'media':
+        // Media aceita tanto foto quanto vídeo
+        setSelectedMediaType('photo'); // Tipo padrão, usuário escolhe depois
         setShowMediaUpload(true);
         break;
       case 'event':
@@ -610,7 +610,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
           </div>
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
             <button
-              onClick={() => handlePostTypeSelect('photo')}
+              onClick={() => handlePostTypeSelect('media')}
               className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               <FiImage className="w-4 h-4" />
@@ -669,7 +669,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         <div className="text-center py-12">
           <div className="text-gray-500 mb-2">Nenhum post encontrado</div>
           {userId && (
-            <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+            <button onClick={() => setShowTypeSelector(true)} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
               Criar Primeiro Post
             </button>
           )}

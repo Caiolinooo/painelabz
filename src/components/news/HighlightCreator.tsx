@@ -20,9 +20,11 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
   userId,
   onHighlightCreated
 }) => {
+  const { t } = useI18n();
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [isVideo, setIsVideo] = useState(false);
   const [isPermanent, setIsPermanent] = useState(false);
   const [expiresIn, setExpiresIn] = useState('24'); // horas
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,6 +34,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      setIsVideo(file.type.startsWith('video/'));
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     }
@@ -106,7 +109,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
         toast.success('Destaque criado com sucesso!');
         onHighlightCreated(createdHighlight);
         onClose();
-        
+
         // Reset
         setTitle('');
         setSelectedFile(null);
@@ -163,11 +166,22 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
           {previewUrl ? (
             <div className="relative">
               <div className="aspect-[9/16] max-w-xs mx-auto bg-black rounded-2xl overflow-hidden shadow-2xl">
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                />
+                {isVideo ? (
+                  <video
+                    src={previewUrl}
+                    className="w-full h-full object-contain"
+                    controls
+                    loop
+                    autoPlay
+                    muted
+                  />
+                ) : (
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                  />
+                )}
                 {/* Overlay estilo Instagram Stories */}
                 <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black to-transparent">
                   <div className="flex items-center space-x-2">
@@ -191,7 +205,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
               onClick={() => fileInputRef.current?.click()}
             >
               <FiImage className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 mb-2">Clique para selecionar uma imagem</p>
+              <p className="text-gray-600 mb-2">Clique para selecionar uma imagem ou vídeo</p>
               <p className="text-sm text-gray-500">Formato vertical (9:16) recomendado</p>
             </div>
           )}
