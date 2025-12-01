@@ -7,6 +7,7 @@ import { fetchWithToken } from '@/lib/tokenStorage';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 import RichTextEditor from './RichTextEditor';
+import TagInput from './TagInput';
 
 interface TextPostCreatorProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ const TextPostCreator: React.FC<TextPostCreatorProps> = ({
   const { t } = useI18n();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -42,7 +44,7 @@ const TextPostCreator: React.FC<TextPostCreatorProps> = ({
         external_links: [],
         author_id: userId,
         category_id: null,
-        tags: [],
+        tags: tags,
         visibility_settings: {
           public: true,
           roles: [],
@@ -69,6 +71,7 @@ const TextPostCreator: React.FC<TextPostCreatorProps> = ({
         // Reset
         setTitle('');
         setContent('');
+        setTags([]);
       } else {
         throw new Error(t('newsSystem.errorCreatingPost', 'Erro ao criar publicação'));
       }
@@ -144,6 +147,14 @@ const TextPostCreator: React.FC<TextPostCreatorProps> = ({
               showPreview={true}
             />
           </div>
+
+          {/* Tags */}
+          <TagInput
+            tags={tags}
+            onChange={setTags}
+            suggestions={['notícia', 'importante', 'comunicado', 'atualização', 'novidade']}
+            maxTags={5}
+          />
         </div>
 
         {/* Footer */}

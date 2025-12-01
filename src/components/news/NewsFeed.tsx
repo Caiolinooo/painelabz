@@ -5,6 +5,7 @@ import { FiHeart, FiMessageCircle, FiShare2, FiBookmark, FiMoreHorizontal, FiEye
 import { useACLPermissions } from '@/hooks/useACLPermissions';
 import { useI18n } from '@/contexts/I18nContext';
 import { useToast } from '@/hooks/useToast';
+import { formatViewsWithText } from '@/lib/formatters';
 import InstagramStylePostCreator from './InstagramStylePostCreator';
 import PostTypeSelector from './PostTypeSelector';
 import MediaUploadWithFilters from './MediaUploadWithFilters';
@@ -396,9 +397,8 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
                 <FiCalendar className="w-4 h-4" />
                 <span>{formatDate(post.published_at)}</span>
                 <span>•</span>
-
                 <FiEye className="w-4 h-4" />
-                <span>{post.views_count} visualizações</span>
+                <span>{formatViewsWithText(post.views_count || 0)}</span>
               </div>
             </div>
           </div>

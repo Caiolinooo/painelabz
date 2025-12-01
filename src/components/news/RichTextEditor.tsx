@@ -26,6 +26,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [showLivePreview, setShowLivePreview] = useState(showPreview);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showLinkInput, setShowLinkInput] = useState(false);
+    const [linkUrl, setLinkUrl] = useState('');
+    const [linkText, setLinkText] = useState('');
 
     // Emojis comuns
     const commonEmojis = [
@@ -92,13 +95,26 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     // Inserir link
     const insertLink = () => {
-        const url = prompt('Digite a URL:');
-        if (!url) return;
+        const textarea = textareaRef.current;
+        if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selected = value.substring(start, end);
+            setLinkText(selected);
+        }
+        setLinkUrl('');
+        setShowLinkInput(!showLinkInput);
+        setShowEmojiPicker(false);
+    };
 
-        const text = prompt('Digite o texto do link:', url);
-        if (text === null) return;
-
-        insertFormatting(`<a href="${url}" target="_blank">`, '</a>', text);
+    const confirmLink = () => {
+        if (linkUrl) {
+            const text = linkText || linkUrl;
+            insertFormatting(`<a href="${linkUrl}" target="_blank">`, '</a>', text);
+            setShowLinkInput(false);
+            setLinkUrl('');
+            setLinkText('');
+        }
     };
 
     // Inserir emoji
@@ -139,6 +155,63 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="flex items-center gap-1 p-2 bg-gray-50 border border-gray-300 rounded-t-lg">
                 {toolbarButtons.map((btn, idx) => {
                     const Icon = btn.icon;
+                    // Se for o botão de link, renderizar com o popover
+                    if (btn.label.includes('Link')) {
+                        return (
+                            <div key={idx} className="relative">
+                                <button
+                                    type="button"
+                                    onClick={btn.onClick}
+                                    title={btn.label}
+                                    className={`p-2 hover:bg-gray-200 rounded transition-colors ${showLinkInput ? 'bg-gray-200 text-blue-600' : 'text-gray-700 hover:text-gray-900'}`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                </button>
+                                {showLinkInput && (
+                                    <div className="absolute top-full mt-1 left-0 bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50 w-72">
+                                        <div className="space-y-2">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">Texto</label>
+                                                <input
+                                                    type="text"
+                                                    value={linkText}
+                                                    onChange={e => setLinkText(e.target.value)}
+                                                    placeholder="Texto do link"
+                                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                                                <input
+                                                    type="url"
+                                                    value={linkUrl}
+                                                    onChange={e => setLinkUrl(e.target.value)}
+                                                    placeholder="https://exemplo.com"
+                                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                    onKeyDown={e => e.key === 'Enter' && confirmLink()}
+                                                />
+                                            </div>
+                                            <div className="flex justify-end gap-2 pt-1">
+                                                <button
+                                                    onClick={() => setShowLinkInput(false)}
+                                                    className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    onClick={confirmLink}
+                                                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                >
+                                                    Inserir
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
                     return (
                         <button
                             key={idx}
@@ -166,13 +239,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     </button>
 
                     {showEmojiPicker && (
-                        <div className="absolute top-full mt-1 left-0 bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-10 grid grid-cols-8 gap-1">
+                        <div className="absolute top-full mt-1 left-0 bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-50 grid grid-cols-8 gap-1 w-80">
                             {commonEmojis.map((emoji, idx) => (
                                 <button
                                     key={idx}
                                     type="button"
                                     onClick={() => insertEmoji(emoji)}
-                                    className="text-xl hover:bg-gray-100 rounded p-1 transition-colors"
+                                    className="text-xl hover:bg-gray-100 rounded p-1 transition-colors flex items-center justify-center h-8 w-8"
                                 >
                                     {emoji}
                                 </button>

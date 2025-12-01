@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 interface EvaluationCardProps {
   evaluation: {
@@ -48,51 +49,48 @@ export default function EvaluationCard({
   const isPending = evaluation.status === 'pendente' || evaluation.status === 'em_andamento';
   const isAwaitingManager = evaluation.status === 'aguardando_aprovacao';
   const isCompleted = evaluation.status === 'concluida';
-  
+
   // Nome a ser exibido depende da visão
   const displayName = isManagerView ? employeeName : (managerName || 'Gestor não atribuído');
-  
+
   const isAdmin = currentUserRole === 'ADMIN';
-  
+
   const handleHardDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const confirmMessage = `⚠️ ATENÇÃO: EXCLUSÃO PERMANENTE \n\n` +
       `Esta ação é IRREVERSÍVEL!\n\n` +
       `A avaliação de "${displayName}" será PERMANENTEMENTE excluída do banco de dados.\n\n` +
       `Todos os dados serão perdidos e NÃO poderão ser recuperados.\n\n` +
       `Deseja realmente continuar?`;
-    
+
     if (!window.confirm(confirmMessage)) {
       return;
     }
-    
+
     // Segunda confirmação
     if (!window.confirm('Última confirmação: Tem certeza ABSOLUTA?')) {
       return;
     }
-    
+
     setIsDeleting(true);
-    
+
     try {
-      const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
-      
-      const response = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/hard-delete`, {
+      const response = await fetchWithToken(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/hard-delete`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Erro ao excluir avaliação');
       }
-      
+
       alert('✅ Avaliação excluída permanentemente com sucesso!');
-      
+
       if (onDelete) {
         onDelete();
       } else {

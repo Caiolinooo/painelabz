@@ -12,6 +12,7 @@ import ProtectedRoute from '@/components/Auth/ProtectedRoute';
 import LanguageSelector from '@/components/LanguageSelector';
 import PerformanceMonitor from '@/components/Performance/PerformanceMonitor';
 import { startMeasure, endMeasure, logPerformance } from '@/lib/performance';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 // Itens do menu de administração
 const adminMenuItems = [
@@ -133,6 +134,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { t } = useI18n();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [pendingCount, setPendingCount] = React.useState(0);
+
+  // Buscar contagem de avaliações pendentes para gerentes
+  React.useEffect(() => {
+    const fetchPendingCount = async () => {
+      if (!user) return;
+
+      try {
+        const response = await fetchWithToken('/api/avaliacao-desempenho/avaliacoes/pending-review');
+        const data = await response.json();
+
+        if (data.success) {
+          setPendingCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar contagem de avaliações:', error);
+      }
+    };
+
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -338,7 +362,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="flex-1 flex flex-col min-h-screen" style={{ marginLeft: typeof window === 'undefined' ? undefined : (window.innerWidth >= 768 ? (isCollapsed ? 64 : 256) : 0) }}>
           {/* Notificações globais fixas (desktop) */}
           <div className="hidden md:block fixed top-4 right-4 z-50">
-            {user && <NotificationHUD userId={user.id} position="top-right" />}
+            {user && <NotificationHUD userId={user.id} position="top-right" evaluationPendingCount={pendingCount} />}
           </div>
 
           {/* Header mobile */}
