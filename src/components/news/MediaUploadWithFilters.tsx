@@ -192,13 +192,13 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-90"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col relative z-[10000]"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
@@ -267,7 +267,7 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
                   <FiUpload className="w-20 h-20 mx-auto text-gray-400" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  Selecione {mediaType === 'photo' ? 'uma foto' : t('components.umVideo')}
+                  Selecione uma foto ou vídeo
                 </h3>
                 <p className="text-gray-600 mb-6">
                   Arraste e solte ou clique para selecionar
@@ -275,7 +275,7 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept={mediaType === 'photo' ? 'image/*' : 'video/*'}
+                  accept="image/*,video/*"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -313,28 +313,38 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
               </div>
 
               {/* Filtros */}
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                <h3 className="font-semibold text-gray-800 mb-3">Filtros</h3>
+              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+                <h3 className="font-semibold text-gray-800 mb-3 sticky top-0 bg-white py-2 z-10">Filtros</h3>
                 {filters.map((filter) => (
                   <button
                     key={filter.name}
                     onClick={() => setSelectedFilter(filter.class)}
-                    className={`w-full text-left p-2 rounded-lg transition-colors ${selectedFilter === filter.class
-                      ? 'bg-blue-100 border-2 border-blue-600'
-                      : 'hover:bg-gray-100 border-2 border-transparent'
+                    className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${selectedFilter === filter.class
+                      ? 'bg-blue-100 border-2 border-blue-600 shadow-md'
+                      : 'hover:bg-gray-100 border-2 border-transparent hover:shadow-sm'
                       }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={previewUrl}
-                          alt={filter.name}
-                          className={`w-full h-full object-cover ${filter.class}`}
-                        />
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 border-gray-200 shadow-sm">
+                        {selectedFile?.type.startsWith('video/') ? (
+                          <video
+                            src={previewUrl}
+                            className={`w-full h-full object-cover ${filter.class}`}
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <img
+                            src={previewUrl}
+                            alt={filter.name}
+                            className={`w-full h-full object-cover ${filter.class}`}
+                            loading="lazy"
+                          />
+                        )}
                       </div>
-                      <span className="font-medium text-gray-800">{filter.name}</span>
+                      <span className="font-medium text-gray-800 flex-1">{filter.name}</span>
                       {selectedFilter === filter.class && (
-                        <FiCheck className="w-5 h-5 text-blue-600 ml-auto" />
+                        <FiCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
                       )}
                     </div>
                   </button>

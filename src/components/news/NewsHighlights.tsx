@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiX, FiEye } from 'react-icons/fi';
+import { FiPlus, FiX, FiEye, FiTrash2 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import { useACLPermissions } from '@/hooks/useACLPermissions';
 import HighlightCreator from './HighlightCreator';
 
 interface Highlight {
@@ -34,6 +35,7 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
     const [isCreatorOpen, setIsCreatorOpen] = useState(false);
     const [selectedHighlight, setSelectedHighlight] = useState<Highlight | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { hasPermission } = useACLPermissions(userId);
 
     const loadHighlights = async () => {
         try {
@@ -74,6 +76,23 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
         // TODO: Increment view count
     };
 
+    const handleDeleteHighlight = async (highlightId: string) => {
+        if (!confirm('Tem certeza que deseja excluir este destaque?')) return;
+        try {
+            const res = await fetchWithToken(`/api/news/posts/${highlightId}`, { method: 'DELETE' });
+            if (res.ok) {
+                setHighlights(prev => prev.filter(h => h.id !== highlightId));
+                setSelectedHighlight(null);
+            }
+        } catch (e) {
+            console.error('Erro ao excluir destaque:', e);
+        }
+    };
+
+    const isVideo = (url: string) => {
+        return url.match(/\.(mp4|webm|ogg|mov)$/i) !== null;
+    };
+
     return (
         <div className="mb-8">
             <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
@@ -100,11 +119,20 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
                         <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 to-orange-500 group-hover:from-yellow-500 group-hover:to-orange-600 transition-all">
                             <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100 relative">
                                 {highlight.media_urls?.[0] ? (
-                                    <img
-                                        src={highlight.media_urls[0]}
-                                        alt={highlight.title}
-                                        className="w-full h-full object-cover"
-                                    />
+                                    isVideo(highlight.media_urls[0]) ? (
+                                        <video
+                                            src={highlight.media_urls[0]}
+                                            className="w-full h-full object-contain bg-gray-900"
+                                            muted
+                                            playsInline
+                                        />
+                                    ) : (
+                                        <img
+                                            src={highlight.media_urls[0]}
+                                            alt={highlight.title}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    )
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-gray-200">
                                         <span className="text-xs text-gray-500">Sem img</span>
@@ -152,11 +180,22 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
                             onClick={(e) => e.stopPropagation()}
                         >
                             {selectedHighlight.media_urls?.[0] && (
-                                <img
-                                    src={selectedHighlight.media_urls[0]}
-                                    alt={selectedHighlight.title}
-                                    className="w-full h-full object-contain"
-                                />
+                                isVideo(selectedHighlight.media_urls[0]) ? (
+                                    <video
+                                        src={selectedHighlight.media_urls[0]}
+                                        className="w-full h-full object-contain"
+                                        controls
+                                        autoPlay
+                                        loop
+                                        playsInline
+                                    />
+                                ) : (
+                                    <img
+                                        src={selectedHighlight.media_urls[0]}
+                                        alt={selectedHighlight.title}
+                                        className="w-full h-full object-contain"
+                                    />
+                                )
                             )}
 
                             <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent flex justify-between items-start">
@@ -171,12 +210,23 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
                                         </p>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setSelectedHighlight(null)}
-                                    className="text-white hover:text-gray-300"
-                                >
-                                    <FiX className="w-6 h-6" />
-                                </button>
+                                <div className="flex items-center space-x-2">
+                                    {(hasPermission('news.edit') || hasPermission('news.delete')) && (
+                                        <button
+                                            onClick={() => handleDeleteHighlight(selectedHighlight.id)}
+                                            className="text-white hover:text-red-400 transition-colors p-2 bg-black/30 rounded-full"
+                                            title="Excluir destaque"
+                                        >
+                                            <FiTrash2 className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setSelectedHighlight(null)}
+                                        className="text-white hover:text-gray-300"
+                                    >
+                                        <FiX className="w-6 h-6" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">

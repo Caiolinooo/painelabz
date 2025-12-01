@@ -332,10 +332,14 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
           });
 
           if (emailsToSend.length > 0) {
+            console.log('📧 Preparando envio de emails para:', emailsToSend.map((u: any) => u.email).join(', '));
             const postUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/news/post/${newPost.id}`;
             const subject = resolvedTitle;
             const html = newsPostTemplate(author?.first_name || 'Alguém', title, excerpt || '', postUrl);
-            await Promise.allSettled(emailsToSend.map((u: any) => sendCustomEmail(u.email, subject, html)));
+            const results = await Promise.allSettled(emailsToSend.map((u: any) => sendCustomEmail(u.email, subject, html)));
+            console.log('📧 Resultados do envio:', results.map(r => r.status));
+          } else {
+            console.log('⚠️ Nenhum usuário elegível para receber email (verifique preferências e emails válidos)');
           }
 
           // Enviar push (respeitando preferências do usuário)

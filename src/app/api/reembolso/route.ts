@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendEmail } from '@/lib/email-gmail';
+import { sendEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
