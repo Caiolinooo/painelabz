@@ -19,6 +19,7 @@ export interface SiteConfig {
   googleClientId?: string;
   googleClientSecret?: string;
   googleRedirectUri?: string;
+  version?: string;
 }
 
 // Configuração padrão do site
@@ -33,7 +34,8 @@ const siteConfig: SiteConfig = {
   contactEmail: "contato@groupabz.com",
   footerText: "© 2024 ABZ Group. Todos os direitos reservados.",
   dashboardTitle: "Painel de Logística ABZ Group",
-  sidebarTitle: "Painel ABZ"
+  sidebarTitle: "Painel ABZ",
+  version: "3.1.0"
 };
 
 export default siteConfig;
