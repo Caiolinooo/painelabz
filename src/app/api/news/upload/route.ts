@@ -5,42 +5,10 @@ import { v4 as uuidv4 } from 'uuid';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Buscar service key da tabela app_secrets
-async function getServiceKeyFromDB() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-  const tempClient = createClient(supabaseUrl, anonKey);
-
-  try {
-    const { data, error } = await tempClient
-      .from('app_secrets')
-      .select('value')
-      .or('key.eq.SUPABASE_SERVICE_ROLE_KEY,key.eq.SUPABASE_SERVICE_KEY')
-      .single();
-
-    if (error || !data) {
-      console.error('Erro ao buscar service key do BD:', error);
-      return null;
-    }
-
-    return data.value;
-  } catch (e) {
-    console.error('Exceção ao buscar service key:', e);
-    return null;
-  }
-}
-
 // Inicializar cliente Supabase com service role key
 async function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  let supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-
-  // Se não tiver nas env vars, buscar do banco
-  if (!supabaseServiceKey) {
-    console.log('[UPLOAD] Service key não encontrada em env vars, buscando do BD...');
-    supabaseServiceKey = await getServiceKeyFromDB();
-  }
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error(`Configuração do Supabase ausente. URL: ${!!supabaseUrl}, Service Key: ${!!supabaseServiceKey}`);
