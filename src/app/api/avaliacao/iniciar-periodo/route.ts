@@ -233,8 +233,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Avaliações processadas com sucesso',
-      avaliacoes: createdEvaluations,
+      message: createdEvaluations.length > 1
+        ? `${createdEvaluations.length} avaliações processadas com sucesso`
+        : 'Avaliação processada com sucesso',
+      avaliacao: createdEvaluations[0], // Retornar a primeira avaliação (singular)
+      avaliacoes: createdEvaluations, // Manter array para compatibilidade
       isNew
     });
 
