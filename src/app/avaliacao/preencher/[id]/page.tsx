@@ -24,7 +24,7 @@ export default function FillEvaluationPage({ params }: PageProps) {
       try {
         // Fetch evaluation data from API
         const response = await fetch(`/api/avaliacao/${id}`);
-        
+
         if (!response.ok) {
           if (response.status === 401) {
             router.push(`/login?redirect=/avaliacao/preencher/${id}`);
@@ -34,7 +34,7 @@ export default function FillEvaluationPage({ params }: PageProps) {
         }
 
         const data = await response.json();
-        
+
         if (!data.success || !data.data) {
           router.push('/avaliacao?error=evaluation_not_found');
           return;
@@ -83,13 +83,13 @@ export default function FillEvaluationPage({ params }: PageProps) {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', padding: '20px' }}>
-        <div className="spinner" style={{ 
-          border: '4px solid #f3f3f3', 
-          borderTop: '4px solid #3498db', 
-          borderRadius: '50%', 
-          width: '40px', 
-          height: '40px', 
-          animation: 'spin 1s linear infinite' 
+        <div className="spinner" style={{
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #3498db',
+          borderRadius: '50%',
+          width: '40px',
+          height: '40px',
+          animation: 'spin 1s linear infinite'
         }}></div>
         <p style={{ marginTop: '16px', color: '#666' }}>Carregando avaliação...</p>
         <style>{`
@@ -113,8 +113,8 @@ export default function FillEvaluationPage({ params }: PageProps) {
   if (!evaluation) return null;
 
   return (
-    <FillEvaluationClient 
-      evaluation={evaluation} 
+    <FillEvaluationClient
+      evaluation={evaluation}
       isManager={isManager}
       userId={userId}
     />

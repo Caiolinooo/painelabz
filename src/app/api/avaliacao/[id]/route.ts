@@ -168,14 +168,18 @@ export async function PATCH(
     // 3. Validar transições de status
     const statusAtual = avaliacaoAtual.status;
 
-    // Colaborador pode editar se status for: pendente, em_andamento, devolvida, aprovada_aguardando_comentario
-    const statusEditaveisColaborador = ['pendente', 'em_andamento', 'devolvida', 'aprovada_aguardando_comentario'];
+    // Colaborador pode editar se status for: pendente, em_andamento, devolvida
+    const statusEditaveisColaborador = ['pendente', 'em_andamento', 'devolvida'];
     if (isCollaborator && !isManager && !statusEditaveisColaborador.includes(statusAtual)) {
       return NextResponse.json(
         {
           success: false,
           error: 'Você não pode mais editar esta avaliação',
-          hint: 'A avaliação já foi enviada para aprovação do gerente'
+          hint: statusAtual === 'aguardando_aprovacao'
+            ? 'A avaliação foi enviada para aprovação do gestor. Aguarde a análise ou possível devolução.'
+            : statusAtual === 'aprovada_aguardando_comentario'
+              ? 'A avaliação foi aprovada pelo gestor. Aguarde a finalização ou adicione seu comentário final.'
+              : 'A avaliação já foi concluída ou cancelada.'
         },
         { status: 400 }
       );
