@@ -15,20 +15,36 @@ export async function POST(
   try {
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
-    const token = extractTokenFromHeader(authHeader || undefined);
+    let token = extractTokenFromHeader(authHeader || undefined);
 
     if (!token) {
-      return NextResponse.json(
-        { success: false, error: 'Não autorizado' },
-        { status: 401 }
-      );
+      // Tentar obter token dos cookies como fallback
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const cookieToken = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value;
+      
+      if (!cookieToken) {
+        return NextResponse.json(
+          { success: false, error: 'Não autorizado' },
+          { status: 401 }
+        );
+      }
+      token = cookieToken;
     }
 
     const payload = verifyToken(token);
     if (!payload) {
       return NextResponse.json(
-        { success: false, error: 'Token inválido ou expirado' },
+        { success: false, error: 'Token inválido ou expirado. Por favor, faça login novamente.' },
         { status: 401 }
+      );
+    }
+
+    // Verificar se o userId é válido (não genérico)
+    if (payload.userId === 'supabase-access-token' || payload.userId === 'supabase-user' || payload.userId === 'service-account') {
+      return NextResponse.json(
+        { success: false, error: 'Token de serviço não pode ser usado para esta operação. Use um token de usuário válido.' },
+        { status: 403 }
       );
     }
 

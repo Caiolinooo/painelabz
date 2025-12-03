@@ -381,37 +381,16 @@ export async function sendPasswordResetSMS(phoneNumber: string, resetUrl: string
   }
 }
 
-// Função para verificar um token JWT - Versão robusta com suporte a múltiplos formatos
+// Função para verificar um token JWT - Padronizado para usar apenas JWT
 export function verifyToken(token: string | null | undefined): TokenPayload | null {
   try {
     if (!token || typeof token !== 'string') {
       return null;
     }
 
-    // Verificar se é um token do Supabase
-    if (token.startsWith('sbat_')) {
-      // Retornar um payload especial para o token do Supabase
-      return {
-        userId: 'supabase-user',
-        phoneNumber: '',
-        role: 'ADMIN'
-      };
-    }
-
-    // Verificar se o token tem o formato correto de um JWT
+    // Verificar se o token tem o formato correto de um JWT (3 partes separadas por ponto)
     const parts = token.split('.');
     if (parts.length !== 3) {
-      // Verificar se é o token de serviço do Supabase
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-      if (token === supabaseServiceKey) {
-        // Retornar um payload especial para o token de serviço
-        return {
-          userId: 'service-account',
-          phoneNumber: '',
-          role: 'ADMIN'
-        };
-      }
-
       return null;
     }
 
@@ -421,50 +400,20 @@ export function verifyToken(token: string | null | undefined): TokenPayload | nu
       console.warn('verifyToken: JWT_SECRET não definido, usando fallback-secret');
     }
 
-    // Verificar se é um token JWT normal
-    try {
-      const payload = jwt.verify(token, jwtSecret) as TokenPayload;
+    // Verificar e decodificar o token JWT
+    const payload = jwt.verify(token, jwtSecret) as TokenPayload;
 
-      // Verificar se o payload contém as informações necessárias
-      if (!payload || !payload.userId) {
-        return null;
-      }
-
-      // Verificar se o token está expirado
-      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-        return null;
-      }
-
-      return payload;
-    } catch (jwtError) {
-      // Se o token JWT não for válido, verificar se é um token do Supabase
-      try {
-        // Tentar decodificar o token como base64
-        const decoded = Buffer.from(parts[1], 'base64').toString();
-        const decodedPayload = JSON.parse(decoded);
-
-        if (decodedPayload.sub || decodedPayload.user_id) {
-          return {
-            userId: decodedPayload.sub || decodedPayload.user_id,
-            phoneNumber: '',
-            role: decodedPayload.role || 'USER'
-          };
-        }
-      } catch (decodeError) {
-        // Falha silenciosa ao decodificar
-      }
+    // Verificar se o payload contém as informações necessárias
+    if (!payload || !payload.userId) {
+      return null;
     }
 
-    // Verificar se é um token de acesso do Supabase (fallback para tokens longos)
-    if (token.length > 20) {
-      return {
-        userId: 'supabase-access-token',
-        phoneNumber: '',
-        role: 'ADMIN'
-      };
+    // Verificar se o token está expirado
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return null;
     }
 
-    return null;
+    return payload;
   } catch (error) {
     // Fornecer mensagens de erro mais específicas em desenvolvimento
     if (process.env.NODE_ENV === 'development' && error instanceof Error) {
