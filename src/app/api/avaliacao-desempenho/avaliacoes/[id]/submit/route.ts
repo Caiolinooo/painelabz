@@ -13,40 +13,56 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('🔵 [SUBMIT] Iniciando submissão de avaliação');
+
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
+    console.log('🔵 [SUBMIT] Authorization header presente:', !!authHeader);
     let token = extractTokenFromHeader(authHeader || undefined);
+    console.log('🔵 [SUBMIT] Token extraído do header:', token ? `${token.substring(0, 20)}...` : 'nulo');
 
     if (!token) {
+      console.log('🔵 [SUBMIT] Token não encontrado em header, tentando cookies...');
       // Tentar obter token dos cookies como fallback
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       const cookieToken = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value;
-      
+
       if (!cookieToken) {
+        console.error('❌ [SUBMIT] Nenhum token encontrado');
         return NextResponse.json(
           { success: false, error: 'Não autorizado' },
           { status: 401 }
         );
       }
       token = cookieToken;
+      console.log('🔵 [SUBMIT] Token obtido dos cookies');
     }
 
+    console.log('🔵 [SUBMIT] Verificando token...');
     const payload = verifyToken(token);
+    console.log('🔵 [SUBMIT] Payload do token:', payload);
+
     if (!payload) {
+      console.error('❌ [SUBMIT] Token inválido - verifyToken retornou null');
       return NextResponse.json(
         { success: false, error: 'Token inválido ou expirado. Por favor, faça login novamente.' },
         { status: 401 }
       );
     }
 
+    console.log('🔵 [SUBMIT] UserID do payload:', payload.userId);
+
     // Verificar se o userId é válido (não genérico)
     if (payload.userId === 'supabase-access-token' || payload.userId === 'supabase-user' || payload.userId === 'service-account') {
+      console.error('❌ [SUBMIT] UserID genérico detectado:', payload.userId);
       return NextResponse.json(
         { success: false, error: 'Token de serviço não pode ser usado para esta operação. Use um token de usuário válido.' },
         { status: 403 }
       );
     }
+
+    console.log('✅ [SUBMIT] Autenticação bem-sucedida, userId:', payload.userId);
 
     const { id } = await params;
     const body = await request.json();

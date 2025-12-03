@@ -9,6 +9,7 @@ import { Evaluation } from '@/types';
 import { QUESTIONARIO_PADRAO } from '@/lib/schemas/evaluation-schemas';
 import { useI18n } from '@/contexts/I18nContext';
 import { useAlert } from '@/contexts/AlertContext';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 interface FillEvaluationClientProps {
   evaluation: Evaluation;
@@ -66,13 +67,13 @@ export default function FillEvaluationClient({
       </div>
     );
   }
-  
+
   // Verificar se o funcionário é líder (baseado no role ou cargo)
-  const isEmployeeLeader = evaluation.funcionario?.role === 'MANAGER' || 
-                           evaluation.funcionario?.role === 'ADMIN' ||
-                           evaluation.funcionario?.cargo?.toLowerCase().includes('gerente') ||
-                           evaluation.funcionario?.cargo?.toLowerCase().includes('líder') ||
-                           evaluation.funcionario?.cargo?.toLowerCase().includes('coordenador');
+  const isEmployeeLeader = evaluation.funcionario?.role === 'MANAGER' ||
+    evaluation.funcionario?.role === 'ADMIN' ||
+    evaluation.funcionario?.cargo?.toLowerCase().includes('gerente') ||
+    evaluation.funcionario?.cargo?.toLowerCase().includes('líder') ||
+    evaluation.funcionario?.cargo?.toLowerCase().includes('coordenador');
 
   const handleChange = (questionId: string, value: any) => {
     setRespostas(prev => ({
@@ -84,7 +85,7 @@ export default function FillEvaluationClient({
 
   const validateRespostas = (): boolean => {
     // Verificar se há pelo menos uma resposta preenchida
-    const hasAnyResponse = Object.values(respostas).some(r => 
+    const hasAnyResponse = Object.values(respostas).some(r =>
       (r?.comentario && r.comentario.trim().length > 0) || (r?.nota && r.nota > 0)
     );
 
@@ -154,14 +155,11 @@ export default function FillEvaluationClient({
       setIsSaving(true);
       setError(null);
 
-      const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
-      
       if (isManager) {
         // Gerente aprova a avaliação e salva suas respostas (Q15-Q24)
-        const approveResponse = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/approve`, {
+        const approveResponse = await fetchWithToken(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/approve`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: ***REMOVED***
@@ -186,10 +184,9 @@ export default function FillEvaluationClient({
         });
       } else {
         // Colaborador submete para revisão
-        const submitResponse = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/submit`, {
+        const submitResponse = await fetchWithToken(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/submit`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: ***REMOVED***
@@ -369,7 +366,7 @@ export default function FillEvaluationClient({
           </div>
 
           <p className="text-xs text-gray-500 text-right mt-4">
-            {isManager 
+            {isManager
               ? t('evaluation.finalizeNote')
               : t('evaluation.sendNote')
             }
