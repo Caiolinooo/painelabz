@@ -314,7 +314,7 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
             title: resolvedTitle,
             message: resolvedMessage,
             data: { post_id: newPost.id, category_id: category_id || null, featured: !!featured },
-            action_url: `/news/post/${newPost.id}`,
+            action_url: `/news-feed?post_id=${newPost.id}`,
             priority: (notifSettings.defaultPriority as any) || 'normal',
             created_at: new Date().toISOString()
           }));
@@ -333,7 +333,7 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
 
           if (emailsToSend.length > 0) {
             console.log('📧 Preparando envio de emails para:', emailsToSend.map((u: any) => u.email).join(', '));
-            const postUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/news/post/${newPost.id}`;
+            const postUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/news-feed?post_id=${newPost.id}`;
             const subject = resolvedTitle;
             const html = newsPostTemplate(author?.first_name || 'Alguém', title, excerpt || '', postUrl);
             const results = await Promise.allSettled(emailsToSend.map((u: any) => sendCustomEmail(u.email, subject, html)));
@@ -356,7 +356,7 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
             await sendPushToUserIds(pushUsers, {
               title: resolvedTitle,
               body: resolvedMessage,
-              url: `/news/post/${newPost.id}`
+              url: `/news-feed?post_id=${newPost.id}`
             });
           }
 

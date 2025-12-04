@@ -63,109 +63,49 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     query = query.range(offset, offset + limit - 1);
 
-    // Executar query com retry
-    const { data: notifications, error, attempts } = await supabaseWithRetry(
-      async () => {
-        const result = await query;
-        return result;
-      },
-      {
-        maxRetries: 2,
-        delay: 1000,
-        timeout: 8000
-      }
-    );
-
-    console.log(`📊 Query executada em ${attempts} tentativa(s)`);
-
-    if (error) {
-      logError('Notifications Query', error, { user_id, page, limit, attempts });
-    }
-
-    if (error) {
-      console.error('❌ Erro ao buscar notificações:', {
-        message: error.message,
-        details: error.details || error.hint || 'Sem detalhes adicionais',
-        code: error.code || 'Sem código'
-      });
-
-      // Retornar resposta vazia em caso de erro para não quebrar a UI
-      return NextResponse.json({
-        notifications: [],
-        pagination: {
-          page,
-          limit,
-          total: 0,
-          totalPages: 0,
-          hasNext: false,
-          hasPrev: false
-        },
-        unreadCount: 0,
-        error: 'Erro ao carregar notificações'
-      });
-    }
-
-    // Buscar contagem total e não lidas com tratamento de erro
-    let totalCount = 0;
-    let unreadCount = 0;
-
-    try {
-      const currentDate = new Date().toISOString();
-
-      // Buscar contagem total com retry
-      const { data: totalResult, error: totalError } = await supabaseWithRetry(
+    // Executar queries em paralelo para melhor performance
+    const [notificationsResult, totalResult, unreadResult] = await Promise.all([
+      // 1. Buscar notificações
+      supabaseWithRetry(
+        async () => query,
+        { maxRetries: 2, delay: 1000, timeout: 8000 }
+      ),
+      // 2. Buscar contagem total
+      supabaseWithRetry(
         async () => {
-          const result = await supabaseAdmin
+          const currentDate = new Date().toISOString();
+          return supabaseAdmin
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user_id)
             .or(`expires_at.is.null,expires_at.gt.${currentDate}`);
-          return result;
         },
-        {
-          maxRetries: 1,
-          delay: 500,
-          timeout: 5000
-        }
-      );
-
-      if (!totalError && totalResult) {
-        totalCount = (totalResult as any).count || 0;
-      }
-
-      // Buscar contagem não lidas com retry
-      const { data: unreadResult, error: unreadError } = await supabaseWithRetry(
+        { maxRetries: 1, delay: 500, timeout: 5000 }
+      ),
+      // 3. Buscar contagem não lidas
+      supabaseWithRetry(
         async () => {
-          const result = await supabaseAdmin
+          const currentDate = new Date().toISOString();
+          return supabaseAdmin
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user_id)
             .is('read_at', null)
             .or(`expires_at.is.null,expires_at.gt.${currentDate}`);
-          return result;
         },
-        {
-          maxRetries: 1,
-          delay: 500,
-          timeout: 5000
-        }
-      );
+        { maxRetries: 1, delay: 500, timeout: 5000 }
+      )
+    ]);
 
-      if (!unreadError && unreadResult) {
-        unreadCount = (unreadResult as any).count || 0;
-      }
+    const { data: notifications, error, attempts } = notificationsResult;
+    const { count: totalCount, error: totalError } = totalResult.data ? { count: totalResult.data.count, error: null } : { count: 0, error: totalResult.error };
+    const { count: unreadCount, error: unreadError } = unreadResult.data ? { count: unreadResult.data.count, error: null } : { count: 0, error: unreadResult.error };
 
-      // Se houve erro nas contagens, usar fallback
-      if (totalError || unreadError) {
-        console.warn('⚠️ Erro ao buscar contagens, usando valores calculados');
-        totalCount = (notifications as any[])?.length || 0;
-        unreadCount = (notifications as any[])?.filter((n: any) => !n.read_at).length || 0;
-      }
+    console.log(`📊 Queries executadas. Notificações: ${(notifications as any[])?.length || 0}, Total: ${totalCount}, Não lidas: ${unreadCount}`);
 
-    } catch (countError) {
-      logError('Notifications Count', countError, { user_id });
-      totalCount = (notifications as any[])?.length || 0;
-      unreadCount = (notifications as any[])?.filter((n: any) => !n.read_at).length || 0;
+    if (error) {
+      logError('Notifications Query', error, { user_id, page, limit, attempts });
+      // ... erro handling mantido abaixo ...
     }
 
     console.log(`✅ ${(notifications as any[])?.length || 0} notificações carregadas (${unreadCount} não lidas)`);

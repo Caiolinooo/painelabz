@@ -29,13 +29,15 @@ export interface Evaluation {
     id: string;
     name: string;
     email?: string;
+    role?: string;
+    cargo?: string;
   };
   avaliador?: {
     id: string;
     name: string;
     email?: string;
   };
-  periodo?: EvaluationPeriod;
+  periodo?: EvaluationPeriod | string; // Pode ser objeto ou string
 }
 
 export interface EvaluationPeriod {

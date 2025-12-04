@@ -281,8 +281,8 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
 
     // Verificar se estamos em uma página que requer autenticação
     if (typeof window !== 'undefined' &&
-        (window.location.pathname.startsWith('/avaliacao') ||
-         window.location.pathname.startsWith('/admin'))) {
+      (window.location.pathname.startsWith('/avaliacao') ||
+        window.location.pathname.startsWith('/admin'))) {
       console.error('Página requer autenticação mas token não encontrado');
 
       // Redirecionar para login após um breve atraso
@@ -332,7 +332,7 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
         // Lista de rotas especiais que não precisam ser UUIDs
-        const specialRoutes = ['nova', 'editar', 'debug'];
+        const specialRoutes = ['nova', 'editar', 'debug', 'pending-review'];
 
         // Se o ID não for vazio e não for uma rota especial e não for um UUID válido
         if (cleanId && !specialRoutes.includes(cleanId) && !uuidRegex.test(cleanId)) {
@@ -349,7 +349,7 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
             if (isApiRoute && !isEditRoute) {
               // Verificar se a URL tem um formato válido para a API
               if (url.includes('/api/avaliacao-desempenho/avaliacoes/') ||
-                  url.includes('/api/avaliacao/avaliacoes/')) {
+                url.includes('/api/avaliacao/avaliacoes/')) {
                 console.error(`fetchWithToken: URL de API inválida: ${url}`);
                 throw new Error(`ID inválido na URL: ${cleanId}. O ID deve ser um UUID válido.`);
               }
