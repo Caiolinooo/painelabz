@@ -239,7 +239,11 @@ export default function FillEvaluationClient({
             </h1>
             <div className="flex flex-wrap gap-4 text-sm text-gray-600">
               <div>
-                <span className="font-semibold">{t('evaluation.period')}:</span> {evaluation.periodo?.nome || evaluation.periodo || 'N/A'}
+                <span className="font-semibold">{t('evaluation.period')}:</span> {
+                  typeof evaluation.periodo === 'string'
+                    ? evaluation.periodo
+                    : (evaluation.periodo?.nome || 'N/A')
+                }
               </div>
               <div>
                 <span className="font-semibold">{t('evaluation.employee')}:</span> {evaluation.funcionario?.name || 'N/A'}

@@ -22,20 +22,37 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
   evaluationPendingCount = 0
 }) => {
   const { t, locale, version } = useI18n();
+
+  // Se não houver userId, não carregar nada
+  const safeUserId = userId || '';
+
   const {
     notifications,
     unreadCount,
     loading,
+    error,
     loadNotifications,
     markAsRead,
     markAllAsRead,
     pagination
-  } = useNotifications(userId);
+  } = useNotifications(safeUserId);
+
+  if (!userId) return null;
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
   const prevUnreadRef = useRef<number>(0);
+
+  useEffect(() => {
+    console.log('🔍 NotificationHUD Render:', {
+      userId,
+      notificationsLength: notifications.length,
+      unreadCount,
+      loading,
+      isOpen
+    });
+  }, [userId, notifications, unreadCount, loading, isOpen]);
 
   // Chime curto "ABZ" com WebAudio
   const playABZChime = () => {
@@ -167,8 +184,68 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
     }
   };
 
+  // Estado para o banner
+  const [bannerNotification, setBannerNotification] = useState<any | null>(null);
+  const [isBannerVisible, setIsBannerVisible] = useState(false);
+  const [shownNotifications, setShownNotifications] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`shown-notifications-${userId}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    }
+    return new Set();
+  });
+
+  // Detectar novas notificações para mostrar no banner e tocar som
+  useEffect(() => {
+    if (notifications.length > 0) {
+      // Ordenar por data (mais recente primeiro)
+      const sorted = [...notifications].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      const latest = sorted[0];
+
+      // Se for uma notificação nova (não mostrada antes) e não lida
+      if (latest && !latest.read_at && !shownNotifications.has(latest.id)) {
+        console.log('🔔 Nova notificação detectada:', latest.title);
+
+        // Tocar som
+        playABZChime();
+
+        // Mostrar banner se habilitado
+        if (showBanner) {
+          setBannerNotification(latest);
+          setIsBannerVisible(true);
+        }
+
+        // Marcar como mostrada
+        setShownNotifications(prev => {
+          const newSet = new Set([...prev, latest.id]);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`shown-notifications-${userId}`, JSON.stringify([...newSet]));
+          }
+          return newSet;
+        });
+      }
+    }
+  }, [notifications, showBanner, userId, shownNotifications]);
+
+  // Limpar histórico de mostradas se mudar usuário
+  useEffect(() => {
+    setShownNotifications(new Set());
+  }, [userId]);
+
   return (
     <div className="relative" ref={dropdownRef}>
+      {/* Banner de Notificação */}
+      <NotificationBanner
+        userId={userId}
+        notification={bannerNotification}
+        isVisible={isBannerVisible}
+        onClose={() => setIsBannerVisible(false)}
+        triggerElement={bellRef.current}
+      />
+
       {/* Botão de Notificações */}
       <button
         ref={bellRef}
@@ -207,6 +284,14 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">{t('notifications.title')}</h3>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => loadNotifications()}
+                className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"
+                title="Atualizar"
+                disabled={loading}
+              >
+                <FiClock className={`w-4 h-4 ${loading ? 'animate-spin text-blue-500' : ''}`} />
+              </button>
               {unreadCount > 0 && (
                 <button
                   onClick={() => markAllAsRead()}
@@ -227,7 +312,24 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
 
           {/* Lista de Notificações */}
           <div className="max-h-80 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {error ? (
+              <div className="p-8 text-center text-red-500">
+                <FiAlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="font-medium">Erro ao carregar</p>
+                <p className="text-xs mt-1">{error}</p>
+                <button
+                  onClick={() => loadNotifications()}
+                  className="mt-3 text-xs bg-red-50 text-red-600 px-3 py-1 rounded hover:bg-red-100"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            ) : loading && notifications.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                <p>Carregando notificações...</p>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <FiBell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>{t('notifications.noNotifications')}</p>
@@ -251,7 +353,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
                   >
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 mt-1">
-                        {getNotificationIcon(notification.type, notification.priority)}
+                        {getNotificationIcon(notification.type, notification.priority || 'normal')}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -277,19 +379,6 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
                     </div>
                   </div>
                 ))}
-
-                {/* Load More */}
-                {pagination?.hasNext && notifications.length > maxVisible && (
-                  <div className="p-4 text-center border-t border-gray-100">
-                    <button
-                      onClick={handleLoadMore}
-                      disabled={loading}
-                      className="text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
-                    >
-                      {loading ? 'Carregando...' : t('components.verMaisNotificacoes')}
-                    </button>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -299,4 +388,4 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
   );
 };
 
-export default NotificationHUD;
+export default React.memo(NotificationHUD);

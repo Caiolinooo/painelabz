@@ -1,10 +1,16 @@
 "use client"
 
-import dynamic from "next/dynamic"
-
-// Importar o ThemeEnforcer de forma dinâmica para garantir que ele seja executado apenas no cliente
-const ThemeEnforcer = dynamic(() => import("@/components/ThemeEnforcer"), { ssr: false })
+import { useEffect, useState } from "react"
+import ThemeEnforcer from "@/components/ThemeEnforcer"
 
 export default function ThemeEnforcerWrapper() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
+
   return <ThemeEnforcer />
 }

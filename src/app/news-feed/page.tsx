@@ -1,62 +1,36 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import MainLayout from '@/components/Layout/MainLayout';
-import { 
-  HeartIcon, 
-  ChatBubbleOvalLeftIcon, 
-  ShareIcon,
-  BookmarkIcon,
-  EllipsisHorizontalIcon,
-  PlusIcon
-} from '@heroicons/react/24/outline';
-import { 
-  HeartIcon as HeartSolidIcon,
-  BookmarkIcon as BookmarkSolidIcon
-} from '@heroicons/react/24/solid';
-import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { useSearchParams } from 'next/navigation';
 
-interface NewsItem {
-  id: string;
-  title: string;
-  description: string;
-  content: string;
-  date: string;
-  author: string;
-  category: string;
-  thumbnail?: string;
-  coverImage?: string;
-  featured: boolean;
-  likes_count?: number;
-  comments_count?: number;
-  tags?: string[];
-}
-
-interface NewsComment {
-  id: string;
-  content: string;
-  parent_id?: string;
-  created_at: string;
-  user: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    role: string;
-  };
-  replies?: NewsComment[];
-}
+// ... imports
 
 const NewsFeedPage: React.FC = () => {
   const { user } = useSupabaseAuth();
+  const searchParams = useSearchParams();
+  const highlightPostId = searchParams.get('post_id');
+
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
-  const [showComments, setShowComments] = useState<string | null>(null);
-  const [comments, setComments] = useState<{ [key: string]: NewsComment[] }>({});
-  const [newComment, setNewComment] = useState('');
-  const [showCreatePost, setShowCreatePost] = useState(false);
+  // ... other states
+
+  // Effect to scroll to highlighted post
+  useEffect(() => {
+    if (highlightPostId && !loading && news.length > 0) {
+      // Small delay to ensure rendering
+      setTimeout(() => {
+        const element = document.getElementById(`post-${highlightPostId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add temporary highlight
+          element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+          }, 3000);
+        }
+      }, 500);
+    }
+  }, [highlightPostId, loading, news]);
+
 
   useEffect(() => {
     loadNews();
@@ -66,7 +40,7 @@ const NewsFeedPage: React.FC = () => {
     try {
       const response = await fetch('/api/news');
       const data = await response.json();
-      
+
       if (response.ok) {
         setNews(data);
       } else {
@@ -84,12 +58,12 @@ const NewsFeedPage: React.FC = () => {
 
     try {
       const isLiked = likedPosts.has(newsId);
-      
+
       if (isLiked) {
         const response = await fetch(`/api/news/${newsId}/like?userId=${user.id}`, {
           method: 'DELETE'
         });
-        
+
         if (response.ok) {
           setLikedPosts(prev => {
             const newSet = new Set(prev);
@@ -105,7 +79,7 @@ const NewsFeedPage: React.FC = () => {
           },
           body: JSON.stringify({ userId: user.id })
         });
-        
+
         if (response.ok) {
           setLikedPosts(prev => new Set(prev).add(newsId));
         }
@@ -131,7 +105,7 @@ const NewsFeedPage: React.FC = () => {
     try {
       const response = await fetch(`/api/news/${newsId}/comments`);
       const data = await response.json();
-      
+
       if (response.ok) {
         setComments(prev => ({
           ...prev,
@@ -186,7 +160,7 @@ const NewsFeedPage: React.FC = () => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return 'Agora há pouco';
     if (diffInHours < 24) return `${diffInHours}h`;
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d`;
@@ -224,7 +198,7 @@ const NewsFeedPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">ABZ News Feed</h1>
             <p className="text-gray-600 mt-1">Fique por dentro das novidades da empresa</p>
           </div>
-          
+
           {user && (
             <button
               onClick={() => setShowCreatePost(true)}
@@ -261,7 +235,12 @@ const NewsFeedPage: React.FC = () => {
         {/* Feed de Posts */}
         <div className="max-w-2xl mx-auto space-y-6">
           {news.map((item) => (
-            <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div
+              key={item.id}
+              id={`post-${item.id}`}
+              className={`bg-white rounded-lg shadow-sm border border-gray-200 transition-all duration-300 ${highlightPostId === item.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                }`}
+            >
               {/* Header do Post */}
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center space-x-3">
@@ -318,19 +297,19 @@ const NewsFeedPage: React.FC = () => {
                         <HeartIcon className="w-6 h-6" />
                       )}
                     </button>
-                    
+
                     <button
                       onClick={() => toggleComments(item.id)}
                       className="flex items-center space-x-1 hover:text-blue-500 transition-colors"
                     >
                       <ChatBubbleOvalLeftIcon className="w-6 h-6" />
                     </button>
-                    
+
                     <button className="flex items-center space-x-1 hover:text-green-500 transition-colors">
                       <ShareIcon className="w-6 h-6" />
                     </button>
                   </div>
-                  
+
                   <button
                     onClick={() => handleSave(item.id)}
                     className="hover:text-blue-500 transition-colors"

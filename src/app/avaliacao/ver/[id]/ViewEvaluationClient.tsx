@@ -59,6 +59,28 @@ export default function ViewEvaluationClient({
     }
   }, [user, evaluation]);
 
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Auto-save effect
+  useEffect(() => {
+    if (!isManagerView || !hasChanges) return;
+
+    const timeoutId = setTimeout(async () => {
+      await handleSave(true); // true = silent/auto-save
+    }, 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [notasGerente, comentarioGerente, isManagerView, hasChanges]);
+
+  // Mark as changed when inputs change
+  useEffect(() => {
+    if (isManagerView) {
+      setHasChanges(true);
+    }
+  }, [notasGerente, comentarioGerente, isManagerView]);
+
   const handleNotaGerenteChange = (questionId: string, nota: number) => {
     setNotasGerente(prev => ({
       ...prev,
@@ -82,23 +104,32 @@ export default function ViewEvaluationClient({
     }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (silent = false) => {
     try {
+      if (!silent) setIsSaving(true);
+
       const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          respostas
+          respostas, // Includes notasGerente updates
+          comentario_gerente: comentarioGerente
         })
       });
 
       if (response.ok) {
-        alert('Avaliação salva com sucesso!');
-        router.refresh();
+        setLastSaved(new Date());
+        setHasChanges(false);
+        if (!silent) {
+          alert('Avaliação salva com sucesso!');
+          router.refresh();
+        }
       }
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('Erro ao salvar avaliação');
+      if (!silent) alert('Erro ao salvar avaliação');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -411,15 +442,37 @@ export default function ViewEvaluationClient({
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <Link
-            href="/avaliacao"
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
-          >
-            <FiArrowLeft />
-            Voltar para lista
-          </Link>
+          <div className="flex justify-between items-start">
+            <Link
+              href="/avaliacao"
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
+            >
+              <FiArrowLeft />
+              Voltar para lista
+            </Link>
+
+            {/* Auto-save Status Indicator */}
+            {isManagerView && (
+              <div className="flex items-center gap-2 text-sm">
+                {isSaving ? (
+                  <span className="text-blue-600 flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    Salvando...
+                  </span>
+                ) : lastSaved ? (
+                  <span className="text-gray-500 flex items-center gap-1">
+                    <FiCheckCircle className="w-4 h-4 text-green-500" />
+                    Salvo às {format(lastSaved, 'HH:mm:ss')}
+                  </span>
+                ) : hasChanges ? (
+                  <span className="text-orange-500">Alterações não salvas</span>
+                ) : null}
+              </div>
+            )}
+          </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-gray-200">
+
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <h1 className="text-4xl font-bold text-gray-900">
                 Avaliação de Desempenho
@@ -427,13 +480,15 @@ export default function ViewEvaluationClient({
               <StatusBadge status={evaluation.status} />
             </div>
 
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
               <div className="flex items-start gap-3">
                 <div className="relative">
                   {(employee?.avatar || (employee as any)?.drive_photo_url) ? (
                     <img
-                      src={employee.avatar || (employee as any).drive_photo_url}
-                      alt={`${employee.firstName} ${employee.lastName}`}
+                      src={employee?.avatar || (employee as any)?.drive_photo_url}
+                      alt={`${employee?.firstName || ''} ${employee?.lastName || ''}`}
                       className="w-14 h-14 rounded-full object-cover border-2 border-blue-500 shadow-md"
                     />
                   ) : (
@@ -453,8 +508,8 @@ export default function ViewEvaluationClient({
                 <div className="relative">
                   {(manager?.avatar || (manager as any)?.drive_photo_url) ? (
                     <img
-                      src={manager.avatar || (manager as any).drive_photo_url}
-                      alt={`${manager.firstName} ${manager.lastName}`}
+                      src={manager?.avatar || (manager as any)?.drive_photo_url}
+                      alt={`${manager?.firstName || ''} ${manager?.lastName || ''}`}
                       className="w-14 h-14 rounded-full object-cover border-2 border-purple-500 shadow-md"
                     />
                   ) : (
@@ -735,6 +790,15 @@ export default function ViewEvaluationClient({
               {/* Botões para Gerente - Aprovação Inicial */}
               {canManagerReview && (
                 <>
+                  <button
+                    onClick={() => handleSave(false)}
+                    disabled={isSaving}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold disabled:opacity-70"
+                  >
+                    <FiSave className="w-5 h-5" />
+                    {isSaving ? 'Salvando...' : 'Salvar Rascunho'}
+                  </button>
+
                   <button
                     onClick={() => {
                       if (!comentarioGerente.trim()) {

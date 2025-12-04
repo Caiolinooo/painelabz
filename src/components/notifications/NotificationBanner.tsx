@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiBell, FiX, FiClipboard, FiInfo, FiMessageCircle, FiHeart, FiClock, FiAlertCircle } from 'react-icons/fi';
 
@@ -20,87 +20,36 @@ interface NotificationBannerProps {
   position?: 'top' | 'bottom';
   autoHideDuration?: number;
   triggerElement?: HTMLElement | null;
+  notification: Notification | null;
+  isVisible: boolean;
+  onClose: () => void;
 }
 
 const NotificationBanner: React.FC<NotificationBannerProps> = ({
   userId,
   position = 'top',
   autoHideDuration = 5000,
-  triggerElement
+  triggerElement,
+  notification,
+  isVisible,
+  onClose
 }) => {
-  const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [shownNotifications, setShownNotifications] = useState<Set<string>>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`shown-notifications-${userId}`);
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    }
-    return new Set();
-  });
-
-  // Polling em tempo real para novas notificações
+  // Efeito para auto-hide
   useEffect(() => {
-    if (!userId) return;
-
-    const checkForNewNotifications = async () => {
-      try {
-        // Buscar notificações priorizando não lidas; backend já retorna unreadCount
-        const response = await fetch(`/api/notifications?user_id=${userId}&limit=10`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        let notifications: Notification[] = data.notifications || [];
-
-        // Preferir notificações não lidas se o backend trouxer read_at
-        const unread = notifications.filter((n) => !n.read_at);
-        if (unread.length > 0) {
-          notifications = unread;
-        }
-        
-        if (notifications.length > 0) {
-          // Encontrar a notificação mais recente que ainda não foi mostrada
-          const newNotification = notifications
-            .sort((a, b) => {
-              const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
-              const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
-              return bDate - aDate;
-            })
-            .find(n => !shownNotifications.has(n.id));
-          
-          if (newNotification) {
-            setCurrentNotification(newNotification);
-            setShownNotifications(prev => {
-              const newSet = new Set([...prev, newNotification.id]);
-              // Persistir no localStorage
-              if (typeof window !== 'undefined') {
-                localStorage.setItem(`shown-notifications-${userId}`, JSON.stringify([...newSet]));
-              }
-              return newSet;
-            });
-            setIsVisible(true);
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao verificar novas notificações:', error);
-      }
-    };
-
-    // Verificar imediatamente
-    checkForNewNotifications();
-
-    // Polling a cada 2 segundos para tempo real
-    const interval = setInterval(checkForNewNotifications, 4000);
-
-    return () => clearInterval(interval);
-  }, [userId, autoHideDuration, shownNotifications]);
+    if (isVisible && autoHideDuration > 0) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, autoHideDuration);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, autoHideDuration, onClose]);
 
   // Obter ícone por tipo
   const getNotificationIcon = (type: string, priority: string) => {
-    const iconClass = `w-5 h-5 ${
-      priority === 'urgent' ? 'text-red-400' :
-      priority === 'high' ? 'text-orange-400' :
-      priority === 'low' ? 'text-gray-400' : 'text-blue-400'
-    }`;
+    const iconClass = `w-5 h-5 ${priority === 'urgent' ? 'text-red-400' :
+        priority === 'high' ? 'text-orange-400' :
+          priority === 'low' ? 'text-gray-400' : 'text-blue-400'
+      }`;
 
     switch (type) {
       case 'evaluation': return <FiClipboard className={iconClass} />;
@@ -124,63 +73,54 @@ const NotificationBanner: React.FC<NotificationBannerProps> = ({
   };
 
   const handleClick = () => {
-    if (currentNotification?.action_url) {
-      window.location.href = currentNotification.action_url;
+    if (notification?.action_url) {
+      window.location.href = notification.action_url;
     }
-    setIsVisible(false);
+    onClose();
   };
 
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsVisible(false);
+    onClose();
   };
 
-  // Limpar notificações mostradas quando usuário muda
-  useEffect(() => {
-    setShownNotifications(new Set());
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(`shown-notifications-${userId}`);
-    }
-  }, [userId]);
-
-  if (!currentNotification) return null;
+  if (!notification) return null;
 
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ 
-            opacity: 0, 
+          initial={{
+            opacity: 0,
             y: position === 'top' ? -100 : 100,
-            scale: 0.9 
+            scale: 0.9
           }}
-          animate={{ 
-            opacity: 1, 
+          animate={{
+            opacity: 1,
             y: 0,
-            scale: 1 
+            scale: 1
           }}
-          exit={{ 
-            opacity: 0, 
+          exit={{
+            opacity: 0,
             y: position === 'top' ? -100 : 100,
-            scale: 0.9 
+            scale: 0.9
           }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 300, 
-            damping: 30 
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 30
           }}
-          className={`fixed z-50 ${
-            triggerElement 
+          className={`fixed z-50 ${triggerElement
               ? 'top-16 right-4' // Próximo ao bell
-              : position === 'top' 
-                ? 'top-4 left-1/2 transform -translate-x-1/2' 
+              : position === 'top'
+                ? 'top-4 left-1/2 transform -translate-x-1/2'
                 : 'bottom-4 left-1/2 transform -translate-x-1/2'
-          }`}
+            }`}
         >
           <div
             onClick={handleClick}
             className={`
-              bg-gradient-to-r ${getPriorityColors(currentNotification.priority)}
+              bg-gradient-to-r ${getPriorityColors(notification.priority)}
               text-white rounded-lg shadow-lg border-2 cursor-pointer
               min-w-80 max-w-md mx-4 overflow-hidden
               hover:shadow-xl transition-shadow duration-200
@@ -193,24 +133,24 @@ const NotificationBanner: React.FC<NotificationBannerProps> = ({
               transition={{ duration: autoHideDuration / 1000, ease: 'linear' }}
               className="h-1 bg-white/30"
             />
-            
+
             <div className="p-4">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 mt-0.5">
-                  {getNotificationIcon(currentNotification.type, currentNotification.priority)}
+                  {getNotificationIcon(notification.type, notification.priority)}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-semibold text-white mb-1">
-                    {currentNotification.title}
+                    {notification.title}
                   </h4>
-                  {currentNotification.message && (
+                  {notification.message && (
                     <p className="text-sm text-white/90 line-clamp-2">
-                      {currentNotification.message}
+                      {notification.message}
                     </p>
                   )}
                 </div>
-                
+
                 <button
                   onClick={handleClose}
                   className="flex-shrink-0 p-1 hover:bg-white/20 rounded-full transition-colors"

@@ -193,34 +193,24 @@ export default function MainLayout({ children }: MainLayoutProps) {
   useEffect(() => {
     const fetchPendingCount = async () => {
       if (!user) {
-        console.log('🔴 Badge: Sem usuário logado');
         return;
       }
 
-      console.log('🔵 Badge: Buscando avaliações pendentes para:', user.id, 'Role:', profile?.role);
-
       try {
-        const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
-        if (!token) {
-          console.log('🔴 Badge: Token não encontrado');
-          return;
-        }
+        // Usar fetchWithToken para garantir que o token correto seja usado
+        // Importar fetchWithToken dinamicamente para evitar problemas de SSR se necessário, 
+        // mas MainLayout é 'use client', então podemos importar direto.
+        // Já que não temos fetchWithToken importado aqui, vamos usar a lógica do tokenStorage
 
-        const response = await fetch('/api/avaliacao-desempenho/avaliacoes/pending-review', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const { fetchWithToken } = await import('@/lib/tokenStorage');
 
-        console.log('🔵 Badge: Response status:', response.status);
+        const response = await fetchWithToken('/api/avaliacao-desempenho/avaliacoes/pending-review');
 
-        const data = await response.json();
-        console.log('🔵 Badge: Data recebida:', data);
-
-        if (data.success) {
-          const count = data.count || 0;
-          console.log(`✅ Badge: ${count} avaliações pendentes`);
-          setPendingCount(count);
-        } else {
-          console.log('🔴 Badge: Erro na resposta:', data.error);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setPendingCount(data.count || 0);
+          }
         }
       } catch (error) {
         console.error('🔴 Badge: Erro ao buscar contagem:', error);
@@ -477,7 +467,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         >
           {/* Notificações globais fixas (desktop) */}
           <div className="hidden md:block fixed top-4 right-4 z-50">
-            {user && <NotificationHUD userId={user.id} position="top-right" evaluationPendingCount={pendingCount} />}
+            <NotificationHUD userId={user?.id || ''} position="top-right" evaluationPendingCount={pendingCount} />
           </div>
 
           {/* Header mobile */}
@@ -495,7 +485,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                {user && <NotificationHUD userId={user.id} position="top-right" evaluationPendingCount={pendingCount} />}
+                <NotificationHUD userId={user?.id || ''} position="top-right" evaluationPendingCount={pendingCount} />
               </div>
             </div>
           </header>
