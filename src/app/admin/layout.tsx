@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor } from 'react-icons/fi';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -109,6 +109,7 @@ const adminMenuGroups = [
     id: 'integrations',
     label: 'admin.integrations',
     items: [
+      { id: 'wkradar', href: '/admin/wkradar', label: 'admin.wkradarConfig', icon: FiMonitor },
       { id: 'api-mobile', href: '/admin/api-mobile', label: 'admin.apiMobile', icon: FiSmartphone },
       { id: 'integracao-erp', href: '/admin/integracao-erp', label: 'admin.erpIntegration', icon: FiDatabase },
     ]

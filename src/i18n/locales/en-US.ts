@@ -473,6 +473,8 @@ export default {
     avaliacoesAvancadasDesc: 'Metrics, analysis and detailed performance reports',
     relatoriosPdf: 'PDF Reports',
     relatoriosPdfDesc: 'Generate custom reports with charts and visualizations',
+    wkradar: 'WKRadar',
+    wkradarDesc: 'Access WKRadar system',
 
     // Traduções para os cards do banco de dados (por ID)
     // Versão sem hífens (compatibilidade)
@@ -870,6 +872,7 @@ export default {
     integrations: 'Integrations & APIs',
     apiMobile: 'Mobile API',
     erpIntegration: 'ERP Integration',
+    wkradarConfig: 'WKRadar Configuration',
     systemInfo: 'System Information',
     falhaAoCarregarCompanyCalendar: 'Failed to load company_calendar',
     erroAoFazerUploadDo: 'Error uploading {type}',
@@ -2617,5 +2620,32 @@ export default {
       changePasswordButton: 'Change Password',
       footer: 'This is a security measure to protect your account.'
     }
+  },
+
+  // WKRadar / Guacamole Integration
+  wkradar: {
+    title: 'WKRadar',
+    description: 'Access WKRadar system',
+    autoLoginTitle: 'Automatic Login',
+    autoLoginDesc: 'Click the button to access WKRadar with your credentials.',
+    accessSystem: 'Access System',
+    clickToAccess: 'Click "Access System" to start',
+    connectionIssue: 'Connection issues?',
+    openNewWindow: 'Open in new window',
+    adminTitle: 'WKRadar Configuration',
+    adminDesc: 'Manage WKRadar access credentials for each user',
+    defaultCredentials: 'Default Credentials',
+    defaultCredentialsDesc: 'By default, users use the format first_name.last_name as login and password Abz@2025. Configure custom credentials below when needed.',
+    wkUsername: 'WKRadar Login',
+    wkPassword: 'WKRadar Password',
+    customized: 'Customized',
+    confirmRemove: 'Are you sure you want to remove custom credentials? The user will return to using default credentials.',
+    connecting: 'Connecting to WKRadar...',
+    cardActive: 'WKRadar Card active on Dashboard',
+    cardNotCreated: 'WKRadar Card is not on Dashboard',
+    cardActiveDesc: 'The card is visible to permitted users.',
+    cardNotCreatedDesc: 'Click the button to add the WKRadar card to the dashboard.',
+    createCard: 'Create Card',
   }
 };
+
