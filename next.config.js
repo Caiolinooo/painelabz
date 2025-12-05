@@ -52,16 +52,6 @@ const nextConfig = {
       },
     ];
   },
-
-  // Proxy para o Guacamole (Resolve Mixed Content)
-  async rewrites() {
-    return [
-      {
-        source: '/guacamole/:path*',
-        destination: 'http://177.136.245.174:8080/guacamole/:path*', // Proxy to Backend
-      },
-    ];
-  },
 };
 
 module.exports = nextConfig;
