@@ -66,6 +66,12 @@ interface PDFExportOptions {
     observation: string;
     managerQuestionsAnswered?: string; // New translation key
     collaboratorAnswersIntro?: string; // New translation key
+    // Performance levels
+    performanceLevelExceptional?: string;
+    performanceLevelExcellent?: string;
+    performanceLevelGood?: string;
+    performanceLevelRegular?: string;
+    performanceLevelInsufficient?: string;
   };
   statusTranslations?: Record<string, string>;
   chartsImage?: string; // Base64 encoded image from html2canvas
@@ -82,13 +88,22 @@ interface PerformanceInsights {
   answeredQuestions: number;
 }
 
-// Helper function to get performance level based on score
-function getPerformanceLevel(score: number): { text: string; color: [number, number, number] } {
-  if (score >= 4.5) return { text: 'Excepcional', color: [34, 197, 94] }; // green-600
-  if (score >= 3.5) return { text: 'Excelente', color: [132, 204, 22] }; // lime-600
-  if (score >= 2.5) return { text: 'Bom', color: [234, 179, 8] }; // yellow-500
-  if (score >= 1.5) return { text: 'Regular', color: [249, 115, 22] }; // orange-500
-  return { text: 'Insuficiente', color: [239, 68, 68] }; // red-500
+// Helper function to get performance level based on score (with i18n support)
+function getPerformanceLevel(score: number, translations?: PDFExportOptions['translations']): { text: string; color: [number, number, number] } {
+  // Default translations (Portuguese)
+  const levels = {
+    exceptional: translations?.performanceLevelExceptional || 'Excepcional',
+    excellent: translations?.performanceLevelExcellent || 'Excelente',
+    good: translations?.performanceLevelGood || 'Bom',
+    regular: translations?.performanceLevelRegular || 'Regular',
+    insufficient: translations?.performanceLevelInsufficient || 'Insuficiente'
+  };
+
+  if (score >= 4.5) return { text: levels.exceptional, color: [34, 197, 94] }; // green-600
+  if (score >= 3.5) return { text: levels.excellent, color: [132, 204, 22] }; // lime-600
+  if (score >= 2.5) return { text: levels.good, color: [234, 179, 8] }; // yellow-500
+  if (score >= 1.5) return { text: levels.regular, color: [249, 115, 22] }; // orange-500
+  return { text: levels.insufficient, color: [239, 68, 68] }; // red-500
 }
 
 // Helper function to get color for score
@@ -243,7 +258,7 @@ function addExecutiveSummary(pdf: jsPDF, insights: PerformanceInsights, evaluati
   yPosition += 25; // Increased spacing
 
   // Performance level card
-  const performanceLevel = getPerformanceLevel(insights.averageScore);
+  const performanceLevel = getPerformanceLevel(insights.averageScore, options.translations);
 
   pdf.setFillColor(performanceLevel.color[0], performanceLevel.color[1], performanceLevel.color[2]);
   pdf.roundedRect(14, yPosition, pageWidth - 28, 45, 3, 3, 'F'); // Increased height
@@ -323,7 +338,7 @@ function addCompetencyAnalysis(pdf: jsPDF, evaluation: Evaluation, options: PDFE
   const competencyData = managerQuestions.map(q => {
     const resposta = evaluation.respostas?.[q.id];
     const nota = resposta?.nota || 0;
-    const nivel = getPerformanceLevel(nota);
+    const nivel = getPerformanceLevel(nota, options.translations);
 
     return {
       id: q.id,

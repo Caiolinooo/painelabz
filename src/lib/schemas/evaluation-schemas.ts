@@ -371,10 +371,10 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
 // Esala de avaliação fixa
 export const ESCALA_AVALIACAO = [
   { valor: 1, descricao: 'Frequentemente não alcançou a expectativa' },
-  { valor: 2, descricao: 'Não alcançou a expectativa' },
+  { valor: 2, descricao: 'Algumas vezes não alcançou a expectativa' },
   { valor: 3, descricao: 'Alcançou a expectativa' },
-  { valor: 4, descricao: 'Frequentemente excedeu a expectativa' },
-  { valor: 5, descricao: 'Superou consistentemente a expectativa' }
+  { valor: 4, descricao: 'Algumas vezes excedeu a expectativa' },
+  { valor: 5, descricao: 'Frequentemente excedeu a expectativa' }
 ];
 
 // Validações

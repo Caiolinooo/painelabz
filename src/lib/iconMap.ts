@@ -139,7 +139,8 @@ import {
   FiCreditCard,
   FiShoppingBag,
   FiGift,
-  FiPercent as FiDiscount,
+  FiRss,
+  FiPlay,
 } from 'react-icons/fi';
 
 import type { IconType } from 'react-icons';
@@ -174,7 +175,7 @@ export const iconMap: Record<string, IconType> = {
   FiTarget,
   FiBriefcase,
   FiClipboard,
-  
+
   // Ícones de status
   FiCheckCircle,
   FiAlertCircle,
@@ -183,7 +184,7 @@ export const iconMap: Record<string, IconType> = {
   FiStar,
   FiHeart,
   FiThumbsUp,
-  
+
   // Ícones de ação
   FiShare2,
   FiDownload,
@@ -194,7 +195,7 @@ export const iconMap: Record<string, IconType> = {
   FiMinus,
   FiX,
   FiCheck,
-  
+
   // Navegação
   FiChevronRight,
   FiChevronLeft,
@@ -207,7 +208,7 @@ export const iconMap: Record<string, IconType> = {
   FiMenu,
   FiMoreVertical,
   FiMoreHorizontal,
-  
+
   // Ferramentas
   FiSearch,
   FiFilter,
@@ -219,13 +220,13 @@ export const iconMap: Record<string, IconType> = {
   FiEye,
   FiEyeOff,
   FiBell,
-  
+
   // Gráficos e dados
   FiActivity,
   FiPieChart,
   FiTrendingDown,
   FiZap,
-  
+
   // Tecnologia
   FiCpu,
   FiDatabase,
@@ -234,7 +235,7 @@ export const iconMap: Record<string, IconType> = {
   FiSmartphone,
   FiTablet,
   FiWatch,
-  
+
   // Mídia
   FiCamera,
   FiVideo,
@@ -244,7 +245,7 @@ export const iconMap: Record<string, IconType> = {
   FiMic,
   FiVolume2,
   FiVolumeX,
-  
+
   // Conectividade
   FiWifi,
   FiWifiOff,
@@ -252,7 +253,7 @@ export const iconMap: Record<string, IconType> = {
   FiBattery,
   FiBatteryCharging,
   FiPower,
-  
+
   // Clima
   FiSun,
   FiMoon,
@@ -263,14 +264,14 @@ export const iconMap: Record<string, IconType> = {
   FiCloudLightning,
   FiDroplet,
   FiWind,
-  
+
   // Localização
   FiCompass,
   FiNavigation,
   FiNavigation2,
   FiAnchor,
   FiFlag,
-  
+
   // Organização
   FiBookmark,
   FiTag,
@@ -278,7 +279,7 @@ export const iconMap: Record<string, IconType> = {
   FiAtSign,
   FiPercent,
   FiSlash,
-  
+
   // Desenvolvimento
   FiCode,
   FiCommand,
@@ -289,7 +290,7 @@ export const iconMap: Record<string, IconType> = {
   FiGitPullRequest,
   FiGithub,
   FiGitlab,
-  
+
   // Links e arquivos
   FiLink,
   FiLink2,
@@ -299,21 +300,23 @@ export const iconMap: Record<string, IconType> = {
   FiPrinter,
   FiScissors,
   FiPaperclip,
-  
+
   // Comunicação
   FiInbox,
   FiSend,
   FiArchive,
-  
+
   // Segurança
   FiShield,
   FiShieldOff,
   FiKey,
-  
+
   // Comércio
   FiCreditCard,
   FiShoppingBag,
   FiGift,
+  FiRss,
+  FiPlay,
 };
 
 /**
@@ -323,14 +326,14 @@ export const iconMap: Record<string, IconType> = {
  */
 export function getIconComponent(iconName: string | undefined): IconType {
   if (!iconName) return FiGrid;
-  
+
   // Se já for um componente, retornar
   if (typeof iconName === 'function') return iconName as IconType;
-  
+
   // Buscar no mapa
   const icon = iconMap[iconName];
   if (icon) return icon;
-  
+
   // Fallback
   console.warn(`Ícone não encontrado: ${iconName}, usando FiGrid como fallback`);
   return FiGrid;
