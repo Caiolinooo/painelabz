@@ -22,7 +22,8 @@ export default function WKRadarPage() {
     const formRef = useRef<HTMLFormElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    const GUACAMOLE_URL = 'http://177.136.245.174:8080/guacamole/';
+    // URL relativa para usar o proxy do Next.js (evita Mixed Content)
+    const GUACAMOLE_URL = '/guacamole/';
 
     // Gera o username padrão baseado no perfil do usuário
     const generateDefaultUsername = () => {
