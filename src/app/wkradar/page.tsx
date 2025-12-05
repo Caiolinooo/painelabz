@@ -22,8 +22,8 @@ export default function WKRadarPage() {
     const formRef = useRef<HTMLFormElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    // URL relativa para usar o proxy do Next.js (evita Mixed Content)
-    const GUACAMOLE_URL = '/guacamole/';
+    // URL direta segura (HTTPS) configurada no servidor vm.groupabz.com
+    const GUACAMOLE_URL = 'https://vm.groupabz.com/guacamole/';
 
     // Gera o username padrão baseado no perfil do usuário
     const generateDefaultUsername = () => {
