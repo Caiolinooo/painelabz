@@ -29,7 +29,7 @@ export default function CompetencyCard({
   onScoreChange
 }: CompetencyCardProps) {
   const percentage = (score / maxScore) * 100;
-  
+
   const getScoreColor = (percentage: number) => {
     if (percentage >= 80) return 'text-green-600';
     if (percentage >= 60) return 'text-blue-600';
@@ -38,11 +38,11 @@ export default function CompetencyCard({
   };
 
   const getScoreLabel = (score: number) => {
-    if (score >= 5) return 'Superou consistentemente';
-    if (score >= 4) return 'Excedeu expectativas';
-    if (score >= 3) return 'Alcançou expectativa';
-    if (score >= 2) return 'Não alcançou expectativa';
-    return 'Frequentemente não alcançou';
+    if (score >= 5) return 'Frequentemente excedeu a expectativa';
+    if (score >= 4) return 'Algumas vezes excedeu a expectativa';
+    if (score >= 3) return 'Alcançou a expectativa';
+    if (score >= 2) return 'Algumas vezes não alcançou a expectativa';
+    return 'Frequentemente não alcançou a expectativa';
   };
 
   return (

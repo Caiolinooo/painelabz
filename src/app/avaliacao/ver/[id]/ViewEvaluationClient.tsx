@@ -121,13 +121,13 @@ export default function ViewEvaluationClient({
         setLastSaved(new Date());
         setHasChanges(false);
         if (!silent) {
-          alert('Avaliação salva com sucesso!');
+          alert(t('evaluation.evaluationSaved'));
           router.refresh();
         }
       }
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      if (!silent) alert('Erro ao salvar avaliação');
+      if (!silent) alert(t('evaluation.errorSavingEvaluation'));
     } finally {
       setIsSaving(false);
     }
@@ -135,7 +135,7 @@ export default function ViewEvaluationClient({
 
   const handleFinalComment = async () => {
     if (!comentarioFinalFuncionario.trim()) {
-      alert('Por favor, adicione seu comentário final sobre a avaliação');
+      alert(t('evaluation.pleaseAddFinalComment'));
       return;
     }
 
@@ -153,16 +153,16 @@ export default function ViewEvaluationClient({
       });
 
       if (response.ok) {
-        alert('Comentário final enviado com sucesso! Aguardando finalização do gerente.');
+        alert(t('evaluation.finalCommentSent'));
         router.push('/avaliacao');
         router.refresh();
       } else {
         const data = await response.json();
-        alert(data.error || 'Erro ao enviar comentário final');
+        alert(data.error || t('evaluation.errorSavingEvaluation'));
       }
     } catch (error) {
       console.error('Erro ao enviar comentário final:', error);
-      alert('Erro ao enviar comentário final');
+      alert(t('evaluation.errorSavingEvaluation'));
     }
   };
 
@@ -181,12 +181,12 @@ export default function ViewEvaluationClient({
         });
 
         if (response.ok) {
-          alert('Avaliação finalizada com sucesso!');
+          alert(t('evaluation.evaluationFinalized'));
           router.push('/avaliacao');
           router.refresh();
         } else {
           const data = await response.json();
-          alert(data.error || 'Erro ao finalizar avaliação');
+          alert(data.error || t('evaluation.errorFinalizing'));
         }
       } else if (action === 'approve') {
         // Usar a nova API de aprovação
@@ -203,12 +203,12 @@ export default function ViewEvaluationClient({
         });
 
         if (response.ok) {
-          alert('Avaliação aprovada e finalizada!');
+          alert(t('evaluation.evaluationApproved'));
           router.push('/avaliacao');
           router.refresh();
         } else {
           const data = await response.json();
-          alert(data.error || 'Erro ao aprovar avaliação');
+          alert(data.error || t('evaluation.errorApproved'));
         }
       } else {
         // Devolver para ajustes
@@ -222,17 +222,17 @@ export default function ViewEvaluationClient({
         });
 
         if (response.ok) {
-          alert('Avaliação devolvida para ajustes!');
+          alert(t('evaluation.evaluationReturned'));
           router.push('/avaliacao');
           router.refresh();
         } else {
           const data = await response.json();
-          alert(data.error || 'Erro ao devolver avaliação');
+          alert(data.error || t('evaluation.errorReturning'));
         }
       }
     } catch (error) {
       console.error('Erro ao processar avaliação:', error);
-      alert('Erro ao processar avaliação');
+      alert(t('evaluation.errorProcessing'));
     }
   };
 
@@ -248,12 +248,12 @@ export default function ViewEvaluationClient({
       });
 
       if (response.ok) {
-        alert('Avaliação enviada para aprovação do gerente!');
+        alert(t('evaluation.sentForApproval'));
         router.refresh();
       }
     } catch (error) {
       console.error('Erro ao enviar avaliação:', error);
-      alert('Erro ao enviar avaliação');
+      alert(t('evaluation.errorSubmitting'));
     }
   };
 
@@ -386,6 +386,12 @@ export default function ViewEvaluationClient({
           confidential: t('avaliacao.confidential'),
           managerQuestionsAnswered: t('avaliacao.managerQuestionsAnswered'),
           collaboratorAnswersIntro: t('avaliacao.collaboratorAnswersIntro'),
+          // Performance levels for PDF
+          performanceLevelExceptional: t('evaluation.performanceLevels.exceptional'),
+          performanceLevelExcellent: t('evaluation.performanceLevels.excellent'),
+          performanceLevelGood: t('evaluation.performanceLevels.good'),
+          performanceLevelRegular: t('evaluation.performanceLevels.regular'),
+          performanceLevelInsufficient: t('evaluation.performanceLevels.insufficient'),
         },
         statusTranslations: {
           'pendente': t('avaliacao.status.pending'),
@@ -417,7 +423,7 @@ export default function ViewEvaluationClient({
   if (!evaluation) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Avaliação não encontrada.</p>
+        <p className="text-gray-600">{t('evaluation.evaluationNotFound')}</p>
       </div>
     );
   }
@@ -475,7 +481,7 @@ export default function ViewEvaluationClient({
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <h1 className="text-4xl font-bold text-gray-900">
-                Avaliação de Desempenho
+                {t('evaluation.title')}
               </h1>
               <StatusBadge status={evaluation.status} />
             </div>
@@ -498,7 +504,7 @@ export default function ViewEvaluationClient({
                   )}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Colaborador</p>
+                  <p className="text-sm text-gray-600">{t('evaluation.collaborator')}</p>
                   <p className="text-lg font-semibold text-gray-900">{employee?.firstName} {employee?.lastName}</p>
                   <p className="text-sm text-gray-500">{employee?.email}</p>
                 </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiClock, FiUser, FiCalendar, FiEye } from 'react-icons/fi';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface AvaliacaoPendente {
   id: string;
@@ -16,6 +17,7 @@ interface AvaliacaoPendente {
 
 export default function PendentesClient() {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoPendente[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,10 +56,10 @@ export default function PendentesClient() {
     <div className="container mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-          Avaliações Pendentes de Revisão
+          {t('evaluation.pendingReviews')}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
-          {avaliacoes.length} avaliação(ões) aguardando sua aprovação
+          {avaliacoes.length} {t('evaluation.evaluationsAwaitingApproval')}
         </p>
       </div>
 
@@ -65,10 +67,10 @@ export default function PendentesClient() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
           <FiClock className="mx-auto text-6xl text-gray-400 mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            Nenhuma avaliação pendente
+            {t('evaluation.noPendingEvaluations')}
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            Todas as avaliações foram revisadas!
+            {t('evaluation.allEvaluationsReviewed')}
           </p>
         </div>
       ) : (
@@ -86,26 +88,26 @@ export default function PendentesClient() {
                       {avaliacao.funcionario_nome}
                     </h3>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Cargo</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('common.position')}</p>
                       <p className="font-medium text-gray-700 dark:text-gray-300">
-                        {avaliacao.funcionario_cargo || 'Não informado'}
+                        {avaliacao.funcionario_cargo || t('common.notInformed')}
                       </p>
                     </div>
-                    
+
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Período</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('evaluation.period')}</p>
                       <p className="font-medium text-gray-700 dark:text-gray-300">
                         {avaliacao.periodo}
                       </p>
                     </div>
-                    
+
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Submetida em</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('common.submittedOn')}</p>
                       <p className="font-medium text-gray-700 dark:text-gray-300">
-                        {new Date(avaliacao.data_autoavaliacao).toLocaleDateString('pt-BR')}
+                        {new Date(avaliacao.data_autoavaliacao).toLocaleDateString(locale === 'pt' ? 'pt-BR' : 'en-US')}
                       </p>
                     </div>
                   </div>
@@ -116,7 +118,7 @@ export default function PendentesClient() {
                   className="btn btn-primary gap-2"
                 >
                   <FiEye />
-                  Revisar
+                  {t('common.review')}
                 </button>
               </div>
             </div>

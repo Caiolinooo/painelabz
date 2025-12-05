@@ -23,7 +23,9 @@ import {
     FiMenu,
     FiX,
     FiChevronLeft,
-    FiChevronRight
+    FiChevronRight,
+    FiClipboard,
+    FiBriefcase
 } from 'react-icons/fi';
 
 export const iconMap: Record<string, any> = {
@@ -51,7 +53,9 @@ export const iconMap: Record<string, any> = {
     'FiMenu': FiMenu,
     'FiX': FiX,
     'FiChevronLeft': FiChevronLeft,
-    'FiChevronRight': FiChevronRight
+    'FiChevronRight': FiChevronRight,
+    'FiClipboard': FiClipboard,
+    'FiBriefcase': FiBriefcase
 };
 
 /**

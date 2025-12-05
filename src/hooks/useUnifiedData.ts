@@ -8,7 +8,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { unifiedDataService, UnifiedItem, getDashboardCards, getMenuItems } from '@/lib/unifiedDataService';
 import { getCardsCached } from '@/lib/cardsCache';
-import { FiGrid } from 'react-icons/fi';
+import { getIconComponent } from '@/lib/iconMap';
 
 
 interface UseUnifiedDataOptions {
@@ -65,7 +65,7 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
                   title: c.title,
                   description: c.description || '',
                   href: c.href,
-                  icon: FiGrid,
+                  icon: getIconComponent(c.iconName || c.icon || 'FiGrid'),
                   iconName: c.iconName || c.icon || 'FiGrid',
                   external: false,
                   enabled: c.enabled !== undefined ? c.enabled : true,

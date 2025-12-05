@@ -77,7 +77,7 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
     obrigatoria: true,
     categoria: 'Autoavaliação'
   },
-  
+
   // Competências Comportamentais - Avaliação do gerente
   {
     id: 'pontualidade-comprometimento',
@@ -97,7 +97,7 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
     obrigatoria: true,
     categoria: 'Competências Comportamentais'
   },
-  
+
   // Habilidades Interpessoais
   {
     id: 'comunicacao-colaboracao',
@@ -117,7 +117,7 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
     obrigatoria: true,
     categoria: 'Habilidades Interpessoais'
   },
-  
+
   // Competências Técnicas
   {
     id: 'conhecimento-atividades',
@@ -137,7 +137,7 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
     obrigatoria: true,
     categoria: 'Competências Técnicas'
   },
-  
+
   // Liderança - Apenas para líderes
   {
     id: 'lideranca-delegar',
@@ -159,7 +159,7 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
     apenas_lideres: true,
     categoria: 'Liderança'
   },
-  
+
   // Avaliação Final do Gerente
   {
     id: 'comentario-avaliador',
@@ -175,8 +175,8 @@ export const QUESTIONARIO_PADRAO: QuestionarioPergunta[] = [
 // Escala de avaliação fixa
 export const ESCALA_AVALIACAO = [
   { valor: 1, descricao: 'Frequentemente não alcançou a expectativa' },
-  { valor: 2, descricao: 'Não alcançou a expectativa' },
+  { valor: 2, descricao: 'Algumas vezes não alcançou a expectativa' },
   { valor: 3, descricao: 'Alcançou a expectativa' },
-  { valor: 4, descricao: 'Frequentemente excedeu a expectativa' },
-  { valor: 5, descricao: 'Superou consistentemente a expectativa' }
+  { valor: 4, descricao: 'Algumas vezes excedeu a expectativa' },
+  { valor: 5, descricao: 'Frequentemente excedeu a expectativa' }
 ];
