@@ -4,14 +4,14 @@
 
 ![Painel ABZ Logo](public/images/LC1_Azul.png)
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
-[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-1.1.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.0-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -39,6 +39,7 @@ O **Painel ABZ** é uma plataforma moderna de gestão empresarial desenvolvida p
 - **Calendário Empresarial** - Eventos, notificações e integração ICS
 - **Sistema de Notícias** - Feed de notícias com comentários e moderação
 - **Rede Social Interna** - Posts, likes, comentários e interação entre usuários
+- **WKRadar** - Sistema de gerenciamento de credenciais e seed cards com controle de acesso
 
 ### 🔐 **Segurança & Autenticação**
 - **Autenticação Supabase** - Login seguro com JWT e verificação em duas etapas
@@ -93,8 +94,8 @@ graph TB
 
 | Categoria | Tecnologia | Versão | Descrição |
 |-----------|------------|--------|-----------|
-| **Frontend** | Next.js | 15.0 | Framework React com SSR |
-| **React** | React | 19.0 | Biblioteca UI reativa |
+| **Frontend** | Next.js | 14.2 | Framework React com SSR |
+| **React** | React | 18.2 | Biblioteca UI reativa |
 | **Linguagem** | TypeScript | 5.0+ | Tipagem estática |
 | **Styling** | Tailwind CSS | 3.4+ | Framework CSS utilitário |
 | **Database** | Supabase | Latest | PostgreSQL como serviço |
@@ -333,6 +334,14 @@ painel-abz/
 - **Permissões ACL**: Sistema granular de controle de acesso
 - **Auditoria**: Logs completos de ações do sistema
 
+### WKRadar
+- **Gerenciamento de Credenciais**: CRUD completo de credenciais WKRadar
+- **Seed Cards**: Visualização pública de cartões de sementes
+- **Interface Administrativa**: Painel dedicado para administradores
+- **API RESTful**: Endpoints completos para integração
+- **Controle de Acesso**: Permissões específicas por usuário
+- **Migrações de Banco**: Tabelas dedicadas com estrutura otimizada
+
 ## 📱 Screenshots do Sistema
 
 ### 🏠 **Dashboard Principal**
@@ -376,8 +385,9 @@ painel-abz/
 - [x] Menu colapsável responsivo
 - [x] Editor markdown avançado
 - [x] Sistema de calendário empresarial
+- [x] Módulo WKRadar para gerenciamento de credenciais
 
-### 🚧 **Em Desenvolvimento (v1.1)**
+### 🚧 **Em Desenvolvimento (v3.7)**
 - [ ] Sistema de avaliações avançado com métricas
 - [ ] Relatórios em PDF com gráficos
 - [ ] API mobile para aplicativo
@@ -398,8 +408,17 @@ painel-abz/
 
 ## 🆕 Atualizações Recentes
 
-### **Novembro 2025 (v1.1.0)**
-- ✅ **Next.js 15 + React 19**: Atualização para as versões mais recentes do framework
+### **Dezembro 2024 (v3.6.0)**
+- ✅ **Módulo WKRadar**: Sistema completo de gerenciamento de credenciais e seed cards
+  - Interface administrativa para gestão de credenciais
+  - Página pública para visualização de seed cards
+  - API RESTful completa para operações CRUD
+  - Migrações de banco de dados com tabelas dedicadas
+  - Controle de acesso e permissões granulares
+- ✅ **Internacionalização**: Traduções completas para PT-BR e EN-US do módulo WKRadar
+- ✅ **Versionamento**: Sistema de controle de versão aprimorado
+
+### **Novembro 2024 (v3.5.0)**
 - ✅ **Sistema de Avaliação Refatorado**: Correção de bugs críticos e melhoria de performance
   - Corrigido erro 400 na criação de avaliações (coluna resultado)
   - Implementado sistema de soft delete com lixeira (30 dias)
@@ -408,7 +427,7 @@ painel-abz/
 - ✅ **Segurança Aprimorada**: Hardening de autenticação e permissões
 - ✅ **Estabilidade do Sistema**: Correção de bugs e melhorias gerais
 
-### **Setembro 2025**
+### **Setembro 2024**
 - ✅ **Academia Corporativa**: Sistema completo de cursos, certificados e templates
 - ✅ **Notificações Push**: Implementação de web push notifications com service worker
 - ✅ **Sistema de Notícias**: Feed avançado com comentários, moderação e editor markdown
@@ -417,7 +436,7 @@ painel-abz/
 - ✅ **Editor Fullscreen**: Editor markdown com preview em tempo real
 - ✅ **Melhorias de UX**: Menu colapsável, saudação personalizada, tema consistente
 
-### **Agosto 2025**
+### **Agosto 2024**
 - ✅ **Correções de Segurança**: Hardening de autenticação e CORS
 - ✅ **Migração Supabase**: Transição completa do Prisma para Supabase
 - ✅ **Sistema de Perfil**: Upload de fotos via Google Drive e configurações avançadas
@@ -461,6 +480,7 @@ O sistema possui uma API RESTful completa para gerenciamento de todos os recurso
 - `/api/calendar`: Gerenciamento de calendário
 - `/api/social`: Rede social interna
 - `/api/notifications`: Sistema de notificações push
+- `/api/wkradar`: Gerenciamento de credenciais e seed cards WKRadar
 
 ## 📧 Sistema de Email
 
