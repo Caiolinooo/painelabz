@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.1-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,12 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.6.1)**
+- ✅ **Correção de Segurança WKRadar**: Implementado proxy Next.js para Guacamole
+  - Resolvido problema de Mixed Content (HTTP/HTTPS)
+  - URL relativa para melhor segurança e compatibilidade
+  - Configuração de rewrites no next.config.js
 
 ### **Dezembro 2024 (v3.6.0)**
 - ✅ **Módulo WKRadar**: Sistema completo de gerenciamento de credenciais e seed cards
