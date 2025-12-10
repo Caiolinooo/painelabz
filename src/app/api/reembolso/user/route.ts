@@ -89,6 +89,33 @@ export async function GET(request: NextRequest) {
     const isAdmin = userRole === 'ADMIN';
     const isManager = userRole === 'MANAGER';
 
+    // 3.1. Buscar permissões específicas do usuário para verificar reimbursement_approval
+    let hasApprovalPermission = false;
+    try {
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('users_unified')
+        .select('access_permissions')
+        .eq('id', userId)
+        .single();
+
+      if (!userError && userData) {
+        hasApprovalPermission = !!(
+          userData.access_permissions?.features?.reimbursement_approval
+        );
+        console.log('✅ Permissão de aprovação de reembolso:', hasApprovalPermission);
+      }
+    } catch (permError) {
+      console.error('Erro ao buscar permissões do usuário:', permError);
+    }
+
+    // Combinar verificação: Admin, Manager por role, ou permissão específica de feature
+    const canViewAllReimbursements = isAdmin || isManager || hasApprovalPermission;
+    console.log('Pode visualizar todos os reembolsos:', canViewAllReimbursements, {
+      isAdmin,
+      isManager,
+      hasApprovalPermission
+    });
+
     // Verificar se a coluna user_id existe na tabela Reimbursement
     // Usar uma query simples para testar se a coluna existe
     let hasUserIdColumn = false;
@@ -110,8 +137,8 @@ export async function GET(request: NextRequest) {
     let queryUserId: string | null = null;
     let queryUserEmail: string | null = null;
 
-    if (isAdmin || isManager) {
-      // Admins e gerentes podem ver reembolsos de qualquer usuário
+    if (canViewAllReimbursements) {
+      // Admins, gerentes e usuários com permissão de aprovação podem ver reembolsos de qualquer usuário
       if (queryEmail) {
         // Se um email específico for fornecido, buscar o user_id correspondente
         const { data: userData, error: userError } = await supabaseAdmin
@@ -121,7 +148,7 @@ export async function GET(request: NextRequest) {
 
         if (!userError && userData && userData.length > 0) {
           queryUserId = userData[0].id;
-          console.log(`Admin/Manager buscando por user_id específico: ${queryUserId} (email: ${queryEmail})`);
+          console.log(`Usuário com permissão buscando por user_id específico: ${queryUserId} (email: ${queryEmail})`);
         } else {
           // Se não encontrar o usuário pelo email principal, tentar buscar em user_emails
           const { data: userEmailsData, error: emailsError } = await supabaseAdmin
@@ -131,16 +158,16 @@ export async function GET(request: NextRequest) {
 
           if (!emailsError && userEmailsData && userEmailsData.length > 0) {
             queryUserId = userEmailsData[0].user_id;
-            console.log(`Admin/Manager buscando por user_id específico: ${queryUserId} (email adicional: ${queryEmail})`);
+            console.log(`Usuário com permissão buscando por user_id específico: ${queryUserId} (email adicional: ${queryEmail})`);
           } else {
             // Se não encontrar o usuário, usar o email para busca (compatibilidade com dados antigos)
             queryUserEmail = queryEmail.toLowerCase().trim();
-            console.log(`Admin/Manager buscando por email específico: ${queryUserEmail} (user_id não encontrado)`);
+            console.log(`Usuário com permissão buscando por email específico: ${queryUserEmail} (user_id não encontrado)`);
           }
         }
       } else {
         // Se nenhum email for especificado, eles podem ver todos os reembolsos
-        console.log('Admin/Manager buscando todos os reembolsos');
+        console.log('Usuário com permissão de aprovação buscando todos os reembolsos');
       }
     } else {
       // Usuários normais só podem ver seus próprios reembolsos
@@ -193,7 +220,7 @@ export async function GET(request: NextRequest) {
     } else if (queryUserEmail) {
       // Se tivermos um email específico para filtrar, usar email
       query = query.eq('email', queryUserEmail);
-    } else if (!isAdmin && !isManager) {
+    } else if (!canViewAllReimbursements) {
       // Se for um usuário normal sem user_id ou email para filtrar, usar o email do usuário
       // Incluir tanto reembolsos com user_id quanto reembolsos antigos apenas com email
       query = query.or(`user_id.eq.${userId},and(user_id.is.null,email.eq.${userEmail})`);
@@ -248,8 +275,26 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Erro ao buscar reembolsos do usuário:', error);
+
+    // Provide more descriptive error messages based on error type
+    let errorMessage = 'Erro ao buscar reembolsos';
+    let errorDetails = 'Erro desconhecido';
+
+    if (error instanceof Error) {
+      errorDetails = error.message;
+
+      // Check for common network/connection errors
+      if (error.message.includes('fetch failed') || error.message.includes('ECONNREFUSED')) {
+        errorMessage = 'Erro de conexão com o banco de dados';
+        errorDetails = 'Não foi possível conectar ao Supabase. Verifique sua conexão de internet e as configurações do servidor.';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Timeout na requisição';
+        errorDetails = 'A requisição demorou muito para responder. Tente novamente.';
+      }
+    }
+
     return NextResponse.json(
-      { error: String(error) },
+      { error: errorMessage, details: errorDetails },
       { status: 500 }
     );
   }

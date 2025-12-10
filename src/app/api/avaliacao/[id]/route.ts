@@ -74,10 +74,38 @@ export async function GET(
       );
     }
 
+    // Verificar se o funcionário é líder (via tabela lideres)
+    // Primeiro tenta via RPC se existir
+    let isEmployeeLeader = false;
+    try {
+      const { data: isLeaderRpc, error: rpcError } = await supabaseAdmin
+        .rpc('is_usuario_lider', { p_usuario_id: avaliacao.funcionario_id });
+
+      if (!rpcError) {
+        isEmployeeLeader = !!isLeaderRpc;
+      } else {
+        // Fallback: consulta direta na tabela lideres
+        const { data: liderData } = await supabaseAdmin
+          .from('lideres')
+          .select('id')
+          .eq('user_id', avaliacao.funcionario_id)
+          .eq('ativo', true)
+          .is('data_fim', null)
+          .single();
+
+        isEmployeeLeader = !!liderData;
+      }
+    } catch (err) {
+      console.warn('Erro ao verificar liderança:', err);
+      // Mantém false em caso de erro
+    }
+
     return NextResponse.json({
       success: true,
       data: avaliacao,
-      userId: userId // Adicionar userId na resposta
+      data: avaliacao,
+      userId: userId, // Adicionar userId na resposta
+      isEmployeeLeader // Adicionar status de liderança na resposta
     });
 
   } catch (error: any) {

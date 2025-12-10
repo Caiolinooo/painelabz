@@ -2632,6 +2632,8 @@ export default {
     clickToAccess: 'Click "Access System" to start',
     connectionIssue: 'Connection issues?',
     openNewWindow: 'Open in new window',
+    enterFullscreen: 'Fullscreen',
+    exitFullscreen: 'Exit Fullscreen',
     adminTitle: 'WKRadar Configuration',
     adminDesc: 'Manage WKRadar access credentials for each user',
     defaultCredentials: 'Default Credentials',

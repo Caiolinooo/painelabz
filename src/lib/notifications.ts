@@ -458,9 +458,13 @@ export async function sendReimbursementConfirmationEmail(
     }
 
     // Preparar lista de destinatários
-    const recipients = [email, 'logistica@groupabz.com'];
+    // Regra: para usuários @groupabz.com, usar apenas destinatários configurados (andresa/fiscal)
+    // Para outros domínios, enviar para logistica@groupabz.com como padrão
+    const recipients = [email];
 
-    // Adicionar destinatários adicionais se existirem
+    const isGroupAbzDomain = email.toLowerCase().endsWith('@groupabz.com');
+
+    // Adicionar destinatários adicionais se existirem (vem das configurações)
     if (additionalRecipients && additionalRecipients.length > 0) {
       console.log(`Adicionando destinatários adicionais: ${additionalRecipients.join(', ')}`);
       additionalRecipients.forEach(recipient => {
@@ -468,9 +472,16 @@ export async function sendReimbursementConfirmationEmail(
           recipients.push(recipient);
         }
       });
+    } else if (!isGroupAbzDomain) {
+      // Se não há destinatários configurados e o usuário NÃO é do domínio @groupabz.com,
+      // enviar para logística como fallback padrão
+      console.log('Usuário não é do domínio @groupabz.com, adicionando logistica@groupabz.com como destinatário padrão');
+      recipients.push('logistica@groupabz.com');
     }
 
     console.log(`Lista final de destinatários: ${recipients.join(', ')}`);
+    console.log(`Domínio @groupabz.com: ${isGroupAbzDomain}`);
+    console.log(`Destinatários adicionais configurados: ${additionalRecipients?.length || 0}`);
 
     // Importar utilitários de debug
     const { saveAttachmentsToFiles } = await import('./debug-utils');

@@ -4,6 +4,72 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+// GET - Obter perfil do usuário autenticado
+export async function GET(request: NextRequest) {
+  try {
+    // Verificar autenticação
+    const authHeader = request.headers.get('authorization');
+    const token = extractTokenFromHeader(authHeader || '');
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Token inválido ou expirado' },
+        { status: 401 }
+      );
+    }
+
+    // Inicializar cliente Supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Buscar perfil do usuário
+    const { data: profile, error } = await supabase
+      .from('users_unified')
+      .select('*')
+      .eq('id', payload.userId)
+      .single();
+
+    if (error) {
+      console.error('Erro ao buscar perfil do usuário:', error);
+      return NextResponse.json(
+        { error: 'Erro ao buscar perfil do usuário' },
+        { status: 500 }
+      );
+    }
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'Perfil não encontrado' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(profile);
+  } catch (error) {
+    console.error('Erro ao processar requisição GET:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     // Verificar autenticação
@@ -68,7 +134,7 @@ export async function PUT(request: NextRequest) {
         code: fetchError.code
       });
       return NextResponse.json(
-        { 
+        {
           error: 'Erro ao buscar dados do usuário',
           details: fetchError.message
         },
@@ -100,7 +166,7 @@ export async function PUT(request: NextRequest) {
         code: updateError.code
       });
       return NextResponse.json(
-        { 
+        {
           error: 'Erro ao atualizar perfil',
           details: updateError.message,
           code: updateError.code,
