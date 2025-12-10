@@ -32,7 +32,8 @@
       "Bash(powershell -Command \"(Get-Content ''src\\lib\\services\\avaliacao-workflow-service.ts'' | Measure-Object -Line).Lines\")",
       "Bash(powershell -Command \"Get-Content ''src\\lib\\services\\avaliacao-workflow-service.ts'' -Tail 30\")",
       "Bash(del temp_auth_old.txt 2)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []

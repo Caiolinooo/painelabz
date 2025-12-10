@@ -13,6 +13,7 @@ export default function FillEvaluationPage({ params }: PageProps) {
   const { id } = params; // Extrai ID diretamente
   const [evaluation, setEvaluation] = useState<any>(null);
   const [isManager, setIsManager] = useState(false);
+  const [isEmployeeLeader, setIsEmployeeLeader] = useState(false);
   const [userId, setUserId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function FillEvaluationPage({ params }: PageProps) {
 
         const evalData = data.data;
         const currentUserId = data.userId || '';
+        const isLeader = data.isEmployeeLeader || false;
 
         // Check permissions
         const isCollab = evalData.funcionario_id === currentUserId;
@@ -68,6 +70,7 @@ export default function FillEvaluationPage({ params }: PageProps) {
 
         setEvaluation(evalData);
         setIsManager(isMgr);
+        setIsEmployeeLeader(isLeader);
         setUserId(currentUserId);
         setLoading(false);
       } catch (err) {
@@ -117,6 +120,7 @@ export default function FillEvaluationPage({ params }: PageProps) {
       evaluation={evaluation}
       isManager={isManager}
       userId={userId}
+      isEmployeeLeader={isEmployeeLeader}
     />
   );
 }

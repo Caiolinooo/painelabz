@@ -15,12 +15,14 @@ interface FillEvaluationClientProps {
   evaluation: Evaluation;
   isManager: boolean;
   userId: string;
+  isEmployeeLeader: boolean;
 }
 
 export default function FillEvaluationClient({
   evaluation,
   isManager,
-  userId
+  userId,
+  isEmployeeLeader
 }: FillEvaluationClientProps) {
   const router = useRouter();
   const { t } = useI18n();
@@ -32,6 +34,7 @@ export default function FillEvaluationClient({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [evaluatorComment, setEvaluatorComment] = useState(evaluation.comentario_avaliador || '');
 
   // Verificar se avaliação está concluída e bloquear edição
   useEffect(() => {
@@ -69,11 +72,7 @@ export default function FillEvaluationClient({
   }
 
   // Verificar se o funcionário é líder (baseado no role ou cargo)
-  const isEmployeeLeader = evaluation.funcionario?.role === 'MANAGER' ||
-    evaluation.funcionario?.role === 'ADMIN' ||
-    evaluation.funcionario?.cargo?.toLowerCase().includes('gerente') ||
-    evaluation.funcionario?.cargo?.toLowerCase().includes('líder') ||
-    evaluation.funcionario?.cargo?.toLowerCase().includes('coordenador');
+  // Agora recebemos via prop isEmployeeLeader calculada no backend
 
   const handleChange = (questionId: string, value: any) => {
     setRespostas(prev => ({
@@ -94,6 +93,19 @@ export default function FillEvaluationClient({
       return false;
     }
 
+    return true;
+  };
+
+  const validateEvaluatorComment = (): boolean => {
+    if (isManager && (!evaluatorComment || evaluatorComment.trim().length === 0)) {
+      setError(t('evaluation.evaluatorCommentRequired'));
+      // Scroll para o campo de comentário
+      const commentElement = ***REMOVED***'evaluator-comment-section');
+      if (commentElement) {
+        commentElement.scrollIntoView({ behavior: 'smooth' });
+      }
+      return false;
+    }
     return true;
   };
 
@@ -145,6 +157,10 @@ export default function FillEvaluationClient({
       return;
     }
 
+    if (isManager && !validateEvaluatorComment()) {
+      return;
+    }
+
     setShowConfirmModal(true);
   };
 
@@ -163,7 +179,7 @@ export default function FillEvaluationClient({
             'Content-Type': 'application/json',
           },
           body: ***REMOVED***
-            comentario_avaliador: respostas['Q15']?.comentario || '',
+            comentario_avaliador: evaluatorComment, // Usar o state dedicado
             respostas: respostas  // Enviar respostas completas (Q15-Q24)
           }),
         });
@@ -341,6 +357,41 @@ export default function FillEvaluationClient({
             isEmployeeLeader={isEmployeeLeader}
           />
         </motion.div>
+
+        {/* Campo de Comentário Final do Avaliador (Apenas Gerente) */}
+        {isManager && (
+          <motion.div
+            id="evaluator-comment-section"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mt-8 bg-white rounded-2xl shadow-lg p-6 border-2 border-purple-200"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-purple-600">✍️</span>
+              {t('evaluation.finalEvaluatorComment')}
+              <span className="text-red-500 text-sm ml-1">*</span>
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-4">
+              {t('evaluation.finalEvaluatorCommentDesc')}
+            </p>
+
+            <textarea
+              value={evaluatorComment}
+              onChange={(e) => {
+                setEvaluatorComment(e.target.value);
+                setError(null);
+              }}
+              placeholder={t('evaluation.finalEvaluatorCommentPlaceholder')}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none h-40"
+            />
+
+            <p className="text-xs text-gray-500 mt-2 text-right">
+              {evaluatorComment.length} {t('common.characters')}
+            </p>
+          </motion.div>
+        )}
 
         {/* Botões de ação */}
         <motion.div

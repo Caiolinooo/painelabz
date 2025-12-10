@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.2-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.3-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,22 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.6.3)**
+- ✅ **Melhorias no Sistema de Avaliações**: Verificação de liderança de funcionários
+  - Implementado verificação se funcionário é líder (tabela lideres)
+  - Adicionado fallback para consulta direta quando RPC não disponível
+  - Nova propriedade `isEmployeeLeader` na resposta da API de avaliações
+  - Tratamento de erros aprimorado para verificação de liderança
+- ✅ **Otimização de Notificações de Reembolso**: Lógica inteligente de destinatários
+  - Usuários @groupabz.com: apenas destinatários configurados (andresa/fiscal)
+  - Outros domínios: fallback automático para logistica@groupabz.com
+  - Sistema de logs aprimorado para rastreamento de envios
+  - Redução de emails duplicados para usuários internos
+- ✅ **Correções Gerais**: Melhorias de estabilidade e performance
+  - Ajustes em rotas de API de reembolso
+  - Melhorias no sistema de perfil de usuário
+  - Atualizações de traduções (PT-BR e EN-US)
 
 ### **Dezembro 2024 (v3.6.2)**
 - ✅ **Aprimoramento de Segurança WKRadar**: Migração para URL HTTPS direta

@@ -2947,6 +2947,8 @@ export default {
     clickToAccess: 'Clique em "Acessar Sistema" para iniciar',
     connectionIssue: 'Problemas de conexão?',
     openNewWindow: 'Abrir em nova janela',
+    enterFullscreen: 'Tela Cheia',
+    exitFullscreen: 'Sair da Tela Cheia',
     adminTitle: 'Configuração WKRadar',
     adminDesc: 'Gerencie as credenciais de acesso ao WKRadar para cada usuário',
     defaultCredentials: 'Credenciais Padrão',

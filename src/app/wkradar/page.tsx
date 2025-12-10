@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
-import { FiLoader, FiMonitor, FiSettings, FiLogIn, FiAlertCircle } from 'react-icons/fi';
+import { FiLoader, FiMonitor, FiSettings, FiLogIn, FiAlertCircle, FiMaximize, FiMinimize } from 'react-icons/fi';
 
 interface WKRadarCredentials {
     username: string;
@@ -21,6 +21,9 @@ export default function WKRadarPage() {
     const [loginAttempted, setLoginAttempted] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const newWindowFormRef = useRef<HTMLFormElement>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // URL direta segura (HTTPS) configurada no servidor vm.groupabz.com
     const GUACAMOLE_URL = 'https://vm.groupabz.com/guacamole/';
@@ -113,6 +116,51 @@ export default function WKRadarPage() {
         }, 100);
     };
 
+    const toggleFullscreen = () => {
+        if (!containerRef.current) return;
+
+        if (!document.fullscreenElement) {
+            containerRef.current.requestFullscreen().catch((err) => {
+                console.error(`Erro ao entrar em tela cheia: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const handleOpenNewWindow = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (newWindowFormRef.current) {
+            newWindowFormRef.current.submit();
+        }
+    };
+
+    // Focar no iframe quando clicar no container para garantir captura de teclado
+    const handleContainerClick = () => {
+        if (iframeRef.current) {
+            iframeRef.current.focus();
+        }
+    };
+
+    // Tentar focar no iframe após carregamento
+    useEffect(() => {
+        if (loginAttempted && iframeRef.current) {
+            const timer = setTimeout(() => {
+                iframeRef.current?.focus();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [loginAttempted]);
+
     if (authLoading || loading) {
         return (
             <MainLayout>
@@ -166,6 +214,14 @@ export default function WKRadarPage() {
                             </svg>
                         </button>
 
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-md transition-colors"
+                            title={isFullscreen ? t('wkradar.exitFullscreen', 'Sair da Tela Cheia') : t('wkradar.enterFullscreen', 'Tela Cheia')}
+                        >
+                            {isFullscreen ? <FiMinimize className="h-5 w-5" /> : <FiMaximize className="h-5 w-5" />}
+                        </button>
+
                         {/* Link para configuração (apenas admin) */}
                         {isAdmin && (
                             <a
@@ -177,15 +233,13 @@ export default function WKRadarPage() {
                             </a>
                         )}
 
-                        <a
-                            href={GUACAMOLE_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <button
+                            onClick={handleOpenNewWindow}
                             className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
                             title={t('wkradar.openNewWindow', 'Abrir em nova janela')}
                         >
                             <FiLogIn className="h-5 w-5" />
-                        </a>
+                        </button>
                     </div>
                 </div>
 
@@ -213,8 +267,26 @@ export default function WKRadarPage() {
                     </form>
                 )}
 
-                {/* Iframe do Guacamole - Full Height relative to container */}
-                <div className="flex-1 bg-gray-100 relative overflow-hidden">
+                {/* Form oculto para abrir em nova janela via POST */}
+                {credentials && (
+                    <form
+                        ref={newWindowFormRef}
+                        method="POST"
+                        action={GUACAMOLE_URL}
+                        target="_blank"
+                        style={{ display: 'none' }}
+                    >
+                        <input type="hidden" name="username" value={credentials.username} />
+                        <input type="hidden" name="password" value={credentials.password} />
+                    </form>
+                )}
+
+                {/* Iframe do Guacamole - Container com suporte a Fullscreen e Scroll */}
+                <div
+                    ref={containerRef}
+                    className={`flex-1 bg-gray-100 relative ${isFullscreen ? 'fixed inset-0 z-50' : ''} overflow-auto`}
+                    onClick={handleContainerClick}
+                >
                     <iframe
                         ref={iframeRef}
                         name="wkradar-iframe"
