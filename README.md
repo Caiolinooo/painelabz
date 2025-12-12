@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.4-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.5-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,20 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.6.5)**
+- ✅ **Ajustes no Sistema de Reembolso**: Refinamentos e correções
+  - Melhorias no componente de aprovação de reembolso
+  - Ajustes na interface de aprovação e rejeição
+  - Correções de bugs e estabilidade aprimorada
+- ✅ **Atualizações de Tradução**: Expansão de internacionalização
+  - Novas traduções para PT-BR e EN-US
+  - Melhorias nas chaves de tradução existentes
+  - Consistência de linguagem em todo o sistema
+- ✅ **Melhorias Gerais de Sistema**: Otimizações
+  - Ajustes de configuração e performance
+  - Refinamentos de UI/UX
+  - Correções de bugs menores
 
 ### **Dezembro 2024 (v3.6.4)**
 - ✅ **Melhorias no Sistema de Notificações de Reembolso**: Expansão do sistema de notificações
