@@ -742,10 +742,10 @@ export default function ReimbursementApproval() {
                           <button
                             onClick={() => handleMarkAsPaid(reimbursement.id)}
                             className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
-                            title="Marcar como Pago"
+                            title={t('admin.markAsPaid', 'Marcar como Pago')}
                           >
                             <FiDollarSign className="w-4 h-4" />
-                            <span className="text-xs">Pagar</span>
+                            <span className="text-xs">{t('admin.pay', 'Pagar')}</span>
                           </button>
                         )}
                       </div>

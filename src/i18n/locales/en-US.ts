@@ -920,6 +920,8 @@ export default {
     noFinanceEmailConfigured: 'Warning: No finance email configured!',
     atLeastOneFinanceEmail: 'At least one finance email is required',
     addFinanceEmail: 'Add finance email',
+    markAsPaid: 'Mark as Paid',
+    pay: 'Pay',
 
     documents: {
       section: 'Documents',

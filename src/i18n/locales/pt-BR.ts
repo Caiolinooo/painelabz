@@ -1058,8 +1058,10 @@ export default {
     financeEmailRecipients: 'Emails do Departamento Financeiro',
     financeEmailDescription: 'Estes emails serão notificados quando um reembolso for aprovado e estiver aguardando pagamento.',
     noFinanceEmailConfigured: 'Atenção: Nenhum email do financeiro configurado!',
-    atLeastOneFinanceEmail: 'É necessário pelo menos um email do financeiro',
+    atLeastOneFinanceEmail: 'Pelo menos um email do financeiro é obrigatório',
     addFinanceEmail: 'Adicionar email do financeiro',
+    markAsPaid: 'Marcar como Pago',
+    pay: 'Pagar',
 
     documents: {
       section: 'Documentos',

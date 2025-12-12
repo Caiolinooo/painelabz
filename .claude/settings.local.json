@@ -33,7 +33,8 @@
       "Bash(powershell -Command \"Get-Content ''src\\lib\\services\\avaliacao-workflow-service.ts'' -Tail 30\")",
       "Bash(del temp_auth_old.txt 2)",
       "WebSearch",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(gh pr create:*)"
     ],
     "deny": [],
     "ask": []
