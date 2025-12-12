@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.3-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.4-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,30 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.6.4)**
+- ✅ **Melhorias no Sistema de Notificações de Reembolso**: Expansão do sistema de notificações
+  - Implementado notificação também para o solicitante ao criar reembolso
+  - Sistema de notificação bidirecional (aprovadores e solicitantes)
+  - Melhorias na função `sendReimbursementNotification` com suporte a notificações de criação
+  - Logs aprimorados para rastreamento de notificações enviadas
+- ✅ **Aprimoramentos na Interface de Aprovação de Reembolso**: UX melhorada
+  - Adicionado indicador de carregamento durante aprovação/rejeição
+  - Tratamento de erros mais robusto com mensagens descritivas
+  - Feedback visual aprimorado para ações do usuário
+  - Validação de dados antes do processamento
+- ✅ **Melhorias nas Configurações de Email de Reembolso**: Interface administrativa aprimorada
+  - Interface de configuração de destinatários de email reorganizada
+  - Validação de emails mais robusta no frontend
+  - Feedback visual durante salvamento de configurações
+  - Melhor tratamento de erros e estados de carregamento
+- ✅ **Correções em Avaliações**: Melhorias de estabilidade
+  - Correções em rotas de API de avaliação
+  - Ajustes no componente de visualização de avaliações
+- ✅ **Internacionalização**: Traduções expandidas
+  - Novas chaves de tradução para notificações de reembolso (PT-BR e EN-US)
+  - Mensagens de erro e sucesso traduzidas
+  - Suporte completo a múltiplos idiomas nas novas funcionalidades
 
 ### **Dezembro 2024 (v3.6.3)**
 - ✅ **Melhorias no Sistema de Avaliações**: Verificação de liderança de funcionários

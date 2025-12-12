@@ -1047,6 +1047,20 @@ export default {
     approveReimbursementsDesc: 'Aprove ou rejeite solicitações de reembolso',
     reimbursementSettingsDesc: 'Configure emails e regras de reembolso',
     fixPermissionsDesc: 'Corrigir permissões de administrador',
+
+    // Configurações de Email de Reembolso
+    reimbursementEmailSettings: 'Configurações de Email de Reembolso',
+    enableDomainRule: 'Ativar regra especial para emails com domínio @groupabz.com',
+    domainRuleDescription: 'Quando ativada, esta regra enviará automaticamente os formulários de reembolso para os emails adicionais abaixo quando o solicitante tiver um email com o domínio @groupabz.com.',
+    confirmationRecipients: 'Destinatários de Confirmação',
+    confirmationRecipientsDescription: 'Estes emails receberão cópia dos formulários de reembolso quando solicitados.',
+    noRecipientsConfigured: 'Nenhum destinatário adicional configurado',
+    financeEmailRecipients: 'Emails do Departamento Financeiro',
+    financeEmailDescription: 'Estes emails serão notificados quando um reembolso for aprovado e estiver aguardando pagamento.',
+    noFinanceEmailConfigured: 'Atenção: Nenhum email do financeiro configurado!',
+    atLeastOneFinanceEmail: 'É necessário pelo menos um email do financeiro',
+    addFinanceEmail: 'Adicionar email do financeiro',
+
     documents: {
       section: 'Documentos',
       description: 'Gerencie documentos, políticas e manuais.',

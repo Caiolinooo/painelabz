@@ -684,12 +684,12 @@ export default function ViewEvaluationClient({
             <div className="mb-6 p-6 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
               <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <span className="w-3 h-3 bg-yellow-500 rounded-full"></span>
-                Adicionar Comentários (Opcional)
+                Adicionar Comentários <span className="text-red-500">*</span>
               </h4>
               <textarea
                 value={comentarioGerente}
                 onChange={(e) => setComentarioGerente(e.target.value)}
-                placeholder="Adicione comentários para o colaborador (obrigatório apenas se devolver para ajustes)..."
+                placeholder="Adicione seu comentário/avaliação final sobre o colaborador (obrigatório)..."
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all resize-none"
                 rows={4}
               />
@@ -821,6 +821,10 @@ export default function ViewEvaluationClient({
                   </button>
                   <button
                     onClick={() => {
+                      if (!comentarioGerente.trim()) {
+                        alert('Por favor, adicione seu comentário/avaliação final sobre o colaborador antes de aprovar.');
+                        return;
+                      }
                       if (confirm('Tem certeza que deseja aprovar e finalizar esta avaliação?')) {
                         handleManagerAction('approve');
                       }

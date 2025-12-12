@@ -291,6 +291,64 @@ export default function ReimbursementApproval() {
     }
   };
 
+  // Função para marcar como pago uma solicitação aprovada
+  const handleMarkAsPaid = async (id: string) => {
+    try {
+      console.log(`Tentando marcar como pago o reembolso com ID: ${id}`);
+
+      // Primeiro, buscar o protocolo usando o ID
+      const { data: reimbursements, error: fetchError } = await supabaseAdmin
+        .from('Reimbursement')
+        .select('protocolo')
+        .eq('id', id)
+        .single();
+
+      let protocolo: string;
+
+      if (fetchError || !reimbursements) {
+        console.log('Tabela Reimbursement não encontrada, tentando tabela alternativa...');
+        // Tentar com o nome alternativo da tabela
+        const { data: altReimbursements, error: altFetchError } = await supabaseAdmin
+          .from('reimbursements')
+          .select('protocolo')
+          .eq('id', id)
+          .single();
+
+        if (altFetchError || !altReimbursements) {
+          console.error('Reembolso não encontrado em nenhuma tabela');
+          throw new Error(t('components.reembolsoNaoEncontrado'));
+        }
+
+        protocolo = altReimbursements.protocolo;
+      } else {
+        protocolo = reimbursements.protocolo;
+      }
+
+      console.log(`Protocolo encontrado: ${protocolo}`);
+
+      // Usar a função fetchWithAuth para fazer a requisição autenticada
+      const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          status: 'pago',
+          observacao: 'Pagamento efetuado pelo departamento financeiro'
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Resposta de erro:', errorText);
+        throw new Error('Erro ao marcar como pago');
+      }
+
+      toast.success('Reembolso marcado como pago com sucesso!');
+      fetchReimbursements();
+    } catch (err) {
+      console.error('Erro ao marcar como pago:', err);
+      toast.error(err instanceof Error ? err.message : 'Erro ao marcar como pago');
+    }
+  };
+
   // Função para abrir o modal de rejeição
   const handleReject = (id: string) => {
     console.log(t('components.abrindoModalDeRejeicaoParaOReembolsoComIdId'));
@@ -645,12 +703,11 @@ export default function ReimbursementApproval() {
                       {formatCurrency(reimbursement.valorTotal || reimbursement.valor_total || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        reimbursement.status === 'aprovado' ? 'bg-green-100 text-green-800' :
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${reimbursement.status === 'aprovado' ? 'bg-green-100 text-green-800' :
                         reimbursement.status === 'rejeitado' ? 'bg-red-100 text-red-800' :
-                        reimbursement.status === 'pago' ? 'bg-blue-100 text-blue-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                          reimbursement.status === 'pago' ? 'bg-blue-100 text-blue-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {reimbursement.status.charAt(0).toUpperCase() + reimbursement.status.slice(1)}
                       </span>
                     </td>
@@ -681,6 +738,16 @@ export default function ReimbursementApproval() {
                             </button>
                           </>
                         )}
+                        {reimbursement.status === 'aprovado' && (
+                          <button
+                            onClick={() => handleMarkAsPaid(reimbursement.id)}
+                            className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                            title="Marcar como Pago"
+                          >
+                            <FiDollarSign className="w-4 h-4" />
+                            <span className="text-xs">Pagar</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -703,22 +770,20 @@ export default function ReimbursementApproval() {
             <button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className={`px-3 py-1 rounded-md ${
-                page === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-abz-blue text-white hover:bg-abz-blue-dark'
-              }`}
+              className={`px-3 py-1 rounded-md ${page === 1
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-abz-blue text-white hover:bg-abz-blue-dark'
+                }`}
             >
               {t('common.previous')}
             </button>
             <button
               onClick={() => setPage(page + 1)}
               disabled={page * limit >= totalCount}
-              className={`px-3 py-1 rounded-md ${
-                page * limit >= totalCount
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-abz-blue text-white hover:bg-abz-blue-dark'
-              }`}
+              className={`px-3 py-1 rounded-md ${page * limit >= totalCount
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-abz-blue text-white hover:bg-abz-blue-dark'
+                }`}
             >
               {t('common.next')}
             </button>

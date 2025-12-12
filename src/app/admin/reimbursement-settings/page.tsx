@@ -13,9 +13,11 @@ export default function ReimbursementSettingsPage() {
   const [emailSettings, setEmailSettings] = useState<{
     enableDomainRule: boolean;
     recipients: string[];
+    financeEmails: string[];
   }>({
     enableDomainRule: true,
-    recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com']
+    recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
+    financeEmails: ['financeiro@groupabz.com']
   });
 
   useEffect(() => {
@@ -71,7 +73,8 @@ export default function ReimbursementSettingsPage() {
       console.log(t('admin.usandoValoresPadraoParaAsConfiguracoes'));
       setEmailSettings({
         enableDomainRule: true,
-        recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com']
+        recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
+        financeEmails: ['financeiro@groupabz.com']
       });
     } catch (err) {
       console.error(t('admin.erroAoCarregarConfiguracoes'), err);
@@ -80,7 +83,8 @@ export default function ReimbursementSettingsPage() {
       // Usar valores padrão em caso de erro
       setEmailSettings({
         enableDomainRule: true,
-        recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com']
+        recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
+        financeEmails: ['financeiro@groupabz.com']
       });
     } finally {
       setIsLoading(false);
@@ -90,6 +94,7 @@ export default function ReimbursementSettingsPage() {
   const saveEmailSettings = async (settings: {
     enableDomainRule: boolean;
     recipients: string[];
+    financeEmails: string[];
   }): Promise<boolean> => {
     try {
       console.log(t('admin.salvandoConfiguracoesDeEmailDeReembolso'), settings);
