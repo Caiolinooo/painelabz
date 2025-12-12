@@ -907,6 +907,20 @@ export default {
     approveReimbursementsDesc: 'Approve or reject reimbursement requests',
     reimbursementSettingsDesc: 'Configure emails and reimbursement rules',
     fixPermissionsDesc: 'Fix administrator permissions',
+
+    // Reimbursement Email Settings
+    reimbursementEmailSettings: 'Reimbursement Email Settings',
+    enableDomainRule: 'Enable special rule for @groupabz.com domain emails',
+    domainRuleDescription: 'When enabled, this rule will automatically send reimbursement forms to the additional emails below when the applicant has an email with the @groupabz.com domain.',
+    confirmationRecipients: 'Confirmation Recipients',
+    confirmationRecipientsDescription: 'These emails will receive a copy of reimbursement forms when requested.',
+    noRecipientsConfigured: 'No additional recipients configured',
+    financeEmailRecipients: 'Finance Department Emails',
+    financeEmailDescription: 'These emails will be notified when a reimbursement is approved and awaiting payment.',
+    noFinanceEmailConfigured: 'Warning: No finance email configured!',
+    atLeastOneFinanceEmail: 'At least one finance email is required',
+    addFinanceEmail: 'Add finance email',
+
     documents: {
       section: 'Documents',
       description: 'Manage documents, policies, and manuals.',

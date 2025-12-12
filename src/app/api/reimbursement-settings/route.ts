@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
     // Valores padrão para retornar em caso de erro
     const defaultSettings = {
       enableDomainRule: true,
-      recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com']
+      recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
+      financeEmails: ['financeiro@groupabz.com']
     };
 
     try {
@@ -178,7 +179,8 @@ export async function GET(request: NextRequest) {
     // Retornar valores padrão mesmo em caso de erro
     return NextResponse.json({
       enableDomainRule: true,
-      recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com']
+      recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
+      financeEmails: ['financeiro@groupabz.com']
     });
   }
 }
@@ -190,18 +192,21 @@ export async function POST(request: NextRequest) {
 
     // Obter dados do corpo da requisição
     const body = await request.json();
-    const { enableDomainRule, recipients } = body;
+    const { enableDomainRule, recipients, financeEmails } = body;
 
-    console.log('Dados recebidos:', { enableDomainRule, recipients });
+    console.log('Dados recebidos:', { enableDomainRule, recipients, financeEmails });
 
     // Validar os dados de entrada
     if (typeof enableDomainRule !== 'boolean' || !Array.isArray(recipients)) {
-      console.error('Dados inválidos:', { enableDomainRule, recipients });
+      console.error('Dados inválidos:', { enableDomainRule, recipients, financeEmails });
       return NextResponse.json(
         { error: 'Dados inválidos' },
         { status: 400 }
       );
     }
+
+    // Garantir que financeEmails seja um array (usar padrão se não fornecido)
+    const financeEmailsList = Array.isArray(financeEmails) ? financeEmails : ['financeiro@groupabz.com'];
 
     try {
       // Verificar se a tabela settings existe
@@ -236,7 +241,7 @@ export async function POST(request: NextRequest) {
                 .from('settings')
                 .insert({
                   key: 'reimbursement_email_settings',
-                  value: { enableDomainRule, recipients },
+                  value: { enableDomainRule, recipients, financeEmails: financeEmailsList },
                   description: 'Configurações de email para solicitações de reembolso'
                 })
                 .select()
@@ -270,7 +275,8 @@ export async function POST(request: NextRequest) {
               const configFile = path.join(configDir, 'reimbursementSettings.json');
               fs.writeFileSync(configFile, ***REMOVED***
                 enableDomainRule,
-                recipients
+                recipients,
+                financeEmails: financeEmailsList
               }, null, 2));
 
               console.log('Configurações salvas em arquivo local:', configFile);
@@ -343,7 +349,7 @@ export async function POST(request: NextRequest) {
         const { data, error: updateError } = await supabaseAdmin
           .from('settings')
           .update({
-            value: { enableDomainRule, recipients },
+            value: { enableDomainRule, recipients, financeEmails: financeEmailsList },
             updated_at: new Date().toISOString()
           })
           .eq('key', 'reimbursement_email_settings')
@@ -366,7 +372,7 @@ export async function POST(request: NextRequest) {
           .from('settings')
           .insert({
             key: 'reimbursement_email_settings',
-            value: { enableDomainRule, recipients },
+            value: { enableDomainRule, recipients, financeEmails: financeEmailsList },
             description: 'Configurações de email para solicitações de reembolso'
           })
           .select()

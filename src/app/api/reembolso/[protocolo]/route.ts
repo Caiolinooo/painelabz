@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import { sendReimbursementApprovalEmail, sendReimbursementRejectionEmail } from '@/lib/notifications';
+import {
+  sendReimbursementApprovalEmail,
+  sendReimbursementRejectionEmail,
+  sendReimbursementPaymentEmail,
+  sendReimbursementApprovalToFinanceEmail
+} from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -214,7 +219,7 @@ export async function PUT(
     const usuarioId = payload.userId; // Usar o ID do usuário autenticado
 
     // Validar os dados
-    if (!status || !['pendente', 'aprovado', 'rejeitado'].includes(status)) {
+    if (!status || !['pendente', 'aprovado', 'rejeitado', 'pago'].includes(status)) {
       return NextResponse.json(
         { error: 'Status inválido' },
         { status: 400 }
@@ -312,7 +317,7 @@ export async function PUT(
       }).format(reembolso.valor_total || 0);
 
       if (status === 'aprovado') {
-        // Send approval email
+        // Send approval email to requester
         console.log('Enviando email de aprovação...');
         await sendReimbursementApprovalEmail(
           reembolso.email,
@@ -323,6 +328,42 @@ export async function PUT(
           observacao
         );
         console.log('Email de aprovação enviado com sucesso');
+
+        // Send notification to finance team - buscar emails configurados no banco
+        console.log('Buscando configurações de email do financeiro...');
+        let financeEmailsList: string[] = ['financeiro@groupabz.com']; // Fallback padrão
+
+        try {
+          const { data: settingsData } = await supabaseAdmin
+            .from('settings')
+            .select('value')
+            .eq('key', 'reimbursement_email_settings')
+            .single();
+
+          if (settingsData?.value?.financeEmails && Array.isArray(settingsData.value.financeEmails)) {
+            financeEmailsList = settingsData.value.financeEmails;
+            console.log('Emails do financeiro obtidos das configurações:', financeEmailsList);
+          }
+        } catch (settingsError) {
+          console.log('Usando email padrão do financeiro (configuração não encontrada)');
+        }
+
+        console.log('Enviando notificação para o financeiro:', financeEmailsList);
+        await sendReimbursementApprovalToFinanceEmail(
+          financeEmailsList,
+          reembolso.nome,
+          reembolso.protocolo,
+          valorFormatado,
+          reembolso.metodo_pagamento || 'Não especificado',
+          {
+            banco: reembolso.banco,
+            agencia: reembolso.agencia,
+            conta: reembolso.conta,
+            pixTipo: reembolso.pix_tipo,
+            pixChave: reembolso.pix_chave
+          }
+        );
+        console.log('Notificação enviada para o financeiro com sucesso');
       } else if (status === 'rejeitado') {
         // Send rejection email
         console.log('Enviando email de rejeição...');
@@ -333,6 +374,17 @@ export async function PUT(
           observacao || 'Não especificado'
         );
         console.log('Email de rejeição enviado com sucesso');
+      } else if (status === 'pago') {
+        // Send payment confirmation email to requester
+        console.log('Enviando email de confirmação de pagamento...');
+        await sendReimbursementPaymentEmail(
+          reembolso.email,
+          reembolso.nome,
+          reembolso.protocolo,
+          valorFormatado,
+          observacao
+        );
+        console.log('Email de pagamento enviado com sucesso');
       }
     } catch (emailError) {
       console.error('Erro ao enviar notificação por email:', emailError);

@@ -152,7 +152,7 @@ export async function PATCH(
 
     const userId = decoded.userId;
     const body = await request.json();
-    const { respostas, status, solicitar_ajustes } = body;
+    const { respostas, status, solicitar_ajustes, comentario_gerente } = body;
 
     // Usar instância síncrona do supabaseAdmin
 
@@ -238,6 +238,11 @@ export async function PATCH(
         ...avaliacaoAtual.respostas,
         ...respostas
       };
+    }
+
+    // Salvar comentário do gerente (sempre que fornecido)
+    if (comentario_gerente !== undefined) {
+      updateData.comentario_gerente = comentario_gerente;
     }
 
     if (status !== undefined) {

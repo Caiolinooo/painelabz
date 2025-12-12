@@ -627,6 +627,172 @@ export async function sendReimbursementRejectionEmail(
 }
 
 /**
+ * Envia um email de notificação de pagamento de reembolso
+ * @param email Email do destinatário (solicitante)
+ * @param nome Nome do solicitante
+ * @param protocolo Número do protocolo
+ * @param valor Valor do reembolso
+ * @param observacao Observação opcional
+ * @returns Resultado do envio
+ */
+export async function sendReimbursementPaymentEmail(
+  email: string,
+  nome: string,
+  protocolo: string,
+  valor: string,
+  observacao?: string
+): Promise<{ success: boolean; message: string; previewUrl?: string }> {
+  try {
+    // Gerar conteúdo do email
+    const emailContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Reembolso Pago</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">✅ Reembolso Pago!</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb;">
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+            Olá <strong>${nome}</strong>,
+          </p>
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+            Temos o prazer de informar que seu reembolso foi <strong style="color: #10b981;">pago</strong> com sucesso!
+          </p>
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
+            <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
+            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">PAGO</span></p>
+            ${observacao ? `<p style="margin: 5px 0;"><strong>Observação:</strong> ${observacao}</p>` : ''}
+          </div>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+            O valor foi depositado conforme os dados bancários informados na solicitação.
+            Em caso de dúvidas, entre em contato com o departamento financeiro.
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+            Este é um email automático do Portal ABZ Group. Por favor, não responda a este email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Enviar email
+    const result = await sendCustomEmail(
+      email,
+      `Reembolso Pago - Protocolo: ${protocolo}`,
+      emailContent
+    );
+
+    return result;
+  } catch (error) {
+    console.error('Erro ao enviar email de pagamento de reembolso:', error);
+    return {
+      success: false,
+      message: 'Erro ao enviar email de pagamento de reembolso'
+    };
+  }
+}
+
+/**
+ * Envia um email de notificação para o financeiro sobre reembolso aprovado
+ * @param financeEmail Email do financeiro
+ * @param solicitanteNome Nome do solicitante
+ * @param protocolo Número do protocolo
+ * @param valor Valor do reembolso
+ * @param metodoPagamento Método de pagamento
+ * @param dadosBancarios Dados bancários para pagamento
+ * @returns Resultado do envio
+ */
+export async function sendReimbursementApprovalToFinanceEmail(
+  financeEmail: string | string[],
+  solicitanteNome: string,
+  protocolo: string,
+  valor: string,
+  metodoPagamento: string,
+  dadosBancarios?: {
+    banco?: string;
+    agencia?: string;
+    conta?: string;
+    pixTipo?: string;
+    pixChave?: string;
+  }
+): Promise<{ success: boolean; message: string; previewUrl?: string }> {
+  try {
+    // Gerar conteúdo do email
+    const dadosPagamento = metodoPagamento === 'PIX'
+      ? `<p style="margin: 5px 0;"><strong>Tipo PIX:</strong> ${dadosBancarios?.pixTipo || 'N/A'}</p>
+         <p style="margin: 5px 0;"><strong>Chave PIX:</strong> ${dadosBancarios?.pixChave || 'N/A'}</p>`
+      : `<p style="margin: 5px 0;"><strong>Banco:</strong> ${dadosBancarios?.banco || 'N/A'}</p>
+         <p style="margin: 5px 0;"><strong>Agência:</strong> ${dadosBancarios?.agencia || 'N/A'}</p>
+         <p style="margin: 5px 0;"><strong>Conta:</strong> ${dadosBancarios?.conta || 'N/A'}</p>`;
+
+    const emailContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Reembolso Aprovado - Pendente de Pagamento</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 30px; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">💰 Reembolso Aprovado - Aguardando Pagamento</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb;">
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+            Um novo reembolso foi <strong style="color: #f59e0b;">aprovado</strong> e está aguardando pagamento.
+          </p>
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <h3 style="margin: 0 0 15px 0; color: #374151;">Dados do Reembolso</h3>
+            <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
+            <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${solicitanteNome}</p>
+            <p style="margin: 5px 0;"><strong>Valor:</strong> <span style="color: #10b981; font-weight: bold;">${valor}</span></p>
+          </div>
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+            <h3 style="margin: 0 0 15px 0; color: #374151;">Dados para Pagamento</h3>
+            <p style="margin: 5px 0;"><strong>Método:</strong> ${metodoPagamento}</p>
+            ${dadosPagamento}
+          </div>
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #92400e; margin: 0; font-size: 14px;">
+              <strong>⚠️ Ação necessária:</strong> Acesse o painel de reembolsos para visualizar os comprovantes e marcar como pago após efetuar o pagamento.
+            </p>
+          </div>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.groupabz.com'}/reembolso?tab=approval" 
+             style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px;">
+            Acessar Painel de Reembolsos
+          </a>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+            Este é um email automático do Portal ABZ Group. Por favor, não responda a este email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Enviar email
+    const result = await sendCustomEmail(
+      financeEmail,
+      `⚠️ Reembolso Aprovado - Pendente de Pagamento - Protocolo: ${protocolo}`,
+      emailContent
+    );
+
+    return result;
+  } catch (error) {
+    console.error('Erro ao enviar email de aprovação para financeiro:', error);
+    return {
+      success: false,
+      message: 'Erro ao enviar email de aprovação para financeiro'
+    };
+  }
+}
+
+/**
  * Envia um email de boas-vindas para novos usuários
  * @param email Email do destinatário
  * @param nome Nome do usuário
