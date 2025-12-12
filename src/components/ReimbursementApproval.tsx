@@ -214,59 +214,38 @@ export default function ReimbursementApproval() {
     try {
       console.log(`Tentando aprovar reembolso com ID: ${id}`);
 
-      // Primeiro, buscar o protocolo usando o ID
-      const { data: reimbursements, error: fetchError } = await supabaseAdmin
-        .from('Reimbursement')
-        .select('protocolo')
-        .eq('id', id)
-        .single();
+      let protocolo = id;
 
-      if (fetchError || !reimbursements) {
-        console.log(t('components.tabelaReimbursementNaoEncontradaTentandoTabelaAlte'));
-        // Tentar com o nome alternativo da tabela
-        const { data: altReimbursements, error: altFetchError } = await supabaseAdmin
-          .from('reimbursements')
+      // Verificar se o ID já é um protocolo (começa com REEMB-)
+      if (!id.startsWith('REEMB-')) {
+        // Buscar o protocolo usando o ID
+        const { data: reimbursements, error: fetchError } = await supabaseAdmin
+          .from('Reimbursement')
           .select('protocolo')
           .eq('id', id)
           .single();
 
-        if (altFetchError) {
-          console.error('Erro ao buscar reembolso na tabela alternativa:', altFetchError);
-          throw new Error(t('components.reembolsoNaoEncontrado'));
+        if (fetchError || !reimbursements) {
+          console.log(t('components.tabelaReimbursementNaoEncontradaTentandoTabelaAlte'));
+          // Tentar com o nome alternativo da tabela
+          const { data: altReimbursements, error: altFetchError } = await supabaseAdmin
+            .from('reimbursements')
+            .select('protocolo')
+            .eq('id', id)
+            .single();
+
+          if (altFetchError || !altReimbursements) {
+            console.error('Reembolso não encontrado em nenhuma tabela');
+            throw new Error(t('components.reembolsoNaoEncontrado'));
+          }
+
+          protocolo = altReimbursements.protocolo;
+        } else {
+          protocolo = reimbursements.protocolo;
         }
-
-        if (!altReimbursements) {
-          console.error(t('components.reembolsoNaoEncontradoEmNenhumaTabela'));
-          throw new Error(t('components.reembolsoNaoEncontrado'));
-        }
-
-        // Usar o protocolo da tabela alternativa
-        const protocolo = altReimbursements.protocolo;
-        console.log(`Protocolo encontrado na tabela alternativa: ${protocolo}`);
-
-        // Usar a função fetchWithAuth para fazer a requisição autenticada
-        const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            status: 'aprovado',
-            observacao: t('components.solicitacaoAprovadaPeloAdministrador')
-          })
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Resposta de erro:', errorText);
-          throw new Error(t('components.erroAoAprovarSolicitacaoResponsestatus'));
-        }
-
-        toast.success(t('components.solicitacaoAprovadaComSucesso'));
-        fetchReimbursements();
-        return;
       }
 
-      // Usar o protocolo da tabela principal
-      const protocolo = reimbursements.protocolo;
-      console.log(`Protocolo encontrado na tabela principal: ${protocolo}`);
+      console.log(`Protocolo final para aprovação: ${protocolo}`);
 
       // Usar a função fetchWithAuth para fazer a requisição autenticada
       const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
@@ -296,32 +275,33 @@ export default function ReimbursementApproval() {
     try {
       console.log(`Tentando marcar como pago o reembolso com ID: ${id}`);
 
-      // Primeiro, buscar o protocolo usando o ID
-      const { data: reimbursements, error: fetchError } = await supabaseAdmin
-        .from('Reimbursement')
-        .select('protocolo')
-        .eq('id', id)
-        .single();
+      let protocolo = id;
 
-      let protocolo: string;
-
-      if (fetchError || !reimbursements) {
-        console.log('Tabela Reimbursement não encontrada, tentando tabela alternativa...');
-        // Tentar com o nome alternativo da tabela
-        const { data: altReimbursements, error: altFetchError } = await supabaseAdmin
-          .from('reimbursements')
+      // Verificar se o ID já é um protocolo (começa com REEMB-)
+      if (!id.startsWith('REEMB-')) {
+        const { data: reimbursements, error: fetchError } = await supabaseAdmin
+          .from('Reimbursement')
           .select('protocolo')
           .eq('id', id)
           .single();
 
-        if (altFetchError || !altReimbursements) {
-          console.error('Reembolso não encontrado em nenhuma tabela');
-          throw new Error(t('components.reembolsoNaoEncontrado'));
-        }
+        if (fetchError || !reimbursements) {
+          console.log('Tabela Reimbursement não encontrada, tentando tabela alternativa...');
+          const { data: altReimbursements, error: altFetchError } = await supabaseAdmin
+            .from('reimbursements')
+            .select('protocolo')
+            .eq('id', id)
+            .single();
 
-        protocolo = altReimbursements.protocolo;
-      } else {
-        protocolo = reimbursements.protocolo;
+          if (altFetchError || !altReimbursements) {
+            console.error('Reembolso não encontrado em nenhuma tabela');
+            throw new Error(t('components.reembolsoNaoEncontrado'));
+          }
+
+          protocolo = altReimbursements.protocolo;
+        } else {
+          protocolo = reimbursements.protocolo;
+        }
       }
 
       console.log(`Protocolo encontrado: ${protocolo}`);
@@ -391,60 +371,37 @@ export default function ReimbursementApproval() {
     try {
       console.log(`Tentando rejeitar reembolso com ID: ${rejectingId}, motivo: ${rejectReason}`);
 
-      // Primeiro, buscar o protocolo usando o ID
-      const { data: reimbursements, error: fetchError } = await supabaseAdmin
-        .from('Reimbursement')
-        .select('protocolo')
-        .eq('id', rejectingId)
-        .single();
+      let protocolo = rejectingId;
 
-      if (fetchError || !reimbursements) {
-        console.log(t('components.tabelaReimbursementNaoEncontradaTentandoTabelaAlte'));
-        // Tentar com o nome alternativo da tabela
-        const { data: altReimbursements, error: altFetchError } = await supabaseAdmin
-          .from('reimbursements')
+      if (!rejectingId.startsWith('REEMB-')) {
+        // Primeiro, buscar o protocolo usando o ID
+        const { data: reimbursements, error: fetchError } = await supabaseAdmin
+          .from('Reimbursement')
           .select('protocolo')
           .eq('id', rejectingId)
           .single();
 
-        if (altFetchError) {
-          console.error('Erro ao buscar reembolso na tabela alternativa:', altFetchError);
-          throw new Error(t('components.reembolsoNaoEncontrado'));
+        if (fetchError || !reimbursements) {
+          console.log(t('components.tabelaReimbursementNaoEncontradaTentandoTabelaAlte'));
+          // Tentar com o nome alternativo da tabela
+          const { data: altReimbursements, error: altFetchError } = await supabaseAdmin
+            .from('reimbursements')
+            .select('protocolo')
+            .eq('id', rejectingId)
+            .single();
+
+          if (altFetchError || !altReimbursements) {
+            console.error('Reembolso não encontrado em nenhuma tabela');
+            throw new Error(t('components.reembolsoNaoEncontrado'));
+          }
+
+          protocolo = altReimbursements.protocolo;
+        } else {
+          protocolo = reimbursements.protocolo;
         }
-
-        if (!altReimbursements) {
-          console.error(t('components.reembolsoNaoEncontradoEmNenhumaTabela'));
-          throw new Error(t('components.reembolsoNaoEncontrado'));
-        }
-
-        // Usar o protocolo da tabela alternativa
-        const protocolo = altReimbursements.protocolo;
-        console.log(`Protocolo encontrado na tabela alternativa: ${protocolo}`);
-
-        // Usar a função fetchWithAuth para fazer a requisição autenticada
-        const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            status: 'rejeitado',
-            observacao: rejectReason
-          })
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Resposta de erro:', errorText);
-          throw new Error(t('components.erroAoRejeitarSolicitacaoResponsestatus'));
-        }
-
-        toast.success(t('components.solicitacaoRejeitadaComSucesso'));
-        closeRejectModal();
-        fetchReimbursements();
-        return;
       }
 
-      // Usar o protocolo da tabela principal
-      const protocolo = reimbursements.protocolo;
-      console.log(`Protocolo encontrado na tabela principal: ${protocolo}`);
+      console.log(`Protocolo final para rejeição: ${protocolo}`);
 
       // Usar a função fetchWithAuth para fazer a requisição autenticada
       const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
