@@ -50,7 +50,7 @@ const MultipleExpenses: React.FC<MultipleExpensesProps> = ({
   };
 
   const updateExpense = (id: string, field: keyof Expense, value: any) => {
-    onChange(expenses.map(expense => 
+    onChange(expenses.map(expense =>
       expense.id === id ? { ...expense, [field]: value } : expense
     ));
   };
@@ -96,43 +96,44 @@ const MultipleExpenses: React.FC<MultipleExpensesProps> = ({
           className="bg-gray-50 p-4 rounded-lg border border-gray-200"
           style={{ opacity: 1, visibility: 'visible' }}
         >
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-md font-medium text-gray-700 flex items-center">
-                <FiDollarSign className="mr-2" />
-                {t('reimbursement.form.expense', 'Despesa')} {index + 1}
-              </h4>
-              {expenses.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeExpense(expense.id)}
-                  className="flex items-center px-2 py-1 text-sm text-red-600 hover:text-red-800 transition-colors"
-                >
-                  <FiTrash2 className="mr-1" />
-                  {t('common.remove', 'Remover')}
-                </button>
-              )}
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-md font-medium text-gray-700 flex items-center">
+              <FiDollarSign className="mr-2" />
+              {t('reimbursement.form.expense', 'Despesa')} {index + 1}
+            </h4>
+            {expenses.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeExpense(expense.id)}
+                className="flex items-center px-2 py-1 text-sm text-red-600 hover:text-red-800 transition-colors"
+              >
+                <FiTrash2 className="mr-1" />
+                {t('common.remove', 'Remover')}
+              </button>
+            )}
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SelectField
-                id={`tipoReembolso-${expense.id}`}
-                label={t('reimbursement.form.expenseType')}
-                value={expense.tipoReembolso}
-                onChange={(e) => {
-                  updateExpense(expense.id, 'tipoReembolso', e.target.value);
-                }}
-                options={[
-                  { value: 'alimentacao', label: t('locale.code') === 'en-US' ? 'Food' : 'Alimentação' },
-                  { value: 'transporte', label: t('locale.code') === 'en-US' ? 'Transportation' : 'Transporte' },
-                  { value: 'hospedagem', label: t('locale.code') === 'en-US' ? 'Accommodation' : 'Hospedagem' },
-                  { value: 'combustivel', label: t('locale.code') === 'en-US' ? 'Fuel' : 'Combustível' },
-                  { value: 'material', label: t('locale.code') === 'en-US' ? 'Materials' : 'Material de Escritório' },
-                  { value: 'outros', label: t('locale.code') === 'en-US' ? 'Others' : 'Outros' }
-                ]}
-                error={typeof errors[`expenses.${index}.tipoReembolso`] === 'string' ? errors[`expenses.${index}.tipoReembolso`] as string : Array.isArray(errors[`expenses.${index}.tipoReembolso`]) ? errors[`expenses.${index}.tipoReembolso`][0] : undefined}
-                required
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SelectField
+              id={`tipoReembolso-${expense.id}`}
+              label={t('reimbursement.form.expenseType')}
+              value={expense.tipoReembolso}
+              onChange={(e) => {
+                updateExpense(expense.id, 'tipoReembolso', e.target.value);
+              }}
+              options={[
+                { value: 'alimentacao', label: t('locale.code') === 'en-US' ? 'Food' : 'Alimentação' },
+                { value: 'transporte', label: t('locale.code') === 'en-US' ? 'Transportation' : 'Transporte' },
+                { value: 'hospedagem', label: t('locale.code') === 'en-US' ? 'Accommodation' : 'Hospedagem' },
+                { value: 'combustivel', label: t('locale.code') === 'en-US' ? 'Fuel' : 'Combustível' },
+                { value: 'material', label: t('locale.code') === 'en-US' ? 'Materials' : 'Material de Escritório' },
+                { value: 'outros', label: t('locale.code') === 'en-US' ? 'Others' : 'Outros' }
+              ]}
+              error={typeof errors[`expenses.${index}.tipoReembolso`] === 'string' ? errors[`expenses.${index}.tipoReembolso`] as string : Array.isArray(errors[`expenses.${index}.tipoReembolso`]) ? errors[`expenses.${index}.tipoReembolso`][0] : undefined}
+              required
+            />
 
+            <div>
               <CurrencyInput
                 id={`valor-${expense.id}`}
                 label={t('reimbursement.form.amount')}
@@ -143,34 +144,38 @@ const MultipleExpenses: React.FC<MultipleExpensesProps> = ({
                 error={typeof errors[`expenses.${index}.valor`] === 'string' ? errors[`expenses.${index}.valor`] as string : Array.isArray(errors[`expenses.${index}.valor`]) ? errors[`expenses.${index}.valor`][0] : undefined}
                 required
               />
-            </div>
-
-            <div className="mt-4">
-              <TextArea
-                id={`descricao-${expense.id}`}
-                label={t('reimbursement.form.description')}
-                value={expense.descricao}
-                onChange={(e) => {
-                  updateExpense(expense.id, 'descricao', e.target.value);
-                }}
-                placeholder={t('reimbursement.form.descriptionPlaceholder')}
-                error={typeof errors[`expenses.${index}.descricao`] === 'string' ? errors[`expenses.${index}.descricao`] as string : Array.isArray(errors[`expenses.${index}.descricao`]) ? errors[`expenses.${index}.descricao`][0] : undefined}
-                required
-                rows={3}
-              />
-            </div>
-
-            <div className="mt-4">
-              <FileUploader
-                files={expense.comprovantes}
-                onFilesChange={(files) => updateExpense(expense.id, 'comprovantes', files)}
-                maxFiles={5}
-                maxSizeInMB={10}
-                acceptedFileTypes={['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']}
-              />
+              <p className="text-xs text-gray-500 mt-1">
+                * Formato bancário: Digite os números (ex: "50" = R$ 0,50 | "5000" = R$ 50,00)
+              </p>
             </div>
           </div>
-        ))}
+
+          <div className="mt-4">
+            <TextArea
+              id={`descricao-${expense.id}`}
+              label={t('reimbursement.form.description')}
+              value={expense.descricao}
+              onChange={(e) => {
+                updateExpense(expense.id, 'descricao', e.target.value);
+              }}
+              placeholder={t('reimbursement.form.descriptionPlaceholder')}
+              error={typeof errors[`expenses.${index}.descricao`] === 'string' ? errors[`expenses.${index}.descricao`] as string : Array.isArray(errors[`expenses.${index}.descricao`]) ? errors[`expenses.${index}.descricao`][0] : undefined}
+              required
+              rows={3}
+            />
+          </div>
+
+          <div className="mt-4">
+            <FileUploader
+              files={expense.comprovantes}
+              onFilesChange={(files) => updateExpense(expense.id, 'comprovantes', files)}
+              maxFiles={5}
+              maxSizeInMB={10}
+              acceptedFileTypes={['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

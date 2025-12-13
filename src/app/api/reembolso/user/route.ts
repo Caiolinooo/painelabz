@@ -228,7 +228,12 @@ export async function GET(request: NextRequest) {
 
     // Aplicar filtro de status se fornecido
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      if (status.includes(',')) {
+        const statuses = status.split(',').map(s => s.trim());
+        query = query.in('status', statuses);
+      } else {
+        query = query.eq('status', status);
+      }
     }
 
     // Aplicar filtro de pesquisa se fornecido

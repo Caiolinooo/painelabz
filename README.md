@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.5-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.6-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,18 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.6.6)**
+- ✅ **Otimização da Lógica de Aprovação de Reembolsos**: Melhorias de performance e usabilidade
+  - Refatoração completa do componente de aprovação de reembolsos
+  - Otimização de queries e redução de chamadas de API
+  - Melhorias na interface de usuário para aprovadores
+  - Correções de bugs no fluxo de aprovação/rejeição
+  - Aprimoramento do sistema de notificações
+- ✅ **Melhorias Gerais de Sistema**: Otimizações e correções
+  - Ajustes de performance no carregamento de dados
+  - Refinamentos de UI/UX em múltiplos componentes
+  - Correções de bugs menores e estabilidade aprimorada
 
 ### **Dezembro 2024 (v3.6.5)**
 - ✅ **Ajustes no Sistema de Reembolso**: Refinamentos e correções
