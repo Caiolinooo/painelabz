@@ -60,7 +60,7 @@ export default function ReimbursementApproval() {
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('pendente');
+  const [statusFilter, setStatusFilter] = useState<string>('pendente,aprovado');
   const [searchTerm, setSearchTerm] = useState('');
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -573,8 +573,9 @@ export default function ReimbursementApproval() {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <option value="pendente">Pendentes</option>
-                <option value="aprovado">Aprovados</option>
+                <option value="pendente,aprovado">Ativos (Pendentes + Aprovados)</option>
+                <option value="pendente">Apenas Pendentes</option>
+                <option value="aprovado">Apenas Aprovados</option>
                 <option value="rejeitado">Rejeitados</option>
                 <option value="pago">Pagos</option>
                 <option value="">Todos</option>

@@ -525,6 +525,16 @@ export async function sendReimbursementConfirmationEmail(
     );
 
     console.log(`Email de reembolso enviado para ${recipients.join(', ')}`);
+    // DEBUG: Log specific for caio.correia
+    if (email.includes('caio.correia')) {
+      console.log('--- DEBUG CAIO.CORREIA EMAIL ---');
+      console.log('Sent to:', recipients);
+      console.log('Message ID:', ('messageId' in result) ? (result as any).messageId : 'N/A');
+      console.log('Result Success:', result.success);
+      console.log('Result Message:', result.message);
+      console.log('--------------------------------');
+    }
+
     if (emailAttachments.length > 0) {
       console.log(`Enviado com ${emailAttachments.length} anexos:`);
       emailAttachments.forEach((attachment, index) => {
