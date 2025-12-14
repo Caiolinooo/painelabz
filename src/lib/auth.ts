@@ -314,13 +314,13 @@ export function generatePasswordResetToken(): { token: string; expiresAt: Date }
 // Função para enviar email de redefinição de senha
 export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<{ success: boolean; message: string }> {
   try {
-    // Usar o serviço de email Gmail diretamente
-    const { sendPasswordResetEmail: sendGmailPasswordResetEmail } = await import('./email-gmail');
+    // Usar o serviço de email Exchange/Office 365
+    const { sendPasswordResetEmail: sendExchangePasswordResetEmail } = await import('./email-exchange');
 
     console.log(`Enviando email de redefinição para ${email} com URL: ${resetUrl}`);
 
-    // Enviar o email usando o serviço Gmail
-    const result = await sendGmailPasswordResetEmail(email, resetUrl);
+    // Enviar o email usando o serviço Exchange
+    const result = await sendExchangePasswordResetEmail(email, resetUrl);
 
     if (result.success) {
       return {

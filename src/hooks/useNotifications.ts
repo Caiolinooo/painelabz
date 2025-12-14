@@ -103,7 +103,7 @@ export const useNotifications = (userId: string) => {
 
     try {
       const { fetchWithToken } = await import('@/lib/tokenStorage');
-      await fetchWithToken(`/api/notifications/${id}/read`, { method: 'POST' });
+      await fetchWithToken(`/api/notifications/${id}/read`, { method: 'PUT' });
     } catch (error) {
       console.error('Erro ao marcar como lida:', error);
     }

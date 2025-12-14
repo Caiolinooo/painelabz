@@ -1,8 +1,43 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import MainLayout from '@/components/Layout/MainLayout';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import {
+  PlusIcon,
+  EllipsisHorizontalIcon,
+  HeartIcon,
+  ChatBubbleOvalLeftIcon,
+  ShareIcon,
+  BookmarkIcon
+} from '@heroicons/react/24/outline';
+import { HeartIcon as HeartSolidIcon, BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 
-// ... imports
+interface NewsItem {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  category: string;
+  author: string;
+  thumbnail?: string;
+  coverImage?: string;
+  featured?: boolean;
+  tags?: string[];
+  likes_count?: number;
+}
+
+interface Comment {
+  id: string;
+  content: string;
+  created_at: string;
+  user: {
+    first_name: string;
+    last_name: string;
+    email?: string;
+  };
+}
 
 const NewsFeedPage: React.FC = () => {
   const { user } = useSupabaseAuth();
@@ -11,7 +46,12 @@ const NewsFeedPage: React.FC = () => {
 
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
-  // ... other states
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [newComment, setNewComment] = useState('');
+  const [showComments, setShowComments] = useState<string | null>(null);
+  const [showCreatePost, setShowCreatePost] = useState(false);
 
   // Effect to scroll to highlighted post
   useEffect(() => {

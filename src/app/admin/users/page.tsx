@@ -9,6 +9,7 @@ import {
   // FiUser, // Removido - não utilizado
   FiUsers,
   FiShield,
+  FiLock, // Add Lock icon for explicit permissions
   FiSearch,
   FiKey,
   FiClock,
@@ -25,6 +26,7 @@ import UserEditor, { UserEditorData } from '@/components/admin/UserEditor';
 import UserAccessHistory from '@/components/admin/UserAccessHistory';
 import UserPasswordReset from '@/components/admin/UserPasswordReset';
 import UserRoleManager from '@/components/admin/UserRoleManager';
+import UserPermissionManager from '@/components/admin/UserPermissionManager';
 import { useAllUsers } from '@/hooks/useAllUsers';
 
 // Interface para o usuário na lista
@@ -71,6 +73,7 @@ export default function UsersPage() {
   const [showAccessHistory, setShowAccessHistory] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showRoleManager, setShowRoleManager] = useState(false);
+  const [showPermissionManager, setShowPermissionManager] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isNewUser, setIsNewUser] = useState(false);
 
@@ -156,6 +159,12 @@ export default function UsersPage() {
   const handleManageRole = (user: User) => {
     setSelectedUser(user);
     setShowRoleManager(true);
+  };
+
+  // Função para gerenciar permissões granulares
+  const handleManagePermissions = (user: User) => {
+    setSelectedUser(user);
+    setShowPermissionManager(true);
   };
 
   // Função para salvar usuário (novo ou editado)
@@ -449,6 +458,13 @@ export default function UsersPage() {
                           <FiShield />
                         </button>
                         <button
+                          onClick={() => handleManagePermissions(user)}
+                          className="text-gray-600 hover:text-abz-blue"
+                          title="Gerenciar Permissões Específicas"
+                        >
+                          <FiLock />
+                        </button>
+                        <button
                           onClick={() => handleEditUser(user)}
                           className="text-gray-600 hover:text-abz-blue"
                           title={t('admin.editarUsuario')}
@@ -552,6 +568,17 @@ export default function UsersPage() {
           currentRole={selectedUser.role}
           onClose={() => setShowRoleManager(false)}
           onRoleUpdated={fetchUsers}
+        />
+      )}
+
+      {/* Modal de gerenciamento de permissões */}
+      {showPermissionManager && selectedUser && (
+        <UserPermissionManager
+          userId={selectedUser._id}
+          userName={`${selectedUser.firstName} ${selectedUser.lastName}`}
+          currentPermissions={(selectedUser as any).accessPermissions || (selectedUser as any).access_permissions}
+          onClose={() => setShowPermissionManager(false)}
+          onPermissionsUpdated={fetchUsers}
         />
       )}
     </div>

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sendVerificationEmail } from '@/lib/email';
 import { sendNewUserWelcomeEmail, sendAdminNotificationEmail } from '@/lib/notifications';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
-import { checkIfUserIsBanned } from '@/lib/banned-users';
+import { checkIfUserIsBanned, checkNameSimilarity, checkEmailSimilarity, checkPhoneSimilarity } from '@/lib/banned-users';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
       position,
       department,
       inviteCode,
-      cpf
+      cpf,
+      phoneNumber
     } = body;
 
     // Normalizar e validar
@@ -76,6 +77,55 @@ export async function POST(request: NextRequest) {
         },
         { status: 403 }
       );
+    }
+
+    // Checking "ML" similarity on NAMES
+    if (firstName && lastName) {
+      const similarityCheck = await checkNameSimilarity(firstName, lastName);
+      if (similarityCheck.isSimilar) {
+        console.log('Tentativa de registro bloqueada por similaridade de NOME:', {
+          input: `${firstName} ${lastName}`,
+          match: similarityCheck.match
+        });
+        return NextResponse.json({
+          error: 'Cadastro bloqueado por similaridade de identidade (Nome) com usuário banido.',
+          banned: true,
+          banInfo: { reason: 'Similaridade de identidade detectada (Nome)' }
+        }, { status: 403 });
+      }
+    }
+
+    // Checking "ML" similarity on EMAILS (typos, variations)
+    const emailSimCheck = await checkEmailSimilarity(normalizedEmail);
+    if (emailSimCheck.isSimilar) {
+      console.log('Tentativa de registro bloqueada por similaridade de EMAIL:', {
+        input: normalizedEmail,
+        match: emailSimCheck.match
+      });
+      return NextResponse.json({
+        error: 'Cadastro bloqueado por similaridade de identidade (Email) com usuário banido.',
+        banned: true,
+        banInfo: { reason: 'Similaridade de identidade detectada (Email)' }
+      }, { status: 403 });
+    }
+
+    // Checking "ML" similarity on PHONE (if provided)
+    // Note: Registration often doesn't have phone, but if it did or if added later:
+    // User registration payload doesn't seem to have phone in the destructuring at top of file?
+    // Let's check if body has phone.
+    if (phoneNumber) {
+      const phoneSimCheck = await checkPhoneSimilarity(phoneNumber);
+      if (phoneSimCheck.isSimilar) {
+        console.log('Tentativa de registro bloqueada por similaridade de TELEFONE:', {
+          input: phoneNumber,
+          match: phoneSimCheck.match
+        });
+        return NextResponse.json({
+          error: 'Cadastro bloqueado por similaridade de identidade (Telefone) com usuário banido.',
+          banned: true,
+          banInfo: { reason: 'Similaridade de identidade detectada (Telefone)' }
+        }, { status: 403 });
+      }
     }
 
     // Verificar se o usuário já existe na tabela unificada

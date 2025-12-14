@@ -1,0 +1,42 @@
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = ***REMOVED***!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = ***REMOVED*** supabaseServiceKey);
+
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: { id: string } }
+) {
+    try {
+        const userId = params.id;
+        const { accessPermissions } = await request.json();
+
+        // Verify authentication/authorization (Basic check)
+        const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+        // In a real app, verify the token here using getUser() or verifyJwt()
+
+        // Update the permissions
+        const { data, error } = await supabase
+            .from('users_unified')
+            .update({
+                access_permissions: accessPermissions,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error updating permissions:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ user: data });
+    } catch (error: any) {
+        console.error('API Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}

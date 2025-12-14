@@ -11,6 +11,7 @@ import { saveRefreshToken, getRefreshToken, removeRefreshToken } from '@/lib/ref
 import tokenRefreshManager, { startTokenRefreshManager, stopTokenRefreshManager } from '@/lib/tokenRefreshManager';
 import { attemptSessionRecovery, recoverSessionOnReturn } from '@/lib/sessionRecovery';
 import { activateUserAfterEmailVerification } from '@/lib/user-approval';
+import { getDefaultPermissionsForRole } from '@/config/modules';
 // Import a browser-compatible JWT library or use a safer approach
 
 // Função para gerar um token JWT (deve ser feito no servidor)
@@ -455,19 +456,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
         // Adicionar permissões padrão
         userData.access_permissions = {
-          modules: {
-            dashboard: true,
-            manual: true,
-            procedimentos: true,
-            politicas: true,
-            calendario: true,
-            noticias: true,
-            reembolso: true,
-            contracheque: true,
-            ponto: true,
-            ...(userData.role === 'ADMIN' ? { admin: true, avaliacao: true } : {}),
-            ...(userData.role === 'MANAGER' ? { avaliacao: true } : {})
-          },
+          modules: getDefaultPermissionsForRole(userData.role),
           features: {}
         };
 
