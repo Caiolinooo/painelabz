@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.6-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.7-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,25 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.6.7)**
+- ✅ **Melhorias no Sistema de Permissões de Usuários**: Implementação de controle granular
+  - Adicionado gerenciador de permissões por usuário (UserPermissionManager)
+  - Implementada API de sincronização de módulos do sistema
+  - Endpoints para gerenciamento de permissões individuais por usuário
+  - Sistema de permissões mais robusto e flexível
+- ✅ **Aprimoramentos no Sistema de Usuários Banidos**: UX e funcionalidade melhoradas
+  - Melhorias no componente BannedUsersManager
+  - Refinamentos na interface de gerenciamento de banimentos
+  - Correções de bugs e estabilidade aprimorada
+- ✅ **Otimizações em Autenticação e Contexto**: Performance e segurança
+  - Melhorias no SupabaseAuthContext
+  - Ajustes no sistema de autenticação (auth.ts)
+  - Otimização de hooks de notificações
+- ✅ **Melhorias nas Páginas Administrativas**: Interface refinada
+  - Atualizações na página de gestão de usuários
+  - Melhorias na página de feed de notícias
+  - Ajustes de UI/UX em componentes administrativos
 
 ### **Dezembro 2024 (v3.6.6)**
 - ✅ **Otimização da Lógica de Aprovação de Reembolsos**: Melhorias de performance e usabilidade

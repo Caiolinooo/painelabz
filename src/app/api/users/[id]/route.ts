@@ -59,7 +59,7 @@ export async function GET(
       department: user.department,
       avatar: user.avatar,
       drive_photo_url: user.drive_photo_url,
-      phoneNumber: user.phone_number
+      phoneNumber: user.phone_number as string // Explicit cast to silence linter if type definition is lagging
     };
 
     // Retornar dados básicos
@@ -354,16 +354,26 @@ export async function DELETE(
       console.error('Erro ao remover mapeamentos de gerentes:', deleteMapeamentosError);
     }
 
-    // Remover usuário da lista de banidos (se estiver banido)
-    const { error: unbanError } = await supabaseAdmin
+    // Banir usuário automaticamente ao excluir
+    const { error: banError } = await supabaseAdmin
       .from('banned_users')
-      .delete()
-      .or(`email.eq.${user.email},phone_number.eq.${user.phone_number}`);
+      .insert({
+        email: user.email,
+        phone_number: user.phone_number,
+        cpf: user.cpf || user.tax_id, // Usar tax_id se cpf não estiver disponível direto
+        first_name: user.first_name,
+        last_name: user.last_name,
+        banned_by: requestingUser.id,
+        ban_reason: 'Usuário excluído do sistema (Banimento Automático)',
+        original_user_id: user.id,
+        banned_at: new Date().toISOString()
+      });
 
-    if (unbanError) {
-      console.error('Erro ao remover usuário da lista de banidos:', unbanError);
+    if (banError) {
+      console.error('Erro ao banir usuário automaticamente:', banError);
+      // Não impedir a exclusão, mas logar o erro
     } else {
-      console.log(`Usuário ${userInfo} removido da lista de banidos (se estava banido)`);
+      console.log(`Usuário ${userInfo} banido automaticamente após exclusão`);
     }
 
     // Excluir o usuário
