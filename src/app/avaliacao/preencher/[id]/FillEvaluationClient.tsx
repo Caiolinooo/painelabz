@@ -373,9 +373,9 @@ export default function FillEvaluationClient({
               <span className="text-red-500 text-sm ml-1">*</span>
             </h3>
 
-            <p className="text-sm text-gray-600 mb-4">
-              {t('evaluation.finalEvaluatorCommentDesc')}
-            </p>
+            {t('evaluation.finalEvaluatorCommentDesc')}
+            <br />
+            <span className="text-red-500 font-bold">{t('evaluation.evaluatorCommentRequiredNote')}</span>
 
             <textarea
               value={evaluatorComment}

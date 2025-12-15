@@ -14,7 +14,14 @@ export async function POST(
 ) {
   try {
     const authHeader = request.headers.get('authorization');
-    const token = extractTokenFromHeader(authHeader || undefined);
+    let token = extractTokenFromHeader(authHeader || undefined);
+
+    // Fallback: Tentar pegar do cookie se não vier no header (comum no front-end)
+    if (!token) {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      token = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value || null;
+    }
 
     if (!token) {
       return NextResponse.json(
