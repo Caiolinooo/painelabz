@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.7-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.6.8-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,26 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.6.8)**
+- ✅ **Melhorias no Sistema de Avaliações de Desempenho**: Aprimoramentos funcionais
+  - Melhorias na API de aprovação de avaliações
+  - Refinamentos no componente de preenchimento de avaliações (FillEvaluationClient)
+  - Otimização de rotas de avaliação individual
+  - Melhor tratamento de dados e validações
+- ✅ **Aprimoramentos no Sistema de Reembolsos**: Funcionalidade expandida
+  - Nova API para gerenciamento individual de reembolsos (/api/reembolso/[id])
+  - Melhorias no modal de detalhes de reembolso (ReimbursementDetailModal)
+  - Refinamentos na rota principal de reembolsos
+  - Melhor experiência de visualização e edição
+- ✅ **Otimizações em Geração de PDF**: Performance e qualidade
+  - Melhorias no gerador de PDF (pdf-generator.ts)
+  - Otimizações de renderização e formatação
+  - Melhor qualidade de documentos gerados
+- ✅ **Atualizações de Tradução**: Internacionalização expandida
+  - Novas traduções em PT-BR
+  - Consistência linguística aprimorada
+  - Melhorias em textos da interface
 
 ### **Dezembro 2024 (v3.6.7)**
 - ✅ **Melhorias no Sistema de Permissões de Usuários**: Implementação de controle granular

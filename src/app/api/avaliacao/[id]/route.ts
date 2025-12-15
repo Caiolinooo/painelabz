@@ -103,7 +103,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: avaliacao,
-      data: avaliacao,
+
       userId: userId, // Adicionar userId na resposta
       isEmployeeLeader // Adicionar status de liderança na resposta
     });

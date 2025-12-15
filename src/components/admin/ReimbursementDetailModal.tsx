@@ -253,7 +253,7 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
                   <span className={`ml-2 px-2 py-0.5 text-xs rounded-full
                     ${reimbursement.status === 'aprovado' ? 'bg-green-100 text-green-800' :
                       reimbursement.status === 'rejeitado' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'}`}>
+                        'bg-yellow-100 text-yellow-800'}`}>
                     {reimbursement.status}
                   </span>
                 </p>
@@ -341,7 +341,7 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
                         <div className={`mt-1 w-3 h-3 rounded-full mr-3
                           ${item.status === 'aprovado' ? 'bg-green-500' :
                             item.status === 'rejeitado' ? 'bg-red-500' :
-                            'bg-yellow-500'}`}></div>
+                              'bg-yellow-500'}`}></div>
                         <div>
                           <p className="text-sm text-gray-600">{formatDate(item.data)}</p>
                           <p className="font-medium text-gray-800">{item.status}</p>
@@ -382,6 +382,14 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t bg-gray-50 flex justify-end space-x-2">
+          <button
+            onClick={() => window.open(`/api/reembolso/${reimbursement.id}/pdf`, '_blank')}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 flex items-center mr-auto"
+            title="Baixar Relatório de Despesas"
+          >
+            <FiDownload className="mr-2" />
+            {t('common.downloadReport', 'Baixar Relatório')}
+          </button>
           {!readOnly && reimbursement.status === 'pendente' ? (
             showRejectForm ? (
               <>
@@ -458,3 +466,4 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
 };
 
 export default ReimbursementDetailModal;
+

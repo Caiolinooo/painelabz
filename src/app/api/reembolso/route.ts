@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email';
+import { generateReimbursementPDF } from '@/lib/pdf-generator';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,50 @@ export async function POST(request: Request) {
       }
 
       console.log(`Enviando email para ${reimbursement.email} com ${attachments.length} anexos`);
+
+      // Gerar PDF do Relatório de Despesas e Salvar no Storage
+      try {
+        console.log('Gerando PDF do relatório para anexar...');
+        const pdfBuffer = await generateReimbursementPDF({
+          id: reimbursement.id,
+          created_at: reimbursement.created_at || new Date().toISOString(),
+          valor: reimbursement.valor,
+          descricao: reimbursement.descricao,
+          status: status,
+          user_email: reimbursement.email,
+          user_name: reimbursement.userName || reimbursement.nome || reimbursement.email,
+          department: reimbursement.department || reimbursement.centroCusto,
+          category: reimbursement.categoria || reimbursement.tipo_reembolso,
+        });
+
+        // Nome do arquivo
+        const pdfFileName = `relatorios/${reimbursement.id}.pdf`;
+
+        // Upload para o Storage (Cache para download futuro)
+        const { error: uploadError } = await supabaseAdmin
+          .storage
+          .from('comprovantes')
+          .upload(pdfFileName, pdfBuffer, {
+            contentType: 'application/pdf',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Erro ao salvar PDF gerado no Storage:', uploadError);
+        } else {
+          console.log('PDF gerado e salvo no Storage com sucesso:', pdfFileName);
+        }
+
+        // Adicionar aos anexos do email
+        attachments.push({
+          filename: `Relatorio_Despesas_${reimbursement.id ? reimbursement.id.slice(0, 8) : 'ABZ'}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        });
+
+      } catch (pdfError) {
+        console.error('Erro ao gerar PDF do relatório:', pdfError);
+      }
 
       await sendEmail(
         reimbursement.email,
