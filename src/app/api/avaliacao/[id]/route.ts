@@ -81,24 +81,36 @@ export async function GET(
       // Consulta direta na tabela users_unified, coluna is_lider
       const { data: funcionarioData, error: funcError } = await supabaseAdmin
         .from('users_unified')
-        .select('id, is_lider')
+        .select('id, first_name, last_name, is_lider')
         .eq('id', avaliacao.funcionario_id)
         .single();
+
+      console.log('[LEADER CHECK] Query result:', JSON.stringify({ funcionarioData, funcError }));
 
       if (funcError) {
         console.error('[LEADER CHECK] Erro ao consultar users_unified:', funcError);
       }
 
-      if (funcionarioData && funcionarioData.is_lider === true) {
-        isEmployeeLeader = true;
-        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} É LÍDER (is_lider=true)`);
+      if (funcionarioData) {
+        // Verificação robusta: aceitar true, 'true', 1, '1', etc.
+        const isLiderValue = funcionarioData.is_lider;
+        isEmployeeLeader = isLiderValue === true ||
+          isLiderValue === 'true' ||
+          isLiderValue === 1 ||
+          isLiderValue === '1';
+
+        console.log(`[LEADER CHECK] Funcionário: ${funcionarioData.first_name} ${funcionarioData.last_name}`);
+        console.log(`[LEADER CHECK] is_lider raw value: ${isLiderValue}, type: ${typeof isLiderValue}`);
+        console.log(`[LEADER CHECK] Final isEmployeeLeader: ${isEmployeeLeader}`);
       } else {
-        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} NÃO é líder (is_lider=${funcionarioData?.is_lider})`);
+        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} não encontrado na tabela users_unified`);
       }
     } catch (err) {
-      console.warn('Erro ao verificar liderança:', err);
+      console.warn('[LEADER CHECK] Erro ao verificar liderança:', err);
       // Mantém false em caso de erro
     }
+
+    console.log(`[API RESPONSE] Returning isEmployeeLeader: ${isEmployeeLeader} for avaliacao ${id}`);
 
     return NextResponse.json({
       success: true,

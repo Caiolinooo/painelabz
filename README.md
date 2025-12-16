@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.7.5-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.7.6-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,15 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.7.6)**
+- ✅ **Correção Crítica: Perguntas de Liderança nas Avaliações**: Correção definitiva
+  - Corrigido problema onde líderes de setor não mostravam questões de liderança
+  - API agora consulta corretamente `users_unified.is_lider` (mesma tabela do painel admin)
+  - Check robusto: aceita `true`, `'true'`, `1`, `'1'` para compatibilidade
+  - Adicionado debug logging extensivo para rastreamento
+  - Frontend propaga `isEmployeeLeader` corretamente através da cadeia de componentes
+  - Endpoint de debug `/api/debug/lideres` para verificação de dados
 
 ### **Dezembro 2025 (v3.7.5)**
 - ✅ **Refinamentos na API de Avaliações**: Melhorias contínuas
