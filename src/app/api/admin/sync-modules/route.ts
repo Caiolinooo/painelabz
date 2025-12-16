@@ -3,13 +3,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { SYSTEM_MODULES, ModuleDefinition } from '@/config/modules';
 
+export const dynamic = 'force-dynamic';
+
 // Initialize Supabase Admin client
-const supabaseUrl = ***REMOVED***!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabaseUrl = ***REMOVED*** || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+// Safely create client, or return null if keys missing (during build)
+const supabase = (supabaseUrl && supabaseServiceKey)
+    ? ***REMOVED*** supabaseServiceKey)
+    : null;
 
 export async function POST(request: NextRequest) {
     try {
+        if (!supabase) {
+            console.error('Supabase client not initialized: Missing keys');
+            return NextResponse.json({ error: 'Configuration Error' }, { status: 500 });
+        }
+
         // Check for admin permissions (simple check for now, can be enhanced)
         // Ideally use a middleware or session check here
 

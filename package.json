@@ -1,6 +1,6 @@
 {
   "name": "painel-abz",
-  "version": "3.7.0",
+  "version": "3.7.1",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
