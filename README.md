@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.6.9-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.7.0-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,14 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2024 (v3.7.0)**
+- ✅ **Refatoração da API de PDF de Reembolsos**: Melhorias estruturais e de organização
+  - Removida rota antiga de geração de PDF por ID (/api/reembolso/[id]/pdf)
+  - Consolidação na rota de geração por protocolo (/api/reembolso/[protocolo]/pdf)
+  - Otimizações no gerador de PDF (pdf-generator.ts)
+  - Melhor manutenibilidade e consistência da API
+  - Redução de código duplicado e endpoints redundantes
 
 ### **Dezembro 2024 (v3.6.9)**
 - ✅ **Nova API de Geração de PDF por Protocolo**: Funcionalidade expandida
