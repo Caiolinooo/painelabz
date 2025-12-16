@@ -74,37 +74,26 @@ export async function GET(
       );
     }
 
-    // Verificar se o funcionário é líder (via tabela lideres)
-    // PRIORIDADE: Consulta direta na tabela lideres (fonte de verdade para líderes de setor)
+    // Verificar se o funcionário é líder
+    // O painel admin usa a coluna is_lider na tabela users_unified
     let isEmployeeLeader = false;
     try {
-      // Consulta direta na tabela lideres - esta é a fonte de verdade
-      const now = new Date().toISOString();
-      const { data: liderData, error: liderError } = await supabaseAdmin
-        .from('lideres')
-        .select('id, user_id, ativo')
-        .eq('user_id', avaliacao.funcionario_id)
-        .eq('ativo', true)
-        .maybeSingle();
+      // Consulta direta na tabela users_unified, coluna is_lider
+      const { data: funcionarioData, error: funcError } = await supabaseAdmin
+        .from('users_unified')
+        .select('id, is_lider')
+        .eq('id', avaliacao.funcionario_id)
+        .single();
 
-      if (liderError) {
-        console.error('Erro ao consultar tabela lideres:', liderError);
+      if (funcError) {
+        console.error('[LEADER CHECK] Erro ao consultar users_unified:', funcError);
       }
 
-      if (liderData) {
+      if (funcionarioData && funcionarioData.is_lider === true) {
         isEmployeeLeader = true;
-        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} É LÍDER (LiderID: ${liderData.id})`);
+        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} É LÍDER (is_lider=true)`);
       } else {
-        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} NÃO é líder na tabela lideres`);
-
-        // Fallback: Tenta via RPC (pode verificar roles MANAGER/ADMIN)
-        const { data: isLeaderRpc, error: rpcError } = await supabaseAdmin
-          .rpc('is_usuario_lider', { p_usuario_id: avaliacao.funcionario_id });
-
-        if (!rpcError && isLeaderRpc === true) {
-          isEmployeeLeader = true;
-          console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} é líder via RPC`);
-        }
+        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} NÃO é líder (is_lider=${funcionarioData?.is_lider})`);
       }
     } catch (err) {
       console.warn('Erro ao verificar liderança:', err);
