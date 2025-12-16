@@ -404,3 +404,99 @@ export async function PUT(
     );
   }
 }
+
+// DELETE - Excluir uma solicitação de reembolso (Apenas ADMIN)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ protocolo: string }> }
+) {
+  try {
+    // Verificar autenticação e permissões
+    const authHeader = request.headers.get('authorization') || '';
+    const token = extractTokenFromHeader(authHeader);
+
+    if (!token) {
+      console.error('Token de autenticação não fornecido');
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      console.error('Token inválido ou expirado');
+      return NextResponse.json(
+        { error: 'Token inválido ou expirado' },
+        { status: 401 }
+      );
+    }
+
+    // Apenas administradores podem excluir reembolsos
+    if (payload.role !== 'ADMIN') {
+      console.error('Usuário sem permissão para excluir reembolsos:', payload.userId);
+      return NextResponse.json(
+        { error: 'Apenas administradores podem excluir solicitações de reembolso' },
+        { status: 403 }
+      );
+    }
+
+    // Usar await para acessar params.protocolo
+    const { protocolo } = await params;
+
+    console.log(`Iniciando exclusão do reembolso ${protocolo} pelo usuário ${payload.userId}`);
+
+    // Verificar se a tabela de reembolsos existe e obter o nome correto
+    const { exists, tableName } = await checkReimbursementTableExists();
+
+    if (!exists || !tableName) {
+      console.error('Tabela de reembolsos não encontrada');
+      return NextResponse.json(
+        { error: 'Tabela de reembolsos não encontrada' },
+        { status: 500 }
+      );
+    }
+
+    // Verificar se o reembolso existe antes de excluir
+    const { data: reembolso, error: fetchError } = await supabaseAdmin
+      .from(tableName)
+      .select('id, protocolo')
+      .eq('protocolo', protocolo)
+      .single();
+
+    if (fetchError || !reembolso) {
+      console.error('Erro ao buscar reembolso para exclusão:', fetchError);
+      return NextResponse.json(
+        { error: 'Solicitação de reembolso não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    // Excluir o reembolso
+    const { error: deleteError } = await supabaseAdmin
+      .from(tableName)
+      .delete()
+      .eq('protocolo', protocolo);
+
+    if (deleteError) {
+      console.error('Erro ao excluir reembolso:', deleteError);
+      return NextResponse.json(
+        { error: 'Erro ao excluir solicitação de reembolso' },
+        { status: 500 }
+      );
+    }
+
+    console.log(`Reembolso ${protocolo} excluído com sucesso`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Solicitação de reembolso excluída com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao excluir solicitação de reembolso:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}

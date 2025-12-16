@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { FiX, FiCheck, FiDownload, FiFileText, FiDollarSign, FiUser, FiCalendar, FiClock, FiInfo, FiAlertTriangle } from 'react-icons/fi';
+import { FiX, FiCheck, FiDownload, FiFileText, FiDollarSign, FiUser, FiCalendar, FiClock, FiInfo, FiAlertTriangle, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -68,7 +68,50 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { t } = useI18n();
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role);
+      } catch (e) {
+        console.error('Erro ao decodificar token:', e);
+      }
+    }
+  }, []);
+
+  const handleDelete = async () => {
+    if (!window.confirm('TEM CERTEZA QUE DESEJA EXCLUIR ESTE REEMBOLSO? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/reembolso/${reimbursement.protocolo}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir reembolso');
+      }
+
+      toast.success('Reembolso excluído com sucesso!');
+      if (onStatusChange) onStatusChange();
+      onClose();
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      toast.error('Erro ao excluir reembolso.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -390,6 +433,36 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
             <FiDownload className="mr-2" />
             {t('common.downloadReport', 'Baixar Relatório')}
           </button>
+          )}
+
+          {/* Botão de Excluir (Apenas ADMIN) */}
+          {userRole === 'ADMIN' && (
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-red-800 text-white rounded-md hover:bg-red-900 flex items-center mr-2"
+              disabled={loading}
+              title="Excluir (Apenas Admin)"
+            >
+              <FiTrash2 className="mr-2" />
+              {t('common.delete', 'Excluir')}
+            </button>
+          )}
+
+          )}
+
+          {/* Botão de Excluir (Apenas ADMIN) */}
+          {userRole === 'ADMIN' && (
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-red-800 text-white rounded-md hover:bg-red-900 flex items-center mr-auto"
+              disabled={loading}
+              title="Excluir (Apenas Admin)"
+            >
+              <FiTrash2 className="mr-2" />
+              {t('common.delete', 'Excluir')}
+            </button>
+          )}
+
           {!readOnly && reimbursement.status === 'pendente' ? (
             showRejectForm ? (
               <>

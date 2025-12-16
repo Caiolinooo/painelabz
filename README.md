@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.7.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.7.1-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -408,7 +408,25 @@ painel-abz/
 
 ## 🆕 Atualizações Recentes
 
-### **Dezembro 2024 (v3.7.0)**
+### **Dezembro 2025 (v3.7.1)**
+- ✅ **Melhorias no Sistema de Sincronização de Módulos**: Otimizações na API de sincronização
+  - Refinamentos na rota de sincronização de módulos (/api/admin/sync-modules)
+  - Melhor tratamento de erros e validações
+  - Otimização de queries e performance
+- ✅ **Aprimoramentos em Avaliações de Desempenho**: Melhorias funcionais
+  - Ajustes na API de avaliação individual (/api/avaliacao/[id])
+  - Melhor tratamento de dados e validações
+  - Refinamentos no fluxo de avaliação
+- ✅ **Melhorias no Sistema de Reembolsos**: Funcionalidade expandida
+  - Otimizações na API de reembolso por protocolo (/api/reembolso/[protocolo])
+  - Melhor integração com sistema de documentação
+  - Refinamentos no modal de detalhes de reembolso
+- ✅ **Correções Gerais**: Estabilidade e performance aprimoradas
+  - Ajustes em componentes de interface
+  - Melhorias de usabilidade
+  - Correções de bugs menores
+
+### **Dezembro 2025 (v3.7.0)**
 - ✅ **Refatoração da API de PDF de Reembolsos**: Melhorias estruturais e de organização
   - Removida rota antiga de geração de PDF por ID (/api/reembolso/[id]/pdf)
   - Consolidação na rota de geração por protocolo (/api/reembolso/[protocolo]/pdf)
@@ -416,14 +434,14 @@ painel-abz/
   - Melhor manutenibilidade e consistência da API
   - Redução de código duplicado e endpoints redundantes
 
-### **Dezembro 2024 (v3.6.9)**
+### **Dezembro 2025 (v3.6.9)**
 - ✅ **Nova API de Geração de PDF por Protocolo**: Funcionalidade expandida
   - Implementada rota para gerar PDF de reembolso por protocolo (/api/reembolso/[protocolo]/pdf)
   - Busca inteligente de reembolsos usando número de protocolo
   - Melhor integração com sistema de documentação
   - Facilita acesso e compartilhamento de comprovantes
 
-### **Dezembro 2024 (v3.6.8)**
+### **Dezembro 2025 (v3.6.8)**
 - ✅ **Melhorias no Sistema de Avaliações de Desempenho**: Aprimoramentos funcionais
   - Melhorias na API de aprovação de avaliações
   - Refinamentos no componente de preenchimento de avaliações (FillEvaluationClient)
@@ -443,7 +461,7 @@ painel-abz/
   - Consistência linguística aprimorada
   - Melhorias em textos da interface
 
-### **Dezembro 2024 (v3.6.7)**
+### **Dezembro 2025 (v3.6.7)**
 - ✅ **Melhorias no Sistema de Permissões de Usuários**: Implementação de controle granular
   - Adicionado gerenciador de permissões por usuário (UserPermissionManager)
   - Implementada API de sincronização de módulos do sistema
@@ -462,7 +480,7 @@ painel-abz/
   - Melhorias na página de feed de notícias
   - Ajustes de UI/UX em componentes administrativos
 
-### **Dezembro 2024 (v3.6.6)**
+### **Dezembro 2025 (v3.6.6)**
 - ✅ **Otimização da Lógica de Aprovação de Reembolsos**: Melhorias de performance e usabilidade
   - Refatoração completa do componente de aprovação de reembolsos
   - Otimização de queries e redução de chamadas de API
@@ -474,7 +492,7 @@ painel-abz/
   - Refinamentos de UI/UX em múltiplos componentes
   - Correções de bugs menores e estabilidade aprimorada
 
-### **Dezembro 2024 (v3.6.5)**
+### **Dezembro 2025 (v3.6.5)**
 - ✅ **Ajustes no Sistema de Reembolso**: Refinamentos e correções
   - Melhorias no componente de aprovação de reembolso
   - Ajustes na interface de aprovação e rejeição
@@ -488,7 +506,7 @@ painel-abz/
   - Refinamentos de UI/UX
   - Correções de bugs menores
 
-### **Dezembro 2024 (v3.6.4)**
+### **Dezembro 2025 (v3.6.4)**
 - ✅ **Melhorias no Sistema de Notificações de Reembolso**: Expansão do sistema de notificações
   - Implementado notificação também para o solicitante ao criar reembolso
   - Sistema de notificação bidirecional (aprovadores e solicitantes)
@@ -512,7 +530,7 @@ painel-abz/
   - Mensagens de erro e sucesso traduzidas
   - Suporte completo a múltiplos idiomas nas novas funcionalidades
 
-### **Dezembro 2024 (v3.6.3)**
+### **Dezembro 2025 (v3.6.3)**
 - ✅ **Melhorias no Sistema de Avaliações**: Verificação de liderança de funcionários
   - Implementado verificação se funcionário é líder (tabela lideres)
   - Adicionado fallback para consulta direta quando RPC não disponível
@@ -528,20 +546,20 @@ painel-abz/
   - Melhorias no sistema de perfil de usuário
   - Atualizações de traduções (PT-BR e EN-US)
 
-### **Dezembro 2024 (v3.6.2)**
+### **Dezembro 2025 (v3.6.2)**
 - ✅ **Aprimoramento de Segurança WKRadar**: Migração para URL HTTPS direta
   - Removido proxy intermediário do Next.js
   - Implementado acesso direto via HTTPS (vm.groupabz.com)
   - Melhor performance e segurança sem proxy reverso
   - Simplificação da arquitetura de acesso ao Guacamole
 
-### **Dezembro 2024 (v3.6.1)**
+### **Dezembro 2025 (v3.6.1)**
 - ✅ **Correção de Segurança WKRadar**: Implementado proxy Next.js para Guacamole
   - Resolvido problema de Mixed Content (HTTP/HTTPS)
   - URL relativa para melhor segurança e compatibilidade
   - Configuração de rewrites no next.config.js
 
-### **Dezembro 2024 (v3.6.0)**
+### **Dezembro 2025 (v3.6.0)**
 - ✅ **Módulo WKRadar**: Sistema completo de gerenciamento de credenciais e seed cards
   - Interface administrativa para gestão de credenciais
   - Página pública para visualização de seed cards

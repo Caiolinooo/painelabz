@@ -85,15 +85,22 @@ export async function GET(
         isEmployeeLeader = !!isLeaderRpc;
       } else {
         // Fallback: consulta direta na tabela lideres
-        const { data: liderData } = await supabaseAdmin
+        // Correção: aceitar data_fim nula OU data_fim futura
+        const now = new Date().toISOString();
+        const { data: liderData, error: liderError } = await supabaseAdmin
           .from('lideres')
           .select('id')
           .eq('user_id', avaliacao.funcionario_id)
           .eq('ativo', true)
-          .is('data_fim', null)
-          .single();
+          .or(`data_fim.is.null,data_fim.gte.${now}`)
+          .maybeSingle(); // Usar maybeSingle para evitar erro se não encontrar
+
+        if (liderError) {
+          console.error('Erro ao consultar tabela lideres:', liderError);
+        }
 
         isEmployeeLeader = !!liderData;
+        console.log(`Verificação de líder para ${avaliacao.funcionario_id}: ${isEmployeeLeader} (LiderID: ${liderData?.id})`);
       }
     } catch (err) {
       console.warn('Erro ao verificar liderança:', err);
