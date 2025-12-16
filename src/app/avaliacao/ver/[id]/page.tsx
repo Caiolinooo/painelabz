@@ -20,6 +20,7 @@ export default function ViewEvaluationPage({ params }: PageProps) {
   const [manager, setManager] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEmployeeLeader, setIsEmployeeLeader] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -47,7 +48,7 @@ export default function ViewEvaluationPage({ params }: PageProps) {
 
         // Fetch evaluation
         const evalResponse = await fetch(`/api/avaliacao/${id}`, { headers });
-        
+
         if (!evalResponse.ok) {
           if (evalResponse.status === 401) {
             router.push(`/login?redirect=/avaliacao/ver/${id}`);
@@ -57,7 +58,7 @@ export default function ViewEvaluationPage({ params }: PageProps) {
         }
 
         const evalData = await evalResponse.json();
-        
+
         if (!evalData.success || !evalData.data) {
           router.push('/avaliacao?error=evaluation_not_found');
           return;
@@ -65,10 +66,16 @@ export default function ViewEvaluationPage({ params }: PageProps) {
 
         setEvaluation(evalData.data);
 
+        // Extract isEmployeeLeader from API response
+        if (evalData.isEmployeeLeader !== undefined) {
+          setIsEmployeeLeader(evalData.isEmployeeLeader);
+          console.log('[VIEW PAGE] isEmployeeLeader:', evalData.isEmployeeLeader);
+        }
+
         // Fetch criteria
         const criteriaResponse = await fetch('/api/avaliacao/criterios', { headers });
         const criteriaData = await criteriaResponse.json();
-        
+
         if (criteriaData.success) {
           setCriteria(criteriaData.data);
         }
@@ -107,13 +114,13 @@ export default function ViewEvaluationPage({ params }: PageProps) {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', padding: '20px' }}>
-        <div className="spinner" style={{ 
-          border: '4px solid #f3f3f3', 
-          borderTop: '4px solid #3498db', 
-          borderRadius: '50%', 
-          width: '40px', 
-          height: '40px', 
-          animation: 'spin 1s linear infinite' 
+        <div className="spinner" style={{
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #3498db',
+          borderRadius: '50%',
+          width: '40px',
+          height: '40px',
+          animation: 'spin 1s linear infinite'
         }}></div>
         <p style={{ marginTop: '16px', color: '#666' }}>Carregando avaliação...</p>
         <style>{`
@@ -140,6 +147,7 @@ export default function ViewEvaluationPage({ params }: PageProps) {
       criteria={criteria}
       employee={employee}
       manager={manager}
+      isEmployeeLeader={isEmployeeLeader}
     />
   );
 }

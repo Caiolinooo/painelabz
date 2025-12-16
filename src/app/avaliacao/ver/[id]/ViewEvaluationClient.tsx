@@ -21,6 +21,7 @@ interface ViewEvaluationClientProps {
   criteria: EvaluationCriterion[];
   employee: User | null;
   manager: User | null;
+  isEmployeeLeader?: boolean;
 }
 
 export default function ViewEvaluationClient({
@@ -28,6 +29,7 @@ export default function ViewEvaluationClient({
   criteria,
   employee,
   manager,
+  isEmployeeLeader = false,
 }: ViewEvaluationClientProps) {
   const router = useRouter();
   const { user } = useSupabaseAuth();
@@ -609,6 +611,7 @@ export default function ViewEvaluationClient({
               onChange={handleRespostaChange}
               isManager={isManagerView}
               readOnly={readOnly}
+              isEmployeeLeader={isEmployeeLeader}
               {...({ notasGerente, onNotaGerenteChange: handleNotaGerenteChange } as any)}
             />
           ) : (
