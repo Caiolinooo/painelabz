@@ -75,32 +75,36 @@ export async function GET(
     }
 
     // Verificar se o funcionário é líder (via tabela lideres)
-    // Primeiro tenta via RPC se existir
+    // PRIORIDADE: Consulta direta na tabela lideres (fonte de verdade para líderes de setor)
     let isEmployeeLeader = false;
     try {
-      const { data: isLeaderRpc, error: rpcError } = await supabaseAdmin
-        .rpc('is_usuario_lider', { p_usuario_id: avaliacao.funcionario_id });
+      // Consulta direta na tabela lideres - esta é a fonte de verdade
+      const now = new Date().toISOString();
+      const { data: liderData, error: liderError } = await supabaseAdmin
+        .from('lideres')
+        .select('id, user_id, ativo')
+        .eq('user_id', avaliacao.funcionario_id)
+        .eq('ativo', true)
+        .maybeSingle();
 
-      if (!rpcError) {
-        isEmployeeLeader = !!isLeaderRpc;
+      if (liderError) {
+        console.error('Erro ao consultar tabela lideres:', liderError);
+      }
+
+      if (liderData) {
+        isEmployeeLeader = true;
+        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} É LÍDER (LiderID: ${liderData.id})`);
       } else {
-        // Fallback: consulta direta na tabela lideres
-        // Correção: aceitar data_fim nula OU data_fim futura
-        const now = new Date().toISOString();
-        const { data: liderData, error: liderError } = await supabaseAdmin
-          .from('lideres')
-          .select('id')
-          .eq('user_id', avaliacao.funcionario_id)
-          .eq('ativo', true)
-          .or(`data_fim.is.null,data_fim.gte.${now}`)
-          .maybeSingle(); // Usar maybeSingle para evitar erro se não encontrar
+        console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} NÃO é líder na tabela lideres`);
 
-        if (liderError) {
-          console.error('Erro ao consultar tabela lideres:', liderError);
+        // Fallback: Tenta via RPC (pode verificar roles MANAGER/ADMIN)
+        const { data: isLeaderRpc, error: rpcError } = await supabaseAdmin
+          .rpc('is_usuario_lider', { p_usuario_id: avaliacao.funcionario_id });
+
+        if (!rpcError && isLeaderRpc === true) {
+          isEmployeeLeader = true;
+          console.log(`[LEADER CHECK] Funcionário ${avaliacao.funcionario_id} é líder via RPC`);
         }
-
-        isEmployeeLeader = !!liderData;
-        console.log(`Verificação de líder para ${avaliacao.funcionario_id}: ${isEmployeeLeader} (LiderID: ${liderData?.id})`);
       }
     } catch (err) {
       console.warn('Erro ao verificar liderança:', err);
