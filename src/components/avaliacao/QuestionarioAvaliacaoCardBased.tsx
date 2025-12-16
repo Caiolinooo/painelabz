@@ -23,6 +23,10 @@ export default function QuestionarioAvaliacaoCardBased({
   isEmployeeLeader = false
 }: QuestionarioAvaliacaoCardBasedProps) {
   const { t } = useI18n();
+
+  // Debug: Log props on render
+  console.log('[QUESTIONNAIRE] Rendering with isEmployeeLeader:', isEmployeeLeader, 'isManager:', isManager);
+
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     autoavaliacao: true,
     gerencial: isManager
@@ -47,12 +51,13 @@ export default function QuestionarioAvaliacaoCardBased({
   // Filtrar questões baseado no tipo de usuário e categoria
   const getQuestionsForUser = (categoria: string, forceType?: 'collaborator' | 'manager') => {
     const questions = questionsByCategory[categoria] || [];
-    return questions.filter(q => {
+    const filtered = questions.filter(q => {
       // Filtrar questões de liderança se o funcionário não é líder
       if (q.apenas_lideres && !isEmployeeLeader) {
+        console.log(`[QUESTIONNAIRE] Filtering out question ${q.id} (apenas_lideres=${q.apenas_lideres}, isEmployeeLeader=${isEmployeeLeader})`);
         return false;
       }
-      
+
       if (forceType) {
         return q.tipo === forceType;
       }
@@ -62,11 +67,14 @@ export default function QuestionarioAvaliacaoCardBased({
         return q.tipo === 'collaborator';
       }
     });
+
+    console.log(`[QUESTIONNAIRE] Category: ${categoria}, isEmployeeLeader: ${isEmployeeLeader}, filtered ${questions.length} -> ${filtered.length} questions`);
+    return filtered;
   };
 
   const renderStarRating = (questionId: string, currentValue: number, isReadOnly: boolean = readOnly) => {
     const resposta = respostas[questionId];
-    
+
     return (
       <StarRating
         maxRating={5}
@@ -114,11 +122,10 @@ export default function QuestionarioAvaliacaoCardBased({
                 {t('evaluation.rating')}:
               </label>
               {resposta?.nota && (
-                <span className={`text-lg font-bold ${
-                  resposta.nota >= 4 ? 'text-green-600' :
+                <span className={`text-lg font-bold ${resposta.nota >= 4 ? 'text-green-600' :
                   resposta.nota >= 3 ? 'text-blue-600' :
-                  resposta.nota >= 2 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
+                    resposta.nota >= 2 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
                   {resposta.nota} / 5
                 </span>
               )}
@@ -143,9 +150,9 @@ export default function QuestionarioAvaliacaoCardBased({
           </label>
           <textarea
             value={resposta?.comentario || ''}
-            onChange={e => onChange(question.id, { 
-              ...resposta, 
-              comentario: e.target.value 
+            onChange={e => onChange(question.id, {
+              ...resposta,
+              comentario: e.target.value
             })}
             readOnly={isReadOnly}
             placeholder={t('evaluation.commentsPlaceholder')}
