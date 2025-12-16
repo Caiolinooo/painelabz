@@ -5,14 +5,23 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = ***REMOVED***!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***!;
-const supabase = ***REMOVED*** supabaseServiceKey);
+export const dynamic = 'force-dynamic';
+
+const supabaseUrl = ***REMOVED*** || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED*** || '';
+
+// Safely create client, or return null if keys missing (during build)
+const supabase: SupabaseClient | null = (supabaseUrl && supabaseServiceKey)
+  ? ***REMOVED*** supabaseServiceKey)
+  : null;
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Configuration Error' }, { status: 500 });
+    }
     const { id } = params;
     const body = await request.json();
 
@@ -33,6 +42,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Configuration Error' }, { status: 500 });
+    }
     const { id } = params;
 
     const { error } = await supabase

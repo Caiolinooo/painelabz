@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.7.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.7.2-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,13 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.7.2)**
+- ✅ **Correções de Versionamento**: Atualização de controle de versão
+  - Correção de todas as datas do README para 2025
+  - Atualização do badge de versão
+  - Melhorias na documentação de versões
+  - Consistência em todo o histórico de atualizações
 
 ### **Dezembro 2025 (v3.7.1)**
 - ✅ **Melhorias no Sistema de Sincronização de Módulos**: Otimizações na API de sincronização

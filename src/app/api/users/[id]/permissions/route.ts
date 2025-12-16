@@ -2,15 +2,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = ***REMOVED***!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = ***REMOVED*** supabaseServiceKey);
+export const dynamic = 'force-dynamic';
+
+const supabaseUrl = ***REMOVED*** || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+// Safely create client, or return null if keys missing (during build)
+const supabase = (supabaseUrl && supabaseServiceKey)
+    ? ***REMOVED*** supabaseServiceKey)
+    : null;
 
 export async function PUT(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Configuration Error' }, { status: 500 });
+        }
+
         const userId = params.id;
         const { accessPermissions } = await request.json();
 
