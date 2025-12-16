@@ -56,7 +56,7 @@ export async function GET(
         // Tentar buscar por ID primeiro (assumindo que o "protocolo" na URL pode ser o ID interno)
         let { data: reimbursement, error: dbError } = await supabaseAdmin
             .from('Reimbursement')
-            .select('*, user:email(first_name, last_name, department)')
+            .select('*') // Removed invalid join
             .eq('id', id)
             .single();
 
@@ -64,7 +64,7 @@ export async function GET(
             // Tentar buscar pela coluna protocolo se ID falhar
             const { data: byProtocol, error: protocolError } = await supabaseAdmin
                 .from('Reimbursement')
-                .select('*, user:email(first_name, last_name, department)')
+                .select('*') // Removed invalid join
                 .eq('protocolo', id)
                 .single();
 
@@ -76,6 +76,10 @@ export async function GET(
         }
 
         // 3. Gerar o PDF
+        // Usar dados diretos da tabela ou fallbacks
+        const userName = reimbursement.nome || reimbursement.user_name || reimbursement.email;
+        const department = reimbursement.centro_custo || reimbursement.department || 'N/A';
+
         const pdfBuffer = await generateReimbursementPDF({
             id: reimbursement.id,
             created_at: reimbursement.created_at,
@@ -83,10 +87,17 @@ export async function GET(
             descricao: reimbursement.descricao,
             status: reimbursement.status,
             user_email: reimbursement.email,
-            user_name: reimbursement.nome || reimbursement.user?.first_name ? `${reimbursement.user.first_name} ${reimbursement.user.last_name}` : null,
-            department: reimbursement.centro_custo || reimbursement.centroCusto,
-            category: reimbursement.tipo_reembolso || reimbursement.tipoReembolso,
-            items: reimbursement.items // Se houver items detalhados
+            user_name: userName,
+            cpf: reimbursement.cpf,
+            department: department,
+            category: reimbursement.tipo_reembolso || reimbursement.tipoReembolso || reimbursement.categoria,
+            items: reimbursement.items, // Se houver items detalhados
+            // Payment Info
+            banco: reimbursement.banco,
+            agencia: reimbursement.agencia,
+            conta: reimbursement.conta,
+            pix_chave: reimbursement.pix_chave,
+            pix_tipo: reimbursement.pix_tipo
         });
 
         // 4. Salvar no Storage para cache futuro (fire and forget ou await)
