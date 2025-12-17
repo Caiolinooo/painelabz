@@ -7,6 +7,28 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não Lançado]
 
+## [3.7.8] - 2025-12-17
+
+### Adicionado
+- **Sistema de Notificações de Atualizações**: Modal interativo de changelog
+  - Modal automático ao detectar nova versão do sistema
+  - Visualização de últimas atualizações com animações
+  - Histórico completo de versões acessível
+  - Efeito confetti para celebrar atualizações
+  - Controle de visualização por usuário (localStorage)
+  - Design moderno e responsivo com Framer Motion
+  - Integração com API de changelog (`/api/changelog`)
+  - Ícones contextuais para cada tipo de mudança
+- Componente `ChangelogModal.tsx` para exibição de atualizações
+- API endpoint `/api/changelog` para busca de informações de versão
+- Dependência `canvas-confetti` para efeitos visuais
+- Dependência `@types/canvas-confetti` para tipagem TypeScript
+
+### Melhorado
+- Feedback visual aprimorado em atualizações do sistema
+- Melhor comunicação de mudanças para usuários
+- UX aprimorada com celebrações visuais
+
 ## [3.7.7] - 2025-12-17
 
 ### Adicionado

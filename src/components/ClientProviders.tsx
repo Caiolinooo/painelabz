@@ -15,11 +15,9 @@ import MaterialDesignIcon from '@/components/MaterialDesignIcon';
 import LanguageDialog from '@/components/LanguageDialog';
 import SiteHead from '@/components/SiteHead';
 import CompleteProfilePrompt from '@/components/Profile/CompleteProfilePrompt';
+import ChangelogModal from '@/components/ChangelogModal';
 import { usePathname } from 'next/navigation';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-
-
-// Renders the profile completion prompt only when under SupabaseAuthProvider
 function ProfilePromptGate({ isMounted, pathname }: { isMounted: boolean; pathname?: string | null }) {
   const { isAuthenticated, isLoading, profile, user } = useSupabaseAuth();
   const isAuthRoute = pathname?.startsWith('/login') || pathname?.startsWith('/register') || pathname?.startsWith('/set-password') || pathname?.startsWith('/reset-password');
@@ -79,6 +77,7 @@ export default function ClientProviders({ children }: { children: React.ReactNod
               <SiteHead />
               {isMounted && <LanguageDialog />}
               {isMounted && <ToastContainer position="top-right" theme="colored" />}
+              {isMounted && <ChangelogModal />}
               <ProfilePromptGate isMounted={isMounted} pathname={pathname} />
               {children}
             </AlertProvider>
