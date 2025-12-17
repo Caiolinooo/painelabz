@@ -59,6 +59,22 @@ export async function GET(request: NextRequest) {
 
     console.log(`🔄 API News Posts - Listando posts (página ${page}, limite ${limit})`);
 
+    // Obter usuário atual (se houver) para verificar likes
+    let currentUserId: string | null = null;
+    const authHeader = request.headers.get('authorization');
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const { verifyToken } = await import('@/lib/auth');
+        const decoded = verifyToken(token);
+        if (decoded && typeof decoded === 'object') {
+          currentUserId = (decoded as any).userId;
+        }
+      } catch (e) {
+        // Token inválido ou expirado, ignorar
+      }
+    }
+
     // Construir query base
     let query = supabaseAdmin
       .from('news_posts')
@@ -69,7 +85,10 @@ export async function GET(request: NextRequest) {
           first_name,
           last_name,
           email,
-          role
+          email,
+          role,
+          avatar,
+          drive_photo_url
         ),
         category:news_categories!category_id (
           id,
@@ -117,7 +136,62 @@ export async function GET(request: NextRequest) {
     }
 
     // Normalizar campos serializados para arrays/objetos
-    const normalizedPosts = (posts || []).map(normalizePost);
+    let normalizedPosts = (posts || []).map(normalizePost);
+
+    // Enriquecer posts com user_liked e latest_likes
+    if (normalizedPosts.length > 0) {
+      const postIds = normalizedPosts.map(p => p.id);
+
+      // 1. Verificar visualizações/likes do usuário atual
+      const userLikesMap = new Set<string>();
+      if (currentUserId) {
+        const { data: userLikes } = await supabaseAdmin
+          .from('news_post_likes')
+          .select('post_id')
+          .in('post_id', postIds)
+          .eq('user_id', currentUserId);
+
+        userLikes?.forEach(l => userLikesMap.add(l.post_id));
+      }
+
+      // 2. Buscar últimas curtidas para cada post (para mostrar "Curtido por X e outros")
+      // Isso é um pouco mais pesado, mas necessário para a UI estilo Instagram
+      // Faremos em paralelo para não demorar
+      normalizedPosts = await Promise.all(normalizedPosts.map(async (post) => {
+        // Definir se o usuário curtiu
+        const userLiked = userLikesMap.has(post.id);
+
+        // Buscar últimas 3 curtidas
+        const { data: latestLikes } = await supabaseAdmin
+          .from('news_post_likes')
+          .select(`
+            user_id,
+            user:users_unified!user_id (
+              id,
+              first_name,
+              last_name,
+              avatar,
+              drive_photo_url
+            )
+          `)
+          .eq('post_id', post.id)
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        const formattedLatestLikes = latestLikes?.map((l: any) => ({
+          userId: l.user_id,
+          firstName: l.user.first_name,
+          lastName: l.user.last_name,
+          avatar: l.user.avatar || l.user.drive_photo_url
+        })) || [];
+
+        return {
+          ...post,
+          user_liked: userLiked,
+          latest_likes: formattedLatestLikes
+        };
+      }));
+    }
 
     // Buscar contagem total para paginação
     let totalQuery = supabaseAdmin
@@ -259,7 +333,10 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
           first_name,
           last_name,
           email,
-          role
+          email,
+          role,
+          avatar,
+          drive_photo_url
         ),
         category:news_categories!category_id (
           id,

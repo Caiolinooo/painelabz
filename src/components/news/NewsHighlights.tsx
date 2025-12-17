@@ -15,6 +15,8 @@ interface Highlight {
         id: string;
         first_name: string;
         last_name: string;
+        avatar?: string;
+        drive_photo_url?: string;
     };
     metadata: {
         type: string;
@@ -200,8 +202,16 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
 
                             <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent flex justify-between items-start">
                                 <div className="flex items-center space-x-2">
-                                    <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center text-white text-xs">
-                                        {selectedHighlight.author.first_name[0]}
+                                    <div className="w-8 h-8 rounded-full bg-gray-500 overflow-hidden flex items-center justify-center text-white text-xs">
+                                        {selectedHighlight.author.avatar || selectedHighlight.author.drive_photo_url ? (
+                                            <img
+                                                src={selectedHighlight.author.avatar || selectedHighlight.author.drive_photo_url}
+                                                alt={selectedHighlight.author.first_name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            selectedHighlight.author.first_name[0]
+                                        )}
                                     </div>
                                     <div className="text-white">
                                         <p className="text-sm font-semibold">{selectedHighlight.title}</p>

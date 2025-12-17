@@ -14,7 +14,11 @@ function validateEmailConfig() {
   const missing = requiredVars.filter(varName => !process.env[varName]);
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    } else {
+      console.warn(`Missing email environment variables: ${missing.join(', ')}. Using default development credentials.`);
+    }
   }
 }
 

@@ -11,6 +11,8 @@ interface UserInfo {
   id: string;
   first_name?: string;
   last_name?: string;
+  avatar?: string;
+  drive_photo_url?: string;
 }
 
 interface NewsComment {
@@ -121,29 +123,59 @@ const NewsCommentSection: React.FC<Props> = ({ postId, userId }) => {
         ) : (
           comments.map((c) => (
             <div key={c.id} className="text-sm">
-              <div className="bg-gray-50 rounded-lg p-2">
-                <div className="font-medium text-gray-900">
-                  {c.user?.first_name} {c.user?.last_name}
+              <div className="flex space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200">
+                    {c.user?.avatar || c.user?.drive_photo_url ? (
+                      <img
+                        src={c.user.avatar || c.user.drive_photo_url}
+                        alt={c.user.first_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-xs text-white uppercase">
+                        {c.user?.first_name?.charAt(0) || '?'}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="text-gray-700">{c.content}</div>
-                <div className="text-xs text-gray-500 mt-1">{formatTime(c.created_at)}</div>
-                <CommentActions
-                  canEdit={canEditComment(c)}
-                  canDelete={canDeleteComment(c)}
-                  onEdit={(text) => handleEdit(c.id, text)}
-                  onDelete={() => handleDelete(c.id)}
-                  content={c.content}
-                />
+                <div className="flex-1 bg-gray-50 rounded-lg p-2">
+                  <div className="font-medium text-gray-900 leading-tight mb-1">
+                    {c.user?.first_name} {c.user?.last_name}
+                  </div>
+                  <div className="text-gray-700 leading-normal">{c.content}</div>
+                  <div className="text-xs text-gray-500 mt-1">{formatTime(c.created_at)}</div>
+                  <CommentActions
+                    canEdit={canEditComment(c)}
+                    canDelete={canDeleteComment(c)}
+                    onEdit={(text) => handleEdit(c.id, text)}
+                    onDelete={() => handleDelete(c.id)}
+                    content={c.content}
+                  />
+                </div>
               </div>
               {c.replies && c.replies.length > 0 && (
                 <div className="ml-4 mt-2 space-y-2">
                   {c.replies.map(r => (
-                    <div key={r.id} className="bg-gray-50 rounded-lg p-2">
-                      <div className="font-medium text-gray-900">
-                        {r.user?.first_name} {r.user?.last_name}
+                    <div key={r.id} className="flex space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200">
+                          {r.user?.avatar || r.user?.drive_photo_url ? (
+                            <img src={r.user.avatar || r.user.drive_photo_url} alt={r.user.first_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-[10px] text-white uppercase">
+                              {r.user?.first_name?.charAt(0) || '?'}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-gray-700">{r.content}</div>
-                      <div className="text-xs text-gray-500 mt-1">{formatTime(r.created_at)}</div>
+                      <div className="flex-1 bg-gray-50 rounded-lg p-2">
+                        <div className="font-medium text-gray-900 text-xs">
+                          {r.user?.first_name} {r.user?.last_name}
+                        </div>
+                        <div className="text-gray-700 text-sm">{r.content}</div>
+                        <div className="text-xs text-gray-500 mt-1">{formatTime(r.created_at)}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
