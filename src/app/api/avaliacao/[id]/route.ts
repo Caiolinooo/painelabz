@@ -110,6 +110,13 @@ export async function GET(
       // Mantém false em caso de erro
     }
 
+    if (!avaliacao) { // Safety check
+      return NextResponse.json(
+        { success: false, error: 'Avaliação não encontrada (dados nulos)' },
+        { status: 404 }
+      );
+    }
+
     console.log(`[API RESPONSE] Returning isEmployeeLeader: ${isEmployeeLeader} for avaliacao ${id}`);
 
     return NextResponse.json({
@@ -164,6 +171,7 @@ export async function PATCH(
 
     const userId = decoded.userId;
     const body = await request.json();
+    console.log('[DEBUG PATCH] Body received:', JSON.stringify(body)); // Log full body
     const { respostas, status, solicitar_ajustes, comentario_gerente } = body;
 
     // Usar instância síncrona do supabaseAdmin
@@ -253,8 +261,16 @@ export async function PATCH(
     }
 
     // Salvar comentário do gerente (sempre que fornecido)
-    if (comentario_gerente !== undefined) {
-      updateData.comentario_gerente = comentario_gerente;
+    // Atualização: O nome correto da coluna no banco é comentario_avaliador
+    const comentarioParaSalvar = body.comentario_avaliador !== undefined ? body.comentario_avaliador :
+      (body.comentario_gerente !== undefined ? body.comentario_gerente : undefined);
+
+    console.log('[DEBUG PATCH] comentarioParaSalvar:', comentarioParaSalvar);
+    console.log('[DEBUG PATCH] body.comentario_avaliador:', body.comentario_avaliador);
+    console.log('[DEBUG PATCH] body.comentario_gerente:', body.comentario_gerente);
+
+    if (comentarioParaSalvar !== undefined) {
+      updateData.comentario_avaliador = comentarioParaSalvar;
     }
 
     if (status !== undefined) {

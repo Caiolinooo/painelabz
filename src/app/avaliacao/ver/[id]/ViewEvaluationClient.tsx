@@ -38,7 +38,7 @@ export default function ViewEvaluationClient({
   const [isManagerView, setIsManagerView] = useState(false);
   const [respostas, setRespostas] = useState<Record<string, any>>(evaluation.respostas || {});
   const [activeTab, setActiveTab] = useState<'questionnaire' | 'charts'>('questionnaire');
-  const [comentarioGerente, setComentarioGerente] = useState(evaluation.comentario_gerente || '');
+  const [comentarioGerente, setComentarioGerente] = useState(evaluation.comentario_avaliador || evaluation.comentario_gerente || '');
   const [comentarioFinalFuncionario, setComentarioFinalFuncionario] = useState(evaluation.comentario_final_funcionario || '');
   const [showManagerActions, setShowManagerActions] = useState(false);
 
@@ -115,7 +115,7 @@ export default function ViewEvaluationClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           respostas, // Includes notasGerente updates
-          comentario_gerente: comentarioGerente
+          comentario_avaliador: comentarioGerente
         })
       });
 
@@ -219,7 +219,7 @@ export default function ViewEvaluationClient({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: 'devolvida',
-            comentario_gerente: comentarioGerente
+            comentario_avaliador: comentarioGerente
           })
         });
 

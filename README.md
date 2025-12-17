@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.7.6-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.7.7-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,17 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.7.7)**
+- ✅ **Melhorias Gerais do Sistema**: Refinamentos e otimizações em múltiplos módulos
+  - Aprimoramentos na API de autenticação com refresh token
+  - Refinamentos no módulo de avaliações (visualização e preenchimento)
+  - Melhorias no sistema de notícias (feed, comentários e destaques)
+  - Otimizações na API de reembolsos por usuário
+  - Ajustes no modal de detalhes de reembolso
+  - Nova API de lista de curtidas em posts
+  - Refinamentos no serviço de email Exchange
+  - Melhorias de estabilidade e performance geral
 
 ### **Dezembro 2025 (v3.7.6)**
 - ✅ **Correção Crítica: Perguntas de Liderança nas Avaliações**: Correção definitiva

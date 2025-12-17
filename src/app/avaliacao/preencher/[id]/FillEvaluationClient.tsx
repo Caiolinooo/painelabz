@@ -121,15 +121,21 @@ export default function FillEvaluationClient({
       setError(null);
       setSuccessMessage(null);
 
+      const payload = {
+        respostas,
+        comentario_avaliador: isManager ? evaluatorComment : undefined,
+        status: evaluation.status
+      };
+      // DEBUG: Alert user with payload
+      alert(`DEBUG SAVE:\nManager: ${isManager}\nComment: "${evaluatorComment}"\nPayload Comment: "${payload.comentario_avaliador}"`);
+      console.log('[DEBUG CLIENT] Sending draft payload:', payload);
+
       const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          respostas,
-          status: evaluation.status // Mantém o status atual
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

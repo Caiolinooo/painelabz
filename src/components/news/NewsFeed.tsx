@@ -34,6 +34,8 @@ interface NewsPost {
     last_name: string;
     email: string;
     role: string;
+    avatar?: string;
+    drive_photo_url?: string;
   };
   category: {
     id: string;
@@ -50,6 +52,12 @@ interface NewsPost {
   featured: boolean;
   pinned: boolean;
   user_liked?: boolean;
+  latest_likes?: Array<{
+    userId: string;
+    firstName: string;
+    lastName: string;
+    avatar?: string;
+  }>;
 }
 
 interface NewsFeedProps {
@@ -82,6 +90,9 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
   const [showHighlightCreator, setShowHighlightCreator] = useState(false);
   const [selectedMediaType, setSelectedMediaType] = useState<'photo' | 'video'>('photo');
   const [openMenuPostId, setOpenMenuPostId] = useState<string | null>(null);
+  const [hoveredLikesPostId, setHoveredLikesPostId] = useState<string | null>(null);
+  const [likesList, setLikesList] = useState<any[]>([]);
+  const [loadingLikes, setLoadingLikes] = useState(false);
   const { toast } = useToast();
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
@@ -341,6 +352,24 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
     return date.toLocaleDateString('pt-BR');
   };
 
+
+
+  const fetchLikesList = async (postId: string) => {
+    try {
+      setLoadingLikes(true);
+      setLikesList([]);
+      const res = await fetchWithToken(`/api/news/posts/${postId}/likes_list`);
+      if (res.ok) {
+        const data = await res.json();
+        setLikesList(data.likes || []);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingLikes(false);
+    }
+  };
+
   // Compartilhar post
   const handleShare = async (post: NewsPost) => {
     const url = `${window.location.origin}/noticias?id=${post.id}`;
@@ -371,8 +400,18 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         {/* Header do Post */}
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <FiUser className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+              {post.author.avatar || post.author.drive_photo_url ? (
+                <img
+                  src={post.author.avatar || post.author.drive_photo_url}
+                  alt={post.author.first_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                  {post.author.first_name?.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -537,7 +576,49 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
                     </div>
                   )}
                 </div>
-                <span className="text-sm font-medium">{post.likes_count}</span>
+                <span
+                  className="text-sm font-medium cursor-pointer hover:underline relative"
+                  onMouseEnter={() => {
+                    setHoveredLikesPostId(post.id);
+                    fetchLikesList(post.id);
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredLikesPostId(null);
+                  }}
+                >
+                  {post.likes_count}
+
+                  {hoveredLikesPostId === post.id && (
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+                      <div className="p-2 max-h-48 overflow-y-auto custom-scrollbar">
+                        {loadingLikes ? (
+                          <div className="text-center py-2 text-xs text-gray-500">Carregando...</div>
+                        ) : likesList.length > 0 ? (
+                          <div className="space-y-2">
+                            {likesList.map((user: any) => (
+                              <div key={user.userId} className="flex items-center space-x-2">
+                                <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                                  {user.avatar ? (
+                                    <img src={user.avatar} alt={user.firstName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-[10px] text-white">
+                                      {user.firstName[0]}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-xs text-gray-700 truncate font-medium">
+                                  {user.firstName} {user.lastName}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-2 text-xs text-gray-500">Nenhuma curtida ainda</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </span>
               </button>
 
               <button
@@ -561,16 +642,59 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
               <FiBookmark className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Liked By Section - Instagram Style */}
+          {post.likes_count > 0 && (
+            <div className="mt-3 flex items-center space-x-2">
+              {post.latest_likes && post.latest_likes.length > 0 && (
+                <div className="flex -space-x-2 overflow-hidden">
+                  {post.latest_likes.slice(0, 3).map((user) => (
+                    <div key={user.userId} className="inline-block h-5 w-5 rounded-full ring-2 ring-white bg-gray-200 overflow-hidden">
+                      {user.avatar ? (
+                        <img src={user.avatar} alt={user.firstName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-[8px] text-white">
+                          {user.firstName[0]}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="text-sm">
+                <span className="text-gray-900">Curtido por </span>
+                <span className="font-semibold text-gray-900">
+                  {post.latest_likes?.[0]?.firstName || 'alguém'}
+                </span>
+                {post.likes_count > 1 && (
+                  <>
+                    <span className="text-gray-900"> e </span>
+                    <button
+                      className="font-semibold text-gray-900 cursor-pointer hover:underline"
+                      onClick={() => {
+                        setHoveredLikesPostId(post.id);
+                        fetchLikesList(post.id);
+                      }}
+                    >
+                      outras {post.likes_count - 1} pessoas
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Comentários */}
-        {expandedComments[post.id] && (
-          <div className="border-t border-gray-100">
-            <NewsCommentSection postId={post.id} userId={userId || ''} />
-          </div>
-        )}
+        {
+          expandedComments[post.id] && (
+            <div className="border-t border-gray-100">
+              <NewsCommentSection postId={post.id} userId={userId || ''} />
+            </div>
+          )
+        }
 
-      </div>
+      </div >
     );
   };
 

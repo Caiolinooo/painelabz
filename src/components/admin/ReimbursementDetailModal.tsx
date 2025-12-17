@@ -433,23 +433,6 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
             <FiDownload className="mr-2" />
             {t('common.downloadReport', 'Baixar Relatório')}
           </button>
-          )}
-
-          {/* Botão de Excluir (Apenas ADMIN) */}
-          {userRole === 'ADMIN' && (
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-800 text-white rounded-md hover:bg-red-900 flex items-center mr-2"
-              disabled={loading}
-              title="Excluir (Apenas Admin)"
-            >
-              <FiTrash2 className="mr-2" />
-              {t('common.delete', 'Excluir')}
-            </button>
-          )}
-
-          )}
-
           {/* Botão de Excluir (Apenas ADMIN) */}
           {userRole === 'ADMIN' && (
             <button

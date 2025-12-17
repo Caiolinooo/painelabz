@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('token', refreshToken)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (refreshTokenError || !refreshTokenData) {
       console.error('Refresh token não encontrado ou inválido:', refreshTokenError);
@@ -39,10 +39,10 @@ export async function POST(request: NextRequest) {
     // Verificar se o refresh token não expirou
     const now = new Date();
     const expiresAt = new Date(refreshTokenData.expires_at);
-    
+
     if (expiresAt < now) {
       console.error('Refresh token expirado');
-      
+
       // Marcar o refresh token como inativo
       await supabaseAdmin
         .from('refresh_tokens')

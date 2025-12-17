@@ -256,6 +256,25 @@ export async function GET(request: NextRequest) {
       .range(from, to);
 
     // Executar a query
+    // Antes de executar com range, verificar o count total se possível ou lidar com erro de range
+    const { count: totalCount, error: countError } = await supabaseAdmin
+      .from('Reimbursement')
+      .select('*', { count: 'exact', head: true }); // Apenas count
+
+    // Se o offset (from) for maior que o total, retornar vazio (exceto se total for 0 e page 1)
+    if (totalCount !== null && from >= totalCount && totalCount > 0) {
+      console.log(`Página ${page} fora do range (Total: ${totalCount}), retornando vazio`);
+      return NextResponse.json({
+        data: [],
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          hasMore: false
+        }
+      });
+    }
+
     const { data: reimbursements, error: queryError, count } = await query;
 
     if (queryError) {
