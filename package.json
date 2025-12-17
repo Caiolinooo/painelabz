@@ -1,6 +1,6 @@
 {
   "name": "painel-abz",
-  "version": "3.7.7",
+  "version": "3.7.8",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -84,6 +84,7 @@
     "@react-pdf/renderer": "^4.3.0",
     "@sendgrid/mail": "^8.1.5",
     "@supabase/supabase-js": "^2.49.4",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/cheerio": "^0.22.35",
     "@types/papaparse": "^5.3.16",
     "@types/pg": "^8.12.0",
@@ -92,6 +93,7 @@
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "canvas": "^3.2.0",
+    "canvas-confetti": "^1.9.4",
     "chart.js": "^4.5.0",
     "chartjs-adapter-date-fns": "^3.0.0",
     "cheerio": "^1.0.0",

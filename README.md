@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.7.7-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.7.8-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,23 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.7.8)**
+- ✅ **Sistema de Notificações de Atualizações**: Novo modal interativo de changelog
+  - Modal automático ao detectar nova versão do sistema
+  - Visualização de últimas atualizações com animações
+  - Histórico completo de versões acessível
+  - Efeito confetti para celebrar atualizações
+  - Controle de visualização por usuário (localStorage)
+  - Design moderno e responsivo com Framer Motion
+  - Integração com API de changelog
+  - Ícones contextuais para cada tipo de mudança
+- ✅ **Novas Dependências**
+  - Adicionado `canvas-confetti` para efeitos visuais
+  - Adicionado `@types/canvas-confetti` para tipagem TypeScript
+- ✅ **Melhorias de UX**
+  - Feedback visual aprimorado em atualizações
+  - Melhor comunicação de mudanças para usuários
 
 ### **Dezembro 2025 (v3.7.7)**
 - ✅ **Melhorias Gerais do Sistema**: Refinamentos e otimizações em múltiplos módulos
