@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.7.8-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.7.9-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,20 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.7.9)**
+- ✅ **Melhorias no Modal de Changelog**: Aprimoramentos de UX e segurança
+  - Adicionada guarda de autenticação (só exibe para usuários autenticados)
+  - Adicionada guarda de rotas (não exibe em páginas de login/registro)
+  - Implementado delay de 2 segundos antes de abrir o modal
+  - Integração completa com sistema de internacionalização (i18n)
+  - Tradução completa para PT-BR e EN-US
+  - Melhor controle de contexto e dependências
+  - UX aprimorada com abertura suave
+- ✅ **Internacionalização**
+  - Novas chaves de tradução para módulo de changelog
+  - Suporte completo em português e inglês
+  - Textos contextualizados e consistentes
 
 ### **Dezembro 2025 (v3.7.8)**
 - ✅ **Sistema de Notificações de Atualizações**: Novo modal interativo de changelog

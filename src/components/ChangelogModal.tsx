@@ -5,6 +5,9 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiGift, FiClock, FiCheck, FiArrowRight, FiActivity } from 'react-icons/fi';
 import confetti from 'canvas-confetti';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { useI18n } from '@/contexts/I18nContext';
+import { usePathname } from 'next/navigation';
 
 interface ChangelogRelease {
     version: string;
@@ -25,8 +28,17 @@ export default function ChangelogModal() {
     const [data, setData] = useState<ChangelogData | null>(null);
     const [view, setView] = useState<'latest' | 'history'>('latest');
     const [isLoading, setIsLoading] = useState(true);
+    const { isAuthenticated } = useSupabaseAuth();
+    const { t } = useI18n();
+    const pathname = usePathname();
 
     useEffect(() => {
+        // Auth Guard: Only show if authenticated
+        if (!isAuthenticated) return;
+
+        // Path Guard: Do not show on auth pages or public pages if any
+        if (pathname?.startsWith('/login') || pathname?.startsWith('/register')) return;
+
         const checkVersion = async () => {
             try {
                 const res = await fetch('/api/changelog');
@@ -36,13 +48,16 @@ export default function ChangelogModal() {
 
                 if (json.latest) {
                     const lastSeen = localStorage.getItem('abz_last_seen_version');
-                    // Show if never seen, or if version is different (newer)
+                    // Show if version is different (newer)
                     if (lastSeen !== json.latest.version) {
-                        setIsOpen(true);
-                        // Trigger confetti for minor/major updates (not patches usually, but here for all for "wow" effect)
-                        if (isMajorOrMinorUpdate(json.latest.version)) {
-                            setTimeout(() => triggerConfetti(), 500);
-                        }
+                        // Delay opening by 2 seconds minimum inside dashboard
+                        setTimeout(() => {
+                            setIsOpen(true);
+                            // Trigger confetti for minor/major updates
+                            if (isMajorOrMinorUpdate(json.latest!.version)) {
+                                setTimeout(() => triggerConfetti(), 500);
+                            }
+                        }, 2000);
                     }
                 }
             } catch (err) {
@@ -53,7 +68,7 @@ export default function ChangelogModal() {
         };
 
         checkVersion();
-    }, []);
+    }, [isAuthenticated, pathname]);
 
     const handleClose = () => {
         if (data?.latest) {
@@ -128,8 +143,8 @@ export default function ChangelogModal() {
                                         transition={{ delay: 0.2 }}
                                         className="flex items-center gap-2 mb-2"
                                     >
-                                        <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium backdrop-blur-md border border-white/20">
-                                            {view === 'latest' ? 'NOVIDADES' : 'HISTÓRICO'}
+                                        <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium backdrop-blur-md border border-white/20 uppercase">
+                                            {view === 'latest' ? t('changelog.title') : t('changelog.historyTitle')}
                                         </span>
                                         <span className="text-sm opacity-90">{data.latest?.date}</span>
                                     </motion.div>
@@ -139,7 +154,7 @@ export default function ChangelogModal() {
                                         transition={{ delay: 0.3 }}
                                         className="text-3xl font-bold tracking-tight"
                                     >
-                                        {view === 'latest' ? `Versão ${data.latest?.version}` : 'Histórico de Versões'}
+                                        {view === 'latest' ? `${t('changelog.version')} ${data.latest?.version}` : t('changelog.historyTitle')}
                                     </motion.h2>
                                     {view === 'latest' && (
                                         <motion.p
@@ -148,7 +163,7 @@ export default function ChangelogModal() {
                                             transition={{ delay: 0.4 }}
                                             className="text-blue-50 mt-1"
                                         >
-                                            Confira as melhorias que preparamos para você.
+                                            {t('changelog.newFeaturesDesc')}
                                         </motion.p>
                                     )}
                                 </div>
@@ -164,7 +179,7 @@ export default function ChangelogModal() {
                         {/* Content Content - Scrollable */}
                         <div className="flex-1 overflow-y-auto p-0">
                             {view === 'latest' && data.latest ? (
-                                <ReleaseContent release={data.latest} />
+                                <ReleaseContent release={data.latest} t={t} />
                             ) : (
                                 <div className="divide-y divide-gray-100 dark:divide-gray-700">
                                     {data.history.map((release) => (
@@ -178,11 +193,11 @@ export default function ChangelogModal() {
                                                 </div>
                                                 {release.version === data.latest?.version && (
                                                     <span className="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs rounded-full font-medium">
-                                                        Atual
+                                                        {t('changelog.current')}
                                                     </span>
                                                 )}
                                             </div>
-                                            <ReleaseContent release={release} summary />
+                                            <ReleaseContent release={release} summary t={t} />
                                         </div>
                                     ))}
                                 </div>
@@ -195,14 +210,14 @@ export default function ChangelogModal() {
                                 onClick={() => setView(view === 'latest' ? 'history' : 'latest')}
                                 className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center gap-1"
                             >
-                                {view === 'latest' ? 'Ver versões anteriores' : 'Voltar para versão atual'}
+                                {view === 'latest' ? t('changelog.viewHistory') : t('changelog.backToCurrent')}
                             </button>
 
                             <button
                                 onClick={handleClose}
                                 className="px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-medium shadow-lg shadow-gray-200 dark:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
                             >
-                                {view === 'latest' ? 'Entendi, vamos lá!' : 'Fechar'} <FiArrowRight />
+                                {view === 'latest' ? t('changelog.gotIt') : t('changelog.close')} <FiArrowRight />
                             </button>
                         </div>
 
@@ -213,7 +228,7 @@ export default function ChangelogModal() {
     );
 }
 
-function ReleaseContent({ release, summary = false }: { release: ChangelogRelease, summary?: boolean }) {
+function ReleaseContent({ release, summary = false, t }: { release: ChangelogRelease, summary?: boolean, t: any }) {
     // If we have parsed section lists, use them. Otherwise fallback to raw content parsing helper
     const hasStructuredData = release.majorChanges.length > 0 || release.bugFixes.length > 0 || release.minorChanges.length > 0;
 
@@ -222,7 +237,7 @@ function ReleaseContent({ release, summary = false }: { release: ChangelogReleas
             <div className={`space-y-6 ${summary ? 'space-y-4' : 'p-6'}`}>
                 {release.majorChanges.length > 0 && (
                     <Section
-                        title="Destaques"
+                        title={t('changelog.highlights')}
                         items={release.majorChanges}
                         icon={<FiGift className="text-purple-500" />}
                         bg="bg-purple-50 dark:bg-purple-900/20"
@@ -230,7 +245,7 @@ function ReleaseContent({ release, summary = false }: { release: ChangelogReleas
                 )}
                 {release.minorChanges.length > 0 && (
                     <Section
-                        title="Melhorias"
+                        title={t('changelog.improvements')}
                         items={release.minorChanges}
                         icon={<FiActivity className="text-blue-500" />}
                         bg="bg-blue-50 dark:bg-blue-900/20"
@@ -238,7 +253,7 @@ function ReleaseContent({ release, summary = false }: { release: ChangelogReleas
                 )}
                 {release.bugFixes.length > 0 && (
                     <Section
-                        title="Correções"
+                        title={t('changelog.fixes')}
                         items={release.bugFixes}
                         icon={<FiCheck className="text-green-500" />}
                         bg="bg-green-50 dark:bg-green-900/20"
