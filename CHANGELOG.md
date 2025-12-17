@@ -7,6 +7,28 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não Lançado]
 
+## [3.7.9] - 2025-12-17
+
+### Melhorado
+- **ChangelogModal**: Aprimoramentos de UX e segurança
+  - Adicionada guarda de autenticação (só exibe para usuários autenticados)
+  - Adicionada guarda de rotas (não exibe em páginas de login/registro)
+  - Implementado delay de 2 segundos antes de abrir o modal
+  - Integração completa com sistema de internacionalização (i18n)
+  - Melhor controle de contexto e dependências com `useEffect`
+  - UX aprimorada com abertura suave e não intrusiva
+  - Correção de referência a `data.latest` após timeout
+
+### Adicionado
+- Novas chaves de tradução para módulo de changelog em `pt-BR.ts`:
+  - `changelog.title`: "Novidades"
+  - `changelog.historyTitle`: "Histórico de Versões"
+  - `changelog.version`: "Versão"
+  - `changelog.newFeaturesDesc`: "Confira as melhorias que preparamos para você."
+  - E outras traduções relacionadas
+- Traduções correspondentes em `en-US.ts` para suporte multilíngue
+- Textos contextualizados e consistentes em ambos idiomas
+
 ## [3.7.8] - 2025-12-17
 
 ### Adicionado

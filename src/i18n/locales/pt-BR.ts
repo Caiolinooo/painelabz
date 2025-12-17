@@ -2984,6 +2984,21 @@ export default {
     cardActiveDesc: 'O card está visível para usuários com permissão.',
     cardNotCreatedDesc: 'Clique no botão para adicionar o card WKRadar ao dashboard.',
     createCard: 'Criar Card',
+  },
+  changelog: {
+    title: 'Novidades',
+    historyTitle: 'Histórico de Versões',
+    version: 'Versão',
+    date: 'Data',
+    highlights: 'Destaques',
+    improvements: 'Melhorias',
+    fixes: 'Correções',
+    viewHistory: 'Ver versões anteriores',
+    backToCurrent: 'Voltar para versão atual',
+    close: 'Fechar',
+    gotIt: 'Entendi, vamos lá!',
+    newFeaturesDesc: 'Confira as melhorias que preparamos para você.',
+    current: 'Atual'
   }
 };
 
