@@ -27,7 +27,15 @@ export default function PendentesClient() {
 
   const fetchPendentes = async () => {
     try {
-      const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
+      // Helper para obter o token de forma robusta
+      const getToken = () => {
+        const cookies = document.cookie.split('; ');
+        const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
+        const token = cookies.find(row => row.startsWith('token='))?.split('=')[1];
+        return abzToken || token;
+      };
+
+      const token = getToken();
       const response = await fetch('/api/avaliacao-desempenho/avaliacoes/pending-review', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -107,7 +115,7 @@ export default function PendentesClient() {
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">{t('common.submittedOn')}</p>
                       <p className="font-medium text-gray-700 dark:text-gray-300">
-                        {new Date(avaliacao.data_autoavaliacao).toLocaleDateString(locale === 'pt' ? 'pt-BR' : 'en-US')}
+                        {new Date(avaliacao.data_autoavaliacao).toLocaleDateString(locale === 'pt-BR' ? 'pt-BR' : 'en-US')}
                       </p>
                     </div>
                   </div>

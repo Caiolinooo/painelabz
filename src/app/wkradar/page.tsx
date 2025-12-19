@@ -19,14 +19,12 @@ export default function WKRadarPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [loginAttempted, setLoginAttempted] = useState(false);
-    const formRef = useRef<HTMLFormElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const newWindowFormRef = useRef<HTMLFormElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // URL direta segura (HTTPS) configurada no servidor vm.groupabz.com
-    const GUACAMOLE_URL = 'https://vm.groupabz.com/guacamole/';
+    // URL relativa proxied via Next.js Rewrite
+    const GUACAMOLE_BASE_URL = '/guacamole/';
 
     // Gera o username padrão baseado no perfil do usuário
     const generateDefaultUsername = () => {
@@ -96,24 +94,61 @@ export default function WKRadarPage() {
         }
     }, [user, profile, authLoading]);
 
-    // Auto-login via form POST quando as credenciais estiverem prontas
+    // Auto-login via API Guacamole
     useEffect(() => {
-        if (credentials && !loginAttempted && formRef.current) {
-            // Pequeno delay para garantir que o DOM renderizou o iframe e o form
-            const timer = setTimeout(() => {
-                setLoginAttempted(true);
-                formRef.current?.submit();
-            }, 500);
-            return () => clearTimeout(timer);
-        }
+        const loginToGuacamole = async () => {
+            if (credentials && !loginAttempted) {
+                try {
+                    // 1. Obter token de autenticação
+                    const params = new URLSearchParams();
+                    params.append('username', credentials.username);
+                    params.append('password', credentials.password);
+
+                    const response = await fetch(`${GUACAMOLE_BASE_URL}api/tokens`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: params
+                    });
+
+                    if (response.ok) {
+                        const authData = await response.json();
+
+                        // 2. Armazenar token no localStorage (Same-Origin)
+                        // A aplicação web Guacamole usa "GUAC_AUTH" no localStorage
+                        localStorage.setItem('GUAC_AUTH', JSON.stringify(authData));
+
+                        setLoginAttempted(true);
+
+                        // 3. Carregar o iframe
+                        if (iframeRef.current) {
+                            iframeRef.current.src = GUACAMOLE_BASE_URL;
+                        }
+                    } else {
+                        console.error('Falha no login Guacamole:', response.status);
+                        // Se falhar o auto-login, ainda carregamos o iframe para o usuário tentar manualmente
+                        setLoginAttempted(true);
+                        if (iframeRef.current) {
+                            iframeRef.current.src = GUACAMOLE_BASE_URL;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erro ao conectar ao Guacamole:', err);
+                    setLoginAttempted(true);
+                    if (iframeRef.current) {
+                        iframeRef.current.src = GUACAMOLE_BASE_URL;
+                    }
+                }
+            }
+        };
+
+        loginToGuacamole();
     }, [credentials, loginAttempted]);
 
     const handleReload = () => {
         setLoginAttempted(false);
-        setTimeout(() => {
-            setLoginAttempted(true);
-            formRef.current?.submit();
-        }, 100);
+        // localStorage.removeItem('GUAC_AUTH'); // Opcional: limpar sessão ao recarregar
     };
 
     const toggleFullscreen = () => {
@@ -139,9 +174,7 @@ export default function WKRadarPage() {
 
     const handleOpenNewWindow = (e: React.MouseEvent) => {
         e.preventDefault();
-        if (newWindowFormRef.current) {
-            newWindowFormRef.current.submit();
-        }
+        window.open(GUACAMOLE_BASE_URL, '_blank');
     };
 
     // Focar no iframe quando clicar no container para garantir captura de teclado
@@ -158,6 +191,18 @@ export default function WKRadarPage() {
                 iframeRef.current?.focus();
             }, 1000);
             return () => clearTimeout(timer);
+        }
+    }, [loginAttempted]);
+
+    // Keep-alive (opcional): Pinger para manter sessão ativa se necessário
+    // Guacamole geralmente mantém via WebSocket, mas podemos reforçar
+    useEffect(() => {
+        if (loginAttempted) {
+            const interval = setInterval(() => {
+                // Apenas um fetch leve para garantir que o cookie/sessão não expire se houver
+                // fetch(`${GUACAMOLE_BASE_URL}api/tokens`, { method: 'HEAD' }).catch(() => {});
+            }, 60000 * 5); // 5 minutos
+            return () => clearInterval(interval);
         }
     }, [loginAttempted]);
 
@@ -253,34 +298,6 @@ export default function WKRadarPage() {
                     </div>
                 )}
 
-                {/* Form oculto para login via POST */}
-                {credentials && (
-                    <form
-                        ref={formRef}
-                        method="POST"
-                        action={GUACAMOLE_URL}
-                        target="wkradar-iframe"
-                        style={{ display: 'none' }}
-                    >
-                        <input type="hidden" name="username" value={credentials.username} />
-                        <input type="hidden" name="password" value={credentials.password} />
-                    </form>
-                )}
-
-                {/* Form oculto para abrir em nova janela via POST */}
-                {credentials && (
-                    <form
-                        ref={newWindowFormRef}
-                        method="POST"
-                        action={GUACAMOLE_URL}
-                        target="_blank"
-                        style={{ display: 'none' }}
-                    >
-                        <input type="hidden" name="username" value={credentials.username} />
-                        <input type="hidden" name="password" value={credentials.password} />
-                    </form>
-                )}
-
                 {/* Iframe do Guacamole - Container com suporte a Fullscreen e Scroll */}
                 <div
                     ref={containerRef}
@@ -290,7 +307,7 @@ export default function WKRadarPage() {
                     <iframe
                         ref={iframeRef}
                         name="wkradar-iframe"
-                        src={!loginAttempted ? 'about:blank' : GUACAMOLE_URL}
+                        src={!loginAttempted ? 'about:blank' : ''} // Src will be set after login
                         className="w-full h-full border-0 absolute inset-0"
                         title="WKRadar - Guacamole"
                         allow="clipboard-read; clipboard-write; fullscreen"

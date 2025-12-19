@@ -52,6 +52,16 @@ const nextConfig = {
       },
     ];
   },
+
+  // Proxy para o Guacamole (WKRadar) para permitir acesso Same-Origin e Auto-Login
+  async rewrites() {
+    return [
+      {
+        source: '/guacamole/:path*',
+        destination: 'https://vm.groupabz.com/guacamole/:path*',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

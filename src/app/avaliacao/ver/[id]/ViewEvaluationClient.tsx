@@ -142,7 +142,15 @@ export default function ViewEvaluationClient({
     }
 
     try {
-      const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
+      // Helper para obter o token de forma robusta
+      const getToken = () => {
+        const cookies = document.cookie.split('; ');
+        const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
+        const token = cookies.find(row => row.startsWith('token='))?.split('=')[1];
+        return abzToken || token;
+      };
+
+      const token = getToken();
       const response = await fetch(`/api/avaliacao-desempenho/avaliacoes/${evaluation.id}/final-comment`, {
         method: 'POST',
         headers: {
@@ -170,7 +178,15 @@ export default function ViewEvaluationClient({
 
   const handleManagerAction = async (action: 'approve' | 'return' | 'finalize') => {
     try {
-      const token = document.cookie.split('; ').find(row => row.startsWith('abzToken='))?.split('=')[1];
+      // Helper para obter o token de forma robusta
+      const getToken = () => {
+        const cookies = document.cookie.split('; ');
+        const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
+        const token = cookies.find(row => row.startsWith('token='))?.split('=')[1];
+        return abzToken || token;
+      };
+
+      const token = getToken();
 
       if (action === 'finalize') {
         // Finalizar avaliação após comentário do funcionário

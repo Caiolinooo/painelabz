@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.7.9-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.8.0-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,28 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.8.0)**
+- ✅ **Melhorias Avançadas no Sistema WKRadar**: Refatoração completa do auto-login
+  - Migrado de form POST para API Guacamole com autenticação via token
+  - Implementado proxy Next.js para acesso Same-Origin seguro
+  - Armazenamento de sessão via localStorage para autenticação persistente
+  - Remoção de formulários ocultos para abordagem mais moderna
+  - Melhor tratamento de erros e fallback para login manual
+  - Sistema de keep-alive opcional para manter sessão ativa
+  - Melhor experiência do usuário com autenticação automática
+- ✅ **Melhorias no Sistema de Autenticação de Avaliações**: Robustez aprimorada
+  - Implementado helper robusto para obtenção de token de autenticação
+  - Suporte a múltiplos formatos de token (abzToken e token)
+  - Melhor compatibilidade entre diferentes contextos de autenticação
+  - Aplicado em PendentesClient e ViewEvaluationClient
+- ✅ **Correções de Internacionalização**: Ajustes de locale
+  - Corrigido locale em exibição de datas (pt-BR vs pt)
+  - Melhor consistência na formatação de datas
+- ✅ **Melhorias de Segurança**: Proxy e Same-Origin
+  - Configuração de rewrite no Next.js para proxy Guacamole
+  - Acesso Same-Origin para evitar problemas de CORS
+  - Melhor segurança e compatibilidade de cookies/sessões
 
 ### **Dezembro 2025 (v3.7.9)**
 - ✅ **Melhorias no Modal de Changelog**: Aprimoramentos de UX e segurança
