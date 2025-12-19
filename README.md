@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.8.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.8.1-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,13 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.8.1)**
+- ✅ **Melhorias de Consistência em Autenticação**: Padronização do helper de token
+  - Aplicado helper robusto de token na API do WKRadar
+  - Consistência total entre módulos de avaliação e WKRadar
+  - Melhor tratamento de autenticação em todas as chamadas de API
+  - Suporte unificado para múltiplos formatos de token (abzToken e token)
 
 ### **Dezembro 2025 (v3.8.0)**
 - ✅ **Melhorias Avançadas no Sistema WKRadar**: Refatoração completa do auto-login

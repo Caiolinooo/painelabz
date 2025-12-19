@@ -49,8 +49,22 @@ export default function WKRadarPage() {
                 setLoading(true);
                 setError(null);
 
+                // Token retrieval robusto (similar ao fix da avaliação)
+                const getToken = () => {
+                    const cookies = document.cookie.split('; ');
+                    const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
+                    const token = cookies.find(row => row.startsWith('token='))?.split('=')[1];
+                    return abzToken || token;
+                };
+
+                const token = getToken();
+
                 // Tentar buscar credenciais customizadas
-                const response = await fetch(`/api/wkradar/credentials?userId=${user.id}`);
+                const response = await fetch(`/api/wkradar/credentials?userId=${user.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
 
                 if (response.ok) {
                     const data = await response.json();
