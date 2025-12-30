@@ -19,21 +19,21 @@ interface AdminCardProps {
 const AdminCard = ({ title, description, icon: Icon, href, color }: AdminCardProps) => {
   const { t } = useI18n();
   return (
-  <Link
-    href={href}
-    className={`bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col h-full border-t-4 ${color}`}
-  >
-    <div className="flex items-start mb-4">
-      <div className="p-3 rounded-full bg-gray-100 mr-4">
-        <Icon className="h-6 w-6 text-gray-600" />
+    <Link
+      href={href}
+      className={`bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col h-full border-t-4 ${color}`}
+    >
+      <div className="flex items-start mb-4">
+        <div className="p-3 rounded-full bg-gray-100 mr-4">
+          <Icon className="h-6 w-6 text-gray-600" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
       </div>
-      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-    </div>
-    <p className="text-gray-600 text-sm flex-grow">{description}</p>
-    <div className="mt-4 pt-4 border-t border-gray-100">
-      <span className="text-sm font-medium text-abz-blue">{t('common.manage')} &rarr;</span>
-    </div>
-  </Link>
+      <p className="text-gray-600 text-sm flex-grow">{description}</p>
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <span className="text-sm font-medium text-abz-blue">{t('common.manage')} &rarr;</span>
+      </div>
+    </Link>
   );
 };
 
@@ -218,7 +218,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="p-4 bg-gray-50 rounded-lg">
             <p className="text-sm font-medium text-gray-500">{t('admin.version')}</p>
-            <p className="text-lg font-semibold text-gray-900">1.0.0</p>
+            <p className="text-lg font-semibold text-gray-900">{process.env.NEXT_PUBLIC_APP_VERSION || '3.8.1'}</p>
           </div>
           <div className="p-4 bg-gray-50 rounded-lg">
             <p className="text-sm font-medium text-gray-500">{t('admin.lastLogin')}</p>
