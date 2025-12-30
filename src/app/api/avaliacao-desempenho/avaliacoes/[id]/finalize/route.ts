@@ -32,12 +32,7 @@ export async function POST(
       );
     }
 
-    if (payload.role !== 'MANAGER' && payload.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, error: 'Apenas gerentes podem finalizar avaliações' },
-        { status: 403 }
-      );
-    }
+    // Nota: A verificação de permissão é feita posteriormente checando avaliador_id
 
     const { id } = await params;
 

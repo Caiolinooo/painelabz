@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.8.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-3.8.2-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -407,6 +407,15 @@ painel-abz/
 ---
 
 ## 🆕 Atualizações Recentes
+
+### **Dezembro 2025 (v3.8.2)**
+- ✅ **Correção de Permissões de Avaliação**: Resolvido problema que bloqueava gerentes
+  - Removida verificação redundante de `payload.role` (global) em endpoints de aprovação e finalização
+  - Permissão agora baseada corretamente no mapeador de gerentes e campo `avaliador_id`
+  - Garante que líderes de setor possam finalizar avaliações mesmo sem role global de 'MANAGER'
+- ✅ **Versão Dinâmica no Admin**: Implementada exibição automática da versão do `package.json`
+  - Configurado `next.config.js` para expor `NEXT_PUBLIC_APP_VERSION`
+  - Removido valor hardcoded ("1.0.0") do painel administrativo
 
 ### **Dezembro 2025 (v3.8.1)**
 - ✅ **Melhorias de Consistência em Autenticação**: Padronização do helper de token
