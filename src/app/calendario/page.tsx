@@ -6,8 +6,18 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { FiInfo } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
-import CompanyIcsEventsList from '@/components/Calendar/CompanyIcsEventsList';
 import { MIOCalendarEvent } from '@/types/mio';
+import { fetchWithToken } from '@/lib/tokenStorage';
+
+interface CompanyEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  start: string;
+  end?: string;
+  allDay?: boolean;
+}
 
 // Define the structure for a holiday
 interface Holiday {
@@ -122,6 +132,8 @@ export default function CalendarioPage() {
   const { t, locale } = useI18n();
   const [allHolidays, setAllHolidays] = useState<Holiday[]>([]);
   const [mioEvents, setMioEvents] = useState<MIOCalendarEvent[]>([]);
+  const [companyEvents, setCompanyEvents] = useState<CompanyEvent[]>([]);
+  const [companyConfig, setCompanyConfig] = useState({ marker_color: '#6339F5' });
   const [viewDate, setViewDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +144,7 @@ export default function CalendarioPage() {
   useEffect(() => {
     const loadMio = async () => {
       try {
-        const res = await fetch('/api/mio/calendar');
+        const res = await fetchWithToken('/api/mio/calendar');
         const data = await res.json();
         if (data.success && Array.isArray(data.events)) {
           setMioEvents(data.events);
@@ -142,6 +154,39 @@ export default function CalendarioPage() {
       }
     };
     loadMio();
+  }, [currentYear]);
+
+  // Load Company Config
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const res = await fetchWithToken('/api/admin/calendar/company/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.marker_color) setCompanyConfig({ marker_color: data.marker_color });
+        }
+      } catch (err) {
+        console.error('Company Config Error:', err);
+      }
+    };
+    loadConfig();
+  }, []);
+
+  // Load Company Events
+  useEffect(() => {
+    const loadCompanyEvents = async () => {
+      try {
+        // Fetch 90 days to cover current view and a bit beyond
+        const res = await fetchWithToken('/api/calendar/company/events?rangeDays=90');
+        const data = await res.json();
+        if (data.events) {
+          setCompanyEvents(data.events);
+        }
+      } catch (err) {
+        console.error('Company Events Error:', err);
+      }
+    };
+    loadCompanyEvents();
   }, [currentYear]);
 
   // Load Holidays
@@ -202,13 +247,14 @@ export default function CalendarioPage() {
     const dStr = date.toISOString().split('T')[0];
     const holidays = allHolidays.filter(h => h.date === dStr);
     const mio = mioEvents.filter(e => e.start.startsWith(dStr));
-    return { holidays, mio };
+    const company = companyEvents.filter(e => e.start.startsWith(dStr));
+    return { holidays, mio, company };
   };
 
   const tileContent = ({ date, view }: { date: Date; view: string }) => {
     if (view !== 'month') return null;
-    const { holidays, mio } = getEventsForDate(date);
-    if (!holidays.length && !mio.length) return null;
+    const { holidays, mio, company } = getEventsForDate(date);
+    if (!holidays.length && !mio.length && !company.length) return null;
 
     return (
       <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 flex justify-center gap-1 flex-wrap max-w-full px-1">
@@ -226,14 +272,22 @@ export default function CalendarioPage() {
             title={`${e.title}\n${e.description || ''}`}
           ></div>
         ))}
+        {company.map(e => (
+          <div
+            key={e.id}
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: companyConfig.marker_color }}
+            title={`${e.summary}\n${e.description || ''}`}
+          ></div>
+        ))}
       </div>
     );
   };
 
   const tileClassName = ({ date, view }: { date: Date; view: string }) => {
     if (view !== 'month') return null;
-    const { holidays, mio } = getEventsForDate(date);
-    return (holidays.length || mio.length) ? 'relative font-semibold' : null;
+    const { holidays, mio, company } = getEventsForDate(date);
+    return (holidays.length || mio.length || company.length) ? 'relative font-semibold' : null;
   };
 
   const eventsThisMonth = useMemo(() => {
@@ -258,8 +312,20 @@ export default function CalendarioPage() {
       color: e.color
     }));
 
-    return [...hList, ...mList].sort((a, b) => a.date.localeCompare(b.date));
-  }, [allHolidays, mioEvents, viewDate]);
+    const cList = companyEvents.filter(e => {
+      const d = new Date(e.start);
+      return d.getMonth() === m && d.getFullYear() === y;
+    }).map(e => ({
+      date: e.start.split('T')[0],
+      name: e.summary,
+      type: 'EMPRESA',
+      description: e.description,
+      source: 'company',
+      color: companyConfig.marker_color
+    }));
+
+    return [...hList, ...mList, ...cList].sort((a, b) => a.date.localeCompare(b.date));
+  }, [allHolidays, mioEvents, companyEvents, viewDate, companyConfig.marker_color]);
 
   return (
     <MainLayout>
@@ -276,7 +342,7 @@ export default function CalendarioPage() {
         <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-lg shadow-md">
           {loading && <p className="text-center text-gray-500 mb-4">{t('calendario.loading')}</p>}
           <Calendar
-            onChange={handleActiveStartDateChange}
+            onActiveStartDateChange={handleActiveStartDateChange}
             activeStartDate={viewDate}
             tileContent={tileContent}
             tileClassName={tileClassName}
@@ -289,6 +355,7 @@ export default function CalendarioPage() {
             <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-500"></span> Feriado Municipal</div>
             <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#4169E1' }}></span> Embarque</div>
             <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#FFD700' }}></span> Curso</div>
+            <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: companyConfig.marker_color }}></span> Eventos Empresa</div>
           </div>
         </div>
 
@@ -304,8 +371,9 @@ export default function CalendarioPage() {
               const [Y, M, D] = ev.date.split('-').map(Number);
               const dObj = new Date(Date.UTC(Y, M - 1, D));
               const isMio = ev.source === 'mio';
+              const isCompany = ev.source === 'company';
               const borderColor = ev.color || '#ccc';
-              const bgColor = isMio ? `${ev.color}20` : (ev.type === 'MUNICIPAL' ? '#fff7ed' : '#eff6ff');
+              const bgColor = isMio || isCompany ? `${ev.color}15` : (ev.type === 'MUNICIPAL' ? '#fff7ed' : '#eff6ff');
 
               return (
                 <li key={`${ev.date}-${idx}`} className="text-sm border-l-4 pl-3 p-2 rounded-r-md" style={{ borderLeftColor: borderColor, backgroundColor: bgColor }}>
@@ -319,10 +387,6 @@ export default function CalendarioPage() {
             })}
           </ul>
         </div>
-      </div>
-
-      <div className="mt-8">
-        <CompanyIcsEventsList />
       </div>
 
       <style jsx global>{`

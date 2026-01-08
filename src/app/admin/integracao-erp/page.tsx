@@ -21,6 +21,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 interface ERPConnection {
   id: string;
@@ -91,7 +92,7 @@ export default function IntegracaoERPPage() {
   const loadCalendarConfig = async () => {
     try {
       setCalendarLoading(true);
-      const res = await fetch('/api/admin/calendar/company/settings');
+      const res = await fetchWithToken('/api/admin/calendar/company/settings');
       if (res.ok) {
         const data = await res.json();
         setCalendarConfig({
@@ -113,19 +114,17 @@ export default function IntegracaoERPPage() {
     try {
       setCalendarSaving(true);
       setCalendarTestResult(null);
-
-      const res = await fetch('/api/admin/calendar/company/settings', {
+      const res = await fetchWithToken('/api/admin/calendar/company/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(calendarConfig)
       });
-
       if (res.ok) {
-        toast.success('Configurações do calendário salvas!');
+        toast.success('Configurações salvas com sucesso!');
         loadCalendarConfig();
       } else {
-        const data = await res.json();
-        toast.error(data.error || 'Erro ao salvar');
+        const err = await res.json();
+        toast.error(err.error || 'Erro ao salvar');
       }
     } catch (e) {
       toast.error('Erro ao salvar configurações');
@@ -134,7 +133,6 @@ export default function IntegracaoERPPage() {
     }
   };
 
-  // Test calendar connection
   // Test calendar connection
   const testCalendarConnection = async () => {
     try {
@@ -150,7 +148,7 @@ export default function IntegracaoERPPage() {
         params.set('gcal', calendarConfig.gcal_url);
       }
 
-      const res = await fetch(`/api/calendar/company/events?${params.toString()}`);
+      const res = await fetchWithToken(`/api/calendar/company/events?${params.toString()}`);
       const data = await res.json();
 
       if (res.ok && data.events) {
@@ -178,7 +176,7 @@ export default function IntegracaoERPPage() {
 
   const checkMioStatus = async () => {
     try {
-      const res = await fetch('/api/mio/test');
+      const res = await fetchWithToken('/api/mio/test');
       const data = await res.json();
 
       setConnections(prev => prev.map(c => {
@@ -393,7 +391,9 @@ export default function IntegracaoERPPage() {
         setSyncStatuses(prev => prev.map(s => s.module === module ? { ...s, status: 'running' } : s));
         toast.loading('Sincronizando MIO...', { id: 'mio-sync' });
 
-        const res = await fetch('/api/mio/sync', { method: 'POST' });
+        const res = await fetchWithToken('/api/mio/sync-employees', {
+          method: 'POST'
+        });
         const data = await res.json();
 
         if (data.success) {
