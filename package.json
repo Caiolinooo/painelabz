@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "npx rimraf .next && next build",
+    "build": "npx rimraf .next && npx next build",
     "clean": "node scripts/clean-next-cache.js",
     "clear-cache": "node scripts/clear-cache.js",
     "rebuild": "npm run clean && npm run build",
