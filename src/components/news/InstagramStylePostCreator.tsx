@@ -37,7 +37,14 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper para verificar se arquivo é vídeo
+  const isVideoFile = (index: number): boolean => {
+    const file = selectedFiles[index];
+    return file?.type?.startsWith('video/') || false;
+  };
 
   // Resetar estado ao fechar
   const handleClose = () => {
@@ -147,7 +154,8 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
     } else if (currentStep === 'edit') {
       setCurrentStep('caption');
     } else if (currentStep === 'caption') {
-      setCurrentStep('sharing');
+      // Limpar erros anteriores e iniciar compartilhamento
+      setUploadError(null);
       handleShare();
     }
   };
@@ -168,20 +176,30 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
   // Compartilhar post
   const handleShare = async () => {
     setIsUploading(true);
+    setUploadError(null);
+    setCurrentStep('sharing'); // Mudar para tela de progresso
 
     try {
-      // Upload real de imagens via API local (/api/upload) que salva em public/uploads
+      console.log('🚀 [SHARE] Iniciando compartilhamento...');
+      console.log('📎 [SHARE] Arquivos selecionados:', selectedFiles.map(f => `${f.name} (${(f.size / 1024 / 1024).toFixed(2)}MB, ${f.type})`));
+
+      // Upload real de mídias via API
       let mediaUrls: string[] = [];
       if (selectedFiles.length > 0) {
+        console.log('⬆️ [SHARE] Iniciando upload de', selectedFiles.length, 'arquivo(s)...');
+
         const form = new FormData();
         form.append('folder', 'posts');
         selectedFiles.forEach((file) => {
           form.append('file', file);
         });
+
         const uploadResp = await fetch('/api/news/upload', { method: 'POST', body: form });
+
         if (uploadResp.ok) {
           const uploadData = await uploadResp.json();
           mediaUrls = (uploadData.files || []).map((f: any) => f.url);
+          console.log('✅ [SHARE] Upload bem-sucedido! URLs:', mediaUrls);
 
           // Mostrar logs de debug de sucesso
           if (uploadData.debugLogs) {
@@ -196,13 +214,11 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
           console.error('Status:', uploadResp.status);
           console.error('Status Text:', uploadResp.statusText);
 
+          let errorMessage = 'Erro ao fazer upload da mídia';
+
           if (errorData) {
             console.error('Erro:', errorData.error);
             console.error('Detalhes:', errorData.details);
-            console.error('Error Name:', errorData.errorName);
-            console.error('Status Code:', errorData.statusCode);
-            console.error('Arquivo:', errorData.file);
-            console.error('Caminho:', errorData.path);
 
             // Mostrar logs de debug
             if (errorData.debugLogs) {
@@ -210,23 +226,19 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
               errorData.debugLogs.forEach((log: string) => console.error(log));
             }
 
-            // Mostrar erro do Supabase
-            if (errorData.supabaseError) {
-              console.error('🗄️ [SUPABASE ERROR]');
-              console.error('Message:', errorData.supabaseError.message);
-              console.error('Name:', errorData.supabaseError.name);
-              console.error('Status Code:', errorData.supabaseError.statusCode);
-              console.error('Error:', errorData.supabaseError.error);
+            // Mensagem de erro mais amigável
+            if (uploadResp.status === 413) {
+              errorMessage = `Arquivo muito grande: ${errorData.details || 'O limite é 50MB por arquivo.'}`;
+            } else {
+              errorMessage = errorData.details || errorData.error || 'Erro desconhecido no upload';
             }
-
-            throw new Error(errorData.details || errorData.error || 'Erro desconhecido no upload');
           }
 
-          throw new Error('Erro ao fazer upload da mídia');
+          throw new Error(errorMessage);
         }
-      } else {
-        mediaUrls = previewUrls;
       }
+
+      console.log('📝 [SHARE] Criando post no banco de dados...');
 
       const newPost = {
         title: postData.title || t('components.novaPublicacao'),
@@ -253,14 +265,22 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
 
       if (response.ok) {
         const createdPost = await response.json();
+        console.log('✅ [SHARE] Post criado com sucesso! ID:', createdPost.id);
         onPostCreated(createdPost);
-        handleClose();
+
+        // Pequeno delay para mostrar sucesso antes de fechar
+        setTimeout(() => handleClose(), 1500);
       } else {
-        throw new Error(t('newsSystem.errorCreatingPost', 'Erro ao criar post'));
+        const errorData = await response.json().catch(() => null);
+        console.error('❌ [SHARE] Erro ao criar post:', errorData);
+        throw new Error(errorData?.error || t('newsSystem.errorCreatingPost', 'Erro ao criar post'));
       }
     } catch (error) {
-      console.error('Erro ao compartilhar:', error);
-      alert(t('newsSystem.errorSharingPost', 'Erro ao compartilhar post. Tente novamente.'));
+      console.error('💥 [SHARE] Erro ao compartilhar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao compartilhar post. Tente novamente.';
+      setUploadError(errorMessage);
+      // Voltar para o step de caption para permitir retry
+      setCurrentStep('caption');
     } finally {
       setIsUploading(false);
     }
@@ -376,14 +396,22 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
           {/* Step: Edit */}
           {!isCompressing && currentStep === 'edit' && (
             <div className="flex-1 flex">
-              {/* Image Preview */}
+              {/* Media Preview */}
               <div className="flex-1 bg-black flex items-center justify-center">
                 {previewUrls.length > 0 && (
-                  <img
-                    src={previewUrls[currentImageIndex]}
-                    alt="Preview"
-                    className="max-w-full max-h-full object-contain"
-                  />
+                  isVideoFile(currentImageIndex) ? (
+                    <video
+                      src={previewUrls[currentImageIndex]}
+                      controls
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={previewUrls[currentImageIndex]}
+                      alt="Preview"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  )
                 )}
               </div>
 
@@ -397,11 +425,17 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
                       className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${index === currentImageIndex ? 'border-blue-500' : 'border-transparent'
                         }`}
                     >
-                      <img
-                        src={url}
-                        alt={`Thumbnail ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                      {isVideoFile(index) ? (
+                        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                          <FiVideo className="w-6 h-6 text-white" />
+                        </div>
+                      ) : (
+                        <img
+                          src={url}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -412,14 +446,22 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
           {/* Step: Caption */}
           {!isCompressing && currentStep === 'caption' && (
             <div className="flex-1 flex">
-              {/* Image Preview */}
+              {/* Media Preview */}
               <div className="w-1/2 bg-black flex items-center justify-center">
                 {previewUrls.length > 0 && (
-                  <img
-                    src={previewUrls[currentImageIndex]}
-                    alt="Preview"
-                    className="max-w-full max-h-full object-contain"
-                  />
+                  isVideoFile(currentImageIndex) ? (
+                    <video
+                      src={previewUrls[currentImageIndex]}
+                      controls
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={previewUrls[currentImageIndex]}
+                      alt="Preview"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  )
                 )}
               </div>
 
@@ -429,6 +471,19 @@ const InstagramStylePostCreator: React.FC<InstagramStylePostCreatorProps> = ({
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"></div>
                   <span className="font-medium">Sua publicação</span>
                 </div>
+
+                {/* Error Message */}
+                {uploadError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-2">
+                      <FiX className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-red-800">Erro ao compartilhar</p>
+                        <p className="text-sm text-red-600 mt-1">{uploadError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <textarea

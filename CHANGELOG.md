@@ -5,9 +5,27 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
-## [Não Lançado]
+## [3.9.0] - 2026-01-08
 
-## [3.7.9] - 2025-12-17
+### Adicionado
+- **Configuração de Calendário Admin**: Nova seção em "Integração ERP" para gerenciar o feed ICS da empresa.
+  - Suporte a URL direta ou conversão automática de links do Google Calendar.
+  - Seletor de cores para eventos no calendário.
+  - Ferramenta de teste de conexão em tempo real.
+- **Integração MIO**: Módulos completos para sincronização de funcionários e autenticação com sistema MIO.
+
+### Corrigido
+- **Banners de Notificação**: Resolvido loop infinito/pisca-pisca de banners usando ordenação estável com critério de desempate por ID.
+- **Módulo de Notícias**:
+  - Preview de vídeo agora usa a tag `<video>` corretamente.
+  - Fluxo de compartilhamento aprimorado com mensagens de erro visíveis e opção de tentar novamente.
+- **Calendário**: Atualizado fallback de URL para `abz.midia@gmail.com` e melhorado feedback de erro para calendários privados (404).
+
+### Melhorado
+- **Performance**: Limpeza de cache e otimização de rotas de API.
+- **UX**: Correção de erros de codificação (UTF-8) em múltiplos componentes.
+
+## [3.8.2] - 2025-12-30
 
 ### Melhorado
 - **ChangelogModal**: Aprimoramentos de UX e segurança

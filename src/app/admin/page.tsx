@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings, FiUserCheck, FiRefreshCw, FiBarChart2, FiKey, FiTool, FiUserX, FiDollarSign, FiCheck, FiEdit3 } from 'react-icons/fi';
+import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings, FiUserCheck, FiRefreshCw, FiBarChart2, FiKey, FiTool, FiUserX, FiDollarSign, FiCheck, FiEdit3, FiDatabase } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -210,6 +210,15 @@ export default function AdminDashboard() {
           icon={FiUserCheck}
           href="/admin-fix"
           color="border-amber-500"
+        />
+
+        {/* Integrações */}
+        <AdminCard
+          title={t('admin.erpIntegration', 'Integração ERP')}
+          description={t('admin.erpIntegrationDesc', 'Gerencie conexões com SAP, MIO e outros sistemas')}
+          icon={FiDatabase}
+          href="/admin/integracao-erp"
+          color="border-blue-600"
         />
       </div>
 
