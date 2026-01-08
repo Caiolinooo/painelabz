@@ -24,10 +24,10 @@ export async function authenticateUser(request: NextRequest): Promise<{
     // Usar o método verifyTokenFromRequest que já lida com todos os tipos de token
     const authResult = await verifyTokenFromRequest(request);
 
-    if ('error' in authResult) {
+    if (!authResult.valid) {
       return {
         user: null,
-        error: NextResponse.json({ error: authResult.error }, { status: 401 })
+        error: NextResponse.json({ error: 'Token inválido ou ausente' }, { status: 401 })
       };
     }
 
@@ -36,7 +36,7 @@ export async function authenticateUser(request: NextRequest): Promise<{
     if (!userData) {
       return {
         user: null,
-        error: NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+        error: NextResponse.json({ error: 'Usuário não cadastrado' }, { status: 404 })
       };
     }
 

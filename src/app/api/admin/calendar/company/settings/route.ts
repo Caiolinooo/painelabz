@@ -70,12 +70,27 @@ export const PUT = withPermission('manager', async (req, user) => {
         : defaults.marker_color
     };
 
-    const { error } = await supabaseAdmin
+    // Use a more robust check-and-upsert pattern
+    const { data: existing } = await supabaseAdmin
       .from('settings')
-      .upsert({ key: SETTINGS_KEY, value, description: 'Configurações do calendário da empresa (ICS)' }, { onConflict: 'key' });
+      .select('id')
+      .eq('key', SETTINGS_KEY)
+      .maybeSingle();
 
-    if (error) {
-      console.error('company_calendar PUT error', error);
+    let saveStatus;
+    if (existing) {
+      saveStatus = await supabaseAdmin
+        .from('settings')
+        .update({ value, description: 'Configurações do calendário da empresa (ICS)' })
+        .eq('key', SETTINGS_KEY);
+    } else {
+      saveStatus = await supabaseAdmin
+        .from('settings')
+        .insert({ key: SETTINGS_KEY, value, description: 'Configurações do calendário da empresa (ICS)' });
+    }
+
+    if (saveStatus.error) {
+      console.error('company_calendar save error', saveStatus.error);
       return NextResponse.json({ error: 'Erro ao salvar configurações' }, { status: 500 });
     }
 

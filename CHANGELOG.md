@@ -5,7 +5,21 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
-## [3.9.0] - 2026-01-08
+## [3.9.1] - 2026-01-08
+
+### Added
+- Unificação da interface de Calendário: Eventos ICS agora aparecem integrados no calendário principal e na lista lateral.
+- Marcadores coloridos para eventos da empresa no calendário.
+- Suporte a `fetchWithToken` na página de calendário e painel administrativo para maior segurança e persistência.
+
+### Fixed
+- Persistência das configurações de calendário: Corrigido erro de permissão (401/404) e melhorada lógica de salvamento (upsert) no banco de dados.
+- Removido erro enganoso de "Usuário não encontrado" em falhas de autenticação da API.
+
+### Changed
+- Removida seção separada "Eventos da Empresa (ICS)" do rodapé da página de calendário.
+
+## [3.9.0] - 2026-01-06
 
 ### Adicionado
 - **Configuração de Calendário Admin**: Nova seção em "Integração ERP" para gerenciar o feed ICS da empresa.
