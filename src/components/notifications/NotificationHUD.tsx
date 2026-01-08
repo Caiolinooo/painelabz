@@ -196,37 +196,73 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
   });
 
   // Detectar novas notificações para mostrar no banner e tocar som
+  // FIX: Limitar a notificações criadas na última hora para evitar spam de banners antigos
   useEffect(() => {
-    if (notifications.length > 0) {
-      // Ordenar por data (mais recente primeiro)
-      const sorted = [...notifications].sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+    if (notifications.length === 0) {
+      console.log('🔔 [Banner] Nenhuma notificação disponível');
+      return;
+    }
 
-      const latest = sorted[0];
+    const now = new Date();
+    const ONE_HOUR_MS = 60 * 60 * 1000; // 1 hora em milissegundos
 
-      // Se for uma notificação nova (não mostrada antes) e não lida
-      if (latest && !latest.read_at && !shownNotifications.has(latest.id)) {
-        console.log('🔔 Nova notificação detectada:', latest.title);
+    // Ordenar por data (mais recente primeiro) com ID como desempate para estabilidade
+    const sorted = [...notifications].sort((a, b) => {
+      const timeDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      // Desempate por ID para evitar flip-flopping quando timestamps são iguais
+      return b.id.localeCompare(a.id);
+    });
 
-        // Tocar som
-        playABZChime();
+    const latest = sorted[0];
+    const latestAge = now.getTime() - new Date(latest.created_at).getTime();
+    const isRecent = latestAge < ONE_HOUR_MS;
 
-        // Mostrar banner se habilitado
-        if (showBanner) {
-          setBannerNotification(latest);
-          setIsBannerVisible(true);
-        }
+    console.log('🔔 [Banner] Avaliando notificação:', {
+      id: latest.id,
+      title: latest.title,
+      created_at: latest.created_at,
+      ageMinutes: Math.floor(latestAge / 60000),
+      isRecent,
+      isRead: !!latest.read_at,
+      alreadyShown: shownNotifications.has(latest.id)
+    });
 
-        // Marcar como mostrada
-        setShownNotifications(prev => {
-          const newSet = new Set([...prev, latest.id]);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(`shown-notifications-${userId}`, JSON.stringify([...newSet]));
-          }
-          return newSet;
-        });
+    // Verificar todas as condições para mostrar o banner:
+    // 1. Não foi lida
+    // 2. Não foi mostrada antes
+    // 3. É recente (criada na última hora)
+    if (latest && !latest.read_at && !shownNotifications.has(latest.id) && isRecent) {
+      console.log('🔔 [Banner] ✅ Mostrando banner para:', latest.title);
+
+      // Tocar som
+      playABZChime();
+
+      // Mostrar banner se habilitado
+      if (showBanner) {
+        setBannerNotification(latest);
+        setIsBannerVisible(true);
       }
+
+      // Marcar como mostrada
+      setShownNotifications(prev => {
+        const newSet = new Set([...prev, latest.id]);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`shown-notifications-${userId}`, JSON.stringify([...newSet]));
+        }
+        return newSet;
+      });
+    } else if (latest && !latest.read_at && !shownNotifications.has(latest.id) && !isRecent) {
+      // Notificação antiga não lida - marcar como mostrada sem exibir banner
+      console.log('🔔 [Banner] ⏭️ Pulando notificação antiga (>', Math.floor(latestAge / 60000), 'min):', latest.title);
+
+      setShownNotifications(prev => {
+        const newSet = new Set([...prev, latest.id]);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`shown-notifications-${userId}`, JSON.stringify([...newSet]));
+        }
+        return newSet;
+      });
     }
   }, [notifications, showBanner, userId, shownNotifications]);
 

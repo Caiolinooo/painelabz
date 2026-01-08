@@ -1,10 +1,10 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  FiDatabase, 
-  FiLink, 
-  FiActivity, 
+import {
+  FiDatabase,
+  FiLink,
+  FiActivity,
   FiSettings,
   FiRefreshCw,
   FiAlertCircle,
@@ -15,7 +15,8 @@ import {
   FiClock,
   FiUsers,
   FiDollarSign,
-  FiFileText
+  FiFileText,
+  FiCalendar
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
@@ -24,7 +25,7 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 interface ERPConnection {
   id: string;
   name: string;
-  type: 'SAP' | 'Oracle' | 'Protheus' | 'Senior' | 'Outro';
+  type: 'SAP' | 'Oracle' | 'Protheus' | 'Senior' | 'MIO' | 'Outro';
   status: 'connected' | 'disconnected' | 'error';
   last_sync: string | null;
   endpoint: string;
@@ -43,7 +44,7 @@ interface SyncStatus {
 export default function IntegracaoERPPage() {
   const { t } = useI18n();
   const { user, isAdmin } = useSupabaseAuth();
-  
+
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState<ERPConnection[]>([]);
   const [syncStatuses, setSyncStatuses] = useState<SyncStatus[]>([]);
@@ -57,31 +58,166 @@ export default function IntegracaoERPPage() {
     modules: [] as string[]
   });
 
+  // Calendar configuration state
+  const [calendarConfig, setCalendarConfig] = useState({
+    ics_url: '',
+    gcal_url: '',
+    marker_color: '#6339F5',
+    notify_minutes_before: 60
+  });
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarSaving, setCalendarSaving] = useState(false);
+  const [calendarTestResult, setCalendarTestResult] = useState<{ success: boolean; message: string; eventsCount?: number } | null>(null);
+
   const availableModules = [
     { id: 'usuarios', name: t('admin.usuarios'), icon: FiUsers },
     { id: 'folha_pagamento', name: 'Folha de Pagamento', icon: FiDollarSign },
     { id: 'avaliacoes', name: t('admin.avaliacoes'), icon: FiFileText },
     { id: 'departamentos', name: 'Departamentos', icon: FiUsers },
     { id: 'cargos', name: 'Cargos', icon: FiFileText },
+    { id: 'mio_usuarios', name: 'MIO - Funcionários', icon: FiUsers },
   ];
 
-  const erpTypes = ['SAP', 'Oracle', 'Protheus', 'Senior', 'Outro'];
+  const erpTypes = ['SAP', 'Oracle', 'Protheus', 'Senior', 'MIO', 'Outro'];
 
   useEffect(() => {
     if (isAdmin) {
       loadERPData();
+      loadCalendarConfig();
     }
   }, [isAdmin]);
+
+  // Load calendar configuration
+  const loadCalendarConfig = async () => {
+    try {
+      setCalendarLoading(true);
+      const res = await fetch('/api/admin/calendar/company/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarConfig({
+          ics_url: data.ics_url || '',
+          gcal_url: '',
+          marker_color: data.marker_color || '#6339F5',
+          notify_minutes_before: data.notify_minutes_before || 60
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao carregar config do calendário:', e);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  // Save calendar configuration
+  const saveCalendarConfig = async () => {
+    try {
+      setCalendarSaving(true);
+      setCalendarTestResult(null);
+
+      const res = await fetch('/api/admin/calendar/company/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(calendarConfig)
+      });
+
+      if (res.ok) {
+        toast.success('Configurações do calendário salvas!');
+        loadCalendarConfig();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Erro ao salvar');
+      }
+    } catch (e) {
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setCalendarSaving(false);
+    }
+  };
+
+  // Test calendar connection
+  // Test calendar connection
+  const testCalendarConnection = async () => {
+    try {
+      setCalendarTestResult(null);
+      toast.loading('Testando conexão...', { id: 'cal-test' });
+
+      // Use the current input values for testing before saving
+      const params = new URLSearchParams();
+      params.set('rangeDays', '30');
+      if (calendarConfig.ics_url) {
+        params.set('url', calendarConfig.ics_url);
+      } else if (calendarConfig.gcal_url) {
+        params.set('gcal', calendarConfig.gcal_url);
+      }
+
+      const res = await fetch(`/api/calendar/company/events?${params.toString()}`);
+      const data = await res.json();
+
+      if (res.ok && data.events) {
+        toast.success(`Conexão OK! ${data.events.length} evento(s) encontrado(s)`, { id: 'cal-test' });
+        setCalendarTestResult({
+          success: true,
+          message: `${data.events.length} evento(s) nos próximos 30 dias`,
+          eventsCount: data.events.length
+        });
+      } else {
+        toast.error(data.error || 'Falha ao buscar eventos', { id: 'cal-test' });
+        setCalendarTestResult({
+          success: false,
+          message: data.error || 'Erro desconhecido'
+        });
+      }
+    } catch (e: any) {
+      toast.error('Erro ao testar: ' + e.message, { id: 'cal-test' });
+      setCalendarTestResult({
+        success: false,
+        message: e.message
+      });
+    }
+  };
+
+  const checkMioStatus = async () => {
+    try {
+      const res = await fetch('/api/mio/test');
+      const data = await res.json();
+
+      setConnections(prev => prev.map(c => {
+        if (c.type === 'MIO') {
+          // Se falhou, adiciona mensagem de erro ao status (hack visual ou tooltip futuro)
+          // Por enquanto, vamos manter status 'error' e usar toast para detalhe se for manual
+          // Mas para visualização rápida na tabela, o status 'error' é suficiente.
+
+          // Se houver mensagem específica de erro (ex: User not registered), 
+          // podemos salvar num estado local de erros para tooltip
+          if (!data.success) {
+            console.warn('[MIO UI] Falha ao conectar:', data.message);
+          }
+          return { ...c, status: data.success ? 'connected' : 'error' };
+        }
+        return c;
+      }));
+
+      // Se falhou com mensagem específica, mostrar toast único (opcional, pode ser irritante no load)
+      if (!data.success && data.message) {
+        // toast.error(`MIO: ${data.message}`, { id: 'mio-error-status' });
+      }
+
+    } catch (e) {
+      console.error('Falha ao verificar MIO:', e);
+      setConnections(prev => prev.map(c =>
+        c.type === 'MIO' ? { ...c, status: 'error' } : c
+      ));
+    }
+  };
 
   const loadERPData = async () => {
     try {
       setLoading(true);
-      
-      // Simular carregamento de dados
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Dados simulados
-      setConnections([
+
+      // Simular carregamento de dados base
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const mockConnections: ERPConnection[] = [
         {
           id: '1',
           name: t('admin.sapProducao'),
@@ -101,10 +237,23 @@ export default function IntegracaoERPPage() {
           endpoint: 'https://protheus-test.empresa.com/api',
           modules: ['avaliacoes'],
           active: false
+        },
+        // Adicionar conexão MIO automaticamente
+        {
+          id: 'mio-integration',
+          name: 'MIO API',
+          type: 'MIO',
+          status: 'connected', // Será validado pelo checkMioStatus
+          last_sync: new Date().toISOString(),
+          endpoint: 'https://mio.app.br/api/v1',
+          modules: ['mio_usuarios'],
+          active: true
         }
-      ]);
+      ];
 
-      setSyncStatuses([
+      setConnections(mockConnections);
+
+      const mockSyncStatuses: SyncStatus[] = [
         {
           module: 'usuarios',
           status: 'success',
@@ -125,8 +274,21 @@ export default function IntegracaoERPPage() {
           last_sync: '2024-01-20T13:00:00Z',
           records_synced: 0,
           errors: 5
+        },
+        // Status MIO
+        {
+          module: 'mio_usuarios',
+          status: 'success',
+          last_sync: new Date().toISOString(),
+          records_synced: 0,
+          errors: 0
         }
-      ]);
+      ];
+
+      setSyncStatuses(mockSyncStatuses);
+
+      // Validar conexão real MIO
+      checkMioStatus();
 
     } catch (error) {
       console.error('Erro ao carregar dados ERP:', error);
@@ -151,7 +313,7 @@ export default function IntegracaoERPPage() {
       const connection: ERPConnection = {
         id: Date.now().toString(),
         name: newConnection.name,
-        type: newConnection.type,
+        type: newConnection.type as any,
         status: 'disconnected',
         last_sync: null,
         endpoint: newConnection.endpoint,
@@ -178,13 +340,13 @@ export default function IntegracaoERPPage() {
 
   const toggleConnection = async (connectionId: string) => {
     try {
-      setConnections(connections.map(conn => 
-        conn.id === connectionId 
-          ? { 
-              ...conn, 
-              active: !conn.active,
-              status: !conn.active ? 'connected' : 'disconnected'
-            } 
+      setConnections(connections.map(conn =>
+        conn.id === connectionId
+          ? {
+            ...conn,
+            active: !conn.active,
+            status: !conn.active ? 'connected' : 'disconnected'
+          }
           : conn
       ));
       toast.success(t('admin.statusDaConexaoAtualizado'));
@@ -196,31 +358,65 @@ export default function IntegracaoERPPage() {
 
   const startSync = async (module: string) => {
     try {
-      setSyncStatuses(syncStatuses.map(status => 
-        status.module === module 
+      setSyncStatuses(syncStatuses.map(status =>
+        status.module === module
           ? { ...status, status: 'running' as const }
           : status
       ));
       toast.success(t('admin.sincronizacaoDeModuleIniciada'));
-      
+
       // Simular sincronização
       setTimeout(() => {
-        setSyncStatuses(syncStatuses.map(status => 
-          status.module === module 
-            ? { 
-                ...status, 
-                status: 'success' as const,
-                last_sync: new Date().toISOString(),
-                records_synced: Math.floor(Math.random() * 1000) + 100
-              }
+        setSyncStatuses(syncStatuses.map(status =>
+          status.module === module
+            ? {
+              ...status,
+              status: 'success' as const,
+              last_sync: new Date().toISOString(),
+              records_synced: Math.floor(Math.random() * 1000) + 100
+            }
             : status
         ));
         toast.success(t('admin.sincronizacaoDeModuleConcluida'));
       }, 3000);
+
     } catch (error) {
       console.error(t('admin.erroAoIniciarSincronizacao'), error);
       toast.error(t('admin.erroAoIniciarSincronizacao'));
     }
+  };
+
+  // Wrapper para lidar com sync real do MIO
+  const handleSyncAction = async (module: string) => {
+    if (module === 'mio_usuarios') {
+      try {
+        setSyncStatuses(prev => prev.map(s => s.module === module ? { ...s, status: 'running' } : s));
+        toast.loading('Sincronizando MIO...', { id: 'mio-sync' });
+
+        const res = await fetch('/api/mio/sync', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+          toast.success(`MIO: ${data.message}`, { id: 'mio-sync' });
+          setSyncStatuses(prev => prev.map(s => s.module === module ? {
+            ...s,
+            status: 'success',
+            last_sync: new Date().toISOString(),
+            records_synced: data.results?.processed || 0,
+            errors: data.results?.errors || 0
+          } : s));
+        } else {
+          throw new Error(data.error || 'Erro desconhecido');
+        }
+      } catch (e: any) {
+        toast.error(`Erro MIO: ${e.message}`, { id: 'mio-sync' });
+        setSyncStatuses(prev => prev.map(s => s.module === module ? { ...s, status: 'error', errors: 1 } : s));
+      }
+      return;
+    }
+
+    // Fallback para mock
+    startSync(module);
   };
 
   if (!isAdmin) {
@@ -254,7 +450,7 @@ export default function IntegracaoERPPage() {
                 Gerencie conexões e sincronizações com sistemas ERP externos
               </p>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <button
                 onClick={loadERPData}
@@ -263,7 +459,7 @@ export default function IntegracaoERPPage() {
                 <FiRefreshCw className="mr-2 h-4 w-4" />
                 Atualizar
               </button>
-              
+
               <button
                 onClick={() => setShowConnectionForm(true)}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-blue-700"
@@ -330,15 +526,14 @@ export default function IntegracaoERPPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            connection.status === 'connected' 
-                              ? 'bg-green-100 text-green-800' 
-                              : connection.status === 'error'
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${connection.status === 'connected'
+                            ? 'bg-green-100 text-green-800'
+                            : connection.status === 'error'
                               ? 'bg-red-100 text-red-800'
                               : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {connection.status === 'connected' ? 'Conectado' : 
-                             connection.status === 'error' ? 'Erro' : 'Desconectado'}
+                            }`}>
+                            {connection.status === 'connected' ? 'Conectado' :
+                              connection.status === 'error' ? 'Erro' : 'Desconectado'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -357,17 +552,38 @@ export default function IntegracaoERPPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => toggleConnection(connection.id)}
-                            className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                              connection.active
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => toggleConnection(connection.id)}
+                              className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${connection.active
                                 ? 'text-red-700 bg-red-100 hover:bg-red-200'
                                 : 'text-green-700 bg-green-100 hover:bg-green-200'
-                            }`}
-                          >
-                            {connection.active ? <FiPause className="mr-1 h-4 w-4" /> : <FiPlay className="mr-1 h-4 w-4" />}
-                            {connection.active ? 'Desativar' : 'Ativar'}
-                          </button>
+                                }`}
+                            >
+                              {connection.active ? <FiPause className="mr-1 h-4 w-4" /> : <FiPlay className="mr-1 h-4 w-4" />}
+                              {connection.active ? 'Desativar' : 'Ativar'}
+                            </button>
+
+                            {connection.type === 'MIO' && (
+                              <button
+                                onClick={() => {
+                                  toast.loading('Testando conexão...', { id: 'mio-test' });
+                                  fetch('/api/mio/test')
+                                    .then(r => r.json())
+                                    .then(d => {
+                                      if (d.success) toast.success('Conectado com sucesso!', { id: 'mio-test' });
+                                      else toast.error(`Falha: ${d.message}`, { id: 'mio-test', duration: 5000 });
+                                      checkMioStatus();
+                                    })
+                                }}
+                                className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200"
+                                title="Testar Conexão e Ver Erro Detalhado"
+                              >
+                                <FiRefreshCw className="mr-1 h-4 w-4" />
+                                Testar
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -390,7 +606,7 @@ export default function IntegracaoERPPage() {
                   {syncStatuses.map((status) => {
                     const moduleInfo = availableModules.find(m => m.id === status.module);
                     const IconComponent = moduleInfo?.icon || FiFileText;
-                    
+
                     return (
                       <div key={status.module} className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
@@ -400,18 +616,17 @@ export default function IntegracaoERPPage() {
                               {moduleInfo?.name || status.module}
                             </h4>
                           </div>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            status.status === 'success' 
-                              ? 'bg-green-100 text-green-800' 
-                              : status.status === 'error'
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status.status === 'success'
+                            ? 'bg-green-100 text-green-800'
+                            : status.status === 'error'
                               ? 'bg-red-100 text-red-800'
                               : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {status.status === 'success' ? 'Sucesso' : 
-                             status.status === 'error' ? 'Erro' : 'Executando'}
+                            }`}>
+                            {status.status === 'success' ? 'Sucesso' :
+                              status.status === 'error' ? 'Erro' : 'Executando'}
                           </span>
                         </div>
-                        
+
                         <div className="space-y-2 text-sm text-gray-600">
                           <div className="flex justify-between">
                             <span>Registros:</span>
@@ -432,7 +647,7 @@ export default function IntegracaoERPPage() {
                         </div>
 
                         <button
-                          onClick={() => startSync(status.module)}
+                          onClick={() => handleSyncAction(status.module)}
                           disabled={status.status === 'running'}
                           className="w-full mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                         >
@@ -454,6 +669,121 @@ export default function IntegracaoERPPage() {
                 </div>
               </div>
             </div>
+
+            {/* Calendário da Empresa */}
+            <div className="bg-white rounded-lg shadow-sm border">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <FiCalendar className="mr-2 text-purple-600" />
+                  Calendário da Empresa
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Configure a URL do feed ICS do Google Calendar para exibir eventos da empresa
+                </p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {calendarLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <FiRefreshCw className="animate-spin h-6 w-6 text-purple-600" />
+                  </div>
+                ) : (
+                  <>
+                    {/* URL do ICS */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        URL do Feed ICS
+                      </label>
+                      <input
+                        type="url"
+                        value={calendarConfig.ics_url}
+                        onChange={(e) => setCalendarConfig({ ...calendarConfig, ics_url: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Cole a URL pública do ICS do Google Calendar. Você pode encontrá-la em Configurações do calendário → Integrar calendário → Endereço público no formato iCal.
+                      </p>
+                    </div>
+
+                    {/* URL alternativa do Google Calendar */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Ou URL do Google Calendar (conversão automática)
+                      </label>
+                      <input
+                        type="url"
+                        value={calendarConfig.gcal_url}
+                        onChange={(e) => setCalendarConfig({ ...calendarConfig, gcal_url: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="https://calendar.google.com/calendar/u/0?cid=..."
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Se você não encontrar o ICS, cole a URL de compartilhamento do calendário e tentaremos converter automaticamente.
+                      </p>
+                    </div>
+
+                    {/* Cor do marcador */}
+                    <div className="flex items-center space-x-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Cor dos eventos no calendário
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={calendarConfig.marker_color}
+                            onChange={(e) => setCalendarConfig({ ...calendarConfig, marker_color: e.target.value })}
+                            className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                          />
+                          <span className="text-sm text-gray-600">{calendarConfig.marker_color}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resultado do teste */}
+                    {calendarTestResult && (
+                      <div className={`p-4 rounded-lg ${calendarTestResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                        <div className="flex items-center">
+                          {calendarTestResult.success ? (
+                            <FiCheck className="h-5 w-5 text-green-600 mr-2" />
+                          ) : (
+                            <FiX className="h-5 w-5 text-red-600 mr-2" />
+                          )}
+                          <span className={calendarTestResult.success ? 'text-green-800' : 'text-red-800'}>
+                            {calendarTestResult.message}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ações */}
+                    <div className="flex items-center space-x-3 pt-4 border-t">
+                      <button
+                        onClick={saveCalendarConfig}
+                        disabled={calendarSaving}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {calendarSaving ? 'Salvando...' : 'Salvar Configurações'}
+                      </button>
+                      <button
+                        onClick={testCalendarConnection}
+                        className="px-4 py-2 border border-purple-300 text-purple-700 rounded-md hover:bg-purple-50"
+                      >
+                        Testar Conexão
+                      </button>
+                      <a
+                        href="/calendario"
+                        target="_blank"
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm"
+                      >
+                        Ver Calendário →
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -464,7 +794,7 @@ export default function IntegracaoERPPage() {
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Nova Conexão ERP</h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -473,7 +803,7 @@ export default function IntegracaoERPPage() {
                   <input
                     type="text"
                     value={newConnection.name}
-                    onChange={(e) => setNewConnection({...newConnection, name: e.target.value})}
+                    onChange={(e) => setNewConnection({ ...newConnection, name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder={t('admin.exSapProducao')}
                   />
@@ -485,7 +815,7 @@ export default function IntegracaoERPPage() {
                   </label>
                   <select
                     value={newConnection.type}
-                    onChange={(e) => setNewConnection({...newConnection, type: e.target.value as any})}
+                    onChange={(e) => setNewConnection({ ...newConnection, type: e.target.value as any })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {erpTypes.map(type => (
@@ -501,7 +831,7 @@ export default function IntegracaoERPPage() {
                   <input
                     type="url"
                     value={newConnection.endpoint}
-                    onChange={(e) => setNewConnection({...newConnection, endpoint: e.target.value})}
+                    onChange={(e) => setNewConnection({ ...newConnection, endpoint: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="https://erp.empresa.com/api"
                   />

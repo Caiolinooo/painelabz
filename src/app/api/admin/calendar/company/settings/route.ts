@@ -25,11 +25,11 @@ function deriveIcsFromGcalUrl(input?: string | null): string | null {
     }
     // If already looks like ICS
     if (/\.ics($|\?)/i.test(input) || input.includes('/ical/')) return input;
-  } catch {}
+  } catch { }
   return null;
 }
 
-export const GET = withPermission('manager', async () => {
+export const GET = withPermission('manager', async (req, user) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('settings')
@@ -50,7 +50,7 @@ export const GET = withPermission('manager', async () => {
   }
 });
 
-export const PUT = withPermission('manager', async (req: NextRequest) => {
+export const PUT = withPermission('manager', async (req, user) => {
   try {
     const body = await req.json().catch(() => ({}));
     let { ics_url, gcal_url, notify_minutes_before, extra_recipients, marker_color } = body || {};

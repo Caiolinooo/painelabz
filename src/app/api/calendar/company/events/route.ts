@@ -16,12 +16,12 @@ function deriveIcsFromGcalUrl(input?: string | null): string | null {
       return `https://calendar.google.com/calendar/ical/${encodeURIComponent(cid)}/public/basic.ics`;
     }
     if (/\.ics($|\?)/i.test(input) || input.includes('/ical/')) return input;
-  } catch {}
+  } catch { }
   return null;
 }
 
 // Default Google Calendar page URL provided by admin; we derive ICS if settings are empty
-const DEFAULT_GCAL_URL = "https://calendar.google.com/calendar/u/0?cid=ZWZmMWE1NDE0ZDIzODc2ZWZkNjhkMzUzYTE4YTg1ZTgwZGQ0M2ZmM2FmZTBhM2MyMGU3ZmZmZjUxY2Q2NGUyZkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t";
+const DEFAULT_GCAL_URL = "https://calendar.google.com/calendar/u/0?cid=YWJ6Lm1pZGlhQGdtYWlsLmNvbQ";
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,6 +37,9 @@ export async function GET(req: NextRequest) {
       const { data } = await supabaseAdmin.from('settings').select('value').eq('key', 'company_calendar').maybeSingle();
       const v = (data as any)?.value || {};
       icsUrl = v.ics_url || deriveIcsFromGcalUrl(v.gcal_url) || process.env.COMPANY_CALENDAR_ICS_URL || deriveIcsFromGcalUrl(DEFAULT_GCAL_URL) || null;
+      if (!v.ics_url && !process.env.COMPANY_CALENDAR_ICS_URL) {
+        console.log('Utilizando fallback para URL do calendário (DEFAULT_GCAL_URL)');
+      }
     }
 
     if (!icsUrl) {
@@ -50,7 +53,12 @@ export async function GET(req: NextRequest) {
     }
 
     const res = await fetch(icsUrl, { cache: 'no-store' });
-    if (!res.ok) return NextResponse.json({ error: `Falha ao baixar ICS (${res.status})` }, { status: 502 });
+    if (!res.ok) {
+      const errorMsg = res.status === 404
+        ? "Falha ao baixar ICS (404). Verifique se o calendário está público (Configurações → Acesso → Disponibilizar ao público)."
+        : `Falha ao baixar ICS (${res.status})`;
+      return NextResponse.json({ error: errorMsg }, { status: 502 });
+    }
     const icsText = await res.text();
 
     let events = await parseIcs(icsText);

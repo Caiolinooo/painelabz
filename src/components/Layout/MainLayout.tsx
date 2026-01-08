@@ -21,7 +21,8 @@ import {
   FiMessageSquare,
   FiUsers,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiRefreshCw
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -29,6 +30,7 @@ import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useMenuItems } from '@/hooks/useUnifiedData';
 import { getIconComponent } from '@/lib/iconMapper';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import LanguageSelector from '@/components/LanguageSelector';
 import Footer from '@/components/Footer';
 import ProtectedRoute from '@/components/Auth/ProtectedRoute';
@@ -89,6 +91,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, logout, isAdmin } = useSupabaseAuth();
   const { t, locale } = useI18n();
   const { config } = useSiteConfig();
+
+  // Auto-enable push notifications
+  usePushNotifications();
 
   // Use unified data system for menu items
   const { items: menuItems, loading: menuLoading } = useMenuItems(true);
@@ -388,6 +393,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   );
                 })
             )}
+
+
           </nav>
 
           {/* Rodapé com informações do usuário */}

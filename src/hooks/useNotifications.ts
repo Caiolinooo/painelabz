@@ -56,15 +56,21 @@ export const useNotifications = (userId: string) => {
     }
   }, [userId]);
 
-  // Efeito inicial
+  // Efeito inicial para carregar notificações
   useEffect(() => {
     mountedRef.current = true;
-    fetchNotifications();
+
+    // Apenas buscar se temos um usuário e ainda não carregamos (ou se o ID mudou)
+    if (userId) {
+      fetchNotifications();
+    }
 
     return () => {
       mountedRef.current = false;
     };
-  }, [fetchNotifications]);
+    // Remover fetchNotifications da dependência para evitar loops se a função for recriada
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   // Realtime subscription
   useEffect(() => {
