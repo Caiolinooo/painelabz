@@ -1,10 +1,12 @@
-// Servidor Express para produção
+// Servidor Express para produção com WebSocket support para Guacamole
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const next = require('next');
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
+const { WebSocketServer, WebSocket } = require('ws');
+const { parse } = require('url');
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -126,6 +128,87 @@ app.prepare().then(() => {
     console.log(`> Ambiente: ${process.env.NODE_ENV}`);
     console.log(`> Node.js version: ${process.version}`);
     console.log(`> Memory usage: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
+    console.log(`> WebSocket proxy enabled for Guacamole`);
+  });
+
+  // WebSocket proxy for Guacamole tunnel connections
+  const GUACAMOLE_HOST = 'vm.groupabz.com';
+  const GUACAMOLE_PATH = '/guacamole';
+
+  // Create WebSocket server for handling upgrades
+  const wss = new WebSocketServer({ noServer: true });
+
+  serverInstance.on('upgrade', (request, socket, head) => {
+    const { pathname } = parse(request.url || '', true);
+
+    // Handle WebSocket upgrade for Guacamole tunnel
+    if (pathname?.includes('websocket-tunnel') || pathname?.includes('tunnel')) {
+      console.log('[WebSocket] Upgrade request for Guacamole tunnel:', pathname);
+
+      // Build the target WebSocket URL
+      const queryString = request.url?.split('?')[1] || '';
+      const targetUrl = `wss://${GUACAMOLE_HOST}${GUACAMOLE_PATH}/websocket-tunnel${queryString ? '?' + queryString : ''}`;
+
+      console.log('[WebSocket] Proxying to:', targetUrl);
+
+      // Use wss.handleUpgrade to properly handle the WebSocket upgrade
+      wss.handleUpgrade(request, socket, head, (clientWs) => {
+        console.log('[WebSocket] Client connection upgraded');
+
+        // Create connection to Guacamole server
+        const guacWs = new WebSocket(targetUrl, {
+          rejectUnauthorized: false, // For self-signed certs
+          headers: {
+            'Cookie': request.headers.cookie || '',
+            'Guacamole-Token': request.headers['guacamole-token'] || ''
+          }
+        });
+
+        guacWs.on('open', () => {
+          console.log('[WebSocket] Connected to Guacamole server');
+        });
+
+        // Forward messages from Guacamole to client
+        guacWs.on('message', (data) => {
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(data);
+          }
+        });
+
+        // Forward messages from client to Guacamole
+        clientWs.on('message', (data) => {
+          if (guacWs.readyState === WebSocket.OPEN) {
+            guacWs.send(data);
+          }
+        });
+
+        // Handle Guacamole connection close
+        guacWs.on('close', (code, reason) => {
+          console.log('[WebSocket] Guacamole connection closed:', code);
+          clientWs.close(code, reason);
+        });
+
+        // Handle client connection close
+        clientWs.on('close', () => {
+          console.log('[WebSocket] Client disconnected');
+          guacWs.close();
+        });
+
+        // Handle errors
+        guacWs.on('error', (err) => {
+          console.error('[WebSocket] Guacamole error:', err.message);
+          clientWs.close(1011, 'Guacamole connection error');
+        });
+
+        clientWs.on('error', (err) => {
+          console.error('[WebSocket] Client error:', err.message);
+          guacWs.close();
+        });
+      });
+    } else {
+      console.log('[WebSocket] Unknown upgrade path, destroying:', pathname);
+      socket.destroy();
+    }
   });
 
   // Handle graceful shutdown

@@ -181,7 +181,14 @@ export const getToken = (): string | null => {
         // Não remover o token aqui, pode ser um formato diferente mas ainda válido
       }
     } else {
-      console.warn('Nenhum token encontrado no localStorage ou cookies');
+      // Verificar se existem cookies relevantes antes de reclamar
+      const hasAuthCookies = document.cookie.includes(TOKEN_KEY) || document.cookie.includes(LEGACY_TOKEN_KEY);
+      if (hasAuthCookies) {
+        console.debug('Token não encontrado no localStorage, mas cookies de auth existem. Possível HttpOnly ou delay de sync.');
+      } else {
+        // Reduzi de warn para debug/log para evitar poluição visual em fluxos normais de deslogado
+        console.debug('Nenhum token encontrado no localStorage ou cookies');
+      }
     }
 
     return token;
