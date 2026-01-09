@@ -424,6 +424,76 @@ export interface Database {
           created_at?: string
         }
       }
+      // METRICS TABLES
+      news_views: {
+        Row: {
+          id: string
+          news_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          news_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          news_id?: string
+          user_id?: string
+          created_at?: string
+        }
+      }
+      user_activity: {
+        Row: {
+          user_id: string
+          last_active_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          last_active_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          last_active_at?: string
+          updated_at?: string
+        }
+      }
+      support_metrics: {
+        Row: {
+          id: string
+          period_start: string
+          period_end: string
+          department: string
+          top_doubts: Json
+          volume_estimated: number | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          period_start: string
+          period_end: string
+          department: string
+          top_doubts?: Json
+          volume_estimated?: number | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          period_start?: string
+          period_end?: string
+          department?: string
+          top_doubts?: Json
+          volume_estimated?: number | null
+          created_at?: string
+          created_by?: string | null
+        }
+      }
       users_unified: {
         Row: {
           id: string

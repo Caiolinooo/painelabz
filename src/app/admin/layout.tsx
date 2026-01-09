@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor, FiActivity } from 'react-icons/fi';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -86,6 +86,8 @@ const adminMenuGroups = [
     label: 'admin.communications',
     items: [
       { id: 'notifications', href: '/admin/notifications', label: 'admin.notificacoes', icon: FiBell },
+      { id: 'metrics', href: '/admin/metrics', label: 'Métricas Gerais', icon: FiBarChart2 },
+      { id: 'engagement', href: '/admin/metrics/engagement', label: 'Engajamento (Notícias)', icon: FiActivity },
     ]
   },
   {

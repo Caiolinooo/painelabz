@@ -332,6 +332,18 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     // Configurar o listener para atualizar o token antes de expirar
     const refreshInterval = setInterval(async () => {
       try {
+        // Atualizar "Última Atividade" do usuário (User Activity Tracker)
+        // Fazemos isso aqui pois o refreshInterval roda a cada minuto se a aba estiver aberta
+        const currentUser = user || JSON.parse(localStorage.getItem('user') || 'null');
+        if (currentUser?.id) {
+          // Fire and forget - não precisamos esperar a resposta
+          fetch('/api/metrics/activity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+          }).catch(err => console.error('Erro silent tracking activity:', err));
+        }
+
         // Primeiro tentar renovar o token Supabase
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {

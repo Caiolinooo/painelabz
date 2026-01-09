@@ -69,8 +69,10 @@ export async function GET(request: NextRequest) {
         const decoded = verifyToken(token);
         if (decoded && typeof decoded === 'object') {
           currentUserId = (decoded as any).userId;
+          console.log(`🔑 Token verificado. UserID: ${currentUserId}`);
         }
       } catch (e) {
+        console.error('❌ Erro ao verificar token no header:', e);
         // Token inválido ou expirado, ignorar
       }
     }
@@ -145,6 +147,7 @@ export async function GET(request: NextRequest) {
       // 1. Verificar visualizações/likes do usuário atual
       const userLikesMap = new Set<string>();
       if (currentUserId) {
+        console.log(`🔍 Verificando likes para usuário: ${currentUserId}`);
         const { data: userLikes } = await supabaseAdmin
           .from('news_post_likes')
           .select('post_id')
@@ -152,6 +155,9 @@ export async function GET(request: NextRequest) {
           .eq('user_id', currentUserId);
 
         userLikes?.forEach(l => userLikesMap.add(l.post_id));
+        console.log(`❤️ Likes encontrados: ${userLikesMap.size}`, Array.from(userLikesMap));
+      } else {
+        console.log('⚠️ Nenhum currentUserId identificado para verificar likes.');
       }
 
       // 2. Buscar últimas curtidas para cada post (para mostrar "Curtido por X e outros")
@@ -160,6 +166,9 @@ export async function GET(request: NextRequest) {
       normalizedPosts = await Promise.all(normalizedPosts.map(async (post) => {
         // Definir se o usuário curtiu
         const userLiked = userLikesMap.has(post.id);
+
+        // Debug específico para um post (opcional, pode ser removido depois)
+        // console.log(`Post ${post.id} liked by user? ${userLiked}`);
 
         // Buscar últimas 3 curtidas
         const { data: latestLikes } = await supabaseAdmin
