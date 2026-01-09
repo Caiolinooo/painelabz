@@ -123,38 +123,45 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Upload da mídia
-      const formData = new FormData();
-      formData.append('folder', 'posts');
-      formData.append('file', selectedFile);
+      // 1. Upload direto para o Supabase Storage (Client-side)
+      const folder = 'posts';
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `${folder}/${fileName}`;
 
-      const uploadResp = await fetch('/api/news/upload', {
-        method: 'POST',
-        body: formData
-      });
+      // Importar supabase aqui ou no topo (vou usar require dinâmico para evitar conflitos de import se o topo não for editado agora)
+      // Mas melhor editar os imports primeiro. Assumindo que vou editar os imports em outro passo, ou posso fazer tudo aqui se o tool permitir.
+      // O tool 'replace_file_content' é para blocos contíguos.
+      // Vou assumir que o supabase está disponível ou usar uma importação inline se possível? Não em TSX padrão.
+      // Vou usar a importação do topo.
+      // Espera, tenho que adicionar o import do supabase no topo do arquivo TAMBÉM.
+      // Vou fazer isso em dois passos ou usar multi-replace.
 
-      if (!uploadResp.ok) {
-        let errorMessage = t('components.erroAoFazerUploadDaMidia');
-        try {
-          const errorData = await uploadResp.json();
-          console.error('[Upload Error Details]:', errorData);
-          if (errorData.details) errorMessage = `${errorData.error}: ${errorData.details}`;
-          else if (errorData.error) errorMessage = errorData.error;
-        } catch (e) {
-          console.error('Error parsing error response:', e);
-        }
-        throw new Error(errorMessage);
+      const { data, error: uploadError } = await (await import('@/lib/supabase')).supabase.storage
+        .from('news')
+        .upload(filePath, selectedFile, {
+          upsert: false,
+          contentType: selectedFile.type
+        });
+
+      if (uploadError) {
+        console.error('Erro detalhado do upload:', uploadError);
+        throw new Error(`Erro no upload: ${uploadError.message}`);
       }
 
-      const uploadData = await uploadResp.json();
-      const mediaUrls = (uploadData.files || []).map((f: any) => f.url);
+      // 2. Obter URL pública
+      const { data: publicUrlData } = (await import('@/lib/supabase')).supabase.storage
+        .from('news')
+        .getPublicUrl(filePath);
 
-      // Criar post
+      const mediaUrl = publicUrlData.publicUrl;
+
+      // 3. Criar post (mantém chamada à API de posts)
       const newPost = {
         title: caption || t('components.novaPublicacao'),
         content: caption,
         excerpt: caption.substring(0, 200),
-        media_urls: mediaUrls,
+        media_urls: [mediaUrl],
         external_links: [],
         author_id: userId,
         category_id: null,
@@ -186,9 +193,9 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
       } else {
         throw new Error(t('components.erroAoCriarPublicacao'));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar post:', error);
-      toast.error(t('components.erroAoCriarPublicacao'));
+      toast.error(error.message || t('components.erroAoCriarPublicacao'));
     } finally {
       setIsSubmitting(false);
     }
