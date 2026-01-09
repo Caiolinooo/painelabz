@@ -232,31 +232,27 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
     // Verificar todas as condições para mostrar o banner:
     // 1. Não foi lida
     // 2. Não foi mostrada antes
-    // 3. É recente (criada na última hora)
-    if (latest && !latest.read_at && !shownNotifications.has(latest.id) && isRecent) {
-      console.log('🔔 [Banner] ✅ Mostrando banner para:', latest.title);
+    // 3. É MUITO RECENTE (criada nos últimos 30 segundos) - Para evitar spam ao recarregar a página
+    // O "isRecent" original de 1 hora era muito longo para banners. Banners devem ser "live".
 
-      // Tocar som
-      playABZChime();
+    // Se a notificação for mais velha que 30s, assumimos que aconteceu enquanto o user não estava olhando,
+    // então ela vai pro HUD (sininho), mas não explode um banner na cara.
+    const isBrandNew = latestAge < 30 * 1000;
 
-      // Mostrar banner se habilitado
-      if (showBanner) {
-        setBannerNotification(latest);
-        setIsBannerVisible(true);
+    if (latest && !latest.read_at && !shownNotifications.has(latest.id)) {
+      if (isBrandNew) {
+        console.log('🔔 [Banner] ✅ Mostrando banner (LIVE):', latest.title);
+        playABZChime();
+
+        if (showBanner) {
+          setBannerNotification(latest);
+          setIsBannerVisible(true);
+        }
+      } else {
+        console.log('🔔 [Banner] ⏭️ Silenciando banner (muito antigo):', latestAge / 1000, 's');
       }
 
-      // Marcar como mostrada
-      setShownNotifications(prev => {
-        const newSet = new Set([...prev, latest.id]);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(`shown-notifications-${userId}`, JSON.stringify([...newSet]));
-        }
-        return newSet;
-      });
-    } else if (latest && !latest.read_at && !shownNotifications.has(latest.id) && !isRecent) {
-      // Notificação antiga não lida - marcar como mostrada sem exibir banner
-      console.log('🔔 [Banner] ⏭️ Pulando notificação antiga (>', Math.floor(latestAge / 60000), 'min):', latest.title);
-
+      // Sempre marcar como "processada" para não cair no loop novamente
       setShownNotifications(prev => {
         const newSet = new Set([...prev, latest.id]);
         if (typeof window !== 'undefined') {
@@ -265,11 +261,19 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
         return newSet;
       });
     }
+
   }, [notifications, showBanner, userId, shownNotifications]);
 
-  // Limpar histórico de mostradas se mudar usuário
+  // Recarregar histórico de mostradas se mudar usuário
   useEffect(() => {
-    setShownNotifications(new Set());
+    if (userId && typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`shown-notifications-${userId}`);
+      if (stored) {
+        setShownNotifications(new Set(JSON.parse(stored)));
+      } else {
+        setShownNotifications(new Set());
+      }
+    }
   }, [userId]);
 
   return (

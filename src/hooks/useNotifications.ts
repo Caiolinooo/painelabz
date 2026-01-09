@@ -137,6 +137,7 @@ export const useNotifications = (userId: string) => {
   // Marcar todas como lidas
   const markAllAsRead = async () => {
     // Otimistic update
+    const previousUnread = unreadCount;
     setNotifications(prev =>
       prev.map(n => ({ ...n, read_at: new Date().toISOString() }))
     );
@@ -144,12 +145,31 @@ export const useNotifications = (userId: string) => {
 
     try {
       const { fetchWithToken } = await import('@/lib/tokenStorage');
-      await fetchWithToken(`/api/notifications/read-all`, {
-        method: 'POST',
+      const response = await fetchWithToken(`/api/notifications/mark-all-read`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ user_id: userId })
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Sincronizar com o servidor (deve ser 0, mas garante consistência)
+        if (typeof data.newUnreadCount === 'number') {
+          setUnreadCount(data.newUnreadCount);
+        }
+      } else {
+        // Se falhar, reverter (opcional, mas bom para feedback)
+        console.error('Falha ao marcar como lidas, revertendo estado.');
+        setUnreadCount(previousUnread);
+        // Forçar um refetch para garantir estado correto
+        fetchNotifications(1, false);
+      }
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error);
+      setUnreadCount(previousUnread);
+      fetchNotifications(1, false);
     }
   };
 

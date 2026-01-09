@@ -5,6 +5,14 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.10.1] - 2026-01-09
+
+### Fixed
+- **Loop de Banners**: Corrigido comportamento onde banners reapareciam repetidamente ao trocar de página.
+- **Sincronização de Notificações**: Resolvido erro onde a contagem de mensagens lidas não persistia no banco de dados.
+- **Estabilidade da API**: Corrigido método HTTP (`POST` -> `PUT`) e rota de limpeza no frontend.
+- **Persistência de Histórico**: Corrigido reset do histórico de banners vistos quando o ID do usuário oscilava no carregamento.
+
 ## [3.10.0] - 2026-01-09
 
 ### Added
