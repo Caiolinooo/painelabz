@@ -44,8 +44,8 @@ export async function PUT(request: NextRequest) {
       query = query.eq('type', type);
     }
 
-    // Filtrar notificações não expiradas
-    query = query.or('expires_at.is.null,expires_at.gt.' + new Date().toISOString());
+    // Filtrar notificações não expiradas - REMOVIDO para update para garantir que limpe tudo
+    // query = query.or('expires_at.is.null,expires_at.gt.' + new Date().toISOString());
 
     const { data: updatedNotifications, error: updateError, count } = await query.select();
 
