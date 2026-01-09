@@ -77,8 +77,8 @@ export async function compressVideo(
         const compressionArgs = [
             '-i', inputName,
             '-c:v', 'libx264',           // Codec H.264
-            '-preset', 'medium',          // Balanço velocidade/qualidade
-            '-crf', '28',                 // Qualidade (18-28, maior = menor qualidade/tamanho)
+            '-preset', 'ultrafast',       // Otimizar para VELOCIDADE (era medium)
+            '-crf', '30',                 // Qualidade aceitável para web (era 28)
             '-vf', 'scale=1280:-2',       // Redimensionar para 720p mantendo aspect ratio
             '-c:a', 'aac',                // Codec de áudio
             '-b:a', '128k',               // Bitrate de áudio
@@ -97,7 +97,7 @@ export async function compressVideo(
         const data = await ffmpeg.readFile(outputName);
 
         // Converter para Blob e depois para File
-        const blob = new Blob([data], { type: 'video/mp4' });
+        const blob = new Blob([data as any], { type: 'video/mp4' });
         const compressedFile = new File(
             [blob],
             file.name.replace(/\.[^/.]+$/, '') + '_compressed.mp4',

@@ -60,7 +60,11 @@ const NewsPostEditorFullScreen: React.FC<Props> = ({ userId, postId, onClose }) 
             <NewsPostEditor
               userId={userId}
               postId={postId}
-              onDraftChange={(p:any) => setDraft({
+              onSave={() => {
+                // Ao salvar com sucesso, fechar o editor (redirecionar para o feed)
+                if (onClose) onClose();
+              }}
+              onDraftChange={(p: any) => setDraft({
                 title: p.title,
                 excerpt: p.excerpt,
                 content: p.content,

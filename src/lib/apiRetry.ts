@@ -35,7 +35,7 @@ export async function withRetry<T>(
 
   for (let i = 0; i <= maxRetries; i++) {
     attempts = i + 1;
-    
+
     try {
       // Criar promise com timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -44,7 +44,7 @@ export async function withRetry<T>(
 
       // Executar função com timeout
       const result = await Promise.race([fn(), timeoutPromise]);
-      
+
       return {
         success: true,
         data: result,
@@ -52,7 +52,7 @@ export async function withRetry<T>(
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       console.warn(`⚠️ Attempt ${attempts} failed:`, {
         error: lastError.message,
         willRetry: i < maxRetries
@@ -77,21 +77,22 @@ export async function withRetry<T>(
  * Wrapper para queries do Supabase com retry
  */
 export async function supabaseWithRetry<T>(
-  queryFn: () => Promise<{ data: T | null; error: any }>,
+  queryFn: () => Promise<{ data: T | null; error: any; count?: number | null }>,
   options: RetryOptions = {}
-): Promise<{ data: T | null; error: any; attempts: number }> {
+): Promise<{ data: T | null; error: any; attempts: number; count?: number | null }> {
   const result = await withRetry(async () => {
-    const { data, error } = await queryFn();
-    
-    if (error) {
-      throw new Error(`Supabase error: ${error.message || error.details || 'Unknown error'}`);
+    const res = await queryFn();
+
+    if (res.error) {
+      throw new Error(`Supabase error: ${res.error.message || res.error.details || 'Unknown error'}`);
     }
-    
-    return data;
+
+    return { data: res.data, count: res.count };
   }, options);
 
   return {
-    data: result.success ? result.data || null : null,
+    data: result.success ? result.data?.data || null : null,
+    count: result.success ? (result.data?.count ?? null) : null,
     error: result.success ? null : result.error,
     attempts: result.attempts
   };
@@ -123,12 +124,12 @@ export function isRetryableError(error: any): boolean {
   const temporaryHttpCodes = ['500', '502', '503', '504', '408', '429'];
 
   // Verificar se é um erro de rede
-  const isNetworkError = networkErrors.some(netError => 
+  const isNetworkError = networkErrors.some(netError =>
     errorMessage.includes(netError)
   );
 
   // Verificar se é um código HTTP temporário
-  const isTemporaryHttpError = temporaryHttpCodes.some(code => 
+  const isTemporaryHttpError = temporaryHttpCodes.some(code =>
     errorCode.includes(code) || errorMessage.includes(code)
   );
 
@@ -146,7 +147,7 @@ class CircuitBreaker {
   constructor(
     private maxFailures = 5,
     private resetTimeout = 60000 // 1 minuto
-  ) {}
+  ) { }
 
   async execute<T>(fn: () => Promise<T>): Promise<T> {
     if (this.state === 'open') {
@@ -175,7 +176,7 @@ class CircuitBreaker {
   private onFailure() {
     this.failures++;
     this.lastFailureTime = Date.now();
-    
+
     if (this.failures >= this.maxFailures) {
       this.state = 'open';
     }
@@ -235,7 +236,7 @@ export function logError(context: string, error: any, metadata?: Record<string, 
   };
 
   console.error(`❌ ${context}:`, errorInfo);
-  
+
   // Em produção, aqui você poderia enviar para um serviço de monitoramento
   // como Sentry, LogRocket, etc.
 }

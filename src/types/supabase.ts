@@ -185,6 +185,53 @@ export interface Database {
           updated_at?: string
         }
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          link: string | null
+          read_at: string | null
+          is_read: boolean
+          created_at: string
+          actor_id: string | null
+          resource_id: string | null
+          metadata: Json | null
+          action_url: string | null // Legacy support
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type?: string
+          title: string
+          message: string
+          link?: string | null
+          read_at?: string | null
+          is_read?: boolean
+          created_at?: string
+          actor_id?: string | null
+          resource_id?: string | null
+          metadata?: Json | null
+          action_url?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          link?: string | null
+          read_at?: string | null
+          is_read?: boolean
+          created_at?: string
+          actor_id?: string | null
+          resource_id?: string | null
+          metadata?: Json | null
+          action_url?: string | null
+        }
+      }
       menu_items: {
         Row: {
           id: string

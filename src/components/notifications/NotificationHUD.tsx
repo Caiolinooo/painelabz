@@ -5,6 +5,7 @@ import { FiBell, FiX, FiCheck, FiCheckCircle, FiClock, FiHeart, FiMessageCircle,
 import { useI18n } from '@/contexts/I18nContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationBanner from './NotificationBanner';
+import NotificationItem from './NotificationItem';
 
 interface NotificationHUDProps {
   userId: string;
@@ -373,47 +374,16 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
             ) : (
               <>
                 {notifications.slice(0, maxVisible).map((notification) => (
-                  <div
+                  <NotificationItem
                     key={notification.id}
-                    className={`p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!notification.read_at ? 'bg-blue-50' : ''
-                      }`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!notification.read_at) {
-                        markAsRead(notification.id);
-                      }
-                      if (notification.action_url) {
-                        window.location.href = notification.action_url;
+                    notification={notification}
+                    onRead={markAsRead}
+                    onClick={(n) => {
+                      if (n.link || n.action_url) {
+                        window.location.href = n.link || n.action_url!;
                       }
                     }}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 mt-1">
-                        {getNotificationIcon(notification.type, notification.priority || 'normal')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className={`text-sm font-medium ${!notification.read_at ? 'text-gray-900' : 'text-gray-700'
-                            }`}>
-                            {notification.title}
-                          </p>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-xs text-gray-500">
-                              {formatTimeAgo(notification.created_at)}
-                            </span>
-                            {!notification.read_at && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            )}
-                          </div>
-                        </div>
-                        {notification.message && (
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {notification.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  />
                 ))}
               </>
             )}
