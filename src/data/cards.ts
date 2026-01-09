@@ -25,7 +25,8 @@ import {
   FiDatabase,
   FiBarChart,
   FiGitBranch,
-  FiMessageSquare
+  FiMessageSquare,
+  FiMonitor
 } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 
@@ -53,6 +54,7 @@ export const iconMap: { [key: string]: IconType } = {
   FiBarChart,
   FiGitBranch,
   FiMessageSquare,
+  FiMonitor,
   // Adicione outros ícones do react-icons/fi aqui se necessário
   // Exemplo: FiAlertCircle: FiAlertCircle,
 };
