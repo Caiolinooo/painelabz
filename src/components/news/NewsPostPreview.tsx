@@ -71,7 +71,7 @@ const NewsPostPreview: React.FC<NewsPostPreviewProps> = ({ draft, author }) => {
               <h2 className="text-lg font-semibold text-gray-900 mb-2">{draft.title}</h2>
             )}
             {draft.excerpt && (
-              <p className="text-gray-700 leading-relaxed mb-3">{draft.excerpt}</p>
+              <p className="text-gray-700 leading-relaxed mb-3 whitespace-pre-wrap">{draft.excerpt}</p>
             )}
 
             {/* Renderização segura do conteúdo (Markdown básico) */}

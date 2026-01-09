@@ -19,7 +19,7 @@ async function getVapid(): Promise<{ publicKey: string; privateKey: string; subj
   }
 }
 
-export async function sendPushToUserIds(userIds: string[], payload: { title: string; body?: string; url?: string }) {
+export async function sendPushToUserIds(userIds: string[], payload: { title: string; body?: string; url?: string; icon?: string; data?: any }) {
   if (!userIds || userIds.length === 0) return { sent: 0 };
   const vapid = await getVapid();
   if (!vapid) { console.warn('VAPID ausente, pulando push'); return { sent: 0 }; }
@@ -33,7 +33,13 @@ export async function sendPushToUserIds(userIds: string[], payload: { title: str
   if (error) { console.error('Erro ao buscar assinaturas push:', error); return { sent: 0 }; }
   if (!subs || subs.length === 0) return { sent: 0 };
 
-  const data = ***REMOVED*** title: payload.title, body: payload.body || '', url: payload.url || '/' });
+  const data = ***REMOVED***
+    title: payload.title,
+    body: payload.body || '',
+    url: payload.url || '/',
+    icon: payload.icon,
+    data: payload.data
+  });
   const results = await Promise.allSettled(subs.map((s: any) => {
     const sub = { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } } as any;
     return webpush.sendNotification(sub, data);

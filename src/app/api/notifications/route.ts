@@ -97,23 +97,48 @@ export async function GET(request: NextRequest) {
       )
     ]);
 
-    const { data: notifications, error, attempts } = notificationsResult;
-    const { count: totalCount, error: totalError } = totalResult.data ? { count: totalResult.data.count, error: null } : { count: 0, error: totalResult.error };
-    const { count: unreadCount, error: unreadError } = unreadResult.data ? { count: unreadResult.data.count, error: null } : { count: 0, error: unreadResult.error };
+    let { data: notifications, error, attempts } = notificationsResult;
+    notifications = notifications || [];
+    const totalCount = totalResult.count || 0;
+    const unreadCount = unreadResult.count || 0;
+    const totalError = totalResult.error;
+    const unreadError = unreadResult.error;
 
-    console.log(`📊 Queries executadas. Notificações: ${(notifications as any[])?.length || 0}, Total: ${totalCount}, Não lidas: ${unreadCount}`);
+    // --- MANUAL FETCH OF ACTORS (App-side Join) ---
+    // Fix: "Could not find a relationship between 'notifications' and 'users_unified' in the schema cache"
+    // Since we cannot easily depend on DB constraints for 'users_unified' view, we fetch manually.
+    if (notifications && notifications.length > 0) {
+      const actorIds = [...new Set(notifications.map((n: any) => n.actor_id).filter(Boolean))];
+
+      if (actorIds.length > 0) {
+        const { data: actors } = await supabaseAdmin
+          .from('users_unified')
+          .select('id, first_name, last_name, avatar')
+          .in('id', actorIds);
+
+        const actorsMap = new Map(actors?.map((a: any) => [a.id, a]) || []);
+
+        notifications = notifications.map((n: any) => ({
+          ...n,
+          actor: n.actor_id ? actorsMap.get(n.actor_id) || null : null
+        }));
+      }
+    }
+    // ----------------------------------------------
+
+    console.log(`📊 Queries executadas. Notificações: ${notifications?.length || 0}, Total: ${totalCount}, Não lidas: ${unreadCount}`);
 
     if (error) {
       logError('Notifications Query', error, { user_id, page, limit, attempts });
-      // ... erro handling mantido abaixo ...
+      // Em caso de erro, permitir retorno vazio ou tentar recuperar se for algo tratável
     }
 
-    console.log(`✅ ${(notifications as any[])?.length || 0} notificações carregadas (${unreadCount} não lidas)`);
+    console.log(`✅ ${notifications?.length || 0} notificações carregadas (${unreadCount} não lidas)`);
 
     // Log de performance
     logPerformance('GET /api/notifications', startTime, {
       user_id,
-      count: (notifications as any[])?.length || 0,
+      count: notifications?.length || 0,
       unreadCount,
       attempts
     });
@@ -165,6 +190,10 @@ export async function POST(request: NextRequest) {
       message,
       data = {},
       action_url,
+      link, // New field
+      actor_id, // New field
+      resource_id, // New field
+      metadata = {}, // New field
       priority = 'normal',
       expires_at
     } = body;
@@ -199,7 +228,11 @@ export async function POST(request: NextRequest) {
       title,
       message: message || '',
       data: JSON.stringify(data),
-      action_url: action_url || null,
+      action_url: action_url || link || null, // Prefer link if available
+      link: link || action_url || null,
+      actor_id: actor_id || null,
+      resource_id: resource_id || null,
+      metadata: metadata || {},
       priority,
       expires_at: expires_at || null,
       created_at: new Date().toISOString()
@@ -221,9 +254,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Notificação criada: ${newNotification.title} para ${user.first_name}`);
 
+    // Fetch Actor Avatar for Push Icon
+    let icon = '/icons/icon-192.png'; // Default
+    if (actor_id) {
+      const { data: actor } = await supabaseAdmin
+        .from('users_unified')
+        .select('avatar')
+        .eq('id', actor_id)
+        .single();
+      if (actor?.avatar) {
+        icon = actor.avatar;
+      }
+    }
+
     // Enviar push notification se VAPID estiver configurado (não bloqueante)
     try {
-      await sendPushToUserIds([user_id], { title, body: message || '', url: action_url || '/' });
+      await sendPushToUserIds([user_id], {
+        title,
+        body: message || '',
+        url: link || action_url || '/',
+        icon: icon, // Send actor avatar
+        data: { ...data, type, actor_id }
+      });
     } catch (e) {
       console.warn('Falha ao enviar push (não bloqueante):', e);
     }

@@ -479,7 +479,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         {/* Conteúdo do Post */}
         <div className="px-4 pb-3">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h2>
-          <p className="text-gray-700 leading-relaxed">{post.excerpt}</p>
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{post.excerpt}</p>
 
           {/* Tags */}
           {Array.isArray(post.tags) && post.tags.length > 0 && (

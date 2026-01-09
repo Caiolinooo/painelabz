@@ -5,6 +5,27 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.10.0] - 2026-01-09
+
+### Added
+- **Sistema de Notificações Realtime**: Nova arquitetura estilo rede social.
+    - Suporte a tipos de notificação (curtidas, comentários, menções).
+    - Integração de "Atores" (usuários) com exibição de avatar e nome.
+    - Links profundos para recursos do sistema.
+    - Novos componentes de UI: `NotificationItem` e `NotificationHUD`.
+- **Push Notifications Ricas**: Push agora inclui avatar do ator e dados contextuais.
+- **Atualizações em Tempo Real**: Notificações atualizam instantaneamente via Supabase.
+
+### Fixed
+- **Formatação de Notícias**: Corrigido problema onde quebras de linha eram ignoradas (adicionado `whitespace-pre-wrap`).
+- **Otimização de Vídeo**: Compressão de vídeo client-side drasticamente mais rápida (usando preset `ultrafast`).
+- **Redirecionamento do Editor**: Editor de notícias em tela cheia agora fecha corretamente após salvar.
+- **Erro de Relacionamento Supabase**: Resolvido erro de "schema cache" usando joins manuais no backend.
+
+### Changed
+- Preset de compressão de vídeo alterado de `medium` para `ultrafast`.
+- Aumento do CRF de 28 para 30 para equilíbrio entre velocidade e tamanho.
+
 ## [3.9.1] - 2026-01-08
 
 ### Added

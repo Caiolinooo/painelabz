@@ -12,6 +12,15 @@ export interface Notification {
   created_at: string;
   action_url?: string;
   priority?: string;
+  // New fields
+  link?: string;
+  actor_id?: string;
+  metadata?: any;
+  actor?: {
+    first_name: string;
+    last_name: string;
+    avatar: string | null;
+  };
 }
 
 export const useNotifications = (userId: string) => {
@@ -21,8 +30,18 @@ export const useNotifications = (userId: string) => {
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
+  // Estado de paginação
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  });
+
   // Função simples para buscar notificações
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (page = 1, append = false) => {
     if (!userId) return;
 
     try {
@@ -32,7 +51,7 @@ export const useNotifications = (userId: string) => {
       // Importar dinamicamente para evitar ciclos
       const { fetchWithToken } = await import('@/lib/tokenStorage');
 
-      const response = await fetchWithToken(`/api/notifications?user_id=${userId}&limit=20`);
+      const response = await fetchWithToken(`/api/notifications?user_id=${userId}&limit=20&page=${page}`);
 
       if (!response.ok) {
         throw new Error(`Erro ${response.status}`);
@@ -41,8 +60,11 @@ export const useNotifications = (userId: string) => {
       const data = await response.json();
 
       if (mountedRef.current) {
-        setNotifications(data.notifications || []);
+        setNotifications(prev => append ? [...prev, ...(data.notifications || [])] : (data.notifications || []));
         setUnreadCount(data.unreadCount || 0);
+        if (data.pagination) {
+          setPagination(data.pagination);
+        }
       }
     } catch (err: any) {
       console.error('Erro ao buscar notificações:', err);
@@ -56,21 +78,16 @@ export const useNotifications = (userId: string) => {
     }
   }, [userId]);
 
-  // Efeito inicial para carregar notificações
+  // Efeito inicial
   useEffect(() => {
     mountedRef.current = true;
-
-    // Apenas buscar se temos um usuário e ainda não carregamos (ou se o ID mudou)
     if (userId) {
       fetchNotifications();
     }
-
     return () => {
       mountedRef.current = false;
     };
-    // Remover fetchNotifications da dependência para evitar loops se a função for recriada
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, fetchNotifications]);
 
   // Realtime subscription
   useEffect(() => {
@@ -86,10 +103,12 @@ export const useNotifications = (userId: string) => {
           table: 'notifications',
           filter: `user_id=eq.${userId}`
         },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
+        async (payload) => {
+          // Quando chegar uma realtime, idealmente buscaríamos o actor atualizado
+          // Por simplicidade, adicionamos diretamente e talvez falte o avatar do actor
+          // O melhor seria disparar um refetch ou fazer um fetchSingle do item
+          // Aqui vamos forçar um refetch da primeira página para garantir dados completos
+          fetchNotifications(1, false);
         }
       )
       .subscribe();
@@ -97,7 +116,7 @@ export const useNotifications = (userId: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, fetchNotifications]);
 
   // Marcar como lida
   const markAsRead = async (id: string) => {
@@ -139,9 +158,9 @@ export const useNotifications = (userId: string) => {
     unreadCount,
     loading,
     error,
-    loadNotifications: fetchNotifications, // Alias para compatibilidade
+    loadNotifications: fetchNotifications,
     markAsRead,
     markAllAsRead,
-    pagination: null // Simplificado
+    pagination
   };
 };
