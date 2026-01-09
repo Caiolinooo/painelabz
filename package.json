@@ -2,6 +2,9 @@
   "name": "painel-abz",
   "version": "3.9.1",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "npx rimraf .next && npx next build",
