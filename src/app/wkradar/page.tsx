@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
-import { FiLoader, FiMonitor, FiSettings, FiLogIn, FiAlertCircle, FiMaximize, FiMinimize } from 'react-icons/fi';
+import { FiLoader, FiMonitor, FiSettings, FiLogIn, FiAlertCircle, FiMaximize, FiMinimize, FiRefreshCw } from 'react-icons/fi';
 
 interface WKRadarCredentials {
     username: string;
@@ -19,12 +19,13 @@ export default function WKRadarPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [loginAttempted, setLoginAttempted] = useState(false);
+    const [loginSuccessful, setLoginSuccessful] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // URL relativa proxied via Next.js Rewrite
-    const GUACAMOLE_BASE_URL = '/guacamole/';
+    // URL do proxy interno - todas as requisições passam pelo nosso servidor
+    const GUACAMOLE_PROXY_URL = '/api/guac-proxy';
 
     // Gera o username padrão baseado no perfil do usuário
     const generateDefaultUsername = () => {
@@ -33,23 +34,22 @@ export default function WKRadarPage() {
             const lastName = profile.last_name.toLowerCase().trim().split(' ')[0];
             return `${firstName}.${lastName}`;
         }
-        // Fallback para email se não tiver nome
         if (user?.email) {
             return user.email.split('@')[0].toLowerCase();
         }
         return '';
     };
 
-    // Carrega credenciais do usuário (customizadas ou padrão)
+    // Carrega credenciais do usuário
     useEffect(() => {
         const loadCredentials = async () => {
+            if (authLoading) return;
             if (!user?.id) return;
 
             try {
                 setLoading(true);
                 setError(null);
 
-                // Token retrieval robusto (similar ao fix da avaliação)
                 const getToken = () => {
                     const cookies = document.cookie.split('; ');
                     const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
@@ -59,11 +59,8 @@ export default function WKRadarPage() {
 
                 const token = getToken();
 
-                // Tentar buscar credenciais customizadas
                 const response = await fetch(`/api/wkradar/credentials?userId=${user.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (response.ok) {
@@ -75,7 +72,6 @@ export default function WKRadarPage() {
                             isCustom: true
                         });
                     } else {
-                        // Usar credenciais padrão
                         setCredentials({
                             username: generateDefaultUsername(),
                             password: 'Abz@2025',
@@ -83,7 +79,6 @@ export default function WKRadarPage() {
                         });
                     }
                 } else {
-                    // Endpoint não existe ainda, usar padrão
                     setCredentials({
                         username: generateDefaultUsername(),
                         password: 'Abz@2025',
@@ -92,7 +87,6 @@ export default function WKRadarPage() {
                 }
             } catch (err) {
                 console.error('Erro ao carregar credenciais WKRadar:', err);
-                // Em caso de erro, usar credenciais padrão
                 setCredentials({
                     username: generateDefaultUsername(),
                     password: 'Abz@2025',
@@ -108,51 +102,75 @@ export default function WKRadarPage() {
         }
     }, [user, profile, authLoading]);
 
-    // Auto-login via API Guacamole
+    // Auto-login via API Guacamole através do proxy
     useEffect(() => {
         const loginToGuacamole = async () => {
+            console.log('[WKRadar] loginToGuacamole', { credentials: !!credentials, loginAttempted, loginSuccessful });
+
             if (credentials && !loginAttempted) {
+                console.log('[WKRadar] Tentando login com:', credentials.username);
                 try {
-                    // 1. Obter token de autenticação
                     const params = new URLSearchParams();
                     params.append('username', credentials.username);
                     params.append('password', credentials.password);
 
-                    const response = await fetch(`${GUACAMOLE_BASE_URL}api/tokens`, {
+                    console.log('[WKRadar] POST para:', `${GUACAMOLE_PROXY_URL}/api/tokens`);
+                    const response = await fetch(`${GUACAMOLE_PROXY_URL}/api/tokens`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: params
                     });
 
+                    console.log('[WKRadar] Resposta:', response.status, response.ok);
+
                     if (response.ok) {
                         const authData = await response.json();
+                        console.log('[WKRadar] Auth data:', authData);
 
-                        // 2. Armazenar token no localStorage (Same-Origin)
-                        // A aplicação web Guacamole usa "GUAC_AUTH" no localStorage
-                        localStorage.setItem('GUAC_AUTH', JSON.stringify(authData));
+                        if (authData && authData.authToken) {
+                            console.log('[WKRadar] Login bem-sucedido!');
 
-                        setLoginAttempted(true);
+                            // Guacamole usa cookies para autenticação - o proxy deve ter passado o Set-Cookie
+                            // Também guardamos no localStorage como backup
+                            localStorage.setItem('GUAC_AUTH', JSON.stringify(authData));
 
-                        // 3. Carregar o iframe
-                        if (iframeRef.current) {
-                            iframeRef.current.src = GUACAMOLE_BASE_URL;
+                            setLoginSuccessful(true);
+                            setLoginAttempted(true);
+
+                            // Carregar o iframe com o token na URL (Guacamole aceita isso)
+                            if (iframeRef.current) {
+                                iframeRef.current.src = `${GUACAMOLE_PROXY_URL}/#/?token=${authData.authToken}`;
+                            }
+                        } else {
+                            console.error('[WKRadar] Resposta sem authToken:', authData);
+                            setLoginAttempted(true);
+                            setLoginSuccessful(false);
+                            setError('Credenciais inválidas. Entre em contato com o administrador.');
                         }
                     } else {
-                        console.error('Falha no login Guacamole:', response.status);
-                        // Se falhar o auto-login, ainda carregamos o iframe para o usuário tentar manualmente
-                        setLoginAttempted(true);
-                        if (iframeRef.current) {
-                            iframeRef.current.src = GUACAMOLE_BASE_URL;
+                        console.error('[WKRadar] Login falhou:', response.status);
+                        let errorDetail = '';
+                        try {
+                            errorDetail = await response.text();
+                            console.error('[WKRadar] Detalhes:', errorDetail);
+                        } catch (e) { }
+
+                        let errorMessage = 'Sistema temporariamente indisponível. Favor entrar em contato com o administrador.';
+                        if (response.status >= 500) {
+                            errorMessage = 'O servidor WKRadar está em manutenção. Tente novamente mais tarde.';
+                        } else if (response.status === 403) {
+                            errorMessage = 'Credenciais inválidas ou acesso negado ao WKRadar.';
                         }
+
+                        setLoginAttempted(true);
+                        setLoginSuccessful(false);
+                        setError(errorMessage);
                     }
                 } catch (err) {
-                    console.error('Erro ao conectar ao Guacamole:', err);
+                    console.error('[WKRadar] Erro:', err);
                     setLoginAttempted(true);
-                    if (iframeRef.current) {
-                        iframeRef.current.src = GUACAMOLE_BASE_URL;
-                    }
+                    setLoginSuccessful(false);
+                    setError('Erro de conexão com o servidor WKRadar.');
                 }
             }
         };
@@ -162,63 +180,40 @@ export default function WKRadarPage() {
 
     const handleReload = () => {
         setLoginAttempted(false);
-        // localStorage.removeItem('GUAC_AUTH'); // Opcional: limpar sessão ao recarregar
+        setLoginSuccessful(false);
+        setError(null);
     };
 
     const toggleFullscreen = () => {
         if (!containerRef.current) return;
-
         if (!document.fullscreenElement) {
-            containerRef.current.requestFullscreen().catch((err) => {
-                console.error(`Erro ao entrar em tela cheia: ${err.message}`);
-            });
+            containerRef.current.requestFullscreen().catch(console.error);
         } else {
             document.exitFullscreen();
         }
     };
 
     useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
-
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
     const handleOpenNewWindow = (e: React.MouseEvent) => {
         e.preventDefault();
-        window.open(GUACAMOLE_BASE_URL, '_blank');
+        window.open('https://vm.groupabz.com/guacamole/', '_blank');
     };
 
-    // Focar no iframe quando clicar no container para garantir captura de teclado
     const handleContainerClick = () => {
-        if (iframeRef.current) {
-            iframeRef.current.focus();
-        }
+        iframeRef.current?.focus();
     };
 
-    // Tentar focar no iframe após carregamento
     useEffect(() => {
-        if (loginAttempted && iframeRef.current) {
-            const timer = setTimeout(() => {
-                iframeRef.current?.focus();
-            }, 1000);
+        if (loginSuccessful && iframeRef.current) {
+            const timer = setTimeout(() => iframeRef.current?.focus(), 1000);
             return () => clearTimeout(timer);
         }
-    }, [loginAttempted]);
-
-    // Keep-alive (opcional): Pinger para manter sessão ativa se necessário
-    // Guacamole geralmente mantém via WebSocket, mas podemos reforçar
-    useEffect(() => {
-        if (loginAttempted) {
-            const interval = setInterval(() => {
-                // Apenas um fetch leve para garantir que o cookie/sessão não expire se houver
-                // fetch(`${GUACAMOLE_BASE_URL}api/tokens`, { method: 'HEAD' }).catch(() => {});
-            }, 60000 * 5); // 5 minutos
-            return () => clearInterval(interval);
-        }
-    }, [loginAttempted]);
+    }, [loginSuccessful]);
 
     if (authLoading || loading) {
         return (
@@ -244,9 +239,8 @@ export default function WKRadarPage() {
 
     return (
         <MainLayout>
-            {/* Usando margens negativas para compensar o padding do MainLayout e maximizar a área */}
             <div className="flex flex-col -m-4 md:-m-6 h-[calc(100vh-64px)] md:h-[calc(100vh-80px)]">
-                {/* Compact Header */}
+                {/* Header */}
                 <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm z-10">
                     <div className="flex items-center space-x-3">
                         <div className="bg-indigo-100 p-1.5 rounded-lg">
@@ -266,27 +260,24 @@ export default function WKRadarPage() {
                         <button
                             onClick={handleReload}
                             className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-md transition-colors"
-                            title={t('common.refresh', 'Recarregar')}
+                            title="Recarregar"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                            <FiRefreshCw className="h-5 w-5" />
                         </button>
 
                         <button
                             onClick={toggleFullscreen}
                             className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-md transition-colors"
-                            title={isFullscreen ? t('wkradar.exitFullscreen', 'Sair da Tela Cheia') : t('wkradar.enterFullscreen', 'Tela Cheia')}
+                            title={isFullscreen ? 'Sair da Tela Cheia' : 'Tela Cheia'}
                         >
                             {isFullscreen ? <FiMinimize className="h-5 w-5" /> : <FiMaximize className="h-5 w-5" />}
                         </button>
 
-                        {/* Link para configuração (apenas admin) */}
                         {isAdmin && (
                             <a
                                 href="/admin/wkradar"
                                 className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-                                title={t('admin.settings', 'Configurações')}
+                                title="Configurações"
                             >
                                 <FiSettings className="h-5 w-5" />
                             </a>
@@ -295,46 +286,53 @@ export default function WKRadarPage() {
                         <button
                             onClick={handleOpenNewWindow}
                             className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-                            title={t('wkradar.openNewWindow', 'Abrir em nova janela')}
+                            title="Abrir em nova janela"
                         >
                             <FiLogIn className="h-5 w-5" />
                         </button>
                     </div>
                 </div>
 
-                {/* Error State */}
-                {error && (
-                    <div className="bg-red-50 border-b border-red-200 p-2 text-center">
-                        <p className="text-sm text-red-600 flex items-center justify-center">
-                            <FiAlertCircle className="mr-2" />
-                            {error}
-                        </p>
+                {/* Content */}
+                {(error || (loginAttempted && !loginSuccessful)) ? (
+                    <div className="flex-1 bg-gray-50 flex flex-col items-center justify-center p-8 text-center">
+                        <div className="bg-white p-8 rounded-xl shadow-lg max-w-lg w-full">
+                            <div className="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <FiAlertCircle className="h-10 w-10 text-red-600" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4">Sistema Indisponível</h2>
+                            <p className="text-gray-600 mb-6 text-lg">
+                                {error || 'Não foi possível conectar ao WKRadar.'}
+                            </p>
+                            <button
+                                onClick={handleReload}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                            >
+                                Tentar Novamente
+                            </button>
+                        </div>
+                    </div>
+                ) : loginSuccessful ? (
+                    <div
+                        ref={containerRef}
+                        className={`flex-1 bg-gray-100 relative ${isFullscreen ? 'fixed inset-0 z-50' : ''} overflow-hidden`}
+                        onClick={handleContainerClick}
+                    >
+                        <iframe
+                            ref={iframeRef}
+                            name="wkradar-iframe"
+                            src=""
+                            className="w-full h-full border-0"
+                            title="WKRadar - Guacamole"
+                            allow="clipboard-read; clipboard-write; fullscreen"
+                        />
+                    </div>
+                ) : (
+                    <div className="flex-1 bg-gray-50 flex flex-col items-center justify-center p-8 text-center">
+                        <FiLoader className="animate-spin h-10 w-10 text-indigo-600 mb-4" />
+                        <p className="text-gray-500">Conectando ao WKRadar...</p>
                     </div>
                 )}
-
-                {/* Iframe do Guacamole - Container com suporte a Fullscreen e Scroll */}
-                <div
-                    ref={containerRef}
-                    className={`flex-1 bg-gray-100 relative ${isFullscreen ? 'fixed inset-0 z-50' : ''} overflow-auto`}
-                    onClick={handleContainerClick}
-                >
-                    <iframe
-                        ref={iframeRef}
-                        name="wkradar-iframe"
-                        src={!loginAttempted ? 'about:blank' : ''} // Src will be set after login
-                        className="w-full h-full border-0 absolute inset-0"
-                        title="WKRadar - Guacamole"
-                        allow="clipboard-read; clipboard-write; fullscreen"
-                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
-                    />
-
-                    {!loginAttempted && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10">
-                            <FiLoader className="animate-spin h-10 w-10 text-indigo-600 mb-4" />
-                            <p className="text-gray-500">{t('wkradar.connecting', 'Conectando ao WKRadar...')}</p>
-                        </div>
-                    )}
-                </div>
             </div>
         </MainLayout>
     );

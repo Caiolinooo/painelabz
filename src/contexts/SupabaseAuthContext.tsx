@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { User } from '@supabase/supabase-js';
 import { Tables } from '@/types/supabase';
-import { getToken, saveToken, removeToken } from '@/lib/tokenStorage';
+import { getToken, saveToken, removeToken, isTokenValid } from '@/lib/tokenStorage';
 import { saveRefreshToken, getRefreshToken, removeRefreshToken } from '@/lib/refreshTokenStorage';
 import tokenRefreshManager, { startTokenRefreshManager, stopTokenRefreshManager } from '@/lib/tokenRefreshManager';
 import { attemptSessionRecovery, recoverSessionOnReturn } from '@/lib/sessionRecovery';
@@ -1348,7 +1348,40 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     // Configurar o listener para mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+
       if (event === 'SIGNED_IN' && session?.user) {
+        // Garantir que o token personalizado exista ao entrar
+        const token = getToken();
+        if (!token) {
+          console.log('🔄 SIGNED_IN detectado sem token personalizado, tentando gerar...');
+          // Importar função geradora da recuperação (ou reimplementar chamada)
+          // Como estamos dentro do contexto, podemos chamar a API diretamente
+          try {
+            const tokenResponse = await fetch('/api/auth/generate-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: ***REMOVED***
+                userId: session.user.id,
+                email: session.user.email,
+                phoneNumber: session.user.phone,
+                role: session.user.app_metadata?.role || 'USER', // Fallback role
+                firstName: session.user.user_metadata?.first_name,
+                lastName: session.user.user_metadata?.last_name
+              }),
+            });
+
+            if (tokenResponse.ok) {
+              const tokenData = await tokenResponse.json();
+              if (tokenData.token) {
+                saveToken(tokenData.token);
+                console.log('✅ Token personalizado gerado e salvo em onAuthStateChange');
+              }
+            }
+          } catch (err) {
+            console.error('Erro ao gerar token em onAuthStateChange:', err);
+          }
+        }
+
         setUser(session.user);
 
         // Buscar o perfil do usuário na tabela users_unified
@@ -1556,11 +1589,46 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       try {
         // Tentar recuperar sessão automaticamente
         console.log('SupabaseAuthContext - Tentando recuperar sessão...');
+
+        // Verificar primeiro se temos um token no localStorage (recuperação rápida)
+        const token = getToken();
+        if (token) {
+          console.log('SupabaseAuthContext - Token encontrado no storage, tentando carregar perfil imediatamente...');
+          const profileLoaded = await loadUserProfileFromToken();
+          if (profileLoaded) {
+            console.log('SupabaseAuthContext - Perfil carregado via token, pulando verificação de sessão lenta');
+
+            // Ainda assim configuramos o refresh token
+            cleanupRefresh = await setupRefreshToken();
+            startTokenRefreshManager();
+
+            setIsLoading(false);
+            return;
+          }
+        }
+
         const recoveryResult = await recoverSessionOnReturn();
 
         if (recoveryResult.success && recoveryResult.user) {
           console.log('✅ Sessão recuperada automaticamente:', recoveryResult.message);
           setUser(recoveryResult.user);
+
+          // CRÍTICO: Garantir que o token esteja no localStorage se recuperamos a sessão
+          const currentToken = getToken();
+          if (!currentToken && recoveryResult.user) {
+            console.log('⚠️ Sessão recuperada mas token ausente no storage. Tentando regenerar...');
+            // Tentar regenerar token se tivermos sessão mas não token
+            try {
+              // Tenta pegar da sessão do supabase primeiro se disponível (refresh session)
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                await refreshCustomToken(); // Isso deve salvar o token
+              }
+            } catch (e) {
+              console.error('Erro ao tentar regenerar token após recuperação de sessão:', e);
+            }
+          }
+
           setIsLoading(false);
         } else if (recoveryResult.requiresLogin) {
           console.log('🔐 Login necessário:', recoveryResult.message);
@@ -1569,13 +1637,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           // Fallback para método tradicional
           console.log('🔄 Fallback para verificação tradicional...');
 
-          // Verificar se já temos um token
-          const token = getToken();
-          if (token) {
-            console.log('SupabaseAuthContext - Token encontrado, tentando carregar perfil...');
+          // Verificar se já temos um token (se falhou no início ou se foi removido)
+          const validToken = isTokenValid(); // Checagem mais robusta
+          if (validToken) {
+            console.log('SupabaseAuthContext - Token válido encontrado, tentando carregar perfil...');
             await loadUserProfileFromToken();
           } else {
-            console.log('SupabaseAuthContext - Nenhum token encontrado, verificando sessão...');
+            console.log('SupabaseAuthContext - Nenhum token válido encontrado, verificando sessão...');
             await checkAuth();
           }
         }

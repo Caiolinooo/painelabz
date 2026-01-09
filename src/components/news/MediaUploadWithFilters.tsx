@@ -134,7 +134,16 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
       });
 
       if (!uploadResp.ok) {
-        throw new Error(t('components.erroAoFazerUploadDaMidia'));
+        let errorMessage = t('components.erroAoFazerUploadDaMidia');
+        try {
+          const errorData = await uploadResp.json();
+          console.error('[Upload Error Details]:', errorData);
+          if (errorData.details) errorMessage = `${errorData.error}: ${errorData.details}`;
+          else if (errorData.error) errorMessage = errorData.error;
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
       const uploadData = await uploadResp.json();

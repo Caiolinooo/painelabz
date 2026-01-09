@@ -291,11 +291,17 @@ export async function PATCH(
         (!transicoesPermitidas[statusAtual] ||
           !transicoesPermitidas[statusAtual].includes(status))
       ) {
+        console.error(`[API ERROR] Transição de status inválida: ${statusAtual} -> ${status}`);
         return NextResponse.json(
           {
             success: false,
             error: `Transição de status inválida: ${statusAtual} → ${status}`,
-            hint: `Transições permitidas: ${transicoesPermitidas[statusAtual]?.join(', ') || 'nenhuma'}`
+            hint: `Transições permitidas: ${transicoesPermitidas[statusAtual]?.join(', ') || 'nenhuma'}`,
+            details: {
+              currentStatus: statusAtual,
+              targetStatus: status,
+              allowedTransitions: transicoesPermitidas[statusAtual]
+            }
           },
           { status: 400 }
         );
