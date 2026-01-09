@@ -10,6 +10,7 @@ import ClientProviders from "@/components/ClientProviders";
 import ThemeEnforcerWrapper from "@/components/ThemeEnforcerWrapper";
 // Import SiteHead for dynamic title updates
 import SiteHead from "@/components/SiteHead";
+import GlobalFeedbackWidget from "@/components/Feedback/GlobalFeedbackWidget";
 
 // Global error handling is now moved to the GlobalErrorHandler component
 
@@ -41,7 +42,7 @@ const plusJakartaSans = localFont({
       weight: '800',
       style: 'normal',
     },
-     {
+    {
       path: '../../public/fonts/PlusJakartaSans-ExtraBoldItalic.ttf',
       weight: '800',
       style: 'italic',
@@ -88,6 +89,7 @@ export default function RootLayout({
           <ErrorBoundary fallback={<ErrorFallback />}>
             <SiteHead />
             {children}
+            <GlobalFeedbackWidget />
           </ErrorBoundary>
           <ThemeEnforcerWrapper />
         </ClientProviders>
