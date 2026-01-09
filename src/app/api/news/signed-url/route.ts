@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { getServerSession } from '@/lib/auth';
+import { verifyTokenFromRequest } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
         // 1. Authenticate Request
-        const session = await getServerSession(request);
-        if (!session) {
+        const authResult = await verifyTokenFromRequest(request);
+
+        if (!authResult.valid || !authResult.user) {
+            console.error('[SIGNED_URL] Unauthorized access attempt');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const userId = authResult.userId;
         const { filePath, fileType } = await request.json();
 
         if (!filePath) {
             return NextResponse.json({ error: 'Missing filePath' }, { status: 400 });
         }
 
-        console.log(`[SIGNED_URL] Generating signed url for: ${filePath} (User: ${session.userId})`);
+        console.log(`[SIGNED_URL] Generating signed url for: ${filePath} (User: ${userId})`);
 
         // 2. Generate Signed URL using Admin Client
         const supabaseAdmin = await getSupabaseAdmin();
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             signedUrl: data.signedUrl,
-            token: data.token, // Some SDK versions need token separate, but usually signedUrl handles it
+            token: data.token,
             path: data.path,
             fullPath: filePath
         });
