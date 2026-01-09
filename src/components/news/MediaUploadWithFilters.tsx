@@ -123,40 +123,47 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
 
     setIsSubmitting(true);
     try {
-      // 1. Upload direto para o Supabase Storage (Client-side)
+      // 1. Obter URL assinada para upload
       const folder = 'posts';
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
 
-      // Importar supabase aqui ou no topo (vou usar require dinâmico para evitar conflitos de import se o topo não for editado agora)
-      // Mas melhor editar os imports primeiro. Assumindo que vou editar os imports em outro passo, ou posso fazer tudo aqui se o tool permitir.
-      // O tool 'replace_file_content' é para blocos contíguos.
-      // Vou assumir que o supabase está disponível ou usar uma importação inline se possível? Não em TSX padrão.
-      // Vou usar a importação do topo.
-      // Espera, tenho que adicionar o import do supabase no topo do arquivo TAMBÉM.
-      // Vou fazer isso em dois passos ou usar multi-replace.
+      const signedUrlResp = await fetchWithToken('/api/news/signed-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          filePath,
+          fileType: selectedFile.type
+        })
+      });
 
+      if (!signedUrlResp.ok) {
+        throw new Error('Falha ao obter permissão de upload');
+      }
+
+      const { signedUrl, path, token } = await signedUrlResp.json();
+
+      // 2. Upload direto para o Supabase Storage usando URL assinada
       const { data, error: uploadError } = await (await import('@/lib/supabase')).supabase.storage
         .from('news')
-        .upload(filePath, selectedFile, {
-          upsert: false,
-          contentType: selectedFile.type
-        });
+        .uploadToSignedUrl(path, token, selectedFile);
 
       if (uploadError) {
         console.error('Erro detalhado do upload:', uploadError);
         throw new Error(`Erro no upload: ${uploadError.message}`);
       }
 
-      // 2. Obter URL pública
+      // 3. Obter URL pública
       const { data: publicUrlData } = (await import('@/lib/supabase')).supabase.storage
         .from('news')
-        .getPublicUrl(filePath);
+        .getPublicUrl(path);
 
       const mediaUrl = publicUrlData.publicUrl;
 
-      // 3. Criar post (mantém chamada à API de posts)
+      // 4. Criar post (mantém chamada à API de posts)
       const newPost = {
         title: caption || t('components.novaPublicacao'),
         content: caption,
