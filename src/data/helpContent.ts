@@ -505,6 +505,11 @@ Configure sua assinatura no novo Outlook (versão web/moderna).
 
 Personalize o fundo das suas videochamadas.
 
+### Onde encontrar fundos da ABZ:
+
+Os fundos oficiais da ABZ estão em:
+\`Z:\\1. Publico\\4. Comunicação\\Perfis e Capas\`
+
 ### Durante uma reunião:
 
 1. Clique em **"Mais ações"** (três pontinhos)
@@ -523,7 +528,7 @@ Personalize o fundo das suas videochamadas.
 
 ### Dica:
 
-Para fundos personalizados da ABZ, consulte a pasta de comunicação na rede.
+Baixe os fundos da pasta da rede para seu computador antes de usar no Teams.
         `,
                 category: 'teams',
                 keywords: ['teams', 'fundo', 'reunião', 'video', 'background']
