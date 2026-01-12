@@ -34,6 +34,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import LanguageSelector from '@/components/LanguageSelector';
 import Footer from '@/components/Footer';
 import ProtectedRoute from '@/components/Auth/ProtectedRoute';
+import HelpWidget from '@/components/Help/HelpWidget';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -340,7 +341,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       if (translated && translated !== translationKey) {
                         displayLabel = translated;
                       } else {
-                        displayLabel = item.title || item.id;
+                        displayLabel = (item as any).title || item.id;
                       }
                     }
                     // Fallback final
@@ -504,6 +505,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
           {/* Footer */}
           <Footer />
+
+          {/* Help Widget */}
+          <HelpWidget />
         </div>
       </div>
     </ProtectedRoute>
