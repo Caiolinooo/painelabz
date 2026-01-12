@@ -250,11 +250,30 @@ export default function HelpWidget() {
                 if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
                 html += line.replace(/^> (.+)$/, '<blockquote class="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-blue-50 text-sm italic text-gray-600">$1</blockquote>');
             }
-            // Empty line - close lists
+            // Empty line - check if list should continue
             else if (line.trim() === '') {
                 if (inSubList) { html += '</ul></li>'; inSubList = false; }
-                if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
-                if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
+
+                // Look ahead to see if the next non-empty line continues the list
+                let nextNonEmptyLine = '';
+                for (let j = i + 1; j < lines.length; j++) {
+                    if (lines[j].trim() !== '') {
+                        nextNonEmptyLine = lines[j];
+                        break;
+                    }
+                }
+
+                // Only close ordered list if next content is NOT a numbered item or sub-item
+                if (inOrderedList && !nextNonEmptyLine.match(/^\d+\. /) && !nextNonEmptyLine.match(/^   - /)) {
+                    html += '</ol>';
+                    inOrderedList = false;
+                }
+
+                // Only close unordered list if next content is NOT a bullet item
+                if (inUnorderedList && !nextNonEmptyLine.match(/^- /)) {
+                    html += '</ul>';
+                    inUnorderedList = false;
+                }
             }
             // Regular text
             else if (line.trim()) {
