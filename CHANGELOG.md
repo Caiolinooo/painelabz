@@ -5,6 +5,23 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.11.0] - 2026-01-12
+
+### Added
+- **Sistema de Feedback Avançado**:
+    - Captura automática de screenshot via `html2canvas`.
+    - Suporte a múltiplos anexos (imagens, logs, PDFs) até 5MB.
+    - Coleta de logs do console (`error` e `warn`) e erros não tratados.
+    - Métricas de performance (Page Load, Memory Usage) e detalhes técnicos do navegador.
+    - E-mails de notificação aprimorados com design profissional e dados técnicos.
+- **Painel Administrativo de Feedback**:
+    - Dashboard completo para gestão de tickets.
+    - Visualizador de logs colorido e formatado.
+    - Lightbox para visualização de screenshots e anexos de imagem.
+
+### Fixed
+- **WKRadar (Guacamole)**: Resolvido problema de instabilidade nas conexões WebSocket através de conexão direta após autenticação via proxy.
+
 ## [3.10.1] - 2026-01-09
 
 ### Fixed
