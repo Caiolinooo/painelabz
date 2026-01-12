@@ -5,6 +5,19 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.12.1] - 2026-01-12
+
+### Fixed
+- **Central de Ajuda (Help Widget)**:
+    - Corrigido processamento de listas numeradas e sub-listas no conteúdo dos artigos.
+    - Resolvido problema de renderização onde imagens não eram exibidas corretamente.
+    - Melhorias na identificação visual de itens com bullets.
+
+### Added
+- **Feedback**:
+    - Adicionada opção para anexar screenshot (print da tela) no formulário de contato.
+    - Adicionado envio automático de informações do sistema (Navegador, SO, Resolução) para facilitar diagnóstico.
+
 ## [3.12.0] - 2026-01-12
 
 ### Added
