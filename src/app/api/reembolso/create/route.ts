@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
       iconeReembolso: getIconForReimbursementType(formData.tipoReembolso), // Corrigido para camelCase
       icone_reembolso: getIconForReimbursementType(formData.tipoReembolso), // Adicionar versão snake_case
       descricao: formData.descricao,
-      valorTotal: parseFloat(formData.valorTotal.replace(/\./g, '').replace(',', '.')) / 100, // Corrigido para camelCase e dividido por 100 para obter valor correto
-      valor_total: parseFloat(formData.valorTotal.replace(/\./g, '').replace(',', '.')) / 100, // Adicionar versão snake_case
+      valorTotal: parseFloat(formData.valorTotal.replace(/\./g, '').replace(',', '.')), // Valor já vem no formato correto do frontend
+      valor_total: parseFloat(formData.valorTotal.replace(/\./g, '').replace(',', '.')), // Adicionar versão snake_case
       moeda: formData.moeda,
       metodoPagamento: formData.metodoPagamento, // Corrigido para camelCase
       metodo_pagamento: formData.metodoPagamento, // Adicionar versão snake_case
