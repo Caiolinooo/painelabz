@@ -10,7 +10,7 @@ import ClientProviders from "@/components/ClientProviders";
 import ThemeEnforcerWrapper from "@/components/ThemeEnforcerWrapper";
 // Import SiteHead for dynamic title updates
 import SiteHead from "@/components/SiteHead";
-import GlobalFeedbackWidget from "@/components/Feedback/GlobalFeedbackWidget";
+// GlobalFeedbackWidget removido - agora integrado no HelpWidget
 
 // Global error handling is now moved to the GlobalErrorHandler component
 
@@ -89,7 +89,6 @@ export default function RootLayout({
           <ErrorBoundary fallback={<ErrorFallback />}>
             <SiteHead />
             {children}
-            <GlobalFeedbackWidget />
           </ErrorBoundary>
           <ThemeEnforcerWrapper />
         </ClientProviders>

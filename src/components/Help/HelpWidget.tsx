@@ -5,7 +5,7 @@ import {
     FiHelpCircle, FiX, FiHome, FiMessageCircle, FiSearch,
     FiChevronRight, FiChevronLeft, FiLogIn, FiDollarSign,
     FiTrendingUp, FiFileText, FiBook, FiCalendar, FiMonitor,
-    FiSend, FiAlertCircle, FiStar
+    FiSend, FiAlertCircle, FiStar, FiMessageSquare
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { helpCategories, searchHelpArticles, HelpCategory, HelpArticle } from '@/data/helpContent';
@@ -19,6 +19,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     FiBook,
     FiCalendar,
     FiMonitor,
+    FiMessageSquare,
 };
 
 type Tab = 'home' | 'help' | 'messages';

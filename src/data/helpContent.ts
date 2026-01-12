@@ -1,5 +1,5 @@
 // Help content data for the Portal ABZ Help Widget
-// Organized by categories matching the portal modules
+// Based on the official Help Center document from ABZ Group
 
 export interface HelpArticle {
     id: string;
@@ -18,360 +18,513 @@ export interface HelpCategory {
 }
 
 export const helpCategories: HelpCategory[] = [
+    // ==========================================
+    // CATEGORIA: PORTAL ABZ
+    // ==========================================
     {
-        id: 'primeiro-acesso',
-        name: 'Primeiro Acesso',
-        description: 'Como começar a usar o portal',
+        id: 'onboarding',
+        name: 'Onboarding',
+        description: 'Primeiros passos no Portal ABZ',
         icon: 'FiLogIn',
         articles: [
             {
-                id: 'como-acessar',
-                title: 'Como acessar o portal pela primeira vez?',
+                id: 'o-que-e-portal',
+                title: 'O que é o Portal ABZ?',
                 content: `
-## Primeiro Acesso ao Portal ABZ
+## O que é o Portal ABZ?
 
-Para acessar o portal pela primeira vez, siga estes passos:
+O **Portal ABZ** é um centro de informações exclusivo para colaboradores da ABZ Group.
 
-1. **Acesse o link do portal**: Abra seu navegador e vá para o endereço fornecido pelo RH
-2. **Use suas credenciais**: Insira seu email corporativo (@groupabz.com) e a senha temporária fornecida
-3. **Altere sua senha**: Na primeira vez, você será solicitado a criar uma nova senha segura
-4. **Preencha seu perfil**: Complete suas informações pessoais
+### O que você encontra no portal:
+- 📋 **Procedimentos** - Manuais e guias operacionais
+- 📜 **Políticas** - Normas e regulamentos da empresa
+- 📅 **Calendário** - Eventos e datas importantes
+- 📰 **ABZ News** - Notícias e comunicados
+- 💰 **Reembolsos** - Solicitação e acompanhamento
+- 🎓 **Academia** - Treinamentos e cursos
+- 📊 **Avaliação** - Desempenho e feedback
 
-### Problemas comuns
-- Se não recebeu suas credenciais, entre em contato com o RH
-- Certifique-se de usar o email completo com @groupabz.com
+### Acesso
+Acesse pelo link: **https://portal.groupabz.com**
         `,
-                category: 'primeiro-acesso',
-                keywords: ['login', 'acesso', 'primeiro', 'senha', 'credenciais']
+                category: 'onboarding',
+                keywords: ['portal', 'abz', 'o que é', 'início', 'sobre']
             },
             {
-                id: 'esqueci-senha',
-                title: 'Esqueci minha senha, o que fazer?',
+                id: 'instalar-app',
+                title: 'Como fazer download do App Portal ABZ?',
                 content: `
-## Recuperação de Senha
+## Instalando o App Portal ABZ
 
-Se você esqueceu sua senha:
+O Portal ABZ pode ser instalado como um aplicativo no seu computador ou celular.
 
-1. Na tela de login, clique em **"Esqueci minha senha"**
-2. Digite seu email corporativo
-3. Você receberá um link por email para redefinir sua senha
-4. Acesse o link e crie uma nova senha
+### Passo a passo:
 
-### O link não chegou?
-- Verifique sua pasta de spam/lixo eletrônico
-- Aguarde alguns minutos e tente novamente
-- Se persistir, contate o suporte técnico
+1. **Acesse o portal** pelo navegador:
+   - Link: \`https://portal.groupabz.com/dashboard\`
+
+2. **Clique no ícone de instalação**:
+   - No Chrome: clique no ícone de "Instalar aplicativo" na barra de endereço
+   - No Edge: clique nos três pontos (...) > Aplicativos > Instalar este site como um aplicativo
+
+3. **Confirme a instalação**:
+   - Clique em **"Instalar"**
+   - Marque **"Fixar na barra de tarefas"** (opcional)
+   - Clique em **"Permitir"**
+
+4. **Pronto!**
+   - O app aparecerá no seu menu iniciar e/ou área de trabalho
+
+### Dica
+Para celular, acesse o portal pelo navegador Chrome e use a opção "Adicionar à tela inicial".
         `,
-                category: 'primeiro-acesso',
-                keywords: ['senha', 'esqueci', 'recuperar', 'reset', 'email']
+                category: 'onboarding',
+                keywords: ['app', 'instalar', 'download', 'aplicativo', 'pwa']
             },
             {
-                id: 'alterar-dados',
-                title: 'Como alterar meus dados pessoais?',
+                id: 'mudar-senha',
+                title: 'Como mudar a senha inicial?',
                 content: `
-## Alterando Dados do Perfil
+## Alterando sua Senha
 
-Para atualizar suas informações:
+Para maior segurança, recomendamos alterar sua senha inicial.
 
-1. Clique na sua **foto de perfil** no canto superior direito
-2. Selecione **"Meu Perfil"**
-3. Edite as informações desejadas
-4. Clique em **"Salvar"**
+### Passo a passo:
 
-### Dados que você pode alterar:
-- Foto de perfil
-- Telefone de contato
-- Endereço
-- Preferências de notificação
+1. **Clique no seu perfil** (canto inferior esquerdo da tela)
 
-> **Nota**: Alguns dados como nome e CPF só podem ser alterados pelo RH.
+2. **Role a página até encontrar "Alterar Senha"**
+
+3. **Preencha os campos**:
+   - Senha atual
+   - Nova senha (mínimo 8 caracteres)
+   - Confirmar nova senha
+
+4. **Clique em "Salvar"**
+
+### Requisitos da senha:
+- ✅ Mínimo de 8 caracteres
+- ✅ Recomendado: letras, números e símbolos
+
+### Esqueceu a senha?
+Use a opção "Esqueci minha senha" na tela de login para receber um email de recuperação.
         `,
-                category: 'primeiro-acesso',
-                keywords: ['perfil', 'dados', 'alterar', 'editar', 'foto']
+                category: 'onboarding',
+                keywords: ['senha', 'mudar', 'alterar', 'trocar', 'password']
+            },
+            {
+                id: 'reportar-erros',
+                title: 'Como reportar erros?',
+                content: `
+## Reportando Erros no Portal
+
+Encontrou um problema? Nos ajude a melhorar o portal reportando o erro.
+
+### Passo a passo:
+
+1. **Clique no botão de Ajuda** (ícone de interrogação no canto inferior direito)
+
+2. **Acesse a aba "Mensagens"**
+
+3. **Selecione "Reportar um erro/bug"**
+
+4. **Descreva o problema**:
+   - O que você estava tentando fazer
+   - O que aconteceu de errado
+   - Qual era o comportamento esperado
+
+5. **Opcionalmente**:
+   - Use **"Capturar Tela"** para tirar um print
+   - Anexe arquivos se necessário
+
+6. **Clique em "Enviar"**
+
+### Dados enviados automaticamente:
+- URL da página atual
+- Informações do navegador
+- Erros do console (se houver)
+        `,
+                category: 'onboarding',
+                keywords: ['erro', 'bug', 'problema', 'reportar', 'ajuda']
             }
         ]
     },
     {
-        id: 'reembolsos',
-        name: 'Reembolsos',
+        id: 'reembolso',
+        name: 'Reembolso',
         description: 'Solicitação e acompanhamento de reembolsos',
         icon: 'FiDollarSign',
         articles: [
             {
-                id: 'solicitar-reembolso',
-                title: 'Como solicitar um reembolso?',
+                id: 'preencher-formulario',
+                title: 'Como preencher o formulário de reembolso?',
                 content: `
-## Solicitando Reembolso
+## Preenchendo o Formulário de Reembolso
 
-Para solicitar um reembolso de despesas:
+Siga os passos abaixo para solicitar seu reembolso corretamente.
 
-1. No menu lateral, clique em **"Reembolso"**
-2. Clique no botão **"Nova Solicitação"**
-3. Preencha os campos obrigatórios:
-   - Tipo de despesa (alimentação, transporte, etc.)
-   - Data da despesa
-   - Valor
-   - Descrição
-4. **Anexe os comprovantes** (foto da nota fiscal ou recibo)
-5. Selecione o **método de pagamento** (PIX ou transferência)
-6. Revise e clique em **"Enviar"**
+### Passo a passo:
 
-### Dicas importantes:
-- Anexe comprovantes legíveis
-- Informe o valor exato do comprovante
-- Guarde os originais até a aprovação
+1. **Acesse o card "Reembolso"** no dashboard
+
+2. **Confira seus dados pessoais**:
+   - Nome, email, telefone
+   - Corrija se necessário
+
+3. **Insira seu CPF** (obrigatório)
+
+4. **Adicione as despesas**:
+   - Clique em **"Adicionar Despesa"**
+   - Selecione o **tipo** (alimentação, transporte, etc.)
+   - Informe a **data** da despesa
+   - Digite o **valor**
+   - Adicione uma **justificativa**
+   - **Anexe o comprovante** (foto da nota fiscal)
+
+5. **Adicione mais despesas se necessário**
+   - Você pode incluir múltiplas despesas em um único pedido
+
+6. **Escolha a forma de pagamento**:
+   - **Depósito bancário**: informe banco, agência e conta
+   - **PIX**: informe tipo e chave PIX
+
+7. **Revise e envie**:
+   - Clique em **"Enviar Solicitação"**
+
+### Importante:
+- Anexe comprovantes legíveis (nota fiscal ou cupom)
+- O valor deve ser exatamente igual ao do comprovante
         `,
-                category: 'reembolsos',
-                keywords: ['reembolso', 'solicitar', 'despesa', 'nota', 'comprovante']
+                category: 'reembolso',
+                keywords: ['reembolso', 'formulário', 'preencher', 'despesa', 'solicitar']
             },
             {
-                id: 'acompanhar-status',
-                title: 'Como acompanhar o status do meu reembolso?',
+                id: 'verificar-status',
+                title: 'Como verificar o status do meu reembolso?',
                 content: `
-## Acompanhando seu Reembolso
+## Verificando o Status do Reembolso
 
-Para verificar o status:
+Acompanhe o andamento da sua solicitação de reembolso.
 
-1. Acesse **"Reembolso"** no menu
-2. Veja a lista de todas suas solicitações
-3. Cada item mostra o status atual:
+### Passo a passo:
+
+1. **Acesse o card "Reembolso"** no dashboard
+
+2. **Clique na aba "Meus Reembolsos"**
+
+3. **Visualize suas solicitações**:
+   - Cada linha mostra um pedido
+   - Verifique a coluna **"Status"**
+
+### Significado dos status:
 
 | Status | Significado |
 |--------|-------------|
-| 🟡 Pendente | Aguardando análise |
-| 🔵 Em Análise | Sendo revisado pelo gestor |
-| 🟢 Aprovado | Aprovado, aguardando pagamento |
-| ✅ Pago | Valor depositado na sua conta |
-| 🔴 Rejeitado | Não aprovado (veja o motivo) |
+| 🟡 **Pendente** | Aguardando análise do gestor |
+| 🔵 **Em Análise** | Sendo revisado |
+| 🟢 **Aprovado** | Aprovado, aguardando pagamento |
+| ✅ **Pago** | Valor depositado na sua conta |
+| 🔴 **Rejeitado** | Não aprovado (veja o motivo) |
 
-Você receberá notificações por email a cada mudança de status.
+### Notificações:
+- Você receberá um email a cada mudança de status
+- Verifique também a caixa de spam
         `,
-                category: 'reembolsos',
-                keywords: ['status', 'acompanhar', 'aprovado', 'pago', 'pendente']
-            },
-            {
-                id: 'anexar-comprovantes',
-                title: 'Quais comprovantes devo anexar?',
-                content: `
-## Comprovantes Aceitos
-
-Para que seu reembolso seja aprovado, anexe comprovantes que contenham:
-
-### Documentos válidos:
-- ✅ Nota Fiscal (NF-e ou NFC-e)
-- ✅ Cupom Fiscal
-- ✅ Recibo com dados do estabelecimento
-- ✅ Fatura detalhada
-
-### O comprovante deve conter:
-- CNPJ do estabelecimento
-- Data da compra
-- Descrição dos itens
-- Valor total
-
-### Não são aceitos:
-- ❌ Comprovante de cartão (sem detalhes)
-- ❌ Fotos ilegíveis
-- ❌ Documentos rasurados
-        `,
-                category: 'reembolsos',
-                keywords: ['comprovante', 'nota', 'fiscal', 'recibo', 'anexar']
+                category: 'reembolso',
+                keywords: ['status', 'acompanhar', 'verificar', 'aprovado', 'pago', 'pendente']
             }
         ]
     },
     {
-        id: 'avaliacao',
-        name: 'Avaliação de Desempenho',
-        description: 'Ciclo de avaliação e feedback',
-        icon: 'FiTrendingUp',
-        articles: [
-            {
-                id: 'preencher-autoavaliacao',
-                title: 'Como preencher minha autoavaliação?',
-                content: `
-## Preenchendo a Autoavaliação
-
-Durante o período de avaliação:
-
-1. Acesse **"Avaliação"** no menu
-2. Clique na avaliação pendente
-3. Responda cada pergunta com atenção:
-   - Use a escala de 1 a 5
-   - Seja honesto em suas respostas
-   - Adicione comentários quando solicitado
-4. Você pode **salvar como rascunho** e continuar depois
-5. Quando terminar, clique em **"Enviar"**
-
-### Importante:
-- Após enviar, não é possível editar
-- Seu gestor receberá uma notificação
-- Aguarde o feedback do gestor
-        `,
-                category: 'avaliacao',
-                keywords: ['autoavaliação', 'preencher', 'enviar', 'rascunho']
-            },
-            {
-                id: 'visualizar-feedback',
-                title: 'Como visualizar o feedback do meu gestor?',
-                content: `
-## Visualizando Feedback
-
-Após seu gestor concluir a avaliação:
-
-1. Você receberá uma **notificação por email**
-2. Acesse **"Avaliação"** no menu
-3. Clique na avaliação concluída
-4. Veja as notas e comentários do gestor
-5. Você pode adicionar um **comentário final** se desejar
-
-### O feedback inclui:
-- Notas por competência
-- Comentários do gestor
-- Média geral
-- Áreas de melhoria
-        `,
-                category: 'avaliacao',
-                keywords: ['feedback', 'gestor', 'nota', 'comentário', 'resultado']
-            }
-        ]
-    },
-    {
-        id: 'noticias',
-        name: 'Notícias e Comunicados',
-        description: 'Feed de notícias da empresa',
+        id: 'contracheque',
+        name: 'Contracheque',
+        description: 'Acesso ao contracheque e recibos',
         icon: 'FiFileText',
         articles: [
             {
-                id: 'ver-noticias',
-                title: 'Onde vejo as notícias da empresa?',
+                id: 'acessar-contracheque',
+                title: 'Como acessar meu contracheque?',
                 content: `
-## Feed de Notícias
+## Acessando o Contracheque
 
-Para acompanhar as novidades:
+O contracheque está disponível através do sistema WK Radar.
 
-1. Acesse **"Notícias"** no menu lateral
-2. Veja os posts mais recentes no topo
-3. Use os filtros para buscar por categoria
-4. Clique em um post para ver os detalhes
+### Passo a passo:
 
-### Interações:
-- 👍 Curta posts interessantes
-- 💬 Comente para interagir
-- 🔗 Compartilhe com colegas
+1. **Acesse o link**:
+   - \`http://wk.groupabz.com/radarwebnet\`
+
+2. **Selecione** a opção **"Portal Empregado"**
+
+3. **Faça login**:
+   - **Usuário**: Seu CPF (apenas números)
+   - **Senha**: \`1\` (no primeiro acesso)
+
+4. **Clique em "Recibo"**
+
+5. **Faça login novamente** (solicitação do sistema)
+
+6. **Visualize ou imprima** seu contracheque
+
+### Primeiro acesso:
+- A senha inicial é **"1"**
+- Recomendamos alterar a senha após o primeiro acesso
+
+### Problemas de acesso?
+- Verifique se o CPF está correto (sem pontos ou traços)
+- Contate o RH se o problema persistir
         `,
-                category: 'noticias',
-                keywords: ['notícias', 'feed', 'posts', 'comunicados']
+                category: 'contracheque',
+                keywords: ['contracheque', 'recibo', 'salário', 'holerite', 'wk', 'radar']
             }
         ]
     },
+
+    // ==========================================
+    // CATEGORIA: GERAL
+    // ==========================================
     {
-        id: 'academia',
-        name: 'Academia (Treinamentos)',
-        description: 'Cursos e certificados',
-        icon: 'FiBook',
-        articles: [
-            {
-                id: 'acessar-cursos',
-                title: 'Como acessar os cursos disponíveis?',
-                content: `
-## Acessando a Academia
-
-Para ver os treinamentos disponíveis:
-
-1. Clique em **"Academia"** no menu
-2. Navegue pelo catálogo de cursos
-3. Clique em um curso para ver detalhes
-4. Clique em **"Iniciar Curso"**
-5. Complete as aulas no seu ritmo
-
-### Seu progresso:
-- É salvo automaticamente
-- Você pode pausar e continuar depois
-- Ao concluir, recebe um certificado
-        `,
-                category: 'academia',
-                keywords: ['curso', 'treinamento', 'academia', 'aprender']
-            },
-            {
-                id: 'certificados',
-                title: 'Onde encontro meus certificados?',
-                content: `
-## Seus Certificados
-
-Para acessar certificados conquistados:
-
-1. Acesse **"Academia"**
-2. Clique na aba **"Meus Certificados"**
-3. Veja a lista de cursos concluídos
-4. Clique em **"Baixar PDF"** para obter o certificado
-
-Os certificados ficam disponíveis permanentemente em seu perfil.
-        `,
-                category: 'academia',
-                keywords: ['certificado', 'diploma', 'conclusão', 'download']
-            }
-        ]
-    },
-    {
-        id: 'calendario',
-        name: 'Calendário',
-        description: 'Eventos e feriados',
-        icon: 'FiCalendar',
-        articles: [
-            {
-                id: 'ver-eventos',
-                title: 'Como ver eventos da empresa?',
-                content: `
-## Calendário da Empresa
-
-Para visualizar eventos:
-
-1. Acesse **"Calendário"** no menu
-2. Navegue pelos meses
-3. Clique em um evento para ver detalhes
-
-### Tipos de eventos:
-- 📅 Reuniões corporativas
-- 🎉 Eventos de confraternização
-- 📚 Treinamentos
-- 🏖️ Feriados
-        `,
-                category: 'calendario',
-                keywords: ['calendário', 'evento', 'feriado', 'data']
-            }
-        ]
-    },
-    {
-        id: 'wkradar',
-        name: 'WKRadar (Acesso Remoto)',
-        description: 'Sistema de acesso remoto',
+        id: 'rede-publica',
+        name: 'Rede Pública (Drive Z:)',
+        description: 'Acesso a arquivos e documentos compartilhados',
         icon: 'FiMonitor',
         articles: [
             {
-                id: 'conectar-wkradar',
-                title: 'Como conectar ao WKRadar?',
+                id: 'o-que-e-drive-z',
+                title: 'O que é a Rede Pública (Z:)?',
                 content: `
-## Acessando o WKRadar
+## Rede Pública - Drive Z:
 
-O WKRadar permite acesso remoto aos sistemas da empresa:
+O **Drive Z:** é o servidor interno de arquivos da ABZ Group.
 
-1. Clique em **"WKRadar"** no menu
-2. Aguarde o login automático
-3. Você verá a área de trabalho remota
-4. Use normalmente como se estivesse no escritório
+### Como acessar:
 
-### Problemas de conexão?
-- Verifique sua conexão com a internet
-- Tente atualizar a página
-- Se persistir, clique em **"Abrir em nova janela"**
+1. **Abra o Explorador de Arquivos** do Windows
+
+2. **Navegue até "Este Computador"**
+
+3. **Procure por "Data-ABZ (Z:)"**
+
+4. **Clique duas vezes** para abrir
+
+### Estrutura de pastas:
+
+- \`Z:\\1. Publico\` - Documentos públicos da empresa
+- \`Z:\\1. Publico\\3. Modelos diversos\` - Templates editáveis
+- \`Z:\\1. Publico\\4. Comunicação\` - Logotipos e identidade visual
+
+### Importante:
+- Nunca salve arquivos pessoais na rede pública
+- Sempre crie uma **cópia** antes de editar um modelo
+        `,
+                category: 'rede-publica',
+                keywords: ['drive', 'z', 'rede', 'público', 'arquivos', 'servidor']
+            },
+            {
+                id: 'modelos-editaveis',
+                title: 'Onde encontro modelos editáveis?',
+                content: `
+## Modelos Editáveis
+
+Modelos de documentos padrão da empresa estão disponíveis na rede.
+
+### Localização:
+\`Z:\\1. Publico\\3. Modelos diversos\`
+
+### O que você encontra:
+- Modelos de apresentações
+- Templates de documentos
+- Assinatura de email padrão
+- Outros formatos padrão
+
+### Como usar:
+
+1. **Navegue até a pasta** acima
+2. **Encontre o modelo** desejado
+3. **Copie o arquivo** para sua máquina ou outra pasta
+4. **Edite a cópia** (nunca o original!)
+
+> ⚠️ **Importante**: Sempre crie uma cópia antes de editar. Não modifique os arquivos originais da rede.
+        `,
+                category: 'rede-publica',
+                keywords: ['modelo', 'template', 'editável', 'documento', 'padrão']
+            },
+            {
+                id: 'logotipo-identidade',
+                title: 'Onde encontro o logotipo e identidade visual?',
+                content: `
+## Logotipo e Identidade Visual
+
+Materiais oficiais da marca ABZ Group.
+
+### Localização:
+\`Z:\\1. Publico\\4. Comunicação\`
+
+### O que você encontra:
+- 🎨 **Logotipos** em diversos formatos (PNG, JPG, PDF)
+- 🔤 **Fontes** oficiais da empresa
+- 🎯 **Ícones** e elementos gráficos
+- 📖 **Manual da Marca** - Guia de uso da identidade visual
 
 ### Dicas:
-- Use o modo tela cheia para melhor experiência
-- O teclado funciona normalmente
-- Evite conexões muito lentas
+- Use sempre os logotipos das versões mais recentes
+- Consulte o manual da marca para uso correto
+- Em caso de dúvidas, contate a equipe de Comunicação
         `,
-                category: 'wkradar',
-                keywords: ['wkradar', 'remoto', 'acesso', 'vpn', 'conexão']
+                category: 'rede-publica',
+                keywords: ['logo', 'logotipo', 'marca', 'identidade', 'visual', 'comunicação']
+            }
+        ]
+    },
+    {
+        id: 'email',
+        name: 'E-mail (Assinatura)',
+        description: 'Configuração de assinatura de email',
+        icon: 'FiFileText',
+        articles: [
+            {
+                id: 'assinatura-outlook-classico',
+                title: 'Como incluir assinatura no Outlook Clássico?',
+                content: `
+## Assinatura de E-mail - Outlook Clássico
+
+Configure sua assinatura padrão da ABZ Group.
+
+### Passo 1: Copiar o modelo
+
+1. Acesse: \`Z:\\1. Publico\\3. Modelos diversos\`
+2. Abra o arquivo: **"Assinatura de E-mail Padrão.docx"**
+3. Selecione todo o conteúdo (Ctrl+A)
+4. Copie (Ctrl+C)
+
+### Passo 2: Configurar no Outlook
+
+1. Abra o **Outlook**
+2. Vá em **Arquivo** > **Opções** > **Email** > **Assinaturas**
+3. Clique em **"Nova"**
+4. Dê um nome (ex: "ABZ Padrão")
+5. Cole a assinatura (Ctrl+V) na área de edição
+6. **Atualize seus dados**:
+   - Seu nome
+   - Sua função/cargo
+   - Seu WhatsApp (se aplicável)
+
+### Passo 3: Definir como padrão
+
+1. Em "Escolher assinatura padrão":
+   - **Novas mensagens**: Selecione sua assinatura
+   - **Respostas/encaminhamentos**: Selecione sua assinatura
+2. Clique em **OK**
+        `,
+                category: 'email',
+                keywords: ['assinatura', 'email', 'outlook', 'clássico', 'configurar']
+            },
+            {
+                id: 'assinatura-novo-outlook',
+                title: 'Como incluir assinatura no Novo Outlook?',
+                content: `
+## Assinatura de E-mail - Novo Outlook
+
+Configure sua assinatura no novo Outlook (versão web/moderna).
+
+### Passo 1: Copiar o modelo
+
+1. Acesse: \`Z:\\1. Publico\\3. Modelos diversos\`
+2. Abra: **"Assinatura de E-mail Padrão.docx"**
+3. Selecione tudo (Ctrl+A) e copie (Ctrl+C)
+
+### Passo 2: Configurar no Novo Outlook
+
+1. Clique na **engrenagem** (Configurações) no canto superior direito
+2. Vá em **Email** > **Criar e responder**
+3. Role até **"Assinatura de email"**
+4. Clique em **"Nova assinatura"**
+5. Dê um nome (ex: "ABZ")
+6. Cole a assinatura (Ctrl+V)
+7. **Atualize seus dados**:
+   - Nome
+   - Cargo
+   - WhatsApp
+
+### Passo 3: Ativar
+
+1. Marque a opção **"Incluir automaticamente em novas mensagens"**
+2. Marque **"Incluir em respostas e encaminhamentos"**
+3. Clique em **Salvar**
+        `,
+                category: 'email',
+                keywords: ['assinatura', 'email', 'outlook', 'novo', 'web', 'configurar']
+            }
+        ]
+    },
+    {
+        id: 'teams',
+        name: 'Teams',
+        description: 'Configurações do Microsoft Teams',
+        icon: 'FiMessageSquare',
+        articles: [
+            {
+                id: 'fundo-reunioes',
+                title: 'Como incluir fundo para reuniões?',
+                content: `
+## Fundo para Reuniões no Teams
+
+Personalize o fundo das suas videochamadas.
+
+### Durante uma reunião:
+
+1. Clique em **"Mais ações"** (três pontinhos)
+2. Selecione **"Efeitos e avatares"** ou **"Aplicar efeitos de fundo"**
+3. Escolha uma das opções:
+   - **Desfocar** - Desfoca o fundo
+   - **Imagem padrão** - Selecione uma das imagens do Teams
+   - **Adicionar nova** - Carregue sua própria imagem
+
+### Antes de uma reunião:
+
+1. Ao entrar na reunião, antes de clicar em "Ingressar"
+2. Ative a câmera
+3. Clique em **"Filtros de fundo"**
+4. Escolha ou carregue uma imagem
+
+### Dica:
+Para fundos personalizados da ABZ, consulte a pasta de comunicação na rede.
+        `,
+                category: 'teams',
+                keywords: ['teams', 'fundo', 'reunião', 'video', 'background']
+            },
+            {
+                id: 'foto-perfil-teams',
+                title: 'Como alterar foto de perfil no Teams?',
+                content: `
+## Alterando Foto de Perfil no Teams
+
+Atualize sua foto de perfil para facilitar a identificação.
+
+### Passo a passo:
+
+1. **Abra o Teams**
+
+2. **Clique na sua foto/iniciais** (canto superior direito)
+
+3. **Clique na foto novamente** ou em **"Alterar foto"**
+
+4. **Escolha uma das opções**:
+   - **Carregar foto** - Selecione uma imagem do seu computador
+   - **Tirar foto** - Use a webcam para tirar uma nova foto
+
+5. **Ajuste o enquadramento** (se necessário)
+
+6. **Clique em "Salvar"**
+
+### Dicas para a foto:
+- Use uma foto profissional
+- Fundo neutro de preferência
+- Rosto centralizado e visível
+- Boa iluminação
+        `,
+                category: 'teams',
+                keywords: ['teams', 'foto', 'perfil', 'avatar', 'imagem']
             }
         ]
     }
