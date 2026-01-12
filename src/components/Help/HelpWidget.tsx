@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import {
     FiHelpCircle, FiX, FiHome, FiMessageCircle, FiSearch,
     FiChevronRight, FiChevronLeft, FiLogIn, FiDollarSign,
     FiTrendingUp, FiFileText, FiBook, FiCalendar, FiMonitor,
-    FiSend, FiAlertCircle, FiStar, FiMessageSquare
+    FiSend, FiAlertCircle, FiStar, FiMessageSquare, FiZoomIn
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { helpCategories, searchHelpArticles, HelpCategory, HelpArticle } from '@/data/helpContent';
@@ -25,6 +26,61 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 type Tab = 'home' | 'help' | 'messages';
 type MessageType = 'question' | 'bug' | 'suggestion';
 
+// Image Lightbox Component
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+    return (
+        <div
+            className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+            onClick={onClose}
+        >
+            <button
+                onClick={onClose}
+                className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+            >
+                <FiX className="w-8 h-8" />
+            </button>
+            <div className="relative max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                <img
+                    src={src}
+                    alt={alt}
+                    className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                />
+            </div>
+        </div>
+    );
+}
+
+// Clickable Help Image Component
+function HelpImage({ src, alt }: { src: string; alt: string }) {
+    const [showLightbox, setShowLightbox] = useState(false);
+
+    return (
+        <>
+            <div
+                className="relative my-4 cursor-pointer group rounded-lg overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                onClick={() => setShowLightbox(true)}
+            >
+                <img
+                    src={src}
+                    alt={alt}
+                    className="w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2 shadow-lg">
+                        <FiZoomIn className="w-5 h-5 text-gray-700" />
+                    </div>
+                </div>
+                <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    Clique para ampliar
+                </div>
+            </div>
+            {showLightbox && (
+                <ImageLightbox src={src} alt={alt} onClose={() => setShowLightbox(false)} />
+            )}
+        </>
+    );
+}
+
 export default function HelpWidget() {
     const { user, profile } = useSupabaseAuth();
     const [isOpen, setIsOpen] = useState(false);
@@ -37,6 +93,7 @@ export default function HelpWidget() {
     const [messageText, setMessageText] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [messageSent, setMessageSent] = useState(false);
+    const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null);
     const widgetRef = useRef<HTMLDivElement>(null);
 
     // Get user's first name for greeting
@@ -56,10 +113,8 @@ export default function HelpWidget() {
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (widgetRef.current && !widgetRef.current.contains(event.target as Node)) {
-                // Don't close if clicking the trigger button
                 const target = event.target as HTMLElement;
                 if (target.closest('[data-help-trigger]')) return;
-                // setIsOpen(false); // Uncomment to enable click outside to close
             }
         };
 
@@ -120,15 +175,43 @@ export default function HelpWidget() {
         return IconComponent ? <IconComponent className={className} /> : null;
     };
 
+    // Parse and render article content with images
+    const renderArticleContent = (content: string, images?: string[]) => {
+        // Process markdown-like syntax
+        let html = content
+            .replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-gray-800 mt-6 mb-3 font-plus-jakarta">$1</h2>')
+            .replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold text-gray-700 mt-4 mb-2 font-plus-jakarta">$1</h3>')
+            .replace(/^\- (.+)$/gm, '<li class="ml-5 list-disc text-gray-600 leading-relaxed mb-1">$1</li>')
+            .replace(/^\d+\. (.+)$/gm, '<li class="ml-5 list-decimal text-gray-600 leading-relaxed mb-1">$1</li>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
+            .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>')
+            .replace(/\n\n/g, '</p><p class="mb-3 leading-relaxed">')
+            .replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-blue-50 text-sm italic text-gray-600">$1</blockquote>');
+
+        // Wrap in paragraph tags
+        html = `<p class="mb-3 leading-relaxed">${html}</p>`;
+
+        return html;
+    };
+
     return (
         <>
+            {/* Image Lightbox */}
+            {lightboxImage && (
+                <ImageLightbox
+                    src={lightboxImage.src}
+                    alt={lightboxImage.alt}
+                    onClose={() => setLightboxImage(null)}
+                />
+            )}
+
             {/* Floating trigger button */}
             <button
                 data-help-trigger
                 onClick={() => setIsOpen(!isOpen)}
                 className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${isOpen
-                    ? 'bg-gray-600 hover:bg-gray-700'
-                    : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                        ? 'bg-gray-600 hover:bg-gray-700'
+                        : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
                     }`}
                 style={{ boxShadow: '0 4px 20px rgba(0, 91, 150, 0.4)' }}
             >
@@ -143,7 +226,7 @@ export default function HelpWidget() {
             {isOpen && (
                 <div
                     ref={widgetRef}
-                    className="fixed bottom-24 right-6 z-50 w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
+                    className="fixed bottom-24 right-6 z-50 w-[400px] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300 font-plus-jakarta"
                     style={{ boxShadow: '0 10px 50px rgba(0, 0, 0, 0.2)' }}
                 >
                     {/* Content area */}
@@ -158,45 +241,45 @@ export default function HelpWidget() {
                                 </div>
 
                                 {/* Quick actions */}
-                                <div className="p-4 flex-1">
+                                <div className="p-5 flex-1">
                                     <button
                                         onClick={() => handleTabChange('messages')}
-                                        className="w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl p-4 flex items-center gap-3 transition-colors mb-4"
+                                        className="w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl p-4 flex items-center gap-4 transition-colors mb-4"
                                     >
-                                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
                                             <FiSend className="w-5 h-5 text-white" />
                                         </div>
-                                        <div className="text-left">
-                                            <p className="font-medium text-gray-800">Fale com o Suporte</p>
-                                            <p className="text-sm text-gray-500">Envie sua dúvida ou reporte um problema</p>
+                                        <div className="text-left flex-1">
+                                            <p className="font-semibold text-gray-800">Fale com o Suporte</p>
+                                            <p className="text-sm text-gray-500 mt-0.5">Envie sua dúvida ou reporte um problema</p>
                                         </div>
-                                        <FiChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
+                                        <FiChevronRight className="w-5 h-5 text-gray-400" />
                                     </button>
 
                                     <button
                                         onClick={() => handleTabChange('help')}
-                                        className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-4 flex items-center gap-3 transition-colors"
+                                        className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-4 flex items-center gap-4 transition-colors"
                                     >
-                                        <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                                        <div className="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center">
                                             <FiSearch className="w-5 h-5 text-white" />
                                         </div>
-                                        <div className="text-left">
-                                            <p className="font-medium text-gray-800">Buscar na Ajuda</p>
-                                            <p className="text-sm text-gray-500">Encontre respostas rápidas</p>
+                                        <div className="text-left flex-1">
+                                            <p className="font-semibold text-gray-800">Buscar na Ajuda</p>
+                                            <p className="text-sm text-gray-500 mt-0.5">Encontre respostas rápidas</p>
                                         </div>
-                                        <FiChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
+                                        <FiChevronRight className="w-5 h-5 text-gray-400" />
                                     </button>
 
                                     {/* Info card */}
                                     <div className="mt-6 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4">
                                         <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <div className="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
                                                 <FiStar className="w-4 h-4 text-white" />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-amber-800 text-sm">Dica rápida</p>
-                                                <p className="text-xs text-amber-600 mt-1">
-                                                    Acesse a aba "Ajuda" para encontrar tutoriais sobre todos os módulos do portal.
+                                                <p className="font-semibold text-amber-800 text-sm">Dica rápida</p>
+                                                <p className="text-sm text-amber-700 mt-1 leading-relaxed">
+                                                    Acesse a aba "Ajuda" para encontrar tutoriais com imagens sobre todos os módulos do portal.
                                                 </p>
                                             </div>
                                         </div>
@@ -209,11 +292,11 @@ export default function HelpWidget() {
                         {activeTab === 'help' && (
                             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                                 {/* Header */}
-                                <div className="bg-white border-b p-4">
+                                <div className="bg-white border-b p-4 flex-shrink-0">
                                     {selectedArticle ? (
                                         <button
                                             onClick={() => setSelectedArticle(null)}
-                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
                                         >
                                             <FiChevronLeft className="w-5 h-5" />
                                             <span>Voltar</span>
@@ -221,27 +304,27 @@ export default function HelpWidget() {
                                     ) : selectedCategory ? (
                                         <button
                                             onClick={() => setSelectedCategory(null)}
-                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
                                         >
                                             <FiChevronLeft className="w-5 h-5" />
                                             <span>Categorias</span>
                                         </button>
                                     ) : (
-                                        <h3 className="text-lg font-semibold text-gray-800">Ajuda</h3>
+                                        <h3 className="text-lg font-semibold text-gray-800">Central de Ajuda</h3>
                                     )}
                                 </div>
 
                                 {/* Search bar */}
                                 {!selectedArticle && (
-                                    <div className="p-4 border-b bg-gray-50">
+                                    <div className="p-4 border-b bg-gray-50 flex-shrink-0">
                                         <div className="relative">
-                                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                             <input
                                                 type="text"
                                                 placeholder="Qual é a sua dúvida?"
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                             />
                                         </div>
                                     </div>
@@ -259,9 +342,9 @@ export default function HelpWidget() {
                                                         setSelectedArticle(article);
                                                         setSearchQuery('');
                                                     }}
-                                                    className="w-full text-left p-3 bg-white border rounded-lg hover:bg-gray-50 transition-colors"
+                                                    className="w-full text-left p-4 bg-white border rounded-xl hover:bg-gray-50 transition-colors"
                                                 >
-                                                    <p className="font-medium text-gray-800 text-sm">{article.title}</p>
+                                                    <p className="font-medium text-gray-800">{article.title}</p>
                                                     <p className="text-xs text-gray-500 mt-1">{article.category}</p>
                                                 </button>
                                             ))}
@@ -274,7 +357,7 @@ export default function HelpWidget() {
                                             <p className="text-gray-500">Nenhum resultado encontrado</p>
                                             <button
                                                 onClick={() => handleTabChange('messages')}
-                                                className="mt-3 text-blue-600 hover:text-blue-700 text-sm"
+                                                className="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
                                             >
                                                 Fale com o suporte
                                             </button>
@@ -283,34 +366,63 @@ export default function HelpWidget() {
 
                                     {/* Article view */}
                                     {selectedArticle && (
-                                        <div>
-                                            <h4 className="text-lg font-semibold text-gray-800 mb-4">{selectedArticle.title}</h4>
+                                        <div className="pb-4">
+                                            <h4 className="text-lg font-semibold text-gray-800 mb-4 leading-tight">{selectedArticle.title}</h4>
+
+                                            {/* Article content with improved typography */}
                                             <div
-                                                className="prose prose-sm max-w-none text-gray-600"
+                                                className="text-sm text-gray-600 leading-relaxed space-y-3"
                                                 dangerouslySetInnerHTML={{
-                                                    __html: selectedArticle.content
-                                                        .replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-gray-800 mt-4 mb-2">$1</h2>')
-                                                        .replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold text-gray-700 mt-3 mb-2">$1</h3>')
-                                                        .replace(/^\- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-                                                        .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-                                                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                                                        .replace(/\n\n/g, '<br/><br/>')
+                                                    __html: renderArticleContent(selectedArticle.content)
                                                 }}
                                             />
+
+                                            {/* Article images */}
+                                            {selectedArticle.images && selectedArticle.images.length > 0 && (
+                                                <div className="mt-6 space-y-4">
+                                                    <h5 className="text-sm font-semibold text-gray-700">Passo a passo ilustrado:</h5>
+                                                    {selectedArticle.images.map((img, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="relative cursor-pointer group rounded-lg overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                                                            onClick={() => setLightboxImage({ src: img, alt: `Imagem ${idx + 1}` })}
+                                                        >
+                                                            <img
+                                                                src={img}
+                                                                alt={`Passo ${idx + 1}`}
+                                                                className="w-full h-auto"
+                                                            />
+                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-3 shadow-lg">
+                                                                    <FiZoomIn className="w-5 h-5 text-gray-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                Clique para ampliar
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
                                     {/* Category articles */}
                                     {selectedCategory && !selectedArticle && !searchQuery && (
-                                        <div className="space-y-2">
-                                            <h4 className="font-semibold text-gray-800 mb-3">{selectedCategory.name}</h4>
+                                        <div className="space-y-3">
+                                            <h4 className="font-semibold text-gray-800 mb-4">{selectedCategory.name}</h4>
                                             {selectedCategory.articles.map((article) => (
                                                 <button
                                                     key={article.id}
                                                     onClick={() => setSelectedArticle(article)}
-                                                    className="w-full text-left p-3 bg-white border rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-between"
+                                                    className="w-full text-left p-4 bg-white border rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-between"
                                                 >
-                                                    <p className="font-medium text-gray-700 text-sm">{article.title}</p>
+                                                    <div>
+                                                        <p className="font-medium text-gray-700">{article.title}</p>
+                                                        {article.images && article.images.length > 0 && (
+                                                            <p className="text-xs text-blue-600 mt-1">📷 Com imagens</p>
+                                                        )}
+                                                    </div>
                                                     <FiChevronRight className="w-4 h-4 text-gray-400" />
                                                 </button>
                                             ))}
@@ -319,22 +431,22 @@ export default function HelpWidget() {
 
                                     {/* Categories list */}
                                     {!selectedCategory && !selectedArticle && !searchQuery && (
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             {helpCategories.map((category) => (
                                                 <button
                                                     key={category.id}
                                                     onClick={() => setSelectedCategory(category)}
-                                                    className="w-full text-left p-4 bg-white border rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-3"
+                                                    className="w-full text-left p-4 bg-white border rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-4"
                                                 >
-                                                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                                    <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
                                                         {renderIcon(category.icon, 'w-5 h-5 text-blue-600')}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <p className="font-medium text-gray-800">{category.name}</p>
-                                                        <p className="text-xs text-gray-500">{category.description}</p>
+                                                        <p className="font-semibold text-gray-800">{category.name}</p>
+                                                        <p className="text-xs text-gray-500 mt-0.5">{category.description}</p>
                                                     </div>
-                                                    <div className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                                                        {category.articles.length} artigos
+                                                    <div className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+                                                        {category.articles.length}
                                                     </div>
                                                 </button>
                                             ))}
@@ -348,7 +460,7 @@ export default function HelpWidget() {
                         {activeTab === 'messages' && (
                             <div className="flex-1 flex flex-col">
                                 {/* Header */}
-                                <div className="bg-white border-b p-4">
+                                <div className="bg-white border-b p-4 flex-shrink-0">
                                     <h3 className="text-lg font-semibold text-gray-800">Mensagens</h3>
                                     <p className="text-xs text-gray-500 mt-1">Atendimento: 09h às 18h (dias úteis)</p>
                                 </div>
@@ -408,7 +520,7 @@ export default function HelpWidget() {
                                                 <div className="flex flex-col h-full">
                                                     <button
                                                         onClick={() => setMessageType(null)}
-                                                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
+                                                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4 font-medium"
                                                     >
                                                         <FiChevronLeft className="w-5 h-5" />
                                                         <span>Voltar</span>
@@ -424,14 +536,14 @@ export default function HelpWidget() {
                                                             value={messageText}
                                                             onChange={(e) => setMessageText(e.target.value)}
                                                             placeholder="Digite aqui..."
-                                                            className="w-full h-32 p-3 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            className="w-full h-32 p-4 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                                         />
                                                     </div>
 
                                                     <button
                                                         onClick={handleSendMessage}
                                                         disabled={!messageText.trim() || isSending}
-                                                        className="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                                                        className="mt-4 w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                                                     >
                                                         {isSending ? (
                                                             <span>Enviando...</span>
@@ -452,10 +564,10 @@ export default function HelpWidget() {
                     </div>
 
                     {/* Bottom navigation */}
-                    <div className="border-t bg-white px-4 py-3 flex justify-around">
+                    <div className="border-t bg-white px-4 py-3.5 flex justify-around flex-shrink-0">
                         <button
                             onClick={() => handleTabChange('home')}
-                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${activeTab === 'home' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'
+                            className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-colors ${activeTab === 'home' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <FiHome className="w-5 h-5" />
@@ -463,7 +575,7 @@ export default function HelpWidget() {
                         </button>
                         <button
                             onClick={() => handleTabChange('help')}
-                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${activeTab === 'help' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'
+                            className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-colors ${activeTab === 'help' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <FiHelpCircle className="w-5 h-5" />
@@ -471,7 +583,7 @@ export default function HelpWidget() {
                         </button>
                         <button
                             onClick={() => handleTabChange('messages')}
-                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${activeTab === 'messages' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'
+                            className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-colors ${activeTab === 'messages' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <FiMessageCircle className="w-5 h-5" />
