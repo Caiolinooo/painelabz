@@ -6,7 +6,8 @@ import {
     FiHelpCircle, FiX, FiHome, FiMessageCircle, FiSearch,
     FiChevronRight, FiChevronLeft, FiLogIn, FiDollarSign,
     FiTrendingUp, FiFileText, FiBook, FiCalendar, FiMonitor,
-    FiSend, FiAlertCircle, FiStar, FiMessageSquare, FiZoomIn
+    FiSend, FiAlertCircle, FiStar, FiMessageSquare, FiZoomIn,
+    FiPaperclip, FiTrash2, FiCheckSquare, FiSquare, FiInfo
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { helpCategories, searchHelpArticles, HelpCategory, HelpArticle } from '@/data/helpContent';
@@ -94,10 +95,32 @@ export default function HelpWidget() {
     const [isSending, setIsSending] = useState(false);
     const [messageSent, setMessageSent] = useState(false);
     const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null);
+    const [screenshot, setScreenshot] = useState<string | null>(null);
+    const [screenshotName, setScreenshotName] = useState<string | null>(null);
+    const [includeSystemInfo, setIncludeSystemInfo] = useState(true);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const widgetRef = useRef<HTMLDivElement>(null);
 
     // Get user's first name for greeting
     const firstName = profile?.first_name || user?.email?.split('@')[0] || 'Usuário';
+
+    // Handle file selection
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                alert('A imagem deve ter no máximo 5MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setScreenshot(reader.result as string);
+                setScreenshotName(file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     // Handle search
     useEffect(() => {
@@ -134,6 +157,21 @@ export default function HelpWidget() {
                 suggestion: 'suggestion'
             };
 
+            // Prepare browser info if enabled
+            const browserInfo = includeSystemInfo ? {
+                language: navigator.language,
+                languages: navigator.languages?.join(', '),
+                platform: navigator.platform,
+                cookiesEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                deviceMemory: (navigator as any).deviceMemory,
+                hardwareConcurrency: navigator.hardwareConcurrency,
+                screenHeight: window.screen.height,
+                screenWidth: window.screen.width,
+                pixelRatio: window.devicePixelRatio,
+                timestamp: new Date().toISOString()
+            } : undefined;
+
             const response = await fetch('/api/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -141,7 +179,10 @@ export default function HelpWidget() {
                     type: typeMap[messageType],
                     message: messageText,
                     url: window.location.href,
-                    user_agent: navigator.userAgent
+                    userAgent: navigator.userAgent,
+                    screenResolution: `${window.screen.width}x${window.screen.height}`,
+                    browserInfo,
+                    screenshot
                 })
             });
 
@@ -149,6 +190,8 @@ export default function HelpWidget() {
                 setMessageSent(true);
                 setMessageText('');
                 setMessageType(null);
+                setScreenshot(null);
+                setScreenshotName(null);
                 setTimeout(() => setMessageSent(false), 3000);
             }
         } catch (error) {
@@ -639,6 +682,63 @@ export default function HelpWidget() {
                                                             placeholder="Digite aqui..."
                                                             className="w-full h-32 p-4 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                                         />
+
+                                                        {/* Attachments & Options */}
+                                                        <div className="mt-3 space-y-3">
+                                                            {/* Screenshot Upload */}
+                                                            <div>
+                                                                <input
+                                                                    type="file"
+                                                                    ref={fileInputRef}
+                                                                    onChange={handleFileChange}
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                />
+
+                                                                {screenshot ? (
+                                                                    <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                                                        <div className="flex items-center gap-2 overflow-hidden">
+                                                                            <div className="w-8 h-8 relative flex-shrink-0">
+                                                                                <img src={screenshot} alt="Screenshot" className="w-full h-full object-cover rounded" />
+                                                                            </div>
+                                                                            <span className="text-xs text-gray-600 truncate">{screenshotName}</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setScreenshot(null);
+                                                                                setScreenshotName(null);
+                                                                                if (fileInputRef.current) fileInputRef.current.value = '';
+                                                                            }}
+                                                                            className="p-1 hover:bg-gray-200 rounded text-gray-500"
+                                                                        >
+                                                                            <FiTrash2 className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => fileInputRef.current?.click()}
+                                                                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium px-2 py-1 -ml-2 rounded-lg hover:bg-blue-50 transition-colors"
+                                                                    >
+                                                                        <FiPaperclip className="w-4 h-4" />
+                                                                        <span>Anexar print da tela</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            {/* System Info Toggle */}
+                                                            <button
+                                                                onClick={() => setIncludeSystemInfo(!includeSystemInfo)}
+                                                                className="flex items-start gap-2 text-left group"
+                                                            >
+                                                                <div className={`mt-0.5 w-4 h-4 flex-shrink-0 rounded border flex items-center justify-center transition-colors ${includeSystemInfo ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white group-hover:border-blue-500'}`}>
+                                                                    {includeSystemInfo && <FiCheckSquare className="w-3 h-3 text-white" />}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    <span className="text-gray-700 font-medium">Incluir dados do sistema</span>
+                                                                    <p className="mt-0.5 leading-tight">Navegador, SO e resolução para melhor diagnóstico.</p>
+                                                                </div>
+                                                            </button>
+                                                        </div>
                                                     </div>
 
                                                     <button
