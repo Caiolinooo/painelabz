@@ -224,38 +224,51 @@ export async function POST(request: NextRequest) {
 
       // Buscar configurações de email de reembolso para destinatários adicionais
       let additionalRecipients: string[] = [];
+      const isGroupAbzDomain = emailToSend.toLowerCase().endsWith('@groupabz.com');
+
       try {
-        console.log('Buscando configurações de email de reembolso...');
+        console.log('Buscando configurações de email de reembolso diretamente do banco...');
+        console.log(`Email do solicitante: ${emailToSend}, Domínio interno: ${isGroupAbzDomain}`);
 
-        // Primeiro, verificar se o usuário tem configurações específicas
-        const userSettingsResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/users/reimbursement-settings-server?email=${encodeURIComponent(emailToSend)}`);
+        // Buscar configurações globais diretamente do banco de dados
+        const { data: settingsData, error: settingsError } = await supabaseAdmin
+          .from('settings')
+          .select('value')
+          .eq('key', 'reimbursement_email_settings')
+          .single();
 
-        if (userSettingsResponse.ok) {
-          const userSettings = await userSettingsResponse.json();
-          console.log('Configurações do usuário:', userSettings);
+        if (settingsError) {
+          console.log('Configurações não encontradas no banco, usando valores padrão');
+          // Usar valores padrão hardcoded para garantir que funcione
+          if (isGroupAbzDomain) {
+            additionalRecipients = ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
+            console.log(`Domínio @groupabz.com detectado - Usando destinatários padrão: ${additionalRecipients.join(', ')}`);
+          }
+        } else if (settingsData?.value) {
+          const globalSettings = settingsData.value as { enableDomainRule?: boolean; recipients?: string[] };
+          console.log('Configurações globais encontradas:', globalSettings);
 
-          if (userSettings.reimbursement_email_settings?.enabled && userSettings.reimbursement_email_settings?.recipients?.length > 0) {
-            additionalRecipients = userSettings.reimbursement_email_settings.recipients;
-            console.log(`Usando configurações específicas do usuário: ${additionalRecipients.join(', ')}`);
+          // Verificar se a regra de domínio está ativada e se o email tem o domínio @groupabz.com
+          if (globalSettings.enableDomainRule && isGroupAbzDomain) {
+            additionalRecipients = globalSettings.recipients || ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
+            console.log(`Usando regra de domínio para @groupabz.com: ${additionalRecipients.join(', ')}`);
+          } else if (!globalSettings.enableDomainRule) {
+            console.log('Regra de domínio desativada nas configurações');
           } else {
-            // Se o usuário não tem configurações específicas, verificar regras globais
-            const globalSettingsResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/reimbursement-settings`);
-
-            if (globalSettingsResponse.ok) {
-              const globalSettings = await globalSettingsResponse.json();
-              console.log('Configurações globais:', globalSettings);
-
-              // Verificar se a regra de domínio está ativada e se o email tem o domínio @groupabz.com
-              if (globalSettings.enableDomainRule && emailToSend.endsWith('@groupabz.com')) {
-                additionalRecipients = globalSettings.recipients || [];
-                console.log(`Usando regra de domínio para @groupabz.com: ${additionalRecipients.join(', ')}`);
-              }
-            }
+            console.log('Email não é do domínio @groupabz.com, não aplicando regra de domínio');
           }
         }
+
+        // Log final para debug
+        console.log(`Destinatários adicionais finais: ${additionalRecipients.length > 0 ? additionalRecipients.join(', ') : 'Nenhum'}`);
+
       } catch (settingsError) {
         console.error('Erro ao buscar configurações de email:', settingsError);
-        // Continuar sem destinatários adicionais
+        // Em caso de erro, usar valores padrão para emails internos
+        if (isGroupAbzDomain) {
+          additionalRecipients = ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
+          console.log(`Erro ao buscar configurações - Usando fallback para @groupabz.com: ${additionalRecipients.join(', ')}`);
+        }
       }
 
       await sendReimbursementConfirmationEmail(
