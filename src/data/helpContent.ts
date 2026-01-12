@@ -7,6 +7,7 @@ export interface HelpArticle {
     content: string;
     category: string;
     keywords: string[];
+    images?: string[]; // Optional array of image paths
 }
 
 export interface HelpCategory {
@@ -36,6 +37,7 @@ export const helpCategories: HelpCategory[] = [
 O **Portal ABZ** é um centro de informações exclusivo para colaboradores da ABZ Group.
 
 ### O que você encontra no portal:
+
 - 📋 **Procedimentos** - Manuais e guias operacionais
 - 📜 **Políticas** - Normas e regulamentos da empresa
 - 📅 **Calendário** - Eventos e datas importantes
@@ -45,6 +47,7 @@ O **Portal ABZ** é um centro de informações exclusivo para colaboradores da A
 - 📊 **Avaliação** - Desempenho e feedback
 
 ### Acesso
+
 Acesse pelo link: **https://portal.groupabz.com**
         `,
                 category: 'onboarding',
@@ -56,7 +59,7 @@ Acesse pelo link: **https://portal.groupabz.com**
                 content: `
 ## Instalando o App Portal ABZ
 
-O Portal ABZ pode ser instalado como um aplicativo no seu computador ou celular.
+O Portal ABZ pode ser instalado como um aplicativo no seu computador ou celular para acesso rápido.
 
 ### Passo a passo:
 
@@ -64,8 +67,7 @@ O Portal ABZ pode ser instalado como um aplicativo no seu computador ou celular.
    - Link: \`https://portal.groupabz.com/dashboard\`
 
 2. **Clique no ícone de instalação**:
-   - No Chrome: clique no ícone de "Instalar aplicativo" na barra de endereço
-   - No Edge: clique nos três pontos (...) > Aplicativos > Instalar este site como um aplicativo
+   - No Chrome/Edge: clique no ícone de **"Instalar aplicativo"** na barra de endereço (ao lado do ícone de lupa)
 
 3. **Confirme a instalação**:
    - Clique em **"Instalar"**
@@ -76,10 +78,15 @@ O Portal ABZ pode ser instalado como um aplicativo no seu computador ou celular.
    - O app aparecerá no seu menu iniciar e/ou área de trabalho
 
 ### Dica
+
 Para celular, acesse o portal pelo navegador Chrome e use a opção "Adicionar à tela inicial".
         `,
                 category: 'onboarding',
-                keywords: ['app', 'instalar', 'download', 'aplicativo', 'pwa']
+                keywords: ['app', 'instalar', 'download', 'aplicativo', 'pwa'],
+                images: [
+                    '/images/help/instalar-app-1.png',
+                    '/images/help/instalar-app-2.png'
+                ]
             },
             {
                 id: 'mudar-senha',
@@ -100,17 +107,22 @@ Para maior segurança, recomendamos alterar sua senha inicial.
    - Nova senha (mínimo 8 caracteres)
    - Confirmar nova senha
 
-4. **Clique em "Salvar"**
+4. **Clique em "Alterar Senha"**
 
 ### Requisitos da senha:
-- ✅ Mínimo de 8 caracteres
+
+- ✅ Mínimo de **8 caracteres**
 - ✅ Recomendado: letras, números e símbolos
 
 ### Esqueceu a senha?
-Use a opção "Esqueci minha senha" na tela de login para receber um email de recuperação.
+
+Use a opção **"Esqueci minha senha"** na tela de login para receber um email de recuperação.
         `,
                 category: 'onboarding',
-                keywords: ['senha', 'mudar', 'alterar', 'trocar', 'password']
+                keywords: ['senha', 'mudar', 'alterar', 'trocar', 'password'],
+                images: [
+                    '/images/help/alterar-senha.png'
+                ]
             },
             {
                 id: 'reportar-erros',
@@ -140,6 +152,7 @@ Encontrou um problema? Nos ajude a melhorar o portal reportando o erro.
 6. **Clique em "Enviar"**
 
 ### Dados enviados automaticamente:
+
 - URL da página atual
 - Informações do navegador
 - Erros do console (se houver)
@@ -192,11 +205,16 @@ Siga os passos abaixo para solicitar seu reembolso corretamente.
    - Clique em **"Enviar Solicitação"**
 
 ### Importante:
+
 - Anexe comprovantes legíveis (nota fiscal ou cupom)
 - O valor deve ser exatamente igual ao do comprovante
         `,
                 category: 'reembolso',
-                keywords: ['reembolso', 'formulário', 'preencher', 'despesa', 'solicitar']
+                keywords: ['reembolso', 'formulário', 'preencher', 'despesa', 'solicitar'],
+                images: [
+                    '/images/help/reembolso-formulario.png',
+                    '/images/help/reembolso-adicionar.png'
+                ]
             },
             {
                 id: 'verificar-status',
@@ -218,20 +236,22 @@ Acompanhe o andamento da sua solicitação de reembolso.
 
 ### Significado dos status:
 
-| Status | Significado |
-|--------|-------------|
-| 🟡 **Pendente** | Aguardando análise do gestor |
-| 🔵 **Em Análise** | Sendo revisado |
-| 🟢 **Aprovado** | Aprovado, aguardando pagamento |
-| ✅ **Pago** | Valor depositado na sua conta |
-| 🔴 **Rejeitado** | Não aprovado (veja o motivo) |
+- 🟡 **Pendente** - Aguardando análise do gestor
+- 🔵 **Em Análise** - Sendo revisado
+- 🟢 **Aprovado** - Aprovado, aguardando pagamento
+- ✅ **Pago** - Valor depositado na sua conta
+- 🔴 **Rejeitado** - Não aprovado (veja o motivo)
 
 ### Notificações:
+
 - Você receberá um email a cada mudança de status
 - Verifique também a caixa de spam
         `,
                 category: 'reembolso',
-                keywords: ['status', 'acompanhar', 'verificar', 'aprovado', 'pago', 'pendente']
+                keywords: ['status', 'acompanhar', 'verificar', 'aprovado', 'pago', 'pendente'],
+                images: [
+                    '/images/help/reembolso-status.png'
+                ]
             }
         ]
     },
@@ -267,10 +287,12 @@ O contracheque está disponível através do sistema WK Radar.
 6. **Visualize ou imprima** seu contracheque
 
 ### Primeiro acesso:
+
 - A senha inicial é **"1"**
 - Recomendamos alterar a senha após o primeiro acesso
 
 ### Problemas de acesso?
+
 - Verifique se o CPF está correto (sem pontos ou traços)
 - Contate o RH se o problema persistir
         `,
@@ -314,11 +336,15 @@ O **Drive Z:** é o servidor interno de arquivos da ABZ Group.
 - \`Z:\\1. Publico\\4. Comunicação\` - Logotipos e identidade visual
 
 ### Importante:
+
 - Nunca salve arquivos pessoais na rede pública
 - Sempre crie uma **cópia** antes de editar um modelo
         `,
                 category: 'rede-publica',
-                keywords: ['drive', 'z', 'rede', 'público', 'arquivos', 'servidor']
+                keywords: ['drive', 'z', 'rede', 'público', 'arquivos', 'servidor'],
+                images: [
+                    '/images/help/rede-publica.png'
+                ]
             },
             {
                 id: 'modelos-editaveis',
@@ -329,9 +355,11 @@ O **Drive Z:** é o servidor interno de arquivos da ABZ Group.
 Modelos de documentos padrão da empresa estão disponíveis na rede.
 
 ### Localização:
+
 \`Z:\\1. Publico\\3. Modelos diversos\`
 
 ### O que você encontra:
+
 - Modelos de apresentações
 - Templates de documentos
 - Assinatura de email padrão
@@ -358,15 +386,18 @@ Modelos de documentos padrão da empresa estão disponíveis na rede.
 Materiais oficiais da marca ABZ Group.
 
 ### Localização:
+
 \`Z:\\1. Publico\\4. Comunicação\`
 
 ### O que você encontra:
+
 - 🎨 **Logotipos** em diversos formatos (PNG, JPG, PDF)
 - 🔤 **Fontes** oficiais da empresa
 - 🎯 **Ícones** e elementos gráficos
 - 📖 **Manual da Marca** - Guia de uso da identidade visual
 
 ### Dicas:
+
 - Use sempre os logotipos das versões mais recentes
 - Consulte o manual da marca para uso correto
 - Em caso de dúvidas, contate a equipe de Comunicação
@@ -417,7 +448,10 @@ Configure sua assinatura padrão da ABZ Group.
 2. Clique em **OK**
         `,
                 category: 'email',
-                keywords: ['assinatura', 'email', 'outlook', 'clássico', 'configurar']
+                keywords: ['assinatura', 'email', 'outlook', 'clássico', 'configurar'],
+                images: [
+                    '/images/help/assinatura-email.png'
+                ]
             },
             {
                 id: 'assinatura-novo-outlook',
@@ -488,6 +522,7 @@ Personalize o fundo das suas videochamadas.
 4. Escolha ou carregue uma imagem
 
 ### Dica:
+
 Para fundos personalizados da ABZ, consulte a pasta de comunicação na rede.
         `,
                 category: 'teams',
@@ -518,6 +553,7 @@ Atualize sua foto de perfil para facilitar a identificação.
 6. **Clique em "Salvar"**
 
 ### Dicas para a foto:
+
 - Use uma foto profissional
 - Fundo neutro de preferência
 - Rosto centralizado e visível
