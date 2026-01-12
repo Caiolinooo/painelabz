@@ -176,20 +176,79 @@ export default function HelpWidget() {
     };
 
     // Parse and render article content with images
-    const renderArticleContent = (content: string, images?: string[]) => {
-        // Process markdown-like syntax
-        let html = content
-            .replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-gray-800 mt-6 mb-3 font-plus-jakarta">$1</h2>')
-            .replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold text-gray-700 mt-4 mb-2 font-plus-jakarta">$1</h3>')
-            .replace(/^\- (.+)$/gm, '<li class="ml-5 list-disc text-gray-600 leading-relaxed mb-1">$1</li>')
-            .replace(/^\d+\. (.+)$/gm, '<li class="ml-5 list-decimal text-gray-600 leading-relaxed mb-1">$1</li>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
-            .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>')
-            .replace(/\n\n/g, '</p><p class="mb-3 leading-relaxed">')
-            .replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-blue-50 text-sm italic text-gray-600">$1</blockquote>');
+    const renderArticleContent = (content: string) => {
+        // Split content into lines for processing
+        const lines = content.split('\n');
+        let html = '';
+        let inOrderedList = false;
+        let inUnorderedList = false;
 
-        // Wrap in paragraph tags
-        html = `<p class="mb-3 leading-relaxed">${html}</p>`;
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+
+            // Check for heading h2
+            if (line.match(/^## (.+)$/)) {
+                if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
+                if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
+                html += line.replace(/^## (.+)$/, '<h2 class="text-base font-semibold text-gray-800 mt-6 mb-3">$1</h2>');
+            }
+            // Check for heading h3
+            else if (line.match(/^### (.+)$/)) {
+                if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
+                if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
+                html += line.replace(/^### (.+)$/, '<h3 class="text-sm font-semibold text-gray-700 mt-5 mb-2">$1</h3>');
+            }
+            // Check for ordered list item
+            else if (line.match(/^\d+\. (.+)$/)) {
+                if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
+                if (!inOrderedList) { html += '<ol class="list-decimal pl-5 space-y-1 my-3">'; inOrderedList = true; }
+                const itemContent = line.replace(/^\d+\. (.+)$/, '$1')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
+                    .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>');
+                html += `<li class="text-gray-600 leading-relaxed">${itemContent}</li>`;
+            }
+            // Check for unordered list item
+            else if (line.match(/^- (.+)$/)) {
+                if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
+                if (!inUnorderedList) { html += '<ul class="list-disc pl-5 space-y-1 my-3">'; inUnorderedList = true; }
+                const itemContent = line.replace(/^- (.+)$/, '$1')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
+                    .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>');
+                html += `<li class="text-gray-600 leading-relaxed">${itemContent}</li>`;
+            }
+            // Check for sub-list items (indented with spaces)
+            else if (line.match(/^   - (.+)$/)) {
+                // Continue current list context for sub-items
+                const itemContent = line.replace(/^   - (.+)$/, '$1')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
+                    .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>');
+                html += `<li class="text-gray-600 leading-relaxed ml-4">${itemContent}</li>`;
+            }
+            // Check for blockquote
+            else if (line.match(/^> (.+)$/)) {
+                if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
+                if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
+                html += line.replace(/^> (.+)$/, '<blockquote class="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-blue-50 text-sm italic text-gray-600">$1</blockquote>');
+            }
+            // Empty line - close lists and add paragraph break
+            else if (line.trim() === '') {
+                if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
+                if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
+            }
+            // Regular text
+            else if (line.trim()) {
+                if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
+                if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
+                const textContent = line
+                    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
+                    .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>');
+                html += `<p class="text-gray-600 leading-relaxed mb-3">${textContent}</p>`;
+            }
+        }
+
+        // Close any open lists
+        if (inOrderedList) html += '</ol>';
+        if (inUnorderedList) html += '</ul>';
 
         return html;
     };
@@ -210,8 +269,8 @@ export default function HelpWidget() {
                 data-help-trigger
                 onClick={() => setIsOpen(!isOpen)}
                 className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${isOpen
-                        ? 'bg-gray-600 hover:bg-gray-700'
-                        : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                    ? 'bg-gray-600 hover:bg-gray-700'
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
                     }`}
                 style={{ boxShadow: '0 4px 20px rgba(0, 91, 150, 0.4)' }}
             >
