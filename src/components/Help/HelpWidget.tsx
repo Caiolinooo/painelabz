@@ -100,9 +100,69 @@ export default function HelpWidget() {
     const [includeSystemInfo, setIncludeSystemInfo] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const widgetRef = useRef<HTMLDivElement>(null);
+    const consoleLogsRef = useRef<Array<{ type: string; message: string; timestamp: string }>>([]);
 
     // Get user's first name for greeting
     const firstName = profile?.first_name || user?.email?.split('@')[0] || 'Usuário';
+
+    // Capture console logs and network errors
+    useEffect(() => {
+        if (!includeSystemInfo) return;
+
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleLog = console.log;
+
+        const addLog = (type: string, args: any[]) => {
+            try {
+                const message = args.map(arg =>
+                    typeof arg === 'object' ? JSON.stringify(arg, Object.getOwnPropertyNames(arg)) : String(arg)
+                ).join(' ');
+
+                consoleLogsRef.current.push({
+                    type,
+                    message,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Keep only last 50 logs
+                if (consoleLogsRef.current.length > 50) {
+                    consoleLogsRef.current.shift();
+                }
+            } catch (e) {
+                // Ignore errors in logging
+            }
+        };
+
+        console.error = (...args) => {
+            addLog('error', args);
+            originalConsoleError.apply(console, args);
+        };
+
+        console.warn = (...args) => {
+            addLog('warn', args);
+            originalConsoleWarn.apply(console, args);
+        };
+
+        console.log = (...args) => {
+            addLog('log', args);
+            originalConsoleLog.apply(console, args);
+        };
+
+        // Capture unhandled promise rejections (network errors often land here)
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+            addLog('error', ['Unhandled Promise Rejection:', event.reason]);
+        };
+
+        window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+        return () => {
+            console.error = originalConsoleError;
+            console.warn = originalConsoleWarn;
+            console.log = originalConsoleLog;
+            window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+        };
+    }, [includeSystemInfo]);
 
     // Handle file selection
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,7 +242,8 @@ export default function HelpWidget() {
                     userAgent: navigator.userAgent,
                     screenResolution: `${window.screen.width}x${window.screen.height}`,
                     browserInfo,
-                    screenshot
+                    screenshot,
+                    consoleLogs: includeSystemInfo ? consoleLogsRef.current : []
                 })
             });
 
@@ -606,7 +667,7 @@ export default function HelpWidget() {
                                 {/* Header */}
                                 <div className="bg-white border-b p-4 flex-shrink-0">
                                     <h3 className="text-lg font-semibold text-gray-800">Mensagens</h3>
-                                    <p className="text-xs text-gray-500 mt-1">Atendimento: 09h às 18h (dias úteis)</p>
+                                    <p className="text-xs text-gray-500 mt-1">Atendimento: 08h às 17h (seg a sexta)</p>
                                 </div>
 
                                 {/* Content */}

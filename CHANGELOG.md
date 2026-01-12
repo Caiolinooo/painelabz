@@ -5,6 +5,13 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.12.2] - 2026-01-12
+
+### Changed
+- **Help Widget**:
+    - Atualizado horário de atendimento para: 08h às 17h (seg a sexta).
+    - Aprimorada coleta de diagnósticos: agora captura automaticamente logs do console e erros de rede (fetch failures) ao enviar feedback.
+
 ## [3.12.1] - 2026-01-12
 
 ### Fixed
