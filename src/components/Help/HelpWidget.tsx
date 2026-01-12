@@ -182,33 +182,43 @@ export default function HelpWidget() {
         let html = '';
         let inOrderedList = false;
         let inUnorderedList = false;
+        let inSubList = false;
 
         for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
+            const line = lines[i];
 
             // Check for heading h2
             if (line.match(/^## (.+)$/)) {
+                if (inSubList) { html += '</ul>'; inSubList = false; }
                 if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
                 if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
                 html += line.replace(/^## (.+)$/, '<h2 class="text-base font-semibold text-gray-800 mt-6 mb-3">$1</h2>');
             }
             // Check for heading h3
             else if (line.match(/^### (.+)$/)) {
+                if (inSubList) { html += '</ul>'; inSubList = false; }
                 if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
                 if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
                 html += line.replace(/^### (.+)$/, '<h3 class="text-sm font-semibold text-gray-700 mt-5 mb-2">$1</h3>');
             }
-            // Check for ordered list item
+            // Check for ordered list item (not indented)
             else if (line.match(/^\d+\. (.+)$/)) {
+                if (inSubList) { html += '</ul>'; inSubList = false; }
                 if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
-                if (!inOrderedList) { html += '<ol class="list-decimal pl-5 space-y-1 my-3">'; inOrderedList = true; }
+                if (!inOrderedList) { html += '<ol class="list-decimal pl-5 space-y-2 my-3">'; inOrderedList = true; }
                 const itemContent = line.replace(/^\d+\. (.+)$/, '$1')
                     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
                     .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>');
-                html += `<li class="text-gray-600 leading-relaxed">${itemContent}</li>`;
+                html += `<li class="text-gray-600 leading-relaxed">${itemContent}`;
+                // Check if next line is a sub-item - if not, close the li
+                const nextLine = lines[i + 1]?.trim();
+                if (!nextLine?.startsWith('-')) {
+                    html += '</li>';
+                }
             }
-            // Check for unordered list item
+            // Check for unordered list item (not indented)
             else if (line.match(/^- (.+)$/)) {
+                if (inSubList) { html += '</ul>'; inSubList = false; }
                 if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
                 if (!inUnorderedList) { html += '<ul class="list-disc pl-5 space-y-1 my-3">'; inUnorderedList = true; }
                 const itemContent = line.replace(/^- (.+)$/, '$1')
@@ -216,27 +226,39 @@ export default function HelpWidget() {
                     .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>');
                 html += `<li class="text-gray-600 leading-relaxed">${itemContent}</li>`;
             }
-            // Check for sub-list items (indented with spaces)
+            // Check for sub-list items (indented with spaces - inside ordered list)
             else if (line.match(/^   - (.+)$/)) {
-                // Continue current list context for sub-items
+                if (!inSubList) {
+                    html += '<ul class="list-disc pl-5 mt-1 space-y-1">';
+                    inSubList = true;
+                }
                 const itemContent = line.replace(/^   - (.+)$/, '$1')
                     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-800">$1</strong>')
                     .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm text-blue-600 font-mono">$1</code>');
-                html += `<li class="text-gray-600 leading-relaxed ml-4">${itemContent}</li>`;
+                html += `<li class="text-gray-600 leading-relaxed text-sm">${itemContent}</li>`;
+                // Check if next line is NOT a sub-item - if so, close the sublist and the parent li
+                const nextLine = lines[i + 1]?.trim();
+                if (!nextLine?.startsWith('-') && !lines[i + 1]?.startsWith('   -')) {
+                    html += '</ul></li>';
+                    inSubList = false;
+                }
             }
             // Check for blockquote
             else if (line.match(/^> (.+)$/)) {
+                if (inSubList) { html += '</ul></li>'; inSubList = false; }
                 if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
                 if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
                 html += line.replace(/^> (.+)$/, '<blockquote class="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-blue-50 text-sm italic text-gray-600">$1</blockquote>');
             }
-            // Empty line - close lists and add paragraph break
+            // Empty line - close lists
             else if (line.trim() === '') {
+                if (inSubList) { html += '</ul></li>'; inSubList = false; }
                 if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
                 if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
             }
             // Regular text
             else if (line.trim()) {
+                if (inSubList) { html += '</ul></li>'; inSubList = false; }
                 if (inOrderedList) { html += '</ol>'; inOrderedList = false; }
                 if (inUnorderedList) { html += '</ul>'; inUnorderedList = false; }
                 const textContent = line
@@ -247,6 +269,7 @@ export default function HelpWidget() {
         }
 
         // Close any open lists
+        if (inSubList) html += '</ul></li>';
         if (inOrderedList) html += '</ol>';
         if (inUnorderedList) html += '</ul>';
 
