@@ -85,7 +85,8 @@ Para celular, acesse o portal pelo navegador Chrome e use a opção "Adicionar �
                 keywords: ['app', 'instalar', 'download', 'aplicativo', 'pwa'],
                 images: [
                     '/images/help/instalar-app-1.png',
-                    '/images/help/instalar-app-2.png'
+                    '/images/help/instalar-app-2.png',
+                    '/images/help/instalar-app-3.png'
                 ]
             },
             {
@@ -158,7 +159,10 @@ Encontrou um problema? Nos ajude a melhorar o portal reportando o erro.
 - Erros do console (se houver)
         `,
                 category: 'onboarding',
-                keywords: ['erro', 'bug', 'problema', 'reportar', 'ajuda']
+                keywords: ['erro', 'bug', 'problema', 'reportar', 'ajuda'],
+                images: [
+                    '/images/help/reportar-erro.png'
+                ]
             }
         ]
     },
@@ -343,7 +347,9 @@ O **Drive Z:** é o servidor interno de arquivos da ABZ Group.
                 category: 'rede-publica',
                 keywords: ['drive', 'z', 'rede', 'público', 'arquivos', 'servidor'],
                 images: [
-                    '/images/help/rede-publica.png'
+                    '/images/help/rede-local.png',
+                    '/images/help/rede-pastas.png',
+                    '/images/help/rede-endereco.png'
                 ]
             },
             {
@@ -375,7 +381,10 @@ Modelos de documentos padrão da empresa estão disponíveis na rede.
 > ⚠️ **Importante**: Sempre crie uma cópia antes de editar. Não modifique os arquivos originais da rede.
         `,
                 category: 'rede-publica',
-                keywords: ['modelo', 'template', 'editável', 'documento', 'padrão']
+                keywords: ['modelo', 'template', 'editável', 'documento', 'padrão'],
+                images: [
+                    '/images/help/rede-modelos.png'
+                ]
             },
             {
                 id: 'logotipo-identidade',
@@ -403,7 +412,10 @@ Materiais oficiais da marca ABZ Group.
 - Em caso de dúvidas, contate a equipe de Comunicação
         `,
                 category: 'rede-publica',
-                keywords: ['logo', 'logotipo', 'marca', 'identidade', 'visual', 'comunicação']
+                keywords: ['logo', 'logotipo', 'marca', 'identidade', 'visual', 'comunicação'],
+                images: [
+                    '/images/help/rede-comunicacao.png'
+                ]
             }
         ]
     },
@@ -450,7 +462,9 @@ Configure sua assinatura padrão da ABZ Group.
                 category: 'email',
                 keywords: ['assinatura', 'email', 'outlook', 'clássico', 'configurar'],
                 images: [
-                    '/images/help/assinatura-email.png'
+                    '/images/help/outlook-menu.png',
+                    '/images/help/outlook-opcoes.png',
+                    '/images/help/outlook-assinatura.png'
                 ]
             },
             {
@@ -487,7 +501,12 @@ Configure sua assinatura no novo Outlook (versão web/moderna).
 3. Clique em **Salvar**
         `,
                 category: 'email',
-                keywords: ['assinatura', 'email', 'outlook', 'novo', 'web', 'configurar']
+                keywords: ['assinatura', 'email', 'outlook', 'novo', 'web', 'configurar'],
+                images: [
+                    '/images/help/novo-outlook-config.png',
+                    '/images/help/novo-outlook-assinatura.png',
+                    '/images/help/novo-outlook-salvar.png'
+                ]
             }
         ]
     },
