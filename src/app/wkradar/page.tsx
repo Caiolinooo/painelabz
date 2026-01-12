@@ -137,9 +137,11 @@ export default function WKRadarPage() {
                             setLoginSuccessful(true);
                             setLoginAttempted(true);
 
-                            // Carregar o iframe com o token na URL (Guacamole aceita isso)
+                            // Carregar o iframe DIRETAMENTE do Guacamole (não via proxy)
+                            // Isso é necessário porque WebSocket não funciona através do proxy Next.js
+                            // O token de autenticação é passado na URL
                             if (iframeRef.current) {
-                                iframeRef.current.src = `${GUACAMOLE_PROXY_URL}/#/?token=${authData.authToken}`;
+                                iframeRef.current.src = `https://vm.groupabz.com/guacamole/#/?token=${authData.authToken}`;
                             }
                         } else {
                             console.error('[WKRadar] Resposta sem authToken:', authData);
