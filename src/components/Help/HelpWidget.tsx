@@ -147,7 +147,7 @@ export default function HelpWidget() {
                     style={{ boxShadow: '0 10px 50px rgba(0, 0, 0, 0.2)' }}
                 >
                     {/* Content area */}
-                    <div className="flex-1 overflow-hidden flex flex-col">
+                    <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                         {/* Home Tab */}
                         {activeTab === 'home' && (
                             <div className="flex-1 flex flex-col">
@@ -207,7 +207,7 @@ export default function HelpWidget() {
 
                         {/* Help Tab */}
                         {activeTab === 'help' && (
-                            <div className="flex-1 flex flex-col">
+                            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                                 {/* Header */}
                                 <div className="bg-white border-b p-4">
                                     {selectedArticle ? (
@@ -248,7 +248,7 @@ export default function HelpWidget() {
                                 )}
 
                                 {/* Content */}
-                                <div className="flex-1 overflow-y-auto p-4">
+                                <div className="flex-1 overflow-y-auto p-4 min-h-0">
                                     {/* Search results */}
                                     {searchQuery && searchResults.length > 0 && (
                                         <div className="space-y-2">
