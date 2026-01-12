@@ -3,14 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
-// Aumentar limite do body para suportar screenshots
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '10mb'
-        }
-    }
-};
+
 
 interface ConsoleLog {
     type: 'log' | 'warn' | 'error' | 'info';
