@@ -5,6 +5,25 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.12.0] - 2026-01-12
+
+### Added
+- **Central de Ajuda (Help Widget)**:
+    - Interface moderna interativa com 3 abas (Início, Ajuda, Mensagens).
+    - Base de conhecimento oficial da ABZ Group integrada (Manuais, TI, RH).
+    - Sistema de busca instantânea em artigos de ajuda.
+    - Integração direta com suporte via sistema de feedback aprimorado.
+    - Conteúdo oficial sobre Onboarding, Reembolso, Contracheque, Rede Pública, Assinatura de E-mail e Teams.
+
+### Fixed
+- **Reembolsos**:
+    - Corrigido fluxo de e-mails para garantir o envio correto para os setores Fiscal e Financeiro em solicitações internas.
+    - Corrigida falha no cálculo do valor total onde os valores eram divididos por 100 incorretamente.
+- **Interface**: Ajustado comportamento de scroll no conteúdo de ajuda.
+
+### Removed
+- **GlobalFeedbackWidget**: Removido componente de feedback legado.
+
 ## [3.11.0] - 2026-01-12
 
 ### Added
