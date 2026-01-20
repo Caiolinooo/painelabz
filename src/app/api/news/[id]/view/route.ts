@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { verifyTokenFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +12,18 @@ export async function POST(
     try {
         const { id: newsId } = await context.params;
         const body = await request.json();
-        const { userId } = body;
+        let { userId } = body;
+
+        // Fallback: Tentar obter usuário do token se não vier no body (correção do problema de anônimos)
+        if (!userId) {
+            const authResult = await verifyTokenFromRequest(request);
+            if (authResult.valid && authResult.userId) {
+                userId = authResult.userId;
+            }
+        }
 
         if (!userId) {
-            return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+            return NextResponse.json({ error: 'User ID required' }, { status: 401 });
         }
 
         // Tentar inserir na tabela de views (Unique constraint vai prevenir duplicatas)

@@ -579,7 +579,8 @@ export async function exportEvaluationToPDF(
   }
 
   // 7. Comments Section
-  const hasComments = evaluation.observacoes || evaluation.comentario_gerente || evaluation.comentario_final_funcionario;
+  const managerComment = evaluation.comentario_avaliador || evaluation.comentario_gerente;
+  const hasComments = evaluation.observacoes || managerComment || evaluation.comentario_final_funcionario;
 
   if (hasComments) {
     yPosition = (pdf as any).lastAutoTable.finalY + 20; // Reduced spacing
@@ -601,8 +602,8 @@ export async function exportEvaluationToPDF(
       commentsData.push([`💬 ${options.translations.employeeObservations}`, evaluation.observacoes]);
     }
 
-    if (evaluation.comentario_gerente) {
-      commentsData.push([`👤 ${options.translations.managerComments}`, evaluation.comentario_gerente]);
+    if (managerComment) {
+      commentsData.push([`👤 ${options.translations.managerComments}`, managerComment]);
     }
 
     if (evaluation.comentario_final_funcionario) {

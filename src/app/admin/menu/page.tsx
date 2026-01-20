@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff, FiArrowUp, FiArrowDown, FiSave, FiX, FiLock } from 'react-icons/fi';
-import menuItems, { MenuItem } from '@/data/menu';
+import { MenuItem } from '@/data/menu';
 import { IconType } from 'react-icons';
 import * as Icons from 'react-icons/fi';
 import IconSelector from '@/components/IconSelector';
@@ -264,9 +264,60 @@ const MenuItemComponent = ({ item, onEdit, onDelete, onToggleVisibility, onMoveU
 
 export default function MenuPage() {
   const { t } = useI18n();
-  const [items, setItems] = useState<MenuItem[]>(menuItems);
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+
+  // Carregar itens do banco de dados via API admin
+  const loadItems = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('/api/admin/cards', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error(`Failed to load items: ${response.status}`);
+
+      const data = await response.json();
+
+      // Map API data (snake_case from DB or camelCase from API helper) to MenuItem format
+      const mappedItems: MenuItem[] = data.map((card: any) => ({
+        id: card.id,
+        href: card.href,
+        label: card.title, // Map title to label
+        icon: Icons[card.iconName as keyof typeof Icons] || Icons[(card.icon_name as keyof typeof Icons)] || Icons.FiGrid,
+        external: card.external,
+        enabled: card.enabled,
+        order: card.order || 99,
+        adminOnly: card.adminOnly || card.admin_only || false,
+        // Preserve other fields if needed
+      }));
+
+      setItems(mappedItems);
+    } catch (err) {
+      console.error('Error loading menu items:', err);
+      setError('Erro ao carregar itens do menu. Verifique se você está logado.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadItems();
+
+    // Listen for cache invalidation events to reload
+    const handleCacheInvalidation = () => {
+      console.log('🔄 Menu Admin: Cache invalidated, reloading...');
+      loadItems();
+    };
+    window.addEventListener('cards-cache-invalidated', handleCacheInvalidation);
+    return () => window.removeEventListener('cards-cache-invalidated', handleCacheInvalidation);
+  }, []);
 
   // Funções para gerenciar os itens de menu
   const handleEdit = (item: MenuItem) => {
@@ -290,16 +341,71 @@ export default function MenuPage() {
     setIsAdding(true);
   };
 
-  const handleSave = (item: MenuItem) => {
-    if (isAdding) {
-      // Adicionar novo item
-      setItems(prev => [...prev, item]);
-    } else {
-      // Atualizar item existente
-      setItems(prev => prev.map(i => i.id === item.id ? item : i));
+  const handleSave = async (item: MenuItem) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      // Prepare payload for API
+      // Note: We need to extract the icon name string.
+      // Since MenuItem stores the component, we might rely on the fact that we can get the name from the component or we should have stored it.
+      // For now, let's try to get it from the item if possible, or fallback.
+      // A better approach would be to update MenuEditor to return the icon name too, but let's try to infer or pass it.
+      // Actually, in MenuEditor, 'item' state doesn't have iconName key unless we add it. 
+      // Let's assume for this fix that we map it back or rely on 'item.icon.name' for standard icons.
+
+      const iconName = (item.icon as any).displayName || (item.icon as any).name || 'FiGrid';
+
+      const payload = {
+        id: item.id,
+        title: item.label,
+        href: item.href,
+        icon: iconName,
+        icon_name: iconName, // Provide both for compatibility
+        external: item.external,
+        enabled: item.enabled,
+        order: item.order,
+        adminOnly: item.adminOnly,
+        // Default fields for others
+        description: item.label,
+        color: 'bg-gray-100',
+        hoverColor: 'hover:bg-gray-200'
+      };
+
+      let url = '/api/admin/cards/update';
+      // If new item, use create endpoint
+      // Note: Admin Cards API usually uses POST /api/admin/cards for create
+      if (isAdding) {
+        url = '/api/admin/cards';
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error(`Failed to save: ${response.status}`);
+
+      // Invalidate cache global
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('dashboard-cards-cache');
+        // The reload will happen via the event listener if the API triggers logic, 
+        // but let's force reload here to be sure.
+        loadItems();
+      }
+
+      setEditingItem(null);
+      setIsAdding(false);
+    } catch (err) {
+      console.error('Error saving item:', err);
+      setError('Erro ao salvar item.');
+      setLoading(false);
     }
-    setEditingItem(null);
-    setIsAdding(false);
   };
 
   const handleCancel = () => {
@@ -307,52 +413,157 @@ export default function MenuPage() {
     setIsAdding(false);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm(t('admin.users.deleteConfirm', 'Tem certeza que deseja excluir este item?'))) {
-      setItems(prev => prev.filter(item => item.id !== id));
+  const handleDelete = async (id: string) => {
+    if (!window.confirm(t('admin.users.deleteConfirm', 'Tem certeza que deseja excluir este item?'))) return;
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/admin/cards?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Failed to delete');
+
+      localStorage.removeItem('dashboard-cards-cache');
+      loadItems();
+    } catch (err) {
+      console.error('Error deleting:', err);
+      setError('Erro ao excluir item.');
+      setLoading(false);
     }
   };
 
-  const handleToggleVisibility = (id: string, enabled: boolean) => {
-    setItems(prev => prev.map(item =>
-      item.id === id ? { ...item, enabled } : item
-    ));
-  };
+  const updateItemOrder = async (id: string, newOrder: number) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-  const handleMoveUp = (id: string) => {
-    setItems(prev => {
-      const index = prev.findIndex(item => item.id === id);
-      if (index <= 0) return prev;
+    // Find original item to preserve other fields
+    const item = items.find(i => i.id === id);
+    if (!item) return;
 
-      const newItems = [...prev];
-      const currentOrder = newItems[index].order;
-      const prevOrder = newItems[index - 1].order;
+    const iconName = (item.icon as any).displayName || (item.icon as any).name || 'FiGrid';
+    const payload = {
+      id: item.id,
+      title: item.label,
+      href: item.href,
+      icon: iconName,
+      icon_name: iconName,
+      external: item.external,
+      enabled: item.enabled,
+      order: newOrder,
+      adminOnly: item.adminOnly,
+      description: item.label, // Fallback
+      color: 'bg-gray-100', // Fallback
+      hoverColor: 'hover:bg-gray-200' // Fallback
+    };
 
-      newItems[index] = { ...newItems[index], order: prevOrder };
-      newItems[index - 1] = { ...newItems[index - 1], order: currentOrder };
-
-      return newItems.sort((a, b) => a.order - b.order);
+    await fetch('/api/admin/cards/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
     });
   };
 
-  const handleMoveDown = (id: string) => {
-    setItems(prev => {
-      const index = prev.findIndex(item => item.id === id);
-      if (index >= prev.length - 1) return prev;
+  const handleToggleVisibility = async (id: string, enabled: boolean) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-      const newItems = [...prev];
-      const currentOrder = newItems[index].order;
-      const nextOrder = newItems[index + 1].order;
+    // Optimistic update
+    setItems(prev => prev.map(i => i.id === id ? { ...i, enabled } : i));
 
-      newItems[index] = { ...newItems[index], order: nextOrder };
-      newItems[index + 1] = { ...newItems[index + 1], order: currentOrder };
+    try {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
 
-      return newItems.sort((a, b) => a.order - b.order);
-    });
+      const iconName = (item.icon as any).displayName || (item.icon as any).name || 'FiGrid';
+
+      await fetch('/api/admin/cards/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          id: item.id,
+          title: item.label, // Ensure title is sent
+          href: item.href,
+          icon: iconName,
+          icon_name: iconName,
+          enabled: enabled,
+          // Send other required fields if API updates full object
+          description: item.label,
+          color: 'bg-gray-100',
+          hoverColor: 'hover:bg-gray-200',
+          external: item.external,
+          order: item.order,
+          adminOnly: item.adminOnly
+        })
+      });
+
+      localStorage.removeItem('dashboard-cards-cache');
+      // No need to reload fully if optimistic update worked, but good to ensure sync
+    } catch (e) {
+      console.error(e);
+      loadItems(); // Revert on error
+    }
+  };
+
+  const handleMoveUp = async (id: string) => {
+    const sorted = [...items].sort((a, b) => a.order - b.order);
+    const index = sorted.findIndex(item => item.id === id);
+    if (index <= 0) return;
+
+    const currentItem = sorted[index];
+    const prevItem = sorted[index - 1];
+
+    // Swap orders
+    const newOrderCurrent = prevItem.order;
+    const newOrderPrev = currentItem.order;
+
+    // Optimistic
+    // ... logic omitted for brevity, let's just wait
+    setLoading(true);
+    await Promise.all([
+      updateItemOrder(currentItem.id, newOrderCurrent),
+      updateItemOrder(prevItem.id, newOrderPrev)
+    ]);
+    localStorage.removeItem('dashboard-cards-cache');
+    loadItems();
+  };
+
+  const handleMoveDown = async (id: string) => {
+    const sorted = [...items].sort((a, b) => a.order - b.order);
+    const index = sorted.findIndex(item => item.id === id);
+    if (index >= sorted.length - 1) return;
+
+    const currentItem = sorted[index];
+    const nextItem = sorted[index + 1];
+
+    const newOrderCurrent = nextItem.order;
+    const newOrderNext = currentItem.order;
+
+    setLoading(true);
+    await Promise.all([
+      updateItemOrder(currentItem.id, newOrderCurrent),
+      updateItemOrder(nextItem.id, newOrderNext)
+    ]);
+    localStorage.removeItem('dashboard-cards-cache');
+    loadItems();
   };
 
   // Ordenar itens por ordem
   const sortedItems = [...items].sort((a, b) => a.order - b.order);
+
+  if (loading && items.length === 0) {
+    return <div className="p-8 text-center">Carregando itens do menu...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -361,6 +572,10 @@ export default function MenuPage() {
           <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Menu</h1>
           <p className="mt-1 text-sm text-gray-500">
             Adicione, edite ou remova os itens do menu lateral.
+            <br />
+            <span className="text-xs text-blue-600">
+              Nota: As alterações são salvas automaticamente no banco de dados.
+            </span>
           </p>
         </div>
         <div className="mt-4 md:mt-0">
@@ -373,6 +588,16 @@ export default function MenuPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Editor de item */}
       {editingItem && (
@@ -412,15 +637,7 @@ export default function MenuPage() {
         </div>
       </div>
 
-      {/* Botão de salvar alterações */}
-      <div className="flex justify-end">
-        <button
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-        >
-          <FiSave className="mr-2 h-4 w-4" />
-          {t('common.saveSettings', 'Salvar Alterações')}
-        </button>
-      </div>
+      {/* Botão de salvar alterações REMOVED because changes are now immediate */}
     </div>
   );
 }

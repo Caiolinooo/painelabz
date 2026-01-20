@@ -662,7 +662,7 @@ export default function ViewEvaluationClient({
           )}
 
           {/* Comentários do Gerente - Destaque se avaliação foi devolvida */}
-          {(evaluation.comentario_gerente || isDevolvida) && (
+          {(evaluation.comentario_gerente || evaluation.comentario_avaliador || isDevolvida || isAwaitingFinalComment) && (
             <div className={`mb-6 p-6 rounded-xl border-2 ${isDevolvida
               ? 'bg-orange-50 border-orange-300'
               : 'bg-purple-50 border-purple-200'
@@ -670,10 +670,10 @@ export default function ViewEvaluationClient({
               <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <span className={`w-3 h-3 rounded-full ${isDevolvida ? 'bg-orange-500' : 'bg-purple-500'
                   }`}></span>
-                {isDevolvida ? '🔄 Comentários para Ajustes' : 'Comentários do Gerente'}
+                {isDevolvida ? '🔄 Comentários para Ajustes' : '👤 Comentários do Gerente'}
               </h4>
               <div className="text-gray-700 leading-relaxed">
-                {evaluation.comentario_gerente || 'Aguardando comentários do gerente...'}
+                {evaluation.comentario_avaliador || evaluation.comentario_gerente || 'Aguardando comentários do gerente...'}
               </div>
             </div>
           )}

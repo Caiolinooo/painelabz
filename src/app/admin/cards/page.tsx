@@ -7,6 +7,7 @@ import * as Icons from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { CreateCardsTable } from '@/components/admin/cards/CreateCardsTable';
 import { MigrateCards } from '@/components/admin/cards/MigrateCards';
+import { invalidateCardsCache } from '@/lib/cardsCache';
 
 // Componente para edição de card
 interface CardEditorProps {
@@ -661,12 +662,12 @@ export default function CardsPage() {
 
   const handleSave = async (card: DashboardCard) => {
     try {
-        // Preparar o card para envio (converter o ícone para string)
-        const cardToSend = {
-          ...card,
-          // Se o ícone for um componente, extrair o nome do ícone (string)
-          icon: typeof card.icon === 'function' ? (card.icon as React.ComponentType)?.displayName || 'FiGrid' : card.icon
-        };
+      // Preparar o card para envio (converter o ícone para string)
+      const cardToSend = {
+        ...card,
+        // Se o ícone for um componente, extrair o nome do ícone (string)
+        icon: typeof card.icon === 'function' ? (card.icon as React.ComponentType)?.displayName || 'FiGrid' : card.icon
+      };
 
       console.log('Salvando card:', cardToSend);
       console.log('adminOnly:', cardToSend.adminOnly);
@@ -703,6 +704,10 @@ export default function CardsPage() {
 
         setSuccessMessage(t('admin.cardAddedSuccess', 'Card adicionado com sucesso!'));
         setTimeout(() => setSuccessMessage(null), 3000);
+
+        // Invalidate cache
+        invalidateCardsCache();
+        localStorage.removeItem('dashboard-cards-cache');
       } else {
         // Obter o token de autenticação do localStorage
         const token = localStorage.getItem('token');
@@ -747,6 +752,10 @@ export default function CardsPage() {
 
           setSuccessMessage(t('admin.cardUpdatedSuccess', 'Card atualizado com sucesso!'));
           setTimeout(() => setSuccessMessage(null), 3000);
+
+          // Invalidate cache
+          invalidateCardsCache();
+          localStorage.removeItem('dashboard-cards-cache');
         } catch (fetchError) {
           console.error(t('admin.erroNaRequisicaoFetch'), fetchError);
           throw fetchError;
@@ -793,6 +802,10 @@ export default function CardsPage() {
 
         setSuccessMessage(t('admin.cardDeletedSuccess', 'Card excluído com sucesso!'));
         setTimeout(() => setSuccessMessage(null), 3000);
+
+        // Invalidate cache
+        invalidateCardsCache();
+        localStorage.removeItem('dashboard-cards-cache');
       } catch (err) {
         console.error('Erro ao excluir card:', err);
         setError(err instanceof Error ? err.message : 'Erro desconhecido');

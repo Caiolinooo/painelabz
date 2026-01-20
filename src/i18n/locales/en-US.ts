@@ -418,6 +418,7 @@ export default {
   menu: {
     dashboard: 'Dashboard',
     manual: 'Employee Manual',
+    guiaOffshore: 'Offshore Employee Guide',
     manualLogistico: 'Logistics Manual',
     procedimentoLogistica: 'Logistics Procedure',
     procedimentos: 'Procedures',

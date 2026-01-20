@@ -21,7 +21,7 @@ import DashboardSearch from '@/components/Search/DashboardSearch';
 import { getCardsCached, invalidateCardsCache } from '@/lib/cardsCache';
 
 // Error Fallback Component
-function ErrorFallback({error, resetErrorBoundary}: {error: Error; resetErrorBoundary: () => void}) {
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   const { t } = useI18n();
   return (
     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -60,6 +60,49 @@ export default function Dashboard() {
   const router = useRouter();
   const [cards, setCards] = useState<DashboardCard[]>([]);
   const [loadingCards, setLoadingCards] = useState(true);
+
+  // Function to track module access before navigation
+  const trackModuleAccess = (card: DashboardCard, href: string, isExternal: boolean) => {
+    try {
+      // Try multiple sources for email
+      let userEmail = profile?.email || user?.email || null;
+
+      // Fallback to localStorage if email not found
+      if (!userEmail) {
+        try {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            userEmail = parsed.email || null;
+          }
+        } catch (e) {
+          console.warn('Error parsing stored user:', e);
+        }
+      }
+
+      console.log('🔍 Tracking debug - profile:', profile?.email, 'user:', user?.email, 'localStorage:', userEmail, 'final:', userEmail);
+
+      const trackingData = JSON.stringify({
+        module_id: card.id,
+        module_name: card.title,
+        module_href: href,
+        user_id: user?.id || null,
+        user_email: userEmail,
+        access_type: 'click',
+        is_external: isExternal
+      });
+
+      // Use sendBeacon for reliable tracking even during navigation
+      if (navigator.sendBeacon) {
+        const blob = new Blob([trackingData], { type: 'application/json' });
+        navigator.sendBeacon('/api/tracking/module-access', blob);
+        console.log('📊 Module tracked:', card.title, 'email:', userEmail);
+      }
+    } catch (e) {
+      console.warn('Module tracking error:', e);
+    }
+  };
+
   const fetchCards = React.useCallback(async (retryCount = 0) => {
     try {
       setLoadingCards(true);
@@ -185,6 +228,21 @@ export default function Dashboard() {
       setCards(getTranslatedCards((key: string) => t(key)));
       setLoadingCards(false);
     }
+
+    // Listen for cache invalidation events (e.g. from Admin or other tabs)
+    const handleCacheInvalidation = () => {
+      console.log('🔄 Dashboard: Recieved cache invalidation, reloading...');
+      setLoadingCards(true);
+      // Clear local state-dependent cache if any
+      localStorage.removeItem('dashboard-cards-cache');
+      fetchCards();
+    };
+
+    window.addEventListener('cards-cache-invalidated', handleCacheInvalidation);
+
+    return () => {
+      window.removeEventListener('cards-cache-invalidated', handleCacheInvalidation);
+    };
   }, [isAuthenticated, isLoading, router, t, fetchCards]);
 
   // Função para limpar cache e recarregar
@@ -228,192 +286,194 @@ export default function Dashboard() {
       }}
     >
       <MainLayout>
-          <div className="space-y-8">
-            <div className="pb-5 border-b border-gray-200">
-              {/* Saudação personalizada com nome do usuário */}
-              {user && (
-                <div className="mb-4">
-                  <h1 className="text-2xl font-bold text-gray-800">
-                    {t('dashboard.greeting', locale === 'en-US' ? 'Welcome' : 'Olá')}, {
-                      profile?.first_name?.split(' ')[0] ||
-                      (user as any).first_name?.split(' ')[0] ||
-                      (user as any).firstName?.split(' ')[0] ||
-                      user.email?.split('@')[0]?.split('.')[0] || t('dashboard.usuario')
-                    }! 👋
-                  </h1>
-                </div>
-              )}
-
-              {config?.dashboardTitle && config.dashboardTitle.trim() !== '' && (
-                <h2 className="text-3xl font-extrabold text-abz-blue-dark">
-                  {config.dashboardTitle}
-                </h2>
-              )}
-              {config?.dashboardDescription && config.dashboardDescription.trim() !== '' && (
-                <p className="mt-2 text-sm text-gray-500">
-                  {config.dashboardDescription}
-                </p>
-              )}
-            </div>
-
-            {/* Busca Global */}
-            <div className="mb-8">
-              <DashboardSearch />
-            </div>
-
-            {/* Loading State */}
-            {loadingCards && (
-              <div className="flex justify-center items-center py-12">
-                <LoadingSpinner />
+        <div className="space-y-8">
+          <div className="pb-5 border-b border-gray-200">
+            {/* Saudação personalizada com nome do usuário */}
+            {user && (
+              <div className="mb-4">
+                <h1 className="text-2xl font-bold text-gray-800">
+                  {t('dashboard.greeting', locale === 'en-US' ? 'Welcome' : 'Olá')}, {
+                    profile?.first_name?.split(' ')[0] ||
+                    (user as any).first_name?.split(' ')[0] ||
+                    (user as any).firstName?.split(' ')[0] ||
+                    user.email?.split('@')[0]?.split('.')[0] || t('dashboard.usuario')
+                  }! 👋
+                </h1>
               </div>
             )}
 
-            {/* Error/Warning State */}
-            {error && !loadingCards && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <div className="flex items-start">
-                  <FiAlertCircle className="text-yellow-600 mt-1 mr-2" />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-yellow-800">Aviso</h3>
-                    <p className="text-sm text-yellow-700 mt-1">{error}</p>
-                    <div className="mt-2 space-x-4">
-                      <button
-                        onClick={() => {
-                          setError(null);
-                          fetchCards();
-                        }}
-                        className="text-yellow-800 underline text-sm hover:text-yellow-900 transition-colors"
-                      >
-                        Tentar carregar novamente
-                      </button>
-                      <button
-                        onClick={clearCacheAndReload}
-                        className="text-yellow-800 underline text-sm hover:text-yellow-900 transition-colors"
-                      >
-                        Limpar cache e recarregar
-                      </button>
-                    </div>
+            {config?.dashboardTitle && config.dashboardTitle.trim() !== '' && (
+              <h2 className="text-3xl font-extrabold text-abz-blue-dark">
+                {config.dashboardTitle}
+              </h2>
+            )}
+            {config?.dashboardDescription && config.dashboardDescription.trim() !== '' && (
+              <p className="mt-2 text-sm text-gray-500">
+                {config.dashboardDescription}
+              </p>
+            )}
+          </div>
+
+          {/* Busca Global */}
+          <div className="mb-8">
+            <DashboardSearch />
+          </div>
+
+          {/* Loading State */}
+          {loadingCards && (
+            <div className="flex justify-center items-center py-12">
+              <LoadingSpinner />
+            </div>
+          )}
+
+          {/* Error/Warning State */}
+          {error && !loadingCards && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <FiAlertCircle className="text-yellow-600 mt-1 mr-2" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-yellow-800">Aviso</h3>
+                  <p className="text-sm text-yellow-700 mt-1">{error}</p>
+                  <div className="mt-2 space-x-4">
+                    <button
+                      onClick={() => {
+                        setError(null);
+                        fetchCards();
+                      }}
+                      className="text-yellow-800 underline text-sm hover:text-yellow-900 transition-colors"
+                    >
+                      Tentar carregar novamente
+                    </button>
+                    <button
+                      onClick={clearCacheAndReload}
+                      className="text-yellow-800 underline text-sm hover:text-yellow-900 transition-colors"
+                    >
+                      Limpar cache e recarregar
+                    </button>
                   </div>
                 </div>
               </div>
-            )}
-
-            {!loadingCards && !error && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {cards
-                  .filter(card => {
-                    // Nunca mostrar o card de admin no dashboard
-                    if (card.id === 'admin') return false;
-
-                    if (!card.enabled) return false;
-                    if (card.adminOnly && !isAdmin) return false;
-                    if (card.managerOnly && !(isAdmin || user?.role === 'MANAGER')) return false;
-
-                    // Caso especial para avaliação - sempre mostrar para usuários autenticados
-                    if (card.moduleKey === 'avaliacao') {
-                      return !!user;
-                    }
-
-                    // Caso especial para academy - sempre mostrar para usuários autenticados
-                    if (card.moduleKey === 'academy') {
-                      return !!user;
-                    }
-
-                    if (card.moduleKey && !hasAccess(card.moduleKey)) return false;
-                    return true;
-                  })
-                  .sort((a, b) => a.order - b.order)
-                  .map((card) => {
-                    // Mapear o iconName para o componente de ícone real
-                    const Icon = card.iconName && iconMap[card.iconName]
-                      ? iconMap[card.iconName]
-                      : card.icon || iconMap.FiGrid;
-
-                    // Aplicar tradução se disponível
-                    const cardTitle = locale === 'en-US' && (card as any).titleEn
-                      ? (card as any).titleEn
-                      : card.title;
-                    const cardDescription = locale === 'en-US' && (card as any).descriptionEn
-                      ? (card as any).descriptionEn
-                      : card.description;
-
-                    return (
-                      <div
-                        key={card.id}
-                        className="bg-white rounded-lg shadow-md p-5 transition-shadow hover:shadow-lg flex flex-col h-full"
-                      >
-                        <div className="flex items-start mb-3">
-                          <div className="bg-abz-light-blue p-3 rounded-full mr-3 flex-shrink-0">
-                            <Icon className="text-abz-blue w-5 h-5" />
-                          </div>
-                          <h3 className="font-semibold text-abz-text-black flex-1">{cardTitle}</h3>
-                        </div>
-
-                        <p className="text-sm text-abz-text-dark mb-4 flex-grow">
-                          {cardDescription}
-                        </p>
-
-                        <div className="mt-auto pt-4 border-t border-gray-100">
-                          {card.external ? (
-                            <a
-                              href={card.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center px-4 py-2 text-white rounded-md hover:opacity-90 transition-colors text-sm font-medium shadow-sm"
-                              style={{backgroundColor: config.primaryColor}}
-                            >
-                              <FiExternalLink className="mr-1.5" />
-                              {t('dashboard.access')}
-                            </a>
-                          ) : (
-                            <Link
-                              href={card.href}
-                              className="inline-flex items-center px-4 py-2 text-white rounded-md hover:opacity-90 transition-colors text-sm font-medium shadow-sm"
-                              style={{backgroundColor: config.primaryColor}}
-                            >
-                              <FiArrowRightCircle className="mr-1.5" />
-                              {t('dashboard.access')}
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-
-            {!loadingCards && !error && cards.length === 0 && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-                <p className="text-gray-600">
-                  {t('dashboard.noCards')}
-                </p>
-              </div>
-            )}
-
-            <div className="bg-abz-light-blue bg-opacity-40 rounded-lg border border-abz-blue border-opacity-20 p-6 mt-6">
-              <h2 className="text-lg font-semibold text-abz-blue-dark mb-2">
-                {t('dashboard.quickAccessFeatures')}
-              </h2>
-              <div className="text-sm text-gray-600 space-y-2">
-                <p>{t('dashboard.centralizedPanel')}</p>
-                <p>{t('dashboard.contactSupport')}</p>
-              </div>
-              {isAdmin && (
-                <div className="mt-4 pt-4 border-t border-abz-blue border-opacity-20">
-                  <Link
-                    href="/admin"
-                    style={{
-                      backgroundColor: config.secondaryColor,
-                      color: config.secondaryColor === '#ffffff' ? '#000000' : '#ffffff'
-                    }}
-                    className="inline-flex items-center px-4 py-2 rounded-md hover:opacity-90 transition-colors text-sm font-medium shadow-sm"
-                  >
-                    {t('dashboard.accessAdminPanel')}
-                  </Link>
-                </div>
-              )}
             </div>
+          )}
+
+          {!loadingCards && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {cards
+                .filter(card => {
+                  // Nunca mostrar o card de admin no dashboard
+                  if (card.id === 'admin') return false;
+
+                  if (!card.enabled) return false;
+                  if (card.adminOnly && !isAdmin) return false;
+                  if (card.managerOnly && !(isAdmin || user?.role === 'MANAGER')) return false;
+
+                  // Caso especial para avaliação - sempre mostrar para usuários autenticados
+                  if (card.moduleKey === 'avaliacao') {
+                    return !!user;
+                  }
+
+                  // Caso especial para academy - sempre mostrar para usuários autenticados
+                  if (card.moduleKey === 'academy') {
+                    return !!user;
+                  }
+
+                  if (card.moduleKey && !hasAccess(card.moduleKey)) return false;
+                  return true;
+                })
+                .sort((a, b) => a.order - b.order)
+                .map((card) => {
+                  // Mapear o iconName para o componente de ícone real
+                  const Icon = card.iconName && iconMap[card.iconName]
+                    ? iconMap[card.iconName]
+                    : card.icon || iconMap.FiGrid;
+
+                  // Aplicar tradução se disponível
+                  const cardTitle = locale === 'en-US' && (card as any).titleEn
+                    ? (card as any).titleEn
+                    : card.title;
+                  const cardDescription = locale === 'en-US' && (card as any).descriptionEn
+                    ? (card as any).descriptionEn
+                    : card.description;
+
+                  return (
+                    <div
+                      key={card.id}
+                      className="bg-white rounded-lg shadow-md p-5 transition-shadow hover:shadow-lg flex flex-col h-full"
+                    >
+                      <div className="flex items-start mb-3">
+                        <div className="bg-abz-light-blue p-3 rounded-full mr-3 flex-shrink-0">
+                          <Icon className="text-abz-blue w-5 h-5" />
+                        </div>
+                        <h3 className="font-semibold text-abz-text-black flex-1">{cardTitle}</h3>
+                      </div>
+
+                      <p className="text-sm text-abz-text-dark mb-4 flex-grow">
+                        {cardDescription}
+                      </p>
+
+                      <div className="mt-auto pt-4 border-t border-gray-100">
+                        {card.external ? (
+                          <a
+                            href={card.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => trackModuleAccess(card, card.href, true)}
+                            className="inline-flex items-center px-4 py-2 text-white rounded-md hover:opacity-90 transition-colors text-sm font-medium shadow-sm"
+                            style={{ backgroundColor: config.primaryColor }}
+                          >
+                            <FiExternalLink className="mr-1.5" />
+                            {t('dashboard.access')}
+                          </a>
+                        ) : (
+                          <Link
+                            href={card.href}
+                            onClick={() => trackModuleAccess(card, card.href, false)}
+                            className="inline-flex items-center px-4 py-2 text-white rounded-md hover:opacity-90 transition-colors text-sm font-medium shadow-sm"
+                            style={{ backgroundColor: config.primaryColor }}
+                          >
+                            <FiArrowRightCircle className="mr-1.5" />
+                            {t('dashboard.access')}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
+          {!loadingCards && !error && cards.length === 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+              <p className="text-gray-600">
+                {t('dashboard.noCards')}
+              </p>
+            </div>
+          )}
+
+          <div className="bg-abz-light-blue bg-opacity-40 rounded-lg border border-abz-blue border-opacity-20 p-6 mt-6">
+            <h2 className="text-lg font-semibold text-abz-blue-dark mb-2">
+              {t('dashboard.quickAccessFeatures')}
+            </h2>
+            <div className="text-sm text-gray-600 space-y-2">
+              <p>{t('dashboard.centralizedPanel')}</p>
+              <p>{t('dashboard.contactSupport')}</p>
+            </div>
+            {isAdmin && (
+              <div className="mt-4 pt-4 border-t border-abz-blue border-opacity-20">
+                <Link
+                  href="/admin"
+                  style={{
+                    backgroundColor: config.secondaryColor,
+                    color: config.secondaryColor === '#ffffff' ? '#000000' : '#ffffff'
+                  }}
+                  className="inline-flex items-center px-4 py-2 rounded-md hover:opacity-90 transition-colors text-sm font-medium shadow-sm"
+                >
+                  {t('dashboard.accessAdminPanel')}
+                </Link>
+              </div>
+            )}
           </div>
+        </div>
       </MainLayout>
     </ErrorBoundary>
   );

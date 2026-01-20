@@ -35,9 +35,26 @@ function isFresh(entry?: Entry): boolean {
 export function invalidateCardsCache(req?: CardsRequest) {
   if (!req) {
     store.clear();
+    // Also dispatch a custom event for the current tab
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('cards-cache-invalidated'));
+    }
     return;
   }
   store.delete(makeKey(req));
+}
+
+// Listen for cache invalidation from other tabs (via localStorage changes)
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'dashboard-cards-cache' && event.newValue === null) {
+      // Cache was cleared in another tab
+      console.log('🔄 Cache cleared in another tab, invalidating local memory cache');
+      store.clear();
+      // Dispatch event to notify UI components
+      window.dispatchEvent(new Event('cards-cache-invalidated'));
+    }
+  });
 }
 
 export async function getCardsCached(req: CardsRequest): Promise<any[]> {
