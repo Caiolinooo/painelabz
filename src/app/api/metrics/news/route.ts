@@ -43,17 +43,22 @@ export const GET = withPermission('admin', async (request: NextRequest) => {
 
             if (!viewStats) {
                 // Query manual (lenta n+1, mas ok para < 100 posts)
-                const { data: views } = await supabaseAdmin
+                const { data: views, error: viewsError } = await supabaseAdmin
                     .from('news_post_views')
-                    .select('duration_seconds, session_id')
+                    .select('duration_seconds, user_id')
                     .eq('post_id', post.id);
 
-                if (views && views.length > 0) {
-                    const unique = new Set(views.map((v: any) => v.session_id)).size;
-                    uniqueViews = unique;
+                console.log(`📊 Post ${post.id} views:`, views?.length || 0, 'Error:', viewsError?.message);
 
-                    const totalTime = views.reduce((acc: number, curr: any) => acc + (curr.duration_seconds || 0), 0);
-                    avgTime = totalTime / views.length;
+                if (views && views.length > 0) {
+                    const uniqueUserIds = new Set(views.map((v: any) => v.user_id).filter(Boolean));
+                    uniqueViews = uniqueUserIds.size || views.length;
+
+                    // Only count views with duration > 0 for average calculation
+                    const viewsWithTime = views.filter((v: any) => v.duration_seconds && v.duration_seconds > 0);
+                    const totalTime = viewsWithTime.reduce((acc: number, curr: any) => acc + curr.duration_seconds, 0);
+                    avgTime = viewsWithTime.length > 0 ? totalTime / viewsWithTime.length : 0;
+                    console.log(`⏱️ Post ${post.id}: ${viewsWithTime.length} views with time, total: ${totalTime}s, avg: ${avgTime.toFixed(1)}s`);
                 }
             } else {
                 // Se tivesse RPC..

@@ -60,7 +60,7 @@ class UnifiedDataService {
     this.config = {
       enableSupabaseSync: true,
       enableAutoTranslation: true,
-      cacheExpiry: 30, // 30 minutos
+      cacheExpiry: 2, // 2 minutos - atualiza rápido após admin fazer mudanças
       fallbackToHardcoded: true
     };
 
@@ -365,11 +365,11 @@ class UnifiedDataService {
   }
 
   /**
-   * Carrega items do Supabase
+   * Carrega items do Supabase (tabela cards - mesma que admin atualiza)
    */
   private async loadFromSupabase(): Promise<UnifiedItem[]> {
     try {
-      console.log('🔄 Loading items from Supabase...');
+      console.log('🔄 Loading items from Supabase cards table...');
 
       // Usar o singleton do Supabase já importado no topo do arquivo
       if (!supabase) {
@@ -377,74 +377,76 @@ class UnifiedDataService {
         return [];
       }
 
-      // Buscar menu items do banco
-      const { data: menuItems, error } = await supabase
-        .from('menu_items')
+      // Buscar cards da tabela 'cards' (mesma que o admin atualiza)
+      const { data: cards, error } = await supabase
+        .from('cards')
         .select('*')
         .eq('enabled', true)
         .order('order', { ascending: true });
 
       if (error) {
-        // Silenciar erro se a tabela não existir (código PGRST116)
+        // Silenciar erro se a tabela não existir
         if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
-          console.log('🔄 Table menu_items does not exist, using fallback');
+          console.log('🔄 Table cards does not exist, using fallback');
         } else {
           console.error('🔄 Error loading from Supabase:', error);
         }
         return [];
       }
 
-      if (!menuItems || menuItems.length === 0) {
-        console.log('🔄 No items found in Supabase, using fallback');
+      if (!cards || cards.length === 0) {
+        console.log('🔄 No items found in Supabase cards, using fallback');
         return [];
       }
 
       // Converter para UnifiedItem
-      const items: UnifiedItem[] = menuItems.map((item: any) => {
+      const items: UnifiedItem[] = cards.map((card: any) => {
         // Tentar encontrar item hardcoded correspondente para usar ícone correto
-        const hardcodedItem = this.hardcodedItems.find(h => h.id === item.id);
+        const hardcodedItem = this.hardcodedItems.find(h => h.id === card.id);
 
         // Determinar ícone e nome do ícone
-        // Priorizar o que vem do banco, mas se for genérico ou inexistente, usar hardcoded
-        let iconName = item.icon || 'FiGrid';
+        let iconName = card.iconName || card.icon || 'FiGrid';
         let icon = FiGrid;
 
         if (hardcodedItem) {
           // Se o ícone do banco for o padrão ou vazio, usar o do hardcoded
-          if (!item.icon || item.icon === 'FiGrid') {
+          if (!card.iconName && !card.icon) {
             iconName = hardcodedItem.iconName;
             icon = hardcodedItem.icon;
           } else {
-            // Se tem ícone específico no banco, usar ele
             icon = getIconComponent(iconName);
           }
         } else {
-          // Se não tem hardcoded, usar o do banco
           icon = getIconComponent(iconName);
         }
 
         return {
-          id: item.id,
-          title: item.label, // Será traduzido depois
-          title_pt: item.title_pt || item.label,
-          title_en: item.title_en || item.label,
-          description: '', // MenuItem não tem description
-          href: item.href,
+          id: card.id,
+          title: card.title,
+          title_pt: card.title,
+          title_en: card.titleEn || card.title,
+          description: card.description || '',
+          href: card.href,
           icon: icon,
           iconName: iconName,
-          external: item.external || false,
-          enabled: item.enabled,
-          order: item.order,
-          adminOnly: item.adminOnly || false,
-          managerOnly: item.managerOnly || false,
-          allowedRoles: item.allowedRoles,
-          allowedUserIds: item.allowedUserIds,
-          showInMenu: true,
+          color: card.color,
+          hoverColor: card.hoverColor,
+          external: card.external || false,
+          enabled: card.enabled !== false,
+          order: card.order || 999,
+          adminOnly: card.adminOnly || false,
+          managerOnly: card.managerOnly || false,
+          allowedRoles: card.allowedRoles || [],
+          allowedUserIds: card.allowedUserIds || [],
+          moduleKey: card.moduleKey,
+          showInDashboard: true,
+          showInMenu: !card.adminOnly, // Mostrar no menu se não for adminOnly
+          showInAdminMenu: card.adminOnly || false,
           source: 'supabase' as const
         };
       });
 
-      console.log(`🔄 Loaded ${items.length} items from Supabase`);
+      console.log(`🔄 Loaded ${items.length} items from Supabase cards table`);
       return items;
 
     } catch (error) {

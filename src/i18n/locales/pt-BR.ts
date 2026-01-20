@@ -551,6 +551,7 @@ export default {
   menu: {
     dashboard: 'Painel',
     manual: 'Manual do Colaborador',
+    guiaOffshore: 'Guia do Colaborador Offshore',
     manualLogistico: 'Manual Logístico',
     procedimentoLogistica: 'Procedimento Logística',
     procedimentos: 'Procedimentos',

@@ -246,7 +246,9 @@ export async function POST(request: NextRequest) {
       .from('cards')
       .update({
         title: body.title,
+        title_en: body.titleEn || body.title_en || body.title,
         description: body.description || '',
+        description_en: body.descriptionEn || body.description_en || body.description || '',
         href: body.href,
         icon_name: iconName,
         color: body.color || 'blue',
@@ -256,6 +258,11 @@ export async function POST(request: NextRequest) {
         admin_only: body.adminOnly !== undefined ? body.adminOnly : false, // Nota: Supabase usa snake_case
         manager_only: body.managerOnly !== undefined ? body.managerOnly : false,
         external: body.external !== undefined ? body.external : false,
+        module_key: body.moduleKey || body.module_key || null,
+        category: body.category || null,
+        tags: body.tags || [],
+        allowed_roles: body.allowedRoles || body.allowed_roles || [],
+        allowed_user_ids: body.allowedUserIds || body.allowed_user_ids || [],
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

@@ -5,6 +5,23 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.13.0] - 2026-01-20
+
+### Added
+- **Métricas de Engajamento Global**:
+    - Implementado `GlobalTimeTracker` para monitorar o tempo de permanência em todos os módulos e cards do sistema.
+    - Sistema de "heartbeat" (15s) para atualização precisa de duração, com pausa automática ao trocar de aba (Page Visibility API).
+    - Captura automatizada de User Agent e Session ID para análise de tráfego.
+
+### Improved
+- **Identificação de Usuários**:
+    - Aprimorada visualização de usuários sem perfil completo: agora exibe "Usuário não identificado" acompanhado do ID, eliminando o rótulo genérico de "Anônimo" para dados rastreáveis.
+    - Refinada lógica de avatars nas notícias: priorização de `drive_photo_url` sobre `avatar` com fallback inteligente via `users_unified`.
+
+### Fixed
+- **Visualizadores de Notícias**: Corrigida falha onde usuários apareciam como anônimos ou sem foto devido ao uso da tabela de usuários incorreta.
+- **Eficácia de Dados**: Implementada validação estrita no backend para evitar registros de rastreio órfãos/anônimos.
+
 ## [3.12.2] - 2026-01-12
 
 ### Changed

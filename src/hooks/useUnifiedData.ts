@@ -52,14 +52,18 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
           loadedItems = await getDashboardCards(userRole, userId);
           break;
         case 'menu':
-          loadedItems = await getMenuItems(userRole, userId);
+          // SIMPLIFICADO: Usar cards direto da API para garantir consistência com dashboard
+          // Antes usava getMenuItems() que podia usar fallback hardcoded desatualizado
           try {
-            // Complementar menu com cards visíveis no dashboard (via cache compartilhado)
             if (userId) {
+              console.log('🔄 Menu: Loading cards from API with userId:', userId);
               const cards = await getCardsCached({ userId, userRole });
-              const existing = new Set(loadedItems.map((i: any) => i.href));
-              const cardItems = (cards || [])
-                .filter((c: any) => c.href && c.href.trim() !== '') // Filtrar itens sem href ou com href vazio
+              console.log('🔄 Menu: Got', cards?.length, 'cards from API');
+              if (cards?.[0]) {
+                console.log('🔄 Menu: First card title:', cards[0].title, 'id:', cards[0].id);
+              }
+              loadedItems = (cards || [])
+                .filter((c: any) => c.href && c.href.trim() !== '' && !c.adminOnly) // Não mostrar adminOnly no menu
                 .map((c: any) => ({
                   id: c.id,
                   title: c.title,
@@ -67,7 +71,7 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
                   href: c.href,
                   icon: getIconComponent(c.iconName || c.icon || 'FiGrid'),
                   iconName: c.iconName || c.icon || 'FiGrid',
-                  external: false,
+                  external: c.external || false,
                   enabled: c.enabled !== undefined ? c.enabled : true,
                   order: c.order ?? 999,
                   adminOnly: c.adminOnly,
@@ -77,14 +81,21 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
                   showInMenu: true,
                   showInDashboard: true,
                   source: 'supabase' as const
-                }));
-              const toAdd = cardItems.filter((ci: any) => ci.enabled && !existing.has(ci.href));
-              if (toAdd.length) {
-                loadedItems = [...loadedItems, ...toAdd].sort((a: any, b: any) => (a.order ?? 999) - (b.order ?? 999));
+                }))
+                .filter((ci: any) => ci.enabled)
+                .sort((a: any, b: any) => (a.order ?? 999) - (b.order ?? 999));
+              console.log('🔄 Menu: Final items count:', loadedItems.length);
+              if (loadedItems[0]) {
+                console.log('🔄 Menu: First menu item title:', loadedItems[0].title);
               }
+            } else {
+              console.log('🔄 Menu: No userId, using fallback');
+              // Fallback se não tiver userId
+              loadedItems = await getMenuItems(userRole, userId);
             }
           } catch (e) {
-            console.warn('Falha ao complementar menu com cards do dashboard:', e);
+            console.warn('Falha ao carregar menu, usando fallback:', e);
+            loadedItems = await getMenuItems(userRole, userId);
           }
           break;
         case 'admin':
@@ -179,8 +190,18 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
 
     if (typeof window !== 'undefined') {
       window.addEventListener('translationUpdated', handleTranslationUpdate);
+
+      // Listen for cache invalidation (e.g. from Admin updates)
+      const handleCacheInvalidation = () => {
+        console.log('🔄 Received cache invalidation event, reloading data...');
+        unifiedDataService.clearCache();
+        loadData();
+      };
+      window.addEventListener('cards-cache-invalidated', handleCacheInvalidation);
+
       return () => {
         window.removeEventListener('translationUpdated', handleTranslationUpdate);
+        window.removeEventListener('cards-cache-invalidated', handleCacheInvalidation);
       };
     }
   }, [loadData]);

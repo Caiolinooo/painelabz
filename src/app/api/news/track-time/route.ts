@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { verifyTokenFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +16,28 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
         }
 
-        const { postId, userId, duration } = body;
+        let { postId, userId, duration } = body;
 
-        console.log(`⏱️ Tracking Time: Post ${postId} - ${duration}s`);
+        // Fallback: Tentar obter usuário do token se não vier no body (correção do problema de anônimos)
+        if (!userId) {
+            const authResult = await verifyTokenFromRequest(request);
+            if (authResult.valid && authResult.userId) {
+                userId = authResult.userId;
+            }
+        }
 
-        if (!postId || !duration) return NextResponse.json({ success: false });
+        // CRITICAL FIX: Do not track anonymous users
+        if (!userId) {
+            // console.log('⚠️ Ignoring anonymous tracking request');
+            return NextResponse.json({ success: false, error: 'User ID required' }, { status: 401 });
+        }
+
+        console.log(`⏱️ Tracking Time: Post ${postId}, User ${userId}, Duration: ${duration}s`);
+
+        if (!postId || !duration) {
+            console.log('⚠️ Missing postId or duration, skipping');
+            return NextResponse.json({ success: false });
+        }
 
         // Atualizar ou inserir. 
         // Estratégia: Inserir log novo ou somar ao existente do dia?
@@ -38,19 +56,22 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (existing) {
-            await supabaseAdmin
+            const newDuration = (existing.duration_seconds || 0) + duration;
+            const { error: updateError } = await supabaseAdmin
                 .from('news_post_views')
-                .update({ duration_seconds: (existing.duration_seconds || 0) + duration })
+                .update({ duration_seconds: newDuration })
                 .eq('id', existing.id);
+            console.log(`✅ Updated existing view: ${existing.id}, new duration: ${newDuration}s, error: ${updateError?.message || 'none'}`);
         } else {
             // Se não achou view (ex: view tracker disparou mas o view inicial 5s falhou ou foi outra sessão)
             // Cria novo registro
-            await supabaseAdmin.from('news_post_views').insert({
+            const { error: insertError } = await supabaseAdmin.from('news_post_views').insert({
                 post_id: postId,
                 user_id: userId,
                 duration_seconds: duration,
                 viewed_at: new Date().toISOString()
             });
+            console.log(`✅ Inserted new view for post ${postId}, duration: ${duration}s, error: ${insertError?.message || 'none'}`);
         }
 
         return NextResponse.json({ success: true });

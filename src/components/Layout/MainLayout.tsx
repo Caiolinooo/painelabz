@@ -35,6 +35,7 @@ import LanguageSelector from '@/components/LanguageSelector';
 import Footer from '@/components/Footer';
 import ProtectedRoute from '@/components/Auth/ProtectedRoute';
 import HelpWidget from '@/components/Help/HelpWidget';
+import GlobalTimeTracker from '@/components/tracking/GlobalTimeTracker';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -55,8 +56,10 @@ const mainMenuItems = [
 
 // Mapeamento de títulos do banco de dados para chaves de tradução
 const titleToTranslationKey: Record<string, string> = {
-  'Employee Manual': 'menu.manual',
-  'Manual do Colaborador': 'menu.manual',
+  'Employee Manual': 'menu.guiaOffshore',
+  // 'Manual do Colaborador': 'menu.guiaOffshore',
+  // 'Guia do Colaborador Offshore': 'menu.guiaOffshore',
+  'Offshore Employee Guide': 'menu.guiaOffshore',
   'Policies': 'menu.politicas',
   'Políticas': 'menu.politicas',
   'Calendar': 'menu.calendario',
@@ -255,6 +258,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <ProtectedRoute>
+      <GlobalTimeTracker />
       <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
         {/* Sidebar para desktop */}
         <aside
@@ -322,11 +326,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   // Obter o texto a ser exibido com base no locale
                   let displayLabel: string;
 
+                  // Se vier do banco de dados (Supabase), priorizar o título do próprio item
+                  // O hook useUnifiedData já resolveu a tradução (title_en vs title_pt)
+                  if ((item as any).source === 'supabase' && (item as any).title) {
+                    displayLabel = (item as any).title;
+                  }
                   // Se for item hardcoded com label, traduzir via t()
-                  if ((item as any).label) {
+                  else if ((item as any).label) {
                     displayLabel = t((item as any).label);
                   }
-                  // Se vier do banco de dados
+                  // Se vier do banco de dados (sem source explícito ou legado)
                   else {
                     // Primeiro, tentar mapear o título para uma chave de tradução
                     const titleKey = titleToTranslationKey[(item as any).title];

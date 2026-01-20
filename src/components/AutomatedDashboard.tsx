@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useDashboardCards, useAutoTranslation } from '@/hooks/useUnifiedData';
-import { 
-  FiRefreshCw, 
-  FiAlertCircle, 
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import {
+  FiRefreshCw,
+  FiAlertCircle,
   FiCheckCircle,
   FiGlobe,
   FiLayers
@@ -21,8 +22,31 @@ export default function AutomatedDashboard({ className = '' }: AutomatedDashboar
   const router = useRouter();
   const { items: cards, loading, error, refresh, stats } = useDashboardCards(true);
   const { t, autoTranslationEnabled } = useAutoTranslation();
+  const { user } = useSupabaseAuth();
 
-  const handleCardClick = (href: string, external: boolean) => {
+  const handleCardClick = (card: any, href: string, external: boolean) => {
+    // Track the module access before navigation
+    try {
+      const trackingData = ***REMOVED***
+        module_id: card.id,
+        module_name: card.title,
+        module_href: href,
+        user_id: user?.id || null,
+        access_type: 'click',
+        is_external: external,
+        session_id: typeof window !== 'undefined' ? sessionStorage.getItem('sessionId') : null
+      });
+
+      // Use sendBeacon for reliable tracking even during navigation
+      if (navigator.sendBeacon) {
+        const blob = new Blob([trackingData], { type: 'application/json' });
+        navigator.sendBeacon('/api/tracking/module-access', blob);
+      }
+    } catch (e) {
+      console.warn('Module tracking error:', e);
+    }
+
+    // Original navigation
     if (external) {
       window.open(href, '_blank');
     } else {
@@ -55,10 +79,10 @@ export default function AutomatedDashboard({ className = '' }: AutomatedDashboar
                 <p className="text-sm text-red-500">{error}</p>
               </div>
             </div>
-            <Button 
-              onClick={refresh} 
-              variant="outline" 
-              size="sm" 
+            <Button
+              onClick={refresh}
+              variant="outline"
+              size="sm"
               className="mt-4"
             >
               <FiRefreshCw className="h-4 w-4 mr-2" />
@@ -98,9 +122,9 @@ export default function AutomatedDashboard({ className = '' }: AutomatedDashboar
           <div className="flex items-center space-x-4 text-xs text-gray-500">
             <span>Cache: {stats.cacheSize}</span>
             <span>Items: {stats.hardcodedCount}</span>
-            <Button 
-              onClick={refresh} 
-              variant="ghost" 
+            <Button
+              onClick={refresh}
+              variant="ghost"
               size="sm"
               className="h-8 px-2"
             >
@@ -114,12 +138,12 @@ export default function AutomatedDashboard({ className = '' }: AutomatedDashboar
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {cards.map((card) => {
           const Icon = card.icon;
-          
+
           return (
             <Card
               key={card.id}
               className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 group"
-              onClick={() => handleCardClick(card.href, card.external)}
+              onClick={() => handleCardClick(card, card.href, card.external)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start space-x-4">
@@ -133,7 +157,7 @@ export default function AutomatedDashboard({ className = '' }: AutomatedDashboar
                     <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                       {card.description}
                     </p>
-                    
+
                     {/* Indicadores de automação */}
                     <div className="flex items-center space-x-2 mt-3">
                       {card.source === 'supabase' && (
