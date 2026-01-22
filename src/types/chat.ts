@@ -1,10 +1,31 @@
 // Tipos para Sistema de Chat Interno em Tempo Real
 
-export interface ChatChannel {
+export interface ChatServer {
   id: string;
   name: string;
   description?: string;
-  type: 'public' | 'private' | 'direct' | 'department' | 'project';
+  icon_url?: string;
+  is_public: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  member_count?: number; // vindo de count join
+}
+
+export interface ChatServerMember {
+  id: string;
+  server_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'moderator' | 'member';
+  joined_at: string;
+}
+
+export interface ChatChannel {
+  id: string;
+  server_id?: string; // Optional for DMs
+  name: string;
+  description?: string;
+  type: 'public' | 'private' | 'direct' | 'department' | 'project' | 'voice' | 'group' | 'announcement';
   avatar?: string;
   isArchived: boolean;
   createdBy: string;

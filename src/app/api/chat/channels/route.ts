@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 import { ChatChannel, ChannelSettings, ChannelPermissions, ChannelMetadata } from '@/types/chat';
 
@@ -20,13 +20,15 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
+    const admin = await getSupabaseAdmin();
+
     const url = new URL(request.url);
     const type = url.searchParams.get('type');
     const department = url.searchParams.get('department');
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
-    let query = supabase
+    let query = admin
       .from('chat_channels')
       .select(`
         id,
@@ -49,6 +51,14 @@ export async function GET(request: NextRequest) {
       .order('last_activity', { ascending: false })
       .range(offset, offset + limit - 1);
 
+    // Filtrar por servidor se especificado
+    const serverId = url.searchParams.get('serverId');
+    if (serverId) {
+      query = query.eq('server_id', serverId);
+    } else {
+      // Se não tem serverId, assumimos comportamento legado ou DMs.
+    }
+
     // Filtrar por tipo se especificado
     if (type) {
       query = query.eq('type', type);
@@ -60,9 +70,74 @@ export async function GET(request: NextRequest) {
     }
 
     // Filtrar canais que o usuário tem acesso
-    query = query.or(`permissions->isPublic.eq.true,permissions->members.cs.["${payload.userId}"],permissions->viewers.cs.["${payload.userId}"],created_by.eq.${payload.userId}`);
+    // Nota: Admin vê tudo. Usuários veem públicos + seus departamentos + suas roles + canais onde são membros explícitos.
 
-    const { data: channels, error } = await query;
+    // Buscar info do usuário para filtragem
+    const { data: user } = await admin
+      .from('users_unified')
+      .select('role, department')
+      .eq('id', payload.userId)
+      .single();
+
+    const isAdmin = user?.role === 'ADMIN';
+
+    if (!isAdmin) {
+      // Construir filtro complexo para não-admins
+      // Logic: 
+      // isPublic = true
+      // OR properties->members contains userId
+      // OR properties->departments contains user.department
+      // OR properties->roles contains user.role
+      // OR created_by = userId
+
+      const userDepartment = user?.department || 'none';
+      const userRole = user?.role || 'none';
+
+      // Supabase query builder limitations makes complex ORs hard with JSONB.
+      // We will fetch slightly more and filter in memory if needed, OR use a raw query (rpc) if performance is critical.
+      // For now, let's try a best-effort PostgREST filter.
+      // PostgREST doesn't easily support "jsonb_array_change OR jsonb_array_change".
+
+      // Let's rely on a simplified strategy:
+      // Fetch all non-archived channels for the server. 
+      // Then filter in memory. This is okay for < 1000 channels.
+
+      // Note: We already have 'query' built up top.
+      const { data: allChannels, error: allErr } = await query;
+
+      if (allErr) throw allErr;
+
+      const filtered = allChannels?.filter((ch: any) => {
+        const p = ch.permissions || {};
+
+        // 1. Owner
+        if (ch.created_by === payload.userId) return true;
+
+        // 2. Public
+        if (p.isPublic) return true;
+
+        // 3. Member Explicit
+        if (p.members?.includes(payload.userId)) return true;
+
+        // 4. Department
+        if (p.departments && p.departments[userDepartment]) return true;
+
+        // 5. Role
+        if (p.roles && p.roles[userRole]) return true;
+
+        return false;
+      });
+
+      // Replace the standard fetch result with our filtered list
+      var channels = filtered;
+      var error = null;
+
+    } else {
+      // Admin sees all
+      var { data: fetched, error: err } = await query;
+      channels = fetched;
+      error = err;
+    }
 
     if (error) {
       console.error('Erro ao buscar canais:', error);
@@ -74,8 +149,8 @@ export async function GET(request: NextRequest) {
 
     // Buscar contagem de mensagens não lidas para cada canal
     const channelsWithUnread = await Promise.all(
-      (channels || []).map(async (channel) => {
-        const { data: unreadCount } = await supabase
+      (channels || []).map(async (channel: any) => {
+        const { data: unreadCount } = await admin
           .from('chat_messages')
           .select('id', { count: 'exact' })
           .eq('channel_id', channel.id)
@@ -105,7 +180,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     const payload = verifyToken(token);
@@ -117,19 +191,20 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Verificar permissões
-    const { data: user } = await supabase
+    const admin = await getSupabaseAdmin();
+
+    // Verificar permissões: APENAS ADMIN
+    const { data: user } = await admin
       .from('users_unified')
-      .select('role, access_permissions, email, first_name, last_name')
+      .select('role, email, first_name, last_name')
       .eq('id', payload.userId)
       .single();
 
-    // Permitir criação de canais por qualquer usuário autenticado
-    if (!user) {
+    if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({
         success: false,
-        error: 'Usuário não encontrado'
-      }, { status: 404 });
+        error: 'Apenas administradores podem criar canais'
+      }, { status: 403 });
     }
 
     const body = await request.json();
@@ -138,17 +213,13 @@ export async function POST(request: NextRequest) {
       description,
       type = 'public',
       avatar,
-      department,
-      project,
-      tags = [],
-      category = 'general',
-      isPublic = true,
-      allowInvites = true,
-      settings,
+      department, // Target department
+      targetRole, // Target role
+      accessLevel = 'public', // 'public', 'department', 'role', 'private'
+      serverId,
       initialMembers = []
     } = body;
 
-    // Validar campos obrigatórios
     if (!name) {
       return NextResponse.json({
         success: false,
@@ -156,7 +227,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Configurações padrão do canal
     const defaultSettings: ChannelSettings = {
       allowFileUploads: true,
       allowVoiceMessages: true,
@@ -167,56 +237,61 @@ export async function POST(request: NextRequest) {
       allowMentions: true,
       allowBots: false,
       messageRetentionDays: 365,
-      maxFileSize: 50, // 50MB
+      maxFileSize: 50,
       allowedFileTypes: ['image/*', 'video/*', 'audio/*', 'application/pdf', 'text/*'],
       moderationEnabled: false,
       autoDeleteMessages: false,
       requireApproval: false,
-      slowMode: 0,
-      ...settings
+      slowMode: 0
     };
 
-    // Permissões padrão do canal
-    const defaultPermissions: ChannelPermissions = {
+    // Configure Permissions based on Access Level
+    const permissions: ChannelPermissions = {
       owner: payload.userId,
-      admins: [],
+      admins: [payload.userId],
       moderators: [],
       members: [payload.userId, ...initialMembers],
       viewers: [],
       blocked: [],
       roles: {},
       departments: {},
-      isPublic,
-      allowInvites,
-      requireApproval: !isPublic
+      isPublic: accessLevel === 'public',
+      allowInvites: accessLevel === 'public',
+      requireApproval: false
     };
 
-    // Metadados do canal
+    if (accessLevel === 'department' && department) {
+      permissions.departments = { [department]: 'member' };
+    }
+
+    if (accessLevel === 'role' && targetRole) {
+      permissions.roles = { [targetRole]: 'member' };
+    }
+
     const channelMetadata: ChannelMetadata = {
-      department,
-      project,
-      tags,
-      category,
+      department: accessLevel === 'department' ? department : undefined,
+      category: 'general',
       priority: 'normal',
       status: 'active',
+      tags: [],
       externalIntegrations: [],
       customFields: {}
     };
 
-    // Criar canal
-    const { data: channel, error } = await supabase
+    const { data: channel, error } = await admin
       .from('chat_channels')
       .insert({
         name,
         description,
         type,
+        server_id: serverId,
         avatar,
         is_archived: false,
         created_by: payload.userId,
-        member_count: defaultPermissions.members.length,
+        member_count: permissions.members.length,
         unread_count: 0,
         settings: defaultSettings,
-        permissions: defaultPermissions,
+        permissions,
         metadata: channelMetadata,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -233,7 +308,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Adicionar membros ao canal
+    // Add initial members
     if (initialMembers.length > 0) {
       const memberInserts = initialMembers.map((memberId: string) => ({
         channel_id: channel.id,
@@ -242,23 +317,18 @@ export async function POST(request: NextRequest) {
         joined_at: new Date().toISOString()
       }));
 
-      await supabase
-        .from('chat_channel_members')
-        .insert(memberInserts);
+      await admin.from('chat_channel_members').insert(memberInserts);
     }
 
-    // Adicionar criador como membro
-    await supabase
-      .from('chat_channel_members')
-      .insert({
-        channel_id: channel.id,
-        user_id: payload.userId,
-        role: 'owner',
-        joined_at: new Date().toISOString()
-      });
+    // Add owner
+    await admin.from('chat_channel_members').insert({
+      channel_id: channel.id,
+      user_id: payload.userId,
+      role: 'owner',
+      joined_at: new Date().toISOString()
+    });
 
-    // Criar mensagem de sistema
-    await supabase
+    await admin
       .from('chat_messages')
       .insert({
         channel_id: channel.id,
@@ -292,8 +362,7 @@ export async function POST(request: NextRequest) {
         read_by: []
       });
 
-    // Log da ação
-    await supabase
+    await admin
       .from('chat_audit_logs')
       .insert({
         channel_id: channel.id,
@@ -325,7 +394,6 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     const payload = verifyToken(token);
@@ -337,6 +405,8 @@ export async function PUT(request: NextRequest) {
       }, { status: 401 });
     }
 
+    const admin = await getSupabaseAdmin();
+
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -347,8 +417,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Buscar canal existente
-    const { data: existingChannel, error: fetchError } = await supabase
+    const { data: existingChannel, error: fetchError } = await admin
       .from('chat_channels')
       .select('*')
       .eq('id', id)
@@ -361,8 +430,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Verificar permissões (owner, admin ou admin do sistema)
-    const { data: user } = await supabase
+    const { data: user } = await admin
       .from('users_unified')
       .select('role, email')
       .eq('id', payload.userId)
@@ -379,8 +447,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Atualizar canal
-    const { data: updatedChannel, error: updateError } = await supabase
+    const { data: updatedChannel, error: updateError } = await admin
       .from('chat_channels')
       .update({
         ...updateData,
@@ -398,8 +465,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Log da ação
-    await supabase
+    await admin
       .from('chat_audit_logs')
       .insert({
         channel_id: id,
@@ -432,7 +498,6 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     const payload = verifyToken(token);
@@ -444,6 +509,8 @@ export async function DELETE(request: NextRequest) {
       }, { status: 401 });
     }
 
+    const admin = await getSupabaseAdmin();
+
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
 
@@ -454,8 +521,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Buscar canal existente
-    const { data: existingChannel, error: fetchError } = await supabase
+    const { data: existingChannel, error: fetchError } = await admin
       .from('chat_channels')
       .select('*')
       .eq('id', id)
@@ -468,8 +534,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Verificar permissões (owner ou admin do sistema)
-    const { data: user } = await supabase
+    const { data: user } = await admin
       .from('users_unified')
       .select('role, email')
       .eq('id', payload.userId)
@@ -485,8 +550,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Arquivar canal (soft delete)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await admin
       .from('chat_channels')
       .update({
         is_archived: true,
@@ -502,8 +566,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Log da ação
-    await supabase
+    await admin
       .from('chat_audit_logs')
       .insert({
         channel_id: id,

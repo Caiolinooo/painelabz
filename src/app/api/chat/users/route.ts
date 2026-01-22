@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
         role,
         department,
         position,
+        status,
         created_at,
         updated_at,
         last_login
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     // Se channelId foi especificado, filtrar apenas membros do canal
     let filteredUsers = users || [];
-    
+
     if (channelId) {
       const { data: channelMembers } = await supabase
         .from('chat_channel_members')
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       avatar: user.avatar,
       role: user.role,
-      status: presenceMap[user.id]?.status || 'offline',
+      status: (user as any).status || presenceMap[user.id]?.status || 'online',
       statusMessage: presenceMap[user.id]?.status_message,
       lastSeen: presenceMap[user.id]?.last_seen || user.updated_at,
       timezone: 'America/Sao_Paulo', // Padrão

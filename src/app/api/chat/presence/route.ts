@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
         is_typing,
         device
       `)
-      .order('last_seen', { ascending: false });
+      .order('last_seen', { ascending: false })
+      .gt('last_seen', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Users active in last 5 mins
 
     // Filtrar por status se especificado
     if (status) {
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
 
     // Se channelId foi especificado, filtrar apenas membros do canal
     let filteredPresence = presenceData || [];
-    
+
     if (channelId) {
       const { data: channelMembers } = await supabase
         .from('chat_channel_members')
@@ -203,7 +204,7 @@ export async function PUT(request: NextRequest) {
 
         // Simular broadcast para outros usuários do canal
         // Em produção, isso seria feito via WebSocket
-        
+
         return NextResponse.json({
           success: true,
           message: 'Indicador de digitação atualizado'
@@ -222,6 +223,51 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({
           success: true,
           message: 'Heartbeat atualizado'
+        });
+
+      case 'status':
+        // Atualizar status do usuário na tabela users_unified
+        const { status: newStatus } = body;
+        const validStatuses = ['online', 'away', 'dnd', 'invisible'];
+
+        if (!newStatus || !validStatuses.includes(newStatus)) {
+          return NextResponse.json({
+            success: false,
+            error: 'Status inválido'
+          }, { status: 400 });
+        }
+
+        // Import supabaseAdmin for this operation to bypass RLS
+        const { getSupabaseAdmin } = await import('@/lib/supabase');
+        const admin = await getSupabaseAdmin();
+
+        const { error: statusError } = await admin
+          .from('users_unified')
+          .update({ status: newStatus })
+          .eq('id', payload.userId);
+
+        if (statusError) {
+          console.error('Error updating user status:', statusError);
+          return NextResponse.json({
+            success: false,
+            error: 'Erro ao atualizar status'
+          }, { status: 500 });
+        }
+
+        // Also update presence
+        await supabase
+          .from('chat_user_presence')
+          .upsert({
+            user_id: payload.userId,
+            status: newStatus,
+            last_seen: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+
+        console.log(`✅ Status updated for user ${payload.userId}: ${newStatus}`);
+
+        return NextResponse.json({
+          success: true,
+          message: 'Status atualizado'
         });
 
       default:

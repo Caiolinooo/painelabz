@@ -87,15 +87,27 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'module_id and duration_seconds required' }, { status: 400 });
         }
 
-        // Find the most recent access for this module/user/session and update duration
+        // First, find the most recent access record for this module/user
+        const { data: recentAccess, error: selectError } = await supabaseAdmin
+            .from('module_access')
+            .select('id')
+            .eq('module_id', module_id)
+            .eq('user_id', user_id)
+            .gte('accessed_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order('accessed_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (selectError || !recentAccess) {
+            // No record found to update - this is not an error, just skip
+            return NextResponse.json({ success: true, message: 'No record to update' });
+        }
+
+        // Update only the specific record by ID
         const { error } = await supabaseAdmin
             .from('module_access')
             .update({ duration_seconds })
-            .eq('module_id', module_id)
-            .eq('user_id', user_id)
-            .gte('accessed_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24h
-            .order('accessed_at', { ascending: false })
-            .limit(1);
+            .eq('id', recentAccess.id);
 
         if (error) {
             console.error('Error updating module duration:', error);

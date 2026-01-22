@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 import { ChatMessage, MessageContent, MessageMetadata } from '@/types/chat';
 
@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
+    const admin = await getSupabaseAdmin();
+
     const url = new URL(request.url);
     const channelId = url.searchParams.get('channelId');
     const threadId = url.searchParams.get('threadId');
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verificar se usuário tem acesso ao canal
-    const { data: channel } = await supabase
+    const { data: channel } = await admin
       .from('chat_channels')
       .select('permissions')
       .eq('id', channelId)
@@ -50,8 +52,8 @@ export async function GET(request: NextRequest) {
     }
 
     const hasAccess = channel.permissions?.isPublic ||
-                     channel.permissions?.members?.includes(payload.userId) ||
-                     channel.permissions?.viewers?.includes(payload.userId);
+      channel.permissions?.members?.includes(payload.userId) ||
+      channel.permissions?.viewers?.includes(payload.userId);
 
     if (!hasAccess) {
       return NextResponse.json({
@@ -60,7 +62,7 @@ export async function GET(request: NextRequest) {
       }, { status: 403 });
     }
 
-    let query = supabase
+    let query = admin
       .from('chat_messages')
       .select(`
         id,
@@ -147,6 +149,8 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
+    const admin = await getSupabaseAdmin();
+
     const body = await request.json();
     const {
       channelId,
@@ -168,8 +172,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Verificar se usuário tem acesso ao canal
-    const { data: channel } = await supabase
+    const { data: channel } = await admin
       .from('chat_channels')
       .select('permissions, settings, name')
       .eq('id', channelId)
@@ -183,7 +186,7 @@ export async function POST(request: NextRequest) {
     }
 
     const canSendMessages = channel.permissions?.isPublic ||
-                           channel.permissions?.members?.includes(payload.userId);
+      channel.permissions?.members?.includes(payload.userId);
 
     if (!canSendMessages) {
       return NextResponse.json({
@@ -193,11 +196,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar informações do usuário
-    const { data: user } = await supabase
+    const { data: user } = await admin
       .from('users_unified')
-      .select('first_name, last_name, email, avatar')
+      .select('first_name, last_name, email')
       .eq('id', payload.userId)
       .single();
+
+    // Note: avatar is not selected because it might not exist in users_unified schema
+    const userAvatar = null;
 
     // Processar menções
     const processedMentions = mentions.map((mention: any) => ({
@@ -247,7 +253,7 @@ export async function POST(request: NextRequest) {
     // Criar mensagem
     const senderName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.email || 'Usuário';
 
-    const { data: message, error } = await supabase
+    const { data: message, error } = await admin
       .from('chat_messages')
       .insert({
         channel_id: channelId,
@@ -255,7 +261,7 @@ export async function POST(request: NextRequest) {
         parent_message_id: parentMessageId,
         sender_id: payload.userId,
         sender_name: senderName,
-        sender_avatar: user?.avatar,
+        sender_avatar: userAvatar,
         content,
         type,
         status: 'sent',
@@ -282,7 +288,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Atualizar última atividade do canal
-    await supabase
+    await admin
       .from('chat_channels')
       .update({
         last_activity: new Date().toISOString()
@@ -291,14 +297,17 @@ export async function POST(request: NextRequest) {
 
     // Se é uma resposta, incrementar contador de replies
     if (parentMessageId) {
-      await supabase.rpc('increment_reply_count', { message_id: parentMessageId });
+      // Usar a RPC via admin se possível, ou update manual
+      // await admin.rpc('increment_reply_count', { message_id: parentMessageId });
+      // Supabase-js client supports rpc
+      await admin.rpc('increment_reply_count', { message_id: parentMessageId });
     }
 
     // Processar notificações para menções
     if (processedMentions.length > 0) {
       const notificationPromises = processedMentions.map(async (mention: any) => {
         if (mention.type === 'user' && mention.targetId !== payload.userId) {
-          await supabase
+          await admin
             .from('chat_notifications')
             .insert({
               user_id: mention.targetId,
@@ -322,7 +331,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log da ação
-    await supabase
+    await admin
       .from('chat_audit_logs')
       .insert({
         channel_id: channelId,
@@ -354,7 +363,6 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     const payload = verifyToken(token);
@@ -366,6 +374,8 @@ export async function PUT(request: NextRequest) {
       }, { status: 401 });
     }
 
+    const admin = await getSupabaseAdmin();
+
     const body = await request.json();
     const { id, content, reason } = body;
 
@@ -376,8 +386,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Buscar mensagem existente
-    const { data: existingMessage, error: fetchError } = await supabase
+    const { data: existingMessage, error: fetchError } = await admin
       .from('chat_messages')
       .select('*')
       .eq('id', id)
@@ -390,7 +399,6 @@ export async function PUT(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Verificar permissões (apenas o autor pode editar)
     if (existingMessage.sender_id !== payload.userId) {
       return NextResponse.json({
         success: false,
@@ -398,9 +406,8 @@ export async function PUT(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Verificar se mensagem pode ser editada (não muito antiga)
     const messageAge = Date.now() - new Date(existingMessage.timestamp).getTime();
-    const maxEditTime = 24 * 60 * 60 * 1000; // 24 horas
+    const maxEditTime = 24 * 60 * 60 * 1000;
 
     if (messageAge > maxEditTime) {
       return NextResponse.json({
@@ -409,7 +416,6 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Adicionar ao histórico de edições
     const editHistory = existingMessage.metadata?.editHistory || [];
     editHistory.push({
       editedAt: new Date().toISOString(),
@@ -418,8 +424,7 @@ export async function PUT(request: NextRequest) {
       reason
     });
 
-    // Atualizar mensagem
-    const { data: updatedMessage, error: updateError } = await supabase
+    const { data: updatedMessage, error: updateError } = await admin
       .from('chat_messages')
       .update({
         content,
@@ -441,8 +446,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Log da ação
-    await supabase
+    await admin
       .from('chat_audit_logs')
       .insert({
         channel_id: existingMessage.channel_id,
@@ -474,7 +478,6 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Verificar autenticação
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     const payload = verifyToken(token);
@@ -484,6 +487,8 @@ export async function DELETE(request: NextRequest) {
         error: 'Token inválido'
       }, { status: 401 });
     }
+
+    const admin = await getSupabaseAdmin();
 
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
@@ -495,8 +500,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Buscar mensagem existente
-    const { data: existingMessage, error: fetchError } = await supabase
+    const { data: existingMessage, error: fetchError } = await admin
       .from('chat_messages')
       .select('*')
       .eq('id', id)
@@ -510,7 +514,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verificar permissões (autor ou admin do canal/sistema)
-    const { data: user } = await supabase
+    // Usando admin para buscar info do usuário
+    const { data: user } = await admin
       .from('users_unified')
       .select('role, email')
       .eq('id', payload.userId)
@@ -520,7 +525,7 @@ export async function DELETE(request: NextRequest) {
     const isSystemAdmin = user?.role === 'ADMIN';
 
     // Verificar se é admin do canal
-    const { data: channel } = await supabase
+    const { data: channel } = await admin
       .from('chat_channels')
       .select('permissions')
       .eq('id', existingMessage.channel_id)
@@ -535,8 +540,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Soft delete - marcar como deletada
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await admin
       .from('chat_messages')
       .update({
         deleted_at: new Date().toISOString(),
@@ -552,8 +556,7 @@ export async function DELETE(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Log da ação
-    await supabase
+    await admin
       .from('chat_audit_logs')
       .insert({
         channel_id: existingMessage.channel_id,

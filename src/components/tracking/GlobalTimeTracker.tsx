@@ -122,7 +122,7 @@ export default function GlobalTimeTracker() {
                     // So we should send TOTAL duration from start.
                     sendTracking('heartbeat', duration);
                 }
-            }, 15000); // 15s heartbeat
+            }, 5000); // 5s heartbeat (more frequent updates)
         } else {
             // Check if we are in a non-module page (like dashboard home), stop tracking
             activeModuleRef.current = null;

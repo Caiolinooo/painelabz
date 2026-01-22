@@ -91,8 +91,8 @@ export const GET = withPermission('admin', async (request: NextRequest) => {
                 avg_duration: mod.total_accesses > 0 ? mod.total_duration / mod.total_accesses : 0,
                 last_accessed: mod.last_accessed,
                 top_users: Array.from(mod.users.entries())
-                    .sort((a, b) => b[1].count - a[1].count)
-                    .slice(0, 5)
+                    .sort((a, b) => b[1].duration - a[1].duration) // Sort by duration
+                    .slice(0, 10) // Increased to top 10
                     .map(([userId, stats]) => ({
                         user_id: userId,
                         user_email: stats.email,
