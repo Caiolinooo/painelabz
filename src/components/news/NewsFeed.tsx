@@ -67,13 +67,15 @@ interface NewsFeedProps {
   category?: string;
   featured?: boolean;
   limit?: number;
+  searchQuery?: string;
 }
 
 const NewsFeed: React.FC<NewsFeedProps> = ({
   userId,
   category,
   featured,
-  limit = 10
+  limit = 10,
+  searchQuery = ''
 }) => {
   const { t } = useI18n();
   const [posts, setPosts] = useState<NewsPost[]>([]);
@@ -250,8 +252,9 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         status: 'published'
       });
 
-      if (category) params.append('category', category);
+      if (category && category !== 'all') params.append('category', category);
       if (featured) params.append('featured', 'true');
+      if (searchQuery) params.append('search', searchQuery);
 
       const response = await fetchWithToken(`/api/news/posts?${params}`);
       const data = await response.json();
@@ -279,7 +282,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
   // Carregar posts iniciais
   useEffect(() => {
     loadPosts(1, true);
-  }, [category, featured, limit]);
+  }, [category, featured, limit, searchQuery]);
 
   // Realtime: likes/comentrios atualizados em tempo real
   useNewsRealtime(
@@ -770,8 +773,8 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
       {/* Highlights / Stories */}
       <NewsHighlights userId={userId || ''} canCreate={canCreateNews} />
 
-      {/* Create Post Card - Instagram Style */}
-      {userId && (
+      {/* Create Post Card - Instagram Style - Only for certain roles */}
+      {userId && canCreateNews && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">

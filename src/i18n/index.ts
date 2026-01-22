@@ -10,7 +10,7 @@ export const locales: Record<Locale, any> = {
 
 export const defaultLocale: Locale = 'pt-BR';
 
-export function getTranslation(locale: Locale, key: string, defaultValue?: string): string {
+export function getTranslation(locale: Locale, key: string, defaultValue?: string, params?: Record<string, string | number>): string {
   // Validate inputs
   if (!key || typeof key !== 'string') {
     return defaultValue || key || '';
@@ -33,12 +33,11 @@ export function getTranslation(locale: Locale, key: string, defaultValue?: strin
   }
 
   // If found and is a string, return it
+  let result = '';
   if (translation && typeof translation === 'string') {
-    return translation;
-  }
-
-  // Try fallback to default locale if current locale is not default
-  if (locale !== defaultLocale) {
+    result = translation;
+  } else if (locale !== defaultLocale) {
+    // Try fallback to default locale if current locale is not default
     let fallbackTranslation: any = locales[defaultLocale];
 
     for (const k of keys) {
@@ -50,10 +49,21 @@ export function getTranslation(locale: Locale, key: string, defaultValue?: strin
     }
 
     if (fallbackTranslation && typeof fallbackTranslation === 'string') {
-      return fallbackTranslation;
+      result = fallbackTranslation;
     }
   }
 
-  // Return default value or key as fallback
-  return defaultValue || key;
+  // If we have a result and params, perform interpolation
+  if (result && params) {
+    Object.keys(params).forEach(paramKey => {
+      const value = String(params[paramKey]);
+      // Replace {{key}}
+      result = result.replace(new RegExp(`{{${paramKey}}}`, 'g'), value);
+      // Replace {key} (alternative syntax)
+      result = result.replace(new RegExp(`{${paramKey}}`, 'g'), value);
+    });
+    return result;
+  }
+
+  return result || defaultValue || key;
 }

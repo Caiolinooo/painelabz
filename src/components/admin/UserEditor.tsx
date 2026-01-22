@@ -7,6 +7,8 @@ import ServerUserReimbursementSettings from './ServerUserReimbursementSettings';
 import ReimbursementPermissionsEditor from './ReimbursementPermissionsEditor';
 import ACLPermissionTreeSelector from './ACLPermissionTreeSelector';
 import { useI18n } from '@/contexts/I18nContext';
+import { supabase } from '@/lib/supabase';
+import { Sector } from '@/types/index';
 // import { useACLPermissions } from '@/hooks/useACLPermissions'; // Temporariamente desabilitado
 
 // Interface para o usuário no editor
@@ -19,6 +21,7 @@ export interface UserEditorData {
   role: 'ADMIN' | 'USER' | 'MANAGER';
   position?: string;
   department?: string;
+  sector_id?: string;
   accessPermissions?: AccessPermissions;
   reimbursement_email_settings?: {
     enabled: boolean;
@@ -82,9 +85,12 @@ const UserEditor: React.FC<UserEditorProps> = ({
   const [selectedACLPermissions, setSelectedACLPermissions] = useState<string[]>([]);
   const [roleACLPermissions, setRoleACLPermissions] = useState<string[]>([]);
 
+  // State for available sectors
+  const [availableSectors, setAvailableSectors] = useState<Sector[]>([]);
+
 
   // Estado para módulos disponíveis (carregados dinamicamente)
-  const [availableModules, setAvailableModules] = useState<Array<{id: string, label: string, description: string}>>([]);
+  const [availableModules, setAvailableModules] = useState<Array<{ id: string, label: string, description: string }>>([]);
   const [rolePermissions, setRolePermissions] = useState<any>({});
 
   // Hook para gerenciar permissões ACL (temporariamente desabilitado)
@@ -123,6 +129,12 @@ const UserEditor: React.FC<UserEditorProps> = ({
         const permissionsResponse = await fetch('/api/admin/role-permissions');
         const permissions = await permissionsResponse.json();
         setRolePermissions(permissions);
+
+        // Carregar setores
+        const { data: sectorsData } = await supabase.from('sectors').select('id, name').order('name');
+        if (sectorsData) {
+          setAvailableSectors(sectorsData as Sector[]);
+        }
 
       } catch (error) {
         console.error(t('components.erroAoCarregarModulosEPermissoes'), error);
@@ -311,203 +323,226 @@ const UserEditor: React.FC<UserEditorProps> = ({
         </div>
       )}
 
-        <form onSubmit={handleSubmit} className="p-6">
-          {passwordError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
-              {passwordError}
-            </div>
-          )}
+      <form onSubmit={handleSubmit} className="p-6">
+        {passwordError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+            {passwordError}
+          </div>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Informações básicas */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
-                <FiUser className="mr-2" /> Informações Pessoais
-              </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Informações básicas */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+              <FiUser className="mr-2" /> Informações Pessoais
+            </h3>
 
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome*
-                  </label>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome*
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={editedUser.firstName}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                  Sobrenome*
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={editedUser.lastName}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefone*
+                </label>
+                <div className="flex items-center">
+                  <FiPhone className="text-gray-400 mr-2" />
                   <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={editedUser.firstName}
+                    type="tel"
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={editedUser.phoneNumber}
                     onChange={handleChange}
+                    placeholder="+5511999999999"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
                     required
                   />
-                </div>
-
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Sobrenome*
-                  </label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={editedUser.lastName}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                    Telefone*
-                  </label>
-                  <div className="flex items-center">
-                    <FiPhone className="text-gray-400 mr-2" />
-                    <input
-                      type="tel"
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      value={editedUser.phoneNumber}
-                      onChange={handleChange}
-                      placeholder="+5511999999999"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    E-mail
-                  </label>
-                  <div className="flex items-center">
-                    <FiMail className="text-gray-400 mr-2" />
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={editedUser.email || ''}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                    />
-                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Informações profissionais */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
-                <FiBriefcase className="mr-2" /> Informações Profissionais
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('common.systemRole')}*
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={editedUser.role}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                    required
-                  >
-                    <option value="USER">{t('common.user')}</option>
-                    <option value="MANAGER">{t('common.manager')}</option>
-                    <option value="ADMIN">{t('common.administrator')}</option>
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    <strong>Administrador:</strong> Acesso completo ao sistema, incluindo todas as funcionalidades administrativas.<br />
-                    <strong>Gerente:</strong> Acesso a funcionalidades de gerenciamento, mas sem permissões administrativas completas.<br />
-                    <strong>Usuário:</strong> Acesso básico ao sistema. Pode visualizar conteúdo e usar funcionalidades padrão.
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">
-                    Cargo
-                  </label>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  E-mail
+                </label>
+                <div className="flex items-center">
+                  <FiMail className="text-gray-400 mr-2" />
                   <input
-                    type="text"
-                    id="position"
-                    name="position"
-                    value={editedUser.position || ''}
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={editedUser.email || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                    placeholder={t('components.exAnalistaDeLogistica')}
                   />
                 </div>
-
-                <div>
-                  <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
-                    Departamento
-                  </label>
-                  <input
-                    type="text"
-                    id="department"
-                    name="department"
-                    value={editedUser.department || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                    placeholder={t('components.exLogistica')}
-                  />
-                </div>
-
-                {isNewUser && (
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                      Senha{isNewUser ? '*' : ''}
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                      required={isNewUser}
-                      minLength={8}
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      {isNewUser ? t('components.minimoDe8Caracteres') : 'Deixe em branco para manter a senha atual'}
-                    </p>
-                  </div>
-                )}
-
-                {password && (
-                  <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                      Confirmar Senha*
-                    </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                      required={!!password}
-                    />
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
-          {/* Permissões de acesso */}
-          <div className="mb-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <button
-                type="button"
-                onClick={() => setShowPermissions(!showPermissions)}
-                className="flex items-center text-abz-blue hover:text-abz-blue-dark font-medium"
-              >
-                <FiUsers className="mr-2" />
-                {showPermissions ? t('components.ocultarPermissoes') : t('components.configurarPermissoesDeAcesso')}
-              </button>
+          {/* Informações profissionais */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+              <FiBriefcase className="mr-2" /> Informações Profissionais
+            </h3>
 
-              {/* Temporariamente desabilitado
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('common.systemRole')}*
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={editedUser.role}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                  required
+                >
+                  <option value="USER">{t('common.user')}</option>
+                  <option value="MANAGER">{t('common.manager')}</option>
+                  <option value="ADMIN">{t('common.administrator')}</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  <strong>Administrador:</strong> Acesso completo ao sistema, incluindo todas as funcionalidades administrativas.<br />
+                  <strong>Gerente:</strong> Acesso a funcionalidades de gerenciamento, mas sem permissões administrativas completas.<br />
+                  <strong>Usuário:</strong> Acesso básico ao sistema. Pode visualizar conteúdo e usar funcionalidades padrão.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">
+                  Cargo
+                </label>
+                <input
+                  type="text"
+                  id="position"
+                  name="position"
+                  value={editedUser.position || ''}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                  placeholder={t('components.exAnalistaDeLogistica')}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                  Departamento
+                </label>
+                <input
+                  type="text"
+                  id="department"
+                  name="department"
+                  value={editedUser.department || ''}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                  placeholder={t('components.exLogistica')}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="sector_id" className="block text-sm font-medium text-gray-700 mb-1">
+                  Setor (Departamento)
+                </label>
+                <select
+                  id="sector_id"
+                  name="sector_id"
+                  value={editedUser.sector_id || ''}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                >
+                  <option value="">Selecione um setor...</option>
+                  {availableSectors.map(sector => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  O setor define quais módulos adicionais o usuário pode acessar.
+                </p>
+              </div>
+
+              {isNewUser && (
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Senha{isNewUser ? '*' : ''}
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                    required={isNewUser}
+                    minLength={8}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    {isNewUser ? t('components.minimoDe8Caracteres') : 'Deixe em branco para manter a senha atual'}
+                  </p>
+                </div>
+              )}
+
+              {password && (
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirmar Senha*
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
+                    required={!!password}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Permissões de acesso */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              type="button"
+              onClick={() => setShowPermissions(!showPermissions)}
+              className="flex items-center text-abz-blue hover:text-abz-blue-dark font-medium"
+            >
+              <FiUsers className="mr-2" />
+              {showPermissions ? t('components.ocultarPermissoes') : t('components.configurarPermissoesDeAcesso')}
+            </button>
+
+            {/* Temporariamente desabilitado
               <button
                 type="button"
                 onClick={() => setShowACLPermissions(!showACLPermissions)}
@@ -517,180 +552,180 @@ const UserEditor: React.FC<UserEditorProps> = ({
                 {showACLPermissions ? 'Ocultar ACL' : t('components.permissoesAclAvancadas')}
               </button>
               */}
-            </div>
-
-            {showPermissions && (
-              <div className="mt-4 p-4 border border-gray-200 rounded-lg">
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Módulos do Sistema</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Configure as permissões individuais deste usuário. As permissões individuais têm prioridade sobre as permissões do role.
-                </p>
-
-                {/* Mostrar permissões padrão do role */}
-                {editedUser.role && rolePermissions[editedUser.role] && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="text-sm font-medium text-blue-900 mb-2">
-                      Permissões Padrão do Role "{editedUser.role}"
-                    </h4>
-                    <div className="text-xs text-blue-700">
-                      {Object.entries(rolePermissions[editedUser.role]?.modules || {})
-                        .filter(([_, enabled]) => enabled)
-                        .map(([moduleId]) => {
-                          const modItem = availableModules.find(m => m.id === moduleId);
-                          return modItem?.label;
-                        })
-                        .filter(Boolean)
-                        .join(', ')}
-                    </div>
-                  </div>
-                )}
-
-                {loadingModules ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="text-sm text-gray-500 mt-2">Carregando módulos...</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {availableModules.map((module) => {
-                      const hasIndividualPermission = editedUser.accessPermissions?.modules?.[module.id] !== undefined;
-                      const isEnabledByRole = rolePermissions[editedUser.role]?.modules?.[module.id] || false;
-                      const isEnabledIndividually = editedUser.accessPermissions?.modules?.[module.id] || false;
-                      const finalEnabled = hasIndividualPermission ? isEnabledIndividually : isEnabledByRole;
-
-                      return (
-                        <div key={module.id} className="flex items-start p-2 border rounded-lg">
-                          <input
-                            type="checkbox"
-                            id={`module-${module.id}`}
-                            checked={finalEnabled}
-                            onChange={(e) => handleModulePermissionChange(module.id, e.target.checked)}
-                            disabled={editedUser.role === 'ADMIN'} // Administradores têm acesso a tudo
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
-                          />
-                          <div className="ml-2 flex-1">
-                            <label htmlFor={`module-${module.id}`} className="block text-sm font-medium text-gray-900">
-                              {module.label}
-                            </label>
-                            <p className="text-xs text-gray-500">{module.description}</p>
-                            {hasIndividualPermission && (
-                              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">
-                                Personalizado
-                              </span>
-                            )}
-                            {!hasIndividualPermission && isEnabledByRole && (
-                              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
-                                Por Role
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Permissões específicas de reembolso */}
-                <ReimbursementPermissionsEditor
-                  permissions={editedUser.accessPermissions || { modules: {}, features: {} }}
-                  onChange={(updatedPermissions) => {
-                    setEditedUser({
-                      ...editedUser,
-                      accessPermissions: updatedPermissions
-                    });
-                  }}
-                  readOnly={editedUser.role === 'ADMIN'} // Administradores têm todas as permissões
-                />
-              </div>
-            )}
-
-            {/* Permissões ACL Avançadas - Temporariamente desabilitado */}
-            {false && showACLPermissions && (
-              <div className="mt-6 p-4 border border-green-200 rounded-lg bg-green-50">
-                <div className="flex items-center mb-4">
-                  <FiShield className="h-5 w-5 text-green-600 mr-2" />
-                  <h3 className="text-lg font-medium text-green-900">Permissões ACL Avançadas</h3>
-                </div>
-
-                <p className="text-sm text-green-700 mb-4">
-                  Sistema de controle de acesso hierárquico com permissões granulares.
-                  As permissões individuais têm prioridade sobre as permissões do role.
-                </p>
-
-                {false ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
-                    <span className="ml-2 text-green-700">Carregando permissões ACL...</span>
-                  </div>
-                ) : (
-                  <ACLPermissionTreeSelector
-                    selectedPermissions={selectedACLPermissions}
-                    onPermissionChange={handleACLPermissionChange}
-                    userRole={editedUser.role}
-                    showRolePermissions={true}
-                    rolePermissions={roleACLPermissions}
-                    disabled={editedUser.role === 'ADMIN'} // Administradores têm todas as permissões
-                  />
-                )}
-
-                {editedUser.role === 'ADMIN' && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Nota:</strong> Administradores têm acesso automático a todas as permissões ACL,
-                      independente das configurações individuais.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Configurações de Email de Reembolso */}
-          {editedUser.email && (
-            <div className="mb-6">
-              <button
-                type="button"
-                onClick={() => setShowReimbursementSettings(!showReimbursementSettings)}
-                className="flex items-center text-abz-blue hover:text-abz-blue-dark font-medium"
-              >
-                <FiMail className="mr-2" />
-                {showReimbursementSettings ? t('components.ocultarConfiguracoesDeEmail') : 'Configurar Email de Reembolso'}
-              </button>
+          {showPermissions && (
+            <div className="mt-4 p-4 border border-gray-200 rounded-lg">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Módulos do Sistema</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Configure as permissões individuais deste usuário. As permissões individuais têm prioridade sobre as permissões do role.
+              </p>
 
-              {showReimbursementSettings && (
-                <ServerUserReimbursementSettings
-                  email={editedUser.email}
-                  initialSettings={editedUser.reimbursement_email_settings}
-                  onSave={(settings) => {
-                    setEditedUser(prev => ({
-                      ...prev,
-                      reimbursement_email_settings: settings
-                    }));
-                  }}
-                />
+              {/* Mostrar permissões padrão do role */}
+              {editedUser.role && rolePermissions[editedUser.role] && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">
+                    Permissões Padrão do Role "{editedUser.role}"
+                  </h4>
+                  <div className="text-xs text-blue-700">
+                    {Object.entries(rolePermissions[editedUser.role]?.modules || {})
+                      .filter(([_, enabled]) => enabled)
+                      .map(([moduleId]) => {
+                        const modItem = availableModules.find(m => m.id === moduleId);
+                        return modItem?.label;
+                      })
+                      .filter(Boolean)
+                      .join(', ')}
+                  </div>
+                </div>
               )}
+
+              {loadingModules ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-sm text-gray-500 mt-2">Carregando módulos...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {availableModules.map((module) => {
+                    const hasIndividualPermission = editedUser.accessPermissions?.modules?.[module.id] !== undefined;
+                    const isEnabledByRole = rolePermissions[editedUser.role]?.modules?.[module.id] || false;
+                    const isEnabledIndividually = editedUser.accessPermissions?.modules?.[module.id] || false;
+                    const finalEnabled = hasIndividualPermission ? isEnabledIndividually : isEnabledByRole;
+
+                    return (
+                      <div key={module.id} className="flex items-start p-2 border rounded-lg">
+                        <input
+                          type="checkbox"
+                          id={`module-${module.id}`}
+                          checked={finalEnabled}
+                          onChange={(e) => handleModulePermissionChange(module.id, e.target.checked)}
+                          disabled={editedUser.role === 'ADMIN'} // Administradores têm acesso a tudo
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
+                        />
+                        <div className="ml-2 flex-1">
+                          <label htmlFor={`module-${module.id}`} className="block text-sm font-medium text-gray-900">
+                            {module.label}
+                          </label>
+                          <p className="text-xs text-gray-500">{module.description}</p>
+                          {hasIndividualPermission && (
+                            <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">
+                              Personalizado
+                            </span>
+                          )}
+                          {!hasIndividualPermission && isEnabledByRole && (
+                            <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                              Por Role
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Permissões específicas de reembolso */}
+              <ReimbursementPermissionsEditor
+                permissions={editedUser.accessPermissions || { modules: {}, features: {} }}
+                onChange={(updatedPermissions) => {
+                  setEditedUser({
+                    ...editedUser,
+                    accessPermissions: updatedPermissions
+                  });
+                }}
+                readOnly={editedUser.role === 'ADMIN'} // Administradores têm todas as permissões
+              />
             </div>
           )}
 
-          {/* Botões de ação */}
-          <div className="flex justify-end space-x-3 border-t pt-4">
+          {/* Permissões ACL Avançadas - Temporariamente desabilitado */}
+          {false && showACLPermissions && (
+            <div className="mt-6 p-4 border border-green-200 rounded-lg bg-green-50">
+              <div className="flex items-center mb-4">
+                <FiShield className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-lg font-medium text-green-900">Permissões ACL Avançadas</h3>
+              </div>
+
+              <p className="text-sm text-green-700 mb-4">
+                Sistema de controle de acesso hierárquico com permissões granulares.
+                As permissões individuais têm prioridade sobre as permissões do role.
+              </p>
+
+              {false ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+                  <span className="ml-2 text-green-700">Carregando permissões ACL...</span>
+                </div>
+              ) : (
+                <ACLPermissionTreeSelector
+                  selectedPermissions={selectedACLPermissions}
+                  onPermissionChange={handleACLPermissionChange}
+                  userRole={editedUser.role}
+                  showRolePermissions={true}
+                  rolePermissions={roleACLPermissions}
+                  disabled={editedUser.role === 'ADMIN'} // Administradores têm todas as permissões
+                />
+              )}
+
+              {editedUser.role === 'ADMIN' && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Nota:</strong> Administradores têm acesso automático a todas as permissões ACL,
+                    independente das configurações individuais.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Configurações de Email de Reembolso */}
+        {editedUser.email && (
+          <div className="mb-6">
             <button
               type="button"
-              onClick={onCancel}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+              onClick={() => setShowReimbursementSettings(!showReimbursementSettings)}
+              className="flex items-center text-abz-blue hover:text-abz-blue-dark font-medium"
             >
-              {t('common.cancel')}
+              <FiMail className="mr-2" />
+              {showReimbursementSettings ? t('components.ocultarConfiguracoesDeEmail') : 'Configurar Email de Reembolso'}
             </button>
-            <button
-              type="submit"
-              className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-abz-blue hover:bg-abz-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
-            >
-              <FiSave className="mr-2" />
-              {t('common.save')}
-            </button>
+
+            {showReimbursementSettings && (
+              <ServerUserReimbursementSettings
+                email={editedUser.email}
+                initialSettings={editedUser.reimbursement_email_settings}
+                onSave={(settings) => {
+                  setEditedUser(prev => ({
+                    ...prev,
+                    reimbursement_email_settings: settings
+                  }));
+                }}
+              />
+            )}
           </div>
-        </form>
-      </>
+        )}
+
+        {/* Botões de ação */}
+        <div className="flex justify-end space-x-3 border-t pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            type="submit"
+            className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-abz-blue hover:bg-abz-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+          >
+            <FiSave className="mr-2" />
+            {t('common.save')}
+          </button>
+        </div>
+      </form>
+    </>
   );
 
   // Renderizar como modal ou como componente normal

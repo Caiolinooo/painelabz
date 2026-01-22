@@ -4,522 +4,349 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  FiHome,
+  FiGrid,
+  FiRss,
   FiUser,
+  FiBriefcase,
+  FiAward,
+  FiBook,
+  FiAlertCircle,
+  FiChevronDown,
+  FiChevronUp,
+  FiMenu,
+  FiSearch,
+  FiBell,
+  FiGlobe,
   FiSettings,
   FiLogOut,
-  FiMenu,
-  FiX,
-  FiGrid,
+  FiCreditCard,
   FiFileText,
-  FiDollarSign,
-  FiCalendar,
-  FiPhone,
-  FiClock,
   FiTrendingUp,
-  FiBook,
-  FiMessageSquare,
-  FiUsers,
-  FiChevronLeft,
-  FiChevronRight,
-  FiRefreshCw
+  FiClock,
+  FiDollarSign,
+  FiBarChart2,
+  FiSidebar,
+  FiShield
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { useI18n } from '@/contexts/I18nContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useI18n } from '@/contexts/I18nContext';
 import { useMenuItems } from '@/hooks/useUnifiedData';
-import { getIconComponent } from '@/lib/iconMapper';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import LanguageSelector from '@/components/LanguageSelector';
-import Footer from '@/components/Footer';
 import ProtectedRoute from '@/components/Auth/ProtectedRoute';
-import HelpWidget from '@/components/Help/HelpWidget';
 import GlobalTimeTracker from '@/components/tracking/GlobalTimeTracker';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
-// Menu principal do sistema
-const mainMenuItems = [
-  { id: 'dashboard', href: '/dashboard', label: 'common.dashboard', icon: FiHome },
-  { id: 'reembolso', href: '/reembolso', label: 'common.reimbursement', icon: FiDollarSign },
-  { id: 'avaliacao', href: '/avaliacao', label: 'common.evaluation', icon: FiTrendingUp },
-  { id: 'calendario', href: '/calendario', label: 'common.calendar', icon: FiCalendar },
-  { id: 'contatos', href: '/contatos', label: 'common.contacts', icon: FiPhone },
-  { id: 'ponto', href: '/ponto', label: 'common.timesheet', icon: FiClock },
-  { id: 'contracheque', href: '/contracheque', label: 'common.payroll', icon: FiFileText },
-  { id: 'academy', href: '/academy', label: 'common.academy', icon: FiBook },
-  { id: 'noticias', href: '/noticias', label: 'common.news', icon: FiMessageSquare },
-];
-
-// Mapeamento de títulos do banco de dados para chaves de tradução
-const titleToTranslationKey: Record<string, string> = {
-  'Employee Manual': 'menu.guiaOffshore',
-  // 'Manual do Colaborador': 'menu.guiaOffshore',
-  // 'Guia do Colaborador Offshore': 'menu.guiaOffshore',
-  'Offshore Employee Guide': 'menu.guiaOffshore',
-  'Policies': 'menu.politicas',
-  'Políticas': 'menu.politicas',
-  'Calendar': 'menu.calendario',
-  'Calendário': 'menu.calendario',
-  'News': 'menu.noticias',
-  'Notícias': 'menu.noticias',
-  'ABZ News': 'menu.noticias',
-  'Reimbursement': 'menu.reembolso',
-  'Reembolso': 'menu.reembolso',
-  'Payslip': 'menu.contracheque',
-  'Contracheque': 'menu.contracheque',
-  'Time Clock': 'menu.ponto',
-  'Ponto': 'menu.ponto',
-  'Performance Evaluation': 'menu.avaliacao',
-  'Avaliação de Desempenho': 'menu.avaliacao',
-  'Payroll': 'menu.folhaPagamento',
-  'Folha de Pagamento': 'menu.folhaPagamento',
-  'Procedimentos de Logística': 'menu.procedimentoLogistica',
-  'Logistics Procedures': 'menu.procedimentoLogistica',
-  'Procedimentos Gerais': 'menu.procedimentosGerais',
-  'General Procedures': 'menu.procedimentosGerais',
-  'Dashboard': 'menu.dashboard',
-  'Painel': 'menu.dashboard',
-  'Administration': 'menu.admin',
-  'Administração': 'menu.admin',
-  'ABZ Academy': 'menu.academy',
-  'ABZ Social': 'menu.social',
-};
+// Logo Component
+const PortalLogo = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4C9.37258 4 4 9.37258 4 16C4 22.6274 9.37258 28 16 28Z" stroke="white" strokeWidth="0" />
+    <path d="M16.5 7C13 7 10 9 9 12C8 15 9.5 19 12 21C14.5 23 18 23 21 21" stroke="#0EA5E9" strokeWidth="3.5" strokeLinecap="round" />
+    <path d="M12 21C10 23 8 23 6 22" stroke="#22C55E" strokeWidth="3.5" strokeLinecap="round" />
+    <path d="M21 10C24 10 26 12 26 15C26 18 24 20 21 21" stroke="#F59E0B" strokeWidth="3.5" strokeLinecap="round" />
+    <circle cx="16" cy="15" r="3" fill="#3B82F6" />
+  </svg>
+);
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, profile, logout, isAdmin } = useSupabaseAuth();
-  const { t, locale } = useI18n();
-  const { config } = useSiteConfig();
+  const { t } = useI18n();
 
-  // Auto-enable push notifications
   usePushNotifications();
+  const { items: menuItems } = useMenuItems(true);
 
-  // Use unified data system for menu items
-  const { items: menuItems, loading: menuLoading } = useMenuItems(true);
+  const { config } = useSiteConfig();
+  const { unreadCount } = useNotifications(user?.id || '');
 
-  // Debug para monitorar mudanças no config
-  useEffect(() => {
-    console.log('🔧 MainLayout: Config atualizado', {
-      sidebarTitle: config?.sidebarTitle,
-      title: config?.title,
-      timestamp: Date.now()
-    });
-  }, [config]);
-  const [isI18nReady, setIsI18nReady] = useState(false);
-  const [, forceUpdate] = useState({});
-  const [pendingCount, setPendingCount] = useState(0);
-
-  // Forçar re-render quando o locale mudar
-  useEffect(() => {
-    console.log('🌐 Locale mudou para:', locale);
-    console.log('🔄 Forçando atualização do MainLayout devido à mudança de locale');
-    forceUpdate({});
-  }, [locale]);
-
-  // Forçar atualização dos itens do menu quando o locale mudar
-  useEffect(() => {
-    console.log('🔄 Locale mudou, atualizando exibição dos itens do menu');
-    // Sempre limpar o cache do unifiedDataService para forçar recarregamento com novo locale
-    import('@/lib/unifiedDataService').then(({ unifiedDataService }) => {
-      unifiedDataService.clearCache();
-      console.log('🔄 Cache limpo devido à mudança de locale para:', locale);
-    });
-    // Limpar cache local também
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('unified-data-cache-menu');
-    }
-    // Forçar re-render para atualizar os textos
-    forceUpdate({});
-  }, [locale]);
-
-  // Escutar evento customizado de mudança de locale
-  useEffect(() => {
-    const handleLocaleChange = (event: CustomEvent) => {
-      console.log('🌐 Evento localeChanged recebido:', event.detail.locale);
-      // Limpar cache e forçar recarregamento dos dados do menu
-      import('@/lib/unifiedDataService').then(({ unifiedDataService }) => {
-        unifiedDataService.clearCache();
-        // Forçar atualização do menu
-        forceUpdate({});
-      });
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('localeChanged', handleLocaleChange as EventListener);
-      return () => {
-        window.removeEventListener('localeChanged', handleLocaleChange as EventListener);
-      };
-    }
-  }, []);
-
-  // Verificar se o I18n está pronto
-  useEffect(() => {
-    // Testar se a tradução está funcionando
-    const testTranslation = t('common.dashboard');
-    console.log(t('components.testeDeTraducaoCommondashboard'), testTranslation);
-
-    if (testTranslation && testTranslation !== 'common.dashboard') {
-      console.log(t('components.i18nEstaPronto'));
-      setIsI18nReady(true);
-    } else {
-      console.warn(t('components.i18nAindaNaoEstaProntoAguardando'));
-      // Tentar novamente após um pequeno delay
-      const timer = setTimeout(() => {
-        setIsI18nReady(true);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [locale, t]);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  // FORÇAR SIDEBAR EXPANDIDA - NÃO PERMITIR COLAPSAR
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMeuRHOpen, setIsMeuRHOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Debug: Verificar se isCollapsed está mudando
-  useEffect(() => {
-    console.log('🔍 DEBUG: isCollapsed mudou para:', isCollapsed);
-  }, [isCollapsed]);
-
-  // Debug: Log menu items
-  useEffect(() => {
-    console.log('🔍 Menu items loaded:', menuItems.length, 'items');
-    console.log('📝 Menu items:', menuItems);
-    console.log('🔄 Loading:', menuLoading);
-    console.log('📏 isCollapsed:', isCollapsed);
-  }, [menuItems, menuLoading, isCollapsed]);
-
-  // Estado persistente para recolher/expandir sidebar
+  // Load state
   useEffect(() => {
     const saved = localStorage.getItem('main-sidebar-collapsed');
     setIsCollapsed(saved ? JSON.parse(saved) : false);
+    const savedMeuRH = localStorage.getItem('sidebar-meurh-open');
+    if (savedMeuRH !== null) setIsMeuRHOpen(JSON.parse(savedMeuRH));
   }, []);
 
-  // Buscar contagem de avaliações pendentes para gerentes
-  useEffect(() => {
-    const fetchPendingCount = async () => {
-      if (!user) {
-        return;
-      }
-
-      try {
-        // Usar fetchWithToken para garantir que o token correto seja usado
-        // Importar fetchWithToken dinamicamente para evitar problemas de SSR se necessário, 
-        // mas MainLayout é 'use client', então podemos importar direto.
-        // Já que não temos fetchWithToken importado aqui, vamos usar a lógica do tokenStorage
-
-        const { fetchWithToken } = await import('@/lib/tokenStorage');
-
-        const response = await fetchWithToken('/api/avaliacao-desempenho/avaliacoes/pending-review');
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setPendingCount(data.count || 0);
-          }
-        }
-      } catch (error) {
-        console.error('🔴 Badge: Erro ao buscar contagem:', error);
-      }
-    };
-
-    fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 60000);
-    return () => clearInterval(interval);
-  }, [user, profile]);
-
   const toggleSidebar = () => {
-    // Evitar toggle de colapso no mobile (bug visual); colapso apenas em md+
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return;
-    }
     const newState = !isCollapsed;
     setIsCollapsed(newState);
     localStorage.setItem('main-sidebar-collapsed', JSON.stringify(newState));
   };
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+  const toggleMeuRH = () => {
+    const newState = !isMeuRHOpen;
+    setIsMeuRHOpen(newState);
+    localStorage.setItem('sidebar-meurh-open', JSON.stringify(newState));
   };
 
-  const handleLogout = async () => {
-    try {
-      // A função logout() já cuida do redirecionamento
-      await logout();
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      // Em caso de erro, forçar redirecionamento mesmo assim
-      window.location.replace('/login?t=' + Date.now());
-    }
+  // Menu Definition
+  const sidebarItems = [
+    { id: 'dashboard', href: '/dashboard', label: t('menu.dashboard'), icon: FiGrid },
+    { id: 'noticias', href: '/noticias', label: t('menu.noticias'), icon: FiRss, badge: unreadCount > 0 ? unreadCount : undefined },
+    // Meu RH is handled separately as a group
+    { id: 'academy', href: '/academy', label: t('menu.academy'), icon: FiAward },
+    { id: 'biblioteca', href: '/biblioteca', label: t('menu.biblioteca'), icon: FiBook },
+    { id: 'ajuda', href: '/ajuda', label: t('common.help'), icon: FiAlertCircle },
+  ];
+
+  const meuRHSubs = [
+    { id: 'ponto', href: '/ponto', label: t('menu.ponto'), icon: FiClock },
+    { id: 'reembolso', href: '/reembolso', label: t('menu.reembolso'), icon: FiDollarSign },
+    { id: 'contracheque', href: '/contracheque', label: t('menu.contracheque'), icon: FiFileText },
+    { id: 'avaliacao', href: '/avaliacao', label: t('menu.avaliacao'), icon: FiBarChart2 },
+  ];
+
+  const renderItem = (item: any) => {
+    const isActive = pathname === item.href;
+    const Icon = item.icon;
+
+    return (
+      <Link
+        key={item.id}
+        href={item.href}
+        className={`relative flex items-center px-4 py-3.5 my-1 mx-2 rounded-xl transition-all duration-200 group
+          ${isActive
+            ? 'bg-[#0066FF] text-white shadow-md shadow-blue-500/30'
+            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+          }`}
+        title={isCollapsed ? item.label : ''}
+      >
+        <Icon className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'} ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}`} />
+
+        {!isCollapsed && (
+          <span className={`font-medium text-sm ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`}>
+            {item.label}
+          </span>
+        )}
+
+        {/* Badge for News */}
+        {item.badge && !isCollapsed && (
+          <span className="ml-auto bg-red-50 text-red-600 text-xs font-bold px-2.5 py-0.5 rounded-lg min-w-[20px] text-center ml-2">
+            {item.badge}
+          </span>
+        )}
+        {item.badge && isCollapsed && (
+          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+        )}
+      </Link>
+    );
   };
 
   return (
     <ProtectedRoute>
       <GlobalTimeTracker />
-      <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-        {/* Sidebar para desktop */}
+      <div className="min-h-screen bg-gray-50 flex font-sans">
+
+        {/* Sidebar */}
         <aside
-          className={`bg-white shadow-md fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-all duration-300 ease-in-out z-30 flex flex-col`}
-          style={{
-            width: typeof window !== 'undefined' && window.innerWidth >= 768
-              ? (isCollapsed ? '64px' : '256px')
-              : '256px'
-          }}
+          className={`bg-white fixed z-40 inset-y-0 left-0 border-r border-gray-100 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
-          {/* Logo / título e botão de recolher */}
-          <div className="p-4 border-b flex items-center justify-between">
-            {!isCollapsed ? (
-              <>
-                <Link href="/dashboard" className="flex items-center space-x-2"
-                  title={config?.title || "Painel ABZ Group"}
-                >
-                  <FiGrid className="h-6 w-6 text-abz-blue" />
-                  {(config?.sidebarTitle || config?.title) && (
-                    <span className="text-lg font-semibold text-abz-blue-dark">{config?.sidebarTitle || config?.title || "Painel ABZ"}</span>
-                  )}
-                </Link>
-                <button
-                  className="hidden md:inline-flex rounded-md p-2 text-white bg-abz-blue hover:bg-abz-blue-dark transition-colors shadow-sm"
-                  onClick={toggleSidebar}
-                  title="Recolher menu"
-                >
-                  <FiChevronLeft className="h-5 w-5" />
-                </button>
-              </>
-            ) : (
-              <button
-                className="hidden md:flex items-center justify-center w-full rounded-md p-2 text-white bg-abz-blue hover:bg-abz-blue-dark transition-colors shadow-sm"
-                onClick={toggleSidebar}
-                title="Expandir menu"
-              >
-                <FiChevronRight className="h-5 w-5" />
-              </button>
+          {/* Logo */}
+          {/* Logo */}
+          <div className={`h-20 flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
+            {!isCollapsed && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                  <img
+                    src={config?.logo || '/images/logo.png'}
+                    alt="Logo"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== '/images/LC1_Azul.png') {
+                        target.src = '/images/LC1_Azul.png';
+                      }
+                    }}
+                  />
+                </div>
+                <span className="text-xl font-bold text-gray-800 tracking-tight">{config?.sidebarTitle || 'Portal'}</span>
+              </div>
             )}
+
+            {/* Collapse toggle */}
+            <button
+              onClick={toggleSidebar}
+              className={`p-1.5 rounded-lg transition-colors duration-200 text-[#0066FF] hover:bg-blue-50 ${isCollapsed ? '' : 'ml-auto'}`}
+              title={isCollapsed ? "Expandir" : "Recolher"}
+            >
+              <FiSidebar className="w-6 h-6" />
+            </button>
           </div>
 
-          {/* Menu de navegação */}
-          <nav className="flex-grow overflow-y-auto py-4 space-y-1 px-2">
-            {menuLoading ? (
-              // Skeleton loading state
-              <div className="space-y-1">
-                {[...Array(9)].map((_, i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-3 py-2 rounded-md`}>
-                      <div className="w-5 h-5 bg-gray-300 rounded"></div>
-                      {!isCollapsed && <div className="h-4 bg-gray-300 rounded w-24"></div>}
-                    </div>
-                  </div>
+          {/* Menu */}
+          <nav className="flex-1 py-4 overflow-y-auto px-2 space-y-1">
+            {/* Home */}
+            {renderItem(sidebarItems[0])}
+
+            {/* News */}
+            {renderItem(sidebarItems[1])}
+
+            {/* Meu RH Dropdown */}
+            <div className="mx-2 my-1">
+              <button
+                onClick={toggleMeuRH}
+                className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 ${isMeuRHOpen ? 'bg-gray-50' : ''}`}
+              >
+                <FiCreditCard className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'}`} />
+                {!isCollapsed && (
+                  <>
+                    <span className="font-medium text-sm text-gray-500 flex-1 text-left">{t('menu.meuRH')}</span>
+                    <FiChevronDown className={`w-4 h-4 transition-transform ${isMeuRHOpen ? 'rotate-180' : ''}`} />
+                  </>
+                )}
+              </button>
+
+              {/* Submenu */}
+              <div className={`overflow-hidden transition-all duration-300 ${isMeuRHOpen && !isCollapsed ? 'max-h-48 mt-1' : 'max-h-0'}`}>
+                {meuRHSubs.map((sub) => (
+                  <Link
+                    key={sub.id}
+                    href={sub.href}
+                    className="flex items-center py-2.5 pl-12 pr-4 text-sm text-gray-400 hover:text-blue-500 hover:bg-blue-50/50 rounded-lg mx-2 transition-colors duration-200"
+                  >
+                    <sub.icon className="w-5 h-5 mr-3" />
+                    {sub.label}
+                  </Link>
                 ))}
               </div>
-            ) : (
-              (menuItems.length > 0 ? menuItems : mainMenuItems)
-                .filter(item => item.id !== 'admin') // Nunca mostrar item admin no menu
-                .map((item) => {
-                  const isActive = pathname ? (pathname === item.href || pathname.startsWith(item.href + '/')) : false;
+            </div>
 
-                  // Garantir que o ícone seja um componente válido
-                  const IconComponent = item.icon || getIconComponent((item as any).icon_name || (item as any).iconName);
-
-                  // Obter o texto a ser exibido com base no locale
-                  let displayLabel: string;
-
-                  // Se vier do banco de dados (Supabase), priorizar o título do próprio item
-                  // O hook useUnifiedData já resolveu a tradução (title_en vs title_pt)
-                  if ((item as any).source === 'supabase' && (item as any).title) {
-                    displayLabel = (item as any).title;
-                  }
-                  // Se for item hardcoded com label, traduzir via t()
-                  else if ((item as any).label) {
-                    displayLabel = t((item as any).label);
-                  }
-                  // Se vier do banco de dados (sem source explícito ou legado)
-                  else {
-                    // Primeiro, tentar mapear o título para uma chave de tradução
-                    const titleKey = titleToTranslationKey[(item as any).title];
-                    if (titleKey) {
-                      displayLabel = t(titleKey);
-                    }
-                    // Depois, tentar traduzir usando o ID
-                    else if (item.id) {
-                      const translationKey = `menu.${item.id}`;
-                      const translated = t(translationKey);
-
-                      if (translated && translated !== translationKey) {
-                        displayLabel = translated;
-                      } else {
-                        displayLabel = (item as any).title || item.id;
-                      }
-                    }
-                    // Fallback final
-                    else {
-                      displayLabel = (item as any).title || item.id;
-                    }
-                  }
-
-                  // Debug para o primeiro item
-                  if (item.id === menuItems[0]?.id) {
-                    console.log('🔍 Menu Item Debug:', {
-                      id: item.id,
-                      locale: locale,
-                      displayLabel: displayLabel,
-                      itemTitle: (item as any).title,
-                      title_pt: (item as any).title_pt,
-                      title_en: (item as any).title_en,
-                      label: (item as any).label,
-                      isFromDatabase: menuItems.length > 0,
-                      fullItem: item
-                    });
-                  }
-
-                  // Verificação de segurança para garantir que href não é undefined
-                  if (!item.href) {
-                    console.warn('Menu item sem href encontrado:', item);
-                    return null;
-                  }
-
-                  const showBadge = item.id === 'avaliacao' && pendingCount > 0 && (profile?.role === 'MANAGER' || profile?.role === 'ADMIN');
-
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      title={displayLabel}
-                      className={`flex items-center ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-2.5 rounded-md text-sm font-medium transition-colors duration-150 relative ${isActive
-                        ? 'bg-abz-blue text-white shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-abz-blue-dark'
-                        }`}
-                    >
-                      <IconComponent className={`${isCollapsed ? '' : 'mr-3'} h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
-                      {!isCollapsed && <span className="whitespace-nowrap">{displayLabel}</span>}
-                      {showBadge && (
-                        <span className={`${isCollapsed ? 'absolute -top-1 -right-1' : 'ml-auto'} inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full`}>
-                          {pendingCount}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })
-            )}
-
+            {/* Rest of items */}
+            {sidebarItems.slice(2).map(renderItem)}
 
           </nav>
 
-          {/* Rodapé com informações do usuário */}
-          <div className="p-4 border-t">
-            {!isCollapsed && (
-              <Link
-                href="/profile"
-                className="flex items-center mb-4 hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors cursor-pointer group"
-                title="Ver perfil"
-              >
-                <div className="w-10 h-10 rounded-full bg-abz-light-blue flex items-center justify-center mr-3 overflow-hidden group-hover:ring-2 group-hover:ring-abz-blue transition-all">
-                  {(profile as any)?.drive_photo_url || (profile as any)?.avatar ? (
-                    <img
-                      src={(profile as any)?.drive_photo_url || (profile as any)?.avatar}
-                      alt={profile?.first_name || t('components.usuario')}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <FiUser className="h-5 w-5 text-abz-blue" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 truncate group-hover:text-abz-blue transition-colors">
-                    {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : user?.email}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                </div>
-              </Link>
-            )}
-
-            <div className={`flex ${isCollapsed ? 'flex-col space-y-2' : 'space-x-2'}`}>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className={`${isCollapsed ? 'p-2' : 'px-3 py-2'} text-xs bg-abz-blue text-white rounded hover:bg-abz-blue-dark transition-colors flex items-center justify-center`}
-                  title="Painel Admin"
-                >
-                  <FiSettings className={`h-4 w-4 ${!isCollapsed ? 'mr-1' : ''}`} />
-                  {!isCollapsed && 'Admin'}
-                </Link>
-              )}
-
-              <button
-                onClick={handleLogout}
-                className={`${isCollapsed ? 'p-2' : 'px-3 py-2'} text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center justify-center`}
-                title="Sair"
-              >
-                <FiLogOut className={`h-4 w-4 ${!isCollapsed ? 'mr-1' : ''}`} />
-                {!isCollapsed && 'Sair'}
-              </button>
-            </div>
-
-            {!isCollapsed && (
-              <div className="mt-3">
-                <LanguageSelector variant="inline" className="justify-center" />
+          {/* Credits */}
+          {!isCollapsed && (
+            <div className="p-6 mt-auto">
+              <div className="pt-4 border-t border-gray-100 text-[11px] text-gray-500 font-medium leading-relaxed">
+                Desenvolvido por <a href="https://github.com/Caiolinooo" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600 transition-colors">Caio Correia</a>.
+                <br />
+                2026 © All rights reserved.
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </aside>
 
-        {/* Overlay para mobile */}
-        {isMobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-            onClick={toggleMobileMenu}
-          />
-        )}
+        {/* Main Content Wrapper */}
+        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
 
-        {/* Conteúdo principal */}
-        <div
-          className="flex-1 flex flex-col min-h-screen md:transition-all md:duration-300"
-          style={{
-            marginLeft: typeof window !== 'undefined' && window.innerWidth >= 768
-              ? (isCollapsed ? '64px' : '256px')
-              : '0'
-          }}
-        >
-          {/* Notificações globais fixas (desktop) */}
-          <div className="hidden md:block fixed top-4 right-4 z-50">
-            <NotificationHUD userId={user?.id || ''} position="top-right" evaluationPendingCount={pendingCount} />
-          </div>
+          {/* Top Header */}
+          {/* Top Header */}
+          <header className="h-20 px-8 flex items-center justify-end bg-transparent z-30 sticky top-0 pointer-events-none">
+            <div className="pointer-events-auto flex items-center bg-white rounded-full shadow-sm border border-gray-100 px-2 py-1.5 mt-4 mr-4 gap-1">
+              {/* Notification Button */}
+              <NotificationHUD
+                userId={user?.id || ''}
+                showBanner={true}
+                className="w-9 h-9 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-50 hover:text-gray-700 relative transition-colors"
+              />
 
-          {/* Header mobile */}
-          <header className="bg-white shadow-sm md:hidden">
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center">
-                <button
-                  onClick={toggleMobileMenu}
-                  className="text-gray-500 hover:text-gray-700 focus:outline-none"
-                >
-                  <FiMenu className="h-6 w-6" />
-                </button>
-                {(config?.sidebarTitle || config?.title) && (
-                  <span className="ml-3 text-lg font-semibold text-abz-blue-dark">{config?.sidebarTitle || config?.title || "Painel ABZ"}</span>
-                )}
+              {/* Language Button */}
+              <div className="w-9 h-9 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                <LanguageSelector variant="dropdown" className="!p-0 !bg-transparent text-gray-500 hover:text-gray-700" />
               </div>
-              <div className="flex items-center space-x-2">
-                <NotificationHUD userId={user?.id || ''} position="top-right" evaluationPendingCount={pendingCount} />
-              </div>
+
+              <div className="w-px h-5 bg-gray-200 mx-1"></div>
+
+              {/* Profile Dropdown */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 outline-none hover:ring-2 hover:ring-blue-100 transition-all focus:ring-2 focus:ring-blue-100">
+                    {(() => {
+                      const avatarUrl = profile?.drive_photo_url || profile?.avatar || user?.user_metadata?.avatar_url;
+                      const hasValidAvatar = avatarUrl && !avatarUrl.includes('logo.png') && !avatarUrl.includes('LC1_Azul.png');
+
+                      if (hasValidAvatar) {
+                        return <img src={avatarUrl} className="w-full h-full object-cover" />;
+                      }
+
+                      return (
+                        <div className="w-full h-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                          {profile?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
+                          {profile?.last_name?.charAt(0)}
+                        </div>
+                      );
+                    })()}
+                  </button>
+                </DropdownMenu.Trigger>
+
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    className="z-50 min-w-[240px] bg-white rounded-xl shadow-xl border border-gray-100 p-2 animate-in fade-in zoom-in-95 duration-200 slide-in-from-top-2"
+                    sideOffset={8}
+                    align="end"
+                  >
+                    <div className="px-3 py-3 border-b border-gray-50 mb-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                          {(() => {
+                            const avatarUrl = profile?.drive_photo_url || profile?.avatar || user?.user_metadata?.avatar_url;
+                            const hasValidAvatar = avatarUrl && !avatarUrl.includes('logo.png') && !avatarUrl.includes('LC1_Azul.png');
+
+                            if (hasValidAvatar) {
+                              return <img src={avatarUrl} className="w-full h-full object-cover" />;
+                            }
+
+                            return (
+                              <div className="w-full h-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+                                {profile?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
+                                {profile?.last_name?.charAt(0)}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <div className="flex flex-col overflow-hidden">
+                          <span className="text-sm font-semibold text-gray-800 truncate">
+                            {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : (user?.email?.split('@')[0] || 'Usuário')}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate">{user?.email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isAdmin && (
+                      <Link href="/admin" className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
+                        <FiShield className="w-4 h-4" />
+                        <span>Painel Admin</span>
+                      </Link>
+                    )}
+
+                    <DropdownMenu.Item className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
+                      <FiSettings className="w-4 h-4" />
+                      <span>Configurações</span>
+                    </DropdownMenu.Item>
+
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg cursor-pointer outline-none transition-colors mt-1"
+                      onClick={logout}
+                    >
+                      <FiLogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
             </div>
           </header>
 
-          {/* Conteúdo da página */}
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
+          <main className="flex-1 p-0">
             {children}
           </main>
-
-          {/* Footer */}
-          <Footer />
-
-          {/* Help Widget */}
-          <HelpWidget />
         </div>
+
       </div>
     </ProtectedRoute>
   );
 }
-

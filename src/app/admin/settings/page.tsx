@@ -395,6 +395,47 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Seletor de Idioma */}
+            <div className="md:col-span-2 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('admin.logoDoSite') || 'Logo do Site'}
+              </label>
+              <div className="flex items-center space-x-6">
+                <div className="shrink-0">
+                  {logoFile ? (
+                    <img
+                      className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50"
+                      src={URL.createObjectURL(logoFile)}
+                      alt="New logo preview"
+                    />
+                  ) : (
+                    <img
+                      className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50"
+                      src={config.logo || '/images/LC1_Azul.png'}
+                      alt="Current logo"
+                    />
+                  )}
+                </div>
+                <label className="block">
+                  <span className="sr-only">Escolher logo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'logo')}
+                    className="block w-full text-sm text-slate-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100
+                    "
+                  />
+                </label>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Recomendado: PNG ou SVG com fundo transparente. Altura máxima: 64px.
+              </p>
+            </div>
+
             <div className="md:col-span-2 mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Idioma para Configuração
@@ -403,33 +444,30 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedLocale('pt-BR')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedLocale === 'pt-BR'
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedLocale === 'pt-BR'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                    }`}
                 >
                   🇧🇷 Português
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedLocale('en-US')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedLocale === 'en-US'
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedLocale === 'en-US'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                    }`}
                 >
                   🇺🇸 English
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedLocale('es-ES')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedLocale === 'es-ES'
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedLocale === 'es-ES'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                    }`}
                 >
                   🇪🇸 Español
                 </button>

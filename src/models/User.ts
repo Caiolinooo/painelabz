@@ -35,6 +35,12 @@ export interface User {
   role: 'ADMIN' | 'USER' | 'MANAGER';
   position?: string;
   department?: string;
+  sector_id?: string;
+  sector?: {
+    id: string;
+    name: string;
+    description?: string;
+  };
   avatar?: string;
   active: boolean;
   accessPermissions?: AccessPermissions;
@@ -53,6 +59,7 @@ export interface CreateUserData {
   role?: 'ADMIN' | 'USER' | 'MANAGER';
   position?: string;
   department?: string;
+  sector_id?: string;
   password?: string;
 }
 
@@ -65,6 +72,7 @@ export interface UpdateUserData {
   role?: 'ADMIN' | 'USER' | 'MANAGER';
   position?: string;
   department?: string;
+  sector_id?: string;
   active?: boolean;
   accessPermissions?: AccessPermissions;
   reimbursement_email_settings?: ReimbursementEmailSettings;

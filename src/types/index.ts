@@ -2,7 +2,23 @@
 // Tipos centralizados do projeto
 
 // Re-export tipos existentes
+// Re-export tipos existentes
 export type { User } from '../models/User';
+
+export interface Sector {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SectorModule {
+  id: string;
+  sector_id: string;
+  module_id: string;
+  created_at: string;
+}
 
 // Tipos de Avaliação
 export interface Evaluation {
