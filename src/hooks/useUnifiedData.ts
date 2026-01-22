@@ -57,13 +57,37 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
           try {
             if (userId) {
               console.log('🔄 Menu: Loading cards from API with userId:', userId);
-              const cards = await getCardsCached({ userId, userRole });
+              const cards = await getCardsCached({ userId, userRole, userSectorId: (user as any)?.sector_id });
               console.log('🔄 Menu: Got', cards?.length, 'cards from API');
+
+              // Buscar permissões do setor se usuário tiver setor
+              let allowedSectorModules: string[] = [];
+              const sectorId = (user as any)?.sector_id;
+              if (sectorId) {
+                try {
+                  allowedSectorModules = await unifiedDataService.getSectorAllowedModules(sectorId);
+                } catch (e) {
+                  console.error('Falha ao buscar permissões do setor:', e);
+                }
+              }
+
               if (cards?.[0]) {
                 console.log('🔄 Menu: First card title:', cards[0].title, 'id:', cards[0].id);
               }
               loadedItems = (cards || [])
-                .filter((c: any) => c.href && c.href.trim() !== '' && !c.adminOnly) // Não mostrar adminOnly no menu
+                .filter((c: any) => {
+                  if (!c.href || c.href.trim() === '' || c.adminOnly) return false;
+
+                  // Filtro de setor
+                  if (sectorId && allowedSectorModules.length > 0) {
+                    // Dashboard é sempre permitido
+                    if (c.id !== 'dashboard' && !allowedSectorModules.includes(c.id)) {
+                      return false;
+                    }
+                  }
+
+                  return true;
+                })
                 .map((c: any) => ({
                   id: c.id,
                   title: c.title,
@@ -95,14 +119,15 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
             }
           } catch (e) {
             console.warn('Falha ao carregar menu, usando fallback:', e);
-            loadedItems = await getMenuItems(userRole, userId);
+            loadedItems = await getMenuItems(userRole, userId, (user as any)?.sector_id);
           }
           break;
         case 'admin':
           // Para admin, carregar todos os items
           loadedItems = await unifiedDataService.getItems({
             userRole,
-            userId
+            userId,
+            userSectorId: (user as any)?.sector_id
           });
           break;
         default:

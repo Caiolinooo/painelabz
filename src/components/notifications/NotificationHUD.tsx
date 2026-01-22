@@ -13,6 +13,7 @@ interface NotificationHUDProps {
   maxVisible?: number;
   showBanner?: boolean;
   evaluationPendingCount?: number;
+  className?: string;
 }
 
 const NotificationHUD: React.FC<NotificationHUDProps> = ({
@@ -20,7 +21,8 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
   position = 'top-right',
   maxVisible = 5,
   showBanner = true,
-  evaluationPendingCount = 0
+  evaluationPendingCount = 0,
+  className
 }) => {
   const { t, locale, version } = useI18n();
 
@@ -291,7 +293,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
       <button
         ref={bellRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+        className={className || "relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"}
         aria-label={t('components.notificacoes')}
         title={unreadCount > 0 || evaluationPendingCount > 0 ? `${unreadCount} notificações, ${evaluationPendingCount} avaliações pendentes` : t('components.notificacoes')}
       >

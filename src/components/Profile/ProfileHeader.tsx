@@ -21,7 +21,12 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
   const department = user?.department || t('profile.noDepartment', 'Departamento não informado');
 
   // Usar a foto do Google Drive se disponível, caso contrário usar o avatar ou um placeholder
-  const photoUrl = user?.drive_photo_url || user?.avatar || null;
+  let photoUrl = user?.drive_photo_url || user?.avatar || null;
+
+  // Ignorar imagens que sejam o logo padrão
+  if (photoUrl && (photoUrl.includes('logo.png') || photoUrl.includes('LC1_Azul.png'))) {
+    photoUrl = null;
+  }
 
   return (
     <>

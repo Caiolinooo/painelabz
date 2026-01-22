@@ -1,5 +1,34 @@
 # Changelog
 
+## [4.0.0] - 2026-01-22
+
+### Added
+- **Dashboard Refinement**:
+    - Seção "Últimas Notícias" dinâmica com suporte a autoplay de vídeo em mudo.
+    - Seção "Links Rápidos" atualizada com ferramentas críticas (Ponto, Reembolso, Contracheque, Academy).
+    - Integração real com o calendário da empresa para exibição de eventos próximos.
+    - Botão "+" rápido para criação de notícias (visível para editores).
+- **Módulo de Notícias**:
+    - Novo design de barra de busca unificada (estilo "Pill").
+    - Filtro "Destaques" integrado à barra de busca.
+    - Restrição de criação de posts: usuários padrão não veem mais o card de "O que você está pensando?".
+- **Internacionalização (i18n)**:
+    - Suporte a interpolação dinâmica em traduções (ex: "Olá, {{name}}!").
+    - Correções extensivas em chaves de tradução nos idiomas PT e EN.
+- **Perfil do Usuário**:
+    - Priorização de `drive_photo_url` para exibição correta da foto de perfil.
+    - Lógica defensiva para ignorar logos padrão do sistema como avatar de usuário.
+
+### Improved
+- **Interface Geral**:
+    - LanguageSelector agora utiliza variante dropdown para melhor UX no header.
+    - Limpeza de redundâncias no `MainLayout`.
+
+### Fixed
+- **Estabilidade**:
+    - Correção de crashes no `NotificationHUD`.
+    - Resolvido problema de hidratação e perda de contexto no `I18nProvider`.
+
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),

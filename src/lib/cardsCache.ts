@@ -8,6 +8,7 @@ export type CardsRequest = {
   userRole?: string | null;
   userEmail?: string | null;
   userPhone?: string | null;
+  userSectorId?: string | null;
 };
 
 export type CardsCacheKey = string; // `${userId}|${userRole}`
@@ -24,7 +25,8 @@ const TTL_MS = 60 * 1000; // 60s default TTL to avoid stale menus and repeated c
 function makeKey(req: CardsRequest): CardsCacheKey {
   const id = req.userId || '';
   const role = (req.userRole || '').toLowerCase();
-  return `${id}|${role}`;
+  const sector = req.userSectorId || '';
+  return `${id}|${role}|${sector}`;
 }
 
 function isFresh(entry?: Entry): boolean {
@@ -78,6 +80,7 @@ export async function getCardsCached(req: CardsRequest): Promise<any[]> {
         userRole: req.userRole,
         userEmail: req.userEmail,
         userPhone: req.userPhone,
+        userSectorId: req.userSectorId,
       })
     });
     if (!res.ok) {

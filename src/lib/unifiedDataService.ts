@@ -68,6 +68,47 @@ class UnifiedDataService {
   }
 
   /**
+   * Obtém módulos permitidos para um setor
+   */
+  async getSectorAllowedModules(sectorId: string): Promise<string[]> {
+    if (!sectorId) return [];
+
+    const cacheKey = `sector-modules-${sectorId}`;
+    const cached = this.cache.get(cacheKey);
+
+    if (cached && this.isCacheValid(cached.timestamp)) {
+      return cached.data as any; // Cast for TS
+    }
+
+    try {
+      if (!supabase) return [];
+
+      const { data, error } = await supabase
+        .from('sector_modules')
+        .select('module_id')
+        .eq('sector_id', sectorId);
+
+      if (error) {
+        console.error('Error fetching sector modules:', error);
+        return [];
+      }
+
+      const allowedModules = data.map(m => m.module_id);
+
+      // Cache the result
+      this.cache.set(cacheKey, {
+        data: allowedModules as any,
+        timestamp: Date.now()
+      });
+
+      return allowedModules;
+    } catch (e) {
+      console.error('Error checking sector modules:', e);
+      return [];
+    }
+  }
+
+  /**
    * Configura o serviço
    */
   configure(config: Partial<UnifiedDataConfig>) {
@@ -269,8 +310,15 @@ class UnifiedDataService {
     category?: string;
     userRole?: string;
     userId?: string;
+    userSectorId?: string;
   }): Promise<UnifiedItem[]> {
     let items = await this.loadItems();
+
+    // Buscar permissões do setor se necessário
+    let allowedSectorModules: string[] = [];
+    if (filters?.userSectorId) {
+      allowedSectorModules = await this.getSectorAllowedModules(filters.userSectorId);
+    }
 
     // Aplicar filtros
     if (filters) {
@@ -303,6 +351,47 @@ class UnifiedDataService {
         }
         if (item.allowedUserIds && !item.allowedUserIds.includes(filters.userId || '')) {
           return false;
+        }
+
+        // Filtro por Setor (Novo)
+        // Se o usuário tem um setor, e este item NÃO está na lista de permitidos do setor
+        // Exceção: items que são 'public' ou 'common' (sem moduleKey definida implicitamente assumimos que são restritos se tiverem role)
+        // Mas para simplificar: se filters.userSectorId existe, verificamos.
+        // Itens sem 'moduleKey' (como dashboard) geralmente são liberados, ou controlados apenas por role.
+        // Vamos assumir que se o item tem um ID que bate com os módulos cadastrados, ele é restrito.
+        // Itens como 'dashboard' ou 'profile' podem não estar na tabela de módulos.
+
+        // Lógica: Se o item deve ser controlado por setor (tem ID mapeável em sector_modules)
+        // E o usuário tem setor, ENTÃO deve estar na lista allowedSectorModules.
+        // Se o item não é "controlável" (ex: dashboard), passamos.
+
+        // Quais itens são controláveis? 
+        // Vamos assumir que todos os itens que aparecem no menu, exceto 'dashboard', são controláveis se o admin assim configurar.
+        // Se allowedSectorModules está vazio, pode ser que o setor não tenha AINDA configuração, ou não tenha acesso a nada.
+        // Vamos ser permissivos por enquanto para itens hardcoded básicos, mas restritivos para módulos de negócio.
+
+        if (filters && filters.userSectorId && allowedSectorModules.length > 0) {
+          // Se o item tem um ID que está na lista de permitidos, OK.
+          // Se NÃO está, verificamos se é um item "core" que sempre deve aparecer?
+          // Por enquanto, vamos implementar a lógica estrita:
+          // Se o setor tem módulos definidos, o usuário só vê esses módulos (+ dashboard que é padrão).
+
+          // ID 'dashboard' sempre permitido
+          if (item.id !== 'dashboard' && !allowedSectorModules.includes(item.id)) {
+            // Se o setor tem definições explicítas, e esse item não está lá, negamos.
+            // Mas e se o setor não tiver NENHUM módulo definido? (Length 0). 
+            // Aí entra no if acima e não entra aqui.
+            return false;
+          }
+        } else if (filters && filters.userSectorId && allowedSectorModules.length === 0) {
+          // Setor sem módulos definidos.
+          // Bloquear tudo menos Dashboard e itens 'safe'?
+          // Para evitar bloqueio total acidental, talvez manter comportamento atual (liberado)
+          // OU bloquear tudo para forçar configuração.
+          // Decisão: Bloquear tudo exceto Dashboard para setores configurados mas vazios?
+          // Melhor: Se não tem nada na tabela sector_modules para esse setor, assumimos que é um setor "novo" ou "legado" e não aplicamos filtro de setor.
+          // Isso evita quebrar compatibilidade imediata.
+          // Então não fazemos nada aqui.
         }
 
         return item.enabled && item.href && item.href.trim() !== '';
@@ -547,11 +636,12 @@ export async function getDashboardCards(userRole?: string, userId?: string): Pro
   });
 }
 
-export async function getMenuItems(userRole?: string, userId?: string): Promise<UnifiedItem[]> {
+export async function getMenuItems(userRole?: string, userId?: string, userSectorId?: string): Promise<UnifiedItem[]> {
   return await unifiedDataService.getItems({
     showInMenu: true,
     userRole,
-    userId
+    userId,
+    userSectorId
   });
 }
 

@@ -37,32 +37,23 @@ export default function LanguageSelector({
     }
   };
 
-  const getLanguageFlag = (localeCode: Locale) => {
+  const getLanguageCode = (localeCode: Locale) => {
     switch (localeCode) {
       case 'pt-BR':
-        return '🇧🇷';
+        return 'PT';
       case 'en-US':
-        return '🇺🇸';
+        return 'EN';
       default:
-        return '🌐';
+        return localeCode.substring(0, 2).toUpperCase();
     }
   };
 
   const handleSelectLanguage = async (localeCode: Locale) => {
-    console.log('🔴 CLIQUE DETECTADO! Locale selecionado:', localeCode);
-    console.log('🌐 LanguageSelector: Selecionando idioma:', localeCode);
-    console.log('🌐 LanguageSelector: Idioma atual:', locale);
-
-    // Only change if different
+    // ... existing logic ...
     if (localeCode !== locale) {
       setIsChanging(true);
       setLocale(localeCode);
-      console.log('🌐 LanguageSelector: Idioma alterado para:', localeCode);
-      // Não precisa resetar isChanging pois a página vai recarregar
-    } else {
-      console.log(t('components.languageselectorIdiomaJaEOAtualNaoAlterando'));
     }
-
     setIsOpen(false);
   };
 
@@ -72,35 +63,36 @@ export default function LanguageSelector({
       <div className={`relative ${className}`}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 focus:outline-none"
+          className="flex items-center space-x-1.5 text-gray-700 hover:text-gray-900 focus:outline-none font-medium text-sm"
           aria-label={t('common.chooseLanguage')}
           disabled={isChanging}
         >
           {isChanging ? (
-            <FiLoader className="h-5 w-5 animate-spin" />
+            <FiLoader className="h-4 w-4 animate-spin" />
           ) : (
-            <FiGlobe className="h-5 w-5" />
+            <FiGlobe className="h-4 w-4" />
           )}
-          <span className="inline-block">{getLanguageFlag(locale)}</span>
+          <span className="inline-block">{getLanguageCode(locale)}</span>
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+          <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
             <div className="py-1" role="menu" aria-orientation="vertical">
               {availableLocales.map((localeCode) => (
                 <button
                   key={localeCode}
                   onClick={() => handleSelectLanguage(localeCode)}
-                  className={`w-full text-left px-4 py-2 text-sm ${
-                    locale === localeCode ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                  } hover:bg-gray-100 flex items-center justify-between`}
+                  className={`w-full text-left px-4 py-2.5 text-sm ${locale === localeCode ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                    } flex items-center justify-between transition-colors`}
                   role="menuitem"
                 >
-                  <span className="flex items-center">
-                    <span className="mr-2">{getLanguageFlag(localeCode)}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs font-bold w-6 text-center bg-gray-100 rounded px-1 py-0.5 border border-gray-200">
+                      {getLanguageCode(localeCode)}
+                    </span>
                     {getLanguageName(localeCode)}
                   </span>
-                  {locale === localeCode && <FiCheck className="h-4 w-4 text-green-500" />}
+                  {locale === localeCode && <FiCheck className="h-4 w-4 text-blue-600" />}
                 </button>
               ))}
             </div>
@@ -132,9 +124,8 @@ export default function LanguageSelector({
                   <button
                     key={localeCode}
                     onClick={() => handleSelectLanguage(localeCode)}
-                    className={`w-full text-left px-4 py-3 rounded-md ${
-                      locale === localeCode ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-gray-700 hover:bg-gray-100'
-                    } flex items-center justify-between`}
+                    className={`w-full text-left px-4 py-3 rounded-md ${locale === localeCode ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-gray-700 hover:bg-gray-100'
+                      } flex items-center justify-between`}
                   >
                     <span className="flex items-center">
                       <span className="text-2xl mr-3">{getLanguageFlag(localeCode)}</span>
@@ -169,9 +160,8 @@ export default function LanguageSelector({
         <button
           key={localeCode}
           onClick={() => handleSelectLanguage(localeCode)}
-          className={`flex items-center px-2 py-1 rounded transition-colors ${
-            locale === localeCode ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100'
-          } ${isChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`flex items-center px-2 py-1 rounded transition-colors ${locale === localeCode ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100'
+            } ${isChanging ? 'opacity-50 cursor-not-allowed' : ''}`}
           aria-label={getLanguageName(localeCode)}
           disabled={isChanging}
         >

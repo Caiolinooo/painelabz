@@ -117,7 +117,7 @@ export default function ProfilePage() {
       // Usar drive_photo_url se disponível, senão usar avatar como fallback
       const photoUrl = userData?.drive_photo_url || userData?.avatar;
 
-      if (!photoUrl) {
+      if (!photoUrl || photoUrl.includes('logo.png') || photoUrl.includes('LC1_Azul.png')) {
         setProfileImage(null); // Fallback to icon
         return;
       }
@@ -460,7 +460,7 @@ export default function ProfilePage() {
                 <div className="flex flex-wrap justify-center md:justify-start gap-3">
                   <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                     {profile.role === 'ADMIN' ? 'Administrador' :
-                     profile.role === 'MANAGER' ? 'Gerente' : t('profile.usuario')}
+                      profile.role === 'MANAGER' ? 'Gerente' : t('profile.usuario')}
                   </span>
 
                   {profile.active && (
@@ -571,7 +571,7 @@ export default function ProfilePage() {
                       <input
                         type="text"
                         value={profile.role === 'ADMIN' ? 'Administrador' :
-                               profile.role === 'MANAGER' ? 'Gerente' : t('profile.usuario')}
+                          profile.role === 'MANAGER' ? 'Gerente' : t('profile.usuario')}
                         className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
                         disabled
                       />
@@ -622,7 +622,7 @@ export default function ProfilePage() {
                       <p className="text-sm text-gray-500">{t('common.systemRole')}</p>
                       <p className="font-medium">
                         {profile.role === 'ADMIN' ? t('common.administrator') :
-                         profile.role === 'MANAGER' ? t('common.manager') : t('common.user')}
+                          profile.role === 'MANAGER' ? t('common.manager') : t('common.user')}
                       </p>
                     </div>
                   </div>
@@ -713,22 +713,20 @@ export default function ProfilePage() {
                 <Button
                   onClick={() => setActiveTab('profile')}
                   variant="ghost"
-                  className={`py-2 px-4 font-medium text-sm h-auto ${
-                    activeTab === 'profile'
+                  className={`py-2 px-4 font-medium text-sm h-auto ${activeTab === 'profile'
                       ? 'border-b-2 border-abz-blue text-abz-blue'
                       : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   <FiUser className="inline mr-1" /> Perfil
                 </Button>
                 <Button
                   onClick={() => setActiveTab('password')}
                   variant="ghost"
-                  className={`py-2 px-4 font-medium text-sm h-auto ${
-                    activeTab === 'password'
+                  className={`py-2 px-4 font-medium text-sm h-auto ${activeTab === 'password'
                       ? 'border-b-2 border-abz-blue text-abz-blue'
                       : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   <FiLock className="inline mr-1" /> Alterar Senha
                 </Button>

@@ -1,4 +1,5 @@
 export default {
+
   avaliacoes: {
     titulo_avancado: 'Avaliações Avançadas',
     descricao_avancado: 'Métricas, análises e relatórios detalhados de performance',
@@ -518,6 +519,16 @@ export default {
     nameValid: 'Nome válido'
   },
   dashboard: {
+    hello: 'Olá, {{name}}!',
+    welcomeMessage: 'Explore informações e atividades sobre a sua empresa.',
+    searchPlaceholder: 'Buscar em todo sistema...',
+    quickLinks: 'Links Rápidos',
+    registerPoint: 'Registro de Ponto',
+    requests: 'Solicitações',
+    payslips: 'Holerites',
+    courses: 'Cursos',
+    events: 'Eventos',
+    noEvents: 'Sem eventos próximos',
     title: 'Painel',
     welcome: 'Bem-vindo ao Painel ABZ',
     greeting: 'Olá',
@@ -563,6 +574,7 @@ export default {
     reembolso: 'Reembolso',
     contracheque: 'Contracheque',
     ponto: 'Ponto',
+    meuRH: 'Meu RH',
     folhaPagamento: 'Folha de Pagamento',
     avaliacao: 'Avaliação de Desempenho',
     administracao: 'Administração',
@@ -572,6 +584,7 @@ export default {
     social: 'ABZ Social',
     contatos: 'Contatos',
     folha: 'Folha de Pagamento',
+    biblioteca: 'Biblioteca',
   },
   cards: {
     // Traduções padrão para os cards do menu

@@ -6,7 +6,7 @@ import { Locale, locales, getTranslation } from '@/i18n';
 interface I18nContextType {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: string, defaultValue?: string) => string;
+  t: (key: string, params?: Record<string, string | number> | string, defaultValue?: string) => string;
   locales: Record<Locale, any>;
   availableLocales: Locale[];
   version: number;
@@ -73,8 +73,18 @@ export function I18nProvider({ children }: I18nProviderProps) {
   };
 
   // Translation function
-  const t = (key: string, defaultValue?: string) => {
-    return getTranslation(locale, key, defaultValue);
+  const t = (key: string, arg2?: Record<string, string | number> | string, arg3?: string) => {
+    let params: Record<string, string | number> | undefined;
+    let defaultValue: string | undefined;
+
+    if (typeof arg2 === 'string') {
+      defaultValue = arg2;
+    } else if (typeof arg2 === 'object') {
+      params = arg2;
+      defaultValue = arg3;
+    }
+
+    return getTranslation(locale, key, defaultValue, params);
   };
 
   // Get available locales

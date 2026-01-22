@@ -56,6 +56,7 @@ export interface UserProfile {
   role?: string | null;
   position?: string | null;
   department?: string | null;
+  sector_id?: string | null;
   active?: boolean | null;
   is_active?: boolean | null;
   is_verified?: boolean | null;
@@ -71,6 +72,7 @@ export interface UserProfile {
   access_history?: any;
   verification_code?: string | null;
   verification_code_expires?: string | null;
+  drive_photo_url?: string | null;
   accessPermissions?: {
     modules?: {
       [key: string]: boolean;

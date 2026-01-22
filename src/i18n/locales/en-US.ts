@@ -1,4 +1,5 @@
 export default {
+
   common: {
     loading: 'Loading...',
     error: 'An error occurred',
@@ -122,10 +123,11 @@ export default {
     backToDashboard: 'Back to Dashboard',
 
     // Main menu
-    dashboard: 'Dashboard',
+    // Main menu
     reimbursement: 'Reimbursement',
     evaluation: 'Evaluation',
     calendar: 'Calendar',
+    meuRH: 'My HR',
     contacts: 'Contacts',
     timesheet: 'Timesheet',
     payroll: 'Payroll',
@@ -385,6 +387,16 @@ export default {
     close: 'Close viewer',
   },
   dashboard: {
+    hello: 'Hello, {{name}}!',
+    welcomeMessage: 'Explore information and activities about your company.',
+    searchPlaceholder: 'Search entire system...',
+    quickLinks: 'Quick Links',
+    registerPoint: 'Time Clock',
+    requests: 'Requests',
+    payslips: 'Payslips',
+    courses: 'Courses',
+    events: 'Events',
+    noEvents: 'No upcoming events',
     title: 'Dashboard',
     welcome: 'Welcome to ABZ Dashboard',
     greeting: 'Welcome',
@@ -439,6 +451,7 @@ export default {
     social: 'ABZ Social',
     contatos: 'Contacts',
     folha: 'Payroll',
+    biblioteca: 'Library',
   },
   cards: {
     // Traduções padrão para os cards do menu
@@ -2680,6 +2693,23 @@ export default {
     gotIt: 'Got it, let\'s go!',
     newFeaturesDesc: 'Check out the improvements we prepared for you.',
     current: 'Current'
+  },
+  menu: {
+    dashboard: 'Dashboard',
+    news: 'News',
+    noticias: 'News',
+    meuRH: 'My HR',
+    academy: 'Academy',
+    library: 'Library',
+    biblioteca: 'Library',
+    help: 'Help',
+    ajuda: 'Help',
+    ponto: 'Time Clock',
+    reembolso: 'Reimbursement',
+    contracheque: 'Payslips',
+    avaliacao: 'Evaluation',
+    calendar: 'Calendar',
+    calendario: 'Calendar',
   }
 };
 
