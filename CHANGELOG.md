@@ -5,6 +5,35 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.14.0] - 2026-01-22
+
+### Added
+- **Novo Sistema de Mensagens (Chat)**:
+    - Plataforma completa de comunicação interna inspirada no Discord.
+    - Suporte a **Servidores** e **Canais** temáticos.
+    - **Mensagens Diretas (DMs)** privativas entre colaboradores.
+    - Nova interface `ChatPage` e componentes modulares para navegação e mensagens.
+- **Integração de Vídeo Chamadas**:
+    - Implementado suporte a chamadas de vídeo diretamente no chat.
+    - Componente `VideoCall.tsx` com controles de câmera e microfone.
+- **Gestão de Presença e Status**:
+    - Novo seletor de status (Online, Ausente, Não Perturbe, Invisível).
+    - Persistência de status de usuário via `users_unified`.
+- **Infraestrutura de Banco de Dados**:
+    - Novas migrações para suporte ao chat: `create-chat-servers.sql`, `create-dm-tables.sql`, `add-user-status.sql`.
+    - Habilitado suporte a Realtime no Supabase para mensagens instantâneas via `enable-realtime.sql`.
+    - Refinamento de políticas de segurança RLS via `fix-chat-rls.sql`.
+
+### Improved
+- **Arquitetura de UI**:
+    - Centralização de componentes de chat em `src/components/chat/`.
+    - Melhores modais de criação de servidores e canais.
+- **UX**:
+    - Sistema de confirmação genérico via `ConfirmationModal.tsx`.
+
+### Fixed
+- **Estabilidade do Chat**: Correções em permissões de acesso e fluxo de criação de canais.
+
 ## [3.13.0] - 2026-01-20
 
 ### Added

@@ -679,8 +679,12 @@ export default function EngagementDashboard() {
                                                                     <div className="text-xs text-gray-500 truncate">{user.email || user.user_id}</div>
                                                                 </div>
                                                                 <div className="text-right flex-shrink-0">
-                                                                    <div className="text-lg font-bold text-purple-600">{user.access_count}</div>
-                                                                    <div className="text-xs text-gray-400">acessos</div>
+                                                                    <div className="text-lg font-bold text-purple-600">
+                                                                        {user.total_duration > 60
+                                                                            ? `${Math.round(user.total_duration / 60)}min`
+                                                                            : `${Math.round(user.total_duration)}s`}
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-400">{user.access_count} acessos</div>
                                                                 </div>
                                                             </div>
                                                         )) : (

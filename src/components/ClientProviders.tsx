@@ -18,6 +18,7 @@ import CompleteProfilePrompt from '@/components/Profile/CompleteProfilePrompt';
 import ChangelogModal from '@/components/ChangelogModal';
 import { usePathname } from 'next/navigation';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import GlobalTimeTracker from '@/components/tracking/GlobalTimeTracker';
 function ProfilePromptGate({ isMounted, pathname }: { isMounted: boolean; pathname?: string | null }) {
   const { isAuthenticated, isLoading, profile, user } = useSupabaseAuth();
   const isAuthRoute = pathname?.startsWith('/login') || pathname?.startsWith('/register') || pathname?.startsWith('/set-password') || pathname?.startsWith('/reset-password');
@@ -74,6 +75,7 @@ export default function ClientProviders({ children }: { children: React.ReactNod
         <I18nProvider>
           <SiteConfigProvider>
             <AlertProvider>
+              <GlobalTimeTracker />
               <SiteHead />
               {isMounted && <LanguageDialog />}
               {isMounted && <ToastContainer position="top-right" theme="colored" />}
