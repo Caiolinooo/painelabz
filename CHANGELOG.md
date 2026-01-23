@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1] - 2026-01-22
+
+### Fixed
+- **Language Selector**:
+    - Corrigido crash `ReferenceError: getLanguageFlag is not defined` ao alternar idiomas em certas páginas.
+    - Padronização total para códigos de texto (PT/EN) em todas as variantes do seletor.
+
 ## [4.0.0] - 2026-01-22
 
 ### Added
