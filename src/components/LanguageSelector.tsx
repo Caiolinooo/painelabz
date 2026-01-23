@@ -44,7 +44,7 @@ export default function LanguageSelector({
       case 'en-US':
         return 'EN';
       default:
-        return localeCode.substring(0, 2).toUpperCase();
+        return (localeCode as string).substring(0, 2).toUpperCase();
     }
   };
 
@@ -112,7 +112,7 @@ export default function LanguageSelector({
           aria-label={t('common.chooseLanguage')}
         >
           <FiGlobe className="h-5 w-5" />
-          <span className="inline-block">{getLanguageFlag(locale)}</span>
+          <span className="inline-block">{getLanguageCode(locale)}</span>
         </button>
 
         {isOpen && (
@@ -128,7 +128,7 @@ export default function LanguageSelector({
                       } flex items-center justify-between`}
                   >
                     <span className="flex items-center">
-                      <span className="text-2xl mr-3">{getLanguageFlag(localeCode)}</span>
+                      <span className="text-2xl mr-3 font-bold">{getLanguageCode(localeCode)}</span>
                       <span className="font-medium">{getLanguageName(localeCode)}</span>
                     </span>
                     {locale === localeCode && <FiCheck className="h-5 w-5 text-blue-500" />}
@@ -165,8 +165,7 @@ export default function LanguageSelector({
           aria-label={getLanguageName(localeCode)}
           disabled={isChanging}
         >
-          <span className="mr-1">{getLanguageFlag(localeCode)}</span>
-          <span className="text-sm">{localeCode.split('-')[0].toUpperCase()}</span>
+          <span className="text-sm font-medium">{getLanguageCode(localeCode)}</span>
         </button>
       ))}
     </div>
