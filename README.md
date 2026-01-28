@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-3.8.2-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-4.1.0-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -408,6 +408,20 @@ painel-abz/
 
 ## 🆕 Atualizações Recentes
 
+<details>
+<summary>📚 Histórico Completo de Versões (Clique para expandir)</summary>
+
+### **Janeiro 2026 (v4.1.0) - Lançamento Major**
+- ✅ **Módulo de Ordens de Compra**: Sistema completo com aprovação multinível
+- ✅ **Módulo de Setores**: Gestão corporativa com controle de permissões
+- ✅ **Atalhos Personalizados**: Barra customizável no dashboard
+- ✅ **Central de Ajuda**: Nova página de suporte integrada
+- ✅ **Arquitetura Modular**: Refatoração completa do sistema
+
+### **Janeiro 2026 (v4.0.1)**
+- ✅ **Correção de Permissões de Avaliação**: Resolvido problema que bloqueava gerentes
+- ✅ **Versão Dinâmica no Admin**: Implementada exibição automática da versão
+
 ### **Dezembro 2025 (v3.8.2)**
 - ✅ **Correção de Permissões de Avaliação**: Resolvido problema que bloqueava gerentes
   - Removida verificação redundante de `payload.role` (global) em endpoints de aprovação e finalização
@@ -710,6 +724,8 @@ painel-abz/
 - ✅ **Sistema de Perfil**: Upload de fotos via Google Drive e configurações avançadas
 - ✅ **Deploy Netlify**: Correção de URLs e configurações de ambiente
 - ✅ **Auditoria Completa**: Sistema de logs e histórico de acesso
+
+</details>
 
 ---
 
