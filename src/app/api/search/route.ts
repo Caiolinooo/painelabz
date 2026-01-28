@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type'); // Filtro por tipo
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const locale = searchParams.get('locale') || 'pt-BR';
 
     if (!query || query.trim().length < 2) {
       return NextResponse.json({
@@ -27,12 +28,185 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`🔍 Busca iniciada: "${query}" | Tipo: ${type || 'todos'} | Limite: ${limit}`);
+    console.log(`🔍 Busca iniciada: "${query}" | Tipo: ${type || 'todos'} | Limite: ${limit} | Locale: ${locale}`);
 
     const results: SearchResult[] = [];
     const searchTerm = query.trim().toLowerCase();
 
-    // 1. Buscar em documentos
+    // ... (rest of code) ...
+
+    // 4. Buscar em cards do dashboard (incluindo cards estáticos)
+    if (!type || type === 'card') {
+      // Cards estáticos do sistema
+      const staticCards = [
+        {
+          id: 'manual-colaborador',
+          title: 'Manual do Colaborador',
+          titleEn: 'Employee Manual',
+          description: 'Acesse o manual completo do colaborador',
+          descriptionEn: 'Access the complete employee manual',
+          url: '/manual',
+          category: 'Documentação'
+        },
+        {
+          id: 'manual-logistico',
+          title: 'Manual Logístico',
+          titleEn: 'Logistics Manual',
+          description: 'Manual específico para área de logística',
+          descriptionEn: 'Specific manual for logistics area',
+          url: '/manual',
+          category: 'Logística'
+        },
+        {
+          id: 'procedimentos-logistica',
+          title: 'Procedimentos de Logística',
+          titleEn: 'Logistics Procedures',
+          description: 'Consulte os procedimentos padrões da área',
+          descriptionEn: 'Check standard area procedures',
+          url: '/procedimentos-logistica',
+          category: 'Procedimentos'
+        },
+        {
+          id: 'politicas',
+          title: 'Políticas',
+          titleEn: 'Policies',
+          description: 'Consulte as políticas da empresa',
+          descriptionEn: 'Check company policies',
+          url: '/politicas',
+          category: 'Políticas'
+        },
+        {
+          id: 'procedimentos-gerais',
+          title: 'Procedimentos Gerais',
+          titleEn: 'General Procedures',
+          description: 'Consulte os procedimentos gerais da empresa',
+          descriptionEn: 'Check general company procedures',
+          url: '/procedimentos',
+          category: 'Procedimentos'
+        },
+        {
+          id: 'calendario',
+          title: 'Calendário',
+          titleEn: 'Calendar',
+          description: 'Consulte o calendário de eventos e feriados',
+          descriptionEn: 'Check events and holidays calendar',
+          url: '/calendario',
+          category: 'Agenda'
+        },
+        {
+          id: 'noticias',
+          title: 'Notícias',
+          titleEn: 'News',
+          description: 'Fique por dentro das últimas notícias da empresa',
+          descriptionEn: 'Stay updated with company news',
+          url: '/noticias',
+          category: 'Comunicação'
+        },
+        {
+          id: 'reembolso',
+          title: 'Reembolso',
+          titleEn: 'Reimbursement',
+          description: 'Solicite reembolsos de despesas',
+          descriptionEn: 'Request expense reimbursement',
+          url: '/reembolso',
+          category: 'Financeiro',
+          keywords: ['reembolso', 'reimbursement', 'refund', 'expense', 'despesa']
+        },
+        {
+          id: 'contracheque',
+          title: 'Contracheque',
+          titleEn: 'Payslip',
+          description: 'Acesse seus contracheques',
+          descriptionEn: 'Access your payslips',
+          url: '/contracheque',
+          category: 'Financeiro',
+          keywords: ['contracheque', 'payslip', 'holerite', 'salary', 'income']
+        },
+        {
+          id: 'ponto',
+          title: 'Ponto',
+          titleEn: 'Time Clock',
+          description: 'Registre seu ponto e consulte seu histórico',
+          descriptionEn: 'Register your time and check your history',
+          url: '/ponto',
+          category: 'RH',
+          keywords: ['ponto', 'timesheet', 'clock', 'time', 'hora', 'frequencia']
+        },
+        {
+          id: 'avaliacao',
+          title: 'Avaliação de Desempenho',
+          titleEn: 'Performance Evaluation',
+          description: 'Sistema de avaliação de desempenho',
+          descriptionEn: 'Performance evaluation system',
+          url: '/avaliacao',
+          category: 'RH',
+          keywords: ['avaliacao', 'desempenho', 'performance', 'review', 'evaluation', 'feedback']
+        },
+        {
+          id: 'folha-pagamento',
+          title: 'Folha de Pagamento',
+          titleEn: 'Payroll',
+          description: 'Gerencie a folha de pagamento dos colaboradores',
+          descriptionEn: 'Manage employee payroll',
+          url: '/folha-pagamento',
+          category: 'Financeiro',
+          keywords: ['folha', 'pagamento', 'payroll', 'salary', 'salario']
+        }
+      ];
+
+      // Filtrar cards estáticos que correspondem à busca
+      const matchingStaticCards = staticCards.filter(card => {
+        const titleMatch = card.title.toLowerCase().includes(searchTerm) ||
+          (card.titleEn && card.titleEn.toLowerCase().includes(searchTerm));
+        const descMatch = card.description.toLowerCase().includes(searchTerm) ||
+          (card.descriptionEn && card.descriptionEn.toLowerCase().includes(searchTerm));
+        const catMatch = card.category.toLowerCase().includes(searchTerm);
+        const keywordMatch = card.keywords?.some(k => k.toLowerCase().includes(searchTerm));
+
+        return titleMatch || descMatch || catMatch || keywordMatch;
+      });
+
+      matchingStaticCards.forEach(card => {
+        const isEnglish = locale === 'en-US' || locale === 'en';
+        results.push({
+          id: card.id,
+          type: 'card',
+          title: isEnglish && card.titleEn ? card.titleEn : card.title,
+          content: isEnglish && card.descriptionEn ? card.descriptionEn : card.description,
+          url: card.url,
+          metadata: {
+            category: card.category
+          }
+        });
+      });
+
+      // Também buscar em cards dinâmicos do banco
+      try {
+        const { data: cards, error: cardError } = await supabaseAdmin
+          .from('dashboard_cards')
+          .select('id, title, description, url, icon, created_at')
+          .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+          .range(offset, offset + limit - 1);
+
+        if (!cardError && cards) {
+          cards.forEach(card => {
+            results.push({
+              id: `db-${card.id}`,
+              type: 'card',
+              title: card.title || 'Card sem título',
+              content: card.description || 'Sem descrição',
+              url: card.url || '/dashboard',
+              metadata: {
+                icon: card.icon,
+                created_at: card.created_at
+              }
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar cards do banco:', error);
+      }
+    }
     if (!type || type === 'document') {
       try {
         const { data: documents, error: docError } = await supabaseAdmin
@@ -179,35 +353,40 @@ export async function GET(request: NextRequest) {
           title: 'Reembolso',
           description: 'Solicite reembolsos de despesas',
           url: '/reembolso',
-          category: 'Financeiro'
+          category: 'Financeiro',
+          keywords: ['reembolso', 'reimbursement', 'refund', 'expense', 'despesa']
         },
         {
           id: 'contracheque',
           title: 'Contracheque',
           description: 'Acesse seus contracheques',
           url: '/contracheque',
-          category: 'Financeiro'
+          category: 'Financeiro',
+          keywords: ['contracheque', 'payslip', 'holerite', 'salary', 'income']
         },
         {
           id: 'ponto',
           title: 'Ponto',
           description: 'Registre seu ponto e consulte seu histórico',
           url: '/ponto',
-          category: 'RH'
+          category: 'RH',
+          keywords: ['ponto', 'timesheet', 'clock', 'time', 'hora', 'frequencia']
         },
         {
           id: 'avaliacao',
           title: 'Avaliação de Desempenho',
           description: 'Sistema de avaliação de desempenho',
           url: '/avaliacao',
-          category: 'RH'
+          category: 'RH',
+          keywords: ['avaliacao', 'desempenho', 'performance', 'review', 'evaluation', 'feedback']
         },
         {
           id: 'folha-pagamento',
           title: 'Folha de Pagamento',
           description: 'Gerencie a folha de pagamento dos colaboradores',
           url: '/folha-pagamento',
-          category: 'Financeiro'
+          category: 'Financeiro',
+          keywords: ['folha', 'pagamento', 'payroll', 'salary', 'salario']
         }
       ];
 
@@ -448,10 +627,10 @@ export async function GET(request: NextRequest) {
     results.sort((a, b) => {
       const aTitle = a.title.toLowerCase().includes(searchTerm);
       const bTitle = b.title.toLowerCase().includes(searchTerm);
-      
+
       if (aTitle && !bTitle) return -1;
       if (!aTitle && bTitle) return 1;
-      
+
       return a.title.localeCompare(b.title);
     });
 

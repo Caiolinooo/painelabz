@@ -130,10 +130,13 @@ const UserEditor: React.FC<UserEditorProps> = ({
         const permissions = await permissionsResponse.json();
         setRolePermissions(permissions);
 
-        // Carregar setores
-        const { data: sectorsData } = await supabase.from('sectors').select('id, name').order('name');
-        if (sectorsData) {
+        // Carregar setores via API (uses admin client to bypass RLS)
+        const sectorsResponse = await fetch('/api/sectors');
+        if (sectorsResponse.ok) {
+          const sectorsData = await sectorsResponse.json();
           setAvailableSectors(sectorsData as Sector[]);
+        } else {
+          console.error('Failed to fetch sectors:', await sectorsResponse.text());
         }
 
       } catch (error) {
@@ -253,6 +256,64 @@ const UserEditor: React.FC<UserEditorProps> = ({
         ...prev,
         [name]: role,
         accessPermissions: defaultPermissions[role]
+      }));
+    } else if (name === 'position') {
+      // Smart Sector Auto-Selection based on Position Keywords
+      const positionLower = value.toLowerCase();
+      let matchedSector: Sector | undefined;
+
+      // Keyword mapping (position keyword -> sector name)
+      const keywordMap: Record<string, string> = {
+        'financeiro': 'Financeiro',
+        'finanças': 'Financeiro',
+        'contábil': 'Financeiro',
+        'contador': 'Financeiro',
+        'fiscal': 'Financeiro',
+        'tesouraria': 'Financeiro',
+        'logística': 'Logística',
+        'supply': 'Logística',
+        'almoxarifado': 'Logística',
+        'operações': 'Operações',
+        'operador': 'Operações',
+        'offshore': 'Operações',
+        'plataforma': 'Operações',
+        'ti': 'TI',
+        'tecnologia': 'TI',
+        'sistemas': 'TI',
+        'desenvolvedor': 'TI',
+        'suporte': 'TI',
+        'infraestrutura': 'TI',
+        'engenharia': 'Engenharia',
+        'engenheiro': 'Engenharia',
+        'qhse': 'QHSE',
+        'segurança': 'QHSE',
+        'saúde': 'QHSE',
+        'meio ambiente': 'QHSE',
+        'qualidade': 'QHSE',
+        'hse': 'QHSE',
+        'rh': 'Departamento Pessoal',
+        'recursos humanos': 'Departamento Pessoal',
+        'pessoal': 'Departamento Pessoal',
+        'dp': 'Departamento Pessoal',
+        'recrutamento': 'Recrutamento',
+        'seleção': 'Recrutamento',
+        'comunicação': 'Comunicação',
+        'marketing': 'Comunicação',
+        'mídias': 'Comunicação'
+      };
+
+      for (const [keyword, sectorName] of Object.entries(keywordMap)) {
+        if (positionLower.includes(keyword)) {
+          matchedSector = availableSectors.find(s => s.name === sectorName);
+          if (matchedSector) break;
+        }
+      }
+
+      setEditedUser(prev => ({
+        ...prev,
+        position: value,
+        // Only auto-set if not already set AND a match was found
+        ...(matchedSector && !prev.sector_id ? { sector_id: matchedSector.id, department: matchedSector.name } : {})
       }));
     } else {
       setEditedUser(prev => ({ ...prev, [name]: value }));
@@ -452,32 +513,26 @@ const UserEditor: React.FC<UserEditorProps> = ({
               </div>
 
               <div>
-                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
-                  Departamento
-                </label>
-                <input
-                  type="text"
-                  id="department"
-                  name="department"
-                  value={editedUser.department || ''}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
-                  placeholder={t('components.exLogistica')}
-                />
-              </div>
-
-              <div>
                 <label htmlFor="sector_id" className="block text-sm font-medium text-gray-700 mb-1">
-                  Setor (Departamento)
+                  Departamento / Setor
                 </label>
                 <select
                   id="sector_id"
                   name="sector_id"
                   value={editedUser.sector_id || ''}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const selectedSectorId = e.target.value;
+                    const selectedSector = availableSectors.find(s => s.id === selectedSectorId);
+
+                    setEditedUser(prev => ({
+                      ...prev,
+                      sector_id: selectedSectorId,
+                      department: selectedSector ? selectedSector.name : ''
+                    }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-abz-blue focus:border-abz-blue"
                 >
-                  <option value="">Selecione um setor...</option>
+                  <option value="">Selecione um departamento...</option>
                   {availableSectors.map(sector => (
                     <option key={sector.id} value={sector.id}>
                       {sector.name}
@@ -485,7 +540,7 @@ const UserEditor: React.FC<UserEditorProps> = ({
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  O setor define quais módulos adicionais o usuário pode acessar.
+                  Selecione o departamento do usuário. Isso definirá o acesso aos módulos e configurações de compras.
                 </p>
               </div>
 

@@ -81,8 +81,8 @@ export async function GET(request: NextRequest) {
     if (requestingUser) {
       console.log('Usuário encontrado:', requestingUser.email, 'Papel:', requestingUser.role);
       isAdmin = requestingUser.role === 'ADMIN' ||
-                requestingUser.email === adminEmail ||
-                requestingUser.phone_number === adminPhone;
+        requestingUser.email === adminEmail ||
+        requestingUser.phone_number === adminPhone;
     } else {
       console.log('Usuário não encontrado no banco de dados. Verificando se é o admin principal...');
       console.log('Admin email:', adminEmail);
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
       // Executar a consulta principal
       const { data, error } = await supabaseAdmin
         .from('users_unified')
-        .select('id, first_name, last_name, email, phone_number, role, position, department, active, created_at, updated_at, access_permissions')
+        .select('id, first_name, last_name, email, phone_number, role, position, department, sector_id, active, created_at, updated_at, access_permissions')
         .order('created_at', { ascending: false });
 
       // Log do resultado da consulta
@@ -317,6 +317,7 @@ export async function GET(request: NextRequest) {
           role: user.role || 'USER',
           position: user.position || '',
           department: user.department || '',
+          sector_id: user.sector_id || null,
           active: user.active !== undefined ? user.active : true,
           createdAt: user.created_at || new Date().toISOString(),
           updatedAt: user.updated_at || new Date().toISOString(),

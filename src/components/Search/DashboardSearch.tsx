@@ -61,14 +61,14 @@ const DashboardSearch: React.FC = () => {
           q: query,
           limit: '8'
         });
-        
+
         if (selectedType !== 'all') {
           params.append('type', selectedType);
         }
 
         const response = await fetch(`/api/search?${params}`);
         const data: SearchResponse = await response.json();
-        
+
         if (response.ok) {
           setResults(data.results);
         } else {
@@ -118,27 +118,27 @@ const DashboardSearch: React.FC = () => {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'document':
-        return 'Documento';
+        return t('components.documento', 'Documento');
       case 'news':
-        return t('components.noticia');
+        return t('components.noticia', 'Notícia');
       case 'user':
-        return t('components.usuario');
+        return t('components.usuario', 'Usuário');
       case 'card':
-        return 'Card';
+        return t('components.card', 'Card');
       case 'reimbursement':
-        return 'Reembolso';
+        return t('components.reembolso', 'Reembolso');
       case 'paystub':
-        return 'Contracheque';
+        return t('components.contracheque', 'Contracheque');
       case 'evaluation':
-        return t('components.avaliacao');
+        return t('components.avaliacao', 'Avaliação');
       case 'policy':
-        return t('components.politica');
+        return t('components.politica', 'Política');
       case 'procedure':
-        return 'Procedimento';
+        return t('components.procedimento', 'Procedimento');
       case 'academy':
-        return 'Curso';
+        return t('components.curso', 'Curso');
       case 'calendar':
-        return 'Evento';
+        return t('components.evento', 'Evento');
       default:
         return 'Item';
     }
@@ -200,11 +200,10 @@ const DashboardSearch: React.FC = () => {
             <button
               key={type.value}
               onClick={() => setSelectedType(type.value)}
-              className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                selectedType === type.value
+              className={`px-3 py-1 text-xs rounded-full transition-colors ${selectedType === type.value
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+                }`}
             >
               {type.label}
             </button>

@@ -10,6 +10,7 @@ export interface AllUser {
   role: 'ADMIN' | 'USER' | 'MANAGER';
   position?: string;
   department?: string;
+  sector_id?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;

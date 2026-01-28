@@ -39,6 +39,7 @@ interface User {
   role: 'ADMIN' | 'USER' | 'MANAGER';
   position?: string;
   department?: string;
+  sector_id?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -499,7 +500,8 @@ export default function UsersPage() {
             email: selectedUser.email,
             role: selectedUser.role,
             position: selectedUser.position,
-            department: selectedUser.department
+            department: selectedUser.department,
+            sector_id: selectedUser.sector_id
           } : {
             phoneNumber: '',
             firstName: '',

@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
       password,
       role,
       position,
-      department
+      department,
+      sector_id
     } = body;
 
     // Validar os dados de entrada
@@ -235,6 +236,7 @@ export async function POST(request: NextRequest) {
           role: userRole,
           position,
           department,
+          sector_id,
           active: true,
           is_authorized: true, // Usuários criados pelo admin são automaticamente autorizados
           authorization_status: 'active', // Status de autorização ativo

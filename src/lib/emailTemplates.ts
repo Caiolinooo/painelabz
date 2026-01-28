@@ -8,11 +8,9 @@ const getEmailConfig = () => {
   // Usar a URL completa do aplicativo para o logo
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  // Garantir que a URL do logo seja absoluta
-  let logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/images/LC1_Azul.png`;
-  if (!logoUrl.startsWith('http')) {
-    logoUrl = `${appUrl}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
-  }
+  // Garantir que a URL do logo seja absoluta e correta
+  // Usar a URL do Storage do Supabase que é garantidamente pública e acessível
+  let logoUrl = 'https://1ok220.supabase.co/storage/v1/object/public/public-assets/logo.png';
 
   console.log('Logo URL para emails:', logoUrl);
 
@@ -716,5 +714,233 @@ export const adminNotificationTemplate = (userData: {
     </p>
   `;
 
+  return baseTemplate(content);
+};
+
+// Template para notificação de nova Ordem de Compra
+export const purchaseOrderCreatedTemplate = (
+  userName: string,
+  poId: string,
+  providerName: string,
+  totalValue: string,
+  itemsCount: number,
+  viewUrl?: string,
+  attachmentUrl?: string
+) => {
+  const config = getEmailConfig();
+
+  const viewButton = viewUrl
+    ? `<a href="${viewUrl.startsWith('http') ? viewUrl : config.appUrl + viewUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-right: 10px;">
+           Visualizar Pedido
+       </a>`
+    : '';
+  const attachmentButton = attachmentUrl
+    ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="background-color: #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+           Baixar Anexo
+       </a>`
+    : '';
+
+  const content = `
+    <h2 style="text-align: center; color: ${config.primaryColor};">Ordem de Compra Criada</h2>
+    <p>
+      Olá, <strong>${userName}</strong>!
+    </p>
+    <p>
+      Sua Ordem de Compra foi criada com sucesso e está aguardando aprovação.
+    </p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: ${config.primaryColor};">Resumo do Pedido:</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Número do Pedido:</td>
+          <td style="padding: 8px 0;">${poId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Fornecedor:</td>
+          <td style="padding: 8px 0;">${providerName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Valor Total:</td>
+          <td style="padding: 8px 0;">R$ ${Number(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Itens:</td>
+          <td style="padding: 8px 0;">${itemsCount}</td>
+        </tr>
+      </table>
+    </div>
+    
+    <div style="text-align: center; margin: 30px 0;">
+        ${viewButton}
+        ${attachmentButton}
+    </div>
+    
+    <p>
+      Você será notificado assim que houver atualizações sobre a aprovação deste pedido.
+    </p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+export const orderStatusUpdateTemplate = (
+  userName: string,
+  poId: string,
+  providerName: string,
+  newStatus: 'approved' | 'rejected',
+  updatedBy: string,
+  note?: string,
+  viewUrl?: string
+) => {
+  const config = getEmailConfig();
+
+  const statusColors = {
+    approved: '#28a745', // Green
+    rejected: '#dc3545'  // Red
+  };
+
+  const statusLabels = {
+    approved: 'Aprovada',
+    rejected: 'Rejeitada'
+  };
+
+  const statusColor = statusColors[newStatus];
+  const statusLabel = statusLabels[newStatus];
+
+  const noteSection = note
+    ? `<div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+         <p style="margin: 0; font-weight: bold;">Nota do Aprovador:</p>
+         <p style="margin: 5px 0;">${note}</p>
+       </div>`
+    : '';
+
+  const viewButton = viewUrl
+    ? `<div style="text-align: center; margin: 30px 0;">
+         <a href="${viewUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+           Visualizar Pedido
+         </a>
+       </div>`
+    : '';
+
+  const content = `
+    <h2 style="text-align: center; color: ${statusColor};">Solicitação ${statusLabel}</h2>
+    <p>
+      Olá, <strong>${userName}</strong>!
+    </p>
+    <p>
+      Sua Ordem de Compra <strong>${poId}</strong> para <strong>${providerName}</strong> foi <strong>${statusLabel.toLowerCase()}</strong> por ${updatedBy}.
+    </p>
+    
+    ${noteSection}
+    
+    ${viewButton}
+    
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+// Template para Solicitação de Aprovação (Diretoria)
+export const poApprovalRequestTemplate = (
+  approverName: string,
+  requesterName: string,
+  poId: string,
+  providerName: string,
+  totalValue: string,
+  itemsCount: number,
+  viewUrl: string,
+  attachmentUrl?: string
+) => {
+  const config = getEmailConfig();
+
+  const attachmentButton = attachmentUrl
+    ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="background-color: #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-left: 10px;">
+           Baixar Anexo
+       </a>`
+    : '';
+
+  const content = `
+    <h2 style="text-align: center; color: ${config.primaryColor};">Nova Solicitação de Aprovação</h2>
+    <p>
+      Olá, <strong>${approverName}</strong>!
+    </p>
+    <p>
+      <strong>${requesterName}</strong> criou uma nova Ordem de Compra que aguarda sua aprovação.
+    </p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: ${config.primaryColor};">Detalhes do Pedido:</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Número:</td>
+          <td style="padding: 8px 0;">${poId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Fornecedor:</td>
+          <td style="padding: 8px 0;">${providerName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Valor:</td>
+          <td style="padding: 8px 0;">R$ ${Number(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+        </tr>
+        <tr>
+           <td style="padding: 8px 0; font-weight: bold;">Itens:</td>
+           <td style="padding: 8px 0;">${itemsCount}</td>
+        </tr>
+      </table>
+    </div>
+    
+    <div style="text-align: center; margin: 30px 0;">
+         <a href="${viewUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+           Revisar e Aprovar
+         </a>
+         ${attachmentButton}
+    </div>
+  `;
+
+  return baseTemplate(content);
+};
+
+// Template para Notificação Fiscal (Finalização)
+export const poApprovedFiscalTemplate = (
+  poId: string,
+  requesterName: string,
+  providerName: string,
+  totalValue: string,
+  approverName: string,
+  attachmentUrl: string,
+  viewUrl: string
+) => {
+  const config = getEmailConfig();
+
+  const content = `
+    <h2 style="text-align: center; color: #28a745;">Ordem de Compra Aprovada</h2>
+    <p>
+      Prezados do Fiscal,
+    </p>
+    <p>
+      A Ordem de Compra <strong>${poId}</strong> foi aprovada e está pronta para faturamento/pagamento.
+    </p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: ${config.primaryColor};">Resumo:</h3>
+      <p><strong>Solicitante:</strong> ${requesterName}</p>
+      <p><strong>Fornecedor:</strong> ${providerName}</p>
+      <p><strong>Valor:</strong> R$ ${Number(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+      <p><strong>Aprovado por:</strong> ${approverName}</p>
+    </div>
+    
+    <div style="text-align: center; margin: 30px 0;">
+         <a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+           Baixar Nota Fiscal / Anexo
+         </a>
+         <br><br>
+         <a href="${viewUrl}" style="color: #666; font-size: 14px;">Ver no Sistema</a>
+    </div>
+  `;
   return baseTemplate(content);
 };

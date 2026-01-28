@@ -39,28 +39,14 @@ function TopGradientCard({ user, profile, t }: { user: any; profile: any; t: any
           {t('dashboard.welcomeMessage')}
         </p>
 
-        <div className="flex items-center gap-4 w-full max-w-xl">
-          <div className="relative flex-1 group">
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <FiSearch className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-            </div>
-            <input
-              type="text"
-              placeholder={t('dashboard.searchPlaceholder')}
-              className="block w-full pl-14 pr-6 py-4 bg-white border-0 rounded-full text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-[0_2px_20px_rgba(0,0,0,0.04)] text-lg transition-all"
-            />
-          </div>
-
-          <Link href="/noticias" className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-gray-400 hover:text-blue-600 hover:shadow-md transition-all border border-transparent hover:border-blue-100 shadow-[0_2px_20px_rgba(0,0,0,0.04)] flex-shrink-0" title="Nova Publicação">
-            <FiPlus className="w-6 h-6" />
-          </Link>
+        <div className="w-full mt-2">
+          <UserShortcutsBar />
         </div>
       </div>
 
-      {/* Right Content - Gray Placeholder Widget */}
-      <div className="hidden md:block w-72 h-64 bg-gray-300/50 rounded-lg flex-shrink-0 mix-blend-multiply self-center mb-8 md:mb-0 md:mr-10">
-      </div>
+      {/* Right Content - Gray Placeholder Widget Removed */}
     </div>
+
   );
 }
 
@@ -72,6 +58,8 @@ function TopGradientCard({ user, profile, t }: { user: any; profile: any; t: any
 import DashboardNewsWidget from '@/components/dashboard/DashboardNewsWidget';
 import QuickLinksWidget from '@/components/dashboard/QuickLinksWidget';
 import EventsWidget from '@/components/dashboard/EventsWidget';
+import UserShortcutsBar from '@/components/dashboard/UserShortcutsBar';
+import PurchaseOrderWidget from '@/components/dashboard/widgets/PurchaseOrderWidget';
 
 export default function Dashboard() {
   const { user, profile, isAuthenticated, isLoading } = useSupabaseAuth();
@@ -93,7 +81,7 @@ export default function Dashboard() {
         {/* Top Section contains the gradient */}
         <TopGradientCard user={user} profile={profile} t={t} />
 
-        <div className="max-w-[1400px] mx-auto px-6">
+        <div className="max-w-[1400px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
 
             {/* Banner - Spans 5 (News) */}
@@ -102,8 +90,9 @@ export default function Dashboard() {
             </div>
 
             {/* Center Column - Quick Links - Spans 4 */}
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-4 flex flex-col gap-6">
               <QuickLinksWidget />
+              <PurchaseOrderWidget />
             </div>
 
             {/* Right Column - Events - Spans 3 */}

@@ -10,9 +10,11 @@ import Link from 'next/link';
 import LanguageSelector from '@/components/LanguageSelector';
 import EmailVerificationPrompt from '@/components/Auth/EmailVerificationPrompt';
 import NameValidationInput from '@/components/Auth/NameValidationInput';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 
 export default function RegisterPage() {
   const { t } = useI18n();
+  const { config } = useSiteConfig();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -173,8 +175,8 @@ export default function RegisterPage() {
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
           <div className="text-center mb-6">
             <Image
-              src="/images/logo.png"
-              alt="ABZ Group"
+              src={config.logo || '/images/logo.png'}
+              alt={config.companyName || "ABZ Group"}
               width={150}
               height={50}
               className="mx-auto mb-4"
@@ -227,8 +229,8 @@ export default function RegisterPage() {
 
         <div className="text-center mb-6">
           <Image
-            src="/images/logo.png"
-            alt="ABZ Group"
+            src={config.logo || '/images/logo.png'}
+            alt={config.companyName || "ABZ Group"}
             width={150}
             height={50}
             className="mx-auto mb-4"

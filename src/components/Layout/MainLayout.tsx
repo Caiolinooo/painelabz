@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import {
   FiGrid,
   FiRss,
@@ -26,7 +27,8 @@ import {
   FiDollarSign,
   FiBarChart2,
   FiSidebar,
-  FiShield
+  FiShield,
+  FiShoppingCart
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
@@ -39,6 +41,8 @@ import LanguageSelector from '@/components/LanguageSelector';
 import ProtectedRoute from '@/components/Auth/ProtectedRoute';
 import GlobalTimeTracker from '@/components/tracking/GlobalTimeTracker';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import UserAvatar from '@/components/UserAvatar';
+
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -55,6 +59,10 @@ const PortalLogo = () => (
   </svg>
 );
 
+import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
+import { SYSTEM_MODULES, MODULE_CATEGORIES, SystemModule } from '@/constants/modules';
+import { getModuleIcon } from '@/constants/moduleIcons';
+
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   const { user, profile, logout, isAdmin } = useSupabaseAuth();
@@ -70,7 +78,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isMeuRHOpen, setIsMeuRHOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Load state
+  // Use shared permissions hook
+  const { hasPermission } = useEffectivePermissions();
+
+  // Load sidebar state
   useEffect(() => {
     const saved = localStorage.getItem('main-sidebar-collapsed');
     setIsCollapsed(saved ? JSON.parse(saved) : false);
@@ -85,27 +96,66 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   const toggleMeuRH = () => {
+    if (isCollapsed) {
+      setIsCollapsed(false);
+      localStorage.setItem('main-sidebar-collapsed', 'false');
+      setIsMeuRHOpen(true);
+      localStorage.setItem('sidebar-meurh-open', 'true');
+      return;
+    }
+
     const newState = !isMeuRHOpen;
     setIsMeuRHOpen(newState);
     localStorage.setItem('sidebar-meurh-open', JSON.stringify(newState));
   };
 
-  // Menu Definition
-  const sidebarItems = [
-    { id: 'dashboard', href: '/dashboard', label: t('menu.dashboard'), icon: FiGrid },
-    { id: 'noticias', href: '/noticias', label: t('menu.noticias'), icon: FiRss, badge: unreadCount > 0 ? unreadCount : undefined },
-    // Meu RH is handled separately as a group
-    { id: 'academy', href: '/academy', label: t('menu.academy'), icon: FiAward },
-    { id: 'biblioteca', href: '/biblioteca', label: t('menu.biblioteca'), icon: FiBook },
-    { id: 'ajuda', href: '/ajuda', label: t('common.help'), icon: FiAlertCircle },
-  ];
+  const toggleDepartment = () => {
+    if (isCollapsed) {
+      setIsCollapsed(false);
+      localStorage.setItem('main-sidebar-collapsed', 'false');
+      setIsDepartmentOpen(true);
+      localStorage.setItem('sidebar-dept-open', 'true');
+      return;
+    }
+    const newState = !isDepartmentOpen;
+    setIsDepartmentOpen(newState);
+    localStorage.setItem('sidebar-dept-open', JSON.stringify(newState));
+  };
 
-  const meuRHSubs = [
-    { id: 'ponto', href: '/ponto', label: t('menu.ponto'), icon: FiClock },
-    { id: 'reembolso', href: '/reembolso', label: t('menu.reembolso'), icon: FiDollarSign },
-    { id: 'contracheque', href: '/contracheque', label: t('menu.contracheque'), icon: FiFileText },
-    { id: 'avaliacao', href: '/avaliacao', label: t('menu.avaliacao'), icon: FiBarChart2 },
-  ];
+  const [departmentTitle, setDepartmentTitle] = useState(MODULE_CATEGORIES.department);
+  const [isDepartmentOpen, setIsDepartmentOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchSector = async () => {
+      if ((profile as any)?.sector_id) {
+        const { data } = await supabase
+          .from('sectors')
+          .select('name')
+          .eq('id', (profile as any).sector_id)
+          .single();
+
+        if (data) {
+          setDepartmentTitle(data.name);
+        }
+      }
+    };
+    if (profile) fetchSector();
+  }, [profile, supabase]);
+
+  // Module Processing - Filter by permission
+  // Module Processing - Filter by permission AND visibility
+  const allowedModules = SYSTEM_MODULES.filter(m => hasPermission(m.id) && m.visible !== false);
+
+  const resolveItem = (m: SystemModule) => ({
+    ...m,
+    icon: getModuleIcon(m.id),
+    badge: m.id === 'noticias' && unreadCount > 0 ? unreadCount : undefined
+  });
+
+  const coreItems = allowedModules.filter(m => m.category === 'core' || !m.category).map(resolveItem);
+  const hrItems = allowedModules.filter(m => m.category === 'hr').map(resolveItem);
+  const deptItems = allowedModules.filter(m => m.category === 'department').map(resolveItem);
+  const contentItems = allowedModules.filter(m => m.category === 'content').map(resolveItem);
 
   const renderItem = (item: any) => {
     const isActive = pathname === item.href;
@@ -153,7 +203,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
           className={`bg-white fixed z-40 inset-y-0 left-0 border-r border-gray-100 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
           {/* Logo */}
-          {/* Logo */}
           <div className={`h-20 flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
             {!isCollapsed && (
               <div className="flex items-center gap-3">
@@ -186,44 +235,57 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
           {/* Menu */}
           <nav className="flex-1 py-4 overflow-y-auto px-2 space-y-1">
-            {/* Home */}
-            {renderItem(sidebarItems[0])}
-
-            {/* News */}
-            {renderItem(sidebarItems[1])}
+            {/* Core Items */}
+            {coreItems.map(renderItem)}
 
             {/* Meu RH Dropdown */}
-            <div className="mx-2 my-1">
-              <button
-                onClick={toggleMeuRH}
-                className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 ${isMeuRHOpen ? 'bg-gray-50' : ''}`}
-              >
-                <FiCreditCard className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'}`} />
-                {!isCollapsed && (
-                  <>
-                    <span className="font-medium text-sm text-gray-500 flex-1 text-left">{t('menu.meuRH')}</span>
-                    <FiChevronDown className={`w-4 h-4 transition-transform ${isMeuRHOpen ? 'rotate-180' : ''}`} />
-                  </>
-                )}
-              </button>
+            {hrItems.length > 0 && (
+              <div className="mx-2 my-1">
+                <button
+                  onClick={toggleMeuRH}
+                  className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 ${isMeuRHOpen ? 'bg-gray-50' : ''}`}
+                >
+                  <FiCreditCard className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'}`} />
+                  {!isCollapsed && (
+                    <>
+                      <span className="font-medium text-sm text-gray-500 flex-1 text-left">{MODULE_CATEGORIES.hr}</span>
+                      <FiChevronDown className={`w-4 h-4 transition-transform ${isMeuRHOpen ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
+                </button>
 
-              {/* Submenu */}
-              <div className={`overflow-hidden transition-all duration-300 ${isMeuRHOpen && !isCollapsed ? 'max-h-48 mt-1' : 'max-h-0'}`}>
-                {meuRHSubs.map((sub) => (
-                  <Link
-                    key={sub.id}
-                    href={sub.href}
-                    className="flex items-center py-2.5 pl-12 pr-4 text-sm text-gray-400 hover:text-blue-500 hover:bg-blue-50/50 rounded-lg mx-2 transition-colors duration-200"
-                  >
-                    <sub.icon className="w-5 h-5 mr-3" />
-                    {sub.label}
-                  </Link>
-                ))}
+                {/* Submenu */}
+                <div className={`overflow-hidden transition-all duration-300 ${isMeuRHOpen && !isCollapsed ? 'max-h-[500px] mt-1' : 'max-h-0'}`}>
+                  {hrItems.map(renderItem)}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Rest of items */}
-            {sidebarItems.slice(2).map(renderItem)}
+            {/* Department Menu */}
+            {deptItems.length > 0 && (
+              <div className="mx-2 my-1">
+                <button
+                  onClick={toggleDepartment}
+                  className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 ${isDepartmentOpen ? 'bg-gray-50' : ''}`}
+                >
+                  <FiShoppingCart className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'}`} />
+                  {!isCollapsed && (
+                    <>
+                      <span className="font-medium text-sm text-gray-500 flex-1 text-left truncate">{departmentTitle}</span>
+                      <FiChevronDown className={`w-4 h-4 transition-transform ${isDepartmentOpen ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
+                </button>
+
+                {/* Submenu */}
+                <div className={`overflow-hidden transition-all duration-300 ${isDepartmentOpen && !isCollapsed ? 'max-h-[800px] mt-1' : 'max-h-0'}`}>
+                  {deptItems.map(renderItem)}
+                </div>
+              </div>
+            )}
+
+            {/* Content Items */}
+            {contentItems.map(renderItem)}
 
           </nav>
 
@@ -263,22 +325,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
               {/* Profile Dropdown */}
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
-                  <button className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 outline-none hover:ring-2 hover:ring-blue-100 transition-all focus:ring-2 focus:ring-blue-100">
-                    {(() => {
-                      const avatarUrl = profile?.drive_photo_url || profile?.avatar || user?.user_metadata?.avatar_url;
-                      const hasValidAvatar = avatarUrl && !avatarUrl.includes('logo.png') && !avatarUrl.includes('LC1_Azul.png');
-
-                      if (hasValidAvatar) {
-                        return <img src={avatarUrl} className="w-full h-full object-cover" />;
-                      }
-
-                      return (
-                        <div className="w-full h-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                          {profile?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
-                          {profile?.last_name?.charAt(0)}
-                        </div>
-                      );
-                    })()}
+                  <button className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 outline-none hover:ring-2 hover:ring-blue-100 transition-all focus:ring-2 focus:ring-blue-100 flex-shrink-0 relative">
+                    <UserAvatar user={user} profile={profile} className="w-full h-full" />
                   </button>
                 </DropdownMenu.Trigger>
 
@@ -290,22 +338,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   >
                     <div className="px-3 py-3 border-b border-gray-50 mb-1">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shrink-0">
-                          {(() => {
-                            const avatarUrl = profile?.drive_photo_url || profile?.avatar || user?.user_metadata?.avatar_url;
-                            const hasValidAvatar = avatarUrl && !avatarUrl.includes('logo.png') && !avatarUrl.includes('LC1_Azul.png');
-
-                            if (hasValidAvatar) {
-                              return <img src={avatarUrl} className="w-full h-full object-cover" />;
-                            }
-
-                            return (
-                              <div className="w-full h-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
-                                {profile?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
-                                {profile?.last_name?.charAt(0)}
-                              </div>
-                            );
-                          })()}
+                        <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shrink-0 relative">
+                          <UserAvatar user={user} profile={profile} className="w-full h-full" />
                         </div>
                         <div className="flex flex-col overflow-hidden">
                           <span className="text-sm font-semibold text-gray-800 truncate">
@@ -323,10 +357,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       </Link>
                     )}
 
-                    <DropdownMenu.Item className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
-                      <FiSettings className="w-4 h-4" />
-                      <span>Configurações</span>
-                    </DropdownMenu.Item>
+                    <Link href="/profile" className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
+                      <FiUser className="w-4 h-4" />
+                      <span>Meu Perfil</span>
+                    </Link>
 
                     <DropdownMenu.Item
                       className="flex items-center gap-2 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg cursor-pointer outline-none transition-colors mt-1"
@@ -341,7 +375,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 p-0">
+          <main className="flex-1 px-4 md:px-8 py-8">
             {children}
           </main>
         </div>
