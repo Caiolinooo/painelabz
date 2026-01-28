@@ -41,12 +41,16 @@ function QuickLinkCard({
     );
 }
 
+import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
+
 export default function QuickLinksWidget() {
     const { t } = useI18n();
+    const { hasPermission } = useEffectivePermissions();
 
-    // Dynamically translated list
+    // Dynamically translated list with IDs
     const links = [
         {
+            id: 'ponto',
             title: t('menu.ponto'),
             subtitle: t('dashboard.registerPoint'),
             icon: HiClock,
@@ -55,6 +59,7 @@ export default function QuickLinksWidget() {
             iconColor: 'text-blue-500'
         },
         {
+            id: 'reembolso',
             title: t('menu.reembolso'),
             subtitle: t('dashboard.requests'),
             icon: HiShoppingBag,
@@ -63,6 +68,7 @@ export default function QuickLinksWidget() {
             iconColor: 'text-orange-500'
         },
         {
+            id: 'contracheque',
             title: t('menu.contracheque'),
             subtitle: t('dashboard.payslips'),
             icon: HiDocumentText,
@@ -71,6 +77,7 @@ export default function QuickLinksWidget() {
             iconColor: 'text-green-500'
         },
         {
+            id: 'academy',
             title: t('menu.academy'),
             subtitle: t('dashboard.courses'),
             icon: HiAcademicCap,
@@ -80,6 +87,11 @@ export default function QuickLinksWidget() {
         }
     ];
 
+    // Filter links based on permission
+    const filteredLinks = links.filter(link => hasPermission(link.id));
+
+    if (filteredLinks.length === 0) return null;
+
     return (
         <div className="flex flex-col gap-4 h-full">
             <div className="flex items-center gap-2 mb-1">
@@ -88,7 +100,7 @@ export default function QuickLinksWidget() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 flex-1">
-                {links.map((link) => (
+                {filteredLinks.map((link) => (
                     <QuickLinkCard key={link.href} {...link} />
                 ))}
             </div>

@@ -103,7 +103,7 @@ export default function EventsWidget() {
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-gray-900 text-base line-clamp-1">{ev.title}</h4>
-                                    <p className="text-xs text-gray-400 line-clamp-1">{ev.description || ev.type}</p>
+                                    <p className="text-xs text-gray-400 line-clamp-1">{ev.description || (ev.type === 'COMPANY' ? 'Evento Corporativo' : ev.type)}</p>
                                 </div>
                             </div>
                             {/* Type Indicator */}

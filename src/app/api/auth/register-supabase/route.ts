@@ -34,12 +34,28 @@ export async function POST(request: NextRequest) {
       department,
       inviteCode,
       cpf,
-      phoneNumber
+      phoneNumber,
+      sector_id
     } = body;
 
     // Normalizar e validar
     const normalizedEmail = (email || '').trim().toLowerCase();
     const normalizedCpf = (cpf || '').trim();
+
+    // Determine Sector ID
+    let finalSectorId = sector_id;
+    if (!finalSectorId && department) {
+      // Try to match department name to a sector
+      const { data: sector } = await supabase
+        .from('sectors')
+        .select('id')
+        .ilike('name', department.trim())
+        .maybeSingle(); // Use maybeSingle to avoid error if not found
+
+      if (sector) {
+        finalSectorId = sector.id;
+      }
+    }
 
     // Gerar número de protocolo cedo para estar disponível em todas as respostas de sucesso
     const protocol = await generateProtocolNumber();
@@ -50,6 +66,7 @@ export async function POST(request: NextRequest) {
       lastName,
       position,
       department,
+      sector_id: finalSectorId,
       cpf: normalizedCpf || 'não informado',
       hasInviteCode: !!inviteCode
     });
@@ -204,6 +221,7 @@ export async function POST(request: NextRequest) {
       last_name: lastName,
       position: position || 'Não informado',
       department: department || 'Não informado',
+      sector_id: finalSectorId || null,
       tax_id: normalizedCpf || null, // CPF/CNPJ opcional
       role: 'USER',
       active: false, // Sempre inativo até verificar email

@@ -36,7 +36,7 @@ export async function GET(
     // Buscar o usuário - dados básicos para qualquer usuário autenticado
     const { data: user, error: fetchError } = await supabaseAdmin
       .from('users_unified')
-      .select('id, name, email, first_name, last_name, role, position, department, avatar, drive_photo_url')
+      .select('id, name, email, first_name, last_name, role, position, department, sector_id, phone_number, avatar, drive_photo_url')
       .eq('id', userId)
       .single();
 
@@ -57,6 +57,7 @@ export async function GET(
       role: user.role,
       position: user.position,
       department: user.department,
+      sector_id: user.sector_id,
       avatar: user.avatar,
       drive_photo_url: user.drive_photo_url,
       phoneNumber: user.phone_number as string // Explicit cast to silence linter if type definition is lagging
@@ -130,6 +131,7 @@ export async function PUT(
       role,
       position,
       department,
+      sector_id,
       active,
       accessPermissions,
       password
@@ -169,6 +171,7 @@ export async function PUT(
       role: ['ADMIN', 'USER', 'MANAGER'].includes(role) ? role : user.role,
       position,
       department,
+      sector_id,
       updated_at: now
     };
 

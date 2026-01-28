@@ -5,8 +5,11 @@ import Image from 'next/image';
 import ReimbursementFormWrapper from '@/components/ReimbursementFormWrapper';
 import Footer from '@/components/Footer';
 import 'react-toastify/dist/ReactToastify.css';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 
 export default function PublicReimbursementPage() {
+  const { config } = useSiteConfig();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100">
       <div className="container mx-auto py-12 px-4">
@@ -14,8 +17,8 @@ export default function PublicReimbursementPage() {
         <header className="text-center mb-12" style={{ opacity: 1, visibility: 'visible' }}>
           <div className="flex justify-center">
             <Image
-              src="/images/LC1_Azul.png"
-              alt="ABZ Group Logo"
+              src={config.logo || '/images/LC1_Azul.png'}
+              alt={config.companyName || "ABZ Group Logo"}
               width={250}
               height={60}
               priority

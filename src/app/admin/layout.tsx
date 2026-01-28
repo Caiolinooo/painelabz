@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor, FiActivity, FiMessageSquare } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor, FiActivity, FiMessageSquare, FiShoppingCart, FiShield } from 'react-icons/fi';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -40,6 +40,7 @@ const adminMenuItems = [
   { id: 'automation', href: '/admin/automation', label: 'admin.automation', icon: FiSettings },
   { id: 'settings', href: '/admin/settings', label: 'admin.settings', icon: FiSettings },
   { id: 'builder', href: '/admin/builder', label: 'Module Builder', icon: FiBox },
+  { id: 'purchase-orders', href: '/admin/purchase-orders', label: 'Ordens de Compra', icon: FiShoppingCart },
   { id: 'admin-fix', href: '/admin-fix', label: 'admin.fixPermissions', icon: FiUserCheck },
 ];
 
@@ -71,6 +72,7 @@ const adminMenuGroups = [
       { id: 'role-permissions', href: '/admin/role-permissions', label: 'admin.rolePermissions', icon: FiKey },
       { id: 'authorized-users', href: '/admin/authorized-users', label: 'admin.authorizedUsers', icon: FiUserCheck },
       { id: 'user-approval-settings', href: '/admin/user-approval-settings', label: 'admin.userApprovalSettings', icon: FiUserCheck },
+      { id: 'sectors', href: '/admin/sectors', label: 'Permissões por Setor', icon: FiShield },
       { id: 'banned-users', href: '/admin/banned-users', label: 'admin.bannedUsers', icon: FiUserX },
     ]
   },
@@ -99,6 +101,13 @@ const adminMenuGroups = [
       { id: 'reimbursement-approval', href: '/reembolso?tab=approval', label: 'admin.approveReimbursements', icon: FiCheck },
       { id: 'reimbursement-settings', href: '/admin/reimbursement-settings', label: 'admin.reimbursementSettings', icon: FiSettings },
       { id: 'reimbursement-migration', href: '/admin/reimbursement-migration', label: 'admin.reimbursementMigration', icon: FiSettings },
+    ]
+  },
+  {
+    id: 'purchase_orders',
+    label: 'Ordens de Compra',
+    items: [
+      { id: 'purchase-orders', href: '/admin/purchase-orders', label: 'Configurações', icon: FiShoppingCart },
     ]
   },
   {

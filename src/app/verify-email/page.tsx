@@ -8,9 +8,11 @@ import { FiCheck, FiX, FiLoader, FiMail, FiClock, FiAlertCircle } from 'react-ic
 import Image from 'next/image';
 import Link from 'next/link';
 import LanguageSelector from '@/components/LanguageSelector';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
 
 export default function VerifyEmailPage() {
   const { t } = useI18n();
+  const { config } = useSiteConfig();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
@@ -48,7 +50,7 @@ export default function VerifyEmailPage() {
   const verifyEmailToken = async (token: string) => {
     try {
       setIsVerifying(true);
-      
+
       const response = await fetch('/api/auth/verify-email-link', {
         method: 'POST',
         headers: {
@@ -91,8 +93,8 @@ export default function VerifyEmailPage() {
 
         <div className="text-center mb-6">
           <Image
-            src="/images/logo.png"
-            alt="ABZ Group"
+            src={config.logo || "/images/logo.png"}
+            alt={config.companyName || "ABZ Group"}
             width={150}
             height={50}
             className="mx-auto mb-4"
@@ -165,7 +167,7 @@ export default function VerifyEmailPage() {
               <p className="text-red-700 mb-4">
                 {verificationResult?.message || 'Não foi possível verificar seu email.'}
               </p>
-              
+
               <div className="bg-white p-4 rounded border border-red-200 mb-4">
                 <div className="flex items-start space-x-2 mb-3">
                   <FiAlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -205,7 +207,7 @@ export default function VerifyEmailPage() {
               >
                 Registrar Novamente
               </Link>
-              
+
               <Link
                 href="/login"
                 className="block w-full bg-gray-600 text-white px-6 py-2 rounded-md font-medium hover:bg-gray-700 transition-colors"
