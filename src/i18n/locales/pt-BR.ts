@@ -520,7 +520,6 @@ export default {
   },
   dashboard: {
     hello: 'Olá, {{name}}!',
-    welcomeMessage: 'Explore informações e atividades sobre a sua empresa.',
     searchPlaceholder: 'Buscar em todo sistema...',
     quickLinks: 'Links Rápidos',
     registerPoint: 'Registro de Ponto',
@@ -558,6 +557,15 @@ export default {
     erroCriticoUsandoCardsHardcoded: '⚠️ Erro crítico, usando cards hardcoded',
     naoFoiPossivelCarregarOsCardsPersonalizadosUsandoC: 'Não foi possível carregar os cards personalizados. Usando configuração padrão.',
     atualizandoTraducoesDosCardsEstaticosParaIdioma: 'Atualizando traduções dos cards estáticos para idioma:',
+
+    // Novos campos para barra de atalhos e modal
+    addShortcut: 'Adicionar Atalho',
+    selectModule: 'Selecione um módulo para adicionar aos seus atalhos',
+    searchModules: 'Buscar módulos...',
+    suggestedForYou: 'Sugeridos para você',
+    oftenAccessed: 'Acessado frequentemente',
+    allModules: 'Todos os módulos',
+    adminPanel: 'Painel de Administração',
   },
   menu: {
     dashboard: 'Painel',
@@ -585,16 +593,25 @@ export default {
     contatos: 'Contatos',
     folha: 'Folha de Pagamento',
     biblioteca: 'Biblioteca',
+    universidade: 'Universidade',
   },
   cards: {
     // Traduções padrão para os cards do menu
+    wkradar: 'WK Radar',
+    chat: 'Chat Interno',
+    apiMobile: 'API Mobile',
+    dashboardBi: 'Dashboard de BI',
+    integracaoErp: 'Integração ERP',
+    workflows: 'Workflows Automatizados',
+    procedimentosGerais: 'Procedimentos Gerais',
     manualColaborador: 'Manual do Colaborador',
     manualColaboradorDesc: 'Acesse o manual completo do colaborador.',
+    manual: 'Manual do Colaborador',
+    manualDesc: 'Acesse o manual completo do colaborador.',
     procedimentosLogistica: 'Procedimentos de Logística',
     procedimentosLogisticaDesc: 'Consulte os procedimentos padrões da área.',
     politicas: 'Políticas',
     politicasDesc: 'Consulte as políticas da empresa.',
-    procedimentosGerais: 'Procedimentos Gerais',
     procedimentosGeraisDesc: 'Consulte os procedimentos gerais da empresa.',
     calendario: 'Calendário',
     calendarioDesc: 'Visualize eventos e datas importantes.',
@@ -620,11 +637,13 @@ export default {
     avaliacoesAvancadasDesc: 'Métricas, análises e relatórios detalhados de performance',
     relatoriosPdf: 'Relatórios PDF',
     relatoriosPdfDesc: 'Gere relatórios personalizados com gráficos e visualizações',
-    wkradar: 'WKRadar',
+
     wkradarDesc: 'Acesso ao sistema WKRadar',
+    universidade: 'Universidade',
+    universidadeDesc: 'Plataforma de ensino corporativo',
 
     // Traduções para os cards do banco de dados (por ID)
-    // Versão sem hífens (compatibilidade)
+    // Versão sem hífens (compatibilidade) - Mantendo chaves existentes e adicionando se necessário
     '6377431f4afa448bb46a8321a5870f37': 'Manual',
     '6377431f4afa448bb46a8321a5870f37Desc': 'Acesse o manual da empresa',
     'c40a97fd70a543f1af4d960efabd340b': 'Procedimentos',
@@ -646,7 +665,17 @@ export default {
     'e460055d4b674350a0155317fc07e76a': 'Admin',
     'e460055d4b674350a0155317fc07e76aDesc': 'Painel administrativo',
 
-    // Versão com hífens (formato do banco de dados)
+    // Assegurando que chaves com pontos também existam se usadas como fallback
+    'cards.noticias': 'Notícias',
+    'cards.ponto': 'Ponto',
+    'cards.reembolso': 'Reembolso',
+    'cards.academy': 'Universidade',
+    'cards.contracheque': 'Contracheque',
+    'avaliacoes.title': 'Avaliações',
+    'avaliacao.title': 'Avaliação',
+
+    // Versão com hífens (formato original do DB, mantido por segurança)
+
     '6377431f-4afa-448b-b46a-8321a5870f37': 'Manual',
     '6377431f-4afa-448b-b46a-8321a5870f37Desc': 'Acesse o manual da empresa',
     'c40a97fd-70a5-43f1-af4d-960efabd340b': 'Procedimentos',
@@ -1620,6 +1649,7 @@ export default {
     noData: 'Nenhum dado encontrado',
     welcome: 'Bem-vindo',
     actions: 'Ações',
+    seeAll: 'Ver todos',
     approve: 'Aprovar',
     optional: 'opcional',
     characters: 'caracteres',
@@ -2676,6 +2706,13 @@ export default {
     noticia: 'Notícia',
     avaliacao: 'Avaliação',
     politica: 'Política',
+    reembolso: 'Reembolso',
+    contracheque: 'Contracheque',
+    procedimento: 'Procedimento',
+    curso: 'Curso',
+    evento: 'Evento',
+    card: 'Card',
+    documento: 'Documento',
     noticias: 'Notícias',
     avaliacoes: 'Avaliações',
     politicas: 'Políticas',
@@ -2999,6 +3036,7 @@ export default {
     cardNotCreatedDesc: 'Clique no botão para adicionar o card WKRadar ao dashboard.',
     createCard: 'Criar Card',
   },
+
   changelog: {
     title: 'Novidades',
     historyTitle: 'Histórico de Versões',

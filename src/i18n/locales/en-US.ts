@@ -57,6 +57,7 @@ export default {
     results: 'results',
     refresh: 'Refresh',
     redirecting: 'Redirecting...',
+    seeAll: 'See all',
 
     tryAgain: 'Try Again',
     text: 'Text',
@@ -111,7 +112,7 @@ export default {
     notifications: 'Notifications',
     enabled: 'Enabled',
     professionalInfo: 'Professional Information',
-    position: 'Position',
+
     department: 'Department',
     systemRole: 'System Role',
     notInformed: 'Not informed',
@@ -133,7 +134,7 @@ export default {
     payroll: 'Payroll',
     academy: 'Academy',
     news: 'News',
-    profile: 'Profile',
+
   },
   auth: {
     phoneLogin: 'Phone Login',
@@ -388,7 +389,7 @@ export default {
   },
   dashboard: {
     hello: 'Hello, {{name}}!',
-    welcomeMessage: 'Explore information and activities about your company.',
+
     searchPlaceholder: 'Search entire system...',
     quickLinks: 'Quick Links',
     registerPoint: 'Time Clock',
@@ -425,8 +426,17 @@ export default {
     cacheLocalInvalido: '⚠️ Cache local inválido',
     erroCriticoUsandoCardsHardcoded: '⚠️ Error crítico, usando cards hardcoded',
     naoFoiPossivelCarregarOsCardsPersonalizadosUsandoC: 'No foi possível carregar os cards personalizados. Usando configuração padrão.',
-    atualizandoTraducoesDosCardsEstaticosParaIdioma: 'Atualizando traduções dos cards estáticos to idioma:',
+    atualizandoTraducoesDosCardsEstaticosParaIdioma: 'Updating static cards translations to language:',
+
+    addShortcut: 'Add Shortcut',
+    selectModule: 'Select a module to add to your shortcuts',
+    searchModules: 'Search modules...',
+    suggestedForYou: 'Suggested for you',
+    oftenAccessed: 'Often accessed',
+    allModules: 'All modules',
+    adminPanel: 'Admin Panel',
   },
+
   menu: {
     dashboard: 'Dashboard',
     manual: 'Employee Manual',
@@ -452,16 +462,26 @@ export default {
     contatos: 'Contacts',
     folha: 'Payroll',
     biblioteca: 'Library',
+    universidade: 'University',
   },
   cards: {
     // Traduções padrão para os cards do menu
+    wkradar: 'WK Radar',
+    chat: 'Internal Chat',
+    apiMobile: 'Mobile API',
+    dashboardBi: 'BI Dashboard',
+    integracaoErp: 'ERP Integration',
+    workflows: 'Automated Workflows',
+    procedimentosGerais: 'General Procedures',
     manualColaborador: 'Employee Manual',
     manualColaboradorDesc: 'Access the complete employee manual.',
+    manual: 'Employee Manual',
+    manualDesc: 'Access the complete employee manual.',
     procedimentosLogistica: 'Logistics Procedures',
     procedimentosLogisticaDesc: 'Check the standard procedures for the area.',
     politicas: 'Policies',
     politicasDesc: 'Check company policies.',
-    procedimentosGerais: 'General Procedures',
+
     procedimentosGeraisDesc: 'Check the company general procedures.',
     calendario: 'Calendar',
     calendarioDesc: 'View important events and dates.',
@@ -487,8 +507,9 @@ export default {
     avaliacoesAvancadasDesc: 'Metrics, analysis and detailed performance reports',
     relatoriosPdf: 'PDF Reports',
     relatoriosPdfDesc: 'Generate custom reports with charts and visualizations',
-    wkradar: 'WKRadar',
-    wkradarDesc: 'Access WKRadar system',
+
+    universidade: 'University',
+    universidadeDesc: 'Corporate learning platform',
 
     // Traduções para os cards do banco de dados (por ID)
     // Versão sem hífens (compatibilidade)
@@ -513,7 +534,16 @@ export default {
     'e460055d4b674350a0155317fc07e76a': 'Admin',
     'e460055d4b674350a0155317fc07e76aDesc': 'Administrative panel',
 
-    // Versão com hífens (formato do banco de dados)
+    // Dot notation keys fallback
+    'cards.noticias': 'News',
+    'cards.ponto': 'Time Clock',
+    'cards.reembolso': 'Reimbursement',
+    'cards.academy': 'University',
+    'cards.contracheque': 'Payslip',
+    'avaliacoes.title': 'Evaluations',
+    'avaliacao.title': 'Evaluation',
+
+    // Versão com hífens (formato original do DB, mantido por segurança)
     '6377431f-4afa-448b-b46a-8321a5870f37': 'Manual',
     '6377431f-4afa-448b-b46a-8321a5870f37Desc': 'Access the company manual',
     'c40a97fd-70a5-43f1-af4d-960efabd340b': 'Procedures',
@@ -2679,6 +2709,25 @@ export default {
     cardNotCreatedDesc: 'Click the button to add the WKRadar card to the dashboard.',
     createCard: 'Create Card',
   },
+  components: {
+    noticia: 'News',
+    avaliacao: 'Evaluation',
+    politica: 'Policy',
+    reembolso: 'Reimbursement',
+    contracheque: 'Payslip',
+    procedimento: 'Procedure',
+    curso: 'Course',
+    evento: 'Event',
+    card: 'Card',
+    documento: 'Document',
+    usuario: 'User',
+    buscando: 'Searching...',
+    nenhumResultadoEncontradoPara: 'No results found for',
+    tenteUsarTermosDiferentesOuRemoverFiltros: 'Try using different terms or remove filters',
+    resultado: 'result',
+    encontrado: 'found',
+    buscarEmTodoOSistemaDocumentosNoticiasReembolsosEt: 'Search system wide (documents, news, reimbursements, etc.)'
+  },
   changelog: {
     title: 'What\'s New',
     historyTitle: 'Version History',
@@ -2694,22 +2743,6 @@ export default {
     newFeaturesDesc: 'Check out the improvements we prepared for you.',
     current: 'Current'
   },
-  menu: {
-    dashboard: 'Dashboard',
-    news: 'News',
-    noticias: 'News',
-    meuRH: 'My HR',
-    academy: 'Academy',
-    library: 'Library',
-    biblioteca: 'Library',
-    help: 'Help',
-    ajuda: 'Help',
-    ponto: 'Time Clock',
-    reembolso: 'Reimbursement',
-    contracheque: 'Payslips',
-    avaliacao: 'Evaluation',
-    calendar: 'Calendar',
-    calendario: 'Calendar',
-  }
+
 };
 
