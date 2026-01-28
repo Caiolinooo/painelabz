@@ -1,5 +1,82 @@
 # Changelog
 
+## [4.1.0] - 2026-01-28
+
+### Added
+- **Módulo de Ordens de Compra (Purchase Orders)**:
+  - Sistema completo de gestão de ordens de compra com aprovação em múltiplos níveis
+  - Configurações flexíveis por setor ou usuário com regras de aprovação personalizadas
+  - Interface administrativa para gerenciamento de configurações de aprovação
+  - Suporte a centros de custo e limites de valores por nível
+  - Página dedicada para gestão de ordens de compra (`/department/purchase-orders`)
+  - Componentes especializados para estatísticas e gerenciamento
+- **Módulo de Setores (Sectors)**:
+  - Sistema completo de gestão de setores corporativos
+  - Controle granular de módulos e cards permitidos por setor
+  - Interface administrativa para configuração de permissões por setor
+  - Categorização de módulos (core, hr, content, department)
+  - Sistema de constantes centralizado para gerenciamento de módulos
+- **Barra de Atalhos Personalizados do Usuário**:
+  - Sistema de atalhos personalizáveis na barra do dashboard
+  - Modal de adição de atalhos com sugestões inteligentes
+  - Busca integrada de módulos e conteúdo disponível
+  - Suporte a reorganização de atalhos por posição
+  - Persistência das preferências do usuário no banco de dados
+- **Página de Ajuda (Ajuda Page)**:
+  - Central de suporte com acesso rápido a recursos importantes
+  - Links para lista de ramais, procedimentos de emergência
+  - Interface intuitiva com ícones contextuais
+  - Integração com sistema de autenticação
+- **Módulo de Departamentos (Department)**:
+  - Estrutura organizacional para módulos específicos de departamento
+  - Layout dedicado com navegação contextual
+  - Suporte a múltiplos sub-módulos por departamento
+- **Sistema de Permissões Efetivas**:
+  - Hook `useEffectivePermissions` para verificação granular de permissões
+  - Cache inteligente de permissões para melhor performance
+  - Integração com sistema de setores e módulos
+
+### Improved
+- **Arquitetura de Módulos**: Refatoração completa para sistema modular
+  - Constantes centralizadas em `src/constants/modules.ts`
+  - Categorias de módulos para melhor organização
+  - Suporte a módulos ocultos e visibilidade controlada
+- **Interface Administrativa**: Melhorias gerais
+  - Interface otimizada para gerenciamento de configurações
+  - Melhor feedback visual em operações de CRUD
+  - Componentes reutilizáveis para formulários e listagens
+- **Performance**: Otimizações em consultas e cache
+  - Implementação de cache inteligente para dados frequentemente acessados
+  - Redução de chamadas de API redundantes
+  - Melhor tratamento de estados de carregamento
+
+### Fixed
+- **Autenticação**: Melhorias na consistência de token
+  - Tratamento robusto de tokens em múltiplos contextos
+  - Melhor recuperação de autenticação em falhas
+- **Validações**: Implementação de validações mais robustas
+  - Validação de dados em formulários de configuração
+  - Tratamento de erros mais descritivo
+- **Interface**: Correções de layout e responsividade
+  - Melhor alinhamento de componentes
+  - Correção de problemas de overflow em telas pequenas
+
+### Technical
+- **Database Schema**: Novas tabelas para suporte aos módulos
+  - `purchase_orders` para gestão de ordens de compra
+  - `po_configs` para configurações de aprovação
+  - `sectors` para gestão de setores
+  - `user_shortcuts` para atalhos personalizados
+- **API Endpoints**: Novos endpoints para suporte funcional
+  - `/api/purchase-orders/*` para gestão de ordens de compra
+  - `/api/sectors/*` para gestão de setores
+  - `/api/user-shortcuts/*` para gestão de atalhos
+  - `/api/department/*` para módulos departamentais
+- **Components**: Novos componentes reutilizáveis
+  - Sistema de componentes para formulários administrativos
+  - Componentes especializados para exibição de dados
+  - Modais reutilizáveis para operações CRUD
+
 ## [4.0.1] - 2026-01-22
 
 ### Fixed
