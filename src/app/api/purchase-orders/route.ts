@@ -108,9 +108,15 @@ export async function POST(request: NextRequest) {
 
                 const { sendEmail } = await import('@/lib/email-exchange');
                 const { purchaseOrderCreatedTemplate, poApprovalRequestTemplate } = await import('@/lib/emailTemplates');
+                const { getTranslation } = await import('@/i18n'); // Import dynamic translator
+
+                // Get locale from request header or default to pt-BR
+                const userLocale = request.headers.get('x-client-locale') || 'pt-BR';
+                const t = (key: string, locale: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
                 const poNumber = data.po_number || '#' + data.id.slice(0, 8);
-                const viewUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/department/purchase-orders/${data.id}`;
+                const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://painel.abzgroup.com.br';
+                const viewUrl = `${appUrl}/department/purchase-orders/${data.id}`;
 
                 // 2. Email the Requester (Confirmation)
                 if (user.email) {
@@ -121,12 +127,13 @@ export async function POST(request: NextRequest) {
                         body.total_value,
                         body.items?.length || 0,
                         viewUrl,
-                        data.invoice_url
+                        data.invoice_url,
+                        userLocale
                     );
                     await sendEmail(
                         user.email,
-                        `Ordem de Compra Criada - ${poNumber}`,
-                        'Sua ordem de compra foi criada com sucesso.',
+                        t('emails.purchaseOrder.subject.created', userLocale, { number: poNumber }),
+                        t('emails.purchaseOrder.createdMessage', userLocale),
                         htmlUser
                     );
                 }
@@ -157,7 +164,6 @@ export async function POST(request: NextRequest) {
                                 approversToNotify.push(applicableRule.email);
                             } else {
                                 // Value exceeds all limits? Notify the highest tier (last one)
-                                // or maybe notify all? Usually highest tier.
                                 const highestRule = rules[rules.length - 1];
                                 if (highestRule) approversToNotify.push(highestRule.email);
                             }
@@ -177,23 +183,43 @@ export async function POST(request: NextRequest) {
                 approversToNotify = [...new Set(approversToNotify.filter(e => e && e.includes('@')))];
                 const CC_EMAILS = ['karla@groupabz.com'];
 
-                const htmlApprover = poApprovalRequestTemplate(
-                    'Aprovador',
-                    user.name || 'Colaborador',
-                    poNumber,
-                    body.provider_name,
-                    body.total_value,
-                    body.items?.length || 0,
-                    viewUrl,
-                    data.invoice_url
-                );
-
                 // Send to Calculated Approvers
                 for (const email of approversToNotify) {
+                    // Fetch Approver Name
+                    let approverName = 'Aprovador';
+                    try {
+                        const { data: approverData } = await supabaseAdmin
+                            .from('users_unified')
+                            .select('name')
+                            .eq('email', email)
+                            .maybeSingle();
+                        if (approverData?.name) {
+                            approverName = approverData.name.split(' ')[0]; // Use first name
+                        }
+                    } catch (e) {
+                        console.error('Error fetching approver name', e);
+                    }
+
+                    // For approvers, we ideally should use their preferred locale, but for now we fallback to requester's or default
+                    // In a perfect world we would fetch the approver's profile preference
+                    const approverLocale = userLocale;
+
+                    const htmlApprover = poApprovalRequestTemplate(
+                        approverName,
+                        user.name || 'Colaborador',
+                        poNumber,
+                        body.provider_name,
+                        body.total_value,
+                        body.items?.length || 0,
+                        viewUrl,
+                        data.invoice_url,
+                        approverLocale
+                    );
+
                     await sendEmail(
                         email,
-                        `Aprovação Necessária - OC ${poNumber}`,
-                        `Nova solicitação de compra de ${user.name} (Valor: R$ ${body.total_value}).`,
+                        t('emails.purchaseOrder.subject.approval', approverLocale, { number: poNumber }),
+                        t('emails.purchaseOrder.approvalMessage', approverLocale, { name: user.name || 'Colaborador' }),
                         htmlApprover
                     );
                 }
@@ -202,19 +228,87 @@ export async function POST(request: NextRequest) {
                 for (const email of CC_EMAILS) {
                     // Avoid sending double if Karla is also an approver
                     if (!approversToNotify.includes(email)) {
+                        const htmlApprover = poApprovalRequestTemplate(
+                            'Aprovador', // Generic for CC
+                            user.name || 'Colaborador',
+                            poNumber,
+                            body.provider_name,
+                            body.total_value,
+                            body.items?.length || 0,
+                            viewUrl,
+                            data.invoice_url,
+                            userLocale
+                        );
+
                         await sendEmail(
                             email,
-                            `Nova OC Criada (Cópia) - ${poNumber}`,
-                            `Cópia de solicitação de compra de ${user.name}.`,
+                            t('emails.purchaseOrder.subject.approvalCopy', userLocale, { number: poNumber }),
+                            t('emails.purchaseOrder.approvalMessage', userLocale, { name: user.name || 'Colaborador' }),
                             htmlApprover
                         );
                     }
+                }
+
+                // 4. Create IN-APP Notifications
+                try {
+                    // Notify requester
+                    await supabaseAdmin
+                        .from('notifications')
+                        .insert({
+                            user_id: payload.userId,
+                            type: 'purchase_order',
+                            title: 'Ordem de Compra Criada',
+                            message: `Sua OC ${poNumber} para ${body.provider_name} foi criada e aguarda aprovação.`,
+                            link: viewUrl,
+                            resource_id: data.id,
+                            metadata: {
+                                type: 'po_created',
+                                provider: body.provider_name,
+                                value: body.total_value,
+                                poNumber: poNumber
+                            },
+                            created_at: new Date().toISOString()
+                        });
+
+                    // Notify approvers (in-app)
+                    for (const approverEmail of approversToNotify) {
+                        const { data: approverData } = await supabaseAdmin
+                            .from('users_unified')
+                            .select('id')
+                            .eq('email', approverEmail)
+                            .maybeSingle();
+
+                        if (approverData?.id) {
+                            await supabaseAdmin
+                                .from('notifications')
+                                .insert({
+                                    user_id: approverData.id,
+                                    type: 'purchase_order',
+                                    title: 'Nova Ordem de Compra',
+                                    message: `${user.name || 'Colaborador'} criou uma OC de R$ ${Number(body.total_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} que aguarda sua aprovação.`,
+                                    link: viewUrl,
+                                    resource_id: data.id,
+                                    actor_id: payload.userId,
+                                    metadata: {
+                                        type: 'po_approval_request',
+                                        provider: body.provider_name,
+                                        value: body.total_value,
+                                        poNumber: poNumber
+                                    },
+                                    created_at: new Date().toISOString()
+                                });
+                        }
+                    }
+                    console.log('✅ PO in-app notifications sent successfully');
+                } catch (notifError) {
+                    console.error('Failed to send PO in-app notifications:', notifError);
                 }
 
             } catch (emailError) {
                 console.error('Failed to send PO emails:', emailError);
             }
         })();
+
 
         return NextResponse.json({ data, success: true });
 

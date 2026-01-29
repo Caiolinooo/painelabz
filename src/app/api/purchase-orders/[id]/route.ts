@@ -4,6 +4,74 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+    try {
+        const authHeader = request.headers.get('authorization');
+        let token = extractTokenFromHeader(authHeader || undefined);
+        if (!token) {
+            token = request.cookies.get('abzToken')?.value || request.cookies.get('token')?.value || null;
+        }
+        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const payload = verifyToken(token);
+        if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+        const { id } = params;
+        const role = payload.role?.toUpperCase() || 'USER';
+        const userId = payload.userId;
+
+        const { data: order, error } = await supabaseAdmin
+            .from('purchase_orders')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error || !order) {
+            return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        }
+
+        // Permission Check
+        let canView = false;
+        if (role === 'ADMIN') canView = true;
+        else if (role === 'MANAGER') {
+            canView = order.manager_id === userId || order.user_id === userId;
+            // Also allow if manager has access to this sector? Assuming manager_id check covers it or basic access. 
+            // For now sticking to the same logic as PUT roughly, but usually managers can view all in their sector.
+            // Let's assume strict ownership/assignment for safety or check the list logic.
+            // The list logic allowed: query.or(`user_id.eq.${userId},manager_id.eq.${userId}`);
+            if (order.user_id === userId || order.manager_id === userId) canView = true;
+        } else {
+            if (order.user_id === userId) canView = true;
+        }
+
+        if (!canView) {
+            return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+        }
+
+        // Enrich History with Names
+        if (order.history && Array.isArray(order.history)) {
+            const enrichedHistory = await Promise.all(order.history.map(async (item: any) => {
+                let userName = 'Usuário desconhecido';
+                if (item.user_id) {
+                    const { data: user } = await supabaseAdmin
+                        .from('users_unified')
+                        .select('name')
+                        .eq('id', item.user_id)
+                        .maybeSingle();
+                    if (user) userName = user.name;
+                }
+                return { ...item, user_name: userName };
+            }));
+            order.history = enrichedHistory;
+        }
+
+        return NextResponse.json({ data: order });
+
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
     try {
         const authHeader = request.headers.get('authorization');
@@ -94,10 +162,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                         .single();
 
                     const poNumber = currentOrder.po_number || currentOrder.id;
-                    const viewUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/department/purchase-orders/${currentOrder.id}`;
+                    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://painel.abzgroup.com.br';
+                    const viewUrl = `${baseUrl}/department/purchase-orders/${currentOrder.id}`;
 
                     const { sendEmail } = await import('@/lib/email-exchange');
                     const { orderStatusUpdateTemplate, poApprovedFiscalTemplate } = await import('@/lib/emailTemplates');
+                    const { getTranslation } = await import('@/i18n');
+
+                    // Get locale or default to pt-BR
+                    const userLocale = request.headers.get('x-client-locale') || 'pt-BR';
+                    const t = (key: string, locale: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
                     // 1. Notify Owner (Approved/Rejected)
                     if (owner?.email) {
@@ -108,13 +182,29 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                             body.status,
                             updater?.name || 'Administrador',
                             body.note,
-                            viewUrl
+                            viewUrl,
+                            userLocale
                         );
+
+                        const subjectKey = body.status === 'approved'
+                            ? 'emails.purchaseOrder.statusUpdateSubject' // "Atualização de Status - {{poNumber}}"
+                            : 'emails.purchaseOrder.statusUpdateSubject'; // Using same key for now or explicit?
+
+                        // Actually in pt-BR.ts we have 'statusUpdateSubject'.
+                        // Let's use more specific subjects if available or construct it.
+                        // statusUpdateSubject: 'Atualização de Status - {{poNumber}}'
+                        // Wait, previous code hardcoded "Ordem de Compra Aprovada/Rejeitada".
+                        // I should use t() for subject.
+
+                        const subject = t('emails.purchaseOrder.statusUpdateSubject', userLocale, { poNumber });
+                        const message = body.status === 'approved'
+                            ? t('emails.purchaseOrder.approvedMessage', userLocale, { number: poNumber, provider: currentOrder.provider_name, approver: updater?.name })
+                            : t('emails.purchaseOrder.rejectedMessage', userLocale, { number: poNumber, provider: currentOrder.provider_name, approver: updater?.name });
 
                         await sendEmail(
                             owner.email,
-                            `Ordem de Compra ${body.status === 'approved' ? 'Aprovada' : 'Rejeitada'} - ${poNumber}`,
-                            `Sua ordem de compra foi ${body.status === 'approved' ? 'aprovada' : 'rejeitada'}.`,
+                            subject,
+                            message, // Plain text fallback
                             htmlUser
                         );
                     }
@@ -140,11 +230,44 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                         );
                     }
 
+                    // 3. Create IN-APP Notification for PO Owner
+                    try {
+                        const statusLabel = body.status === 'approved' ? 'Aprovada' : 'Rejeitada';
+                        // Ideally translate in-app notification too based on recipient's preference, 
+                        // but we don't have it. Storing in Portuguese is safer for now as system default, 
+                        // or we could store translation key if frontend supported it.
+                        // Sticking to hardcoded PT for DB notifications as per previous logic for now.
+
+                        await supabaseAdmin
+                            .from('notifications')
+                            .insert({
+                                user_id: currentOrder.user_id,
+                                type: 'purchase_order',
+                                title: `Ordem de Compra ${statusLabel}`,
+                                message: `Sua OC ${poNumber} foi ${statusLabel.toLowerCase()} por ${updater?.name || 'Administrador'}.${body.note ? ` Nota: ${body.note}` : ''}`,
+                                link: viewUrl,
+                                resource_id: currentOrder.id,
+                                actor_id: userId,
+                                metadata: {
+                                    type: `po_${body.status}`,
+                                    provider: currentOrder.provider_name,
+                                    value: currentOrder.total_value,
+                                    note: body.note || null,
+                                    poNumber: poNumber
+                                },
+                                created_at: new Date().toISOString()
+                            });
+                        console.log(`✅ PO status change notification sent to owner (${body.status})`);
+                    } catch (notifError) {
+                        console.error('Failed to send PO status change notification:', notifError);
+                    }
+
                 } catch (emailError) {
                     console.error('Failed to send status update email:', emailError);
                 }
             })();
         }
+
 
         return NextResponse.json({ data, success: true });
 
