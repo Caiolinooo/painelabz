@@ -115,7 +115,6 @@ export default {
 
     department: 'Department',
     systemRole: 'System Role',
-    notInformed: 'Not informed',
     preferences: 'Preferences',
     administrator: 'Administrator',
     manager: 'Manager',
@@ -511,7 +510,30 @@ export default {
     universidade: 'University',
     universidadeDesc: 'Corporate learning platform',
 
-    // Traduções para os cards do banco de dados (por ID)
+    // Translations for SYSTEM_MODULES (used in shortcuts and menu)
+    compras: 'Purchase Orders',
+    comprasDesc: 'Purchase management and approvals',
+    dashboard: 'Dashboard',
+    dashboardDesc: 'Home page and overview',
+    ajuda: 'Help',
+    ajudaDesc: 'Support center and questions',
+    kpi: 'KPIs',
+    kpiDesc: 'Performance indicators',
+    biblioteca: 'Library',
+    bibliotecaDesc: 'File repository and documents',
+    emergencia: 'Emergency',
+    emergenciaDesc: 'Emergency procedures',
+    contatos: 'Extension List',
+    contatosDesc: 'Contacts and useful phone numbers',
+    guia_offshore: 'Offshore Guide',
+    guia_offshoreDesc: 'Guide for offshore work',
+    'integracao-erp': 'ERP Integration',
+    'integracao-erpDesc': 'MIO integration management',
+    procedimentos: 'Procedures',
+    procedimentosDesc: 'Standard Operating Procedures (SOPs)',
+    wkradarDesc: 'Access to WKRadar system',
+
+
     // Versão sem hífens (compatibilidade)
     '6377431f4afa448bb46a8321a5870f37': 'Manual',
     '6377431f4afa448bb46a8321a5870f37Desc': 'Access the company manual',
@@ -1258,7 +1280,7 @@ export default {
     approvedSuccess: 'Evaluation approved successfully!',
     errorSubmitting: 'Error submitting evaluation',
     sentForApproval: 'Evaluation sent for manager approval!',
-    employee: 'Employee',
+
     yourRole: 'Your role',
     managerEvaluator: 'Manager Evaluator',
     instructions: 'Instructions',
@@ -1917,6 +1939,25 @@ export default {
         message: 'Your reimbursement (Protocol: {protocol}) was rejected. Reason: {reason}'
       }
     },
+    purchaseOrder: {
+      created: {
+        title: '🛒 Purchase Order Created',
+        message: 'Your PO {poNumber} for {provider} was created and awaits approval.'
+      },
+      approvalRequest: {
+        title: '📋 New Purchase Order for Approval',
+        message: '{userName} created a PO of R$ {value} awaiting your approval.'
+      },
+      approved: {
+        title: '✅ Purchase Order Approved',
+        message: 'Your PO {poNumber} was approved by {approverName}.'
+      },
+      rejected: {
+        title: '❌ Purchase Order Rejected',
+        message: 'Your PO {poNumber} was rejected by {approverName}.'
+      }
+    },
+
     system: {
       welcome: {
         title: '👋 Welcome to the System',
@@ -1927,6 +1968,31 @@ export default {
         message: 'Your password expires in {days} days. Please change your password.'
       }
     }
+  },
+  purchaseOrderSettings: {
+    title: 'Purchase Configs',
+    restrictedAccess: 'Restricted Access',
+    restrictedAccessMessage: 'Only administrators can access this page.',
+    manageSectors: 'Manage Sector',
+    manageSectorsDesc: 'Manage cost centers and approval limits',
+    approvalRules: 'Approval Rules (Tiers)',
+    approverEmail: 'Approver (Email)',
+    limitValue: 'Up to (Limit R$)',
+    addRule: 'Add Rule',
+    costCenters: 'Cost Centers',
+    addCostCenter: 'Add',
+    costCenterPlaceholder: 'Enter cost center name...',
+    noCostCenters: 'No cost centers registered.',
+    globalLimits: 'Global Limits',
+    autoApprovalLimit: 'Max Auto-Approval Value (R$)',
+    autoApprovalLimitDesc: 'Orders above this value require approval.',
+    save: 'Save Changes',
+    saving: 'Saving...',
+    successExisted: 'Cost center already exists',
+    successSaved: 'Settings saved successfully!',
+    errorSave: 'Error saving settings',
+    loading: 'Loading settings...',
+    loaded: 'Loaded'
   },
 
   // Reminders System
@@ -1986,6 +2052,23 @@ export default {
     disponiveis: 'available',
   },
   components: {
+    noticia: 'News',
+    avaliacao: 'Evaluation',
+    politica: 'Policy',
+    reembolso: 'Reimbursement',
+    contracheque: 'Payslip',
+    procedimento: 'Procedure',
+    curso: 'Course',
+    evento: 'Event',
+    card: 'Card',
+    documento: 'Document',
+    usuario: 'User',
+    buscando: 'Searching...',
+    nenhumResultadoEncontradoPara: 'No results found for',
+    tenteUsarTermosDiferentesOuRemoverFiltros: 'Try using different terms or remove filters',
+    resultado: 'result',
+    encontrado: 'found',
+    buscarEmTodoOSistemaDocumentosNoticiasReembolsosEt: 'Search system wide (documents, news, reimbursements, etc.)',
     tokenDeAutenticacaoNaoEncontrado: 'Authentication token not found',
     intermediario: 'Intermediate',
     avancado: 'Advanced',
@@ -2103,7 +2186,7 @@ export default {
     erroAoRemoverLider: 'Error removing leader:',
     nomeNaoEncontrado: 'Name not found',
     emailNaoEncontrado: 'Email not found',
-    usuario: 'User',
+
     removerLideranca: 'Remove leadership',
     buscarUsuario: 'Search user...',
     liderDeEquipe: 'Team Leader',
@@ -2383,9 +2466,7 @@ export default {
     caminhoDoDocumentoNaoEspecificado: 'Document path not specified',
     avaliacoesCarregadas: 'Evaluations loaded:',
     dadosBinariosCapturadosParaFilenameDataurllengthCa: 'Binary data captured for ${file.name} (${dataUrl.length} characters)',
-    noticia: 'News',
-    avaliacao: 'Evaluation',
-    politica: 'Policy',
+
     noticias: 'News',
     avaliacoes: 'Evaluations',
     politicas: 'Policies',
@@ -2556,7 +2637,7 @@ export default {
     erroAoGerarRelatorio: 'Error generating report:',
     excluirRelatorio: 'Delete report:',
     tituloDoLembrete: 'Reminder title',
-    buscarEmTodoOSistemaDocumentosNoticiasReembolsosEt: 'Search the entire system... (documents, news, reimbursements, etc.)',
+
     escrevaUmComentario: 'Write a comment...',
     erroDeAutenticacao: 'Authentication error',
     noQueVoceEstaPensandoUserfirstname: 'What are you thinking, ${user?.first_name}?',
@@ -2565,17 +2646,13 @@ export default {
     buscandoConteudoDoArquivo: 'Fetching file content:',
     erroAoBuscarConteudoDoArquivo: 'Error fetching file content:',
     themeenforcerAplicandoConfiguracoesDeTemaComPriori: 'ThemeEnforcer: Applying theme settings with maximum priority',
-    buscando: 'Searching...',
-    nenhumResultadoEncontradoPara: 'No results found for',
-    tenteUsarTermosDiferentesOuRemoverFiltros: 'Try using different terms or remove filters',
-    resultado: 'result',
-    encontrado: 'found',
+
     buscar: 'Search...',
     digiteparaBuscar: 'Type to search...',
     filtrarPor: 'Filter by:',
     todos: 'All',
     documentos: 'Documents',
-    cards: 'Cards',
+
     reembolsos: 'Reimbursements',
     contracheques: 'Paystubs',
     procedimentos: 'Procedures',
@@ -2709,25 +2786,81 @@ export default {
     cardNotCreatedDesc: 'Click the button to add the WKRadar card to the dashboard.',
     createCard: 'Create Card',
   },
-  components: {
-    noticia: 'News',
-    avaliacao: 'Evaluation',
-    politica: 'Policy',
-    reembolso: 'Reimbursement',
-    contracheque: 'Payslip',
-    procedimento: 'Procedure',
-    curso: 'Course',
-    evento: 'Event',
-    card: 'Card',
-    documento: 'Document',
-    usuario: 'User',
-    buscando: 'Searching...',
-    nenhumResultadoEncontradoPara: 'No results found for',
-    tenteUsarTermosDiferentesOuRemoverFiltros: 'Try using different terms or remove filters',
-    resultado: 'result',
-    encontrado: 'found',
-    buscarEmTodoOSistemaDocumentosNoticiasReembolsosEt: 'Search system wide (documents, news, reimbursements, etc.)'
+
+  categories: {
+    core: 'General',
+    hr: 'My HR',
+    content: 'Content & Knowledge',
+    department: 'Department'
   },
+
+  modules: {
+    dashboard: 'Dashboard',
+    noticias: 'News',
+    calendario: 'Calendar',
+    ponto: 'Clock In',
+    contracheque: 'Paystub',
+    reembolso: 'Reimbursement',
+    kpi: 'KPIs',
+    avaliacao: 'Performance Review',
+    manual: 'Employee Handbook',
+    procedimentos: 'Procedures',
+    politicas: 'Policies',
+    biblioteca: 'Library',
+    academy: 'Academy',
+    ajuda: 'Help',
+    compras: 'Purchase Orders',
+    chat: 'Chat',
+    wkradar: 'WK Radar',
+    contatos: 'Contact List',
+    emergencia: 'Emergency',
+    guia_offshore: 'Offshore Guide',
+    'integracao-erp': 'ERP Integration',
+    procedimentosGerais: 'General Procedures',
+    folhaPagamento: 'Payroll',
+    admin: 'Admin Panel',
+    apiMobile: 'Mobile API',
+    procedimentosLogistica: 'Logistics Procedures'
+  },
+
+  emails: {
+    common: {
+      hello: 'Hello',
+      footer: 'This is an automated email. Please do not reply.',
+      regards: 'Best regards',
+      team: 'ABZ Group Team',
+      accessSystem: 'Access System',
+      viewDetails: 'View Details',
+      rightsReserved: 'All rights reserved.'
+    },
+    purchaseOrder: {
+      createdSubject: 'Purchase Order Created - {{poNumber}}',
+      createdMessage: 'Your purchase order was created successfully.',
+      approvalSubject: 'Approval Request - {{poNumber}}',
+      approvalMessage: 'New purchase request from {{name}} for approval.',
+      approvalCopySubject: 'Approval Request (Copy) - {{poNumber}}',
+      approvalCopyMessage: 'Copy of purchase request from {{name}}.',
+      titleCreated: 'Purchase Order Created',
+      titleApproval: 'Approval Request',
+      summary: 'Order Summary',
+      poNumber: 'Order Number',
+      provider: 'Provider',
+      totalValue: 'Total Value',
+      items: 'Items',
+      viewOrder: 'View Order',
+      downloadAttachment: 'Download Attachment',
+      statusUpdateSubject: 'Status Update - {{poNumber}}',
+      statusApproved: 'Approved',
+      statusRejected: 'Rejected',
+      titleApproved: 'Order Approved',
+      titleRejected: 'Order Rejected',
+      approvedMessage: 'Purchase order {{number}} from provider {{provider}} has been approved by {{approver}}.',
+      rejectedMessage: 'Purchase order {{number}} from provider {{provider}} has been rejected by {{approver}}.',
+      note: 'Note',
+      autoMessage: 'This is an automated email, please do not reply.'
+    }
+  },
+
   changelog: {
     title: 'What\'s New',
     historyTitle: 'Version History',
@@ -2744,5 +2877,189 @@ export default {
     current: 'Current'
   },
 
+  purchaseOrders: {
+    title: 'Purchase Orders',
+    adminView: 'Administrative View',
+    managerView: 'Managerial View',
+    myRequests: 'My Requests',
+    settings: 'Settings',
+    newOrder: 'New Order',
+    searchPlaceholder: 'Search by number or provider...',
+    allStatus: 'All Status',
+    refresh: 'Refresh',
+    loading: 'Loading...',
+    noOrders: 'No orders found.',
+    deleteConfirm: 'Are you sure you want to delete this order?',
+    deleteSuccess: 'Order deleted successfully',
+    deleteError: 'Error deleting',
+    approveConfirm: 'Do you want to approve this order?',
+    rejectConfirm: 'Do you want to reject this order?',
+    approveSuccess: 'Order approved',
+    rejectSuccess: 'Order rejected',
+    statusError: 'Error updating status',
+    table: {
+      number: 'Number',
+      date: 'Date',
+      provider: 'Provider',
+      value: 'Value',
+      status: 'Status',
+      actions: 'Actions',
+      status_submitted: 'Submitted',
+      status_approved: 'Approved',
+      status_rejected: 'Rejected',
+      status_pending: 'Pending',
+      status_draft: 'Draft'
+    },
+    details: {
+      notFoundOrDenied: 'Order not found or access denied.',
+      notFound: 'Order not found.',
+      loadError: 'Error loading details',
+      confirmApprove: 'Do you want to approve this order?',
+      confirmReject: 'Do you want to reject this order?',
+      actionFailed: 'Action failed',
+      approved: 'Order approved',
+      rejected: 'Order rejected',
+      processError: 'Error processing action',
+      loading: 'Loading order details...',
+      order: 'Order',
+      createdOn: 'Created on {{date}} at {{time}}',
+      bannerApproved: 'Order Approved',
+      bannerRejected: 'Order Rejected',
+      byUserOn: 'By {{user}} on {{date}} at {{time}}',
+      itemsTitle: 'Order Items',
+      freight: 'Freight:',
+      total: 'Total:',
+      observations: 'Observations',
+      attachments: 'Attachments',
+      invoiceAttached: 'Invoice/Quote Attached',
+      downloadView: 'Download / View',
+      approval: 'Approval',
+      approveBtn: 'Approve',
+      rejectBtn: 'Reject',
+      providerData: 'Provider Data',
+      providerName: 'Company Name',
+      providerCnpj: 'Tax ID',
+      providerEmail: 'Email',
+      deliveryPayment: 'Delivery & Payment',
+      paymentTerms: 'Payment Terms',
+      deliveryDate: 'Delivery Date',
+      address: 'Address',
+      buyer: 'Buyer'
+    },
+    stats: {
+      totalValue: 'Total Value',
+      pending: 'Pending',
+      approved: 'Approved',
+      rejected: 'Rejected'
+    },
+    form: {
+      title: 'New Purchase Request',
+      description: 'Fill in provider details and purchase items',
+      provider: {
+        title: 'Provider Details',
+        name: 'Company Name',
+        tradeName: 'Trade Name',
+        cnpj: 'Tax ID / CPF',
+        email: 'Provider Email',
+        placeholder: {
+          name: 'Company Name',
+          tradeName: 'Trade Name',
+          cnpj: '00.000.000/0000-00',
+          email: 'contact@company.com'
+        }
+      },
+      delivery: {
+        title: 'Delivery & Payment',
+        paymentTerms: 'Payment Terms',
+        buyer: 'Responsible Buyer',
+        date: 'Desired Delivery Date',
+        address: 'Delivery Address',
+        placeholder: {
+          paymentTerms: 'Ex: 30 days, Cash',
+          address: 'Ex: HQ - Receiving'
+        }
+      },
+      items: {
+        title: 'Order Items',
+        add: 'Add Item',
+        description: 'Description',
+        quantity: 'Qty',
+        unitValue: 'Unit Value',
+        costCenter: 'Cost Center',
+        freight: 'Freight',
+        total: 'Total',
+        placeholder: {
+          description: 'Product/service description',
+          select: 'Select...'
+        }
+      },
+      attachments: {
+        title: 'Attachments',
+        upload: 'Attach Quote/Invoice',
+        uploading: 'Uploading...',
+        view: 'View attached file',
+        observation: 'Observations',
+        placeholder: {
+          observation: 'Additional observations...'
+        }
+      },
+      actions: {
+        cancel: 'Cancel',
+        submit: 'Submit Request',
+        save: 'Save'
+      },
+      errors: {
+        required: 'Required',
+        incompleteProfile: 'Incomplete user profile.',
+        exceedsLimit: 'Value exceeds allowed limit',
+        uploadError: 'Upload error',
+        submitError: 'Failed to create order'
+      },
+      success: {
+        attached: 'File attached successfully!',
+        created: 'Request created successfully!'
+      }
+    }
+  },
+  emails: {
+    common: {
+      hello: 'Hello',
+      footer: 'For more information, please contact support or the responsible department.',
+      rightsReserved: 'All rights reserved.',
+      copyright_ip: 'ABZ Portal © {year} - Intellectual Property of Caio Correia - [GitHub](https://github.com/Caiolinooo)'
+    },
+    purchaseOrder: {
+      subject: {
+        created: 'Purchase Order Created - {number}',
+        approval: 'Approval Request - {number}',
+        approved: 'Request Approved - {number}',
+        rejected: 'Request Rejected - {number}',
+        approvalCopy: 'Approval Request (Copy) - {number}'
+      },
+      titleCreated: 'New Purchase Order',
+      titleApproval: 'Approval Request',
+      titleApproved: 'Request Approved',
+      titleRejected: 'Request Rejected',
+      viewOrder: 'View Order',
+      downloadAttachment: 'Download Attachment',
+      createdMessage: 'Your purchase order has been created successfully and is awaiting approval.',
+      approvalMessage: 'New purchase request from {name} awaiting your approval.',
+      approvedMessage: 'Your Purchase Order {number} for {provider} was approved by {approver}.',
+      rejectedMessage: 'Your Purchase Order {number} for {provider} was rejected by {approver}.',
+      summary: 'Order Summary',
+      poNumber: 'Order Number',
+      provider: 'Provider',
+      totalValue: 'Total Value',
+      items: 'Items',
+      note: 'Approver Note',
+      autoMessage: 'This is an automated email. Please do not reply.'
+    }
+  },
+  notifications: {
+    po_created: 'New Purchase Order #{number} created for {provider}. Value: {value}.',
+    po_approval_request: 'Approval request for Purchase Order #{number} ({provider}). Value: {value}.',
+    po_approved: 'Purchase Order #{number} ({provider}) approved. Value: {value}.',
+    po_rejected: 'Purchase Order #{number} ({provider}) rejected. Value: {value}.'
+  }
 };
 
