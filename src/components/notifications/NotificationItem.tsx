@@ -1,6 +1,5 @@
-import React from 'react';
-import { FiBell, FiHeart, FiMessageCircle, FiUserPlus, FiInfo, FiCheckCircle, FiClock, FiClipboard } from 'react-icons/fi';
-import { Notification } from '@/hooks/useNotifications';
+import { useI18n } from '@/contexts/I18nContext';
+import { FiHeart, FiMessageCircle, FiUserPlus, FiClipboard, FiInfo, FiBell } from 'react-icons/fi';
 
 interface NotificationItemProps {
     notification: Notification;
@@ -9,6 +8,7 @@ interface NotificationItemProps {
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRead, onClick }) => {
+    const { t, locale } = useI18n();
     const isRead = !!notification.read_at;
 
     const handleClick = (e: React.MouseEvent) => {
@@ -27,6 +27,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRea
             case 'invite': return <div className="bg-green-500 p-1 rounded-full"><FiUserPlus className={className} /></div>;
             case 'evaluation': return <div className="bg-purple-500 p-1 rounded-full"><FiClipboard className={className} /></div>;
             case 'system': return <div className="bg-gray-500 p-1 rounded-full"><FiInfo className={className} /></div>;
+            case 'purchase_order': return <div className="bg-orange-500 p-1 rounded-full"><FiClipboard className={className} /></div>;
             default: return <div className="bg-blue-400 p-1 rounded-full"><FiBell className={className} /></div>;
         }
     };
@@ -36,7 +37,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRea
         const now = new Date();
         const diff = Math.floor((now.getTime() - date.getTime()) / 60000); // minutes
 
-        if (diff < 1) return 'Agora';
+        if (diff < 1) return locale === 'pt-BR' ? 'Agora' : 'Now';
         if (diff < 60) return `${diff}m`;
         if (diff < 1440) return `${Math.floor(diff / 60)}h`;
         return `${Math.floor(diff / 1440)}d`;
@@ -47,6 +48,32 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRea
         : null;
 
     const actorAvatar = notification.actor?.avatar;
+
+    // Helper to get translated message
+    const getMessage = () => {
+        const meta = notification.metadata as any;
+        if (meta && meta.type) {
+            const number = meta.poNumber || (notification.resource_id ? `#${notification.resource_id.slice(0, 8)}` : '');
+
+            // Format value if available
+            let value = meta.value;
+            if (value && !isNaN(Number(value))) {
+                value = Number(value).toLocaleString(locale === 'pt-BR' ? 'pt-BR' : 'en-US', { style: 'currency', currency: 'BRL' });
+            }
+
+            switch (meta.type) {
+                case 'po_created':
+                    return t('notifications.po_created', { number, provider: meta.provider, value });
+                case 'po_approval_request':
+                    return t('notifications.po_approval_request', { number, provider: meta.provider, value });
+                case 'po_approved':
+                    return t('notifications.po_approved', { number, provider: meta.provider, value });
+                case 'po_rejected':
+                    return t('notifications.po_rejected', { number, provider: meta.provider, value });
+            }
+        }
+        return notification.message || notification.title;
+    };
 
     return (
         <div
@@ -76,7 +103,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRea
                     <p className="text-sm text-gray-900 line-clamp-2">
                         {actorName && <span className="font-semibold text-gray-900 mr-1">{actorName}</span>}
                         <span className={actorName ? "text-gray-600" : "font-medium text-gray-900"}>
-                            {notification.message || notification.title}
+                            {getMessage()}
                         </span>
                     </p>
                 </div>
