@@ -3,14 +3,16 @@
  * Estes templates usam as configurações do arquivo .env para personalização
  */
 
+import { getTranslation } from '@/i18n';
+
 // Obter configurações de personalização do .env
 const getEmailConfig = () => {
   // Usar a URL completa do aplicativo para o logo
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   // Garantir que a URL do logo seja absoluta e correta
-  // Usar a URL do Storage do Supabase que é garantidamente pública e acessível
-  let logoUrl = 'https://1ok220.supabase.co/storage/v1/object/public/public-assets/logo.png';
+  // Usar a URL oficial do site ou do Storage
+  let logoUrl = process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png';
 
   console.log('Logo URL para emails:', logoUrl);
 
@@ -725,46 +727,48 @@ export const purchaseOrderCreatedTemplate = (
   totalValue: string,
   itemsCount: number,
   viewUrl?: string,
-  attachmentUrl?: string
+  attachmentUrl?: string,
+  locale: string = 'pt-BR'
 ) => {
   const config = getEmailConfig();
+  const t = (key: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
   const viewButton = viewUrl
     ? `<a href="${viewUrl.startsWith('http') ? viewUrl : config.appUrl + viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-right: 10px;">
-           Visualizar Pedido
+           ${t('emails.purchaseOrder.viewOrder')}
        </a>`
     : '';
   const attachmentButton = attachmentUrl
     ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="***REMOVED*** #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
-           Baixar Anexo
+           ${t('emails.purchaseOrder.downloadAttachment')}
        </a>`
     : '';
 
   const content = `
-    <h2 style="text-align: center; color: ${config.primaryColor};">Ordem de Compra Criada</h2>
+    <h2 style="text-align: center; color: ${config.primaryColor};">${t('emails.purchaseOrder.titleCreated')}</h2>
     <p>
-      Olá, <strong>${userName}</strong>!
+      ${t('emails.common.hello')}, <strong>${userName}</strong>!
     </p>
     <p>
-      Sua Ordem de Compra foi criada com sucesso e está aguardando aprovação.
+      ${t('emails.purchaseOrder.createdMessage')}
     </p>
     <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: ${config.primaryColor};">Resumo do Pedido:</h3>
+      <h3 style="margin-top: 0; color: ${config.primaryColor};">${t('emails.purchaseOrder.summary')}:</h3>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Número do Pedido:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.poNumber')}:</td>
           <td style="padding: 8px 0;">${poId}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Fornecedor:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.provider')}:</td>
           <td style="padding: 8px 0;">${providerName}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Valor Total:</td>
-          <td style="padding: 8px 0;">R$ ${Number(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.totalValue')}:</td>
+          <td style="padding: 8px 0;">R$ ${Number(totalValue).toLocaleString(locale === 'en-US' ? 'en-US' : 'pt-BR', { minimumFractionDigits: 2 })}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Itens:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.items')}:</td>
           <td style="padding: 8px 0;">${itemsCount}</td>
         </tr>
       </table>
@@ -776,14 +780,11 @@ export const purchaseOrderCreatedTemplate = (
     </div>
     
     <p>
-      Você será notificado assim que houver atualizações sobre a aprovação deste pedido.
-    </p>
-    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
-      Este é um email automático. Por favor, não responda.
+      ${t('emails.common.footer')}
     </p>
   `;
 
-  return baseTemplate(content);
+  return baseTemplate(content, locale);
 };
 
 export const orderStatusUpdateTemplate = (
@@ -793,9 +794,11 @@ export const orderStatusUpdateTemplate = (
   newStatus: 'approved' | 'rejected',
   updatedBy: string,
   note?: string,
-  viewUrl?: string
+  viewUrl?: string,
+  locale: string = 'pt-BR'
 ) => {
   const config = getEmailConfig();
+  const t = (key: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
   const statusColors = {
     approved: '#28a745', // Green
@@ -803,16 +806,17 @@ export const orderStatusUpdateTemplate = (
   };
 
   const statusLabels = {
-    approved: 'Aprovada',
-    rejected: 'Rejeitada'
+    approved: t('purchaseOrders.status_approved'),
+    rejected: t('purchaseOrders.status_rejected')
   };
 
   const statusColor = statusColors[newStatus];
-  const statusLabel = statusLabels[newStatus];
+  // @ts-ignore
+  const statusLabel = statusLabels[newStatus] || newStatus;
 
   const noteSection = note
     ? `<div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
-         <p style="margin: 0; font-weight: bold;">Nota do Aprovador:</p>
+         <p style="margin: 0; font-weight: bold;">${t('emails.purchaseOrder.note')}:</p>
          <p style="margin: 5px 0;">${note}</p>
        </div>`
     : '';
@@ -820,18 +824,21 @@ export const orderStatusUpdateTemplate = (
   const viewButton = viewUrl
     ? `<div style="text-align: center; margin: 30px 0;">
          <a href="${viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
-           Visualizar Pedido
+           ${t('emails.purchaseOrder.viewOrder')}
          </a>
        </div>`
     : '';
 
   const content = `
-    <h2 style="text-align: center; color: ${statusColor};">Solicitação ${statusLabel}</h2>
+    <h2 style="text-align: center; color: ${statusColor};">${newStatus === 'approved' ? t('emails.purchaseOrder.titleApproved') : t('emails.purchaseOrder.titleRejected')}</h2>
     <p>
-      Olá, <strong>${userName}</strong>!
+      ${t('emails.common.hello')}, <strong>${userName}</strong>!
     </p>
     <p>
-      Sua Ordem de Compra <strong>${poId}</strong> para <strong>${providerName}</strong> foi <strong>${statusLabel.toLowerCase()}</strong> por ${updatedBy}.
+      ${newStatus === 'approved'
+      ? t('emails.purchaseOrder.approvedMessage', { number: poId, provider: providerName, approver: updatedBy })
+      : t('emails.purchaseOrder.rejectedMessage', { number: poId, provider: providerName, approver: updatedBy })
+    }
     </p>
     
     ${noteSection}
@@ -839,11 +846,11 @@ export const orderStatusUpdateTemplate = (
     ${viewButton}
     
     <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
-      Este é um email automático. Por favor, não responda.
+      ${t('emails.purchaseOrder.autoMessage')}
     </p>
   `;
 
-  return baseTemplate(content);
+  return baseTemplate(content, locale);
 };
 
 // Template para Solicitação de Aprovação (Diretoria)
@@ -855,37 +862,39 @@ export const poApprovalRequestTemplate = (
   totalValue: string,
   itemsCount: number,
   viewUrl: string,
-  attachmentUrl?: string
+  attachmentUrl?: string,
+  locale: string = 'pt-BR'
 ) => {
   const config = getEmailConfig();
+  const t = (key: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
   const attachmentButton = attachmentUrl
     ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="***REMOVED*** #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-left: 10px;">
-           Baixar Anexo
+           ${t('emails.purchaseOrder.downloadAttachment')}
        </a>`
     : '';
 
   const content = `
-    <h2 style="text-align: center; color: ${config.primaryColor};">Nova Solicitação de Aprovação</h2>
+    <h2 style="text-align: center; color: ${config.primaryColor};">${t('emails.purchaseOrder.titleApproval')}</h2>
     <p>
-      Olá, <strong>${approverName}</strong>!
+      ${t('emails.common.hello')}, <strong>${approverName}</strong>!
     </p>
     <p>
-      <strong>${requesterName}</strong> criou uma nova Ordem de Compra que aguarda sua aprovação.
+      ${t('emails.purchaseOrder.approvalMessage', { name: requesterName })}
     </p>
     <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: ${config.primaryColor};">Detalhes do Pedido:</h3>
+      <h3 style="margin-top: 0; color: ${config.primaryColor};">${t('emails.purchaseOrder.summary')}:</h3>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Número:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.poNumber')}:</td>
           <td style="padding: 8px 0;">${poId}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Fornecedor:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.provider')}:</td>
           <td style="padding: 8px 0;">${providerName}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Valor:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.totalValue')}:</td>
           <td style="padding: 8px 0;">R$ ${Number(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
         </tr>
         <tr>
@@ -897,13 +906,17 @@ export const poApprovalRequestTemplate = (
     
     <div style="text-align: center; margin: 30px 0;">
          <a href="${viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
-           Revisar e Aprovar
+           ${t('emails.purchaseOrder.viewOrder')}
          </a>
          ${attachmentButton}
     </div>
+    
+    <p>
+      ${t('emails.common.footer')}
+    </p>
   `;
 
-  return baseTemplate(content);
+  return baseTemplate(content, locale);
 };
 
 // Template para Notificação Fiscal (Finalização)

@@ -65,6 +65,13 @@ export async function uploadReimbursementAttachment(file: File): Promise<Reimbur
       // Continue with upload attempt
     }
 
+    // Check bucket existence logic can remain or be moved to storage-service if generic.
+    // For now, removing the manual complex check to rely on unified service wrapper which is simpler.
+    // If we want to keep the "create bucket" logic, we should move it to storage-service or keep it here.
+    // Given the complexity, let's just delegate to unified service for the upload part.
+    // But `uploadFileUnified` does NOT handle bucket creation.
+    // Let's assume bucket exists or standard error handling for now.
+
     // Upload the file to the 'comprovantes' bucket
     const { data, error } = await supabase.storage
       .from('comprovantes')
@@ -78,10 +85,10 @@ export async function uploadReimbursementAttachment(file: File): Promise<Reimbur
 
       // If the error is related to the bucket not existing, provide a more helpful error message
       if (error.message && (
-          error.message.includes('bucket') ||
-          error.message.includes('not found') ||
-          error.message.includes('does not exist')
-        )) {
+        error.message.includes('bucket') ||
+        error.message.includes('not found') ||
+        error.message.includes('does not exist')
+      )) {
         throw new Error(
           'O bucket de armazenamento "comprovantes" não existe. ' +
           'Por favor, crie o bucket manualmente no painel do Supabase ou contate o administrador do sistema.'
@@ -90,11 +97,11 @@ export async function uploadReimbursementAttachment(file: File): Promise<Reimbur
 
       // If the error is related to RLS policies, provide a more helpful error message
       if (error.message && (
-          error.message.includes('row-level security') ||
-          error.message.includes('RLS') ||
-          error.message.includes('policy') ||
-          error.message.includes('permission denied')
-        )) {
+        error.message.includes('row-level security') ||
+        error.message.includes('RLS') ||
+        error.message.includes('policy') ||
+        error.message.includes('permission denied')
+      )) {
         throw new Error(
           'Erro de permissão ao fazer upload do arquivo. ' +
           'As políticas de segurança (RLS) do Supabase estão impedindo o upload. ' +
@@ -110,7 +117,6 @@ export async function uploadReimbursementAttachment(file: File): Promise<Reimbur
       .from('comprovantes')
       .getPublicUrl(data.path);
 
-    // Return the attachment details
     return {
       id: fileName,
       name: file.name,

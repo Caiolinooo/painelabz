@@ -26,6 +26,7 @@ export interface Notification {
 export const useNotifications = (userId: string) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [newsUnreadCount, setNewsUnreadCount] = useState(0); // New state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
@@ -62,6 +63,7 @@ export const useNotifications = (userId: string) => {
       if (mountedRef.current) {
         setNotifications(prev => append ? [...prev, ...(data.notifications || [])] : (data.notifications || []));
         setUnreadCount(data.unreadCount || 0);
+        setNewsUnreadCount(data.newsUnreadCount || 0); // Set news unread count
         if (data.pagination) {
           setPagination(data.pagination);
         }
@@ -119,16 +121,23 @@ export const useNotifications = (userId: string) => {
   }, [userId, fetchNotifications]);
 
   // Marcar como lida
-  const markAsRead = async (id: string) => {
-    // Otimistic update
+  const markAsRead = async (id: string, type?: string) => {
+    // Determine if it was news to update optimistic state
+    // We can't know for sure without the type, but standard behavior will refetch eventually
+    // For now we just dec general unread
     setNotifications(prev =>
       prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
+    // If we knew the type was NOT purchase_order we could dec newsUnreadCount too
+    // But since we don't have it easily here without passing it, we rely on fetch update or separate logic
+    // For now, let's just do the API call. To be precise we should pass the item type to this function.
 
     try {
       const { fetchWithToken } = await import('@/lib/tokenStorage');
       await fetchWithToken(`/api/notifications/${id}/read`, { method: 'PUT' });
+      // Refetch to sync counts accurately
+      fetchNotifications(pagination.page, false);
     } catch (error) {
       console.error('Erro ao marcar como lida:', error);
     }
@@ -138,10 +147,12 @@ export const useNotifications = (userId: string) => {
   const markAllAsRead = async () => {
     // Otimistic update
     const previousUnread = unreadCount;
+    const previousNewsUnread = newsUnreadCount;
     setNotifications(prev =>
       prev.map(n => ({ ...n, read_at: new Date().toISOString() }))
     );
     setUnreadCount(0);
+    setNewsUnreadCount(0);
 
     try {
       const { fetchWithToken } = await import('@/lib/tokenStorage');
@@ -158,17 +169,21 @@ export const useNotifications = (userId: string) => {
         // Sincronizar com o servidor (deve ser 0, mas garante consistência)
         if (typeof data.newUnreadCount === 'number') {
           setUnreadCount(data.newUnreadCount);
+          // Assuming mark all read marks ALL, including News and PO
+          setNewsUnreadCount(0);
         }
       } else {
         // Se falhar, reverter (opcional, mas bom para feedback)
         console.error('Falha ao marcar como lidas, revertendo estado.');
         setUnreadCount(previousUnread);
+        setNewsUnreadCount(previousNewsUnread);
         // Forçar um refetch para garantir estado correto
         fetchNotifications(1, false);
       }
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error);
       setUnreadCount(previousUnread);
+      setNewsUnreadCount(previousNewsUnread);
       fetchNotifications(1, false);
     }
   };
@@ -176,6 +191,7 @@ export const useNotifications = (userId: string) => {
   return {
     notifications,
     unreadCount,
+    newsUnreadCount, // Expose this
     loading,
     error,
     loadNotifications: fetchNotifications,

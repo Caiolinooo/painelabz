@@ -410,3 +410,107 @@ export function generateVerificationCode(): string {
   // Gera um código de 6 dígitos
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
+
+/**
+ * Envia um e-mail de redefinição de senha
+ * @param email E-mail do destinatário
+ * @param resetUrl URL para redefinição
+ * @returns Resultado do envio
+ */
+export async function sendPasswordResetEmail(email: string, resetUrl: string) {
+  // Texto simples para clientes que não suportam HTML
+  const text = `
+Redefinição de Senha - ABZ Group
+
+Você solicitou a redefinição de sua senha.
+
+Clique no link abaixo para redefinir sua senha:
+${resetUrl}
+
+Este link é válido por 1 hora.
+
+Se você não solicitou esta redefinição, por favor ignore este email ou contate o suporte se tiver dúvidas.
+
+--
+ABZ Group
+https://abzgroup.com.br
+${new Date().getFullYear()} © Todos os direitos reservados.
+  `.trim();
+
+  // HTML otimizado para Exchange/Office 365
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <title>Redefinição de Senha - ABZ Group</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; ***REMOVED*** #f9f9f9;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f9f9f9;">
+        <tr>
+          <td align="center" style="padding: 20px 0;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
+              <tr>
+                <td align="center" style="padding: 30px 20px;">
+                  <img src="${process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png'}" alt="ABZ Group Logo" width="200" style="display: block; max-width: 200px; height: auto;">
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding: 0 20px 20px 20px;">
+                  <h1 style="color: #0066cc; font-size: 24px; margin: 0;">Redefinição de Senha</h1>
+                </td>
+              </tr>
+              <tr>
+                <td align="left" style="padding: 0 20px 20px 20px;">
+                  <p style="margin: 0 0 15px 0;">Olá,</p>
+                  <p style="margin: 0 0 15px 0;">Recebemos uma solicitação para redefinir a senha da sua conta no Painel ABZ Group.</p>
+                  <p style="margin: 0 0 25px 0;">Clique no botão abaixo para criar uma nova senha:</p>
+                  
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
+                    <tr>
+                      <td style="border-radius: 5px; background: #0066cc; text-align: center;">
+                        <a href="${resetUrl}" style="background: #0066cc; border: 1px solid #0066cc; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.1; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold;" class="button-a">
+                          <span style="color:#ffffff; padding: 12px 24px; display: block;">Redefinir Minha Senha</span>
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <p style="margin: 25px 0 0 0; font-size: 14px; color: #666666;">Este link é válido por <strong>1 hora</strong>.</p>
+                  <p style="margin: 10px 0 0 0; font-size: 14px; color: #666666;">Se você não solicitou esta redefinição, por favor ignore este email. Sua senha permanecerá inalterada.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 20px; border-top: 1px solid #e0e0e0;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                    <tr>
+                      <td align="center" style="font-size: 12px; color: #999999;">
+                        <p style="margin: 0 0 10px 0;">&copy; ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.</p>
+                        <p style="margin: 0;">
+                          <a href="https://abzgroup.com.br" style="color: #0066cc; text-decoration: none;">abzgroup.com.br</a>
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  try {
+    return await sendEmail(email, 'Redefinição de Senha - ABZ Group', text, html);
+  } catch (error) {
+    console.error('Erro ao enviar e-mail de redefinição:', error);
+    return {
+      success: false,
+      message: `Erro ao enviar email de redefinição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+    };
+  }
+}
