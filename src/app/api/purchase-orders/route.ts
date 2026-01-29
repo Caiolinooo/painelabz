@@ -110,8 +110,19 @@ export async function POST(request: NextRequest) {
                 const { purchaseOrderCreatedTemplate, poApprovalRequestTemplate } = await import('@/lib/emailTemplates');
                 const { getTranslation } = await import('@/i18n'); // Import dynamic translator
 
-                // Get locale from request header or default to pt-BR
-                const userLocale = request.headers.get('x-client-locale') || 'pt-BR';
+                // Get locale or default to pt-BR
+                let userLocale = request.headers.get('x-client-locale');
+                const acceptLanguage = request.headers.get('accept-language');
+
+                if (!userLocale && acceptLanguage) {
+                    // Extract first language from Accept-Language header
+                    userLocale = acceptLanguage.split(',')[0].trim();
+                    console.log(`PO Create: Fallback to Accept-Language '${userLocale}'`);
+                }
+
+                userLocale = userLocale || 'pt-BR';
+                console.log(`PO Create: Final locale determined '${userLocale}'`);
+
                 const t = (key: string, locale: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
                 const poNumber = data.po_number || '#' + data.id.slice(0, 8);

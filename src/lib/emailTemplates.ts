@@ -27,12 +27,12 @@ const getEmailConfig = () => {
 };
 
 // Template base para todos os emails
-const baseTemplate = (content: string) => {
+const baseTemplate = (content: string, locale: string = 'pt-BR') => {
   const config = getEmailConfig();
 
   return `
     <!DOCTYPE html>
-    <html lang="pt-BR">
+    <html lang="${locale}">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -787,6 +787,7 @@ export const purchaseOrderCreatedTemplate = (
   return baseTemplate(content, locale);
 };
 
+// Template for Status Update (Approved/Rejected)
 export const orderStatusUpdateTemplate = (
   userName: string,
   poId: string,
@@ -805,14 +806,7 @@ export const orderStatusUpdateTemplate = (
     rejected: '#dc3545'  // Red
   };
 
-  const statusLabels = {
-    approved: t('purchaseOrders.status_approved'),
-    rejected: t('purchaseOrders.status_rejected')
-  };
-
   const statusColor = statusColors[newStatus];
-  // @ts-ignore
-  const statusLabel = statusLabels[newStatus] || newStatus;
 
   const noteSection = note
     ? `<div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
@@ -829,16 +823,16 @@ export const orderStatusUpdateTemplate = (
        </div>`
     : '';
 
+  const titleKey = newStatus === 'approved' ? 'emails.purchaseOrder.titleApproved' : 'emails.purchaseOrder.titleRejected';
+  const messageKey = newStatus === 'approved' ? 'emails.purchaseOrder.approvedMessage' : 'emails.purchaseOrder.rejectedMessage';
+
   const content = `
-    <h2 style="text-align: center; color: ${statusColor};">${newStatus === 'approved' ? t('emails.purchaseOrder.titleApproved') : t('emails.purchaseOrder.titleRejected')}</h2>
+    <h2 style="text-align: center; color: ${statusColor};">${t(titleKey)}</h2>
     <p>
       ${t('emails.common.hello')}, <strong>${userName}</strong>!
     </p>
     <p>
-      ${newStatus === 'approved'
-      ? t('emails.purchaseOrder.approvedMessage', { number: poId, provider: providerName, approver: updatedBy })
-      : t('emails.purchaseOrder.rejectedMessage', { number: poId, provider: providerName, approver: updatedBy })
-    }
+      ${t(messageKey, { number: poId, provider: providerName, approver: updatedBy })}
     </p>
     
     ${noteSection}
@@ -853,7 +847,7 @@ export const orderStatusUpdateTemplate = (
   return baseTemplate(content, locale);
 };
 
-// Template para Solicitação de Aprovação (Diretoria)
+// Template for Approval Request
 export const poApprovalRequestTemplate = (
   approverName: string,
   requesterName: string,
@@ -895,10 +889,10 @@ export const poApprovalRequestTemplate = (
         </tr>
         <tr>
           <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.totalValue')}:</td>
-          <td style="padding: 8px 0;">R$ ${Number(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+          <td style="padding: 8px 0;">R$ ${Number(totalValue).toLocaleString(locale === 'en-US' ? 'en-US' : 'pt-BR', { minimumFractionDigits: 2 })}</td>
         </tr>
         <tr>
-           <td style="padding: 8px 0; font-weight: bold;">Itens:</td>
+           <td style="padding: 8px 0; font-weight: bold;">${t('emails.purchaseOrder.items')}:</td>
            <td style="padding: 8px 0;">${itemsCount}</td>
         </tr>
       </table>
@@ -919,7 +913,7 @@ export const poApprovalRequestTemplate = (
   return baseTemplate(content, locale);
 };
 
-// Template para Notificação Fiscal (Finalização)
+// Template for Fiscal Notification (Approved)
 export const poApprovedFiscalTemplate = (
   poId: string,
   requesterName: string,
@@ -927,12 +921,14 @@ export const poApprovedFiscalTemplate = (
   totalValue: string,
   approverName: string,
   attachmentUrl: string,
-  viewUrl: string
+  viewUrl: string,
+  locale: string = 'pt-BR'
 ) => {
   const config = getEmailConfig();
+  const t = (key: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
   const content = `
-    <h2 style="text-align: center; color: #28a745;">Ordem de Compra Aprovada</h2>
+    <h2 style="text-align: center; color: #28a745;">${t('emails.purchaseOrder.titleApproved')}</h2>
     <p>
       Prezados do Fiscal,
     </p>
@@ -940,20 +936,21 @@ export const poApprovedFiscalTemplate = (
       A Ordem de Compra <strong>${poId}</strong> foi aprovada e está pronta para faturamento/pagamento.
     </p>
     <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: ${config.primaryColor};">Resumo:</h3>
+      <h3 style="margin-top: 0; color: ${config.primaryColor};">${t('emails.purchaseOrder.summary')}:</h3>
+      <p><strong>${t('emails.purchaseOrder.poNumber')}:</strong> ${poId}</p>
       <p><strong>Solicitante:</strong> ${requesterName}</p>
-      <p><strong>Fornecedor:</strong> ${providerName}</p>
-      <p><strong>Valor:</strong> R$ ${Number(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+      <p><strong>${t('emails.purchaseOrder.provider')}:</strong> ${providerName}</p>
+      <p><strong>${t('emails.purchaseOrder.totalValue')}:</strong> R$ ${Number(totalValue).toLocaleString(locale === 'en-US' ? 'en-US' : 'pt-BR', { minimumFractionDigits: 2 })}</p>
       <p><strong>Aprovado por:</strong> ${approverName}</p>
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
          <a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
-           Baixar Nota Fiscal / Anexo
+           ${t('emails.purchaseOrder.downloadAttachment')}
          </a>
          <br><br>
-         <a href="${viewUrl}" style="color: #666; font-size: 14px;">Ver no Sistema</a>
+         <a href="${viewUrl}" style="color: #666; font-size: 14px;">${t('emails.purchaseOrder.viewOrder')}</a>
     </div>
   `;
-  return baseTemplate(content);
+  return baseTemplate(content, locale);
 };

@@ -1878,7 +1878,11 @@ export default {
     markAsRead: 'Mark as read',
     markAllAsRead: 'Mark all as read',
     noNotifications: 'No notifications',
-    unreadCount: '{count} unread',
+    unreadCount: '{{count}} unread',
+    po_created: 'New Purchase Order {{number}} created for {{provider}}. Value: {{value}}.',
+    po_approval_request: 'Approval request for Purchase Order {{number}} ({{provider}}). Value: {{value}}.',
+    po_approved: 'Purchase Order {{number}} ({{provider}}) approved. Value: {{value}}.',
+    po_rejected: 'Purchase Order {{number}} ({{provider}}) rejected. Value: {{value}}.',
     types: {
       info: 'Information',
       warning: 'Warning',
@@ -1894,49 +1898,49 @@ export default {
     evaluation: {
       periodOpened: {
         title: '🚀 New Evaluation Period',
-        message: 'The evaluation period "{periodName}" has been opened! Access to start your self-evaluation.'
+        message: 'The evaluation period "{{periodName}}" has been opened! Access to start your self-evaluation.'
       },
       evaluationCreated: {
         title: '📝 New Evaluation Available',
-        message: 'A new performance evaluation has been created for the period: {periodName}. Access to start your self-evaluation.'
+        message: 'A new performance evaluation has been created for the period: {{periodName}}. Access to start your self-evaluation.'
       },
       selfEvaluationCompleted: {
         title: '✅ Self-Evaluation Completed',
-        message: '{employeeName} completed the self-evaluation and is awaiting your review as manager.'
+        message: '{{employeeName}} completed the self-evaluation and is awaiting your review as manager.'
       },
       managerReviewPending: {
         title: '👨💼 Manager Review Pending',
-        message: 'You have an evaluation from {employeeName} awaiting your review and approval.'
+        message: 'You have an evaluation from {{employeeName}} awaiting your review and approval.'
       },
       evaluationReturned: {
         title: '🔄 Evaluation Returned for Adjustments',
-        message: 'Your evaluation was returned by manager {managerName} for adjustments. Check the comments and resubmit.'
+        message: 'Your evaluation was returned by manager {{managerName}} for adjustments. Check the comments and resubmit.'
       },
       evaluationRevised: {
         titleByEmployee: '💬 Final Comment Added',
-        messageByEmployee: '{employeeName} added the final comment to the evaluation. Review and finalize the evaluation.',
+        messageByEmployee: '{{employeeName}} added the final comment to the evaluation. Review and finalize the evaluation.',
         titleByManager: '✅ Evaluation Approved by Manager',
-        messageByManager: '{managerName} approved your evaluation. Add your final comment to complete the process.',
+        messageByManager: '{{managerName}} approved your evaluation. Add your final comment to complete the process.',
         titleGeneric: '📝 Evaluation Revised',
         messageGeneric: 'The evaluation has been revised. Check the details.'
       },
       evaluationCompleted: {
         title: '🎉 Evaluation Completed',
-        message: 'Your performance evaluation has been completed by {managerName}! View the results and feedback.'
+        message: 'Your performance evaluation has been completed by {{managerName}}! View the results and feedback.'
       }
     },
     reimbursement: {
       submitted: {
         title: '📝 Reimbursement Submitted',
-        message: 'Your reimbursement request (Protocol: {protocol}) was submitted successfully.'
+        message: 'Your reimbursement request (Protocol: {{protocol}}) was submitted successfully.'
       },
       approved: {
         title: '✅ Reimbursement Approved',
-        message: 'Your reimbursement (Protocol: {protocol}) was approved! Amount: {amount}'
+        message: 'Your reimbursement (Protocol: {{protocol}}) was approved! Amount: {{amount}}'
       },
       rejected: {
         title: '❌ Reimbursement Rejected',
-        message: 'Your reimbursement (Protocol: {protocol}) was rejected. Reason: {reason}'
+        message: 'Your reimbursement (Protocol: {{protocol}}) was rejected. Reason: {{reason}}'
       }
     },
     purchaseOrder: {
@@ -2823,43 +2827,7 @@ export default {
     procedimentosLogistica: 'Logistics Procedures'
   },
 
-  emails: {
-    common: {
-      hello: 'Hello',
-      footer: 'This is an automated email. Please do not reply.',
-      regards: 'Best regards',
-      team: 'ABZ Group Team',
-      accessSystem: 'Access System',
-      viewDetails: 'View Details',
-      rightsReserved: 'All rights reserved.'
-    },
-    purchaseOrder: {
-      createdSubject: 'Purchase Order Created - {{poNumber}}',
-      createdMessage: 'Your purchase order was created successfully.',
-      approvalSubject: 'Approval Request - {{poNumber}}',
-      approvalMessage: 'New purchase request from {{name}} for approval.',
-      approvalCopySubject: 'Approval Request (Copy) - {{poNumber}}',
-      approvalCopyMessage: 'Copy of purchase request from {{name}}.',
-      titleCreated: 'Purchase Order Created',
-      titleApproval: 'Approval Request',
-      summary: 'Order Summary',
-      poNumber: 'Order Number',
-      provider: 'Provider',
-      totalValue: 'Total Value',
-      items: 'Items',
-      viewOrder: 'View Order',
-      downloadAttachment: 'Download Attachment',
-      statusUpdateSubject: 'Status Update - {{poNumber}}',
-      statusApproved: 'Approved',
-      statusRejected: 'Rejected',
-      titleApproved: 'Order Approved',
-      titleRejected: 'Order Rejected',
-      approvedMessage: 'Purchase order {{number}} from provider {{provider}} has been approved by {{approver}}.',
-      rejectedMessage: 'Purchase order {{number}} from provider {{provider}} has been rejected by {{approver}}.',
-      note: 'Note',
-      autoMessage: 'This is an automated email, please do not reply.'
-    }
-  },
+
 
   changelog: {
     title: 'What\'s New',
@@ -3026,26 +2994,31 @@ export default {
       hello: 'Hello',
       footer: 'For more information, please contact support or the responsible department.',
       rightsReserved: 'All rights reserved.',
-      copyright_ip: 'ABZ Portal © {year} - Intellectual Property of Caio Correia - [GitHub](https://github.com/Caiolinooo)'
+      copyright_ip: 'ABZ Portal © {year} - Intellectual Property of Caio Correia - [GitHub](https://github.com/Caiolinooo)',
+      regards: 'Best regards',
+      team: 'ABZ Group Team',
+      accessSystem: 'Access System',
+      viewDetails: 'View Details'
     },
     purchaseOrder: {
       subject: {
-        created: 'Purchase Order Created - {number}',
-        approval: 'Approval Request - {number}',
-        approved: 'Request Approved - {number}',
-        rejected: 'Request Rejected - {number}',
-        approvalCopy: 'Approval Request (Copy) - {number}'
+        created: 'Purchase Order Created - {{number}}',
+        approval: 'Approval Request - {{number}}',
+        approved: 'Request Approved - {{number}}',
+        rejected: 'Request Rejected - {{number}}',
+        approvalCopy: 'Approval Request Copy - {{number}}'
       },
       titleCreated: 'New Purchase Order',
       titleApproval: 'Approval Request',
       titleApproved: 'Request Approved',
       titleRejected: 'Request Rejected',
+      statusUpdateSubject: 'Status Update - {{poNumber}}',
       viewOrder: 'View Order',
       downloadAttachment: 'Download Attachment',
-      createdMessage: 'Your purchase order has been created successfully and is awaiting approval.',
-      approvalMessage: 'New purchase request from {name} awaiting your approval.',
-      approvedMessage: 'Your Purchase Order {number} for {provider} was approved by {approver}.',
-      rejectedMessage: 'Your Purchase Order {number} for {provider} was rejected by {approver}.',
+      createdMessage: 'A new purchase order has been created and needs attention.',
+      approvalMessage: '{{name}} requested approval for a new purchase order.',
+      approvedMessage: 'Purchase Order {{number}} for {{provider}} was APPROVED by {{approver}}.',
+      rejectedMessage: 'Purchase Order {{number}} for {{provider}} was REJECTED by {{approver}}.',
       summary: 'Order Summary',
       poNumber: 'Order Number',
       provider: 'Provider',
@@ -3055,11 +3028,6 @@ export default {
       autoMessage: 'This is an automated email. Please do not reply.'
     }
   },
-  notifications: {
-    po_created: 'New Purchase Order #{number} created for {provider}. Value: {value}.',
-    po_approval_request: 'Approval request for Purchase Order #{number} ({provider}). Value: {value}.',
-    po_approved: 'Purchase Order #{number} ({provider}) approved. Value: {value}.',
-    po_rejected: 'Purchase Order #{number} ({provider}) rejected. Value: {value}.'
-  }
+
 };
 

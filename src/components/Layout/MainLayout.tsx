@@ -42,6 +42,7 @@ import ProtectedRoute from '@/components/Auth/ProtectedRoute';
 import GlobalTimeTracker from '@/components/tracking/GlobalTimeTracker';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import UserAvatar from '@/components/UserAvatar';
+import HelpWidget from '@/components/Help/HelpWidget';
 
 
 interface MainLayoutProps {
@@ -383,6 +384,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
 
       </div>
+      <HelpWidget />
     </ProtectedRoute>
   );
 }

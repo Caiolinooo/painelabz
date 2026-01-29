@@ -1917,7 +1917,11 @@ export default {
     markAsRead: 'Marcar como lida',
     markAllAsRead: 'Marcar todas como lidas',
     noNotifications: 'Nenhuma notificação',
-    unreadCount: '{count} não lidas',
+    unreadCount: '{{count}} não lidas',
+    po_created: 'Nova Ordem de Compra {{number}} criada para {{provider}}. Valor: {{value}}.',
+    po_approval_request: 'Solicitação de aprovação para Ordem de Compra {{number}} ({{provider}}). Valor: {{value}}.',
+    po_approved: 'Ordem de Compra {{number}} ({{provider}}) foi aprovada. Valor: {{value}}.',
+    po_rejected: 'Ordem de Compra {{number}} ({{provider}}) foi rejeitada. Valor: {{value}}.',
     types: {
       info: 'Informação',
       warning: 'Aviso',
@@ -1933,49 +1937,49 @@ export default {
     evaluation: {
       periodOpened: {
         title: '🚀 Novo Período de Avaliação',
-        message: 'O período de avaliação "{periodName}" foi aberto! Acesse para iniciar sua autoavaliação.'
+        message: 'O período de avaliação "{{periodName}}" foi aberto! Acesse para iniciar sua autoavaliação.'
       },
       evaluationCreated: {
         title: '📝 Nova Avaliação Disponível',
-        message: 'Uma nova avaliação de desempenho foi criada para o período: {periodName}. Acesse para iniciar sua autoavaliação.'
+        message: 'Uma nova avaliação de desempenho foi criada para o período: {{periodName}}. Acesse para iniciar sua autoavaliação.'
       },
       selfEvaluationCompleted: {
         title: '✅ Autoavaliação Concluída',
-        message: '{employeeName} completou a autoavaliação e está aguardando sua revisão como gestor.'
+        message: '{{employeeName}} completou a autoavaliação e está aguardando sua revisão como gestor.'
       },
       managerReviewPending: {
         title: '👨💼 Revisão Gerencial Pendente',
-        message: 'Você tem uma avaliação de {employeeName} aguardando sua revisão e aprovação.'
+        message: 'Você tem uma avaliação de {{employeeName}} aguardando sua revisão e aprovação.'
       },
       evaluationReturned: {
         title: '🔄 Avaliação Devolvida para Ajustes',
-        message: 'Sua avaliação foi devolvida pelo gestor {managerName} para ajustes. Verifique os comentários e reenvie.'
+        message: 'Sua avaliação foi devolvida pelo gestor {{managerName}} para ajustes. Verifique os comentários e reenvie.'
       },
       evaluationRevised: {
         titleByEmployee: '💬 Comentário Final Adicionado',
-        messageByEmployee: '{employeeName} adicionou o comentário final na avaliação. Revise e finalize a avaliação.',
+        messageByEmployee: '{{employeeName}} adicionou o comentário final na avaliação. Revise e finalize a avaliação.',
         titleByManager: '✅ Avaliação Aprovada pelo Gerente',
-        messageByManager: '{managerName} aprovou sua avaliação. Adicione seu comentário final para concluir o processo.',
+        messageByManager: '{{managerName}} aprovou sua avaliação. Adicione seu comentário final para concluir o processo.',
         titleGeneric: '📝 Avaliação Revisada',
         messageGeneric: 'A avaliação foi revisada. Verifique os detalhes.'
       },
       evaluationCompleted: {
         title: '🎉 Avaliação Finalizada',
-        message: 'Sua avaliação de desempenho foi finalizada por {managerName}! Visualize os resultados e feedback.'
+        message: 'Sua avaliação de desempenho foi finalizada por {{managerName}}! Visualize os resultados e feedback.'
       }
     },
     reimbursement: {
       submitted: {
         title: '📝 Reembolso Enviado',
-        message: 'Sua solicitação de reembolso (Protocolo: {protocol}) foi enviada com sucesso.'
+        message: 'Sua solicitação de reembolso (Protocolo: {{protocol}}) foi enviada com sucesso.'
       },
       approved: {
         title: '✅ Reembolso Aprovado',
-        message: 'Seu reembolso (Protocolo: {protocol}) foi aprovado! Valor: {amount}'
+        message: 'Seu reembolso (Protocolo: {{protocol}}) foi aprovado! Valor: {{amount}}'
       },
       rejected: {
         title: '❌ Reembolso Rejeitado',
-        message: 'Seu reembolso (Protocolo: {protocol}) foi rejeitado. Motivo: {reason}'
+        message: 'Seu reembolso (Protocolo: {{protocol}}) foi rejeitado. Motivo: {{reason}}'
       }
     },
     purchaseOrder: {
@@ -3145,43 +3149,7 @@ export default {
     procedimentosLogistica: 'Procedimentos de Logística'
   },
 
-  emails: {
-    common: {
-      hello: 'Olá',
-      footer: 'Este é um email automático. Por favor, não responda.',
-      regards: 'Atenciosamente',
-      team: 'Equipe ABZ Group',
-      accessSystem: 'Acessar o Sistema',
-      viewDetails: 'Ver Detalhes',
-      rightsReserved: 'Todos os direitos reservados.'
-    },
-    purchaseOrder: {
-      createdSubject: 'Ordem de Compra Criada - {{poNumber}}',
-      createdMessage: 'Sua ordem de compra foi criada com sucesso.',
-      approvalSubject: 'Solicitação de aprovação - {{poNumber}}',
-      approvalMessage: 'Nova solicitação de compra de {{name}} para aprovação.',
-      approvalCopySubject: 'Solicitação de aprovação (Cópia) - {{poNumber}}',
-      approvalCopyMessage: 'Cópia de solicitação de compra de {{name}}.',
-      titleCreated: 'Ordem de Compra Criada',
-      titleApproval: 'Solicitação de Aprovação',
-      summary: 'Resumo do Pedido',
-      poNumber: 'Número do Pedido',
-      provider: 'Fornecedor',
-      totalValue: 'Valor Total',
-      items: 'Itens',
-      viewOrder: 'Visualizar Pedido',
-      downloadAttachment: 'Baixar Anexo',
-      statusUpdateSubject: 'Atualização de Status - {{poNumber}}',
-      statusApproved: 'Aprovado',
-      statusRejected: 'Rejeitado',
-      titleApproved: 'Pedido Aprovado',
-      titleRejected: 'Pedido Rejeitado',
-      approvedMessage: 'A ordem de compra {{number}} do fornecedor {{provider}} foi aprovada por {{approver}}.',
-      rejectedMessage: 'A ordem de compra {{number}} do fornecedor {{provider}} foi rejeitada por {{approver}}.',
-      note: 'Nota',
-      autoMessage: 'Este é um email automático, por favor não responda.'
-    }
-  },
+
 
   changelog: {
     title: 'Novidades',
@@ -3347,16 +3315,21 @@ export default {
       hello: 'Olá',
       footer: 'Para mais informações, entre em contato com o suporte ou departamento responsável.',
       rightsReserved: 'Todos os direitos reservados.',
-      copyright_ip: 'Portal ABZ © {year} - Propriedade Intelectual de Caio Correia - [GitHub](https://github.com/Caiolinooo)'
+      copyright_ip: 'Portal ABZ © {year} - Propriedade Intelectual de Caio Correia - [GitHub](https://github.com/Caiolinooo)',
+      regards: 'Atenciosamente',
+      team: 'Equipe ABZ Group',
+      accessSystem: 'Acessar o Sistema',
+      viewDetails: 'Ver Detalhes'
     },
     purchaseOrder: {
       subject: {
-        created: 'Ordem de Compra Criada - {number}',
-        approval: 'Solicitação de Aprovação - {number}',
-        approved: 'Solicitação Aprovada - {number}',
-        rejected: 'Solicitação Rejeitada - {number}',
-        approvalCopy: 'Solicitação de Aprovação (Cópia) - {number}'
+        created: 'Ordem de Compra Criada - {{number}}',
+        approval: 'Solicitação de Aprovação - {{number}}',
+        approved: 'Solicitação Aprovada - {{number}}',
+        rejected: 'Solicitação Rejeitada - {{number}}',
+        approvalCopy: 'Solicitação de Aprovação (Cópia) - {{number}}'
       },
+      statusUpdateSubject: 'Atualização de Status - {{poNumber}}',
       titleCreated: 'Nova Ordem de Compra',
       titleApproval: 'Solicitação de Aprovação',
       titleApproved: 'Solicitação Aprovada',
@@ -3364,9 +3337,9 @@ export default {
       viewOrder: 'Visualizar Pedido',
       downloadAttachment: 'Baixar Anexo',
       createdMessage: 'Sua ordem de compra foi criada com sucesso e está aguardando aprovação.',
-      approvalMessage: 'Nova solicitação de compra de {name} aguardando sua aprovação.',
-      approvedMessage: 'Sua Ordem de Compra {number} para {provider} foi aprovada por {approver}.',
-      rejectedMessage: 'Sua Ordem de Compra {number} para {provider} foi rejeitada por {approver}.',
+      approvalMessage: 'Nova solicitação de compra de {{name}} aguardando sua aprovação.',
+      approvedMessage: 'Sua Ordem de Compra {{number}} para {{provider}} foi aprovada por {{approver}}.',
+      rejectedMessage: 'Sua Ordem de Compra {{number}} para {{provider}} foi rejeitada por {{approver}}.',
       summary: 'Resumo do Pedido',
       poNumber: 'Número do Pedido',
       provider: 'Fornecedor',
@@ -3376,11 +3349,6 @@ export default {
       autoMessage: 'Este é um email automático. Por favor, não responda.'
     }
   },
-  notifications: {
-    po_created: 'Nova Ordem de Compra #{number} criada para {provider}. Valor: {value}.',
-    po_approval_request: 'Solicitação de aprovação para Ordem de Compra #{number} ({provider}). Valor: {value}.',
-    po_approved: 'Ordem de Compra #{number} ({provider}) foi aprovada. Valor: {value}.',
-    po_rejected: 'Ordem de Compra #{number} ({provider}) foi rejeitada. Valor: {value}.'
-  }
+
 };
 

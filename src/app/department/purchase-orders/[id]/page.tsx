@@ -13,7 +13,7 @@ export default function PurchaseOrderDetailsPage() {
     const { id } = useParams() as { id: string };
     const router = useRouter();
     const { user, profile } = useSupabaseAuth();
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -61,7 +61,10 @@ export default function PurchaseOrderDetailsPage() {
         try {
             const res = await fetch(`/api/purchase-orders/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Client-Locale': locale
+                },
                 body: JSON.stringify({ status: action })
             });
 
