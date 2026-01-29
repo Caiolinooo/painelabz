@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { FiPlus, FiFilter, FiSearch, FiRefreshCw, FiMoreVertical, FiTrash2, FiCheck, FiX, FiEye } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import PurchaseOrderStats from './components/PurchaseOrderStats';
@@ -10,6 +11,7 @@ import { getToken } from '@/lib/tokenStorage';
 
 export default function PurchaseOrdersPage() {
     const { user, profile } = useSupabaseAuth();
+    const { t, locale } = useI18n();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -89,16 +91,11 @@ export default function PurchaseOrdersPage() {
             pending: 'bg-yellow-100 text-yellow-700',
             draft: 'bg-gray-100 text-gray-700'
         };
-        const labels: any = {
-            approved: 'Aprovado',
-            rejected: 'Rejeitado',
-            submitted: 'Aguardando',
-            pending: 'Pendente',
-            draft: 'Rascunho'
-        };
+        const translatedStatus = t(`purchaseOrders.table.status_${status}`);
+
         return (
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || styles.draft}`}>
-                {labels[status] || status}
+                {translatedStatus}
             </span>
         );
     };
@@ -107,9 +104,9 @@ export default function PurchaseOrdersPage() {
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Ordens de Compra</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">{t('purchaseOrders.title')}</h1>
                     <p className="text-gray-500">
-                        {isAdmin ? 'Visão Administrativa' : isManager ? 'Visão Gerencial' : 'Minhas Solicitações'}
+                        {isAdmin ? t('purchaseOrders.adminView') : isManager ? t('purchaseOrders.managerView') : t('purchaseOrders.myRequests')}
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -118,14 +115,14 @@ export default function PurchaseOrdersPage() {
                             href="/department/purchase-orders/settings"
                             className="flex items-center justify-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors shadow-sm bg-white"
                         >
-                            <FiMoreVertical className="mr-2" /> Configurações
+                            <FiMoreVertical className="mr-2" /> {t('purchaseOrders.settings')}
                         </Link>
                     )}
                     <Link
                         href="/department/purchase-orders/new"
                         className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                     >
-                        <FiPlus className="mr-2" /> Nova Ordem
+                        <FiPlus className="mr-2" /> {t('purchaseOrders.newOrder')}
                     </Link>
                 </div>
             </div>
@@ -138,7 +135,7 @@ export default function PurchaseOrdersPage() {
                     <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Buscar por número ou fornecedor..."
+                        placeholder={t('purchaseOrders.searchPlaceholder')}
                         className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -150,7 +147,7 @@ export default function PurchaseOrdersPage() {
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value)}
                     >
-                        <option value="">Todos os Status</option>
+                        <option value="">{t('purchaseOrders.allStatus')}</option>
                         <option value="draft">Rascunho</option>
                         <option value="submitted">Aguardando</option>
                         <option value="approved">Aprovado</option>
@@ -168,19 +165,19 @@ export default function PurchaseOrdersPage() {
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
                             <tr>
-                                <th className="px-6 py-3">Número</th>
-                                <th className="px-6 py-3">Data</th>
-                                <th className="px-6 py-3">Fornecedor</th>
-                                <th className="px-6 py-3">Valor</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3 text-right">Ações</th>
+                                <th className="px-6 py-3">{t('purchaseOrders.table.number')}</th>
+                                <th className="px-6 py-3">{t('purchaseOrders.table.date')}</th>
+                                <th className="px-6 py-3">{t('purchaseOrders.table.provider')}</th>
+                                <th className="px-6 py-3">{t('purchaseOrders.table.value')}</th>
+                                <th className="px-6 py-3">{t('purchaseOrders.table.status')}</th>
+                                <th className="px-6 py-3 text-right">{t('purchaseOrders.table.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {loading ? (
-                                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Carregando...</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">{t('purchaseOrders.loading')}</td></tr>
                             ) : filteredOrders.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Nenhuma ordem encontrada.</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">{t('purchaseOrders.noOrders')}</td></tr>
                             ) : (
                                 filteredOrders.map((po) => (
                                     <tr key={po.id} className="hover:bg-gray-50 transition-colors">
@@ -188,7 +185,7 @@ export default function PurchaseOrdersPage() {
                                         <td className="px-6 py-4 text-gray-600">{new Date(po.created_at).toLocaleDateString()}</td>
                                         <td className="px-6 py-4 text-gray-600">{po.provider_trade_name || po.provider_name || '-'}</td>
                                         <td className="px-6 py-4 font-medium text-gray-900">
-                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(po.total_value)}
+                                            {new Intl.NumberFormat(locale === 'en-US' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' }).format(po.total_value)}
                                         </td>
                                         <td className="px-6 py-4">{getStatusBadge(po.status)}</td>
                                         <td className="px-6 py-4 text-right">

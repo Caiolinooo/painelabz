@@ -5,6 +5,7 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { FiSave, FiPlus, FiTrash2, FiSettings, FiArrowLeft, FiX, FiChevronDown } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface ApprovalRule {
     email: string;
@@ -24,6 +25,7 @@ interface SectorConfig {
 
 export default function PurchaseOrderSettingsPage() {
     const { profile } = useSupabaseAuth();
+    const { t } = useI18n();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -100,13 +102,13 @@ export default function PurchaseOrderSettingsPage() {
         if (config) {
             loadSectorConfig(config);
             toast.dismiss();
-            toast.success(`Carregado: ${config.sector_name}`);
+            toast.success(`${t('purchaseOrderSettings.loaded')}: ${config.sector_name}`);
         }
     };
 
     const handleSave = async () => {
         if (!sectorId) {
-            toast.error('Setor não identificado');
+            toast.error(t('purchaseOrderSettings.errorSave'));
             return;
         }
         try {
@@ -124,7 +126,7 @@ export default function PurchaseOrderSettingsPage() {
 
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.error || 'Failed to save');
+                throw new Error(err.error || t('purchaseOrderSettings.errorSave'));
             }
 
             // Update local state "allSectors" to reflect changes without re-fetching
@@ -134,9 +136,9 @@ export default function PurchaseOrderSettingsPage() {
                     : s
             ));
 
-            toast.success('Configurações salvas com sucesso!');
+            toast.success(t('purchaseOrderSettings.successSaved'));
         } catch (error: any) {
-            toast.error(error.message || 'Erro ao salvar');
+            toast.error(error.message || t('purchaseOrderSettings.errorSave'));
         } finally {
             setSaving(false);
         }
@@ -145,7 +147,7 @@ export default function PurchaseOrderSettingsPage() {
     const addCostCenter = () => {
         if (!newCenter.trim()) return;
         if (costCenters.includes(newCenter.trim())) {
-            toast.error('Centro de custo já existe');
+            toast.error(t('purchaseOrderSettings.successExisted'));
             return;
         }
         setCostCenters([...costCenters, newCenter.trim()]);
@@ -160,9 +162,11 @@ export default function PurchaseOrderSettingsPage() {
         return (
             <div className="p-8 text-center text-gray-500">
                 <FiSettings className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <h1 className="text-xl font-bold">Acesso Restrito</h1>
-                <p>Apenas administradores podem acessar esta página.</p>
-                <Link href="/department/purchase-orders" className="text-blue-500 hover:underline mt-4 block">Voltar</Link>
+                <h1 className="text-xl font-bold">{t('purchaseOrderSettings.restrictedAccess')}</h1>
+                <p>{t('purchaseOrderSettings.restrictedAccessMessage')}</p>
+                <Link href="/department/purchase-orders" className="text-blue-500 hover:underline mt-4 block">
+                    {t('common.back')}
+                </Link>
             </div>
         );
     }
@@ -179,7 +183,7 @@ export default function PurchaseOrderSettingsPage() {
                 <div className="flex-1">
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-bold text-gray-800">
-                            Configurações {mySectorName ? `- ${mySectorName}` : ''}
+                            {t('purchaseOrderSettings.title')} {mySectorName ? `- ${mySectorName}` : ''}
                         </h1>
 
                         {/* Admin Selector */}
@@ -202,22 +206,26 @@ export default function PurchaseOrderSettingsPage() {
                             </div>
                         )}
                     </div>
-                    <p className="text-gray-500">Gerencie centros de custo e limites de aprovação</p>
+                    <p className="text-gray-500">{t('purchaseOrderSettings.manageSectorsDesc')}</p>
                 </div>
             </div>
 
             {loading ? (
-                <div className="text-center py-12">Carregando...</div>
+                <div className="text-center py-12">{t('purchaseOrderSettings.loading')}</div>
             ) : (
                 <div className="space-y-6">
                     {/* Approval Rules */}
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">Regras de Aprovação (Tiers)</h2>
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+                            {t('purchaseOrderSettings.approvalRules')}
+                        </h2>
                         <div className="space-y-4">
                             {approvalRules.map((rule, idx) => (
                                 <div key={idx} className="flex gap-4 items-center bg-gray-50 p-3 rounded-lg border">
                                     <div className="flex-1">
-                                        <label className="text-xs text-gray-400 block mb-1">Aprovador (Email)</label>
+                                        <label className="text-xs text-gray-400 block mb-1">
+                                            {t('purchaseOrderSettings.approverEmail')}
+                                        </label>
                                         <input
                                             className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                             value={rule.email}
@@ -230,7 +238,9 @@ export default function PurchaseOrderSettingsPage() {
                                         />
                                     </div>
                                     <div className="w-32">
-                                        <label className="text-xs text-gray-400 block mb-1">Até (Limit R$)</label>
+                                        <label className="text-xs text-gray-400 block mb-1">
+                                            {t('purchaseOrderSettings.limitValue')}
+                                        </label>
                                         <input
                                             type="number"
                                             className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -255,14 +265,16 @@ export default function PurchaseOrderSettingsPage() {
                                 onClick={() => setApprovalRules([...approvalRules, { email: '', limit: 0 }])}
                                 className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
                             >
-                                <FiPlus /> Adicionar Regra
+                                <FiPlus /> {t('purchaseOrderSettings.addRule')}
                             </button>
                         </div>
                     </div>
 
                     {/* Cost Centers */}
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">Centros de Custo</h2>
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+                            {t('purchaseOrderSettings.costCenters')}
+                        </h2>
 
                         <div className="flex gap-2 mb-4">
                             <input
@@ -270,16 +282,18 @@ export default function PurchaseOrderSettingsPage() {
                                 value={newCenter}
                                 onChange={e => setNewCenter(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && addCostCenter()}
-                                placeholder="Digite o nome do centro de custo..."
+                                placeholder={t('purchaseOrderSettings.costCenterPlaceholder')}
                                 className="flex-1 border rounded-lg p-2"
                             />
                             <button onClick={addCostCenter} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                                <FiPlus /> Adicionar
+                                <FiPlus /> {t('purchaseOrderSettings.addCostCenter')}
                             </button>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            {costCenters.length === 0 && <p className="text-gray-400 italic">Nenhum centro de custo cadastrado.</p>}
+                            {costCenters.length === 0 && (
+                                <p className="text-gray-400 italic">{t('purchaseOrderSettings.noCostCenters')}</p>
+                            )}
                             {costCenters.map(center => (
                                 <div key={center} className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-2 text-sm text-gray-700">
                                     <span>{center}</span>
@@ -293,16 +307,22 @@ export default function PurchaseOrderSettingsPage() {
 
                     {/* Limits */}
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">Limites Globais</h2>
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+                            {t('purchaseOrderSettings.globalLimits')}
+                        </h2>
                         <div className="form-control max-w-xs">
-                            <label className="label-text block mb-2 font-medium">Valor Máximo Automático (R$)</label>
+                            <label className="label-text block mb-2 font-medium">
+                                {t('purchaseOrderSettings.autoApprovalLimit')}
+                            </label>
                             <input
                                 type="number"
                                 value={maxValue}
                                 onChange={e => setMaxValue(Number(e.target.value))}
                                 className="border rounded-lg p-2 w-full"
                             />
-                            <p className="text-xs text-gray-400 mt-1">Pedidos acima deste valor requerem aprovação.</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                {t('purchaseOrderSettings.autoApprovalLimitDesc')}
+                            </p>
                         </div>
                     </div>
 
@@ -312,7 +332,7 @@ export default function PurchaseOrderSettingsPage() {
                             disabled={saving}
                             className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
                         >
-                            <FiSave /> {saving ? 'Salvando...' : 'Salvar Alterações'}
+                            <FiSave /> {saving ? t('purchaseOrderSettings.saving') : t('purchaseOrderSettings.save')}
                         </button>
                     </div>
                 </div>

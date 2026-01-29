@@ -7,10 +7,13 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { FiArrowLeft, FiCheck, FiX, FiDownload, FiTruck, FiCreditCard, FiUser, FiFileText } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
+import { useI18n } from '@/contexts/I18nContext';
+
 export default function PurchaseOrderDetailsPage() {
-    const { id } = useParams();
+    const { id } = useParams() as { id: string };
     const router = useRouter();
     const { user, profile } = useSupabaseAuth();
+    const { t } = useI18n();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -26,39 +29,35 @@ export default function PurchaseOrderDetailsPage() {
     const fetchOrderDetails = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/purchase-orders'); // Optimally we should have a specific GET /:id endpoint, but filtering client side for now or using the list endpoint if it returns all
-            // Wait, we DO have a GET /:id endpoint?
-            // Let's check api/purchase-orders/[id]/route.ts
-            // Actually, let's try the direct list fetch first since we might not have a GET Detail ID endpoint yet. 
-            // Update: We checked previously and saw `api/purchase-orders/[id]/route.ts` has PUT and DELETE. Does it have GET?
-            // If not, we might need to fetch all and find, OR add GET to that route.
-            // Let's assume we can fetch all and filter for now to be safe, or check status.
+            const res = await fetch(`/api/purchase-orders/${id}`, { cache: 'no-store' });
 
-            // Actually, let's try to add GET to [id]/route.ts if needed, but for now let's query the main list. 
-            // Efficient: No. Functional: Yes. 
-
-            // Better strategy: Use the main list endpoint which returns everything for admins, or specific for users.
-            const listRes = await fetch('/api/purchase-orders');
-            if (listRes.ok) {
-                const json = await listRes.json();
-                const found = json.data?.find((o: any) => o.id === id);
-                if (found) {
-                    setOrder(found);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.data) {
+                    setOrder(json.data);
                 } else {
-                    toast.error('Pedido não encontrado ou acesso negado.');
+                    toast.error(t('purchaseOrders.details.notFoundOrDenied'));
                     router.push('/department/purchase-orders');
                 }
+            } else {
+                toast.error(t('purchaseOrders.details.notFound'));
+                router.push('/department/purchase-orders');
             }
         } catch (error) {
             console.error(error);
-            toast.error('Erro ao carregar detalhes');
+            toast.error(t('purchaseOrders.details.loadError'));
         } finally {
             setLoading(false);
         }
     };
 
     const handleAction = async (action: 'approved' | 'rejected') => {
-        if (!confirm(`Deseja ${action === 'approved' ? 'aprovar' : 'rejeitar'} este pedido?`)) return;
+        const confirmMsg = action === 'approved'
+            ? t('purchaseOrders.details.confirmApprove')
+            : t('purchaseOrders.details.confirmReject');
+
+        if (!confirm(confirmMsg)) return;
+
         try {
             const res = await fetch(`/api/purchase-orders/${id}`, {
                 method: 'PUT',
@@ -68,18 +67,39 @@ export default function PurchaseOrderDetailsPage() {
 
             if (!res.ok) throw new Error('Falha na ação');
 
-            toast.success(`Pedido ${action === 'approved' ? 'aprovado' : 'rejeitado'}`);
-            fetchOrderDetails(); // Refresh
+            toast.success(action === 'approved' ? t('purchaseOrders.details.approved') : t('purchaseOrders.details.rejected'));
+            fetchOrderDetails(); // Refresh background
         } catch (error) {
-            toast.error('Erro ao processar ação');
+            toast.error(t('purchaseOrders.details.processError'));
         }
     };
 
     if (loading) {
-        return <div className="p-8 text-center text-gray-500">Carregando detalhes do pedido...</div>;
+        return <div className="p-8 text-center text-gray-500">{t('purchaseOrders.details.loading')}</div>;
     }
 
     if (!order) return null;
+
+    // Find the last status change to approved or rejected
+    const approvalInfo = order.history?.slice().reverse().find((h: any) => h.action === 'status_change' && (h.to === 'approved' || h.to === 'rejected'));
+
+    // Helper for currency
+    const formatCurrency = (value: number) => {
+        // We can default to BRL or try to detect locale, but typically currency is fixed per transaction. 
+        // Assuming BRL for now as user environment seems BRL-based, but could use user locale if needed.
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    };
+
+    // Helper for date
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+    };
+
+    const formatTime = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleTimeString();
+    };
 
     return (
         <div className="p-6 max-w-5xl mx-auto space-y-6 pb-20">
@@ -90,14 +110,45 @@ export default function PurchaseOrderDetailsPage() {
                         <FiArrowLeft size={20} />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Pedido {order.po_number || `#${order.id.slice(0, 8)}`}</h1>
-                        <p className="text-gray-500 text-sm">Criado em {new Date(order.created_at).toLocaleDateString()} às {new Date(order.created_at).toLocaleTimeString()}</p>
+                        <h1 className="text-2xl font-bold text-gray-800">{t('purchaseOrders.details.order')} {order.po_number || `#${order.id.slice(0, 8)}`}</h1>
+                        <p className="text-gray-500 text-sm">
+                            {t('purchaseOrders.details.createdOn', {
+                                date: formatDate(order.created_at),
+                                time: formatTime(order.created_at)
+                            })}
+                        </p>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <StatusBadge status={order.status} />
+                    <StatusBadge status={order.status} t={t} />
                 </div>
             </div>
+
+            {/* Approval Info Banner */}
+            {approvalInfo && (
+                <div className={`p-4 rounded-lg flex items-start gap-3 ${approvalInfo.to === 'approved' ? 'bg-green-50 border border-green-100 text-green-800' : 'bg-red-50 border border-red-100 text-red-800'}`}>
+                    <div className="mt-1">
+                        {approvalInfo.to === 'approved' ? <FiCheck /> : <FiX />}
+                    </div>
+                    <div>
+                        <p className="font-semibold">
+                            {approvalInfo.to === 'approved' ? t('purchaseOrders.details.bannerApproved') : t('purchaseOrders.details.bannerRejected')}
+                        </p>
+                        <p className="text-sm opacity-90">
+                            {t('purchaseOrders.details.byUserOn', {
+                                user: approvalInfo.user_name || 'User',
+                                date: formatDate(approvalInfo.date),
+                                time: formatTime(approvalInfo.date)
+                            })}
+                        </p>
+                        {approvalInfo.note && (
+                            <p className="mt-2 text-sm italic border-l-2 border-current pl-2">
+                                "{approvalInfo.note}"
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -107,16 +158,16 @@ export default function PurchaseOrderDetailsPage() {
                     {/* Items */}
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                         <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <FiFileText /> Itens do Pedido
+                            <FiFileText /> {t('purchaseOrders.details.itemsTitle')}
                         </h2>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50 text-gray-500">
                                     <tr>
-                                        <th className="px-4 py-2 text-left">Descrição</th>
-                                        <th className="px-4 py-2 text-right">Qtd</th>
-                                        <th className="px-4 py-2 text-right">Valor Unit.</th>
-                                        <th className="px-4 py-2 text-right">Total</th>
+                                        <th className="px-4 py-2 text-left">{t('purchaseOrders.details.table.description', 'Descrição')}</th>
+                                        <th className="px-4 py-2 text-right">{t('purchaseOrders.details.table.quantity', 'Qtd')}</th>
+                                        <th className="px-4 py-2 text-right">{t('purchaseOrders.details.table.unitValue', 'Valor Unit.')}</th>
+                                        <th className="px-4 py-2 text-right">{t('purchaseOrders.details.table.total', 'Total')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -125,25 +176,25 @@ export default function PurchaseOrderDetailsPage() {
                                             <td className="px-4 py-3">{item.description}</td>
                                             <td className="px-4 py-3 text-right">{item.quantity}</td>
                                             <td className="px-4 py-3 text-right">
-                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unit_value)}
+                                                {formatCurrency(item.unit_value)}
                                             </td>
                                             <td className="px-4 py-3 text-right font-medium">
-                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.quantity * item.unit_value)}
+                                                {formatCurrency(item.quantity * item.unit_value)}
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot className="border-t font-semibold bg-gray-50">
                                     <tr>
-                                        <td colSpan={3} className="px-4 py-3 text-right">Frete:</td>
+                                        <td colSpan={3} className="px-4 py-3 text-right">{t('purchaseOrders.details.freight')}</td>
                                         <td className="px-4 py-3 text-right">
-                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.freight_cost || 0)}
+                                            {formatCurrency(order.freight_cost || 0)}
                                         </td>
                                     </tr>
                                     <tr className="text-lg text-blue-700">
-                                        <td colSpan={3} className="px-4 py-3 text-right">Total:</td>
+                                        <td colSpan={3} className="px-4 py-3 text-right">{t('purchaseOrders.details.total')}</td>
                                         <td className="px-4 py-3 text-right">
-                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_value)}
+                                            {formatCurrency(order.total_value)}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -154,7 +205,7 @@ export default function PurchaseOrderDetailsPage() {
                     {/* Observation */}
                     {order.observation && (
                         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                            <h2 className="font-semibold text-gray-800 mb-2">Observações</h2>
+                            <h2 className="font-semibold text-gray-800 mb-2">{t('purchaseOrders.details.observations')}</h2>
                             <p className="text-gray-600 bg-gray-50 p-4 rounded-lg text-sm">{order.observation}</p>
                         </div>
                     )}
@@ -163,17 +214,17 @@ export default function PurchaseOrderDetailsPage() {
                     {order.invoice_url && (
                         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm border-l-4 border-l-blue-500">
                             <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                <FiDownload /> Anexos
+                                <FiDownload /> {t('purchaseOrders.details.attachments')}
                             </h2>
                             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                                <span className="text-sm text-blue-900 font-medium">Orçamento/Fatura Anexado</span>
+                                <span className="text-sm text-blue-900 font-medium">{t('purchaseOrders.details.invoiceAttached')}</span>
                                 <a
                                     href={order.invoice_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="px-4 py-2 bg-white text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 text-sm font-semibold transition-colors shadow-sm"
                                 >
-                                    Baixar / Visualizar
+                                    {t('purchaseOrders.details.downloadView')}
                                 </a>
                             </div>
                         </div>
@@ -185,19 +236,19 @@ export default function PurchaseOrderDetailsPage() {
                     {/* Status Actions */}
                     {(isAdmin || isManager) && order.status === 'submitted' && (
                         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                            <h3 className="font-semibold text-gray-800 mb-4">Aprovação</h3>
+                            <h3 className="font-semibold text-gray-800 mb-4">{t('purchaseOrders.details.approval')}</h3>
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => handleAction('approved')}
                                     className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                                 >
-                                    <FiCheck /> Aprovar
+                                    <FiCheck /> {t('purchaseOrders.details.approveBtn')}
                                 </button>
                                 <button
                                     onClick={() => handleAction('rejected')}
                                     className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                                 >
-                                    <FiX /> Rejeitar
+                                    <FiX /> {t('purchaseOrders.details.rejectBtn')}
                                 </button>
                             </div>
                         </div>
@@ -206,18 +257,18 @@ export default function PurchaseOrderDetailsPage() {
                     {/* Provider Info */}
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm text-sm space-y-3">
                         <h3 className="font-semibold text-gray-800 border-b pb-2 flex items-center gap-2">
-                            <FiTruck /> Dados do Fornecedor
+                            <FiTruck /> {t('purchaseOrders.details.providerData')}
                         </h3>
                         <div>
-                            <span className="block text-gray-500 text-xs">Razão Social</span>
+                            <span className="block text-gray-500 text-xs">{t('purchaseOrders.details.providerName')}</span>
                             <span className="font-medium text-gray-900">{order.provider_name}</span>
                         </div>
                         <div>
-                            <span className="block text-gray-500 text-xs">CNPJ</span>
+                            <span className="block text-gray-500 text-xs">{t('purchaseOrders.details.providerCnpj')}</span>
                             <span className="font-medium text-gray-900">{order.provider_cnpj}</span>
                         </div>
                         <div>
-                            <span className="block text-gray-500 text-xs">Email</span>
+                            <span className="block text-gray-500 text-xs">{t('purchaseOrders.details.providerEmail')}</span>
                             <a href={`mailto:${order.provider_email}`} className="text-blue-600 hover:underline">{order.provider_email}</a>
                         </div>
                     </div>
@@ -225,22 +276,22 @@ export default function PurchaseOrderDetailsPage() {
                     {/* Delivery & Payment */}
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm text-sm space-y-3">
                         <h3 className="font-semibold text-gray-800 border-b pb-2 flex items-center gap-2">
-                            <FiCreditCard /> Entrega e Pagamento
+                            <FiCreditCard /> {t('purchaseOrders.details.deliveryPayment')}
                         </h3>
                         <div>
-                            <span className="block text-gray-500 text-xs">Condição de Pagamento</span>
+                            <span className="block text-gray-500 text-xs">{t('purchaseOrders.details.paymentTerms')}</span>
                             <span className="font-medium text-gray-900">{order.payment_terms}</span>
                         </div>
                         <div>
-                            <span className="block text-gray-500 text-xs">Data de Entrega</span>
-                            <span className="font-medium text-gray-900">{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : '-'}</span>
+                            <span className="block text-gray-500 text-xs">{t('purchaseOrders.details.deliveryDate')}</span>
+                            <span className="font-medium text-gray-900">{order.delivery_date ? formatDate(order.delivery_date) : '-'}</span>
                         </div>
                         <div>
-                            <span className="block text-gray-500 text-xs">Endereço</span>
+                            <span className="block text-gray-500 text-xs">{t('purchaseOrders.details.address')}</span>
                             <span className="font-medium text-gray-900">{order.delivery_address || '-'}</span>
                         </div>
                         <div>
-                            <span className="block text-gray-500 text-xs">Comprador</span>
+                            <span className="block text-gray-500 text-xs">{t('purchaseOrders.details.buyer')}</span>
                             <span className="font-medium text-gray-900 flex items-center gap-1">
                                 <FiUser size={12} /> {order.buyer_name || '-'}
                             </span>
@@ -252,7 +303,7 @@ export default function PurchaseOrderDetailsPage() {
     );
 }
 
-const StatusBadge = ({ status }: { status: string }) => {
+const StatusBadge = ({ status, t }: { status: string, t: any }) => {
     const styles: any = {
         approved: 'bg-green-100 text-green-700 border-green-200',
         rejected: 'bg-red-100 text-red-700 border-red-200',
@@ -260,17 +311,10 @@ const StatusBadge = ({ status }: { status: string }) => {
         pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
         draft: 'bg-gray-100 text-gray-700 border-gray-200'
     };
-    const labels: any = {
-        approved: 'Aprovado',
-        rejected: 'Rejeitado',
-        submitted: 'Aguardando',
-        pending: 'Pendente',
-        draft: 'Rascunho'
-    };
 
     return (
         <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${styles[status] || styles.draft}`}>
-            {labels[status] || status}
+            {t(`purchaseOrders.table.status_${status}`, status)}
         </span>
     );
 };
