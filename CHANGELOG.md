@@ -1,5 +1,274 @@
 # Changelog
 
+## [4.3.0] - 2026-01-29
+
+### Added
+- **Sistema de Ícones de Módulos Centralizados**: Sistema completo de ícones para todos os módulos
+  - Novo arquivo `moduleIcons.tsx` com ícones consistentes para todos os módulos
+  - Suporte a múltiplas bibliotecas (React Icons: Fi, Fa, Hi, Bi, Ai, Bs, Md, Ri, Io)
+  - Mapeamento automático de ícones por ID de módulo
+  - Interface visual mais coesa e profissional
+
+- **API de Traduções Dinâmicas**: Sistema de gerenciamento de traduções via API
+  - Endpoint `/api/i18n/translations` para gerenciamento centralizado
+  - Suporte a geração automática de traduções via LLM (futuro)
+  - Interface administrativa para edição de traduções
+  - Suporte a PT-BR, EN-US, ES-ES com sincronização dinâmica
+
+- **API de Permissões Efetivas**: Sistema granular de controle de acesso
+  - Endpoint `/api/user/effective-permissions` para verificação de permissões
+  - Cache inteligente de permissões para performance otimizada
+  - Integração com sistema de setores e módulos
+  - Suporte a permissões por role e por usuário específicas
+  - Validação em tempo real de acesso a recursos
+
+- **API de Calendário Google**: Integração completa com Google Calendar
+  - Endpoint `/api/calendar/google` para integração com Google Calendar API
+  - Sincronização de eventos corporativos
+  - Suporte a autenticação OAuth2 para Google
+  - Gerenciamento de eventos diretamente do painel
+  - Notificações de eventos automatizadas
+
+- **Sistema de Upload Móvel**: API para uploads de dispositivos móveis
+  - Endpoint `/api/mobile/upload` para uploads mobile-optimized
+  - Suporte a múltiplos formatos de arquivos
+  - Compressão automática de imagens
+  - Validação de segurança e tipo de arquivo
+  - Integração com sistema de documentos
+
+- **Sistema de Reset de Senha**: Fluxo completo de recuperação
+  - Endpoint `/api/auth/request-password-reset` para solicitar reset
+  - Endpoint `/api/auth/reset-password-with-token` para redefinir senha
+  - Tokens seguros com expiração configurável
+  - Interface amigável para recuperação de senha
+  - Notificações por email automatizadas
+
+### Improved
+- **Sistema de Cards Dashboard**: Refatoração completa
+  - Melhorias na API `/api/cards/supabase` para performance
+  - Cache inteligente de dados dos cards
+  - Interface mais responsiva e moderna
+  - Suporte a configurações por usuário
+  - Melhor tratamento de estados de carregamento
+
+- **Sistema de Notificações**: Performance e UX aprimoradas
+  - Otimização da API `/api/notifications` para grandes volumes
+  - Melhor performance em listas extensas
+  - Interface de notificações mais responsiva
+  - Melhor tratamento de estados de carregamento
+  - Sistema de marcação de lidas/não lidas otimizado
+
+- **Interface de Avaliações**: Componentes refinados
+  - Melhorias no componente `StatusBadge` para visualização clara
+  - Novos status e indicadores visuais
+  - Interface mais intuitiva para gerentes e funcionários
+  - Melhores indicadores de progresso
+
+- **Layout Principal**: Consistência e responsividade
+  - Melhorias no `MainLayout` para melhor responsividade
+  - Otimização de renderização e performance
+  - Melhor tratamento de estados e transições
+  - Interface mais coesa em todos os dispositivos
+
+- **Contexto de Internacionalização**: Performance e cache
+  - Melhorias no `I18nContext` para performance otimizada
+  - Cache inteligente de traduções
+  - Melhor tratamento de estados de carregamento
+  - Redução de re-renders desnecessários
+  - Suporte a lazy loading de traduções
+
+- **Serviço de Reembolsos**: Refatoração e otimização
+  - Melhorias no `reimbursementService.ts`
+  - Cache inteligente de dados
+  - Melhor tratamento de erros
+  - Interface mais responsiva
+  - Performance otimizada para grandes volumes
+
+- **Templates de Email**: Sistema aprimorado
+  - Refatoração completa do sistema de templates
+  - Suporte a múltiplos idiomas
+  - Templates mais flexíveis e personalizáveis
+  - Melhor tratamento de variáveis e formatação
+
+### Fixed
+- **Duplicação de Cards**: Correção definitiva de cards duplicados
+  - Resolvido problema de `module_key` com prefixo incorreto
+  - Script SQL para correção de dados inconsistentes
+  - Interface sem duplicatas no modal de atalhos
+  - Traduções exibidas corretamente em todos os idiomas
+
+- **Traduções de Módulos**: Correção de chaves de tradução
+  - Removido prefixo `cards.` das chaves incorretas
+  - Normalização de IDs de módulos em todo o sistema
+  - Traduções exibidas corretamente em PT-BR, EN-US, ES-ES
+  - Consistência em todo o sistema de internacionalização
+
+- **Performance de Notificações**: Otimizações críticas
+  - Redução de chamadas de API redundantes
+  - Cache inteligente implementado
+  - Melhor tratamento de grandes volumes de dados
+  - Interface mais responsiva e fluida
+
+- **Validação de Formulários**: Melhorias robustas
+  - Validações mais consistentes em formulários administrativos
+  - Melhor feedback visual para erros e sucesso
+  - Tratamento robusto de estados inválidos
+  - Interface mais segura e confiável
+
+- **Upload de Imagens de Perfil**: Sistema robusto
+  - Melhorias no processo de upload de fotos de perfil
+  - Validação de tipo e tamanho de arquivo
+  - Compressão automática de imagens
+  - Tratamento robusto de erros
+  - Interface mais intuitiva
+
+### Technical
+- **Database Schema**: Otimizações e correções
+  - Script de correção para `cards.module_key` duplicados
+  - Índices otimizados para performance de consultas
+  - Limpeza de dados inconsistentes
+  - Integrity constraints reforçados
+  - Performance otimizada para grandes volumes
+
+- **API Performance**: Otimizações gerais
+  - Redução de complexidade em queries SQL
+  - Cache implementado em endpoints críticos
+  - Melhor tratamento de concorrência
+  - Timeout otimizados para diferentes cenários
+  - Rate limiting implementado onde necessário
+
+- **Frontend Performance**: Otimizações de renderização
+  - Memoização de componentes pesados implementada
+  - Redução significativa de re-renders desnecessários
+  - Lazy loading implementado para componentes não críticos
+  - Bundle size otimizado com code splitting
+  - Performance de primeira carga otimizada
+
+- **Security Enhancements**: Melhorias de segurança
+  - Validação reforçada em todos os inputs
+  - Sanitização de dados implementada
+  - Rate limiting em endpoints críticos
+  - CORS configurado adequadamente
+  - Headers de segurança reforçados
+
+## [4.2.0] - 2026-01-29
+
+### Added
+- **Ícones de Módulo Centralizados**: Sistema completo de ícones para todos os módulos
+  - Novo arquivo `moduleIcons.tsx` com ícones consistentes para todos os módulos
+  - Suporte a ícones do React Icons (Fi, Fa, Hi, Bi, Ai, Bs, Md, Ri, Io)
+  - Mapeamento automático de ícones por ID de módulo
+  - Interface visual mais coesa e profissional
+
+- **API de Traduções Dinâmicas**: Sistema de gerenciamento de traduções via API
+  - Endpoint `/api/i18n/translations` para gerenciamento de traduções
+  - Suporte a geração automática de traduções via LLM (futuro)
+  - Interface administrativa para edição de traduções
+  - Suporte a PT-BR, EN-US, ES-ES
+  - Sincronização dinâmica com frontend
+
+- **API de Permissões Efetivas**: Sistema granular de controle de acesso
+  - Endpoint `/api/user/effective-permissions` para verificação de permissões
+  - Cache inteligente de permissões para performance
+  - Integração com sistema de setores e módulos
+  - Suporte a permissões por role e por usuário
+  - Validação em tempo real de acesso
+
+- **Sistema de Correção de Cards**: Ferramenta de manutenção de dados
+  - Script SQL para correção de `module_key` duplicados
+  - Documentação completa do problema e solução
+  - Fix para atalhos duplicados no modal
+  - Correção de chaves de tradução incorretas
+  - Ferramenta de diagnóstico e manutenção
+
+### Improved
+- **Sistema de Ordens de Compra**: Refinamentos e otimizações
+  - Melhorias na validação de formulários
+  - Otimização de consultas ao banco de dados
+  - Interface responsiva aprimorada
+  - Melhor feedback visual em operações
+  - Tratamento robusto de erros
+
+- **Sistema de Notificações**: Performance e experiência do usuário
+  - Otimização de queries de notificações
+  - Melhor performance em grandes volumes
+  - Interface de notificações mais responsiva
+  - Melhor tratamento de estados de carregamento
+
+- **Interface de Avaliações**: Componentes e layout
+  - Melhorias no componente `StatusBadge`
+  - Visualização mais clara de status de avaliações
+  - Melhores indicadores visuais
+  - Interface mais intuitiva
+
+- **Layout Principal**: Consistência e usabilidade
+  - Melhorias no `MainLayout` para melhor responsividade
+  - Otimização de renderização
+  - Melhor tratamento de estados
+  - Interface mais coesa
+
+- **Sistema de Atalhos**: Performance e usabilidade
+  - Otimização do modal de adição de atalhos
+  - Melhor performance em grandes listas
+  - Melhor feedback visual
+  - Interface mais responsiva
+
+- **Contexto de Internacionalização**: Performance e cache
+  - Melhorias no `I18nContext` para performance
+  - Cache inteligente de traduções
+  - Melhor tratamento de estados de carregamento
+  - Redução de re-renders desnecessários
+
+- **Gestão de Usuários**: API e hooks
+  - Melhorias no hook `useNotifications`
+  - Otimização de consultas de notificações
+  - Melhor tratamento de estados
+  - Performance aprimorada
+
+### Fixed
+- **Duplicação de Atalhos**: Correção definitiva de cards duplicados
+  - Resolvido problema de `module_key` com prefixo incorreto
+  - Limpeza de dados inconsistentes no banco
+  - Interface sem duplicatas no modal de atalhos
+  - Traduções exibidas corretamente
+
+- **Traduções de Módulos**: Correção de chaves de tradução
+  - Removido prefixo `cards.` das chaves incorretas
+  - Normalização de IDs de módulos
+  - Traduções exibidas corretamente em todos os idiomas
+  - Consistência em todo o sistema
+
+- **Performance de Notificações**: Otimizações críticas
+  - Redução de chamadas de API redundantes
+  - Cache inteligente de dados
+  - Melhor tratamento de grandes volumes
+  - Interface mais responsiva
+
+- **Validação de Formulários**: Melhorias robustas
+  - Validações mais consistentes em formulários de PO
+  - Melhor feedback visual para erros
+  - Tratamento robusto de estados inválidos
+  - Interface mais segura
+
+### Technical
+- **Database Schema**: Otimizações e correções
+  - Script de correção para `cards.module_key`
+  - Índices otimizados para performance
+  - Limpeza de dados inconsistentes
+  - Integrity constraints reforçados
+
+- **API Performance**: Otimizações gerais
+  - Redução de complexidade em queries
+  - Cache implementado em endpoints críticos
+  - Melhor tratamento de concorrência
+  - Timeout otimizados
+
+- **Frontend Performance**: Otimizações de renderização
+  - Memoização de componentes pesados
+  - Redução de re-renders desnecessários
+  - Lazy loading implementado
+  - Bundle size otimizado
+
 ## [4.1.0] - 2026-01-28
 
 ### Added

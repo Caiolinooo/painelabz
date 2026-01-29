@@ -11,7 +11,7 @@
 [![Netlify](https://img.shields.io/badge/Netlify-Deploy-00C7B7?style=for-the-badge&logo=netlify)](https://netlify.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
-[![Version](https://img.shields.io/badge/Version-4.1.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-4.3.0-orange?style=for-the-badge)](#)
 
 **Sistema completo de gestão empresarial com foco em reembolsos, avaliações e administração de usuários**
 
@@ -410,6 +410,23 @@ painel-abz/
 
 <details>
 <summary>📚 Histórico Completo de Versões (Clique para expandir)</summary>
+
+### **Janeiro 2026 (v4.3.0) - Atualização Major**
+- ✅ **Sistema de Ícones Centralizados**: Implementação completa de ícones para todos os módulos
+- ✅ **API de Traduções Dinâmicas**: Sistema de gerenciamento de traduções via API
+- ✅ **API de Permissões Efetivas**: Controle granular de acesso com cache inteligente
+- ✅ **API de Calendário Google**: Integração completa com Google Calendar
+- ✅ **Sistema de Upload Móvel**: API otimizada para uploads de dispositivos móveis
+- ✅ **Sistema de Reset de Senha**: Fluxo completo de recuperação de senha
+- ✅ **Refatoração de Cards**: Melhorias de performance e interface
+- ✅ **Otimizações de Performance**: Melhorias críticas em todo o sistema
+
+### **Janeiro 2026 (v4.2.0) - Atualização de Refinamento**
+- ✅ **Ícones de Módulo Centralizados**: Sistema completo de ícones para todos os módulos
+- ✅ **API de Traduções Dinâmicas**: Sistema de gerenciamento de traduções via API
+- ✅ **API de Permissões Efetivas**: Sistema granular de controle de acesso
+- ✅ **Sistema de Correção de Cards**: Ferramenta de manutenção de dados
+- ✅ **Otimizações Gerais**: Melhorias de performance e UX em múltiplos módulos
 
 ### **Janeiro 2026 (v4.1.0) - Lançamento Major**
 - ✅ **Módulo de Ordens de Compra**: Sistema completo com aprovação multinível
