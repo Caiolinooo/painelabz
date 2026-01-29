@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useEffect, useState } from 'react';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import ProtectedRoute from '@/components/Auth/ProtectedRoute';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import CertificateTemplateEditor from '@/components/Academy/CertificateTemplateEditor';
@@ -118,7 +118,7 @@ export default function CertificatesAdminPage() {
 
   return (
     <ProtectedRoute managerOnly>
-      <MainLayout>
+      <div className="flex-1">
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Certificados - Templates</h1>
@@ -169,7 +169,7 @@ export default function CertificatesAdminPage() {
                       <div className="text-sm text-gray-600">course_id: {t.course_id || 'Global'} | path: {t.storage_path} | ativo: {String(t.active)}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={()=>editTemplate(t)} className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded border">Editar</button>
+                      <button onClick={() => editTemplate(t)} className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded border">Editar</button>
                     </div>
                   </div>
                 ))}
@@ -178,7 +178,7 @@ export default function CertificatesAdminPage() {
             )}
           </div>
         </div>
-      </MainLayout>
+      </div>
     </ProtectedRoute>
   );
 }

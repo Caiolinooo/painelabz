@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import { supabase } from '@/lib/supabase';
 import { FiPlus, FiEdit2, FiTrash2, FiGrid, FiCheck, FiX, FiSearch } from 'react-icons/fi';
 import { Sector } from '@/types/index';
@@ -196,7 +196,7 @@ export default function SectorsPage() {
     );
 
     return (
-        <MainLayout>
+        <div className="flex-1 p-6">
             <div className="p-6 max-w-7xl mx-auto">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div>
@@ -408,6 +408,6 @@ export default function SectorsPage() {
                     isDestructive={true}
                 />
             </div>
-        </MainLayout>
+        </div>
     );
 }

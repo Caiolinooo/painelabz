@@ -8,6 +8,7 @@ import { FiInfo } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { MIOCalendarEvent } from '@/types/mio';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import AdminCalendarManager from '@/components/Calendar/AdminCalendarManager';
 
 interface CompanyEvent {
   id: string;
@@ -407,6 +408,15 @@ export default function CalendarioPage() {
         .custom-calendar-styling .react-calendar__tile--active:enabled:hover, .custom-calendar-styling .react-calendar__tile--active:enabled:focus { background: #5127d4; }
         .custom-calendar-styling .react-calendar__tile.relative abbr { position: relative; z-index: 1; padding-bottom: 2px; }
       `}</style>
+
+      {/* Admin Manager - TODO: Add Role Check if strict security needed, currently relying on API */}
+      <AdminCalendarManager onEventCreated={() => {
+        // Refresh events
+        // Optimization: Extract loadCompanyEvents to a function and call it here.
+        // For now, simple page reload or we can just accept lag until next poll/revisit.
+        // Or we can expose start reloading via a passed function, but for brevity:
+        window.location.reload();
+      }} />
     </MainLayout>
   );
 }
