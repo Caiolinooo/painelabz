@@ -1,0 +1,64 @@
+import {
+    FiGrid,
+    FiRss,
+    FiCalendar,
+    FiClock,
+    FiDollarSign,
+    FiFileText,
+    FiTrendingUp,
+    FiCheckCircle,
+    FiBook,
+    FiList,
+    FiShield,
+    FiFolder,
+    FiAward,
+    FiHelpCircle,
+    FiShoppingCart,
+    FiBarChart2,
+    FiAlertCircle,
+    FiMessageSquare,
+    FiCompass,
+    FiPhone,
+    FiAlertTriangle,
+    FiDatabase,
+    FiActivity
+} from 'react-icons/fi';
+import { IconType } from 'react-icons';
+
+export const MODULE_ICONS: Record<string, IconType> = {
+    // Core
+    'dashboard': FiGrid,
+    'noticias': FiRss,
+    'calendario': FiCalendar,
+    'chat': FiMessageSquare,
+    'wkradar': FiActivity,
+    'contatos': FiPhone,
+    'integracao-erp': FiDatabase,
+
+    // HR
+    'ponto': FiClock,
+    'contracheque': FiFileText, // Changed from DollarSign to match likely preference or use DollarSign
+    'reembolso': FiDollarSign,
+    'kpi': FiTrendingUp,
+    'avaliacao': FiBarChart2,
+
+    // Content
+    'manual': FiBook,
+    'procedimentos': FiList,
+    'politicas': FiShield,
+    'biblioteca': FiFolder,
+    'academy': FiAward,
+    'ajuda': FiAlertCircle,
+    'emergencia': FiAlertTriangle,
+    'guia_offshore': FiCompass,
+
+    // Department
+    'compras': FiShoppingCart,
+};
+
+// Default Icon
+export const DEFAULT_MODULE_ICON = FiGrid;
+
+export const getModuleIcon = (moduleId: string): IconType => {
+    return MODULE_ICONS[moduleId] || DEFAULT_MODULE_ICON;
+};
