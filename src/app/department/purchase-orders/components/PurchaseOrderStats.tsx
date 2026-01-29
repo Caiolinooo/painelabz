@@ -1,11 +1,13 @@
 import React from 'react';
 import { FiDollarSign, FiClock, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface StatsProps {
     orders: any[];
 }
 
 export default function PurchaseOrderStats({ orders }: StatsProps) {
+    const { t, locale } = useI18n();
     const totalValue = orders.reduce((acc, curr) => acc + (Number(curr.total_value) || 0), 0);
     const pendingCount = orders.filter(o => o.status === 'submitted' || o.status === 'pending').length;
     const approvedCount = orders.filter(o => o.status === 'approved').length;
@@ -13,15 +15,15 @@ export default function PurchaseOrderStats({ orders }: StatsProps) {
 
     const cards = [
         {
-            label: 'Valor Total',
-            value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue),
+            label: t('purchaseOrders.stats.totalValue'),
+            value: new Intl.NumberFormat(locale === 'en-US' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue),
             icon: FiDollarSign,
             color: 'bg-blue-500',
             textColor: 'text-blue-500',
             bgColor: 'bg-blue-50'
         },
         {
-            label: 'Pendentes',
+            label: t('purchaseOrders.stats.pending'),
             value: pendingCount,
             icon: FiClock,
             color: 'bg-yellow-500',
@@ -29,7 +31,7 @@ export default function PurchaseOrderStats({ orders }: StatsProps) {
             bgColor: 'bg-yellow-50'
         },
         {
-            label: 'Aprovados',
+            label: t('purchaseOrders.stats.approved'),
             value: approvedCount,
             icon: FiCheckCircle,
             color: 'bg-green-500',
@@ -37,7 +39,7 @@ export default function PurchaseOrderStats({ orders }: StatsProps) {
             bgColor: 'bg-green-50'
         },
         {
-            label: 'Rejeitados',
+            label: t('purchaseOrders.stats.rejected'),
             value: rejectedCount,
             icon: FiXCircle,
             color: 'bg-red-500',
