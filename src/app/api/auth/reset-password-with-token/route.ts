@@ -33,9 +33,7 @@ export async function POST(request: NextRequest) {
       .select(`
         id,
         user_id,
-        email,
         expires_at,
-        used_at,
         created_at,
         users_unified (
           id,
@@ -55,19 +53,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    /* 
     // Verificar se o token já foi usado
+    // Removido pois a coluna used_at não existe. Agora deletamos o token após o uso.
     if (resetToken.used_at) {
       console.log(`❌ Token já foi usado: ${token.substring(0, 8)}...`);
       return NextResponse.json(
         { success: false, message: 'Este link de redefinição já foi utilizado' },
         { status: 400 }
       );
-    }
+    } 
+    */
 
     // Verificar se o token expirou
     const now = new Date();
     const expiresAt = new Date(resetToken.expires_at);
-    
+
     if (now > expiresAt) {
       console.log(`❌ Token expirado: ${token.substring(0, 8)}... (expirou em ${expiresAt})`);
       return NextResponse.json(
@@ -109,17 +110,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Marcar o token como usado
-    const { error: markUsedError } = await supabase
+    // Marcar o token como usado (DELETAR para evitar erros de coluna inexistente)
+    const { error: deleteError } = await supabase
       .from('password_reset_tokens')
-      .update({
-        used_at: now.toISOString(),
-        updated_at: now.toISOString()
-      })
+      .delete()
       .eq('id', resetToken.id);
 
-    if (markUsedError) {
-      console.error('❌ Erro ao marcar token como usado:', markUsedError);
+    if (deleteError) {
+      console.error('❌ Erro ao deletar token usado:', deleteError);
       // Não falhar a operação por causa disso
     }
 
@@ -131,7 +129,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     const accessHistory = currentUser?.access_history || [];
-    
+
     await supabase
       .from('users_unified')
       .update({
@@ -186,9 +184,7 @@ export async function GET(request: NextRequest) {
       .from('password_reset_tokens')
       .select(`
         id,
-        email,
         expires_at,
-        used_at,
         created_at,
         users_unified (
           email,
@@ -199,12 +195,14 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (tokenError || !resetToken) {
+      console.error('❌ Erro na busca do token:', tokenError);
       return NextResponse.json({
         valid: false,
-        message: 'Token inválido'
+        message: `Erro ao buscar token: ${tokenError?.message || 'Token não encontrado'}`
       });
     }
 
+    /*
     // Verificar se já foi usado
     if (resetToken.used_at) {
       return NextResponse.json({
@@ -212,11 +210,12 @@ export async function GET(request: NextRequest) {
         message: 'Este link já foi utilizado'
       });
     }
+    */
 
     // Verificar se expirou
     const now = new Date();
     const expiresAt = new Date(resetToken.expires_at);
-    
+
     if (now > expiresAt) {
       return NextResponse.json({
         valid: false,
@@ -228,7 +227,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       valid: true,
-      email: resetToken.email,
+      email: user?.email,
       userName: user?.first_name || 'Usuário'
     });
 
