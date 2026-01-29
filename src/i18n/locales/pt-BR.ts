@@ -106,7 +106,12 @@ export default {
       aguardando_aprovacao: 'Aguardando Aprovação',
       aprovada_aguardando_comentario: 'Aprovada (Aguardando Comentário)',
       aguardando_finalizacao: 'Aguardando Finalização',
-      devolvida: 'Devolvida para Ajustes'
+      devolvida: 'Devolvida para Ajustes',
+      // Novos status para compatibilidade com purchase orders
+      submitted: 'Aguardando',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+      draft: 'Rascunho'
     },
     debug: {
       title: 'Depuração de Avaliações',
@@ -641,6 +646,28 @@ export default {
     wkradarDesc: 'Acesso ao sistema WKRadar',
     universidade: 'Universidade',
     universidadeDesc: 'Plataforma de ensino corporativo',
+
+    // Traduções para SYSTEM_MODULES (usadas em shortcuts e menu)
+    compras: 'Ordens de Compra',
+    comprasDesc: 'Gestão de compras e aprovações',
+    dashboard: 'Dashboard',
+    dashboardDesc: 'Página inicial e visão geral',
+    ajuda: 'Ajuda',
+    ajudaDesc: 'Central de suporte e dúvidas',
+    kpi: 'KPIs',
+    kpiDesc: 'Indicadores de desempenho',
+    biblioteca: 'Biblioteca',
+    bibliotecaDesc: 'Repositório de arquivos e documentos',
+    emergencia: 'Emergência',
+    emergenciaDesc: 'Procedimentos de emergência',
+    contatos: 'Lista de Ramais',
+    contatosDesc: 'Contatos e telefones úteis',
+    guia_offshore: 'Guia Offshore',
+    guia_offshoreDesc: 'Guia para trabalho embarcado',
+    'integracao-erp': 'Integração ERP',
+    'integracao-erpDesc': 'Gestão de integração MIO',
+    procedimentos: 'Procedimentos',
+    procedimentosDesc: 'Procedimentos Operacionais Padrão (POPs)',
 
     // Traduções para os cards do banco de dados (por ID)
     // Versão sem hífens (compatibilidade) - Mantendo chaves existentes e adicionando se necessário
@@ -1951,6 +1978,25 @@ export default {
         message: 'Seu reembolso (Protocolo: {protocol}) foi rejeitado. Motivo: {reason}'
       }
     },
+    purchaseOrder: {
+      created: {
+        title: '🛒 Ordem de Compra Criada',
+        message: 'Sua OC {poNumber} para {provider} foi criada e aguarda aprovação.'
+      },
+      approvalRequest: {
+        title: '📋 Nova Ordem de Compra para Aprovação',
+        message: '{userName} criou uma OC de R$ {value} que aguarda sua aprovação.'
+      },
+      approved: {
+        title: '✅ Ordem de Compra Aprovada',
+        message: 'Sua OC {poNumber} foi aprovada por {approverName}.'
+      },
+      rejected: {
+        title: '❌ Ordem de Compra Rejeitada',
+        message: 'Sua OC {poNumber} foi rejeitada por {approverName}.'
+      }
+    },
+
     system: {
       welcome: {
         title: '👋 Bem-vindo ao Sistema',
@@ -1961,6 +2007,31 @@ export default {
         message: 'Sua senha expira em {days} dias. Por favor, altere sua senha.'
       }
     }
+  },
+  purchaseOrderSettings: {
+    title: 'Configurações de Compras',
+    restrictedAccess: 'Acesso Restrito',
+    restrictedAccessMessage: 'Apenas administradores podem acessar esta página.',
+    manageSectors: 'Gerenciar Setor',
+    manageSectorsDesc: 'Gerencie centros de custo e limites de aprovação',
+    approvalRules: 'Regras de Aprovação (Tiers)',
+    approverEmail: 'Aprovador (Email)',
+    limitValue: 'Até (Limite R$)',
+    addRule: 'Adicionar Regra',
+    costCenters: 'Centros de Custo',
+    addCostCenter: 'Adicionar',
+    costCenterPlaceholder: 'Digite o nome do centro de custo...',
+    noCostCenters: 'Nenhum centro de custo cadastrado.',
+    globalLimits: 'Limites Globais',
+    autoApprovalLimit: 'Valor Máximo Automático (R$)',
+    autoApprovalLimitDesc: 'Pedidos acima deste valor requerem aprovação.',
+    save: 'Salvar Alterações',
+    saving: 'Salvando...',
+    successExisted: 'Centro de custo já existe',
+    successSaved: 'Configurações salvas com sucesso!',
+    errorSave: 'Erro ao salvar configurações',
+    loading: 'Carregando configurações...',
+    loaded: 'Carregado'
   },
 
   // Sistema de Lembretes
@@ -3037,6 +3108,81 @@ export default {
     createCard: 'Criar Card',
   },
 
+
+  categories: {
+    core: 'Geral',
+    hr: 'Meu RH',
+    content: 'Conteúdo e Conhecimento',
+    department: 'Departamento'
+  },
+
+  modules: {
+    dashboard: 'Dashboard',
+    noticias: 'Notícias',
+    calendario: 'Calendário',
+    ponto: 'Ponto',
+    contracheque: 'Contracheque',
+    reembolso: 'Reembolso',
+    kpi: 'KPIs',
+    avaliacao: 'Avaliação de Desempenho',
+    manual: 'Manual do Colaborador',
+    procedimentos: 'Procedimentos',
+    politicas: 'Políticas',
+    biblioteca: 'Biblioteca',
+    academy: 'Academy',
+    ajuda: 'Ajuda',
+    compras: 'Ordens de Compra',
+    chat: 'Chat',
+    wkradar: 'WK Radar',
+    contatos: 'Lista de Ramais',
+    emergencia: 'Emergência',
+    guia_offshore: 'Guia Offshore',
+    'integracao-erp': 'Integração ERP',
+    procedimentosGerais: 'Procedimentos Gerais',
+    folhaPagamento: 'Folha de Pagamento',
+    admin: 'Painel Admin',
+    apiMobile: 'API Mobile',
+    procedimentosLogistica: 'Procedimentos de Logística'
+  },
+
+  emails: {
+    common: {
+      hello: 'Olá',
+      footer: 'Este é um email automático. Por favor, não responda.',
+      regards: 'Atenciosamente',
+      team: 'Equipe ABZ Group',
+      accessSystem: 'Acessar o Sistema',
+      viewDetails: 'Ver Detalhes',
+      rightsReserved: 'Todos os direitos reservados.'
+    },
+    purchaseOrder: {
+      createdSubject: 'Ordem de Compra Criada - {{poNumber}}',
+      createdMessage: 'Sua ordem de compra foi criada com sucesso.',
+      approvalSubject: 'Solicitação de aprovação - {{poNumber}}',
+      approvalMessage: 'Nova solicitação de compra de {{name}} para aprovação.',
+      approvalCopySubject: 'Solicitação de aprovação (Cópia) - {{poNumber}}',
+      approvalCopyMessage: 'Cópia de solicitação de compra de {{name}}.',
+      titleCreated: 'Ordem de Compra Criada',
+      titleApproval: 'Solicitação de Aprovação',
+      summary: 'Resumo do Pedido',
+      poNumber: 'Número do Pedido',
+      provider: 'Fornecedor',
+      totalValue: 'Valor Total',
+      items: 'Itens',
+      viewOrder: 'Visualizar Pedido',
+      downloadAttachment: 'Baixar Anexo',
+      statusUpdateSubject: 'Atualização de Status - {{poNumber}}',
+      statusApproved: 'Aprovado',
+      statusRejected: 'Rejeitado',
+      titleApproved: 'Pedido Aprovado',
+      titleRejected: 'Pedido Rejeitado',
+      approvedMessage: 'A ordem de compra {{number}} do fornecedor {{provider}} foi aprovada por {{approver}}.',
+      rejectedMessage: 'A ordem de compra {{number}} do fornecedor {{provider}} foi rejeitada por {{approver}}.',
+      note: 'Nota',
+      autoMessage: 'Este é um email automático, por favor não responda.'
+    }
+  },
+
   changelog: {
     title: 'Novidades',
     historyTitle: 'Histórico de Versões',
@@ -3051,6 +3197,190 @@ export default {
     gotIt: 'Entendi, vamos lá!',
     newFeaturesDesc: 'Confira as melhorias que preparamos para você.',
     current: 'Atual'
+  },
+  purchaseOrders: {
+    title: 'Ordens de Compra',
+    adminView: 'Visão Administrativa',
+    managerView: 'Visão Gerencial',
+    myRequests: 'Minhas Solicitações',
+    settings: 'Configurações',
+    newOrder: 'Nova Ordem',
+    searchPlaceholder: 'Buscar por número ou fornecedor...',
+    allStatus: 'Todos os Status',
+    refresh: 'Atualizar',
+    loading: 'Carregando...',
+    noOrders: 'Nenhuma ordem encontrada.',
+    deleteConfirm: 'Tem certeza que deseja excluir esta ordem?',
+    deleteSuccess: 'Ordem excluída com sucesso',
+    deleteError: 'Erro ao excluir',
+    approveConfirm: 'Deseja aprovar esta ordem?',
+    rejectConfirm: 'Deseja rejeitar esta ordem?',
+    approveSuccess: 'Ordem aprovada',
+    rejectSuccess: 'Ordem rejeitada',
+    statusError: 'Erro ao atualizar status',
+    table: {
+      number: 'Número',
+      date: 'Data',
+      provider: 'Fornecedor',
+      value: 'Valor',
+      status: 'Status',
+      actions: 'Ações',
+      status_submitted: 'Enviado',
+      status_approved: 'Aprovado',
+      status_rejected: 'Rejeitado',
+      status_pending: 'Pendente',
+      status_draft: 'Rascunho'
+    },
+    details: {
+      notFoundOrDenied: 'Pedido não encontrado ou acesso negado.',
+      notFound: 'Pedido não encontrado.',
+      loadError: 'Erro ao carregar detalhes',
+      confirmApprove: 'Deseja aprovar este pedido?',
+      confirmReject: 'Deseja rejeitar este pedido?',
+      actionFailed: 'Falha na ação',
+      approved: 'Pedido aprovado',
+      rejected: 'Pedido rejeitado',
+      processError: 'Erro ao processar ação',
+      loading: 'Carregando detalhes do pedido...',
+      order: 'Pedido',
+      createdOn: 'Criado em {{date}} às {{time}}',
+      bannerApproved: 'Pedido Aprovado',
+      bannerRejected: 'Pedido Rejeitado',
+      byUserOn: 'Por {{user}} em {{date}} às {{time}}',
+      itemsTitle: 'Itens do Pedido',
+      freight: 'Frete:',
+      total: 'Total:',
+      observations: 'Observações',
+      attachments: 'Anexos',
+      invoiceAttached: 'Orçamento/Fatura Anexado',
+      downloadView: 'Baixar / Visualizar',
+      approval: 'Aprovação',
+      approveBtn: 'Aprovar',
+      rejectBtn: 'Rejeitar',
+      providerData: 'Dados do Fornecedor',
+      providerName: 'Razão Social',
+      providerCnpj: 'CNPJ',
+      providerEmail: 'Email',
+      deliveryPayment: 'Entrega e Pagamento',
+      paymentTerms: 'Condição de Pagamento',
+      deliveryDate: 'Data de Entrega',
+      address: 'Endereço',
+      buyer: 'Comprador'
+    },
+    stats: {
+      totalValue: 'Valor Total',
+      pending: 'Pendentes',
+      approved: 'Aprovados',
+      rejected: 'Rejeitados'
+    },
+    form: {
+      title: 'Nova Solicitação de Compra',
+      description: 'Preencha os dados do fornecedor e itens da compra',
+      provider: {
+        title: 'Dados do Fornecedor',
+        name: 'Razão Social',
+        tradeName: 'Nome Fantasia',
+        cnpj: 'CNPJ / CPF',
+        email: 'Email do Fornecedor',
+        placeholder: {
+          name: 'Nome da Empresa',
+          tradeName: 'Nome Fantasia',
+          cnpj: '00.000.000/0000-00',
+          email: 'contato@empresa.com'
+        }
+      },
+      delivery: {
+        title: 'Entrega e Pagamento',
+        paymentTerms: 'Condição de Pagamento',
+        buyer: 'Comprador Responsável',
+        date: 'Data de Entrega Desejada',
+        address: 'Endereço de Entrega',
+        placeholder: {
+          paymentTerms: 'Ex: 30 dias, À vista',
+          address: 'Ex: Matriz - Recebimento'
+        }
+      },
+      items: {
+        title: 'Itens do Pedido',
+        add: 'Adicionar Item',
+        description: 'Descrição',
+        quantity: 'Qtd',
+        unitValue: 'Valor Unit.',
+        costCenter: 'Centro de Custo',
+        freight: 'Frete',
+        total: 'Total',
+        placeholder: {
+          description: 'Descrição do produto/serviço',
+          select: 'Selecione...'
+        }
+      },
+      attachments: {
+        title: 'Anexos',
+        upload: 'Anexar Orçamento/Fatura',
+        uploading: 'Enviando...',
+        view: 'Ver anexo enviado',
+        observation: 'Observações',
+        placeholder: {
+          observation: 'Observações adicionais...'
+        }
+      },
+      actions: {
+        cancel: 'Cancelar',
+        submit: 'Enviar Solicitação',
+        save: 'Salvar'
+      },
+      errors: {
+        required: 'Obrigatório',
+        incompleteProfile: 'Perfil de usuário incompleto.',
+        exceedsLimit: 'Valor excede o limite permitido',
+        uploadError: 'Erro no upload',
+        submitError: 'Falha ao criar ordem'
+      },
+      success: {
+        attached: 'Arquivo anexado com sucesso!',
+        created: 'Solicitação criada com sucesso!'
+      }
+    }
+  },
+  emails: {
+    common: {
+      hello: 'Olá',
+      footer: 'Para mais informações, entre em contato com o suporte ou departamento responsável.',
+      rightsReserved: 'Todos os direitos reservados.',
+      copyright_ip: 'Portal ABZ © {year} - Propriedade Intelectual de Caio Correia - [GitHub](https://github.com/Caiolinooo)'
+    },
+    purchaseOrder: {
+      subject: {
+        created: 'Ordem de Compra Criada - {number}',
+        approval: 'Solicitação de Aprovação - {number}',
+        approved: 'Solicitação Aprovada - {number}',
+        rejected: 'Solicitação Rejeitada - {number}',
+        approvalCopy: 'Solicitação de Aprovação (Cópia) - {number}'
+      },
+      titleCreated: 'Nova Ordem de Compra',
+      titleApproval: 'Solicitação de Aprovação',
+      titleApproved: 'Solicitação Aprovada',
+      titleRejected: 'Solicitação Rejeitada',
+      viewOrder: 'Visualizar Pedido',
+      downloadAttachment: 'Baixar Anexo',
+      createdMessage: 'Sua ordem de compra foi criada com sucesso e está aguardando aprovação.',
+      approvalMessage: 'Nova solicitação de compra de {name} aguardando sua aprovação.',
+      approvedMessage: 'Sua Ordem de Compra {number} para {provider} foi aprovada por {approver}.',
+      rejectedMessage: 'Sua Ordem de Compra {number} para {provider} foi rejeitada por {approver}.',
+      summary: 'Resumo do Pedido',
+      poNumber: 'Número do Pedido',
+      provider: 'Fornecedor',
+      totalValue: 'Valor Total',
+      items: 'Itens',
+      note: 'Nota do Aprovador',
+      autoMessage: 'Este é um email automático. Por favor, não responda.'
+    }
+  },
+  notifications: {
+    po_created: 'Nova Ordem de Compra #{number} criada para {provider}. Valor: {value}.',
+    po_approval_request: 'Solicitação de aprovação para Ordem de Compra #{number} ({provider}). Valor: {value}.',
+    po_approved: 'Ordem de Compra #{number} ({provider}) foi aprovada. Valor: {value}.',
+    po_rejected: 'Ordem de Compra #{number} ({provider}) foi rejeitada. Valor: {value}.'
   }
 };
 
