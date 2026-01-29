@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     const userId = authResult.payload.userId;
     const formData = await request.formData();
-    
+
     const file = formData.get('file') as File;
     const type = formData.get('type') as string;
     const entityId = formData.get('entityId') as string;
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tipo
-    const allowedTypes = ['avatar', 'comprovante', 'documento'];
-    if (!type || !allowedTypes.includes(type)) {
+    const allowedTypes = ['avatar', 'comprovante', 'documento'] as const;
+    if (!type || !allowedTypes.includes(type as any)) {
       return NextResponse.json({
         success: false,
         error: `Tipo deve ser um de: ${allowedTypes.join(', ')}`
@@ -58,7 +58,9 @@ export async function POST(request: NextRequest) {
       documento: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
     };
 
-    if (!allowedMimeTypes[type].includes(file.type)) {
+    const fileType = type as keyof typeof allowedMimeTypes;
+
+    if (!allowedMimeTypes[fileType].includes(file.type)) {
       return NextResponse.json({
         success: false,
         error: `Tipo de arquivo não permitido para ${type}`
@@ -95,6 +97,13 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(fileName);
 
     const fileUrl = publicUrlData.publicUrl;
+
+
+    // Obter URL pública (Already obtained)
+    // const { data: publicUrlData } = supabase.storage
+    //   .from('mobile-uploads')
+    //   .getPublicUrl(fileName);
+    // const fileUrl = publicUrlData.publicUrl;
 
     // Gerar thumbnail se for imagem
     let thumbnailUrl: string | undefined;
@@ -138,7 +147,7 @@ export async function POST(request: NextRequest) {
       await supabase.storage
         .from('mobile-uploads')
         .remove([fileName]);
-      
+
       return NextResponse.json({
         success: false,
         error: 'Erro ao salvar informações do arquivo'
@@ -180,24 +189,24 @@ async function generateThumbnail(fileName: string, buffer: Uint8Array, mimeType:
   // Aqui seria implementada a geração de thumbnail
   // Por simplicidade, vamos retornar a URL original
   // Em produção, seria usado uma biblioteca como Sharp ou similar
-  
+
   try {
     // Simular geração de thumbnail
     const thumbnailFileName = fileName.replace(/(\.[^.]+)$/, '_thumb$1');
-    
+
     // Em produção, aqui seria:
     // 1. Redimensionar a imagem
     // 2. Comprimir
     // 3. Fazer upload do thumbnail
     // 4. Retornar URL do thumbnail
-    
+
     // Por enquanto, retornamos a URL original
     const { data } = supabase.storage
       .from('mobile-uploads')
       .getPublicUrl(fileName);
-    
+
     return data.publicUrl;
-    
+
   } catch (error) {
     console.error('Erro ao gerar thumbnail:', error);
     throw error;
