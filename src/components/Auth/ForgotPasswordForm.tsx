@@ -13,7 +13,6 @@ interface ForgotPasswordFormProps {
 
 export default function ForgotPasswordForm({ onCancel, initialEmail = '' }: ForgotPasswordFormProps) {
   const [identifier, setIdentifier] = useState(initialEmail);
-  const [useEmail, setUseEmail] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -26,69 +25,46 @@ export default function ForgotPasswordForm({ onCancel, initialEmail = '' }: Forg
 
     // Validar o identificador
     if (!identifier) {
-      setError(useEmail ? t('auth.invalidEmail') : t('auth.invalidPhoneNumber'));
+      setError(t('auth.invalidEmail'));
       setIsLoading(false);
       return;
     }
 
-    if (useEmail) {
-      // Importar a função de validação de email
-      const { validateEmail } = await import('@/lib/schema');
+    // Importar a função de validação de email
+    const { validateEmail } = await import('@/lib/schema');
 
-      // Validar o email com a função melhorada
-      if (!validateEmail(identifier)) {
-        setError(t('auth.invalidEmail'));
-        setIsLoading(false);
-        return;
-      }
+    // Validar o email com a função melhorada
+    if (!validateEmail(identifier)) {
+      setError(t('auth.invalidEmail'));
+      setIsLoading(false);
+      return;
     }
 
     try {
-        // Usar nossa nova API de reset de senha
-        if (useEmail) {
-          console.log(t('components.enviandoEmailDeRecuperacaoPara'), identifier);
+      console.log(t('components.enviandoEmailDeRecuperacaoPara'), identifier);
 
-          const response = await fetch('/api/auth/request-password-reset', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: ***REMOVED***
-              email: identifier,
-            }),
-          });
+      const response = await fetch('/api/auth/request-password-reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: ***REMOVED***
+          email: identifier,
+        }),
+      });
 
-          const data = await response.json();
+      const data = await response.json();
 
-          if (!response.ok || !data.success) {
-            console.error(t('components.erroAoSolicitarRecuperacaoDeSenha'), data);
-            setError(data.message || t('auth.requestError'));
-            return;
-          }
+      if (!response.ok || !data.success) {
+        console.error(t('components.erroAoSolicitarRecuperacaoDeSenha'), data);
+        setError(data.message || t('auth.requestError'));
+        return;
+      }
 
-          console.log(t('components.emailDeRecuperacaoEnviadoComSucesso'));
-        } else {
-          // Para telefone, precisamos usar a API personalizada
-          const response = await fetch('/api/auth/forgot-password', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: ***REMOVED***
-              phoneNumber: identifier,
-            }),
-          });
+      console.log(t('components.emailDeRecuperacaoEnviadoComSucesso'));
 
-          const data = await response.json();
-
-          if (!response.ok) {
-            setError(data.error || t('auth.requestError'));
-            return;
-          }
-        }
-
-        // Se chegou aqui, foi bem-sucedido
-        setSuccess(true);
+      // Se chegou aqui, foi bem-sucedido
+      setSuccess(true);
     } catch (error) {
       console.error(t('components.erroAoSolicitarRecuperacaoDeSenha'), error);
       setError(t('auth.requestError'));
@@ -111,9 +87,7 @@ export default function ForgotPasswordForm({ onCancel, initialEmail = '' }: Forg
               </h3>
               <div className="mt-2 text-sm text-green-700">
                 <p>
-                  {useEmail
-                    ? t('auth.resetLinkSentEmailDescription')
-                    : t('auth.resetLinkSentPhoneDescription')}
+                  {t('auth.resetLinkSentEmailDescription')}
                 </p>
               </div>
               <div className="mt-4">
@@ -136,38 +110,23 @@ export default function ForgotPasswordForm({ onCancel, initialEmail = '' }: Forg
           <div>
             <div className="flex items-center justify-between mb-2">
               <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
-                {useEmail ? t('auth.email') : t('auth.phoneNumber')}
+                {t('auth.email')}
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setUseEmail(!useEmail);
-                  setIdentifier('');
-                  setError('');
-                }}
-                className="text-xs text-abz-blue hover:text-abz-blue-dark"
-              >
-                {useEmail ? t('auth.usePhone') : t('auth.useEmail')}
-              </button>
             </div>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                {useEmail ? (
-                  <FiMail className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <FiPhone className="h-5 w-5 text-gray-400" />
-                )}
+                <FiMail className="h-5 w-5 text-gray-400" />
               </div>
               <input
                 id="identifier"
                 name="identifier"
-                type={useEmail ? 'email' : 'tel'}
-                autoComplete={useEmail ? 'email' : 'tel'}
+                type="email"
+                autoComplete="email"
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-abz-blue focus:border-abz-blue sm:text-sm"
-                placeholder={useEmail ? 'email@exemplo.com' : '+55 (99) 99999-9999'}
+                placeholder="email@exemplo.com"
               />
             </div>
             {error && (
@@ -177,9 +136,7 @@ export default function ForgotPasswordForm({ onCancel, initialEmail = '' }: Forg
               </div>
             )}
             <p className="mt-2 text-xs text-gray-500">
-              {useEmail
-                ? t('auth.resetPasswordEmailDescription')
-                : t('auth.resetPasswordPhoneDescription')}
+              {t('auth.resetPasswordEmailDescription')}
             </p>
           </div>
 

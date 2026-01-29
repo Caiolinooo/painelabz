@@ -72,7 +72,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { items: menuItems } = useMenuItems(true);
 
   const { config } = useSiteConfig();
-  const { unreadCount } = useNotifications(user?.id || '');
+  const { unreadCount, newsUnreadCount } = useNotifications(user?.id || '');
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMeuRHOpen, setIsMeuRHOpen] = useState(false);
@@ -149,7 +149,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const resolveItem = (m: SystemModule) => ({
     ...m,
     icon: getModuleIcon(m.id),
-    badge: m.id === 'noticias' && unreadCount > 0 ? unreadCount : undefined
+    badge: m.id === 'noticias' && newsUnreadCount > 0 ? newsUnreadCount : undefined
   });
 
   const coreItems = allowedModules.filter(m => m.category === 'core' || !m.category).map(resolveItem);
@@ -176,7 +176,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {!isCollapsed && (
           <span className={`font-medium text-sm ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`}>
-            {item.label}
+            {t(`modules.${item.id}`, item.label)}
           </span>
         )}
 
@@ -248,7 +248,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <FiCreditCard className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'}`} />
                   {!isCollapsed && (
                     <>
-                      <span className="font-medium text-sm text-gray-500 flex-1 text-left">{MODULE_CATEGORIES.hr}</span>
+                      <span className="font-medium text-sm text-gray-500 flex-1 text-left">{t('categories.hr', MODULE_CATEGORIES.hr)}</span>
                       <FiChevronDown className={`w-4 h-4 transition-transform ${isMeuRHOpen ? 'rotate-180' : ''}`} />
                     </>
                   )}
@@ -271,7 +271,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <FiShoppingCart className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'}`} />
                   {!isCollapsed && (
                     <>
-                      <span className="font-medium text-sm text-gray-500 flex-1 text-left truncate">{departmentTitle}</span>
+                      <span className="font-medium text-sm text-gray-500 flex-1 text-left truncate">
+                        {departmentTitle === MODULE_CATEGORIES.department ? t('categories.department', MODULE_CATEGORIES.department) : departmentTitle}
+                      </span>
                       <FiChevronDown className={`w-4 h-4 transition-transform ${isDepartmentOpen ? 'rotate-180' : ''}`} />
                     </>
                   )}
