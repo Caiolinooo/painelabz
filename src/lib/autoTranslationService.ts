@@ -29,7 +29,8 @@ class AutoTranslationService {
   constructor() {
     this.config = {
       enabled: true,
-      provider: 'mock', // Usar mock por padrão, pode ser alterado para 'google'
+      apiKey: process.env.GOOGLE_TRANSLATE_API_KEY,
+      provider: process.env.GOOGLE_TRANSLATE_API_KEY ? 'google' : 'mock',
       autoSave: true,
       cacheExpiry: 24 * 7 // 7 dias
     };
@@ -75,7 +76,7 @@ class AutoTranslationService {
 
     try {
       const translation = await translationPromise;
-      
+
       // Salvar no cache
       this.setCachedTranslation(cacheKey, {
         translation,
@@ -161,7 +162,7 @@ class AutoTranslationService {
     };
 
     const result = translations[sourceLocale]?.[targetLocale] || text;
-    
+
     // Simular delay de API
     return new Promise(resolve => {
       setTimeout(() => resolve(result), 100);
@@ -268,7 +269,7 @@ class AutoTranslationService {
     // Verificar se não expirou
     const now = Date.now();
     const expiryTime = cached.timestamp + (this.config.cacheExpiry * 60 * 60 * 1000);
-    
+
     if (now > expiryTime) {
       return null;
     }
