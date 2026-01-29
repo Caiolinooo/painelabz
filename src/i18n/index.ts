@@ -16,7 +16,18 @@ export function getTranslation(locale: Locale, key: string, defaultValue?: strin
     return defaultValue || key || '';
   }
 
-  if (!locale || !Object.keys(locales).includes(locale)) {
+  // Normalize locale (case-insensitive check)
+  let normalizedLocale = Object.keys(locales).find(l => l.toLowerCase() === (locale || '').toLowerCase());
+
+  // If not found, try matching by prefix (e.g. 'en' -> 'en-US')
+  if (!normalizedLocale && locale) {
+    const prefix = String(locale).split('-')[0].toLowerCase();
+    normalizedLocale = Object.keys(locales).find(l => l.toLowerCase().startsWith(prefix));
+  }
+
+  if (normalizedLocale) {
+    locale = normalizedLocale as Locale;
+  } else {
     locale = defaultLocale;
   }
 

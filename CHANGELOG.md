@@ -1,5 +1,28 @@
 # Changelog
 
+## [4.4.0] - 2026-01-29
+
+### Added
+- **Auto-detecção de Idioma**: O sistema agora detecta automaticamente o idioma preferencial do navegador (`navigator.language`) no primeiro acesso.
+- **Suporte Hierárquico de Localização**: Implementado sistema de processamento de localização em 3 camadas nas APIs:
+  - Header customizado `X-Client-Locale`
+  - Header padrão `Accept-Language` (fallback automático)
+  - Default do sistema (`pt-BR`)
+- **Autenticação em Modo Anônimo**: Suporte a `credentials: 'include'` nas chamadas de API críticas, garantindo que o sistema funcione corretamente em abas anônimas/privadas onde o localStorage pode ser instável.
+
+### Improved
+- **Acessibilidade de E-mails**: O atributo HTML `lang` dos e-mails agora é definido dinamicamente de acordo com o idioma do destinatário.
+- **Robustez de Internacionalização**: Refatoração do `I18nContext` para evitar o fallback silencioso para `pt-BR` quando o usuário prefere inglês.
+- **Logs de Diagnóstico**: Adicionado sistema de logs (`🔧`) no formulário de Ordem de Compra para facilitar a depuração de problemas de carregamento e autenticação.
+
+### Fixed
+- **Carregamento de Centros de Custo**: Corrigido erro onde os centros de custo não apareciam no dropdown em modo anônimo devido a falhas de autenticação silenciosa.
+- **Internacionalização de E-mails**:
+  - Removidos textos fixos em português de templates críticos (`poApprovedFiscalTemplate`).
+  - Corrigida falha no `orderStatusUpdateTemplate` que ignorava o parâmetro de locale.
+  - Adicionado suporte a parâmetro de locale em todos os componentes de template base.
+- **Sincronização de Headers**: Garantido que o header de localização seja enviado em todas as atualizações de status de Ordem de Compra.
+
 ## [4.3.0] - 2026-01-29
 
 ### Added

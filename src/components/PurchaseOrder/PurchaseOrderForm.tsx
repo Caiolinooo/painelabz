@@ -119,13 +119,31 @@ export default function PurchaseOrderForm() {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await fetch('/api/purchase-orders/config');
+                console.log('🔧 Fetching config from /api/purchase-orders/config');
+                const token = getToken();
+                console.log('🔧 Token found:', !!token);
+
+                const res = await fetch('/api/purchase-orders/config', {
+                    credentials: 'include', // CRITICAL: Include cookies for auth in incognito mode
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                });
+
+                console.log('🔧 Config API Response Status:', res.status);
+
                 if (res.ok) {
                     const json = await res.json();
+                    console.log('🔧 Config API Response:', json);
                     setAllConfigs(json);
+                } else {
+                    const errorText = await res.text();
+                    console.error('🔧 Config API Error:', res.status, errorText);
+                    toast.error('Erro ao carregar configurações. Verifique sua autenticação.');
                 }
             } catch (err) {
-                console.error('Failed to fetch config', err);
+                console.error('🔧 Failed to fetch config:', err);
+                toast.error('Erro de conexão ao carregar configurações.');
             }
         };
         fetchConfig();

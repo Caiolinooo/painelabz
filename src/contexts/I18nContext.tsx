@@ -39,6 +39,22 @@ export function I18nProvider({ children }: I18nProviderProps) {
       if (savedLocale && Object.keys(locales).includes(savedLocale)) {
         console.log('🌐 Locale carregado do localStorage:', savedLocale);
         setLocaleState(savedLocale);
+      } else {
+        // If no saved locale, detect from browser
+        const browserLang = navigator.language || navigator.languages?.[0] || 'pt-BR';
+        console.log('🌐 Detectado idioma do navegador:', browserLang);
+
+        // Normalize browser language to our supported locales
+        let detectedLocale: Locale = 'pt-BR';
+        if (browserLang.toLowerCase().startsWith('en')) {
+          detectedLocale = 'en-US';
+        } else if (browserLang.toLowerCase().startsWith('pt')) {
+          detectedLocale = 'pt-BR';
+        }
+
+        console.log('🌐 Usando locale detectado:', detectedLocale);
+        setLocaleState(detectedLocale);
+        localStorage.setItem('locale', detectedLocale);
       }
     }
   }, []);

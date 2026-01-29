@@ -170,7 +170,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                     const { getTranslation } = await import('@/i18n');
 
                     // Get locale or default to pt-BR
-                    const userLocale = request.headers.get('x-client-locale') || 'pt-BR';
+                    let userLocale = request.headers.get('x-client-locale');
+                    const acceptLanguage = request.headers.get('accept-language');
+
+                    if (!userLocale && acceptLanguage) {
+                        // Extract first language from Accept-Language header (e.g. "en-US,en;q=0.9" -> "en-US")
+                        userLocale = acceptLanguage.split(',')[0].trim();
+                        console.log(`PO Update [${id}]: Fallback to Accept-Language '${userLocale}'`);
+                    }
+
+                    userLocale = userLocale || 'pt-BR';
+                    console.log(`PO Update [${id}]: Final locale determined '${userLocale}'`);
+
                     const t = (key: string, locale: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
                     // 1. Notify Owner (Approved/Rejected)
