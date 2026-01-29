@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FiRefreshCw, FiCheckCircle, FiXCircle, FiServer, FiUsers } from 'react-icons/fi';
-import MainLayout from '@/components/Layout/MainLayout'; // Assumindo MainLayout para admin também, ou ajuste conforme layout do projeto
+
 
 export default function MioAdminPage() {
     const [testing, setTesting] = useState(false);
@@ -39,7 +39,7 @@ export default function MioAdminPage() {
     };
 
     return (
-        <MainLayout>
+        <div className="flex-1 p-6">
             <div className="p-6 max-w-6xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Integração MIO</h1>
                 <p className="text-gray-600 mb-8">Gerencie a conexão e sincronização com a API MIO (mio.app.br).</p>
@@ -142,6 +142,6 @@ export default function MioAdminPage() {
                 </div>
 
             </div>
-        </MainLayout>
+        </div>
     );
 }

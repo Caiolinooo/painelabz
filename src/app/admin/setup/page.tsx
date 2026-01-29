@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import { useI18n } from '@/contexts/I18nContext';
 import {
   FiCheck,
@@ -38,7 +38,7 @@ export default function AdminSetupPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
-    
+
     if (!token || !userStr) {
       router.push('/login');
       return;
@@ -79,7 +79,7 @@ export default function AdminSetupPage() {
       });
 
       const data = await response.json();
-      
+
       if (data.tableExists) {
         newChecks[0] = {
           name: 'Tabela Cards',
@@ -268,16 +268,16 @@ CREATE POLICY IF NOT EXISTS "cards_admin_policy" ON public.cards
 
   if (loading && checks.length === 0) {
     return (
-      <MainLayout>
+      <div className="flex-1 p-6">
         <div className="flex items-center justify-center min-h-screen">
           <FiRefreshCw className="animate-spin text-2xl" />
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <div className="flex-1 p-6">
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -286,7 +286,7 @@ CREATE POLICY IF NOT EXISTS "cards_admin_policy" ON public.cards
               Diagnóstico e configuração inicial do sistema
             </p>
           </div>
-          
+
           <Button onClick={runSystemChecks} disabled={loading}>
             <FiRefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Verificar Novamente
@@ -305,13 +305,13 @@ CREATE POLICY IF NOT EXISTS "cards_admin_policy" ON public.cards
               </CardHeader>
               <CardContent>
                 <p className="mb-4">{check.message}</p>
-                
+
                 {check.sql && (
                   <div className="space-y-3">
                     <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
                       <pre>{check.sql}</pre>
                     </div>
-                    
+
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
@@ -321,7 +321,7 @@ CREATE POLICY IF NOT EXISTS "cards_admin_policy" ON public.cards
                         <FiCopy className="mr-2 h-4 w-4" />
                         Copiar SQL
                       </Button>
-                      
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -331,7 +331,7 @@ CREATE POLICY IF NOT EXISTS "cards_admin_policy" ON public.cards
                         Testar Após Execução
                       </Button>
                     </div>
-                    
+
                     <div className="bg-blue-50 border border-blue-200 p-3 rounded">
                       <p className="text-sm text-blue-800">
                         <strong>Instruções:</strong>
@@ -382,7 +382,7 @@ CREATE POLICY IF NOT EXISTS "cards_admin_policy" ON public.cards
           </CardContent>
         </Card>
       </div>
-    </MainLayout>
+    </div>
   );
 }
 

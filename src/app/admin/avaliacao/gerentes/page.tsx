@@ -11,7 +11,7 @@ import {
   FiUserCheck,
   FiUserPlus,
 } from 'react-icons/fi';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 interface User {
@@ -193,18 +193,18 @@ export default function GerentesLideresPage() {
 
   if (!isAdmin) {
     return (
-      <MainLayout>
-        <div className="max-w-4xl mx-auto text-center py-12">
-          <FiAlertCircle className="mx-auto h-16 w-16 text-red-400 mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
-          <p className="text-gray-600">Apenas administradores podem acessar esta página.</p>
-        </div>
-      </MainLayout>
+
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <FiAlertCircle className="mx-auto h-16 w-16 text-red-400 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
+        <p className="text-gray-600">Apenas administradores podem acessar esta página.</p>
+      </div>
+
     );
   }
 
   return (
-    <MainLayout>
+    <div className="flex-1 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -377,7 +377,7 @@ export default function GerentesLideresPage() {
                   {colaboradoresFiltrados.map((colaborador) => {
                     const temGerente = mapeamentosEdit[colaborador.id];
                     const gerenteAtual = usuarios.find(u => u.id === mapeamentosEdit[colaborador.id]);
-                    
+
                     return (
                       <tr key={colaborador.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -447,6 +447,6 @@ export default function GerentesLideresPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </div>
   );
 }

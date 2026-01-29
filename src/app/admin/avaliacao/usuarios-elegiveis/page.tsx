@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FiUsers, FiCheck, FiX, FiSearch, FiSave, FiAlertCircle } from 'react-icons/fi';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 interface User {
@@ -136,18 +136,18 @@ export default function UsuariosElegiveisPage() {
 
   if (!isAdmin) {
     return (
-      <MainLayout>
-        <div className="max-w-4xl mx-auto text-center py-12">
-          <FiAlertCircle className="mx-auto h-16 w-16 text-red-400 mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
-          <p className="text-gray-600">Apenas administradores podem acessar esta página.</p>
-        </div>
-      </MainLayout>
+
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <FiAlertCircle className="mx-auto h-16 w-16 text-red-400 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
+        <p className="text-gray-600">Apenas administradores podem acessar esta página.</p>
+      </div>
+
     );
   }
 
   return (
-    <MainLayout>
+    <div className="flex-1 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Usuários Elegíveis</h1>
@@ -297,11 +297,10 @@ export default function UsuariosElegiveisPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          usuario.status === 'active'
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${usuario.status === 'active'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-800'
-                        }`}
+                          }`}
                       >
                         {usuario.status}
                       </span>
@@ -313,6 +312,6 @@ export default function UsuariosElegiveisPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </div>
   );
 }

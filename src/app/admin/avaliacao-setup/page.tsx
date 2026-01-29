@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FiPlay, FiCheck, FiX, FiAlertCircle, FiDatabase, FiSettings } from 'react-icons/fi';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import { useI18n } from '@/contexts/I18nContext';
 
 interface User {
@@ -63,7 +63,7 @@ export default function AvaliacaoSetupPage() {
 
     try {
       const token = localStorage.getItem('abzToken');
-      
+
       const response = await fetch('/api/avaliacao/apply-migrations', {
         method: 'POST',
         headers: {
@@ -94,7 +94,7 @@ export default function AvaliacaoSetupPage() {
   const checkTables = async () => {
     try {
       const token = localStorage.getItem('abzToken');
-      
+
       const response = await fetch('/api/avaliacao/check-tables', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -102,9 +102,9 @@ export default function AvaliacaoSetupPage() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
-        const tableResults = Object.entries(data.tables).map(([table, exists]) => 
+        const tableResults = Object.entries(data.tables).map(([table, exists]) =>
           `${exists ? '✅' : '❌'} Tabela ${table}: ${exists ? 'Existe' : t('admin.naoEncontrada')}`
         );
         setResults(tableResults);
@@ -119,7 +119,7 @@ export default function AvaliacaoSetupPage() {
 
   if (authLoading) {
     return (
-      <MainLayout>
+      <div className="flex-1 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -131,13 +131,13 @@ export default function AvaliacaoSetupPage() {
             </p>
           </div>
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
   if (!user || user.role !== 'admin') {
     return (
-      <MainLayout>
+      <div className="flex-1 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <FiAlertCircle className="mx-auto h-16 w-16 text-red-400 mb-4" />
@@ -149,12 +149,12 @@ export default function AvaliacaoSetupPage() {
             </p>
           </div>
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <div className="flex-1 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -180,7 +180,7 @@ export default function AvaliacaoSetupPage() {
                 </p>
               </div>
             </div>
-            
+
             <div className="space-y-3">
               <div className="text-sm text-gray-700">
                 <strong>Esta ação irá:</strong>
@@ -193,7 +193,7 @@ export default function AvaliacaoSetupPage() {
                   <li>Criar período de teste</li>
                 </ul>
               </div>
-              
+
               <button
                 onClick={applyMigrations}
                 disabled={loading}
@@ -218,7 +218,7 @@ export default function AvaliacaoSetupPage() {
                 </p>
               </div>
             </div>
-            
+
             <div className="space-y-3">
               <div className="text-sm text-gray-700">
                 <strong>Verifica:</strong>
@@ -230,7 +230,7 @@ export default function AvaliacaoSetupPage() {
                   <li>Tabela de autoavaliações</li>
                 </ul>
               </div>
-              
+
               <button
                 onClick={checkTables}
                 disabled={loading}
@@ -295,6 +295,6 @@ export default function AvaliacaoSetupPage() {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 }

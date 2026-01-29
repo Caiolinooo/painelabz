@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import FileExplorer from '@/components/FileExplorer';
 import { FiFile, FiDownload, FiEye, FiPlus, FiRefreshCw } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
@@ -83,7 +83,7 @@ export default function DocumentsAdminPage() {
   };
 
   return (
-    <MainLayout>
+    <div className="flex-1 p-6">
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-3xl font-bold text-abz-text-black mb-6">
           {t('admin.documents.title', 'Gerenciamento de Documentos')}
@@ -159,7 +159,7 @@ export default function DocumentsAdminPage() {
                           {t('common.download', 'Download')}
                         </a>
                         <button
-                          onClick={() => { navigator.clipboard.writeText(`/${selectedFile}`); toast.success(t('admin.documents.copied','Caminho copiado!') as string); }}
+                          onClick={() => { navigator.clipboard.writeText(`/${selectedFile}`); toast.success(t('admin.documents.copied', 'Caminho copiado!') as string); }}
                           className="flex items-center px-3 py-2 bg-gray-100 text-abz-text-dark rounded-md hover:bg-gray-200 transition-colors"
                         >
                           {t('common.copy', 'Copiar caminho')}
@@ -212,7 +212,7 @@ export default function DocumentsAdminPage() {
           onClose={closeViewer}
         />
       )}
-    </MainLayout>
+    </div>
   );
 }
 

@@ -12,7 +12,7 @@ import {
   FiClock,
   FiUsers,
 } from 'react-icons/fi';
-import MainLayout from '@/components/Layout/MainLayout';
+
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 interface Periodo {
@@ -186,18 +186,18 @@ export default function PeriodosAvaliacaoPage() {
 
   if (!isAdmin) {
     return (
-      <MainLayout>
-        <div className="max-w-4xl mx-auto text-center py-12">
-          <FiAlertCircle className="mx-auto h-16 w-16 text-red-400 mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
-          <p className="text-gray-600">Apenas administradores podem acessar esta página.</p>
-        </div>
-      </MainLayout>
+
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <FiAlertCircle className="mx-auto h-16 w-16 text-red-400 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
+        <p className="text-gray-600">Apenas administradores podem acessar esta página.</p>
+      </div>
+
     );
   }
 
   return (
-    <MainLayout>
+    <div className="flex-1 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -271,11 +271,10 @@ export default function PeriodosAvaliacaoPage() {
                         {periodo.nome}
                       </h3>
                       <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          periodo.ativo
+                        className={`px-3 py-1 text-xs font-medium rounded-full ${periodo.ativo
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-800'
-                        }`}
+                          }`}
                       >
                         {periodo.ativo ? 'Ativo' : 'Inativo'}
                       </span>
@@ -538,6 +537,6 @@ export default function PeriodosAvaliacaoPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </div>
   );
 }
