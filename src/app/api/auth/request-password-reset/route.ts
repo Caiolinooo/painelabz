@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Verificar se o usuário existe
     const { data: user, error: userError } = await supabase
       .from('users_unified')
-      .select('id, email, first_name, email_verified')
+      .select('id, email, first_name, email_verified, role')
       .eq('email', email.toLowerCase().trim())
       .single();
 
@@ -38,7 +38,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o email foi verificado
-    if (!user.email_verified) {
+    // Admins podem redefinir senha mesmo sem verificação de email (útil para primeiras contas)
+    const isAdmin = user.role === 'ADMIN' || user.role === 'admin';
+
+    if (!user.email_verified && !isAdmin) {
       console.log(`❌ Email não verificado: ${email}`);
       return NextResponse.json({
         success: false,
@@ -50,18 +53,20 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('password_reset_tokens')
       .update({ expires_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .is('used_at', null);
+      .eq('user_id', user.id);
 
     // Gerar novo token (válido por 1 hora)
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
 
+    // Gerar token manual já que o banco não está gerando
+    const token = crypto.randomUUID();
+
     const { data: tokenData, error: tokenError } = await supabase
       .from('password_reset_tokens')
       .insert({
         user_id: user.id,
-        email: user.email,
+        token: token,
         expires_at: expiresAt.toISOString()
       })
       .select('token')
@@ -70,26 +75,29 @@ export async function POST(request: NextRequest) {
     if (tokenError || !tokenData) {
       console.error('❌ Erro ao criar token:', tokenError);
       return NextResponse.json(
-        { success: false, message: 'Erro interno do servidor' },
+        {
+          success: false,
+          message: `Erro ao criar token: ${tokenError?.message || 'Dados não retornados'}`
+        },
         { status: 500 }
       );
     }
 
     // Gerar URL dinâmica baseada no request
     const host = request.headers.get('host');
-    const protocol = request.headers.get('x-forwarded-proto') || 
-                    (host?.includes('localhost') ? 'http' : 'https');
-    
+    const protocol = request.headers.get('x-forwarded-proto') ||
+      (host?.includes('localhost') ? 'http' : 'https');
+
     let baseUrl = '';
     if (host) {
       baseUrl = `${protocol}://${host}`;
     } else {
       // Fallback para variáveis de ambiente
-      baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                process.env.APP_URL || 
-                (process.env.NODE_ENV === 'production' 
-                  ? 'https://painelabzgroup.netlify.app' 
-                  : 'http://localhost:3000');
+      baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.APP_URL ||
+        (process.env.NODE_ENV === 'production'
+          ? 'https://painelabzgroup.netlify.app'
+          : 'http://localhost:3000');
     }
 
     const resetUrl = `${baseUrl}/reset-password?token=${tokenData.token}`;
@@ -102,7 +110,7 @@ export async function POST(request: NextRequest) {
     if (!emailResult.success) {
       console.error('❌ Erro ao enviar email:', emailResult.message);
       return NextResponse.json(
-        { success: false, message: 'Erro ao enviar email de redefinição' },
+        { success: false, message: `Erro ao enviar email: ${emailResult.message}` },
         { status: 500 }
       );
     }
@@ -117,7 +125,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Erro na solicitação de reset:', error);
     return NextResponse.json(
-      { success: false, message: 'Erro interno do servidor' },
+      {
+        success: false,
+        message: `Erro interno: ${error instanceof Error ? error.message : JSON.stringify(error)}`
+      },
       { status: 500 }
     );
   }
