@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     query = query.range(offset, offset + limit - 1);
 
     // Executar queries em paralelo para melhor performance
-    const [notificationsResult, totalResult, unreadResult] = await Promise.all([
+    const [notificationsResult, totalResult, unreadResult, newsUnreadResult] = await Promise.all([
       // 1. Buscar notificações
       supabaseWithRetry(
         async () => query,
@@ -94,6 +94,20 @@ export async function GET(request: NextRequest) {
             .or(`expires_at.is.null,expires_at.gt.${currentDate}`);
         },
         { maxRetries: 1, delay: 500, timeout: 5000 }
+      ),
+      // 4. Buscar contagem não lidas para News (excluindo purchase_order)
+      supabaseWithRetry(
+        async () => {
+          const currentDate = new Date().toISOString();
+          return supabaseAdmin
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user_id)
+            .is('read_at', null)
+            .neq('type', 'purchase_order')
+            .or(`expires_at.is.null,expires_at.gt.${currentDate}`);
+        },
+        { maxRetries: 1, delay: 500, timeout: 5000 }
       )
     ]);
 
@@ -101,6 +115,7 @@ export async function GET(request: NextRequest) {
     notifications = notifications || [];
     const totalCount = totalResult.count || 0;
     const unreadCount = unreadResult.count || 0;
+    const newsUnreadCount = newsUnreadResult.count || 0;
     const totalError = totalResult.error;
     const unreadError = unreadResult.error;
 
@@ -126,7 +141,7 @@ export async function GET(request: NextRequest) {
     }
     // ----------------------------------------------
 
-    console.log(`📊 Queries executadas. Notificações: ${notifications?.length || 0}, Total: ${totalCount}, Não lidas: ${unreadCount}`);
+    console.log(`📊 Queries executadas. Notificações: ${notifications?.length || 0}, Total: ${totalCount}, Não lidas: ${unreadCount}, News Unread: ${newsUnreadCount}`);
 
     if (error) {
       logError('Notifications Query', error, { user_id, page, limit, attempts });
@@ -140,6 +155,7 @@ export async function GET(request: NextRequest) {
       user_id,
       count: notifications?.length || 0,
       unreadCount,
+      newsUnreadCount,
       attempts
     });
 
@@ -153,7 +169,8 @@ export async function GET(request: NextRequest) {
         hasNext: page * limit < (totalCount || 0),
         hasPrev: page > 1
       },
-      unreadCount: unreadCount || 0
+      unreadCount: unreadCount || 0,
+      newsUnreadCount: newsUnreadCount || 0
     });
 
   } catch (error) {
