@@ -495,15 +495,17 @@ export default function Login() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <Image
-            src={config.logo}
-            alt={config.companyName + " Logo"}
-            width={200}
-            height={60}
-            className="h-auto w-auto max-w-[150px] sm:max-w-[200px]"
-            priority
-            unoptimized
-          />
+          {(config.login_logo || config.logo) && (
+            <Image
+              src={config.login_logo || config.logo}
+              alt={config.companyName + " Logo"}
+              width={200}
+              height={60}
+              className="h-auto w-auto max-w-[150px] sm:max-w-[200px]"
+              priority
+              unoptimized
+            />
+          )}
         </div>
         <h2 className="mt-4 sm:mt-6 text-center text-xl sm:text-2xl font-bold leading-8 sm:leading-9 tracking-tight text-abz-blue-dark">
           {loginStep === 'phone' ? t('auth.accessAccount') :

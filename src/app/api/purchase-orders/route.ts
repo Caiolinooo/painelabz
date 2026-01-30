@@ -34,8 +34,10 @@ export async function GET(request: NextRequest) {
         if (role === 'ADMIN') {
             // See all - no filter
         } else if (role === 'MANAGER') {
-            // See own orders OR assigned orders
-            query = query.or(`user_id.eq.${userId},manager_id.eq.${userId}`);
+            // See own orders OR assigned orders (checked via approver_ids containment)
+            // Postgres array containment operator: approver_ids @> {userId}
+            // Supabase/PostgREST syntax: approver_ids.cs.{userId}
+            query = query.or(`user_id.eq.${userId},approver_ids.cs.{${userId}}`);
         } else {
             // Regular user - see own only
             query = query.eq('user_id', userId);
@@ -168,15 +170,19 @@ export async function POST(request: NextRequest) {
                             // Sort by limit ascending
                             rules.sort((a, b) => a.limit - b.limit);
 
-                            // Find the first rule that covers this value
-                            const applicableRule = rules.find(r => r.limit >= poValue);
+                            // Find the first rule that covers this value (Lowest Sufficient Authority)
+                            const targetRule = rules.find(r => r.limit >= poValue);
+                            let targetLimit = targetRule ? targetRule.limit : -1;
 
-                            if (applicableRule) {
-                                approversToNotify.push(applicableRule.email);
+                            if (targetRule) {
+                                // Add EVERYONE who has this specific limit (in case of multiple peers at same level)
+                                const peers = rules.filter(r => r.limit === targetLimit);
+                                peers.forEach(p => approversToNotify.push(p.email));
                             } else {
-                                // Value exceeds all limits? Notify the highest tier (last one)
-                                const highestRule = rules[rules.length - 1];
-                                if (highestRule) approversToNotify.push(highestRule.email);
+                                // Value exceeds all limits? Notify the highest tier(s)
+                                const highestLimit = rules[rules.length - 1].limit;
+                                const highestTierApprovers = rules.filter(r => r.limit === highestLimit);
+                                highestTierApprovers.forEach(p => approversToNotify.push(p.email));
                             }
                         } else if (config.approver_emails && config.approver_emails.length > 0) {
                             // Fallback to legacy list
@@ -193,6 +199,27 @@ export async function POST(request: NextRequest) {
                 // Filter valid emails and remove duplicates
                 approversToNotify = [...new Set(approversToNotify.filter(e => e && e.includes('@')))];
                 const CC_EMAILS = ['karla@groupabz.com'];
+
+                // RESOLVE APPROVER IDs
+                // Fetch IDs for all approver emails to store in the DB for permission checks
+                const approverIds: string[] = [];
+                if (approversToNotify.length > 0) {
+                    const { data: approverUsers } = await supabaseAdmin
+                        .from('users_unified')
+                        .select('id, email')
+                        .in('email', approversToNotify);
+
+                    if (approverUsers) {
+                        approverUsers.forEach(u => approverIds.push(u.id));
+                    }
+                }
+
+                // UPDATE PO WITH APPROVER IDs
+                await supabaseAdmin
+                    .from('purchase_orders')
+                    .update({ approver_ids: approverIds })
+                    .eq('id', data.id);
+
 
                 // Send to Calculated Approvers
                 for (const email of approversToNotify) {

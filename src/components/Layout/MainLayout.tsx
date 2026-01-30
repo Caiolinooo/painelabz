@@ -209,7 +209,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
                   <img
-                    src={config?.logo || '/images/logo.png'}
+                    src={config?.sidebar_logo || config?.logo || '/images/logo.png'}
                     alt="Logo"
                     className="w-full h-full object-contain"
                     onError={(e) => {

@@ -13,6 +13,9 @@ interface SiteConfig {
   favicon: string;
   primaryColor: string;
   secondaryColor: string;
+  login_logo?: string;
+  sidebar_logo?: string;
+  widget_logo?: string;
   companyName: string;
   contactEmail: string;
   footerText: string;
@@ -36,6 +39,9 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [loginLogoFile, setLoginLogoFile] = useState<File | null>(null);
+  const [sidebarLogoFile, setSidebarLogoFile] = useState<File | null>(null);
+  const [widgetLogoFile, setWidgetLogoFile] = useState<File | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [selectedLocale, setSelectedLocale] = useState<'pt-BR' | 'en-US' | 'es-ES'>('pt-BR');
 
@@ -156,13 +162,29 @@ export default function SettingsPage() {
   };
 
   // Função para lidar com upload de arquivos
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'login_logo' | 'sidebar_logo' | 'widget_logo' | 'favicon') => {
     if (e.target.files && e.target.files.length > 0) {
       if (type === 'logo') {
         setLogoFile(e.target.files[0]);
+      } else if (type === 'login_logo') {
+        setLoginLogoFile(e.target.files[0]);
+      } else if (type === 'sidebar_logo') {
+        setSidebarLogoFile(e.target.files[0]);
+      } else if (type === 'widget_logo') {
+        setWidgetLogoFile(e.target.files[0]);
       } else {
         setFaviconFile(e.target.files[0]);
       }
+    }
+  };
+
+  const handleRemoveImage = (type: 'logo' | 'login_logo' | 'sidebar_logo' | 'widget_logo') => {
+    if (config) {
+      setConfig({ ...config, [type]: '' });
+      if (type === 'logo') setLogoFile(null);
+      if (type === 'login_logo') setLoginLogoFile(null);
+      if (type === 'sidebar_logo') setSidebarLogoFile(null);
+      if (type === 'widget_logo') setWidgetLogoFile(null);
     }
   };
 
@@ -258,12 +280,30 @@ export default function SettingsPage() {
     try {
       const updatedConfig = { ...config };
 
-      // Fazer upload do logo, se houver
+      // Fazer upload do logo principal, se houver
       if (logoFile) {
         const logoUrl = await uploadFile(logoFile, 'images');
         if (logoUrl) {
           updatedConfig.logo = logoUrl;
         }
+      }
+
+      // Upload Login Logo
+      if (loginLogoFile) {
+        const url = await uploadFile(loginLogoFile, 'images');
+        if (url) updatedConfig.login_logo = url;
+      }
+
+      // Upload Sidebar Logo
+      if (sidebarLogoFile) {
+        const url = await uploadFile(sidebarLogoFile, 'images');
+        if (url) updatedConfig.sidebar_logo = url;
+      }
+
+      // Upload Widget Logo
+      if (widgetLogoFile) {
+        const url = await uploadFile(widgetLogoFile, 'images');
+        if (url) updatedConfig.widget_logo = url;
       }
 
       // Fazer upload do favicon, se houver
@@ -308,6 +348,9 @@ export default function SettingsPage() {
 
         // Limpar arquivos
         setLogoFile(null);
+        setLoginLogoFile(null);
+        setSidebarLogoFile(null);
+        setWidgetLogoFile(null);
         setFaviconFile(null);
 
         // Não recarregar a página - deixar o contexto atualizar automaticamente
@@ -436,6 +479,72 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            {/* Login Logo */}
+            <div className="md:col-span-2 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Logo da Página de Login
+              </label>
+              <div className="flex items-center space-x-6">
+                <div className="shrink-0 relative group">
+                  {loginLogoFile ? (
+                    <img className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50" src={URL.createObjectURL(loginLogoFile)} alt="Preview" />
+                  ) : (
+                    <img className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50" src={config.login_logo || '/images/LC1_Azul.png'} alt="Current" />
+                  )}
+                  {config.login_logo && <button type="button" onClick={() => handleRemoveImage('login_logo')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600">x</button>}
+                </div>
+                <label className="block">
+                  <span className="sr-only">Escolher logo login</span>
+                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'login_logo')}
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </label>
+              </div>
+            </div>
+
+            {/* Sidebar Logo */}
+            <div className="md:col-span-2 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Logo do Menu Lateral
+              </label>
+              <div className="flex items-center space-x-6">
+                <div className="shrink-0 relative group">
+                  {sidebarLogoFile ? (
+                    <img className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50" src={URL.createObjectURL(sidebarLogoFile)} alt="Preview" />
+                  ) : (
+                    <img className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50" src={config.sidebar_logo || '/images/LC1_Azul.png'} alt="Current" />
+                  )}
+                  {config.sidebar_logo && <button type="button" onClick={() => handleRemoveImage('sidebar_logo')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600">x</button>}
+                </div>
+                <label className="block">
+                  <span className="sr-only">Escolher logo sidebar</span>
+                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'sidebar_logo')}
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </label>
+              </div>
+            </div>
+
+            {/* Widget Logo */}
+            <div className="md:col-span-2 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Logo do Widget/Menu
+              </label>
+              <div className="flex items-center space-x-6">
+                <div className="shrink-0 relative group">
+                  {widgetLogoFile ? (
+                    <img className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50" src={URL.createObjectURL(widgetLogoFile)} alt="Preview" />
+                  ) : (
+                    <img className="h-16 w-16 object-contain rounded-lg border border-gray-200 bg-gray-50" src={config.widget_logo || '/images/LC1_Azul.png'} alt="Current" />
+                  )}
+                  {config.widget_logo && <button type="button" onClick={() => handleRemoveImage('widget_logo')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600">x</button>}
+                </div>
+                <label className="block">
+                  <span className="sr-only">Escolher logo widget</span>
+                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'widget_logo')}
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </label>
+              </div>
+            </div>
+
             <div className="md:col-span-2 mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Idioma para Configuração
@@ -445,8 +554,8 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setSelectedLocale('pt-BR')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedLocale === 'pt-BR'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                 >
                   🇧🇷 Português
@@ -455,8 +564,8 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setSelectedLocale('en-US')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedLocale === 'en-US'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                 >
                   🇺🇸 English
@@ -465,8 +574,8 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setSelectedLocale('es-ES')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedLocale === 'es-ES'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                 >
                   🇪🇸 Español
