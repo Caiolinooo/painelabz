@@ -38,7 +38,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             // For now sticking to the same logic as PUT roughly, but usually managers can view all in their sector.
             // Let's assume strict ownership/assignment for safety or check the list logic.
             // The list logic allowed: query.or(`user_id.eq.${userId},manager_id.eq.${userId}`);
-            if (order.user_id === userId || order.manager_id === userId) canView = true;
+            // Permissions: Owner OR Assigned Approver
+            if (order.user_id === userId || (order.approver_ids && order.approver_ids.includes(userId))) canView = true;
         } else {
             if (order.user_id === userId) canView = true;
         }
@@ -103,8 +104,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         let canEdit = false;
         if (role === 'ADMIN') canEdit = true;
         else if (role === 'MANAGER') {
-            // Managers can only update if assigned to them or if they own it
-            if (currentOrder.manager_id === userId || currentOrder.user_id === userId) {
+            // Managers can only update if assigned to them (in approver_ids) or if they own it
+            if ((currentOrder.approver_ids && currentOrder.approver_ids.includes(userId)) || currentOrder.user_id === userId) {
                 canEdit = true;
             }
         } else {

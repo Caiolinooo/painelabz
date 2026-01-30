@@ -82,8 +82,11 @@ function HelpImage({ src, alt }: { src: string; alt: string }) {
     );
 }
 
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
+
 export default function HelpWidget() {
     const { user, profile } = useSupabaseAuth();
+    const { config } = useSiteConfig();
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>('home');
     const [searchQuery, setSearchQuery] = useState('');
@@ -440,9 +443,18 @@ export default function HelpWidget() {
                         {activeTab === 'home' && (
                             <div className="flex-1 flex flex-col">
                                 {/* Header with gradient */}
-                                <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 text-white">
-                                    <h2 className="text-xl font-semibold mb-1">Olá, {firstName}! 👋</h2>
-                                    <p className="text-blue-100 text-sm">Como podemos ajudar você hoje?</p>
+                                <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 text-white relative overflow-hidden">
+                                    {config?.widget_logo && (
+                                        <div className="absolute top-4 right-4 opacity-20">
+                                            <img
+                                                src={config.widget_logo}
+                                                alt="Logo"
+                                                className="w-16 h-16 object-contain filter brightness-0 invert"
+                                            />
+                                        </div>
+                                    )}
+                                    <h2 className="text-xl font-semibold mb-1 relative z-10">Olá, {firstName}! 👋</h2>
+                                    <p className="text-blue-100 text-sm relative z-10">Como podemos ajudar você hoje?</p>
                                 </div>
 
                                 {/* Quick actions */}

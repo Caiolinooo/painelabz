@@ -98,7 +98,8 @@ export async function GET(request: NextRequest) {
       updatedAt: user.updated_at,
       accessPermissions: user.access_permissions,
       isAuthorized: user.is_authorized,
-      authorizationStatus: user.authorization_status
+      authorizationStatus: user.authorization_status,
+      sector_id: user.sector_id
     })) || [];
 
     console.log('Dados mapeados com sucesso');

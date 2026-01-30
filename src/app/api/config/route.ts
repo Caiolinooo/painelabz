@@ -20,7 +20,10 @@ const defaultConfig: SiteConfig = {
   sidebarTitle: "Painel ABZ",
   googleClientId: "",
   googleClientSecret: "",
-  googleRedirectUri: ""
+  googleRedirectUri: "",
+  login_logo: "",
+  sidebar_logo: "",
+  widget_logo: ""
 };
 
 // GET - Obter a configuração do site
@@ -81,7 +84,10 @@ export async function PUT(request: NextRequest) {
       sidebarTitle,
       googleClientId,
       googleClientSecret,
-      googleRedirectUri
+      googleRedirectUri,
+      login_logo,
+      sidebar_logo,
+      widget_logo
     } = body;
 
     // Validar os dados de entrada obrigatórios (apenas title e companyName)
@@ -123,6 +129,9 @@ export async function PUT(request: NextRequest) {
       googleClientId,
       googleClientSecret,
       googleRedirectUri,
+      login_logo,
+      sidebar_logo,
+      widget_logo,
       updatedAt: new Date()
     };
 

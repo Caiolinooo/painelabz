@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.5.0] - 2026-01-30
+
+### Fixed
+- **Gestão de Usuários**: Corrigida falha onde o "Departamento / Setor" no Editor de Usuário aparecia vazio mesmo para usuários com setor configurado.
+- **APIs de Usuários Unificados**: Adicionado campo `sector_id` no mapeamento das APIs `/api/users-unified` e `/api/admin/users-unified`.
+
 ## [4.4.0] - 2026-01-29
 
 ### Added

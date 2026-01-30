@@ -73,6 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       role: user.role,
       position: user.position,
       department: user.department,
+      sector_id: user.sector_id,
       active: user.active,
       createdAt: user.created_at,
       updatedAt: user.updated_at,

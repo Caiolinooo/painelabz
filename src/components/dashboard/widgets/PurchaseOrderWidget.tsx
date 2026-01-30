@@ -4,17 +4,23 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FiShoppingBag, FiArrowRight, FiClock, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
 
 export default function PurchaseOrderWidget() {
     const { user } = useSupabaseAuth();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { hasPermission } = useEffectivePermissions();
 
     useEffect(() => {
-        if (user) {
+        if (user && hasPermission('compras')) {
             fetchRecentOrders();
+        } else {
+            setLoading(false);
         }
-    }, [user]);
+    }, [user, hasPermission]);
+
+    if (!user || !hasPermission('compras')) return null;
 
     const fetchRecentOrders = async () => {
         try {

@@ -78,6 +78,15 @@ export default function AdminSectorsPage() {
                 toast.success('Permissões salvas com sucesso!');
                 setSectors(prev => prev.map(s => s.id === editingSector.id ? editingSector : s));
                 setEditingSector(null);
+
+                // Dispatch events to force cache invalidation across the app
+                if (typeof window !== 'undefined') {
+                    console.log('🔄 Dispatching permission update events...');
+                    window.dispatchEvent(new Event('permissions-updated'));
+                    window.dispatchEvent(new Event('cards-cache-invalidated'));
+                    // Force a hard reload of effective permissions if the current user belongs to this sector
+                    // But simpler to just let the events handle it
+                }
             } else {
                 toast.error('Falha ao salvar permissões');
             }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 interface EffectivePermissions {
@@ -6,56 +6,101 @@ interface EffectivePermissions {
     role: string;
     effective_modules: Record<string, boolean>;
     effective_cards: string[];
+    sector_id?: string | null;
     _sources?: any;
 }
 
 export function useEffectivePermissions() {
-    const { user } = useSupabaseAuth();
+    const { user, profile } = useSupabaseAuth();
     const [permissions, setPermissions] = useState<EffectivePermissions | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Cache key maps to user ID - Version 4 to force refresh on new deploy
+    const cacheKey = user ? `permissions-v4-${user.id}` : null;
+
+    const fetchPermissions = useCallback(async (force = false) => {
+        if (!user?.id) {
+            setIsLoading(false);
+            return;
+        }
+
+        // Cache check
+        const cached = sessionStorage.getItem(cacheKey || '');
+        if (!force && cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                setPermissions(parsed);
+                setIsLoading(false);
+                return;
+            } catch (e) {
+                console.error('Error parsing cached permissions', e);
+            }
+        }
+
+        try {
+            const res = await fetch('/api/user/effective-permissions');
+            if (res.ok) {
+                const data = await res.json();
+                setPermissions(data);
+                if (cacheKey) {
+                    sessionStorage.setItem(cacheKey, JSON.stringify(data));
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching permissions', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, cacheKey]);
 
     useEffect(() => {
-        const fetchPermissions = async () => {
-            if (!user?.id) {
-                setLoading(false);
-                return;
-            }
+        fetchPermissions();
 
-            try {
-                // Try to get from cache first (session storage)
-                const cached = sessionStorage.getItem(`permissions-v3-${user.id}`);
-                if (cached) {
-                    console.log('🔒 Permissions loaded from cache (v3)');
-                    setPermissions(JSON.parse(cached));
-                    setLoading(false);
-                }
-
-                const res = await fetch('/api/user/effective-permissions');
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log('🔒 Permissions loaded from API (FULL):', JSON.stringify(data, null, 2));
-                    setPermissions(data);
-                    sessionStorage.setItem(`permissions-v3-${user.id}`, JSON.stringify(data));
-                }
-            } catch (error) {
-                console.error('Error fetching effective permissions:', error);
-            } finally {
-                setLoading(false);
-            }
+        // Listen for global permission updates
+        const handleUpdate = () => {
+            console.log('🔄 Permission update event detected, refreshing...');
+            fetchPermissions(true);
         };
 
-        fetchPermissions();
-    }, [user?.id]);
+        if (typeof window !== 'undefined') {
+            window.addEventListener('permissions-updated', handleUpdate);
+        }
+
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('permissions-updated', handleUpdate);
+            }
+        };
+    }, [fetchPermissions]);
 
     const hasPermission = (moduleId: string): boolean => {
-        if (!permissions) return true; // Default to true while loading or if error (fail open or closed? usually closed, but keeping legacy behavior)
-        // Adjust logic: if permissions are loaded, check specifically.
-        // If effective_modules is present, check it.
+        if (!permissions) return true; // Default to true while loading (fail open)
+
+        // 1. Explicit setting takes precedence
         if (permissions.effective_modules && permissions.effective_modules[moduleId] !== undefined) {
             return permissions.effective_modules[moduleId];
         }
-        return true; // Default to true if not specified (permissive)
+
+        // 2. Strict Sector Logic
+        // If the user belongs to a sector, we are in STRICT MODE.
+        // Any module not explicitly prioritized in step 1 is considered FALSE.
+        // This closes the gap were the backend omits disallowed modules.
+        if (permissions.sector_id) {
+            return false;
+        }
+
+        // 3. Fallback for Non-Sector Users (Legacy/Permissive)
+        // If not in a sector, we default to TRUE to maintain existing behavior for admins/managers/legacy users
+        return true;
     };
 
-    return { permissions, loading, hasPermission };
+    return {
+        permissions,
+        loading: isLoading,
+        isLoading,
+        hasPermission,
+        isAdmin: permissions?.role === 'ADMIN',
+        isManager: permissions?.role === 'MANAGER',
+        refresh: () => fetchPermissions(true)
+    };
 }

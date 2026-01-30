@@ -122,18 +122,75 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // Layer 2: Role Override (ADMIN and MANAGER get role defaults which may include more permissions)
+        // Layer 2 & 3: Role Override & Strict Sector Mode
         const userRole = (profile.role || 'USER').toUpperCase();
         const roleDefaults = rolePermissions[userRole] || rolePermissions.USER;
+
+        // Core modules that are ALWAYS enabled for everyone regardless of sector
+        const coreModules = ['dashboard', 'noticias', 'calendario', 'ajuda'];
+
+        // Legacy/Label mapping to ID (Normalization)
+        // This handles cases where DB has 'KPIs' (label) instead of 'kpi' (id)
+        const normalizeModuleId = (idOrLabel: string): string => {
+            const lower = idOrLabel.toLowerCase().trim();
+            const map: Record<string, string> = {
+                'purchase-orders': 'compras',
+                'purchase orders': 'compras',
+                'ordens de compra': 'compras',
+                'kpis': 'kpi',
+                'wk radar': 'wkradar',
+                'radar': 'wkradar',
+                'lista de ramais': 'contatos',
+                'ramais': 'contatos',
+                'emergência': 'emergencia',
+                'emergencia': 'emergencia',
+                'guia offshore': 'guia_offshore',
+                'integração erp': 'integracao-erp',
+                'integracao erp': 'integracao-erp'
+            };
+            return map[lower] || lower; // default to lowercase if not mapped
+        };
 
         // ADMIN and MANAGER roles ALWAYS get their defined modules, overriding sector
         if (userRole === 'ADMIN' || userRole === 'MANAGER') {
             effectiveModules = { ...effectiveModules, ...roleDefaults.modules };
         } else {
-            // For USER role, merge sector with role (sector takes precedence, role fills gaps)
-            for (const [mod, enabled] of Object.entries(roleDefaults.modules)) {
-                if (effectiveModules[mod] === undefined) {
-                    effectiveModules[mod] = enabled;
+            // USER Role Logic
+            if (profile.sector_id) {
+                // STRICT SECTOR MODE:
+                // If user has a sector, they ONLY get:
+                // 1. Modules explicitly allowed by the sector (already in effectiveModules)
+                // 2. Core modules (dashboard, noticias, etc.)
+                // 3. Modules explicitly granted to the user individually (Layer 3)
+
+                // We do NOT merge sensitive role defaults (like 'compras', 'ponto') 
+                // preventing them from leaking into restricted sectors.
+
+                // Normalize keys in effectiveModules from Sector
+                // We built effectiveModules from sector.allowed_modules initially. 
+                // We need to ensure those keys are normalized.
+                const normalizedModules: Record<string, boolean> = {};
+                Object.keys(effectiveModules).forEach(key => {
+                    if (effectiveModules[key]) {
+                        normalizedModules[normalizeModuleId(key)] = true;
+                    }
+                });
+                effectiveModules = normalizedModules;
+
+                // Ensure core modules are enabled
+                coreModules.forEach(mod => {
+                    if (effectiveModules[mod] === undefined && roleDefaults.modules[mod]) {
+                        effectiveModules[mod] = true;
+                    }
+                });
+            } else {
+                // NO SECTOR:
+                // Fallback to role defaults for users without a sector (legacy behavior)
+                // For USER role, merge default permissions
+                for (const [mod, enabled] of Object.entries(roleDefaults.modules)) {
+                    if (effectiveModules[mod] === undefined) {
+                        effectiveModules[mod] = enabled;
+                    }
                 }
             }
         }

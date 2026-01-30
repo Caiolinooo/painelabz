@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
       return res.status(401).json({ error: 'Formato de autorização inválido. Use: Bearer <token>' });
     }
-    
+
     const token = tokenParts[1];
     if (!token) {
       return res.status(401).json({ error: 'Token inválido' });
@@ -78,6 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       role: user.role,
       position: user.position,
       department: user.department,
+      sector_id: user.sector_id,
       active: user.active,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
