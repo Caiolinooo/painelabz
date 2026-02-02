@@ -51,7 +51,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
     e.preventDefault();
 
     if (!formData.title || !formData.startDate || !formData.startTime) {
-      toast.error(t('components.preenchaOsCamposObrigatorios'));
+      toast.error(t('newsSystem.eventCreator.fillRequired'));
       return;
     }
 
@@ -154,7 +154,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
         });
       }
 
-      toast.success('Evento criado com sucesso!');
+      toast.success(t('newsSystem.eventCreator.success'));
       onEventCreated(createdPost);
       onClose();
 
@@ -174,7 +174,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
       setTags(['evento', 'calendar']);
     } catch (error) {
       console.error('Erro ao criar evento:', error);
-      toast.error('Erro ao criar evento');
+      toast.error(t('newsSystem.eventCreator.error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -203,7 +203,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
             <div className="bg-green-100 p-3 rounded-full">
               <FiCalendar className="w-6 h-6 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800">Criar Evento</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t('newsSystem.eventCreator.createEvent')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -218,7 +218,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
           {/* Título */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Título do Evento *
+              {t('newsSystem.eventCreator.title')} *
             </label>
             <input
               type="text"
@@ -226,7 +226,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
               value={formData.title}
               onChange={handleChange}
               required
-              placeholder={t('components.exReuniaoDeEquipe')}
+              placeholder={t('newsSystem.eventCreator.titlePlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
@@ -234,14 +234,14 @@ const EventCreator: React.FC<EventCreatorProps> = ({
           {/* Descrição */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descrição
+              {t('newsSystem.eventCreator.description')}
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
               rows={3}
-              placeholder="Descreva o evento..."
+              placeholder={t('newsSystem.eventCreator.descriptionPlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
             />
           </div>
@@ -250,7 +250,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data de Início *
+                {t('newsSystem.eventCreator.startDate')} *
               </label>
               <input
                 type="date"
@@ -263,7 +263,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hora de Início *
+                {t('newsSystem.eventCreator.startTime')} *
               </label>
               <input
                 type="time"
@@ -280,7 +280,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data de Término
+                {t('newsSystem.eventCreator.endDate')}
               </label>
               <input
                 type="date"
@@ -292,7 +292,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hora de Término
+                {t('newsSystem.eventCreator.endTime')}
               </label>
               <input
                 type="time"
@@ -308,14 +308,14 @@ const EventCreator: React.FC<EventCreatorProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
               <FiMapPin className="w-4 h-4 mr-2" />
-              Localização
+              {t('newsSystem.eventCreator.location')}
             </label>
             <input
               type="text"
               name="location"
               value={formData.location}
               onChange={handleChange}
-              placeholder={t('components.exSalaDeReunioes1')}
+              placeholder={t('newsSystem.eventCreator.locationPlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
@@ -324,14 +324,14 @@ const EventCreator: React.FC<EventCreatorProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
               <FiUsers className="w-4 h-4 mr-2" />
-              Participantes (emails separados por vírgula)
+              {t('newsSystem.eventCreator.attendees')}
             </label>
             <input
               type="text"
               name="attendees"
               value={formData.attendees}
               onChange={handleChange}
-              placeholder="email1@example.com, email2@example.com"
+              placeholder={t('newsSystem.eventCreator.attendeesPlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
@@ -356,7 +356,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
               />
               <span className="text-sm text-gray-700 flex items-center">
                 <FiMail className="w-4 h-4 mr-2" />
-                Enviar convite por email
+                {t('newsSystem.eventCreator.sendEmail')}
               </span>
             </label>
             <label className="flex items-center space-x-3 cursor-pointer">
@@ -368,7 +368,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
                 className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
               />
               <span className="text-sm text-gray-700">
-                Enviar notificação interna
+                {t('newsSystem.eventCreator.sendNotification')}
               </span>
             </label>
           </div>
@@ -381,14 +381,14 @@ const EventCreator: React.FC<EventCreatorProps> = ({
             onClick={onClose}
             className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Cancelar
+            {t('newsSystem.eventCreator.cancel')}
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Criando...' : 'Criar Evento'}
+            {isSubmitting ? t('newsSystem.eventCreator.creating') : t('newsSystem.eventCreator.create')}
           </button>
         </div>
       </motion.div>

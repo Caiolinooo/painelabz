@@ -1,5 +1,7 @@
 export default {
 
+
+
   avaliacoes: {
     titulo_avancado: 'Avaliações Avançadas',
     descricao_avancado: 'Métricas, análises e relatórios detalhados de performance',
@@ -571,6 +573,14 @@ export default {
     oftenAccessed: 'Acessado frequentemente',
     allModules: 'Todos os módulos',
     adminPanel: 'Painel de Administração',
+    purchaseOrderWidget: {
+      myPurchases: 'Minhas Compras',
+      viewAll: 'Ver todas',
+      noRecentRequests: 'Nenhuma solicitação recente.',
+      createNew: 'Criar nova',
+      newRequest: 'Nova Solicitação',
+      unknownProvider: 'Fornecedor Desconhecido'
+    }
   },
   menu: {
     dashboard: 'Painel',
@@ -1637,6 +1647,13 @@ export default {
     errorCode: 'Código de erro',
   },
   common: {
+    time: {
+      hour: 'hora',
+      hours: 'horas',
+      week: 'semana',
+      weeks: 'semanas'
+    },
+
     loading: 'Carregando...',
     error: 'Ocorreu um erro',
     success: 'Operação realizada com sucesso',
@@ -1811,13 +1828,14 @@ export default {
     createPost: 'Criar Post',
     createTextPost: 'Criar Publicação',
     newPost: 'Novo Post',
-    whatAreYouThinking: 'No que você está pensando? Compartilhe uma notícia...',
+    whatAreYouThinkingLabel: 'No que você está pensando? Compartilhe uma notícia...',
     photoVideo: 'Foto/Vídeo',
     event: 'Evento',
     featured: 'Destaque',
     selectMedia: 'Selecione fotos e vídeos',
     selectMediaDesc: 'Compartilhe até 10 fotos ou vídeos',
     selectFromComputer: 'Selecionar do computador',
+    dragAndDrop: 'Arraste e solte ou clique para selecionar',
     edit: 'Editar',
     newPublication: 'Nova publicação',
     sharing: 'Compartilhando...',
@@ -1864,7 +1882,104 @@ export default {
     couldNotSendComment: 'Não foi possível enviar o comentário',
     loadingComments: 'Carregando comentários...',
     beFirstToComment: 'Seja o primeiro a comentar',
-    writeComment: 'Escreva um comentário...'
+    writeComment: 'Escreva um comentário...',
+    postType: {
+      media: 'Foto/Vídeo',
+      mediaDescription: 'Compartilhe fotos ou vídeos',
+      event: 'Evento',
+      eventDescription: 'Crie um evento no calendário',
+      highlight: 'Destaque',
+      highlightDescription: 'Destaque fixo com foto ou vídeo',
+      text: 'Texto',
+      textDescription: 'Publicação apenas com texto'
+    },
+    post: {
+      views_0: 'Nenhuma visualização',
+      views_1: '1 pessoa viu',
+      views_other: '{{count}} pessoas viram',
+      likedBy: 'Curtido por',
+      share: 'Compartilhar',
+      copyLink: 'Copiar link',
+      edit: 'Editar',
+      delete: 'Excluir',
+      confirmDelete: 'Tem certeza que deseja excluir este post?',
+      linkCopied: 'Link copiado para a área de transferência!',
+      copyLinkFallback: 'Copie o link abaixo:',
+      mediaAlt: 'Mídia {{index}}',
+      justNow: 'Agora há pouco',
+      postUpdated: 'Post atualizado'
+    },
+    highlight: {
+      createHighlight: 'Criar Destaque',
+      clickToSelectMedia: 'Clique para selecionar uma imagem ou vídeo',
+      formatRecommended: 'Formato vertical (9:16) recomendado',
+      highlightTitle: 'Título do Destaque',
+      highlightTitlePlaceholder: 'Ex: Novidades, Eventos, Conquistas...',
+      permanentHighlight: 'Destaque Permanente (não expira)',
+      expiresIn: 'Expira em (horas)',
+      hoursDefault: '24 horas (padrão)',
+      tagsOptional: 'Tags (opcional)',
+      addTagsPlaceholder: 'Adicionar tags...',
+      create: 'Criar Destaque',
+      creating: 'Criando...',
+      howHighlightsWork: 'Como funcionam os Destaques?',
+      howHighlightsWorkItems: {
+        item1: 'Aparecem no topo do feed em círculos coloridos',
+        item2: 'Podem ser permanentes ou temporários',
+        item3: 'Os usuários podem ver quantas vezes foram visualizados',
+        item4: 'Formato vertical é recomendado (como Instagram Stories)'
+      },
+      errorFillingFields: 'Por favor, preencha todos os campos obrigatórios',
+      errorUploadingMedia: 'Erro ao fazer upload da mídia',
+      successCreated: 'Destaque criado com sucesso!',
+      errorCreating: 'Erro ao criar destaque'
+    },
+    eventCreator: {
+      createEvent: 'Criar Evento',
+      title: 'Título do Evento',
+      titlePlaceholder: 'Ex: Reunião de Equipe',
+      description: 'Descrição',
+      descriptionPlaceholder: 'Descreva o evento...',
+      startDate: 'Data de Início',
+      startTime: 'Hora de Início',
+      endDate: 'Data de Término',
+      endTime: 'Hora de Término',
+      location: 'Localização',
+      locationPlaceholder: 'Ex: Sala de Reuniões 1',
+      attendees: 'Participantes (emails aos separados por vírgula)',
+      attendeesPlaceholder: 'email1@exemplo.com, email2@exemplo.com',
+      sendEmail: 'Enviar convite por email',
+      sendNotification: 'Enviar notificação interna',
+      cancel: 'Cancelar',
+      create: 'Criar Evento',
+      creating: 'Criando...',
+      success: 'Evento criado com sucesso!',
+      error: 'Erro ao criar evento',
+      fillRequired: 'Preencha todos os campos obrigatórios',
+      errorCalendar: 'Erro ao criar evento no calendário'
+    }
+  },
+
+  richTextEditor: {
+    bold: 'Negrito (Ctrl+B)',
+    italic: 'Itálico (Ctrl+I)',
+    underline: 'Sublinhado (Ctrl+U)',
+    list: 'Lista',
+    link: 'Link (Ctrl+K)',
+    code: 'Código',
+    linkText: 'Texto',
+    linkUrl: 'URL',
+    linkPlaceholder: 'Texto do link',
+    urlPlaceholder: 'https://exemplo.com',
+    cancel: 'Cancelar',
+    insert: 'Inserir',
+    insertEmoji: 'Inserir Emoji',
+    showPreview: 'Mostrar Preview',
+    hidePreview: 'Ocultar Preview',
+    livePreview: 'Preview ao Vivo',
+    previewPlaceholder: 'O preview aparecerá aqui...',
+    tips: 'Dicas:',
+    tipsDescription: 'Use os botões da barra de ferramentas ou atalhos do teclado:'
   },
 
   // Sistema ACL
@@ -2969,6 +3084,7 @@ export default {
     themeenforcerAplicandoConfiguracoesDeTemaComPriori: 'ThemeEnforcer: Aplicando configurações de tema com prioridade máxima',
     buscando: 'Buscando...',
     nenhumResultadoEncontradoPara: 'Nenhum resultado encontrado para',
+
     tenteUsarTermosDiferentesOuRemoverFiltros: 'Tente usar termos diferentes ou remover filtros',
     resultado: 'resultado',
     encontrado: 'encontrado',

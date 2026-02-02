@@ -253,7 +253,7 @@ export default function UserShortcutsBar() {
                                         href={shortcut.module_href}
                                         className="text-sm font-medium text-gray-700 hover:text-blue-600"
                                     >
-                                        {t(`modules.${shortcut.module_name}`, shortcut.module_name)}
+                                        {t(`cards.${shortcut.module_name}`, shortcut.module_name)}
                                     </Link>
                                     <button
                                         onClick={(e) => {

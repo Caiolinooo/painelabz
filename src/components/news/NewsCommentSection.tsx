@@ -117,9 +117,9 @@ const NewsCommentSection: React.FC<Props> = ({ postId, userId }) => {
     <div className="border-t border-gray-100">
       <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="text-sm text-gray-500">{t('newsSystem.loadingComments', 'Carregando comentários...')}</div>
+          <div className="text-sm text-gray-500">{t('newsSystem.loadingComments', 'Loading comments...')}</div>
         ) : comments.length === 0 ? (
-          <div className="text-sm text-gray-500">{t('newsSystem.beFirstToComment', 'Seja o primeiro a comentar')}</div>
+          <div className="text-sm text-gray-500">{t('newsSystem.beFirstToComment', 'Be the first to comment')}</div>
         ) : (
           comments.map((c) => (
             <div key={c.id} className="text-sm">
@@ -189,7 +189,7 @@ const NewsCommentSection: React.FC<Props> = ({ postId, userId }) => {
         <input
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          placeholder={t('newsSystem.writeComment', 'Escreva um comentário...')}
+          placeholder={t('newsSystem.writeComment', 'Write a comment...')}
           className="flex-1 px-3 py-2 border rounded-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           maxLength={500}
         />

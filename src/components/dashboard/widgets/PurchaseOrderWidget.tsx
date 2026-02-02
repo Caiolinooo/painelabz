@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { FiShoppingBag, FiArrowRight, FiClock, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
+import { useI18n } from '@/contexts/I18nContext';
 
 export default function PurchaseOrderWidget() {
+    const { t } = useI18n();
     const { user } = useSupabaseAuth();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,10 +51,10 @@ export default function PurchaseOrderWidget() {
             <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                     <FiShoppingBag className="text-blue-500" />
-                    Minhas Compras
+                    {t('dashboard.purchaseOrderWidget.myPurchases')}
                 </h3>
                 <Link href="/department/purchase-orders" className="text-xs text-blue-500 hover:underline flex items-center">
-                    Ver todas <FiArrowRight className="ml-1" />
+                    {t('dashboard.purchaseOrderWidget.viewAll')} <FiArrowRight className="ml-1" />
                 </Link>
             </div>
 
@@ -63,9 +65,9 @@ export default function PurchaseOrderWidget() {
                     </div>
                 ) : orders.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm">
-                        <p>Nenhuma solicitação recente.</p>
+                        <p>{t('dashboard.purchaseOrderWidget.noRecentRequests')}</p>
                         <Link href="/department/purchase-orders/new" className="mt-2 text-blue-500 hover:underline">
-                            Criar nova
+                            {t('dashboard.purchaseOrderWidget.createNew')}
                         </Link>
                     </div>
                 ) : (
@@ -79,7 +81,7 @@ export default function PurchaseOrderWidget() {
                                 <div className="flex justify-between items-start">
                                     <div className="min-w-0">
                                         <p className="text-sm font-medium text-gray-900 truncate">
-                                            {order.provider_trade_name || order.provider_name || 'Fornecedor Desconhecido'}
+                                            {order.provider_trade_name || order.provider_name || t('dashboard.purchaseOrderWidget.unknownProvider')}
                                         </p>
                                         <p className="text-xs text-gray-500">
                                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_value)}
@@ -103,7 +105,7 @@ export default function PurchaseOrderWidget() {
                     href="/department/purchase-orders/new"
                     className="block w-full text-center py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium transition-colors"
                 >
-                    Nova Solicitação
+                    {t('dashboard.purchaseOrderWidget.newRequest')}
                 </Link>
             </div>
         </div>

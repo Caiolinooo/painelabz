@@ -44,7 +44,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
 
   const handleSubmit = async () => {
     if (!title || !selectedFile) {
-      toast.error(t('components.preenchaTodosOsCamposObrigatorios'));
+      toast.error(t('newsSystem.highlight.errorFillingFields'));
       return;
     }
 
@@ -61,7 +61,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
       });
 
       if (!uploadResp.ok) {
-        throw new Error(t('components.erroAoFazerUploadDaMidia'));
+        throw new Error(t('newsSystem.highlight.errorUploadingMedia'));
       }
 
       const uploadData = await uploadResp.json();
@@ -108,7 +108,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
 
       if (response.ok) {
         const createdHighlight = await response.json();
-        toast.success('Destaque criado com sucesso!');
+        toast.success(t('newsSystem.highlight.successCreated'));
         onHighlightCreated(createdHighlight);
         onClose();
 
@@ -119,11 +119,11 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
         setIsPermanent(false);
         setExpiresIn('24');
       } else {
-        throw new Error('Erro ao criar destaque');
+        throw new Error(t('newsSystem.highlight.errorCreating'));
       }
     } catch (error) {
       console.error('Erro ao criar highlight:', error);
-      toast.error('Erro ao criar destaque');
+      toast.error(t('newsSystem.highlight.errorCreating'));
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +152,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
             <div className="bg-white bg-opacity-20 backdrop-blur-sm p-3 rounded-full">
               <FiStar className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-white">Criar Destaque</h2>
+            <h2 className="text-2xl font-bold text-white">{t('newsSystem.highlight.createHighlight')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -188,7 +188,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
                 <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black to-transparent">
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full" />
-                    <span className="text-white font-semibold text-sm">{title || 'Seu Destaque'}</span>
+                    <span className="text-white font-semibold text-sm">{title || t('newsSystem.highlight.yourHighlight', 'Seu Destaque')}</span>
                   </div>
                 </div>
               </div>
@@ -207,8 +207,8 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
               onClick={() => fileInputRef.current?.click()}
             >
               <FiImage className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 mb-2">Clique para selecionar uma imagem ou vídeo</p>
-              <p className="text-sm text-gray-500">Formato vertical (9:16) recomendado</p>
+              <p className="text-gray-600 mb-2">{t('newsSystem.highlight.clickToSelectMedia')}</p>
+              <p className="text-sm text-gray-500">{t('newsSystem.highlight.formatRecommended')}</p>
             </div>
           )}
 
@@ -223,13 +223,13 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
           {/* Título */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Título do Destaque *
+              {t('newsSystem.highlight.highlightTitle')} *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Novidades, Eventos, Conquistas..."
+              placeholder={t('newsSystem.highlight.highlightTitlePlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
             />
           </div>
@@ -244,27 +244,27 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
                 className="w-5 h-5 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
               />
               <span className="text-sm text-gray-700 font-medium">
-                Destaque Permanente (não expira)
+                {t('newsSystem.highlight.permanentHighlight')}
               </span>
             </label>
 
             {!isPermanent && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Expira em (horas)
+                  {t('newsSystem.highlight.expiresIn')}
                 </label>
                 <select
                   value={expiresIn}
                   onChange={(e) => setExpiresIn(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 >
-                  <option value="1">1 hora</option>
-                  <option value="6">6 horas</option>
-                  <option value="12">12 horas</option>
-                  <option value="24">24 horas (padrão)</option>
-                  <option value="48">48 horas</option>
-                  <option value="72">72 horas</option>
-                  <option value="168">1 semana</option>
+                  <option value="1">1 {t('common.time.hour', 'hora')}</option>
+                  <option value="6">6 {t('common.time.hours', 'horas')}</option>
+                  <option value="12">12 {t('common.time.hours', 'horas')}</option>
+                  <option value="24">{t('newsSystem.highlight.hoursDefault')}</option>
+                  <option value="48">48 {t('common.time.hours', 'horas')}</option>
+                  <option value="72">72 {t('common.time.hours', 'horas')}</option>
+                  <option value="168">1 {t('common.time.week', 'semana')}</option>
                 </select>
               </div>
             )}
@@ -273,7 +273,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
           {/* TagInput field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tags (opcional)
+              {t('newsSystem.highlight.tagsOptional')}
             </label>
             <TagInput
               tags={tags}
@@ -288,12 +288,12 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
             <div className="flex items-start space-x-3">
               <FiStar className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-yellow-800">
-                <p className="font-semibold mb-1">Como funcionam os Destaques?</p>
+                <p className="font-semibold mb-1">{t('newsSystem.highlight.howHighlightsWork')}</p>
                 <ul className="list-disc list-inside space-y-1 text-yellow-700">
-                  <li>Aparecem no topo do feed em círculos coloridos</li>
-                  <li>Podem ser permanentes ou temporários</li>
-                  <li>Usuários podem ver quantas vezes foram visualizados</li>
-                  <li>Formato vertical é recomendado (como Stories do Instagram)</li>
+                  <li>{t('newsSystem.highlight.howHighlightsWorkItems.item1')}</li>
+                  <li>{t('newsSystem.highlight.howHighlightsWorkItems.item2')}</li>
+                  <li>{t('newsSystem.highlight.howHighlightsWorkItems.item3')}</li>
+                  <li>{t('newsSystem.highlight.howHighlightsWorkItems.item4')}</li>
                 </ul>
               </div>
             </div>
@@ -307,14 +307,14 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
             onClick={onClose}
             className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !title || !selectedFile}
             className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Criando...' : 'Criar Destaque'}
+            {isSubmitting ? t('common.highlight.creating') : t('common.highlight.create')}
           </button>
         </div>
       </motion.div>

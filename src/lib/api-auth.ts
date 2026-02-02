@@ -156,7 +156,7 @@ export function canAccessUserData(authenticatedUser: AuthenticatedUser, targetUs
     return true;
   }
 
-  // Admins podem acessar dados de qualquer usuário
+  // Admins podem acessar dados de qualquer usuário (bypass total)
   if (authenticatedUser.role === 'ADMIN') {
     return true;
   }
@@ -173,7 +173,7 @@ export function canAccessUserData(authenticatedUser: AuthenticatedUser, targetUs
  * Verificar se o usuário pode modificar um curso
  */
 export async function canModifyCourse(user: AuthenticatedUser, courseId: string): Promise<boolean> {
-  // Admins podem modificar qualquer curso
+  // Admins podem modificar qualquer curso (bypass total)
   if (user.role === 'ADMIN') {
     return true;
   }

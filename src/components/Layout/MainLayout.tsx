@@ -80,7 +80,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Use shared permissions hook
-  const { hasPermission } = useEffectivePermissions();
+  const { hasPermission, refresh } = useEffectivePermissions();
 
   // Load sidebar state
   useEffect(() => {
@@ -102,12 +102,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
       localStorage.setItem('main-sidebar-collapsed', 'false');
       setIsMeuRHOpen(true);
       localStorage.setItem('sidebar-meurh-open', 'true');
+      refresh(); // Force permission refresh on open
       return;
     }
 
     const newState = !isMeuRHOpen;
     setIsMeuRHOpen(newState);
     localStorage.setItem('sidebar-meurh-open', JSON.stringify(newState));
+    if (newState) refresh(); // Force permission refresh on open
   };
 
   const toggleDepartment = () => {
@@ -116,36 +118,43 @@ export default function MainLayout({ children }: MainLayoutProps) {
       localStorage.setItem('main-sidebar-collapsed', 'false');
       setIsDepartmentOpen(true);
       localStorage.setItem('sidebar-dept-open', 'true');
+      refresh(); // Force permission refresh on open
       return;
     }
     const newState = !isDepartmentOpen;
     setIsDepartmentOpen(newState);
     localStorage.setItem('sidebar-dept-open', JSON.stringify(newState));
+    if (newState) refresh(); // Force permission refresh on open
   };
 
   const [departmentTitle, setDepartmentTitle] = useState(MODULE_CATEGORIES.department);
   const [isDepartmentOpen, setIsDepartmentOpen] = useState(false);
 
   useEffect(() => {
-    const fetchSector = async () => {
-      if ((profile as any)?.sector_id) {
-        const { data } = await supabase
-          .from('sectors')
-          .select('name')
-          .eq('id', (profile as any).sector_id)
-          .single();
+    if (profile?.sector?.name) {
+      // @ts-ignore - Supabase type definition mismatch possible, but runtime data is there
+      setDepartmentTitle(profile.sector.name);
+    } else if (profile?.department) {
+      setDepartmentTitle(profile.department);
+    }
+  }, [profile]);
 
-        if (data) {
-          setDepartmentTitle(data.name);
-        }
-      }
-    };
-    if (profile) fetchSector();
-  }, [profile, supabase]);
-
-  // Module Processing - Filter by permission
   // Module Processing - Filter by permission AND visibility
-  const allowedModules = SYSTEM_MODULES.filter(m => hasPermission(m.id) && m.visible !== false);
+  console.log('🎨 [MainLayout] Rendering menu, checking permissions...');
+  const allowedModules = SYSTEM_MODULES.filter(m => {
+    const permitted = hasPermission(m.id);
+    const visible = m.visible !== false;
+    const included = permitted && visible;
+
+    // Debug log for content modules
+    if (['academy', 'biblioteca', 'avaliacao', 'ajuda'].includes(m.id)) {
+      console.log(`🎨 [MainLayout] Module ${m.id}: permitted=${permitted}, visible=${visible}, included=${included}`);
+    }
+
+    return included;
+  });
+
+  console.log('🎨 [MainLayout] Allowed modules:', allowedModules.map(m => m.id));
 
   const resolveItem = (m: SystemModule) => ({
     ...m,

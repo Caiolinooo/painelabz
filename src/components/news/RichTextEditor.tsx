@@ -5,6 +5,7 @@ import {
     FiBold, FiItalic, FiUnderline, FiList, FiLink, FiCode,
     FiEye, FiEyeOff, FiSmile
 } from 'react-icons/fi';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface RichTextEditorProps {
     value: string;
@@ -29,6 +30,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const [showLinkInput, setShowLinkInput] = useState(false);
     const [linkUrl, setLinkUrl] = useState('');
     const [linkText, setLinkText] = useState('');
+    const { t } = useI18n();
 
     // Emojis comuns
     const commonEmojis = [
@@ -141,12 +143,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     // Buttons toolbar data
     const toolbarButtons = [
-        { icon: FiBold, label: 'Negrito (Ctrl+B)', onClick: () => insertFormatting('<b>', '</b>') },
-        { icon: FiItalic, label: 'Itálico (Ctrl+I)', onClick: () => insertFormatting('<i>', '</i>') },
-        { icon: FiUnderline, label: 'Sublinhado (Ctrl+U)', onClick: () => insertFormatting('<u>', '</u>') },
-        { icon: FiList, label: 'Lista', onClick: () => insertFormatting('<ul>\n  <li>', '</li>\n</ul>', 'item') },
-        { icon: FiLink, label: 'Link (Ctrl+K)', onClick: insertLink },
-        { icon: FiCode, label: 'Código', onClick: () => insertFormatting('<code>', '</code>') },
+        { icon: FiBold, label: t('richTextEditor.bold'), onClick: () => insertFormatting('<b>', '</b>') },
+        { icon: FiItalic, label: t('richTextEditor.italic'), onClick: () => insertFormatting('<i>', '</i>') },
+        { icon: FiUnderline, label: t('richTextEditor.underline'), onClick: () => insertFormatting('<u>', '</u>') },
+        { icon: FiList, label: t('richTextEditor.list'), onClick: () => insertFormatting('<ul>\n  <li>', '</li>\n</ul>', 'item') },
+        { icon: FiLink, label: t('richTextEditor.link'), onClick: insertLink },
+        { icon: FiCode, label: t('richTextEditor.code'), onClick: () => insertFormatting('<code>', '</code>') },
     ];
 
     return (
@@ -197,13 +199,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                                                     onClick={() => setShowLinkInput(false)}
                                                     className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
                                                 >
-                                                    Cancelar
+                                                    {t('richTextEditor.cancel')}
                                                 </button>
                                                 <button
                                                     onClick={confirmLink}
                                                     className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                                                 >
-                                                    Inserir
+                                                    {t('richTextEditor.insert')}
                                                 </button>
                                             </div>
                                         </div>
@@ -232,7 +234,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     <button
                         type="button"
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        title="Inserir Emoji"
+                        title={t('richTextEditor.insertEmoji')}
                         className="p-2 hover:bg-gray-200 rounded transition-colors text-gray-700 hover:text-gray-900"
                     >
                         <FiSmile className="w-4 h-4" />
@@ -258,7 +260,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 <button
                     type="button"
                     onClick={() => setShowLivePreview(!showLivePreview)}
-                    title={showLivePreview ? 'Ocultar Preview' : 'Mostrar Preview'}
+                    title={showLivePreview ? t('richTextEditor.hidePreview') : t('richTextEditor.showPreview')}
                     className="ml-auto p-2 hover:bg-gray-200 rounded transition-colors text-gray-700 hover:text-gray-900"
                 >
                     {showLivePreview ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
@@ -287,10 +289,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 {/* Live Preview */}
                 {showLivePreview && (
                     <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Preview ao Vivo</div>
+                        <div className="text-sm font-medium text-gray-700 mb-2">{t('richTextEditor.livePreview')}</div>
                         <div
                             className="p-4 border border-gray-300 rounded-lg bg-white min-h-[200px] prose prose-sm max-w-none"
-                            dangerouslySetInnerHTML={{ __html: value || '<p class="text-gray-400 italic">O preview aparecerá aqui...</p>' }}
+                            dangerouslySetInnerHTML={{ __html: value || `<p class="text-gray-400 italic">${t('richTextEditor.previewPlaceholder')}</p>` }}
                         />
                     </div>
                 )}
@@ -299,10 +301,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             {/* Tips */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-xs text-blue-800">
-                    <strong>💡 Dicas:</strong> Use os botões da barra de ferramentas ou atalhos do teclado:
-                    <kbd className="mx-1 px-1 bg-blue-100 rounded">Ctrl+B</kbd> negrito,
-                    <kbd className="mx-1 px-1 bg-blue-100 rounded">Ctrl+I</kbd> itálico,
-                    <kbd className="mx-1 px-1 bg-blue-100 rounded">Ctrl+K</kbd> link
+                    <strong>💡 {t('richTextEditor.tips')}</strong> {t('richTextEditor.tipsDescription')}
                 </p>
             </div>
         </div>

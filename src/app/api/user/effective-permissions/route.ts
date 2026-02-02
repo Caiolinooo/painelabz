@@ -105,21 +105,40 @@ export async function GET(request: NextRequest) {
         // Layer 1: Sector Defaults
         let effectiveModules: Record<string, boolean> = {};
         let effectiveCards: string[] = [];
+        let sectorRawModules: string[] = [];
+
+        console.log(`🔍 [effective-permissions] Processing user: ${userId}, role: ${profile.role}, sector_id: ${profile.sector_id}`);
 
         if (profile.sector_id) {
-            const { data: sector } = await supabaseAdmin
+            const { data: sector, error: sectorError } = await supabaseAdmin
                 .from('sectors')
                 .select('allowed_modules, allowed_cards')
                 .eq('id', profile.sector_id)
                 .single();
 
+            console.log(`📊 [effective-permissions] Sector query result:`, {
+                sector_id: profile.sector_id,
+                sector_found: !!sector,
+                error: sectorError?.message,
+                raw_allowed_modules: sector?.allowed_modules
+            });
+
             if (sector) {
                 // Convert sector's allowed_modules array to a map
+                sectorRawModules = sector.allowed_modules || [];
                 (sector.allowed_modules || []).forEach((mod: string) => {
                     effectiveModules[mod] = true;
                 });
                 effectiveCards = sector.allowed_cards || [];
+                console.log(`✅ [effective-permissions] Sector modules loaded:`, {
+                    count: sectorRawModules.length,
+                    modules: sectorRawModules
+                });
+            } else {
+                console.warn(`⚠️ [effective-permissions] Sector not found for ID: ${profile.sector_id}`);
             }
+        } else {
+            console.log(`ℹ️ [effective-permissions] User has no sector assigned`);
         }
 
         // Layer 2 & 3: Role Override & Strict Sector Mode
@@ -127,7 +146,8 @@ export async function GET(request: NextRequest) {
         const roleDefaults = rolePermissions[userRole] || rolePermissions.USER;
 
         // Core modules that are ALWAYS enabled for everyone regardless of sector
-        const coreModules = ['dashboard', 'noticias', 'calendario', 'ajuda'];
+        // dashboard is the only mandatory module.
+        const coreModules = ['dashboard'];
 
         // Legacy/Label mapping to ID (Normalization)
         // This handles cases where DB has 'KPIs' (label) instead of 'kpi' (id)
@@ -177,9 +197,9 @@ export async function GET(request: NextRequest) {
                 });
                 effectiveModules = normalizedModules;
 
-                // Ensure core modules are enabled
+                // Ensure core modules are enabled (regardless of role defaults)
                 coreModules.forEach(mod => {
-                    if (effectiveModules[mod] === undefined && roleDefaults.modules[mod]) {
+                    if (effectiveModules[mod] === undefined) {
                         effectiveModules[mod] = true;
                     }
                 });
@@ -202,7 +222,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Build final response
-        return NextResponse.json({
+        const response = {
             user_id: userId,
             role: profile.role,
             sector_id: profile.sector_id,
@@ -216,9 +236,25 @@ export async function GET(request: NextRequest) {
                     user_override: userPermissions ? 'applied' : 'none'
                 },
                 role_defaults_applied: rolePermissions[userRole] ? Object.keys(rolePermissions[userRole].modules) : [],
-                sector_modules_count: Object.keys(effectiveModules).length
+                sector_modules_raw: sectorRawModules,
+                sector_modules_count: Object.keys(effectiveModules).length,
+                effective_modules_keys: Object.keys(effectiveModules)
             }
+        };
+
+        console.log(`✅ [effective-permissions] Final response:`, {
+            user_id: userId,
+            role: profile.role,
+            sector_id: profile.sector_id,
+            effective_modules_count: Object.keys(effectiveModules).length,
+            effective_modules: effectiveModules,
+            has_academy: !!effectiveModules['academy'],
+            has_biblioteca: !!effectiveModules['biblioteca'],
+            has_avaliacao: !!effectiveModules['avaliacao'],
+            has_ajuda: !!effectiveModules['ajuda']
         });
+
+        return NextResponse.json(response);
 
     } catch (error: any) {
         console.error('Error calculating effective permissions:', error);

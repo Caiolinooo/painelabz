@@ -75,17 +75,22 @@ export default function AdminSectorsPage() {
             });
 
             if (res.ok) {
-                toast.success('Permissões salvas com sucesso!');
+                toast.success('Permissões salvas com sucesso! Os usuários verão as mudanças instantaneamente.');
                 setSectors(prev => prev.map(s => s.id === editingSector.id ? editingSector : s));
                 setEditingSector(null);
 
                 // Dispatch events to force cache invalidation across the app
                 if (typeof window !== 'undefined') {
                     console.log('🔄 Dispatching permission update events...');
+                    // Clear all permission caches in sessionStorage
+                    Object.keys(sessionStorage).forEach(key => {
+                        if (key.startsWith('permissions-')) {
+                            sessionStorage.removeItem(key);
+                            console.log('🗑️ Cleared cache:', key);
+                        }
+                    });
                     window.dispatchEvent(new Event('permissions-updated'));
                     window.dispatchEvent(new Event('cards-cache-invalidated'));
-                    // Force a hard reload of effective permissions if the current user belongs to this sector
-                    // But simpler to just let the events handle it
                 }
             } else {
                 toast.error('Falha ao salvar permissões');

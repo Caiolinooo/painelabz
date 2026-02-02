@@ -167,7 +167,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         category: data.category,
         tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === 'string' ? JSON.parse(data.tags || '[]') : [])
       } : p));
-      toast.success('Post atualizado');
+      toast.success(t('newsSystem.post.postUpdated'));
       cancelInlineEdit();
     } catch (e) {
       console.error(e);
@@ -179,7 +179,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
 
 
   const handleDeletePost = async (postId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este post?')) return;
+    if (!confirm(t('newsSystem.post.confirmDelete'))) return;
     try {
       const res = await fetchWithToken(`/api/news/posts/${postId}`, { method: 'DELETE' });
       if (res.ok) {
@@ -391,7 +391,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
-    if (diffInHours < 1) return t('components.agoraHaPouco');
+    if (diffInHours < 1) return t('newsSystem.post.justNow');
     if (diffInHours < 24) return `${diffInHours}h`;
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d`;
     return date.toLocaleDateString('pt-BR');
@@ -429,12 +429,12 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(url);
-        toast.success('Link copiado para a área de transferência!');
+        toast.success(t('newsSystem.post.linkCopied'));
       }
     } catch (e) {
       console.error('Falha ao compartilhar:', e);
       // Fallback manual se clipboard falhar
-      prompt('Copie o link abaixo:', url);
+      prompt(t('newsSystem.post.copyLinkFallback'), url);
     }
   };
 
@@ -486,7 +486,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
                   <span>{formatDate(post.published_at)}</span>
                   <span>•</span>
                   <FiEye className="w-4 h-4" />
-                  <span>{formatViewsWithText(post.views_count || 0)}</span>
+                  <span>{post.views_count === 0 ? t('newsSystem.post.views_0') : post.views_count === 1 ? t('newsSystem.post.views_1') : t('newsSystem.post.views_other', { count: post.views_count })}</span>
                 </div>
               </div>
             </div>
@@ -503,14 +503,14 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
                   <button
                     onClick={() => handleShare(post)}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                  >Copiar link</button>
+                  >{t('newsSystem.post.copyLink')}</button>
 
                   {/* Editar post inline (somente autorizado) */}
                   {(hasPermission('news.edit') || hasPermission('news.publish')) && (
                     <button
                       onClick={() => { setEditingPost(post); setShowEditModal(true); setOpenMenuPostId(null); }}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                    >Editar</button>
+                    > {t('newsSystem.post.edit')}</button>
                   )}
 
                   {/* Excluir post (somente autorizado) */}
@@ -518,7 +518,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
                     <button
                       onClick={() => handleDeletePost(post.id)}
                       className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >Excluir</button>
+                    > {t('newsSystem.post.delete')}</button>
                   )}
                 </div>
               )}
@@ -586,7 +586,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
                       ) : (
                         <img
                           src={url}
-                          alt={t('components.midiaIndex1', `Mídia ${index + 1}`)}
+                          alt={t('newsSystem.post.mediaAlt', { index: index + 1 })}
                           className="w-full h-auto cursor-pointer select-none"
                         />
                       )}
@@ -784,7 +784,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
               onClick={() => setShowTypeSelector(true)}
               className="flex-1 text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
             >
-              {t('newsSystem.whatAreYouThinking')}
+              {t('newsSystem.whatAreYouThinkingLabel')}
             </button>
           </div>
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
@@ -793,21 +793,21 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
               className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               <FiImage className="w-4 h-4" />
-              <span>Foto/Vídeo</span>
+              <span>{t('newsSystem.postType.media')}</span>
             </button>
             <button
               onClick={() => handlePostTypeSelect('event')}
               className="flex items-center space-x-2 px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
             >
               <FiCalendar className="w-4 h-4" />
-              <span>Evento</span>
+              <span>{t('newsSystem.postType.event')}</span>
             </button>
             <button
               onClick={() => handlePostTypeSelect('highlight')}
               className="flex items-center space-x-2 px-4 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
             >
               <FiStar className="w-4 h-4" />
-              <span>Destaque</span>
+              <span>{t('newsSystem.postType.highlight')}</span>
             </button>
           </div>
         </div>

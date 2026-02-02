@@ -89,6 +89,12 @@ export interface UserProfile {
       [key: string]: boolean;
     };
   };
+  sector?: {
+    id: string;
+    name: string;
+    allowed_modules: string[];
+    allowed_cards: string[];
+  };
 }
 
 interface AuthContextType {
@@ -428,7 +434,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       // Buscar o usuário na tabela users_unified
       const { data: userData, error: userError } = await supabase
         .from('users_unified')
-        .select('*')
+        .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
         .eq('id', verifyData.userId)
         .single();
 
@@ -1404,7 +1410,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           // Primeiro tentar buscar na tabela users_unified
           const { data: unifiedData, error: unifiedError } = await supabase
             .from('users_unified')
-            .select('*')
+            .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
             .eq('id', session.user.id)
             .single();
 
@@ -1992,19 +1998,44 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             return true;
           }
 
-          // Verificar permissões individuais primeiro (prioridade)
+
+          // ----------------------------------------------------------------------
+          // LOGICA DE PERMISSÃO HIERÁRQUICA E RESTRITIVA (STRICT SECTOR MODE)
+          // Referência: src/app/api/user/effective-permissions/route.ts
+          // ----------------------------------------------------------------------
+
+          // 1. Permissões Individuais (Prioridade Máxima)
           const individualPermissions = profile?.accessPermissions?.modules || profile?.access_permissions?.modules;
           if (individualPermissions && individualPermissions[module] !== undefined) {
             const hasIndividualAccess = individualPermissions[module];
-            console.log(`Acesso ao módulo ${module} baseado em permissões individuais: ${hasIndividualAccess}`);
+            console.log(`🔐 Acesso ao módulo ${module} determinado por permissão individual do usuário: ${hasIndividualAccess}`);
             return hasIndividualAccess;
           }
 
-          // Se não há permissões individuais, verificar permissões do role
+          // 2. Permissões de Setor (Strict Sector Mode)
+          // Se o usuário tem um setor definido, ele SÓ deve acessar o que o setor permite (além dos módulos core)
+          // Isso substitui os defaults do Role "USER".
+          if (profile?.sector?.allowed_modules && Array.isArray(profile.sector.allowed_modules)) {
+            // Módulos Core - Sempre permitidos (devem estar sincronizados com a API)
+            // dashboard é o único módulo obrigatório. Todos os outros (noticias, calendario, ajuda, etc) devem vir do Setor.
+            const coreModules = ['dashboard'];
+
+            // Verifica permissão do setor
+            const hasSectorAccess = profile.sector.allowed_modules.includes(module);
+            const isCoreModule = coreModules.includes(module);
+
+            console.log(`🔐 Acesso ao módulo ${module} via Setor: ${hasSectorAccess} (Core: ${isCoreModule})`);
+
+            // No modo estrito, se tem setor, só acessa se for setorial OU core
+            // NÃO caímos para o fallback de roleDefaults se o usuário tiver setor.
+            return hasSectorAccess || isCoreModule;
+          }
+
+          // 3. Fallback: Role Defaults (Apenas se NÃO tiver setor)
           const roleModulePermissions = profile?.role ? rolePermissions[profile.role]?.modules : undefined;
           if (roleModulePermissions && roleModulePermissions[module] !== undefined) {
             const hasRoleAccess = roleModulePermissions[module];
-            console.log(`Acesso ao módulo ${module} baseado em permissões do role ${profile?.role}: ${hasRoleAccess}`);
+            console.log(`🔐 Acesso ao módulo ${module} via Role Default: ${hasRoleAccess}`);
             return hasRoleAccess;
           }
 
@@ -2034,7 +2065,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             // Buscar o perfil atualizado no Supabase
             const { data, error } = await supabase
               .from('users_unified')
-              .select('*')
+              .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
               .eq('id', user.id)
               .single();
 
