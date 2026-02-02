@@ -142,7 +142,7 @@ const TextPostCreator: React.FC<TextPostCreatorProps> = ({
             <RichTextEditor
               value={content}
               onChange={setContent}
-              placeholder={t('newsSystem.whatAreYouThinking', 'O que você está pensando?')}
+              placeholder={t('newsSystem.whatAreYouThinkingLabel', 'O que você está pensando?')}
               maxLength={1024}
               showPreview={true}
             />

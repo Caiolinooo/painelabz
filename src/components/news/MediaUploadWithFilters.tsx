@@ -290,10 +290,10 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
                   <FiUpload className="w-20 h-20 mx-auto text-gray-400" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  Selecione uma foto ou vídeo
+                  {t('newsSystem.selectMedia')}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Arraste e solte ou clique para selecionar
+                  {t('newsSystem.dragAndDrop', 'Arraste e solte ou clique para selecionar')}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -306,7 +306,7 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
                   onClick={() => fileInputRef.current?.click()}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                 >
-                  Selecionar do Computador
+                  {t('newsSystem.selectFromComputer')}
                 </button>
               </div>
             </div>

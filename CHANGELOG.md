@@ -1,4 +1,23 @@
 # Changelog
+<br>
+
+## [4.6.0] - 2026-02-02
+
+### Added
+- **Tradução completa de Posts**: Implementada localização dinâmica para visualizações, curtidas, compartilhamentos e diálogos de confirmação.
+- **Localização de Sistema de Atalhos**: Traduzidos todos os modais de adição e gerenciamento de atalhos.
+- **Suporte i18n em Comentários**: Adicionadas chaves de tradução para estados de carregamento, placeholders e ações de resposta.
+- **Tradução de Modais Críticos**: Localizados os modais de "Criar Evento" e "Criar Destaque".
+
+### Improved
+- **Enforcement de Permissões por Setor**: Implementada lógica estrita onde permissões de setor sobrepõem acessos padrão do sistema.
+- **Gerenciamento de Cache de Acesso**: Invalidação automática do cache de permissões ao expandir/recolher menus para refletir mudanças em tempo real.
+- **Estrutura i18n**: Refatoração dos arquivos `pt-BR.ts` e `en-US.ts` com remoção de duplicatas e correção de aninhamento (nesting).
+
+### Fixed
+- **Sincronização de Setores**: Corrigida falha nas APIs de usuários unificados que não retornavam o `sector_id`.
+- **Editor de Usuário**: Resolvido bug que impedia o salvamento correto do departamento/setor.
+- **Fallback de Idioma**: Garantido fallback para Inglês em componentes onde o texto padrão estava em Português.
 
 ## [4.5.0] - 2026-01-30
 

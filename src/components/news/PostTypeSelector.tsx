@@ -24,32 +24,32 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
     {
       id: 'media' as const,
       icon: FiImage,
-      title: 'Foto/Vídeo',
-      description: 'Compartilhe fotos ou vídeos',
+      title: t('newsSystem.postType.media'),
+      description: t('newsSystem.postType.mediaDescription'),
       color: 'from-blue-500 to-purple-600',
       hoverColor: 'hover:from-blue-600 hover:to-purple-700'
     },
     {
       id: 'event' as const,
       icon: FiCalendar,
-      title: 'Evento',
-      description: t('components.crieUmEventoNoCalendario'),
+      title: t('newsSystem.postType.event'),
+      description: t('newsSystem.postType.eventDescription'),
       color: 'from-green-500 to-green-600',
       hoverColor: 'hover:from-green-600 hover:to-green-700'
     },
     {
       id: 'highlight' as const,
       icon: FiStar,
-      title: 'Destaque',
-      description: 'Destaque fixo com foto ou vídeo',
+      title: t('newsSystem.postType.highlight'),
+      description: t('newsSystem.postType.highlightDescription'),
       color: 'from-yellow-500 to-orange-500',
       hoverColor: 'hover:from-yellow-600 hover:to-orange-600'
     },
     {
       id: 'text' as const,
       icon: FiFileText,
-      title: 'Texto',
-      description: t('components.publicacaoApenasComTexto'),
+      title: t('newsSystem.postType.text'),
+      description: t('newsSystem.postType.textDescription'),
       color: 'from-gray-500 to-gray-600',
       hoverColor: 'hover:from-gray-600 hover:to-gray-700'
     }
@@ -72,7 +72,7 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Criar Publicação</h2>
+          <h2 className="text-2xl font-bold text-gray-800">{t('newsSystem.createPost')}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -111,7 +111,7 @@ const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-500">
-          Escolha o tipo de conteúdo que deseja compartilhar
+          {t('common.choosePostContent')}
         </div>
       </motion.div>
     </motion.div >

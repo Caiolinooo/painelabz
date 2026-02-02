@@ -74,7 +74,15 @@ const UserEditor: React.FC<UserEditorProps> = ({
     }
   };
 
-  const [editedUser, setEditedUser] = useState<UserEditorData>(user ? { ...user } : defaultUser);
+  const [editedUser, setEditedUser] = useState<UserEditorData>(() => {
+    const initial = user ? { ...user } : defaultUser;
+    console.log('[DEBUG UserEditor] Initializing editedUser state:', {
+      from_user: !!user,
+      sector_id: initial.sector_id,
+      department: initial.department
+    });
+    return initial;
+  });
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -87,6 +95,25 @@ const UserEditor: React.FC<UserEditorProps> = ({
 
   // State for available sectors
   const [availableSectors, setAvailableSectors] = useState<Sector[]>([]);
+
+  // DEBUG: Log initial user prop
+  useEffect(() => {
+    console.log('[DEBUG UserEditor] Initial user prop:', {
+      user_id: user?._id,
+      sector_id: user?.sector_id,
+      department: user?.department,
+      firstName: user?.firstName,
+      lastName: user?.lastName
+    });
+  }, [user]);
+
+  // DEBUG: Log quando editedUser mudar
+  useEffect(() => {
+    console.log('[DEBUG UserEditor] editedUser changed:', {
+      sector_id: editedUser.sector_id,
+      department: editedUser.department
+    });
+  }, [editedUser.sector_id, editedUser.department]);
 
 
   // Estado para módulos disponíveis (carregados dinamicamente)
@@ -134,6 +161,7 @@ const UserEditor: React.FC<UserEditorProps> = ({
         const sectorsResponse = await fetch('/api/sectors');
         if (sectorsResponse.ok) {
           const sectorsData = await sectorsResponse.json();
+          console.log('[DEBUG UserEditor] Sectors loaded:', sectorsData);
           setAvailableSectors(sectorsData as Sector[]);
         } else {
           console.error('Failed to fetch sectors:', await sectorsResponse.text());
@@ -148,6 +176,39 @@ const UserEditor: React.FC<UserEditorProps> = ({
 
     loadModulesAndPermissions();
   }, []);
+
+  // Sincronizar sector_id quando os setores são carregados e o usuário tem um setor definido
+  // Isso garante que o dropdown exiba corretamente o setor previamente cadastrado
+  useEffect(() => {
+    console.log('[DEBUG UserEditor] Sync effect triggered:', {
+      user_sector_id: user?.sector_id,
+      availableSectors_count: availableSectors.length,
+      availableSectors: availableSectors.map(s => ({ id: s.id, name: s.name })),
+      editedUser_sector_id: editedUser.sector_id
+    });
+
+    if (user?.sector_id && availableSectors.length > 0) {
+      // Verifica se o sector_id do usuário existe nos setores disponíveis
+      const sectorExists = availableSectors.some(s => s.id === user.sector_id);
+      console.log('[DEBUG UserEditor] Sector exists check:', {
+        user_sector_id: user.sector_id,
+        sectorExists,
+        matchingSector: availableSectors.find(s => s.id === user.sector_id)
+      });
+
+      if (sectorExists) {
+        setEditedUser(prev => {
+          const newState = {
+            ...prev,
+            sector_id: user.sector_id,
+            department: user.department || prev.department
+          };
+          console.log('[DEBUG UserEditor] Updating editedUser:', newState);
+          return newState;
+        });
+      }
+    }
+  }, [availableSectors, user?.sector_id, user?.department]);
 
   // Carregar permissões ACL quando o usuário for selecionado (temporariamente desabilitado)
   // useEffect(() => {

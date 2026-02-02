@@ -225,7 +225,7 @@ export default function AddShortcutModal({ onClose, onAdd, existingShortcuts }: 
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="font-medium text-gray-900 group-hover:text-blue-700 truncate">
-                                                            {module?.moduleKey ? t(`modules.${module.moduleKey}`, module.title) : t(`modules.${suggestion.module_name}`)}
+                                                            {module?.moduleKey ? t(`cards.${module.moduleKey}`, module.title) : t(`cards.${suggestion.module_name}`)}
                                                         </h4>
                                                         <p className="text-xs text-gray-500">
                                                             {t('dashboard.oftenAccessed', 'Acessado frequentemente')}
@@ -262,10 +262,10 @@ export default function AddShortcutModal({ onClose, onAdd, existingShortcuts }: 
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className="font-medium text-gray-900 truncate">
-                                                        {module.moduleKey ? t(`modules.${module.moduleKey}`, module.title) : module.title}
+                                                        {module.moduleKey ? t(`cards.${module.moduleKey}`, module.title) : module.title}
                                                     </h4>
                                                     <p className="text-xs text-gray-500 truncate">
-                                                        {module.moduleKey ? t(`modules.${module.moduleKey}Desc`, module.description) : module.description}
+                                                        {module.moduleKey ? t(`cards.${module.moduleKey}Desc`, module.description) : module.description}
                                                     </p>
                                                 </div>
                                                 <FiPlus className="w-5 h-5 text-gray-300 group-hover:text-blue-500" />

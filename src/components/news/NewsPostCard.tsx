@@ -40,7 +40,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
         const now = new Date();
         const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
-        if (diffInHours < 1) return t('components.agoraHaPouco');
+        if (diffInHours < 1) return t('newsSystem.post.justNow');
         if (diffInHours < 24) return `${diffInHours}h`;
         if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d`;
         return date.toLocaleDateString('pt-BR');
@@ -93,18 +93,18 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
                 await navigator.share(shareData);
             } else {
                 await navigator.clipboard.writeText(url);
-                toast.success('Link copiado para a área de transferência!');
+                toast.success(t('newsSystem.post.linkCopied'));
             }
         } catch (e) {
             console.error('Falha ao compartilhar:', e);
-            prompt('Copie o link abaixo:', url);
+            prompt(t('newsSystem.post.copyLinkFallback'), url);
         }
         setIsMenuOpen(false);
     };
 
     // Excluir
     const handleDelete = async () => {
-        if (!confirm('Tem certeza que deseja excluir este post?')) return;
+        if (!confirm(t('newsSystem.post.confirmDelete'))) return;
         if (onDelete) onDelete(post.id);
         setIsMenuOpen(false);
     };
@@ -159,7 +159,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
                             <span>{formatDate(post.published_at)}</span>
                             <span>•</span>
                             <FiEye className="w-4 h-4" />
-                            <span>{formatViewsWithText(post.views_count || 0)}</span>
+                            <span>{post.views_count === 0 ? t('newsSystem.post.views_0') : post.views_count === 1 ? t('newsSystem.post.views_1') : t('newsSystem.post.views_other', { count: post.views_count })}</span>
                         </div>
                     </div>
                 </div>
@@ -178,7 +178,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
                                 onClick={handleShare}
                                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             >
-                                Copiar link
+                                {t('newsSystem.post.copyLink')}
                             </button>
 
                             {(hasPermission('news.edit') || hasPermission('news.publish')) && onEdit && (
@@ -186,7 +186,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
                                     onClick={() => { onEdit(post); setIsMenuOpen(false); }}
                                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                                 >
-                                    Editar
+                                    {t('newsSystem.post.edit')}
                                 </button>
                             )}
 
@@ -195,7 +195,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
                                     onClick={handleDelete}
                                     className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                                 >
-                                    Excluir
+                                    {t('newsSystem.post.delete')}
                                 </button>
                             )}
                         </div>
@@ -298,7 +298,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
                             className="flex items-center space-x-2 text-gray-500 hover:text-green-500 transition-colors"
                         >
                             <FiShare2 className="w-5 h-5" />
-                            <span className="text-sm font-medium">Compartilhar</span>
+                            <span className="text-sm font-medium">{t('newsSystem.post.share')}</span>
                         </button>
                     </div>
 

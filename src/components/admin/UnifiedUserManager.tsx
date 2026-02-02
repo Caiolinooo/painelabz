@@ -31,23 +31,24 @@ import UserPasswordReset from '@/components/admin/UserPasswordReset';
 import UserRoleManager from '@/components/admin/UserRoleManager';
 import { useAllUsers } from '@/hooks/useAllUsers';
 
-// Interface para o usu�rio na lista
-interface User {
-  _id: string;
-  phoneNumber: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-  role: 'ADMIN' | 'USER' | 'MANAGER';
-  position?: string;
-  department?: string;
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-  isAuthorized?: boolean;
-  authorizationStatus?: string;
-  accessPermissions?: any;
-}
+  // Interface para o usu�rio na lista
+  interface User {
+    _id: string;
+    phoneNumber: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    role: 'ADMIN' | 'USER' | 'MANAGER';
+    position?: string;
+    department?: string;
+    sector_id?: string;
+    active: boolean;
+    createdAt: string;
+    updatedAt: string;
+    isAuthorized?: boolean;
+    authorizationStatus?: string;
+    accessPermissions?: any;
+  }
 
 // Interface para usu�rio autorizado
 type AuthorizedUser = {
@@ -659,6 +660,20 @@ export default function UnifiedUserManager() {
       setSuccessMessage(`${t('components.usuario')} ${isNewUser ? t('components.criado') : t('components.atualizado')} ${t('components.comSucesso')}!`);
       setShowEditor(false);
       fetchUsers();
+
+      // Dispatch permission update event to refresh user permissions in real-time
+      if (typeof window !== 'undefined') {
+        console.log('🔄 [UnifiedUserManager] User saved, dispatching permission update...');
+        // Clear all permission caches
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.startsWith('permissions-')) {
+            sessionStorage.removeItem(key);
+            console.log('🗑️ [UnifiedUserManager] Cleared cache:', key);
+          }
+        });
+        window.dispatchEvent(new Event('permissions-updated'));
+        window.dispatchEvent(new Event('cards-cache-invalidated'));
+      }
 
       // Limpar a mensagem após 3 segundos
       setTimeout(() => {
@@ -1714,7 +1729,8 @@ export default function UnifiedUserManager() {
             email: selectedUser.email,
             role: selectedUser.role,
             position: selectedUser.position,
-            department: selectedUser.department
+            department: selectedUser.department,
+            sector_id: selectedUser.sector_id
           }}
           onSave={handleSaveUser}
           onCancel={() => setShowEditor(false)}
