@@ -16,7 +16,7 @@ export async function GET() {
 
     if (error) {
       console.error('Erro ao buscar cards do Supabase:', error);
-      
+
       // Fallback para módulos hardcoded se houver erro
       const fallbackModules = [
         { id: 'dashboard', label: 'Dashboard', description: 'Painel principal do sistema' },
@@ -32,7 +32,7 @@ export async function GET() {
         { id: 'admin', label: 'Administração', description: 'Área administrativa do sistema' },
         { id: 'avaliacao', label: 'Avaliação', description: 'Sistema de avaliações' }
       ];
-      
+
       return NextResponse.json(fallbackModules);
     }
 
@@ -49,11 +49,24 @@ export async function GET() {
     // Adicionar módulos especiais que não são cards
     const specialModules = [
       { id: 'admin', label: 'Administração', description: 'Área administrativa do sistema', enabled: true },
-      { id: 'avaliacao', label: 'Avaliação', description: 'Sistema de avaliações', enabled: true }
+      { id: 'avaliacao', label: 'Avaliação', description: 'Sistema de avaliações', enabled: true },
+      { id: 'biblioteca', label: 'Biblioteca', description: 'Repositório de arquivos e documentos', enabled: true }
     ];
 
-    // Combinar cards e módulos especiais, removendo duplicatas
-    const allModules = [...modules];
+    // Módulos que devem ser ocultos do seletor de permissões pois foram consolidados na Biblioteca
+    const hiddenModules = ['manual', 'procedimentos', 'politicas', 'guia_offshore'];
+
+    // Combinar cards e módulos especiais, removendo duplicatas e ocultos
+    const allModules: any[] = [];
+
+    // Adicionar cards (se não estiverem ocultos)
+    modules.forEach(m => {
+      if (!hiddenModules.includes(m.id) && !allModules.some(am => am.id === m.id)) {
+        allModules.push(m);
+      }
+    });
+
+    // Adicionar especiais
     specialModules.forEach(specialModule => {
       if (!allModules.find(m => m.id === specialModule.id)) {
         allModules.push(specialModule);
