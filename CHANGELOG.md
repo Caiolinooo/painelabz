@@ -1,6 +1,26 @@
 # Changelog
 <br>
 
+## [4.7.0] - 2026-02-03
+
+### Added
+- **Novo Módulo de Biblioteca**: Implementada central unificada para gestão de documentos, vídeos, imagens e links externos.
+- **Suporte a Coleções**: Funcionalidade para agrupar múltiplos arquivos e links em um único item de biblioteca.
+- **Estratégia de Upload Assinado**: Implementadas *Signed Upload URLs* via API dedicada para garantir uploads seguros e contornar restrições de RLS com JWTs customizados.
+- **Seletor Visual de Ícones**: Interface de grade para escolha personalizada de ícones da biblioteca `Fi` (React Icons).
+- **Tematização de Cards**: Suporte para escolha de esquemas de cores e temas visuais diretamente no gerenciador.
+- **Limpeza Automática de Storage**: Implementada exclusão física de arquivos no bucket ao remover itens da biblioteca.
+
+### Improved
+- **Segurança de Armazenamento**: Migração de uploads diretos via cliente para uploads autorizados por token no servidor.
+- **Navegação de Recursos**: Novo layout para visualização de coleções com distinção entre links e arquivos.
+- **Robustez de Links**: Implementada normalização automática de protocolos (http/https) para links externos.
+
+### Fixed
+- **Conflito de Slugs**: Adicionado sufixo aleatório na geração automática de links para evitar erros de duplicidade.
+- **Renderização de Ícones**: Corrigida falha no `ModernLibraryCard` que ignorava o ícone selecionado pelo usuário.
+- **Estabilidade de Compilação**: Removidas importações duplicadas e corrigidas tipagens do módulo bibliotecas.
+
 ## [4.6.0] - 2026-02-02
 
 ### Added

@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-4.6.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-4.7.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -26,7 +26,8 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 ## ✨ Funcionalidades Atuais
 
 ### 🏢 **Gestão & Processos**
-- **Dashboard Dinâmico** - Atavios personalizados por usuário e busca global integrada.
+- **Dashboard Dinâmico** - Atalhos personalizados por usuário e busca global integrada.
+- **Biblioteca Centralizada** - Gestão completa de ativos (PDF, Vídeo, Imagens, Links) com suporte a coleções e uploads seguros.
 - **Ordens de Compra (PO)** - Fluxo completo de aprovação multinível com controle de alçada.
 - **Setores & Permissões** - Gestão avançada de permissões baseada na estrutura organizacional (Setores).
 - **Sistema de Reembolsos** - Gestão financeira com upload de comprovantes e geração de relatórios em PDF.
@@ -72,6 +73,14 @@ npm run dev
 
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
+
+## 🚀 Últimas Atualizações (v4.7.0)
+
+- **Novo Módulo de Biblioteca**: Lançamento da central de documentos e recursos multimídia com suporte a coleções.
+- **Tecnologia de Upload Seguro**: Implementação de *Signed URLs* para garantir máxima segurança e compatibilidade no armazenamento.
+- **Customização de Cards**: Novo sistema de temas e seletor de ícones para personalização da interface.
+
+---
 
 ## 🚀 Últimas Atualizações (v4.6.0)
 
