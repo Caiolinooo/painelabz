@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   FiPlus,
   FiEdit2,
@@ -49,10 +49,11 @@ export default function UsersPage() {
   const { isAdmin, isAuthenticated } = useSupabaseAuth();
   const { t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams(); // Add this
 
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams?.get('q') || '');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

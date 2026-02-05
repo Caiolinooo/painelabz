@@ -74,8 +74,8 @@ export default function EventsWidget() {
     };
 
     return (
-        <div className="bg-white rounded-[2rem] p-6 h-full shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col">
-            <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 h-full">
+            <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold text-gray-900 text-lg">{t('dashboard.events')}</h3>
                 <Link href="/calendario" className="text-sm text-blue-600 font-semibold hover:underline">
                     {t('common.seeAll')}
@@ -86,7 +86,7 @@ export default function EventsWidget() {
                 {loading ? (
                     <div className="animate-pulse space-y-4">
                         {[1, 2].map(i => (
-                            <div key={i} className="h-16 bg-gray-100 rounded-2xl"></div>
+                            <div key={i} className="h-16 bg-white rounded-3xl shadow-sm"></div>
                         ))}
                     </div>
                 ) : events.length === 0 ? (
@@ -95,19 +95,19 @@ export default function EventsWidget() {
                     </div>
                 ) : (
                     events.map((ev, idx) => (
-                        <div key={`${ev.date}-${idx}`} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm relative overflow-hidden transition-all hover:shadow-md hover:border-blue-100">
-                            <div className="flex items-start gap-4 z-10 relative">
-                                <div className="flex flex-col items-center justify-center pr-4 border-r border-gray-100 min-w-[3.5rem]">
+                        <div key={`${ev.date}-${idx}`} className="bg-white rounded-3xl p-5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] relative overflow-hidden transition-all hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_10px_10px_-5px_rgba(0,0,0,0.04)] flex items-center h-[90px] border-0">
+                            <div className="flex items-center gap-5 z-10 relative w-full">
+                                <div className="flex flex-col items-center justify-center pr-5 border-r border-gray-100 min-w-[4rem]">
                                     <span className="text-2xl font-bold text-gray-800">{getDay(ev.date)}</span>
                                     <span className="text-xs font-bold text-gray-400 uppercase">{getMonthAbbr(ev.date)}</span>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-gray-900 text-base line-clamp-1">{ev.title}</h4>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-gray-900 text-base line-clamp-1 mb-0.5">{ev.title}</h4>
                                     <p className="text-xs text-gray-400 line-clamp-1">{ev.description || (ev.type === 'COMPANY' ? 'Evento Corporativo' : ev.type)}</p>
                                 </div>
                             </div>
                             {/* Type Indicator */}
-                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${ev.type === 'COMPANY' ? 'bg-[#6339F5]' : 'bg-orange-500'}`}></div>
+                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${ev.type === 'COMPANY' ? 'bg-[#6339F5]' : 'bg-orange-500'}`}></div>
                         </div>
                     ))
                 )}

@@ -481,7 +481,7 @@ export default {
     allModules: 'All modules',
     adminPanel: 'Admin Panel',
     purchaseOrderWidget: {
-      myPurchases: 'My Purchases',
+      myPurchases: 'My Purchase Orders',
       viewAll: 'View all',
       noRecentRequests: 'No recent requests.',
       createNew: 'Create new',

@@ -21,10 +21,10 @@ export const SYSTEM_MODULES: SystemModule[] = [
     { id: 'avaliacao', label: 'Avaliação de Desempenho', description: 'Ciclos de avaliação e feedback', category: 'hr', href: '/avaliacao' },
 
     // Content & Knowledge
-    { id: 'manual', label: 'Manual do Colaborador', description: 'Guia de normas e conduta', category: 'department', href: '/manual' },
-    { id: 'procedimentos', label: 'Procedimentos', description: 'Procedimentos Operacionais Padrão (POPs)', category: 'department', href: '/procedimentos' },
-    { id: 'politicas', label: 'Políticas', description: 'Políticas internas da empresa', category: 'department', href: '/politicas' },
-    { id: 'biblioteca', label: 'Biblioteca', description: 'Repositório de arquivos e documentos', category: 'content', href: '/biblioteca' },
+    { id: 'manual', label: 'Manual do Colaborador', description: 'Guia de normas e conduta', category: 'department', href: '/manual', visible: false },
+    { id: 'procedimentos', label: 'Procedimentos', description: 'Procedimentos Operacionais Padrão (POPs)', category: 'department', href: '/procedimentos', visible: false },
+    { id: 'politicas', label: 'Políticas', description: 'Políticas internas da empresa', category: 'department', href: '/politicas', visible: false },
+    { id: 'biblioteca', label: 'Biblioteca', description: 'Repositório de arquivos e documentos', category: 'content', href: '/biblioteca', visible: true },
     { id: 'academy', label: 'Academy', description: 'Plataforma de cursos e treinamentos', category: 'content', href: '/academy' },
     { id: 'ajuda', label: 'Ajuda', description: 'Central de suporte e dúvidas', category: 'content', href: '/ajuda' },
 
@@ -38,7 +38,13 @@ export const SYSTEM_MODULES: SystemModule[] = [
 
     // Additional Content
     { id: 'emergencia', label: 'Emergência', description: 'Procedimentos de emergência', category: 'department', href: '/emergencia', visible: false },
-    { id: 'guia_offshore', label: 'Guia Offshore', description: 'Guia para trabalho embarcado', category: 'department', href: '/guia_offshore' },
+    { id: 'guia_offshore', label: 'Guia Offshore', description: 'Guia para trabalho embarcado', category: 'department', href: '/guia_offshore', visible: false },
+
+    // Management & Metrics (Inside Department)
+    { id: 'notifications', label: 'Notificações', description: 'Gerenciar notificações do sistema', category: 'department', href: '/admin/notifications' },
+    { id: 'feedback', label: 'Feedbacks', description: 'Visualizar feedbacks dos usuários', category: 'department', href: '/admin/feedback' },
+    { id: 'metrics', label: 'Métricas Gerais', description: 'Métricas gerais de uso', category: 'department', href: '/admin/metrics' },
+    { id: 'engagement', label: 'Engajamento (Notícias)', description: 'Métricas de engajamento de notícias', category: 'department', href: '/admin/metrics/engagement' },
 
     // Admin / Integrations (Visible if permitted)
     { id: 'integracao-erp', label: 'Integração ERP', description: 'Gestão de integração MIO', category: 'department', href: '/admin/integracao-erp' },

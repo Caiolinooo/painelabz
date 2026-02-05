@@ -28,7 +28,7 @@ function TopGradientCard({ user, profile, t }: { user: any; profile: any; t: any
     'Fulanito';
 
   return (
-    <div className="relative w-full bg-gradient-to-r from-white via-blue-50 to-blue-100 rounded-[2.5rem] p-8 md:p-12 mb-8 flex flex-col md:flex-row items-start justify-between min-h-[300px]">
+    <div className="relative w-full bg-gradient-to-r from-white via-blue-50 to-blue-100 rounded-[2rem] p-8 md:p-12 mb-8 flex flex-col md:flex-row items-start justify-between min-h-[300px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)]">
 
       {/* Left Content */}
       <div className="flex-1 z-10 max-w-2xl mt-4">
@@ -49,10 +49,6 @@ function TopGradientCard({ user, profile, t }: { user: any; profile: any; t: any
 
   );
 }
-
-// FeaturedBanner, QuickLinkCard, and EventsWidget removed as they are now imported components
-
-// --- Main Page Component ---
 
 // --- Main Page Component ---
 import DashboardNewsWidget from '@/components/dashboard/DashboardNewsWidget';
@@ -77,11 +73,11 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
-      <div className="min-h-full bg-white pb-10">
-        {/* Top Section contains the gradient */}
-        <TopGradientCard user={user} profile={profile} t={t} />
-
+      <div className="min-h-full pb-10">
         <div className="max-w-[1400px] mx-auto">
+          {/* Top Section contains the gradient */}
+          <TopGradientCard user={user} profile={profile} t={t} />
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
 
             {/* Banner - Spans 5 (News) */}
@@ -90,7 +86,7 @@ export default function Dashboard() {
             </div>
 
             {/* Center Column - Quick Links - Spans 4 */}
-            <div className="lg:col-span-4 flex flex-col gap-6">
+            <div className="lg:col-span-4 flex flex-col gap-8">
               <QuickLinksWidget />
               <PurchaseOrderWidget />
             </div>
