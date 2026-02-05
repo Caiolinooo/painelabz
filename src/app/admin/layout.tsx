@@ -83,16 +83,7 @@ const adminMenuGroups = [
       { id: 'academy-certificates', href: '/admin/academy/certificates', label: 'Academy - Certificados', icon: FiAward },
     ]
   },
-  {
-    id: 'communications',
-    label: 'admin.communications',
-    items: [
-      { id: 'notifications', href: '/admin/notifications', label: 'admin.notificacoes', icon: FiBell },
-      { id: 'feedback', href: '/admin/feedback', label: 'Feedbacks', icon: FiMessageSquare },
-      { id: 'metrics', href: '/admin/metrics', label: 'Métricas Gerais', icon: FiBarChart2 },
-      { id: 'engagement', href: '/admin/metrics/engagement', label: 'Engajamento (Notícias)', icon: FiActivity },
-    ]
-  },
+
   {
     id: 'reimbursements',
     label: 'admin.reimbursements',

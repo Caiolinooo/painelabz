@@ -1,6 +1,20 @@
 # Changelog
 <br>
 
+## [4.8.0] - 2026-02-05
+
+### Added
+- **Busca Global Centralizada**: Implementação de sistema de indexação para busca rápida em todo o portal (notícias, usuários, arquivos).
+- **Persistência de Biografia**: Adicionada coluna `bio` na tabela `users_unified`, permitindo que usuários salvem informações de perfil.
+
+### Improved
+- **Segurança de Armazenamento (RLS)**: Refatoração completa das políticas de segurança do bucket `profile-photos` para garantir isolamento por pastas de usuário (`Authenticated User Folders`).
+- **Padronização de Caminhos de Upload**: Ambos Avatars e Covers agora seguem a estrutura `/USER_ID/filename` para consistência e segurança.
+
+### Fixed
+- **Erro 403 no Upload de Capa**: Resolvido problema de permissão que impedia a atualização do banner de perfil.
+- **Sincronização de Schema**: Corrigida inconsistência entre as tabelas de armazenamento e o perfil de usuário unificado.
+
 ## [4.7.0] - 2026-02-03
 
 ### Added

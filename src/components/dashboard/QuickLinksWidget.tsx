@@ -26,7 +26,7 @@ function QuickLinkCard({
     return (
         <Link
             href={href}
-            className="group bg-white hover:bg-gray-50 border-0 rounded-3xl p-5 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-lg flex items-center h-[100px]"
+            className="group bg-white hover:bg-gray-50 border-0 rounded-3xl p-5 transition-all duration-300 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_10px_10px_-5px_rgba(0,0,0,0.04)] flex items-center h-[100px]"
         >
             <div
                 className={`w-14 h-14 rounded-full flex items-center justify-center mr-4 shadow-sm group-hover:scale-110 transition-transform ${iconBgColor}`}
@@ -93,7 +93,7 @@ export default function QuickLinksWidget() {
     if (filteredLinks.length === 0) return null;
 
     return (
-        <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-bold text-gray-900 text-lg">{t('dashboard.quickLinks')}</h3>
                 <FiEdit2 className="text-gray-300 w-4 h-4 cursor-pointer hover:text-gray-500" title={t('common.edit')} />

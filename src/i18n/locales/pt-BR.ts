@@ -574,7 +574,7 @@ export default {
     allModules: 'Todos os módulos',
     adminPanel: 'Painel de Administração',
     purchaseOrderWidget: {
-      myPurchases: 'Minhas Compras',
+      myPurchases: 'Minhas Ordens de Compra',
       viewAll: 'Ver todas',
       noRecentRequests: 'Nenhuma solicitação recente.',
       createNew: 'Criar nova',

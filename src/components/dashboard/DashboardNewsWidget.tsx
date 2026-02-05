@@ -69,7 +69,7 @@ export default function DashboardNewsWidget() {
     }
 
     return (
-        <div className="bg-[#0055FF] text-white rounded-[2rem] h-full min-h-[320px] flex flex-col justify-end relative overflow-hidden shadow-lg group cursor-pointer transition-transform hover:scale-[1.01]"
+        <div className="bg-[#0055FF] text-white rounded-[2rem] h-full min-h-[320px] flex flex-col justify-end relative overflow-hidden shadow-[0_20px_25px_-5px_rgba(0,0,0,0.15),0_10px_10px_-5px_rgba(0,0,0,0.1)] group cursor-pointer transition-transform hover:scale-[1.01]"
             onClick={() => window.location.href = `/noticias?id=${latestPost.id}`}>
 
             {/* Background Media */}
