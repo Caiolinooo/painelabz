@@ -28,7 +28,8 @@ import {
   FiBarChart2,
   FiSidebar,
   FiShield,
-  FiShoppingCart
+  FiShoppingCart,
+  FiEdit3 // New Icon for Edit
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
@@ -43,7 +44,7 @@ import GlobalTimeTracker from '@/components/tracking/GlobalTimeTracker';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import UserAvatar from '@/components/UserAvatar';
 import HelpWidget from '@/components/Help/HelpWidget';
-
+import MenuCustomizer from '@/components/admin/MenuCustomizer'; // Import
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -78,6 +79,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMeuRHOpen, setIsMeuRHOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Customizer State
+  const [isMenuCustomizerOpen, setIsMenuCustomizerOpen] = useState(false);
 
   // Use shared permissions hook
   const { hasPermission, refresh } = useEffectivePermissions();
@@ -139,33 +143,23 @@ export default function MainLayout({ children }: MainLayoutProps) {
     }
   }, [profile]);
 
-  // Module Processing - Filter by permission AND visibility
-  console.log('🎨 [MainLayout] Rendering menu, checking permissions...');
-  const allowedModules = SYSTEM_MODULES.filter(m => {
-    const permitted = hasPermission(m.id);
-    const visible = m.visible !== false;
-    const included = permitted && visible;
-
-    // Debug log for content modules
-    if (['academy', 'biblioteca', 'avaliacao', 'ajuda'].includes(m.id)) {
-      console.log(`🎨 [MainLayout] Module ${m.id}: permitted=${permitted}, visible=${visible}, included=${included}`);
-    }
-
-    return included;
+  // Re-map items to ensure they have the right properties for the render function
+  const prepareItem = (item: any) => ({
+    ...item,
+    // Ensure icon is a component
+    icon: item.icon,
+    label: item.title, // Map title to label
+    badge: item.id === 'noticias' && newsUnreadCount > 0 ? newsUnreadCount : undefined
   });
 
-  console.log('🎨 [MainLayout] Allowed modules:', allowedModules.map(m => m.id));
+  // Filter unified items by category
+  // Fallback: If unified service returns empty (e.g. error), we might see nothing. 
+  // But service has hardcoded fallback.
 
-  const resolveItem = (m: SystemModule) => ({
-    ...m,
-    icon: getModuleIcon(m.id),
-    badge: m.id === 'noticias' && newsUnreadCount > 0 ? newsUnreadCount : undefined
-  });
-
-  const coreItems = allowedModules.filter(m => m.category === 'core' || !m.category).map(resolveItem);
-  const hrItems = allowedModules.filter(m => m.category === 'hr').map(resolveItem);
-  const deptItems = allowedModules.filter(m => m.category === 'department').map(resolveItem);
-  const contentItems = allowedModules.filter(m => m.category === 'content').map(resolveItem);
+  const unifiedCore = menuItems.filter(i => (!i.category || i.category === 'core') && i.showInMenu).map(prepareItem);
+  const unifiedHr = menuItems.filter(i => i.category === 'hr' && i.showInMenu).map(prepareItem);
+  const unifiedDept = menuItems.filter(i => i.category === 'department' && i.showInMenu).map(prepareItem);
+  const unifiedContent = menuItems.filter(i => i.category === 'content' && i.showInMenu).map(prepareItem);
 
   const renderItem = (item: any) => {
     const isActive = pathname === item.href;
@@ -181,6 +175,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
             : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
           }`}
         title={isCollapsed ? item.label : ''}
+        // Apply animation styles if config exists
+        style={item.animation_config ? {
+          // Basic implementation of entrance animation would go here or in a wrapper
+          // For now, let's just stick to standard rendering to ensure stability
+        } : {}}
       >
         <Icon className={`w-5 h-5 flex-shrink-0 ${!isCollapsed && 'mr-3'} ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}`} />
 
@@ -245,11 +244,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
           {/* Menu */}
           <nav className="flex-1 py-4 overflow-y-auto px-2 space-y-1">
-            {/* Core Items */}
-            {coreItems.map(renderItem)}
+            {/* Core Items - Using Unified Data */}
+            {unifiedCore.map(renderItem)}
 
             {/* Meu RH Dropdown */}
-            {hrItems.length > 0 && (
+            {unifiedHr.length > 0 && (
               <div className="mx-2 my-1">
                 <button
                   onClick={toggleMeuRH}
@@ -266,13 +265,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
                 {/* Submenu */}
                 <div className={`overflow-hidden transition-all duration-300 ${isMeuRHOpen && !isCollapsed ? 'max-h-[500px] mt-1' : 'max-h-0'}`}>
-                  {hrItems.map(renderItem)}
+                  {unifiedHr.map(renderItem)}
                 </div>
               </div>
             )}
 
             {/* Department Menu */}
-            {deptItems.length > 0 && (
+            {unifiedDept.length > 0 && (
               <div className="mx-2 my-1">
                 <button
                   onClick={toggleDepartment}
@@ -291,15 +290,29 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
                 {/* Submenu */}
                 <div className={`overflow-hidden transition-all duration-300 ${isDepartmentOpen && !isCollapsed ? 'max-h-[800px] mt-1' : 'max-h-0'}`}>
-                  {deptItems.map(renderItem)}
+                  {unifiedDept.map(renderItem)}
                 </div>
               </div>
             )}
 
             {/* Content Items */}
-            {contentItems.map(renderItem)}
+            {unifiedContent.map(renderItem)}
 
           </nav>
+
+          {/* Admin Customization Trigger */}
+          {isAdmin && (
+            <div className={`px-4 py-2 mt-2 ${isCollapsed ? 'flex justify-center' : ''}`}>
+              <button
+                onClick={() => setIsMenuCustomizerOpen(true)}
+                className={`group flex items-center justify-center gap-2 w-full p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all ${isCollapsed ? 'w-10 h-10' : ''}`}
+                title="Personalizar Menu"
+              >
+                <FiEdit3 className="w-4 h-4" />
+                {!isCollapsed && <span className="text-xs font-semibold">Editar Menu</span>}
+              </button>
+            </div>
+          )}
 
           {/* Credits */}
           {!isCollapsed && (
@@ -394,6 +407,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       </div>
       <HelpWidget />
+
+      {/* Menu Customizer Drawer */}
+      <MenuCustomizer
+        isOpen={isMenuCustomizerOpen}
+        onClose={() => setIsMenuCustomizerOpen(false)}
+      />
     </ProtectedRoute>
   );
 }
