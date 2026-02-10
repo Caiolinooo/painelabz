@@ -1,6 +1,14 @@
 # Changelog
 <br>
 
+## [4.9.1] - 2026-02-10
+
+### Fixed
+- **Build Netlify**: Corrigido erro de compilação causado por arquivos do módulo EPI não rastreados no Git.
+  - Adicionados componentes (`EPIStatusBadge`, `SignaturePad`, `EPIForm`, `EPIList`), serviços (`epiService`), tipos (`epi.ts`), PDFs (`generateEPIChecklist`, `generateEPIReport`) e `KitManagement`.
+- **Case-Sensitivity**: Corrigido import `@/components/Admin/EPI/KitManagement` → `@/components/admin/EPI/KitManagement` (Linux é case-sensitive).
+- **MenuCustomizer**: Adicionado `MenuCustomizer.tsx` ao repositório (arquivo estava untracked).
+
 ## [4.9.0] - 2026-02-10
 
 ### Added

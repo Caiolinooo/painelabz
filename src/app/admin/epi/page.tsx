@@ -10,7 +10,7 @@ import { EPIRegistration, EPIType, EPIWithUser } from '@/types/epi';
 import { generateEPIChecklist } from '@/lib/pdf/generateEPIChecklist';
 import { generateEPIReport } from '@/lib/pdf/generateEPIReport';
 import { toast } from 'react-hot-toast';
-import KitManagement from '@/components/Admin/EPI/KitManagement';
+import KitManagement from '@/components/admin/EPI/KitManagement';
 
 type TabType = 'requests' | 'types' | 'kits';
 
