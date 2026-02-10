@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { unifiedDataService, UnifiedItem, getDashboardCards, getMenuItems } from '@/lib/unifiedDataService';
+import { SYSTEM_MODULES } from '@/constants/modules';
 import { getCardsCached } from '@/lib/cardsCache';
 import { getIconComponent } from '@/lib/iconMap';
 
@@ -104,6 +105,7 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
                   allowedUserIds: c.allowedUserIds,
                   showInMenu: true,
                   showInDashboard: true,
+                  category: c.category || SYSTEM_MODULES.find(m => m.id === c.id)?.category,
                   source: 'supabase' as const
                 }))
                 .filter((ci: any) => ci.enabled)
@@ -243,10 +245,10 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
 /**
  * Hook específico para cards do dashboard
  */
-export function useDashboardCards(autoRefresh = false) {
+export function useDashboardCards(shouldAutoRefresh = false) {
   return useUnifiedData({
     type: 'dashboard',
-    autoRefresh,
+    autoRefresh: shouldAutoRefresh,
     refreshInterval: 300 // 5 minutos
   });
 }
@@ -254,10 +256,10 @@ export function useDashboardCards(autoRefresh = false) {
 /**
  * Hook específico para items do menu
  */
-export function useMenuItems(autoRefresh = false) {
+export function useMenuItems(shouldAutoRefresh = false) {
   return useUnifiedData({
     type: 'menu',
-    autoRefresh,
+    autoRefresh: shouldAutoRefresh,
     refreshInterval: 600 // 10 minutos
   });
 }
