@@ -1,6 +1,18 @@
 # Changelog
 <br>
 
+## [4.9.0] - 2026-02-10
+
+### Added
+- **API de Responsáveis por Setor**: Nova rota `/api/epi/sector-responsibles` para gestão centralizada de administradores de EPI por setor.
+- **API de Kits de EPI**: Nova rota `/api/epi/kits` para gerenciamento e atribuição de kits de segurança.
+
+### Improved
+- **Arquitetura do Módulo EPI**: Refatoração completa para padrão Server-Side API, eliminando chamadas diretas do cliente ao Supabase com privilégios de Admin.
+- **Performance de Carregamento**: Unificação de chamadas de dados nos dashboards de EPI para reduzir latência e overhead de requisições.
+
+
+
 ## [4.8.1] - 2026-02-10
 
 ### Fixed
