@@ -23,6 +23,7 @@ const adminMenuItems = [
   { id: 'documents-pt', href: '/admin/documentos', label: 'admin.documentsSection', icon: FiFileText },
   { id: 'news-pt', href: '/admin/noticias', label: 'admin.news', icon: FiEdit },
   { id: 'editors', href: '/admin/editors', label: 'admin.editors', icon: FiEdit },
+  { id: 'epi', href: '/admin/epi', label: 'Gestão de EPIs', icon: FiShield },
   { id: 'acl-management', href: '/admin/acl-management', label: 'admin.acl', icon: FiKey },
   { id: 'user-management', href: '/admin/user-management', label: 'admin.usersSection', icon: FiUsers },
   { id: 'authorized-users', href: '/admin/authorized-users', label: 'admin.authorizedUsers', icon: FiUserCheck },
@@ -74,6 +75,13 @@ const adminMenuGroups = [
       { id: 'user-approval-settings', href: '/admin/user-approval-settings', label: 'admin.userApprovalSettings', icon: FiUserCheck },
       { id: 'sectors', href: '/admin/sectors', label: 'Permissões por Setor', icon: FiShield },
       { id: 'banned-users', href: '/admin/banned-users', label: 'admin.bannedUsers', icon: FiUserX },
+    ]
+  },
+  {
+    id: 'operational',
+    label: 'Operacional / Segurança',
+    items: [
+      { id: 'epi', href: '/admin/epi', label: 'Gestão de EPIs', icon: FiShield },
     ]
   },
   {
@@ -183,7 +191,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   React.useEffect(() => {
     const fetchModules = async () => {
       try {
-        const res = await fetch('/api/admin/modules');
+        const res = await fetchWithToken('/api/admin/modules');
         if (res.ok) {
           const data = await res.json();
           setDynamicModules(data);
