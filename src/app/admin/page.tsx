@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings, FiUserCheck, FiRefreshCw, FiBarChart2, FiKey, FiTool, FiUserX, FiDollarSign, FiCheck, FiEdit3, FiDatabase } from 'react-icons/fi';
+import { FiLayers, FiList, FiFileText, FiEdit, FiUsers, FiSettings, FiUserCheck, FiRefreshCw, FiBarChart2, FiKey, FiTool, FiUserX, FiDollarSign, FiCheck, FiEdit3, FiDatabase, FiShield } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -57,6 +57,40 @@ export default function AdminDashboard() {
     router.push('/admin-fix');
   };
 
+  // Mapeamento de categorias e seus itens
+  const groupedMenuItems = {
+    system: [
+      { title: 'admin.systemSetup', description: 'admin.systemSetupDesc', icon: FiTool, href: '/admin/setup', color: 'border-gray-500' },
+      { title: 'admin.settings', description: 'admin.settingsDesc', icon: FiSettings, href: '/admin/settings', color: 'border-slate-500' },
+      { title: 'admin.fixPermissions', description: 'admin.fixPermissionsDesc', icon: FiUserCheck, href: '/admin-fix', color: 'border-amber-500' },
+    ],
+    content: [
+      { title: 'admin.cards', description: 'admin.cardsDesc', icon: FiLayers, href: '/admin/cards', color: 'border-blue-500' },
+      { title: 'admin.menu', description: 'admin.menuDesc', icon: FiList, href: '/admin/menu', color: 'border-indigo-500' },
+      { title: 'admin.documentsSection', description: 'admin.documentsDesc', icon: FiFileText, href: '/admin/documents', color: 'border-purple-500' },
+      { title: 'admin.news', description: 'admin.newsDesc', icon: FiEdit, href: '/admin/noticias', color: 'border-pink-500' },
+      { title: 'Gerenciar Editores', description: 'Configure editores para Academy e Social/News', icon: FiEdit3, href: '/admin/editors', color: 'border-violet-500' },
+    ],
+    users: [
+      { title: 'admin.usersSection', description: 'admin.usersSectionDesc', icon: FiUsers, href: '/admin/user-management', color: 'border-yellow-500' },
+      { title: 'admin.rolePermissions', description: 'admin.rolePermissionsDesc', icon: FiKey, href: '/admin/role-permissions', color: 'border-orange-500' },
+      { title: 'admin.userApprovalSettings', description: 'admin.userApprovalSettingsDesc', icon: FiUserCheck, href: '/admin/user-approval-settings', color: 'border-cyan-500' },
+      { title: 'admin.bannedUsers', description: 'admin.bannedUsersDesc', icon: FiUserX, href: '/admin/banned-users', color: 'border-red-500' },
+    ],
+    operational: [
+      { title: 'Gestão de EPIs', description: 'Gerencie solicitações, tipos e validade de EPIs', icon: FiShield, href: '/admin/epi', color: 'border-yellow-600' },
+      { title: 'admin.myReimbursements', description: 'admin.myReimbursementsDesc', icon: FiDollarSign, href: '/reembolso?tab=dashboard', color: 'border-green-600' },
+      { title: 'admin.approveReimbursements', description: 'admin.approveReimbursementsDesc', icon: FiCheck, href: '/reembolso?tab=approval', color: 'border-emerald-500' },
+      { title: 'admin.reimbursementSettings', description: 'admin.reimbursementSettingsDesc', icon: FiSettings, href: '/admin/reimbursement-settings', color: 'border-lime-500' },
+    ],
+    performance: [
+      { title: 'Avaliação de Desempenho', description: 'Gerencie o módulo de avaliação de desempenho', icon: FiBarChart2, href: '/admin/avaliacao', color: 'border-teal-500' },
+    ],
+    integrations: [
+      { title: 'admin.erpIntegration', description: 'Gerencie conexões com SAP, MIO e outros sistemas', icon: FiDatabase, href: '/admin/integracao-erp', color: 'border-blue-600' },
+    ]
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -87,139 +121,59 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Configuração do Sistema */}
-        <AdminCard
-          title={t('admin.systemSetup')}
-          description={t('admin.systemSetupDesc')}
-          icon={FiTool}
-          href="/admin/setup"
-          color="border-gray-500"
-        />
+      <div className="space-y-10">
+        {/* Configuração e Sistema */}
+        <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Sistema e Configurações</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groupedMenuItems.system.map((item, index) => (
+              <AdminCard key={index} {...item} title={t(item.title, item.title)} description={t(item.description, item.description)} />
+            ))}
+          </div>
+        </section>
 
-        {/* Gerenciamento de Conteúdo */}
-        <AdminCard
-          title={t('admin.cards')}
-          description={t('admin.cardsDesc')}
-          icon={FiLayers}
-          href="/admin/cards"
-          color="border-blue-500"
-        />
-        <AdminCard
-          title={t('admin.menu')}
-          description={t('admin.menuDesc')}
-          icon={FiList}
-          href="/admin/menu"
-          color="border-indigo-500"
-        />
-        <AdminCard
-          title={t('admin.documentsSection')}
-          description={t('admin.documentsDesc')}
-          icon={FiFileText}
-          href="/admin/documents"
-          color="border-purple-500"
-        />
-        <AdminCard
-          title={t('admin.news')}
-          description={t('admin.newsDesc')}
-          icon={FiEdit}
-          href="/admin/noticias"
-          color="border-pink-500"
-        />
+        {/* Operacional e Segurança */}
+        <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Operacional e Segurança</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groupedMenuItems.operational.map((item, index) => (
+              <AdminCard key={index} {...item} title={t(item.title, item.title)} description={t(item.description, item.description)} />
+            ))}
+          </div>
+        </section>
 
-        {/* Gerenciamento de Usuários */}
-        <AdminCard
-          title={t('admin.usersSection')}
-          description={t('admin.usersSectionDesc')}
-          icon={FiUsers}
-          href="/admin/user-management"
-          color="border-yellow-500"
-        />
-        <AdminCard
-          title={t('admin.rolePermissions')}
-          description={t('admin.rolePermissionsDesc')}
-          icon={FiKey}
-          href="/admin/role-permissions"
-          color="border-orange-500"
-        />
-        <AdminCard
-          title={t('admin.userApprovalSettings')}
-          description={t('admin.userApprovalSettingsDesc')}
-          icon={FiUserCheck}
-          href="/admin/user-approval-settings"
-          color="border-cyan-500"
-        />
-        <AdminCard
-          title={t('admin.bannedUsers')}
-          description={t('admin.bannedUsersDesc')}
-          icon={FiUserX}
-          href="/admin/banned-users"
-          color="border-red-500"
-        />
-        <AdminCard
-          title="Gerenciar Editores"
-          description="Configure editores para Academy e Social/News"
-          icon={FiEdit3}
-          href="/admin/editors"
-          color="border-violet-500"
-        />
+        {/* Usuários e Permissões */}
+        <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Usuários e Permissões</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groupedMenuItems.users.map((item, index) => (
+              <AdminCard key={index} {...item} title={t(item.title, item.title)} description={t(item.description, item.description)} />
+            ))}
+          </div>
+        </section>
 
-        {/* Módulo de Reembolsos */}
-        <AdminCard
-          title={t('admin.myReimbursements')}
-          description={t('admin.myReimbursementsDesc')}
-          icon={FiDollarSign}
-          href="/reembolso?tab=dashboard"
-          color="border-green-600"
-        />
-        <AdminCard
-          title={t('admin.approveReimbursements')}
-          description={t('admin.approveReimbursementsDesc')}
-          icon={FiCheck}
-          href="/reembolso?tab=approval"
-          color="border-emerald-500"
-        />
-        <AdminCard
-          title={t('admin.reimbursementSettings')}
-          description={t('admin.reimbursementSettingsDesc')}
-          icon={FiSettings}
-          href="/admin/reimbursement-settings"
-          color="border-lime-500"
-        />
+        {/* Conteúdo e Comunicação */}
+        <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Conteúdo e Comunicação</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groupedMenuItems.content.map((item, index) => (
+              <AdminCard key={index} {...item} title={t(item.title, item.title)} description={t(item.description, item.description)} />
+            ))}
+          </div>
+        </section>
 
-        {/* Avaliação de Desempenho */}
-        <AdminCard
-          title={t('admin.avaliacao.title', 'Avaliação de Desempenho')}
-          description={t('admin.avaliacao.description', 'Gerencie o módulo de avaliação de desempenho')}
-          icon={FiBarChart2}
-          href="/admin/avaliacao"
-          color="border-teal-500"
-        />
-
-        {/* Configurações Gerais */}
-        <AdminCard
-          title={t('admin.settings')}
-          description={t('admin.settingsDesc')}
-          icon={FiSettings}
-          href="/admin/settings"
-          color="border-slate-500"
-        />
-        <AdminCard
-          title={t('admin.fixPermissions')}
-          description={t('admin.fixPermissionsDesc')}
-          icon={FiUserCheck}
-          href="/admin-fix"
-          color="border-amber-500"
-        />
-
-        {/* Integrações */}
-        <AdminCard
-          title={t('admin.erpIntegration', 'Integração ERP')}
-          description={t('admin.erpIntegrationDesc', 'Gerencie conexões com SAP, MIO e outros sistemas')}
-          icon={FiDatabase}
-          href="/admin/integracao-erp"
-          color="border-blue-600"
-        />
+        {/* Desempenho e Integrações */}
+        <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Desempenho e Integrações</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groupedMenuItems.performance.map((item, index) => (
+              <AdminCard key={index} {...item} title={t(item.title, item.title)} description={t(item.description, item.description)} />
+            ))}
+            {groupedMenuItems.integrations.map((item, index) => (
+              <AdminCard key={index} {...item} title={t(item.title, item.title)} description={t(item.description, item.description)} />
+            ))}
+          </div>
+        </section>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mt-6">

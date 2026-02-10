@@ -21,7 +21,8 @@ const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
             'compras': true,
             'chat': true,
             'wkradar': true,
-            'guia_offshore': true
+            'guia_offshore': true,
+            'epi': true
         }
     },
     MANAGER: {
@@ -39,7 +40,8 @@ const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
             'compras': true,
             'chat': true,
             'wkradar': true,
-            'guia_offshore': true
+            'guia_offshore': true,
+            'epi': true
         }
     },
     USER: {

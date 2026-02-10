@@ -34,11 +34,17 @@ const ICON_MAP: Record<string, string> = {
 
 // Helper to merge cards
 const mergeCards = (dbCards: any[], systemModules: typeof SYSTEM_MODULES) => {
-  const dbCardKeys = new Set(dbCards.map(c => c.module_key));
+  // Create a set of existing keys from DB cards (both id and module_key)
+  const existingKeys = new Set<string>();
+
+  dbCards.forEach(c => {
+    if (c.id) existingKeys.add(c.id);
+    if (c.module_key) existingKeys.add(c.module_key);
+  });
 
   // Create "Virtual" cards from System Modules that aren't in DB
   const virtualCards = systemModules
-    .filter(m => !dbCardKeys.has(m.id))
+    .filter(m => !existingKeys.has(m.id))
     .map(m => ({
       id: m.id, // Use key as ID
       title: m.label,

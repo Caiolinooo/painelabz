@@ -1,6 +1,16 @@
 # Changelog
 <br>
 
+## [4.8.1] - 2026-02-10
+
+### Fixed
+- **Recursão em RLS**: Resolvido problema crítico de recursão infinita nas políticas de Row Level Security da tabela `users_unified`.
+- **Segurança EPI**: Implementadas políticas de RLS mais robustas e seguras para a tabela `epi_sector_responsibles`.
+- **Fetch de Módulos Admin**: Corrigido erro 403 no carregamento do menu administrativo ao garantir o envio do token de autenticação.
+- **Deduplicação de Cards**: Corrigida lógica de filtragem que causava a exibição de cards duplicados vindos do sistema.
+- **Permissões de Módulo**: Expansão das permissões padrão para incluir corretamente o módulo de EPI.
+
+
 ## [4.8.0] - 2026-02-05
 
 ### Added
