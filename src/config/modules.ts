@@ -88,6 +88,13 @@ export const SYSTEM_MODULES: ModuleDefinition[] = [
         category: 'hr'
     },
     {
+        key: 'epi',
+        name: 'Gestão de EPIs',
+        description: 'Controle e entrega de EPIs',
+        defaultRoles: ['ADMIN', 'MANAGER'],
+        category: 'hr'
+    },
+    {
         key: 'admin',
         name: 'Administração',
         description: 'Configurações do sistema',

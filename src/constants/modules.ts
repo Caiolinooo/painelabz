@@ -19,6 +19,7 @@ export const SYSTEM_MODULES: SystemModule[] = [
     { id: 'reembolso', label: 'Reembolso', description: 'Solicitação e acompanhamento de reembolsos', category: 'hr', href: '/reembolso' },
     { id: 'kpi', label: 'KPIs', description: 'Indicadores de desempenho', category: 'hr', href: '/kpi' },
     { id: 'avaliacao', label: 'Avaliação de Desempenho', description: 'Ciclos de avaliação e feedback', category: 'hr', href: '/avaliacao' },
+    { id: 'epi', label: 'EPI', description: 'Equipamentos de Proteção Individual', category: 'hr', href: '/epi' },
 
     // Content & Knowledge
     { id: 'manual', label: 'Manual do Colaborador', description: 'Guia de normas e conduta', category: 'department', href: '/manual', visible: false },

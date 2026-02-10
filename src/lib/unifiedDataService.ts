@@ -7,6 +7,7 @@ import { IconType } from 'react-icons';
 import { FiGrid } from 'react-icons/fi';
 import { supabase } from './supabase';
 import { getIconComponent } from './iconMap';
+import { SYSTEM_MODULES } from '@/constants/modules';
 
 // Interface unificada para items (cards e menus)
 export interface UnifiedItem {
@@ -21,6 +22,11 @@ export interface UnifiedItem {
   external: boolean;
   enabled: boolean;
   order: number;
+  animation_config?: {
+    type: 'slide' | 'fade' | 'zoom';
+    duration: number;
+    delay: number;
+  };
 
   // Permissões
   adminOnly?: boolean;
@@ -134,7 +140,8 @@ class UnifiedDataService {
         order: 1,
         showInDashboard: false,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'core'
       },
       {
         id: 'manual',
@@ -150,7 +157,8 @@ class UnifiedDataService {
         order: 2,
         showInDashboard: false,
         showInMenu: false,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'department'
       },
       {
         id: 'procedimentos-logistica',
@@ -166,7 +174,8 @@ class UnifiedDataService {
         order: 3,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'department'
       },
       {
         id: 'reembolso',
@@ -182,7 +191,8 @@ class UnifiedDataService {
         order: 4,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'hr'
       },
       {
         id: 'avaliacao',
@@ -199,6 +209,7 @@ class UnifiedDataService {
         showInDashboard: true,
         showInMenu: true,
         showInAdminMenu: false,
+        category: 'hr',
         moduleKey: 'avaliacao'
       },
       {
@@ -215,7 +226,8 @@ class UnifiedDataService {
         order: 6,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'core'
       },
       {
         id: 'contatos',
@@ -231,7 +243,8 @@ class UnifiedDataService {
         order: 7,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'department'
       },
       {
         id: 'ponto',
@@ -247,7 +260,8 @@ class UnifiedDataService {
         order: 8,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'hr'
       },
       {
         id: 'contracheque',
@@ -263,7 +277,8 @@ class UnifiedDataService {
         order: 9,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'hr'
       },
       {
         id: 'academy',
@@ -279,7 +294,8 @@ class UnifiedDataService {
         order: 10,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'content'
       },
       {
         id: 'noticias',
@@ -295,7 +311,8 @@ class UnifiedDataService {
         order: 11,
         showInDashboard: true,
         showInMenu: true,
-        showInAdminMenu: false
+        showInAdminMenu: false,
+        category: 'core'
       }
     ];
   }
@@ -312,7 +329,7 @@ class UnifiedDataService {
     userId?: string;
     userSectorId?: string;
   }): Promise<UnifiedItem[]> {
-    let items = await this.loadItems();
+    let items = await this.loadItems(filters?.userSectorId);
 
     // Buscar permissões do setor se necessário
     let allowedSectorModules: string[] = [];
@@ -353,45 +370,13 @@ class UnifiedDataService {
           return false;
         }
 
-        // Filtro por Setor (Novo)
-        // Se o usuário tem um setor, e este item NÃO está na lista de permitidos do setor
-        // Exceção: items que são 'public' ou 'common' (sem moduleKey definida implicitamente assumimos que são restritos se tiverem role)
-        // Mas para simplificar: se filters.userSectorId existe, verificamos.
-        // Itens sem 'moduleKey' (como dashboard) geralmente são liberados, ou controlados apenas por role.
-        // Vamos assumir que se o item tem um ID que bate com os módulos cadastrados, ele é restrito.
-        // Itens como 'dashboard' ou 'profile' podem não estar na tabela de módulos.
-
-        // Lógica: Se o item deve ser controlado por setor (tem ID mapeável em sector_modules)
-        // E o usuário tem setor, ENTÃO deve estar na lista allowedSectorModules.
-        // Se o item não é "controlável" (ex: dashboard), passamos.
-
-        // Quais itens são controláveis? 
-        // Vamos assumir que todos os itens que aparecem no menu, exceto 'dashboard', são controláveis se o admin assim configurar.
-        // Se allowedSectorModules está vazio, pode ser que o setor não tenha AINDA configuração, ou não tenha acesso a nada.
-        // Vamos ser permissivos por enquanto para itens hardcoded básicos, mas restritivos para módulos de negócio.
-
+        // Filtro por Setor
         if (filters && filters.userSectorId && allowedSectorModules.length > 0) {
-          // Se o item tem um ID que está na lista de permitidos, OK.
-          // Se NÃO está, verificamos se é um item "core" que sempre deve aparecer?
-          // Por enquanto, vamos implementar a lógica estrita:
-          // Se o setor tem módulos definidos, o usuário só vê esses módulos (+ dashboard que é padrão).
-
-          // ID 'dashboard' sempre permitido
           if (item.id !== 'dashboard' && !allowedSectorModules.includes(item.id)) {
-            // Se o setor tem definições explicítas, e esse item não está lá, negamos.
-            // Mas e se o setor não tiver NENHUM módulo definido? (Length 0). 
-            // Aí entra no if acima e não entra aqui.
             return false;
           }
         } else if (filters && filters.userSectorId && allowedSectorModules.length === 0) {
-          // Setor sem módulos definidos.
-          // Bloquear tudo menos Dashboard e itens 'safe'?
-          // Para evitar bloqueio total acidental, talvez manter comportamento atual (liberado)
-          // OU bloquear tudo para forçar configuração.
-          // Decisão: Bloquear tudo exceto Dashboard para setores configurados mas vazios?
-          // Melhor: Se não tem nada na tabela sector_modules para esse setor, assumimos que é um setor "novo" ou "legado" e não aplicamos filtro de setor.
-          // Isso evita quebrar compatibilidade imediata.
-          // Então não fazemos nada aqui.
+          // Mantendo permissividade se não houver módulos definidos
         }
 
         return item.enabled && item.href && item.href.trim() !== '';
@@ -405,8 +390,8 @@ class UnifiedDataService {
   /**
    * Carrega items do cache ou fonte de dados
    */
-  private async loadItems(): Promise<UnifiedItem[]> {
-    const cacheKey = 'unified-items';
+  private async loadItems(sectorId?: string): Promise<UnifiedItem[]> {
+    const cacheKey = `unified-items-${sectorId || 'global'}`;
     const cached = this.cache.get(cacheKey);
 
     // Verificar cache
@@ -419,7 +404,7 @@ class UnifiedDataService {
     try {
       // Tentar carregar do Supabase se habilitado
       if (this.config.enableSupabaseSync) {
-        items = await this.loadFromSupabase();
+        items = await this.loadFromSupabase(sectorId);
       }
 
       // Fallback para hardcoded se necessário
@@ -455,18 +440,17 @@ class UnifiedDataService {
 
   /**
    * Carrega items do Supabase (tabela cards - mesma que admin atualiza)
+   * Agora suporta Overrides por Setor
    */
-  private async loadFromSupabase(): Promise<UnifiedItem[]> {
+  private async loadFromSupabase(sectorId?: string): Promise<UnifiedItem[]> {
     try {
-      console.log('🔄 Loading items from Supabase cards table...');
-
       // Usar o singleton do Supabase já importado no topo do arquivo
       if (!supabase) {
         console.warn('🔄 Supabase client not available, using fallback');
         return [];
       }
 
-      // Buscar cards da tabela 'cards' (mesma que o admin atualiza)
+      // 1. Buscar cards base
       const { data: cards, error } = await supabase
         .from('cards')
         .select('*')
@@ -483,59 +467,72 @@ class UnifiedDataService {
         return [];
       }
 
+      let overrides: any[] = [];
+      if (sectorId) {
+        const { data: overridesData } = await supabase
+          .from('card_overrides')
+          .select('*')
+          .eq('sector_id', sectorId);
+        overrides = overridesData || [];
+      }
+
       if (!cards || cards.length === 0) {
         console.log('🔄 No items found in Supabase cards, using fallback');
         return [];
       }
 
-      // Converter para UnifiedItem
+      // Converter para UnifiedItem aplicando overrides
       const items: UnifiedItem[] = cards.map((card: any) => {
-        // Tentar encontrar item hardcoded correspondente para usar ícone correto
+        // Tentar encontrar override
+        const override = overrides.find(o => o.card_id === card.id);
+
+        // Tentar encontrar item hardcoded correspondente para fallback
         const hardcodedItem = this.hardcodedItems.find(h => h.id === card.id);
 
-        // Determinar ícone e nome do ícone
-        let iconName = card.iconName || card.icon || 'FiGrid';
+        // Determinar valores (Override > Card > Hardcoded)
+        const finalTitle = override?.custom_label || card.title;
+        const finalIconName = override?.custom_icon || card.icon_name || card.iconName || card.icon || 'FiGrid';
+        const finalOrder = override?.order ?? card.order ?? 999;
+        const finalEnabled = override?.enabled ?? (card.enabled !== false);
+        const animationConfig = card.animation_config || {};
+
         let icon = FiGrid;
 
-        if (hardcodedItem) {
-          // Se o ícone do banco for o padrão ou vazio, usar o do hardcoded
-          if (!card.iconName && !card.icon) {
-            iconName = hardcodedItem.iconName;
-            icon = hardcodedItem.icon;
-          } else {
-            icon = getIconComponent(iconName);
-          }
+        // Resolver componente de ícone
+        if (hardcodedItem && !card.icon_name && !card.iconName && !card.icon && !override?.custom_icon) {
+          icon = hardcodedItem.icon;
         } else {
-          icon = getIconComponent(iconName);
+          icon = getIconComponent(finalIconName);
         }
 
         return {
           id: card.id,
-          title: card.title,
-          title_pt: card.title,
-          title_en: card.titleEn || card.title,
+          title: finalTitle, // Se override, usa custom_label, senao default
+          title_pt: finalTitle,
+          title_en: card.title_en || card.titleEn || finalTitle,
           description: card.description || '',
           href: card.href,
           icon: icon,
-          iconName: iconName,
+          iconName: finalIconName,
           color: card.color,
-          hoverColor: card.hoverColor,
+          hoverColor: card.hover_color || card.hoverColor,
           external: card.external || false,
-          enabled: card.enabled !== false,
-          order: card.order || 999,
-          adminOnly: card.adminOnly || false,
-          managerOnly: card.managerOnly || false,
-          allowedRoles: card.allowedRoles || [],
-          allowedUserIds: card.allowedUserIds || [],
-          moduleKey: card.moduleKey,
+          enabled: finalEnabled,
+          order: finalOrder,
+          adminOnly: card.admin_only || card.adminOnly || false,
+          managerOnly: card.manager_only || card.managerOnly || false,
+          allowedRoles: card.allowed_roles || card.allowedRoles || [],
+          allowedUserIds: card.allowed_user_ids || card.allowedUserIds || [],
+          moduleKey: card.module_key || card.moduleKey,
           showInDashboard: true,
-          showInMenu: !card.adminOnly, // Mostrar no menu se não for adminOnly
-          showInAdminMenu: card.adminOnly || false,
+          showInMenu: !(card.admin_only || card.adminOnly),
+          showInAdminMenu: card.admin_only || card.adminOnly || false,
+          category: card.category || SYSTEM_MODULES.find(m => m.id === card.id)?.category,
+          animation_config: animationConfig, // Pass through config
           source: 'supabase' as const
         };
       });
 
-      console.log(`🔄 Loaded ${items.length} items from Supabase cards table`);
       return items;
 
     } catch (error) {
@@ -559,6 +556,33 @@ class UnifiedDataService {
   clearCache(): void {
     this.cache.clear();
     console.log('🔄 Unified data cache cleared');
+  }
+
+  /**
+   * Adiciona ou atualiza um item de Override
+   */
+  async upsertOverride(overrideData: {
+    card_id: string;
+    sector_id: string;
+    custom_label?: string;
+    custom_icon?: string;
+    enabled?: boolean;
+    order?: number;
+  }): Promise<void> {
+    if (!this.config.enableSupabaseSync) return;
+
+    try {
+      const { error } = await supabase
+        .from('card_overrides')
+        .upsert(overrideData, { onConflict: 'card_id, sector_id' });
+
+      if (error) throw error;
+
+      this.clearCache();
+    } catch (error) {
+      console.error('Error upserting override:', error);
+      throw error;
+    }
   }
 
   /**
