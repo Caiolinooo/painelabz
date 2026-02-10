@@ -11,6 +11,9 @@ interface I18nContextType {
   locales: Record<Locale, any>;
   availableLocales: Locale[];
   version: number;
+  tAsync: (key: string, defaultValue?: string) => Promise<string>;
+  autoTranslationEnabled: boolean;
+  setAutoTranslationEnabled: (enabled: boolean) => void;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
@@ -28,6 +31,9 @@ export function I18nProvider({ children }: I18nProviderProps) {
   // Override locales with state to support dynamic updates
   const [dynamicLocales, setDynamicLocales] = useState(locales);
   const { getToken, user } = useSupabaseAuth(); // Need auth for sync
+
+  // Auto-translation state
+  const [autoTranslationEnabled, setAutoTranslationEnabled] = useState(true);
 
   // Set mounted state and initialize locale on client side
   useEffect(() => {
@@ -191,6 +197,12 @@ export function I18nProvider({ children }: I18nProviderProps) {
     return getDynamicTranslation(locale, key, defaultValue, params);
   };
 
+  // Async translation function (wrapper for now, can be real async later)
+  const tAsync = async (key: string, defaultValue?: string): Promise<string> => {
+    // Simulating async behavior or allow for future API calls
+    return Promise.resolve(t(key, defaultValue));
+  };
+
   // Get available locales
   const availableLocales = Object.keys(locales) as Locale[];
 
@@ -203,6 +215,9 @@ export function I18nProvider({ children }: I18nProviderProps) {
         locales: dynamicLocales,
         availableLocales,
         version,
+        tAsync,
+        autoTranslationEnabled,
+        setAutoTranslationEnabled
       }}
     >
       {mounted ? children : <div style={{ display: 'none' }} />}
