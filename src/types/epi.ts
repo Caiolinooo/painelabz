@@ -187,6 +187,7 @@ export interface EPIStock {
     epi_type_id: string;
     current_quantity: number;
     minimum_quantity: number;
+    unit: string; // unid., Pacote, Pacote/100
     location: string;
     last_restocked_at?: string;
     created_at: string;
