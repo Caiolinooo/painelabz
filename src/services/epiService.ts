@@ -53,7 +53,8 @@ export async function getAllEPIRegistrations(status?: string): Promise<EPIWithUs
                 name,
                 email,
                 sector_id,
-                position
+                position,
+                department
             )
         `)
         .order('created_at', { ascending: false });
@@ -79,15 +80,29 @@ export async function getAllEPIRegistrations(status?: string): Promise<EPIWithUs
         return acc;
     }, {});
 
+    // Fetch all sectors to resolve sector_id → name
+    const { data: sectors } = await supabaseAdmin
+        .from('sectors')
+        .select('id, name');
+
+    const sectorsMap = (sectors || []).reduce((acc: any, s: any) => {
+        acc[s.id] = s.name;
+        return acc;
+    }, {});
+
     // Transform data to flatten user info
-    return (data || []).map((item: any) => ({
-        ...item,
-        user_name: item.user?.name,
-        user_email: item.user?.email,
-        user_sector: item.user?.sector_id,
-        user_position: item.user?.position,
-        equipment_ca: typesMap[item.equipment_type] || ''
-    }));
+    return (data || []).map((item: any) => {
+        const sectorId = item.user?.sector_id;
+        const sectorName = sectorId ? sectorsMap[sectorId] : null;
+        return {
+            ...item,
+            user_name: item.user?.name,
+            user_email: item.user?.email,
+            user_sector: sectorName || item.user?.department || '',
+            user_position: item.user?.position || '',
+            equipment_ca: typesMap[item.equipment_type] || ''
+        };
+    });
 }
 
 /**
