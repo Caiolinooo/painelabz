@@ -1,6 +1,28 @@
 # Changelog
 <br>
 
+## [4.11.0] - 2026-02-13
+
+### Added
+- **Importação de Estoque por Planilha**: Upload de arquivo `.xlsx` no formato AN-CPR-003 para importar/atualizar estoque de EPIs.
+  - Novo endpoint `POST /api/epi/stock/import` com parse inteligente de cabeçalhos.
+  - Criação automática de novos `epi_types` para itens não cadastrados, com CA e validade.
+  - Registro de movimentações de ajuste para cada alteração de quantidade.
+  - Relatório detalhado de resultado: criados, atualizados, sem alteração, erros.
+- **Exportação de Relatório de Estoque**: Download de planilha `.xlsx` no formato AN-CPR-003.
+  - Novo endpoint `GET /api/epi/stock/export` com dados agrupados por categoria.
+  - Cabeçalho oficial ABZ Group com códigos de documento (COD, Proc. Ref, REV, PAG).
+- **Coluna `unit` na tabela `epi_stock`**: Suporte a diferentes unidades (unid., Pacote, Pacote/100).
+
+### Improved
+- **Ficha de EPI (AN-HSE-005)**: Reescrita completa do PDF para formato oficial ABZ Group.
+  - Layout paisagem A4 com cabeçalho amarelo e códigos AN-HSE-005 / PR-HSE-04.
+  - Bloco de informações do funcionário: Nome Completo, Cargo, Projeto.
+  - Texto jurídico completo do Termo de Responsabilidade e Ciência (NR-6).
+  - Tabela de entregas com 6 colunas: Data, Qtd, Material/Fabricante, Assinatura, CA, Validade CA.
+  - Suporte a assinatura digital embarcada no PDF.
+  - Linhas extras em branco para preenchimento manual.
+
 ## [4.10.0] - 2026-02-12
 
 ### Added
