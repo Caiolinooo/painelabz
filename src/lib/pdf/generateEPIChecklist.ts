@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { EPIWithUser } from '@/types/epi';
+import { EPIWithUser, getCAValidityLevel, CA_VALIDITY_LABELS } from '@/types/epi';
 
 export async function generateEPIChecklist(
     registrations: EPIWithUser[],
@@ -35,23 +35,47 @@ export async function generateEPIChecklist(
     doc.text(disclaimerObj, 14, 70);
 
     // --- Table ---
-    const tableData = registrations.map(reg => [
-        reg.equipment_type,
-        reg.quantity,
-        reg.reason,
-        reg.equipment_ca || 'N/A', // CA Number
-        new Date(reg.delivered_at || new Date()).toLocaleDateString('pt-BR'),
-        'Recebido'
-    ]);
+    const hasExpiredCA = registrations.some(reg => getCAValidityLevel(reg.validity_date, (reg as any).ca_status) === 'expired');
+
+    const tableData = registrations.map(reg => {
+        const caLevel = getCAValidityLevel(reg.validity_date, (reg as any).ca_status);
+        return [
+            reg.equipment_type,
+            reg.quantity,
+            reg.reason,
+            reg.equipment_ca || 'N/A',
+            reg.validity_date ? new Date(reg.validity_date).toLocaleDateString('pt-BR') : '-',
+            CA_VALIDITY_LABELS[caLevel],
+            new Date(reg.delivered_at || new Date()).toLocaleDateString('pt-BR'),
+            'Recebido'
+        ];
+    });
 
     autoTable(doc, {
         startY: 95,
-        head: [['Equipamento', 'Qtd', 'Motivo', 'CA', 'Data Entrega', 'Situação']],
+        head: [['Equipamento', 'Qtd', 'Motivo', 'CA', 'Validade', 'Status CA', 'Data Entrega', 'Situação']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: [22, 163, 74] }, // Green-600
-        styles: { fontSize: 10 }
+        styles: { fontSize: 9 },
+        didParseCell: function (data: any) {
+            if (data.section === 'body' && data.column.index === 5) {
+                const val = data.cell.raw;
+                if (val === 'CA Vencido') data.cell.styles.textColor = [220, 38, 38];
+                else if (val === 'CA Próximo de Vencer') data.cell.styles.textColor = [202, 138, 4];
+                else if (val === 'CA Válido') data.cell.styles.textColor = [22, 163, 74];
+            }
+        }
     });
+
+    // Note about expired CAs
+    if (hasExpiredCA) {
+        const noteY = (doc as any).lastAutoTable.finalY + 5;
+        doc.setFontSize(8);
+        doc.setTextColor(220, 38, 38);
+        doc.text('⚠ Atenção: Um ou mais EPIs possuem CA vencido. Verifique a necessidade de substituição.', 14, noteY);
+        doc.setTextColor(0, 0, 0);
+    }
 
     // --- Signature ---
     const finalY = (doc as any).lastAutoTable.finalY + 20;

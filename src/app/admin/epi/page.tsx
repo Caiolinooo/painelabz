@@ -2,17 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiShield, FiCheck, FiX, FiEye, FiPlus, FiX as FiClose, FiFileText, FiSettings, FiEdit2 } from 'react-icons/fi';
+import { FiShield, FiCheck, FiX, FiEye, FiPlus, FiX as FiClose, FiFileText, FiSettings, FiEdit2, FiRefreshCw } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import EPIStatusBadge from '@/components/epi/EPIStatusBadge';
-import { EPIRegistration, EPIType, EPIWithUser } from '@/types/epi';
+import { EPIRegistration, EPIType, EPIWithUser, getCAValidityLevel, CA_VALIDITY_COLORS, CA_VALIDITY_LABELS } from '@/types/epi';
+import type { CALookupResult } from '@/types/epi';
 import { generateEPIChecklist } from '@/lib/pdf/generateEPIChecklist';
 import { generateEPIReport } from '@/lib/pdf/generateEPIReport';
 import { toast } from 'react-hot-toast';
 import KitManagement from '@/components/admin/EPI/KitManagement';
+import StockManagement from '@/components/admin/EPI/StockManagement';
+import CALookupField from '@/components/epi/CALookupField';
 
-type TabType = 'requests' | 'types' | 'kits';
+type TabType = 'requests' | 'types' | 'kits' | 'stock';
 
 export default function AdminEPIPage() {
     const { profile, hasAccess } = useSupabaseAuth();
@@ -197,6 +200,31 @@ export default function AdminEPIPage() {
                     </div>
                     <div className="flex gap-2">
                         <button
+                            onClick={async () => {
+                                try {
+                                    toast.loading('Sincronizando base de CA...', { id: 'ca-sync' });
+                                    const res = await fetch('/api/epi/ca-lookup', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ action: 'sync' })
+                                    });
+                                    const json = await res.json();
+                                    if (res.ok) {
+                                        toast.success(json.message || 'Base de CA sincronizada!', { id: 'ca-sync' });
+                                    } else {
+                                        toast.error(json.error || 'Erro ao sincronizar', { id: 'ca-sync' });
+                                    }
+                                } catch {
+                                    toast.error('Erro ao sincronizar base de CA', { id: 'ca-sync' });
+                                }
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                            title="Sincronizar base de CA do MTE"
+                        >
+                            <FiRefreshCw className="w-4 h-4" />
+                            Sync CA
+                        </button>
+                        <button
                             onClick={() => router.push('/admin/epi/settings')}
                             className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                         >
@@ -242,6 +270,7 @@ export default function AdminEPIPage() {
                             <button onClick={() => setActiveTab('requests')} className={`px-6 py-4 text-sm font-medium border-b-2 ${activeTab === 'requests' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500'}`}>Solicitações</button>
                             <button onClick={() => setActiveTab('types')} className={`px-6 py-4 text-sm font-medium border-b-2 ${activeTab === 'types' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500'}`}>Tipos de EPI</button>
                             <button onClick={() => setActiveTab('kits')} className={`px-6 py-4 text-sm font-medium border-b-2 ${activeTab === 'kits' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500'}`}>Kits de EPI</button>
+                            <button onClick={() => setActiveTab('stock')} className={`px-6 py-4 text-sm font-medium border-b-2 ${activeTab === 'stock' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500'}`}>Estoque</button>
                         </nav>
                     </div>
 
@@ -254,8 +283,10 @@ export default function AdminEPIPage() {
                             <RequestsTable registrations={registrations} onSelect={handleOpenRequestModal} />
                         ) : activeTab === 'types' ? (
                             <TypesGrid types={epiTypes} onCreate={handleCreateType} onDelete={handleDeleteType} showModal={showTypeModal} setShowModal={setShowTypeModal} />
-                        ) : (
+                        ) : activeTab === 'kits' ? (
                             <KitManagement />
+                        ) : (
+                            <StockManagement />
                         )}
                     </div>
                 </div>
@@ -278,13 +309,16 @@ export default function AdminEPIPage() {
                                     <h3 className="text-sm font-medium text-gray-900 mb-3">Dados da Aprovação</h3>
 
                                     <div className="mb-3">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">CA (Certificado de Aprovação)</label>
-                                        <input
-                                            type="text"
+                                        <CALookupField
                                             value={equipmentCA}
-                                            onChange={(e) => setEquipmentCA(e.target.value)}
-                                            className="w-full border rounded-lg px-3 py-2"
-                                            placeholder="Padrão do tipo"
+                                            onChange={setEquipmentCA}
+                                            onValidityChange={(validity) => {
+                                                if (validity) {
+                                                    const dateStr = new Date(validity).toISOString().split('T')[0];
+                                                    setValidDate(dateStr);
+                                                }
+                                            }}
+                                            label="CA (Certificado de Aprovação)"
                                         />
                                     </div>
 
@@ -342,6 +376,7 @@ function RequestsTable({ registrations, onSelect }: { registrations: EPIWithUser
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Equipamento</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CA</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Validade</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                     </tr>
@@ -356,6 +391,13 @@ function RequestsTable({ registrations, onSelect }: { registrations: EPIWithUser
                             <td className="px-4 py-3 text-sm text-gray-900">{r.equipment_type} ({r.quantity})</td>
                             <td className="px-4 py-3"><EPIStatusBadge status={r.status} /></td>
                             <td className="px-4 py-3 text-sm text-gray-500">{r.equipment_ca || '-'}</td>
+                            <td className="px-4 py-3">
+                                {r.validity_date ? (
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${CA_VALIDITY_COLORS[getCAValidityLevel(r.validity_date, r.ca_status)]}`}>
+                                        {new Date(r.validity_date).toLocaleDateString('pt-BR')}
+                                    </span>
+                                ) : '-'}
+                            </td>
                             <td className="px-4 py-3 text-sm text-gray-500">{new Date(r.created_at).toLocaleDateString('pt-BR')}</td>
                             <td className="px-4 py-3 text-right">
                                 <button onClick={() => onSelect(r)} className="text-blue-600 hover:text-blue-900 mr-2" title={r.status === 'pending' ? 'Avaliar' : 'Editar'}><FiEdit2 className="w-4 h-4" /></button>
@@ -403,7 +445,17 @@ function TypesGrid({ types, onCreate, onDelete, showModal, setShowModal }: { typ
                         <div key={t.id} className="border rounded-lg p-4 relative">
                             <h3 className="font-bold">{t.name}</h3>
                             <p className="text-sm text-gray-500">{t.category}</p>
-                            {t.ca_number && <p className="text-xs text-gray-500 mt-1">CA: {t.ca_number}</p>}
+                            {t.ca_number && (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-gray-500">CA: {t.ca_number}</span>
+                                    {t.ca_validity_date && (
+                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${CA_VALIDITY_COLORS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}`}>
+                                            {CA_VALIDITY_LABELS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                            {t.ca_manufacturer && <p className="text-xs text-gray-400 mt-0.5">{t.ca_manufacturer}</p>}
                             <button onClick={() => onDelete(t.id)} className="absolute top-4 right-4 text-red-500"><FiClose /></button>
                         </div>
                     ))}
@@ -419,8 +471,11 @@ function TypesGrid({ types, onCreate, onDelete, showModal, setShowModal }: { typ
                                 <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full border rounded-lg px-3 py-2" required />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">CA (Certificado de Aprovação)</label>
-                                <input type="text" value={formData.ca_number} onChange={(e) => setFormData({ ...formData, ca_number: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                                <CALookupField
+                                    value={formData.ca_number}
+                                    onChange={(val) => setFormData({ ...formData, ca_number: val })}
+                                    label="CA (Certificado de Aprovação)"
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>

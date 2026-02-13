@@ -70,16 +70,17 @@ export function getTranslatedMenu(t: (key: string, defaultValue?: string) => str
       order: 3,
       adminOnly: false
     },
-    {
-      id: 'politicas',
-      title: t('menu.politicas'),
-      href: '/politicas',
-      icon: FiFileText,
-      external: false,
-      enabled: true,
-      order: 4,
-      adminOnly: false
-    },
+    // Políticas removido do menu lateral - conteúdo acessível via Biblioteca
+    // {
+    //   id: 'politicas',
+    //   title: t('menu.politicas'),
+    //   href: '/politicas',
+    //   icon: FiFileText,
+    //   external: false,
+    //   enabled: false,
+    //   order: 4,
+    //   adminOnly: false
+    // },
     {
       id: 'procedimentos',
       title: t('menu.procedimentosGerais'),
@@ -223,16 +224,17 @@ const menuItems: MenuItem[] = [
     order: 3,
     adminOnly: false
   },
-  {
-    id: 'politicas',
-    href: '/politicas',
-    label: 'Políticas',
-    icon: FiFileText,
-    external: false,
-    enabled: true,
-    order: 4,
-    adminOnly: false
-  },
+  // Políticas removido do menu lateral - conteúdo acessível via Biblioteca
+  // {
+  //   id: 'politicas',
+  //   href: '/politicas',
+  //   label: 'Políticas',
+  //   icon: FiFileText,
+  //   external: false,
+  //   enabled: false,
+  //   order: 4,
+  //   adminOnly: false
+  // },
   {
     id: 'procedimentos',
     href: '/procedimentos',

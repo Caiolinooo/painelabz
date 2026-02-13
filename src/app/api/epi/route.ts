@@ -195,7 +195,7 @@ export async function PUT(request: NextRequest) {
         }
 
         // Update the registration
-        const registration = await updateEPIRegistration(body.id, body, userId);
+        const registration = await updateEPIRegistration(body.id, body);
 
         return NextResponse.json({
             success: true,

@@ -38,6 +38,7 @@ const nextConfig = {
   // Configurações experimentais
   experimental: {
     optimizeCss: true,
+    serverComponentsExternalPackages: ['@marsaud/smb2', 'ntlm'],
   },
 
   // Configurações básicas de segurança

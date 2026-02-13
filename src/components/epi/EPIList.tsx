@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { FiTrash2, FiEye } from 'react-icons/fi';
-import { EPIRegistration, EPI_STATUS_LABELS, EPI_STATUS_COLORS } from '@/types/epi';
+import { EPIRegistration, EPI_STATUS_LABELS, EPI_STATUS_COLORS, getCAValidityLevel, CA_VALIDITY_COLORS, CA_VALIDITY_LABELS } from '@/types/epi';
 import EPIStatusBadge from './EPIStatusBadge';
 
 interface EPIListProps {
@@ -77,11 +77,13 @@ export default function EPIList({ registrations, onCancel, showActions = true, s
                                 <div className="text-sm text-gray-900">{registration.equipment_ca || '-'}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-900">
-                                    {registration.validity_date
-                                        ? new Date(registration.validity_date).toLocaleDateString('pt-BR')
-                                        : '-'}
-                                </div>
+                                {registration.validity_date ? (
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${CA_VALIDITY_COLORS[getCAValidityLevel(registration.validity_date, registration.ca_status)]}`}>
+                                        {new Date(registration.validity_date).toLocaleDateString('pt-BR')}
+                                    </span>
+                                ) : (
+                                    <span className="text-sm text-gray-400">-</span>
+                                )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <EPIStatusBadge status={registration.status} />
