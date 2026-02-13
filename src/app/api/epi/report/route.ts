@@ -1,16 +1,32 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { getGeneralEPIReportData } from '@/services/epiService';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 
-export async function POST(req: Request) {
+export const dynamic = 'force-dynamic';
+
+export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session) {
+        // Authentication (same pattern as /api/epi)
+        const authHeader = request.headers.get('authorization');
+        let token = extractTokenFromHeader(authHeader || undefined);
+
+        if (!token) {
+            const tokenCookie = request.cookies.get('abzToken') || request.cookies.get('token');
+            if (tokenCookie) {
+                token = tokenCookie.value;
+            }
+        }
+
+        if (!token) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await req.json();
+        const payload = verifyToken(token);
+        if (!payload || !payload.userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
         const { startDate, endDate, status, onlyRequests } = body;
 
         const data = await getGeneralEPIReportData({

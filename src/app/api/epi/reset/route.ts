@@ -1,21 +1,37 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { resetEPIModuleData } from '@/services/epiService';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth';
+
+export const dynamic = 'force-dynamic';
 
 // Only admins should be able to reset data
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        // Authentication (same pattern as /api/epi)
+        const authHeader = request.headers.get('authorization');
+        let token = extractTokenFromHeader(authHeader || undefined);
 
-        // Basic check - improve with role check if available in session
-        if (!session || !session.user) {
+        if (!token) {
+            const tokenCookie = request.cookies.get('abzToken') || request.cookies.get('token');
+            if (tokenCookie) {
+                token = tokenCookie.value;
+            }
+        }
+
+        if (!token) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Ideally check for 'admin' role here
-        // const userRole = session.user.role; 
-        // if (userRole !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        const payload = verifyToken(token);
+        if (!payload || !payload.userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Check for admin role
+        const userRole = payload.role || 'USER';
+        if (userRole !== 'ADMIN') {
+            return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+        }
 
         await resetEPIModuleData();
 
