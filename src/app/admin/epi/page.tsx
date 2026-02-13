@@ -9,11 +9,11 @@ import EPIStatusBadge from '@/components/epi/EPIStatusBadge';
 import { EPIRegistration, EPIType, EPIWithUser, getCAValidityLevel, CA_VALIDITY_COLORS, CA_VALIDITY_LABELS } from '@/types/epi';
 import type { CALookupResult } from '@/types/epi';
 import { generateEPIChecklist } from '@/lib/pdf/generateEPIChecklist';
-import { generateEPIReport } from '@/lib/pdf/generateEPIReport';
 import { toast } from 'react-hot-toast';
 import KitManagement from '@/components/admin/EPI/KitManagement';
 import StockManagement from '@/components/admin/EPI/StockManagement';
 import CALookupField from '@/components/epi/CALookupField';
+import { EPIReportModal } from '@/components/admin/EPI/EPIReportModal';
 
 type TabType = 'requests' | 'types' | 'kits' | 'stock';
 
@@ -27,6 +27,7 @@ export default function AdminEPIPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<EPIWithUser | null>(null);
     const [showTypeModal, setShowTypeModal] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
 
     // New states for modal inputs
     const [validDate, setValidDate] = useState('');
@@ -173,16 +174,6 @@ export default function AdminEPIPage() {
         }
     };
 
-    const handleGenerateReport = () => {
-        try {
-            generateEPIReport(registrations, 'Relatório Geral de EPIs');
-            toast.success('Relatório gerado com sucesso!');
-        } catch (err) {
-            console.error(err);
-            toast.error('Erro ao gerar relatório.');
-        }
-    };
-
     if (!isAdmin) return null;
 
     return (
@@ -231,7 +222,7 @@ export default function AdminEPIPage() {
                             <FiSettings className="w-4 h-4" />
                             Configurações
                         </button>
-                        <button onClick={handleGenerateReport} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <button onClick={() => setShowReportModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                             <FiFileText className="w-4 h-4" /> Relatório Geral
                         </button>
                         <button onClick={() => router.push('/epi')} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg">
@@ -290,6 +281,8 @@ export default function AdminEPIPage() {
                         )}
                     </div>
                 </div>
+
+                <EPIReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} />
 
                 {selectedRequest && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -503,55 +496,4 @@ function TypesGrid({ types, onCreate, onDelete, showModal, setShowModal }: { typ
     );
 }
 
-function RequestModal({
-    request,
-    onClose,
-    onUpdateStatus
-}: {
-    request: EPIWithUser;
-    onClose: () => void;
-    onUpdateStatus: (id: string, status: string, validityDate?: string) => void;
-}) {
-    const [validityDate, setValidityDate] = useState('');
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-lg w-full p-6">
-                <h2 className="text-xl font-semibold mb-4">Detalhes da Solicitação</h2>
-                <div className="space-y-3">
-                    <div><label className="text-sm text-gray-500">Colaborador</label><p className="font-medium">{request.user_name || 'N/A'}</p></div>
-                    <div><label className="text-sm text-gray-500">Equipamento</label><p className="font-medium">{request.equipment_type} (Qtd: {request.quantity})</p></div>
-                    <div><label className="text-sm text-gray-500">Motivo</label><p className="text-gray-700">{request.reason}</p></div>
-                    {request.status === 'pending' && (
-                        <div>
-                            <label className="block text-sm text-gray-500 mb-1">Data de Validade (Opcional)</label>
-                            <input
-                                type="date"
-                                className="w-full border rounded-lg px-3 py-2"
-                                value={validityDate}
-                                onChange={(e) => setValidityDate(e.target.value)}
-                            />
-                            <p className="text-xs text-gray-400 mt-1">Defina a validade se aplicável para este CA.</p>
-                        </div>
-                    )}
-                    {(request.validity_date) && (
-                        <div><label className="text-sm text-gray-500">Validade</label><p className="font-medium">{new Date(request.validity_date).toLocaleDateString('pt-BR')}</p></div>
-                    )}
-                    <div><label className="text-sm text-gray-500">Status</label><div className="mt-1"><EPIStatusBadge status={request.status} /></div></div>
-                </div>
-                <div className="flex justify-end gap-3 mt-6">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg">Fechar</button>
-                    {request.status === 'pending' && (
-                        <>
-                            <button onClick={() => onUpdateStatus(request.id, 'rejected')} className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600">Reprovar</button>
-                            <button onClick={() => onUpdateStatus(request.id, 'approved', validityDate)} className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600">Aprovar</button>
-                        </>
-                    )}
-                    {request.status === 'approved' && (
-                        <button onClick={() => onUpdateStatus(request.id, 'delivered')} className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600">Marcar Entregue</button>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
+// Keeping any other auxiliary components if they existed at the bottom of the file

@@ -1,6 +1,15 @@
 # Changelog
 <br>
 
+## [4.12.0] - 2026-02-13
+
+### Added
+- **Relatório Geral de EPIs**: Novo fluxo para geração de relatórios PDF com filtros avançados (Data, Status, Agrupamento por Usuário).
+- **Área de Perigo (Admin)**: Nova funcionalidade para resetar dados de EPIs (apenas ambiente de teste/dev).
+
+### Fixed
+- **Build Vercel**: Corrigido erro de construção substituindo a dependência `sonner` (não instalada) por `react-toastify` no componente `EPIReportModal`.
+
 ## [4.11.0] - 2026-02-13
 
 ### Added
