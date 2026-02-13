@@ -105,17 +105,19 @@ export async function generateFichaEPI(data: FichaData) {
     const cargoBoxW = contentWidth * 0.25;
     const projBoxW = contentWidth * 0.25;
 
-    // Header row
-    doc.setFillColor(220, 220, 220);
+    // Header row (dark golden background like the original template)
+    doc.setFillColor(204, 153, 0);
     doc.rect(margin, empY, nameBoxW, 6, 'FD');
     doc.rect(margin + nameBoxW, empY, cargoBoxW, 6, 'FD');
     doc.rect(margin + nameBoxW + cargoBoxW, empY, projBoxW, 6, 'FD');
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
     doc.text('NOME COMPLETO DO FUNCIONÁRIO:', margin + 2, empY + 4);
     doc.text('CARGO:', margin + nameBoxW + 2, empY + 4);
     doc.text('PROJETO:', margin + nameBoxW + cargoBoxW + 2, empY + 4);
+    doc.setTextColor(0, 0, 0);
 
     // Data row
     const empDataY = empY + 6;
@@ -179,9 +181,9 @@ export async function generateFichaEPI(data: FichaData) {
         return [
             deliveryDate,
             reg.quantity || 1,
-            `${reg.equipment_type}${reg.equipment_ca ? ` / CA ${reg.equipment_ca}` : ''}`,
+            reg.equipment_type || '',
             '', // Signature column (left blank for physical signature)
-            reg.equipment_ca || reg.ca_validity_date ? (reg.equipment_ca || 'N/A') : 'NA',
+            reg.equipment_ca || 'NA',
             reg.ca_validity_date
                 ? formatDateBR(new Date(reg.ca_validity_date))
                 : (reg.validity_date ? formatDateBR(new Date(reg.validity_date)) : 'NA'),
