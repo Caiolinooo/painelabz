@@ -1,3 +1,56 @@
+// ==================== CA LOOKUP ====================
+
+export type CAStatus = 'VÁLIDO' | 'VENCIDO' | 'SUSPENSO' | 'CANCELADO' | 'DESCONHECIDO';
+
+export interface CALookupResult {
+    ca_number: string;
+    validity_date: string | null;
+    status: CAStatus;
+    manufacturer: string;
+    equipment_name: string;
+    equipment_description: string;
+    brand: string;
+    process_number: string;
+    norm: string;
+    source: 'cache' | 'ftp' | 'scraping' | 'manual' | 'mte' | 'api';
+    last_synced: string;
+}
+
+/**
+ * Determines CA validity category for UI display
+ * 'valid' = green, 'expiring' = yellow (≤90 days), 'expired' = red
+ */
+export type CAValidityLevel = 'valid' | 'expiring' | 'expired' | 'unknown';
+
+export function getCAValidityLevel(validityDate?: string | null, caStatus?: string | null): CAValidityLevel {
+    if (!validityDate) return 'unknown';
+    if (caStatus && ['VENCIDO', 'SUSPENSO', 'CANCELADO'].includes(caStatus)) return 'expired';
+    const now = new Date();
+    const expiry = new Date(validityDate);
+    if (isNaN(expiry.getTime())) return 'unknown';
+    if (expiry <= now) return 'expired';
+    const diffMs = expiry.getTime() - now.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays <= 90) return 'expiring';
+    return 'valid';
+}
+
+export const CA_VALIDITY_COLORS: Record<CAValidityLevel, string> = {
+    valid: 'bg-green-100 text-green-800',
+    expiring: 'bg-yellow-100 text-yellow-800',
+    expired: 'bg-red-100 text-red-800',
+    unknown: 'bg-gray-100 text-gray-600',
+};
+
+export const CA_VALIDITY_LABELS: Record<CAValidityLevel, string> = {
+    valid: 'CA Válido',
+    expiring: 'CA Próximo de Vencer',
+    expired: 'CA Vencido',
+    unknown: 'CA -',
+};
+
+// ==================== EPI CORE TYPES ====================
+
 export interface EPIRegistration {
     id: string;
     user_id: string;
@@ -10,6 +63,8 @@ export interface EPIRegistration {
     approved_at?: string;
     validity_date?: string; // Date when the EPI expires
     equipment_ca?: string; // Override default CA
+    ca_validity_date?: string; // Cached CA validity from lookup
+    ca_status?: string; // Cached CA status from lookup
     signature_url?: string;
     signed_at?: string;
     delivered_at?: string;
@@ -23,6 +78,10 @@ export interface EPIType {
     description?: string;
     category: string;
     ca_number?: string;
+    ca_validity_date?: string;
+    ca_status?: string;
+    ca_manufacturer?: string;
+    ca_equipment_name?: string;
     is_required: boolean;
     created_at: string;
 }
@@ -119,4 +178,47 @@ export interface UpdateKitRequest {
     }[];
 }
 
+// ==================== STOCK CONTROL ====================
 
+export type StockMovementType = 'entry' | 'exit' | 'adjustment' | 'return';
+
+export interface EPIStock {
+    id: string;
+    epi_type_id: string;
+    current_quantity: number;
+    minimum_quantity: number;
+    location: string;
+    last_restocked_at?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface EPIStockMovement {
+    id: string;
+    stock_id?: string;
+    epi_type_id: string;
+    movement_type: StockMovementType;
+    quantity: number;
+    previous_quantity: number;
+    new_quantity: number;
+    reason?: string;
+    reference_id?: string;
+    performed_by?: string;
+    created_at: string;
+    // Joined
+    performer_name?: string;
+    epi_type_name?: string;
+}
+
+export interface EPIStockWithType extends EPIStock {
+    epi_type?: EPIType;
+    is_low_stock?: boolean;
+}
+
+export interface CreateStockMovementRequest {
+    epi_type_id: string;
+    movement_type: StockMovementType;
+    quantity: number;
+    reason?: string;
+    reference_id?: string;
+}

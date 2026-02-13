@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor, FiActivity, FiMessageSquare, FiShoppingCart, FiShield } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor, FiActivity, FiMessageSquare, FiShoppingCart, FiShield, FiBook, FiServer } from 'react-icons/fi';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -63,6 +63,7 @@ const adminMenuGroups = [
       { id: 'documents-pt', href: '/admin/documentos', label: 'admin.documentsSection', icon: FiFileText },
       { id: 'news-pt', href: '/admin/noticias', label: 'admin.news', icon: FiEdit },
       { id: 'editors', href: '/admin/editors', label: 'admin.editors', icon: FiEdit },
+      { id: 'biblioteca', href: '/biblioteca', label: 'Biblioteca', icon: FiBook },
     ]
   },
   {
@@ -123,6 +124,7 @@ const adminMenuGroups = [
       { id: 'wkradar', href: '/admin/wkradar', label: 'admin.wkradarConfig', icon: FiMonitor },
       { id: 'api-mobile', href: '/admin/api-mobile', label: 'admin.apiMobile', icon: FiSmartphone },
       { id: 'integracao-erp', href: '/admin/integracao-erp', label: 'admin.erpIntegration', icon: FiDatabase },
+      { id: 'smb-connector', href: '/admin/smb-connector', label: 'Conector SMB', icon: FiServer },
     ]
   },
   {

@@ -156,10 +156,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
   // Fallback: If unified service returns empty (e.g. error), we might see nothing. 
   // But service has hardcoded fallback.
 
-  const unifiedCore = menuItems.filter(i => (!i.category || i.category === 'core') && i.showInMenu).map(prepareItem);
-  const unifiedHr = menuItems.filter(i => i.category === 'hr' && i.showInMenu).map(prepareItem);
-  const unifiedDept = menuItems.filter(i => i.category === 'department' && i.showInMenu).map(prepareItem);
-  const unifiedContent = menuItems.filter(i => i.category === 'content' && i.showInMenu).map(prepareItem);
+  // IDs de itens que não devem aparecer no menu lateral
+  const hiddenFromSidebar = ['politicas'];
+
+  const unifiedCore = menuItems.filter(i => (!i.category || i.category === 'core') && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
+  const unifiedHr = menuItems.filter(i => i.category === 'hr' && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
+  const unifiedDept = menuItems.filter(i => i.category === 'department' && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
+  const unifiedContent = menuItems.filter(i => i.category === 'content' && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
 
   const renderItem = (item: any) => {
     const isActive = pathname === item.href;

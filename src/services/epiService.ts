@@ -166,16 +166,47 @@ export async function updateEPIRegistration(id: string, data: EPIUpdateRequest):
         throw new Error(`Erro ao atualizar registro de EPI: ${error.message}`);
     }
 
+    // Fetch registration details for notifications + stock
+    const { data: registration } = await supabaseAdmin
+        .from('epi_registrations')
+        .select('user_id, equipment_type, quantity, epi_type_id')
+        .eq('id', id)
+        .single();
+
+    // Stock control: auto-deduct on delivery, auto-return on return
+    if (registration && data.status) {
+        try {
+            const { deductStock: deductStockFn, returnStock: returnStockFn } = await import('@/services/epiStockService');
+
+            if (data.status === 'delivered' && registration.epi_type_id) {
+                await deductStockFn(
+                    registration.epi_type_id,
+                    registration.quantity || 1,
+                    `Entrega de EPI: ${registration.equipment_type}`,
+                    'system',
+                    id
+                );
+                console.log(`[EPI Stock] Deducted ${registration.quantity || 1} from stock for type ${registration.epi_type_id}`);
+            }
+
+            if (data.status === 'returned' && registration.epi_type_id) {
+                await returnStockFn(
+                    registration.epi_type_id,
+                    registration.quantity || 1,
+                    `Devolução de EPI: ${registration.equipment_type}`,
+                    'system',
+                    id
+                );
+                console.log(`[EPI Stock] Returned ${registration.quantity || 1} to stock for type ${registration.epi_type_id}`);
+            }
+        } catch (stockError) {
+            console.warn('[EPI Stock] Stock operation failed (non-blocking):', stockError);
+        }
+    }
+
     // Notifications
     try {
-        const { data: registration } = await supabaseAdmin
-            .from('epi_registrations')
-            .select('user_id, equipment_type')
-            .eq('id', id)
-            .single();
-
         if (registration && data.status) {
-            // Notify User about status change
             await distributeNotification({
                 recipients: [registration.user_id],
                 type: 'system',
@@ -189,6 +220,7 @@ export async function updateEPIRegistration(id: string, data: EPIUpdateRequest):
         console.error('Error sending notification:', notificationError);
     }
 }
+
 
 // Sector Responsibles Management
 

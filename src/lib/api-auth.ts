@@ -65,6 +65,7 @@ export async function authenticateUser(request: NextRequest): Promise<{
  * Verificar se o usuário tem permissões específicas
  */
 export function checkPermissions(user: AuthenticatedUser, permission: string): boolean {
+  const role = (user.role || '').toUpperCase();
   switch (permission) {
     case 'academy_editor':
       return canEditAcademy(user);
@@ -75,13 +76,13 @@ export function checkPermissions(user: AuthenticatedUser, permission: string): b
     case 'social_moderator':
       return canModerateSocial(user);
     case 'admin':
-      return user.role === 'ADMIN';
+      return role === 'ADMIN';
     case 'manager':
-      return user.role === 'ADMIN' || user.role === 'MANAGER';
+      return role === 'ADMIN' || role === 'MANAGER';
     case 'news_editor':
-      return hasFeaturePermission(user, 'news_editor') || hasFeaturePermission(user, 'news_manager') || user.role === 'ADMIN' || user.role === 'MANAGER';
+      return hasFeaturePermission(user, 'news_editor') || hasFeaturePermission(user, 'news_manager') || role === 'ADMIN' || role === 'MANAGER';
     case 'news_manager':
-      return hasFeaturePermission(user, 'news_manager') || user.role === 'ADMIN' || user.role === 'MANAGER';
+      return hasFeaturePermission(user, 'news_manager') || role === 'ADMIN' || role === 'MANAGER';
     default:
       return false;
   }
