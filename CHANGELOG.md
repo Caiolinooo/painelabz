@@ -1,6 +1,37 @@
 # Changelog
 <br>
 
+## [4.10.0] - 2026-02-12
+
+### Added
+- **Sistema de Controle de Estoque EPI**: Implementação completa do módulo de gestão de inventário de EPIs.
+  - Novas tabelas `epi_stock` e `epi_stock_movements` no Supabase com RLS, índices e FKs.
+  - Rastreamento de quantidades atuais, mínimos, localização e data de reabastecimento.
+  - Histórico completo de movimentações: entrada, saída, ajuste e devolução.
+- **Notificações de Estoque Baixo**: Sistema multi-canal de alertas automáticos.
+  - Novo serviço `epiStockNotifications.ts` integrado ao `sendGlobalNotification`.
+  - Notificações via **in-app**, **email** (HTML estilizado) e **push** para admins/managers.
+  - Distinção entre estoque baixo (⚠️) e estoque zerado (🚨) com prioridades diferentes.
+  - Cooldown de 4 horas por tipo de EPI para evitar spam.
+- **Componente `CALookupField`**: Novo campo de busca de Certificados de Aprovação para formulários EPI.
+
+### Fixed
+- **Queries de Relacionamento EPI**: Corrigidas queries PostgREST com FK hints explícitos (`epi_types!epi_stock_epi_type_id_fkey`) para resolver erro "Could not find a relationship between 'epi_stock' and 'epi_types' in the schema cache".
+
+## [4.9.2] - 2026-02-12
+
+### Fixed
+- **Módulo EPI**: Corrigida assinatura da chamada `updateEPIRegistration` no `route.ts` que causava erro ao atualizar registros.
+- **Página de Ajuda**: Correções de conteúdo e endereço do Edifício The Corporate.
+- **Página de Contatos**: Ajustes de informações e layout.
+- **Página de Emergência**: Atualizações de conteúdo.
+
+### Improved
+- **Layout Admin**: Refinamentos na estrutura do layout administrativo.
+- **MainLayout**: Melhorias de responsividade e consistência.
+- **Menu de Navegação**: Atualizações na estrutura de dados do menu lateral.
+- **Módulo EPI**: Melhorias no `EPIList`, templates de PDF (Checklist e Report), tipos TypeScript e serviço principal.
+
 ## [4.9.1] - 2026-02-10
 
 ### Fixed
