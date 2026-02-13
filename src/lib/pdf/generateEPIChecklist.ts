@@ -1,11 +1,6 @@
 /**
  * Generate official ABZ Group EPI/Uniformes Ficha (AN-HSE-005)
- * PDF format matching the company standard with:
- * - ABZ Group header with document codes
- * - Employee info (name, position, project)
- * - Legal terms (TERMO DE RESPONSABILIDADE E CIÊNCIA)
- * - Delivery table with EPI items, CA, validity, signature
- * - Signature area
+ * PDF format matching the company standard
  */
 
 import jsPDF from 'jspdf';
@@ -34,6 +29,7 @@ export async function generateEPIChecklist(
         employeeProject: userSector,
         registrations,
         signatureUrl,
+        signatureDate: new Date().toLocaleDateString('pt-BR')
     });
 }
 
@@ -88,7 +84,7 @@ export async function generateFichaEPI(data: FichaData) {
     doc.text('Proc. Ref.: PR-HSE-04', margin + contentWidth * 0.5 + 2, row2Y + 4);
 
     doc.rect(margin + contentWidth * 0.85, row2Y, contentWidth * 0.15, 6, 'D');
-    doc.text(`Data: ${formatDateBR(new Date())}`, margin + contentWidth * 0.85 + 2, row2Y + 4);
+    doc.text(`Data: ${signatureDate || formatDateBR(new Date())}`, margin + contentWidth * 0.85 + 2, row2Y + 4);
 
     // Row 3: Applicable to
     const row3Y = row2Y + 6;
@@ -116,7 +112,7 @@ export async function generateFichaEPI(data: FichaData) {
     doc.setTextColor(255, 255, 255);
     doc.text('NOME COMPLETO DO FUNCIONÁRIO:', margin + 2, empY + 4);
     doc.text('CARGO:', margin + nameBoxW + 2, empY + 4);
-    doc.text('PROJETO:', margin + nameBoxW + cargoBoxW + 2, empY + 4);
+    doc.text('PROJETO/SETOR:', margin + nameBoxW + cargoBoxW + 2, empY + 4);
     doc.setTextColor(0, 0, 0);
 
     // Data row

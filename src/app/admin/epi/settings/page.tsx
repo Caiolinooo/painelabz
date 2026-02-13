@@ -163,6 +163,48 @@ export default function AdminEPISettingsPage() {
                 </div>
             </div>
 
+            {/* Danger Zone */}
+            <div className="mt-8 bg-white rounded-lg shadow p-6 border border-red-200">
+                <h2 className="text-xl font-semibold mb-4 text-red-600">Zona de Perigo</h2>
+                <p className="text-gray-600 mb-6">
+                    Ações irreversíveis para manutenção do sistema.
+                </p>
+
+                <div className="border border-red-100 bg-red-50 rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h3 className="font-medium text-red-800">Resetar Dados do Módulo EPI</h3>
+                        <p className="text-sm text-red-600 mt-1">
+                            Isso apagará TODAS as solicitações, entregas e histórico de movimentações de estoque.
+                            <br />
+                            As definições de Tipos de EPI e Kits serão mantidas, mas o estoque será zerado.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            const confirmText = prompt("Para confirmar, digite 'DELETAR':");
+                            if (confirmText === 'DELETAR') {
+                                fetch('/api/epi/reset', { method: 'POST' })
+                                    .then(async (res) => {
+                                        const json = await res.json();
+                                        if (res.ok) {
+                                            toast.success('Dados resetados com sucesso.');
+                                            loadData();
+                                        } else {
+                                            toast.error(json.error || 'Erro ao resetar dados.');
+                                        }
+                                    })
+                                    .catch(() => toast.error('Erro de conexão via API.'));
+                            } else if (confirmText !== null) {
+                                toast.error('Confirmação incorreta.');
+                            }
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                        Resetar Dados
+                    </button>
+                </div>
+            </div>
+
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg max-w-md w-full p-6">
