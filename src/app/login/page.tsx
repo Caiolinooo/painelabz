@@ -19,6 +19,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from '@/components/ui/button';
+import { saveToken } from '@/lib/tokenStorage';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -37,6 +38,7 @@ export default function Login() {
   const [localLoading, setLocalLoading] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [emailToVerify, setEmailToVerify] = useState('');
+  const [isWebAuthnLoading, setIsWebAuthnLoading] = useState(false);
 
   // Campos para registro rápido
   const [firstName, setFirstName] = useState('');
@@ -231,6 +233,63 @@ export default function Login() {
     } catch (error) {
       console.error('Erro ao iniciar login:', error);
       setError(t('auth.requestError'));
+    }
+  };
+
+  const handleWebAuthnLogin = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    try {
+      setIsWebAuthnLoading(true);
+      setError('');
+      setSuccess('');
+
+      const { startAuthentication } = await import('@simplewebauthn/browser');
+
+      // 1. Get options from server
+      const optionsRes = await fetch('/api/auth/webauthn/login/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: ***REMOVED*** email: email || undefined })
+      });
+
+      if (!optionsRes.ok) throw new Error('Erro ao obter opções de login biométrico');
+      const options = await optionsRes.json();
+
+      // 2. Start authentication
+      let asseResp;
+      try {
+        asseResp = await startAuthentication({ optionsJSON: options });
+      } catch (error: any) {
+        if (error.name === 'NotAllowedError') return;
+        throw new Error('Falha na interação com o dispositivo biométrico.');
+      }
+
+      // 3. Verify on server
+      const verificationRes = await fetch('/api/auth/webauthn/login/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(asseResp),
+      });
+
+      const verificationResult = await verificationRes.json();
+
+      if (verificationResult.success && verificationResult.token) {
+        setSuccess('Login com biometria realizado com sucesso!');
+        // Salvar the token within cookies and localStorage before redirecting
+        saveToken(verificationResult.token);
+
+        // Redirecionar para dashboard em breve
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      } else {
+        throw new Error(verificationResult.error || 'Erro na verificação biométrica');
+      }
+    } catch (error: any) {
+      console.error(error);
+      setError(error.message || 'Erro ao realizar login biométrico');
+    } finally {
+      setIsWebAuthnLoading(false);
     }
   };
 
@@ -866,6 +925,21 @@ export default function Login() {
                         {t('auth.login')} <FiArrowRight className="ml-2 h-4 w-4" />
                       </>
                     )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={handleWebAuthnLogin}
+                    disabled={isLoading || isWebAuthnLoading}
+                    variant="outline"
+                    className="w-full border-abz-blue text-abz-blue hover:bg-blue-50"
+                  >
+                    {isWebAuthnLoading ? (
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-abz-blue border-t-transparent rounded-full"></div>
+                    ) : (
+                      <FiKey className="mr-2 h-4 w-4" />
+                    )}
+                    Login com Biometria
                   </Button>
 
                   {/* Botão de código de verificação removido para usuários já cadastrados */}

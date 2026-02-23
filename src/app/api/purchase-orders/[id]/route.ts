@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
         const { data: order, error } = await supabaseAdmin
             .from('purchase_orders')
-            .select('*')
+            .select('*, suppliers(*)')
             .eq('id', id)
             .single();
 

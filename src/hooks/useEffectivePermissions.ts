@@ -89,7 +89,7 @@ export function useEffectivePermissions() {
         };
     }, [fetchPermissions, cacheKey]);
 
-    const hasPermission = (moduleId: string): boolean => {
+    const hasPermission = useCallback((moduleId: string): boolean => {
         if (!permissions) return true; // Default to true while loading (fail open)
 
         // ADMIN always has full access - bypass all checks
@@ -107,7 +107,7 @@ export function useEffectivePermissions() {
         }
 
         return hasAccess;
-    };
+    }, [permissions]);
 
     return {
         permissions,
@@ -116,6 +116,6 @@ export function useEffectivePermissions() {
         hasPermission,
         isAdmin: permissions?.role === 'ADMIN',
         isManager: permissions?.role === 'MANAGER',
-        refresh: () => fetchPermissions(true)
+        refresh: useCallback(() => fetchPermissions(true), [fetchPermissions])
     };
 }

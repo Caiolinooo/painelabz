@@ -9,28 +9,34 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
         }
 
-        // 1. Upload Signature
-        const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
-        const fileName = `${userId}-${Date.now()}.png`;
+        // 1. Upload Signature (or use Passkey indicator)
+        let signatureUrl = '';
 
-        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-            .from('epi_signatures')
-            .upload(fileName, buffer, {
-                contentType: 'image/png',
-                upsert: false
-            });
+        if (signatureBase64 === 'PASSKEY_SIGNED') {
+            signatureUrl = 'PASSKEY_SIGNED';
+        } else {
+            const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
+            const buffer = Buffer.from(base64Data, 'base64');
+            const fileName = `${userId}-${Date.now()}.png`;
 
-        if (uploadError) {
-            console.error('Error uploading signature:', uploadError);
-            return NextResponse.json({ error: 'Erro ao salvar assinatura' }, { status: 500 });
+            const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+                .from('epi_signatures')
+                .upload(fileName, buffer, {
+                    contentType: 'image/png',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error('Error uploading signature:', uploadError);
+                return NextResponse.json({ error: 'Erro ao salvar assinatura' }, { status: 500 });
+            }
+
+            const { data: publicUrlData } = supabaseAdmin.storage
+                .from('epi_signatures')
+                .getPublicUrl(fileName);
+
+            signatureUrl = publicUrlData.publicUrl;
         }
-
-        const { data: publicUrlData } = supabaseAdmin.storage
-            .from('epi_signatures')
-            .getPublicUrl(fileName);
-
-        const signatureUrl = publicUrlData.publicUrl;
 
         // 2. Update Registrations
         const now = new Date().toISOString();

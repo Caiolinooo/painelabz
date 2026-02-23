@@ -1,6 +1,19 @@
 # Changelog
 <br>
 
+## [4.13.0] - 2026-02-23
+
+### Added
+- **Biometria / WebAuthn (Passkeys)**: Implementação completa de autenticação biométrica (Face ID, Touch ID, Windows Hello) sem senha.
+  - **Login via Biometria**: Adição do botão "Login com Passkey" na tela de autenticação, suportando fluxo completo de verificação através da biblioteca `@simplewebauthn`.
+  - **Gestão de Perfil**: Nova aba "Biometria (Passkeys)" no painel Meu Perfil para os usuários registrarem, visualizarem e excluírem seus passkeys salvos (`PasskeyManagement.tsx`).
+  - **Assinatura de EPI com Biometria**: Usuários agora podem assinar o recebimento de EPIs instantaneamente usando sua biometria configurada (bypass do PIN manual) via `SignaturePad.tsx`.
+  - **APIs Robustas**: Novos endpoints no backend (`/api/auth/webauthn/*`) convertidos para formato v10 do SimpleWebauthn (suporte nativo a `Uint8Array` e `Base64URL`).
+
+### Fixed
+- **Estado de Login Pós-Biometria**: Resolvido bug onde a tela de dashboard ficava em branco ("401 Unauthorized") após o login biométrico, implementando o salvamento adequado do JWT persistente (`saveToken`).
+- **RLS em Biometria**: Criada API Server-Side (`/api/auth/webauthn/passkeys`) para a listagem na Interface do Perfil, contornando limitações de Row Level Security (RLS) impostas no Supabase Client.
+
 ## [4.12.0] - 2026-02-13
 
 ### Added

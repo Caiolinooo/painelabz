@@ -662,3 +662,29 @@ export async function assignKitToUser(userId: string, kitId: string, adminId: st
         throw new Error(`Erro ao atribuir kit ao usuário: ${error.message}`);
     }
 }
+
+// ==================== RESET LOGIC ====================
+
+/**
+ * Resets all EPI module data (Dangerous operation, Admin only)
+ */
+export async function resetEPIModuleData(): Promise<void> {
+    // 1. Delete all EPI Registrations
+    const { error: regError } = await supabaseAdmin.from('epi_registrations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (regError) {
+        console.error('Error deleting registrations:', regError);
+        throw new Error(`Erro ao deletar registros: ${regError.message}`);
+    }
+
+    // 2. Clear signatures bucket (Optional depending on business rule)
+    try {
+        const { data: files } = await supabaseAdmin.storage.from('epi_signatures').list();
+        if (files && files.length > 0) {
+            const fileNames = files.map(f => f.name);
+            await supabaseAdmin.storage.from('epi_signatures').remove(fileNames);
+        }
+    } catch (err) {
+        console.warn('Could not clear signatures bucket:', err);
+    }
+}
+

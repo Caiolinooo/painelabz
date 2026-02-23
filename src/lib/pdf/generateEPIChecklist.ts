@@ -238,13 +238,33 @@ export async function generateFichaEPI(data: FichaData) {
     const finalY = (doc as any).lastAutoTable.finalY + 10;
 
     if (signatureUrl) {
-        try {
-            doc.setFontSize(7);
+        if (signatureUrl === 'PASSKEY_SIGNED') {
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
             doc.text('Assinatura Digital do Colaborador:', margin, finalY);
-            doc.addImage(signatureUrl, 'PNG', margin, finalY + 2, 50, 20);
-        } catch (e) {
-            console.error('Error loading signature image:', e);
-            doc.text('(Assinatura digital registrada no sistema)', margin, finalY + 8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(0, 100, 0); // Dark Green
+            doc.text('Assinado digitalmente via Biometria/Passkey', margin, finalY + 6);
+            doc.setTextColor(0, 0, 0);
+        } else {
+            try {
+                doc.setFontSize(7);
+                doc.text('Assinatura Digital do Colaborador:', margin, finalY);
+                // Convert remote URL to Base64
+                const response = await fetch(signatureUrl);
+                const blob = await response.blob();
+                const base64Data = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+
+                doc.addImage(base64Data, 'PNG', margin, finalY + 2, 50, 20);
+            } catch (e) {
+                console.error('Error loading signature image:', e);
+                doc.text('(Assinatura digital registrada no sistema)', margin, finalY + 8);
+            }
         }
     }
 

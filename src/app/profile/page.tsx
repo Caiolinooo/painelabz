@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiMail, FiPhone, FiSettings, FiUpload, FiImage, FiTrash2, FiEdit, FiSave, FiLock, FiDollarSign } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiSettings, FiUpload, FiImage, FiTrash2, FiEdit, FiSave, FiLock, FiDollarSign, FiKey } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import MainLayout from '@/components/Layout/MainLayout';
 import ServerUserReimbursementSettings from '@/components/admin/ServerUserReimbursementSettings';
@@ -15,6 +15,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import NotificationPreferencesPanel from '@/components/Profile/NotificationPreferencesPanel';
 import UserProfileView from '@/components/Profile/UserProfileView';
 import UserAvatar from '@/components/UserAvatar';
+import PasskeyManagement from '@/components/Profile/PasskeyManagement';
 
 export default function ProfilePage() {
   const { user, profile, isLoading, refreshProfile } = useSupabaseAuth();
@@ -357,6 +358,15 @@ export default function ProfilePage() {
                       Preferências
                     </div>
                   </button>
+                  <button
+                    onClick={() => setActiveTab('passkeys')}
+                    className={`px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'passkeys' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FiKey className="w-4 h-4" />
+                      Biometria (Passkeys)
+                    </div>
+                  </button>
                   {(profile?.role === 'admin' || profile?.role === 'manager') && (
                     <button
                       onClick={() => setActiveTab('admin_reimbursement')}
@@ -373,6 +383,7 @@ export default function ProfilePage() {
                 <div className="p-6">
                   {activeTab === 'password' && <ChangePasswordTab />}
                   {activeTab === 'notifications' && <NotificationPreferencesPanel />}
+                  {activeTab === 'passkeys' && <PasskeyManagement />}
                   {activeTab === 'admin_reimbursement' && <ServerUserReimbursementSettings userId={user?.id || ''} />}
                 </div>
               </div>

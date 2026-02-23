@@ -2,7 +2,8 @@
 
 import React, { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { FiX, FiRefreshCcw, FiCheck } from 'react-icons/fi';
+import { FiX, FiRefreshCcw, FiCheck, FiKey } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 
 interface SignaturePadProps {
     isOpen: boolean;
@@ -14,12 +15,51 @@ interface SignaturePadProps {
 export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting = false }: SignaturePadProps) {
     const sigCanvas = useRef<SignatureCanvas>(null);
     const [isEmpty, setIsEmpty] = useState(true);
+    const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
 
     if (!isOpen) return null;
 
     const clear = () => {
         sigCanvas.current?.clear();
         setIsEmpty(true);
+    };
+
+    const handlePasskeySign = async () => {
+        try {
+            setIsPasskeyLoading(true);
+            const { startAuthentication } = await import('@simplewebauthn/browser');
+
+            const optionsRes = await fetch('/api/auth/webauthn/sign/options', { method: 'POST' });
+            if (!optionsRes.ok) throw new Error('Erro ao iniciar assinatura biométrica');
+            const options = await optionsRes.json();
+
+            let asseResp;
+            try {
+                asseResp = await startAuthentication({ optionsJSON: options });
+            } catch (err: any) {
+                if (err.name === 'NotAllowedError') return;
+                throw new Error('Assinatura biométrica cancelada ou falhou');
+            }
+
+            const verifyRes = await fetch('/api/auth/webauthn/sign/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(asseResp),
+            });
+            const verification = await verifyRes.json();
+
+            if (verification.success) {
+                toast.success('Assinatura biométrica validada!');
+                await onConfirm('PASSKEY_SIGNED');
+            } else {
+                throw new Error(verification.error || 'Erro na verificação da assinatura');
+            }
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || 'Erro ao utilizar biometria');
+        } finally {
+            setIsPasskeyLoading(false);
+        }
     };
 
     const handleConfirm = async () => {
@@ -83,19 +123,33 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
                     <div className="flex gap-2">
                         <button
                             onClick={onClose}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || isPasskeyLoading}
                             className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
                         >
                             Cancelar
                         </button>
                         <button
-                            onClick={handleConfirm}
-                            disabled={isEmpty || isSubmitting}
+                            onClick={handlePasskeySign}
+                            disabled={isSubmitting || isPasskeyLoading}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium
-                                ${isEmpty || isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}
+                                ${isSubmitting || isPasskeyLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
                             `}
                         >
-                            {isSubmitting ? (
+                            {isPasskeyLoading ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                                <FiKey className="w-4 h-4" />
+                            )}
+                            Usar Biometria
+                        </button>
+                        <button
+                            onClick={handleConfirm}
+                            disabled={isEmpty || isSubmitting || isPasskeyLoading}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium
+                                ${isEmpty || isSubmitting || isPasskeyLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}
+                            `}
+                        >
+                            {isSubmitting && !isPasskeyLoading ? (
                                 <>
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                                     Processando...
@@ -103,7 +157,7 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
                             ) : (
                                 <>
                                     <FiCheck className="w-4 h-4" />
-                                    Confirmar Recebimento
+                                    Assinar
                                 </>
                             )}
                         </button>
