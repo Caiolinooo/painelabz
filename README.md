@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-4.8.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-4.13.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -40,7 +40,7 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 - **Calendário Corporativo** - Sincronização de eventos e integração com Google Calendar.
 
 ### 🔐 **Segurança & Infra**
-- **Autenticação Robusta** - Gestão via Supabase Auth com suporte a MFA e recuperação de senha segura.
+- **Autenticação Robusta** - Gestão via Supabase Auth com suporte a MFA, senhas, e Biometria (WebAuthn / Passkeys).
 - **ACL Hierárquico** - Controle fino de acesso por módulo e recurso.
 - **WKRadar Integration** - Acesso seguro a sistemas legados e gerenciamento de credenciais.
 - **Internacionalização (i18n)** - Interface adaptável com detecção automática de idioma.
@@ -74,19 +74,18 @@ npm run dev
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
 
-## 🚀 Últimas Atualizações (v4.8.0)
+## 🚀 Últimas Atualizações (v4.13.0)
 
-- **Busca Global**: Sistema unificado de pesquisa para facilitar a localização de conteúdo em todo o portal.
-- **Persistência de Perfil**: Correção na sincronização da biografia e fotos de perfil com o banco de dados.
-- **Segurança v2**: Novas políticas de isolamento de armazenamento para proteção de dados sensíveis.
+- **Biometria (Passkeys)**: Suporte completo a login biométrico (Face ID, Touch ID, Windows Hello) via WebAuthn, garantindo acesso ultraveloz sem senhas.
+- **Assinatura Dinâmica**: Integração de biometria para a assinatura digital do recebimento de EPIs, simplificando o processo do funcionário.
+- **Gestão de Passkeys**: Aba de gerenciamento no Perfil do Usuário para adicionar/remover dispositivos verificados.
 
 ---
 
-## 🚀 Últimas Atualizações (v4.7.0)
+## 🚀 Versões Anteriores (Destaques)
 
-- **Tradução de Posts**: Localização completa de interações sociais (curtidas, visualizações).
-- **Enforcement de Setores**: Permissões agora respeitam estritamente a configuração de setores.
-- **Sincronização i18n**: Padronização e limpeza dos arquivos de idioma para melhor manutenção.
+- **Controle de Estoque (v4.10)**: Gestão de inventário e movimentações de EPIs.
+- **Busca Global (v4.8)**: Sistema unificado de pesquisa.
 
 Para o histórico completo, consulte o [CHANGELOG.md](CHANGELOG.md).
 

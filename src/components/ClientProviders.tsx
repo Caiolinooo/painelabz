@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ToastContainer } from 'react-toastify';
+import { Toaster } from 'react-hot-toast';
 import 'react-toastify/dist/ReactToastify.css';
 import GlobalErrorHandler from './GlobalErrorHandler';
 
@@ -79,6 +80,7 @@ export default function ClientProviders({ children }: { children: React.ReactNod
               <SiteHead />
               {isMounted && <LanguageDialog />}
               {isMounted && <ToastContainer position="top-right" theme="colored" />}
+              {isMounted && <Toaster position="top-right" />}
               {isMounted && <ChangelogModal />}
               <ProfilePromptGate isMounted={isMounted} pathname={pathname} />
               {children}

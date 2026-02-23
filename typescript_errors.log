@@ -1,0 +1,387 @@
+scripts/smb-sync.ts(288,22): error TS2554: Expected 2 arguments, but got 0.
+src/app/admin/avaliacao/usuarios-elegiveis/page.tsx(61,25): error TS2345: Argument of type 'Set<unknown>' is not assignable to parameter of type 'SetStateAction<Set<string>>'.
+  Type 'Set<unknown>' is not assignable to type 'Set<string>'.
+    Type 'unknown' is not assignable to type 'string'.
+src/app/admin/modules/[moduleKey]/page.tsx(12,23): error TS18047: 'params' is possibly 'null'.
+src/app/api/admin/banned-users/route.ts(205,56): error TS2554: Expected 0-2 arguments, but got 3.
+src/app/api/admin/cards/[id]/supabase/route.ts(13,46): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/admin/cards/[id]/supabase/route.ts(131,46): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/admin/cards/[id]/supabase/route.ts(280,46): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/admin/fix-avaliacao-schema/route.ts(79,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(input: string | Request | URL, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Type '{ 'Content-Type': string; Authorization: string; apikey: string | undefined; Prefer: string; }' is not assignable to type 'HeadersInit | undefined'.
+      Type '{ 'Content-Type': string; Authorization: string; apikey: string | undefined; Prefer: string; }' is not assignable to type 'undefined'.
+  Overload 2 of 2, '(input: URL | RequestInfo, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Type '{ 'Content-Type': string; Authorization: string; apikey: string | undefined; Prefer: string; }' is not assignable to type 'HeadersInit | undefined'.
+      Type '{ 'Content-Type': string; Authorization: string; apikey: string | undefined; Prefer: string; }' is not assignable to type 'undefined'.
+src/app/api/admin/fix-avaliacao-schema/route.ts(117,29): error TS2339: Property 'users_unified_deleted_at' does not exist on type '{}'.
+src/app/api/admin/fix-avaliacao-schema/route.ts(120,29): error TS2339: Property 'users_unified_deleted_at' does not exist on type '{}'.
+src/app/api/admin/fix-avaliacao-schema/route.ts(126,27): error TS2339: Property 'users_unified_deleted_at' does not exist on type '{}'.
+src/app/api/admin/fix-avaliacao-schema/route.ts(137,29): error TS2339: Property 'notifications_columns' does not exist on type '{}'.
+src/app/api/admin/fix-avaliacao-schema/route.ts(141,29): error TS2339: Property 'notifications_columns' does not exist on type '{}'.
+src/app/api/admin/fix-avaliacao-schema/route.ts(148,27): error TS2339: Property 'notifications_columns' does not exist on type '{}'.
+src/app/api/admin/test-email/route.ts(67,26): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/app/api/admin/users/[id]/approve/route.ts(49,27): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/admin/users/[id]/reject/route.ts(49,27): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/auth/password-status/route.ts(72,73): error TS2554: Expected 1 arguments, but got 2.
+src/app/api/avaliacao-desempenho/criterios/create-table/route.ts(78,42): error TS2339: Property 'peso' does not exist on type 'CriterioAvaliacao'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(45,62): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(46,64): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(109,54): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(118,23): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(125,52): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(134,23): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(199,54): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(208,23): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(215,52): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(224,23): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(231,52): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(240,23): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(247,54): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/avaliacoes/[id]/route.ts(256,23): error TS2339: Property 'userId' does not exist on type 'User'.
+src/app/api/avaliacao-workflow/ciclos/route.ts(80,52): error TS2339: Property 'abrirCicloAnual' does not exist on type 'typeof AvaliacaoWorkflowService'.
+src/app/api/avaliacao-workflow/relatorios/route.ts(34,54): error TS2339: Property 'gerarRelatorio' does not exist on type 'typeof AvaliacaoWorkflowService'.
+src/app/api/avaliacao-workflow/relatorios/route.ts(110,66): error TS2339: Property 'gerarRelatorio' does not exist on type 'typeof AvaliacaoWorkflowService'.
+src/app/api/avaliacao/[id]/pdf/route.ts(53,69): error TS2353: Object literal may only specify known properties, and 'fontWeight' does not exist in type 'PDFPageDrawTextOptions'.
+src/app/api/avaliacao/cron/criar-avaliacoes/route.ts(104,70): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/app/api/avaliacao/cron/criar-avaliacoes/route.ts(170,21): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{}'.
+src/app/api/avaliacao/is-manager/route.ts(24,23): error TS2339: Property 'user' does not exist on type 'TokenVerificationResult'.
+src/app/api/avaliacao/is-manager/route.ts(25,29): error TS2339: Property 'user' does not exist on type 'TokenVerificationResult'.
+src/app/api/chat/channels/[id]/messages/route.ts(25,30): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/chat/channels/route.ts(138,7): error TS2322: Type '{ id: any; name: any; description: any; type: any; avatar: any; is_archived: any; created_by: any; created_at: any; updated_at: any; last_activity: any; member_count: any; unread_count: any; settings: any; permissions: any; metadata: any; }[] | null' is not assignable to type '{ id: any; name: any; description: any; type: any; avatar: any; is_archived: any; created_by: any; created_at: any; updated_at: any; last_activity: any; member_count: any; unread_count: any; settings: any; permissions: any; metadata: any; }[]'.
+  Type 'null' is not assignable to type '{ id: any; name: any; description: any; type: any; avatar: any; is_archived: any; created_by: any; created_at: any; updated_at: any; last_activity: any; member_count: any; unread_count: any; settings: any; permissions: any; metadata: any; }[]'.
+src/app/api/chat/channels/route.ts(372,35): error TS18004: No value exists in scope for the shorthand property 'isPublic'. Either declare one or provide an initializer.
+src/app/api/dashboard-bi/dashboards/[id]/route.ts(30,32): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/dashboard-bi/dashboards/[id]/route.ts(145,32): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/epi/report/route.ts(3,10): error TS2305: Module '"@/services/epiService"' has no exported member 'getGeneralEPIReportData'.
+src/app/api/evaluations/[id]/decision/route.ts(139,59): error TS2339: Property 'getEvaluationDetails' does not exist on type 'typeof EvaluationService'.
+src/app/api/evaluations/[id]/decision/route.ts(139,80): error TS2304: Cannot find name 'evaluationId'.
+src/app/api/evaluations/[id]/decision/route.ts(146,13): error TS2304: Cannot find name 'evaluationId'.
+src/app/api/evaluations/[id]/decision/route.ts(147,18): error TS2339: Property 'decisao' does not exist on type 'DecisaoGerenteData'.
+src/app/api/evaluations/[id]/decision/route.ts(150,57): error TS2339: Property 'decisao' does not exist on type 'DecisaoGerenteData'.
+src/app/api/evaluations/[id]/questionnaire/route.ts(124,59): error TS2339: Property 'getEvaluationDetails' does not exist on type 'typeof EvaluationService'.
+src/app/api/evaluations/[id]/questionnaire/route.ts(124,80): error TS2304: Cannot find name 'evaluationId'.
+src/app/api/evaluations/[id]/questionnaire/route.ts(132,15): error TS2304: Cannot find name 'evaluationId'.
+src/app/api/evaluations/metrics/route.ts(60,55): error TS2345: Argument of type '{ status: string[] | undefined; funcionario_id: string | undefined; avaliador_id: string | undefined; ciclo_id: string | undefined; periodo: string | undefined; data_inicio: string | undefined; data_fim: string | undefined; }' is not assignable to parameter of type 'AvaliacaoFilters'.
+  Types of property 'status' are incompatible.
+    Type 'string[] | undefined' is not assignable to type 'EvaluationStatus[] | undefined'.
+      Type 'string[]' is not assignable to type 'EvaluationStatus[]'.
+        Type 'string' is not assignable to type 'EvaluationStatus'.
+src/app/api/files/[...path]/route.ts(18,59): error TS2339: Property 'path' does not exist on type 'Promise<{ path: string[]; }>'.
+src/app/api/files/[...path]/route.ts(59,29): error TS2339: Property 'path' does not exist on type 'Promise<{ path: string[]; }>'.
+src/app/api/integracao-erp/sync/start/route.ts(115,34): error TS2339: Property 'email' does not exist on type '{ role: any; access_permissions: any; }'.
+src/app/api/integracao-erp/sync/start/route.ts(286,27): error TS18046: 'error' is of type 'unknown'.
+src/app/api/mobile/auth/login/route.ts(218,7): error TS2322: Type '{ token: string; expiresAt: Date; expiresInSeconds: number; }' is not assignable to type 'string'.
+src/app/api/mobile/auth/login/route.ts(242,26): error TS18046: 'error' is of type 'unknown'.
+src/app/api/mobile/auth/login/route.ts(327,11): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ avaliacoes: never[]; reembolsos: never[]; noticias: never[]; eventos: never[]; }'.
+src/app/api/mobile/auth/login/route.ts(328,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ avaliacoes: never[]; reembolsos: never[]; noticias: never[]; eventos: never[]; }'.
+src/app/api/mobile/notifications/push/route.ts(134,18): error TS18046: 'error' is of type 'unknown'.
+src/app/api/mobile/notifications/push/route.ts(233,14): error TS18046: 'error' is of type 'unknown'.
+src/app/api/mobile/sync/route.ts(113,20): error TS18046: 'error' is of type 'unknown'.
+src/app/api/mobile/sync/route.ts(131,20): error TS18046: 'error' is of type 'unknown'.
+src/app/api/mobile/sync/route.ts(154,18): error TS18046: 'error' is of type 'unknown'.
+src/app/api/mobile/sync/route.ts(343,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ avaliacoes: never[]; reembolsos: never[]; noticias: never[]; eventos: never[]; }'.
+src/app/api/mobile/sync/route.ts(344,7): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ avaliacoes: never[]; reembolsos: never[]; noticias: never[]; eventos: never[]; }'.
+src/app/api/mobile/sync/route.ts(394,60): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/api/modules/[moduleKey]/route.ts(67,13): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(67,20): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(67,34): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(67,41): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(69,40): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(69,47): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(79,34): error TS18047: 'moduleInfo' is possibly 'null'.
+src/app/api/modules/[moduleKey]/route.ts(106,13): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(106,20): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(106,34): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(106,41): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(109,23): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(109,30): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(122,32): error TS18047: 'moduleInfo' is possibly 'null'.
+src/app/api/modules/[moduleKey]/route.ts(153,13): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(153,20): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(153,34): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(153,41): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(156,23): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(156,30): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(204,13): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(204,20): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(204,34): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(204,41): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/modules/[moduleKey]/route.ts(207,23): error TS18048: 'module' is possibly 'undefined'.
+src/app/api/modules/[moduleKey]/route.ts(207,30): error TS2339: Property 'table_name' does not exist on type '{ permissions: any; is_system: any; }'.
+src/app/api/news/upload/route.ts(121,44): error TS2339: Property 'statusCode' does not exist on type 'StorageError'.
+src/app/api/news/upload/route.ts(130,43): error TS2339: Property 'statusCode' does not exist on type 'StorageError'.
+src/app/api/news/upload/route.ts(142,29): error TS2339: Property 'statusCode' does not exist on type 'StorageError'.
+src/app/api/news/upload/route.ts(149,31): error TS2339: Property 'statusCode' does not exist on type 'StorageError'.
+src/app/api/news/upload/route.ts(150,26): error TS2339: Property 'error' does not exist on type 'StorageError'.
+src/app/api/payroll/companies/[id]/route.ts(19,24): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/payroll/companies/[id]/route.ts(74,25): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/payroll/companies/[id]/route.ts(97,24): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/payroll/companies/[id]/route.ts(143,32): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/payroll/companies/[id]/route.ts(157,32): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/payroll/companies/[id]/route.ts(171,24): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/api/reimbursement/approve/route.ts(203,82): error TS2554: Expected 1 arguments, but got 2.
+src/app/api/relatorios-pdf/gerar/route.ts(136,24): error TS18046: 'error' is of type 'unknown'.
+src/app/api/relatorios-pdf/gerar/route.ts(351,36): error TS2339: Property 'getNumberOfPages' does not exist on type '{ events: PubSub; scaleFactor: number; pageSize: { width: number; getWidth: () => number; height: number; getHeight: () => number; }; pages: number[]; getEncryptor(objectId: number): (data: string) => string; }'.
+src/app/api/social/populate-card/route.ts(60,18): error TS18047: 'insertError' is possibly 'null'.
+src/app/api/test-email/route.ts(60,26): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/app/api/user-shortcuts/route.ts(15,46): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/api/user-shortcuts/route.ts(61,46): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/api/user-shortcuts/route.ts(138,46): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/api/user-shortcuts/suggestions/route.ts(15,46): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/api/users/permissions/list/route.ts(125,16): error TS18046: 'error' is of type 'unknown'.
+src/app/api/users/permissions/update/route.ts(133,16): error TS18046: 'error' is of type 'unknown'.
+src/app/api/workflows/[id]/execute/route.ts(31,31): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+src/app/avaliacao/EvaluationListClient.tsx(248,23): error TS2322: Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/avaliacao/EvaluationListClient.tsx(273,23): error TS2322: Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/avaliacao/EvaluationListClient.tsx(336,19): error TS2322: Type 'Evaluation' is not assignable to type '{ id: string; funcionario_id: string; avaliador_id?: string | undefined; status: string; data_inicio: string; data_fim: string; pontuacao_total?: number | undefined; periodo?: string | undefined; }'.
+  Types of property 'avaliador_id' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/app/avaliacao/EvaluationListClient.tsx(338,47): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(339,45): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(340,43): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(366,19): error TS2322: Type 'Evaluation' is not assignable to type '{ id: string; funcionario_id: string; avaliador_id?: string | undefined; status: string; data_inicio: string; data_fim: string; pontuacao_total?: number | undefined; periodo?: string | undefined; }'.
+  Types of property 'avaliador_id' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/app/avaliacao/EvaluationListClient.tsx(368,47): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(369,45): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(370,43): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(396,19): error TS2322: Type 'Evaluation' is not assignable to type '{ id: string; funcionario_id: string; avaliador_id?: string | undefined; status: string; data_inicio: string; data_fim: string; pontuacao_total?: number | undefined; periodo?: string | undefined; }'.
+  Types of property 'avaliador_id' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/app/avaliacao/EvaluationListClient.tsx(398,47): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(399,45): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(400,43): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(426,19): error TS2322: Type 'Evaluation' is not assignable to type '{ id: string; funcionario_id: string; avaliador_id?: string | undefined; status: string; data_inicio: string; data_fim: string; pontuacao_total?: number | undefined; periodo?: string | undefined; }'.
+  Types of property 'avaliador_id' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/app/avaliacao/EvaluationListClient.tsx(428,47): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(429,45): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/EvaluationListClient.tsx(430,43): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/avaliacao/gerenciar/ManageManagersClient.tsx(117,34): error TS2367: This comparison appears to be unintentional because the types '"ADMIN" | "MANAGER" | "USER"' and '"user"' have no overlap.
+src/app/avaliacao/gerenciar/ManageManagersClient.tsx(120,28): error TS2339: Property 'name' does not exist on type 'User'.
+src/app/avaliacao/gerenciar/ManageManagersClient.tsx(135,34): error TS2367: This comparison appears to be unintentional because the types '"ADMIN" | "MANAGER" | "USER"' and '"manager"' have no overlap.
+src/app/avaliacao/gerenciar/ManageManagersClient.tsx(138,28): error TS2339: Property 'name' does not exist on type 'User'.
+src/app/avaliacao/nova/NewEvaluationClient.tsx(67,56): error TS2339: Property 'name' does not exist on type 'User'.
+src/app/avaliacoes-avancadas/page.tsx(121,33): error TS2367: This comparison appears to be unintentional because the types '"csv" | "excel"' and '"pdf"' have no overlap.
+src/app/avaliacoes-avancadas/page.tsx(155,44): error TS2339: Property 'access_token' does not exist on type 'User'.
+src/app/debug/academy/page.tsx(19,17): error TS2339: Property 'permissions' does not exist on type 'AuthContextType'.
+src/app/debug/academy/page.tsx(53,29): error TS2339: Property 'first_name' does not exist on type 'User'.
+src/app/debug/academy/page.tsx(54,28): error TS2339: Property 'last_name' does not exist on type 'User'.
+src/app/debug/academy/page.tsx(56,28): error TS2339: Property 'is_active' does not exist on type 'User'.
+src/app/news-feed/page.tsx(45,27): error TS18047: 'searchParams' is possibly 'null'.
+src/app/news-feed/page.tsx(427,35): error TS2339: Property 'first_name' does not exist on type 'User'.
+src/app/reset-password/page.tsx(35,19): error TS18047: 'searchParams' is possibly 'null'.
+src/app/reset-password/page.tsx(89,21): error TS18047: 'searchParams' is possibly 'null'.
+src/app/workflows/page.tsx(10,3): error TS2305: Module '"react-icons/fi"' has no exported member 'FiStop'.
+src/components/admin/EditorPermissionsManager.tsx(79,16): error TS18046: 'error' is of type 'unknown'.
+src/components/admin/EditorPermissionsManager.tsx(121,16): error TS18046: 'error' is of type 'unknown'.
+src/components/admin/MenuCustomizer.tsx(11,55): error TS2307: Cannot find module '@hello-pangea/dnd' or its corresponding type declarations.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(64,9): error TS2451: Cannot redeclare block-scoped variable 'carregarDados'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(98,9): error TS2451: Cannot redeclare block-scoped variable 'carregarDados'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(219,93): error TS2304: Cannot find name 'searchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(220,64): error TS2304: Cannot find name 'searchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(221,67): error TS2304: Cannot find name 'searchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(222,63): error TS2304: Cannot find name 'searchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(224,23): error TS2304: Cannot find name 'filterRole'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(224,66): error TS2304: Cannot find name 'filterRole'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(225,29): error TS2304: Cannot find name 'filterDepartment'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(225,84): error TS2304: Cannot find name 'filterDepartment'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(231,87): error TS2339: Property 'usuario_id' does not exist on type 'GerenteConfig'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(232,93): error TS2339: Property 'usuario_id' does not exist on type 'GerenteConfig'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(235,27): error TS2304: Cannot find name 'showOnlySelected'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(236,34): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(238,30): error TS2304: Cannot find name 'showOnlySelected'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(239,39): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(288,22): error TS2304: Cannot find name 'loadData'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(299,14): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(301,12): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(304,32): error TS2304: Cannot find name 'bulkToggleGerentes'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(305,27): error TS2304: Cannot find name 'bulkUpdating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(308,18): error TS2304: Cannot find name 'bulkUpdating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(311,32): error TS2304: Cannot find name 'bulkToggleGerentes'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(312,27): error TS2304: Cannot find name 'bulkUpdating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(315,18): error TS2304: Cannot find name 'bulkUpdating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(318,32): error TS2304: Cannot find name 'setSelectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(354,14): error TS2304: Cannot find name 'FiUserMinus'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(361,66): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(363,14): error TS2304: Cannot find name 'FiCheckSquare'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(379,24): error TS2304: Cannot find name 'searchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(380,34): error TS2304: Cannot find name 'setSearchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(388,18): error TS2304: Cannot find name 'FiFilter'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(392,24): error TS2304: Cannot find name 'filterRole'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(393,34): error TS2304: Cannot find name 'setFilterRole'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(408,24): error TS2304: Cannot find name 'filterDepartment'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(409,34): error TS2304: Cannot find name 'setFilterDepartment'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(423,17): error TS2304: Cannot find name 'setSearchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(424,17): error TS2304: Cannot find name 'setFilterRole'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(425,17): error TS2304: Cannot find name 'setFilterDepartment'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(432,30): error TS2304: Cannot find name 'setShowOnlySelected'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(432,51): error TS2304: Cannot find name 'showOnlySelected'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(435,16): error TS2304: Cannot find name 'showOnlySelected'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(450,32): error TS2304: Cannot find name 'selectAllVisible'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(453,18): error TS2304: Cannot find name 'FiCheckSquare'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(465,59): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(466,39): error TS2304: Cannot find name 'selectAllVisible'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(496,34): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(497,41): error TS2304: Cannot find name 'toggleUserSelection'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(527,40): error TS2304: Cannot find name 'toggleGerente'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(528,35): error TS2304: Cannot find name 'updating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(531,26): error TS2304: Cannot find name 'updating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(550,30): error TS2304: Cannot find name 'selectAllVisible'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(553,16): error TS2304: Cannot find name 'FiCheckSquare'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(567,62): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(568,39): error TS2304: Cannot find name 'selectAllVisible'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(598,34): error TS2304: Cannot find name 'selectedUsers'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(599,41): error TS2304: Cannot find name 'toggleUserSelection'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(606,28): error TS2304: Cannot find name 'FiUserMinus'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(629,40): error TS2304: Cannot find name 'toggleGerente'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(630,35): error TS2304: Cannot find name 'updating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(633,26): error TS2304: Cannot find name 'updating'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(644,16): error TS2304: Cannot find name 'searchTerm'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(644,30): error TS2304: Cannot find name 'filterRole'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(644,56): error TS2304: Cannot find name 'filterDepartment'.
+src/components/admin/PainelConfigGerentesAvaliacaoAdvanced-OLD-BACKUP.tsx(644,88): error TS2304: Cannot find name 'showOnlySelected'.
+src/components/admin/PainelGerentesAvaliacao.tsx(196,80): error TS2339: Property 'nome' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(198,38): error TS2339: Property 'cargo' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(198,66): error TS2339: Property 'cargo' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(199,38): error TS2339: Property 'cargo' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(199,59): error TS2551: Property 'departamento' does not exist on type 'Funcionario'. Did you mean 'department'?
+src/components/admin/PainelGerentesAvaliacao.tsx(200,38): error TS2551: Property 'departamento' does not exist on type 'Funcionario'. Did you mean 'department'?
+src/components/admin/PainelGerentesAvaliacao.tsx(200,73): error TS2551: Property 'departamento' does not exist on type 'Funcionario'. Did you mean 'department'?
+src/components/admin/PainelGerentesAvaliacao.tsx(208,75): error TS2345: Argument of type 'boolean | undefined' is not assignable to parameter of type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.
+src/components/admin/PainelGerentesAvaliacao.tsx(236,78): error TS2339: Property 'nome' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(238,38): error TS2339: Property 'cargo' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(238,66): error TS2339: Property 'cargo' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(239,38): error TS2339: Property 'cargo' does not exist on type 'Funcionario'.
+src/components/admin/PainelGerentesAvaliacao.tsx(239,59): error TS2551: Property 'departamento' does not exist on type 'Funcionario'. Did you mean 'department'?
+src/components/admin/PainelGerentesAvaliacao.tsx(240,38): error TS2551: Property 'departamento' does not exist on type 'Funcionario'. Did you mean 'department'?
+src/components/admin/PainelGerentesAvaliacao.tsx(240,73): error TS2551: Property 'departamento' does not exist on type 'Funcionario'. Did you mean 'department'?
+src/components/admin/PainelGerentesAvaliacao.tsx(248,75): error TS2345: Argument of type 'boolean | undefined' is not assignable to parameter of type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.
+src/components/admin/PainelGerentesUnificado.tsx(84,19): error TS2345: Argument of type 'Set<unknown>' is not assignable to parameter of type 'SetStateAction<Set<string>>'.
+  Type 'Set<unknown>' is not assignable to type 'Set<string>'.
+    Type 'unknown' is not assignable to type 'string'.
+src/components/admin/PainelPeriodosAvaliacao.tsx(190,15): error TS2304: Cannot find name 'NotificacoesAvaliacaoService'.
+src/components/Auth/AdminProtectedRoute.tsx(73,17): error TS2304: Cannot find name 't'.
+src/components/Auth/AdminProtectedRoute.tsx(80,17): error TS2304: Cannot find name 't'.
+src/components/avaliacao/QuestionarioAvaliacaoCardBased.tsx(163,23): error TS2551: Property 'obrigatorio' does not exist on type 'QuestionarioPergunta'. Did you mean 'obrigatoria'?
+src/components/Calendar/GoogleCalendarIntegration.tsx(75,21): error TS2304: Cannot find name 't'.
+src/components/Calendar/GoogleCalendarIntegration.tsx(125,21): error TS2304: Cannot find name 't'.
+src/components/Calendar/GoogleCalendarIntegration.tsx(411,32): error TS2304: Cannot find name 't'.
+src/components/Calendar/GoogleCalendarIntegration.tsx(424,32): error TS2304: Cannot find name 't'.
+src/components/Calendar/GoogleCalendarIntegration.tsx(476,32): error TS2304: Cannot find name 't'.
+src/components/IconTransformer.tsx(75,19): error TS2304: Cannot find name 't'.
+src/components/IconTransformer.tsx(121,23): error TS2304: Cannot find name 't'.
+src/components/InstructionsPanel.tsx(80,30): error TS2304: Cannot find name 't'.
+src/components/InstructionsPanel.tsx(80,71): error TS2304: Cannot find name 't'.
+src/components/MaterialDesignIcon.tsx(14,18): error TS2304: Cannot find name 't'.
+src/components/MaterialIcon.tsx(64,21): error TS2304: Cannot find name 't'.
+src/components/MaterialIcon.tsx(64,63): error TS2304: Cannot find name 't'.
+src/components/news/NewsCommentSection.tsx(90,63): error TS2554: Expected 1 arguments, but got 2.
+src/components/news/NewsCommentSection.tsx(94,63): error TS2554: Expected 1 arguments, but got 2.
+src/components/notifications/NotificationHUD.tsx(385,21): error TS2740: Type 'Notification' is missing the following properties from type 'Notification': badge, body, dir, icon, and 12 more.
+src/components/notifications/NotificationHUD.tsx(388,29): error TS2339: Property 'link' does not exist on type 'Notification'.
+src/components/notifications/NotificationHUD.tsx(388,39): error TS2339: Property 'action_url' does not exist on type 'Notification'.
+src/components/notifications/NotificationHUD.tsx(389,50): error TS2339: Property 'link' does not exist on type 'Notification'.
+src/components/notifications/NotificationHUD.tsx(389,60): error TS2339: Property 'action_url' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(12,35): error TS2339: Property 'read_at' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(17,33): error TS2339: Property 'id' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(24,30): error TS2339: Property 'type' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(46,36): error TS2339: Property 'actor' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(47,27): error TS2339: Property 'actor' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(47,60): error TS2339: Property 'actor' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(50,38): error TS2339: Property 'actor' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(54,35): error TS2339: Property 'metadata' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(56,59): error TS2339: Property 'resource_id' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(56,90): error TS2339: Property 'resource_id' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(75,29): error TS2339: Property 'message' does not exist on type 'Notification'.
+src/components/notifications/NotificationItem.tsx(111,46): error TS2339: Property 'created_at' does not exist on type 'Notification'.
+src/components/ReimbursementIconSelector.tsx(17,38): error TS2304: Cannot find name 't'.
+src/components/ReimbursementIconSelector.tsx(21,36): error TS2304: Cannot find name 't'.
+src/components/RelatoriosPDF/HistoricoRelatorios.tsx(38,16): error TS18048: 'valorA' is possibly 'undefined'.
+src/components/RelatoriosPDF/HistoricoRelatorios.tsx(38,25): error TS18048: 'valorB' is possibly 'undefined'.
+src/components/RelatoriosPDF/HistoricoRelatorios.tsx(40,16): error TS18048: 'valorA' is possibly 'undefined'.
+src/components/RelatoriosPDF/HistoricoRelatorios.tsx(40,25): error TS18048: 'valorB' is possibly 'undefined'.
+src/components/reminders/ReminderManager.tsx(228,32): error TS2304: Cannot find name 't'.
+src/components/Social/SocialFeed.tsx(237,22): error TS2339: Property 'first_name' does not exist on type 'User'.
+src/components/Social/SocialFeed.tsx(241,47): error TS2339: Property 'first_name' does not exist on type 'User'.
+src/data/criterios-avaliacao.ts(364,7): error TS2322: Type 'never[]' is not assignable to type 'number'.
+src/data/criterios-avaliacao.ts(368,43): error TS2339: Property 'push' does not exist on type 'number'.
+src/data/criterios-avaliacao.ts(415,82): error TS2339: Property 'trim' does not exist on type 'number'.
+src/lib/api-management.ts(133,31): error TS2339: Property 'sql' does not exist on type 'SupabaseClient<any, "public", any>'.
+src/lib/api-management.ts(181,34): error TS2339: Property 'sql' does not exist on type 'SupabaseClient<any, "public", any>'.
+src/lib/api-management.ts(210,22): error TS2304: Cannot find name 'supabase'.
+src/lib/api-management.ts(211,22): error TS2304: Cannot find name 'supabase'.
+src/lib/api-management.ts(213,21): error TS2304: Cannot find name 'supabase'.
+src/lib/api-management.ts(215,23): error TS2304: Cannot find name 'supabase'.
+src/lib/email-verification.ts(166,28): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/lib/google-drive-api.ts(8,19): error TS7016: Could not find a declaration file for module 'node-fetch'. 'F:/Code/0_Painel ABZ-BR-INT/painel-abz/node_modules/node-fetch/lib/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/node-fetch` if it exists or add a new declaration (.d.ts) file containing `declare module 'node-fetch';`
+src/lib/notifications.ts(147,16): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/lib/notifications.ts(148,45): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/lib/notifications.ts(154,33): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/lib/notifications.ts(154,66): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/lib/notifications.ts(399,72): error TS2554: Expected 1 arguments, but got 2.
+src/lib/notifications.ts(550,33): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/lib/notifications.ts(550,66): error TS2339: Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; } | { success: boolean; message: string; messageId?: undefined; }'.
+  Property 'previewUrl' does not exist on type '{ success: boolean; message: string; messageId: any; }'.
+src/lib/services/evaluation-service.ts(70,40): error TS2339: Property 'sendEvaluationNotifications' does not exist on type 'typeof AvaliacaoWorkflowService'.
+src/lib/services/evaluation-service.ts(277,42): error TS2339: Property 'notifyManager' does not exist on type 'typeof AvaliacaoWorkflowService'.
+src/lib/services/evaluation-service.ts(289,42): error TS2339: Property 'notifyApproval' does not exist on type 'typeof AvaliacaoWorkflowService'.
+src/lib/services/evaluation-service.ts(371,40): error TS2339: Property 'sendDecisionNotifications' does not exist on type 'typeof AvaliacaoWorkflowService'.
+src/lib/services/evaluation-workflow-service.ts(200,39): error TS2345: Argument of type '{ usuario_id: any; avaliacao_id: string; dados: { decisao: "return" | "approve" | "reject"; motivo_devolucao: string | undefined; proximos_passos: string; }; title: string; message: string; tipo: string; } | { ...; } | { ...; }' is not assignable to parameter of type '{ tipo: string; titulo: string; mensagem: string; usuario_id: string; avaliacao_id?: string | undefined; dados?: Record<string, any> | undefined; }'.
+  Type '{ usuario_id: any; avaliacao_id: string; dados: { decisao: "return" | "approve" | "reject"; motivo_devolucao: string | undefined; proximos_passos: string; }; title: string; message: string; tipo: string; }' is missing the following properties from type '{ tipo: string; titulo: string; mensagem: string; usuario_id: string; avaliacao_id?: string | undefined; dados?: Record<string, any> | undefined; }': titulo, mensagem
+src/lib/services/evaluation-workflow-service.ts(231,9): error TS2353: Object literal may only specify known properties, and 'message' does not exist in type '{ tipo: string; titulo: string; mensagem: string; usuario_id: string; avaliacao_id?: string | undefined; dados?: Record<string, any> | undefined; }'.
+src/lib/services/evaluation-workflow-service.ts(279,13): error TS2353: Object literal may only specify known properties, and 'title' does not exist in type '{ tipo: string; titulo: string; mensagem: string; usuario_id: string; avaliacao_id?: string | undefined; dados?: Record<string, any> | undefined; }'.
+src/lib/services/evaluation-workflow-service.ts(379,15): error TS2353: Object literal may only specify known properties, and 'title' does not exist in type '{ tipo: string; titulo: string; mensagem: string; usuario_id: string; avaliacao_id?: string | undefined; dados?: Record<string, any> | undefined; }'.
+src/lib/services/evaluation-workflow-service.ts(445,7): error TS2739: Type '{ pending_response: "awaiting_manager"; under_review: "awaiting_manager"; }' is missing the following properties from type 'Record<EvaluationStatus, EvaluationStatus>': approved, rejected, awaiting_manager, returned_for_adjustment, archived
+src/lib/services/evaluation-workflow-service.ts(449,7): error TS2739: Type '{ awaiting_manager: "approved"; returned_for_adjustment: "approved"; }' is missing the following properties from type 'Record<EvaluationStatus, EvaluationStatus>': approved, rejected, pending_response, under_review, archived
+src/lib/services/evaluation-workflow-service.ts(453,7): error TS2739: Type '{ awaiting_manager: "rejected"; returned_for_adjustment: "rejected"; }' is missing the following properties from type 'Record<EvaluationStatus, EvaluationStatus>': approved, rejected, pending_response, under_review, archived
+src/lib/services/evaluation-workflow-service.ts(457,7): error TS2739: Type '{ approved: "under_review"; rejected: "under_review"; }' is missing the following properties from type 'Record<EvaluationStatus, EvaluationStatus>': pending_response, awaiting_manager, returned_for_adjustment, under_review, archived
+src/lib/services/notificacoes-avaliacao.ts(216,9): error TS2353: Object literal may only specify known properties, and 'lida' does not exist in type 'Omit<NotificacaoAvaliacao, "id" | "created_at">'.
+src/lib/services/notificacoes-avaliacao.ts(246,9): error TS2353: Object literal may only specify known properties, and 'lida' does not exist in type 'Omit<NotificacaoAvaliacao, "id" | "created_at">'.
+src/lib/services/notificacoes-avaliacao.ts(280,9): error TS2353: Object literal may only specify known properties, and 'lida' does not exist in type 'Omit<NotificacaoAvaliacao, "id" | "created_at">'.
+src/lib/services/notificacoes-avaliacao.ts(314,9): error TS2353: Object literal may only specify known properties, and 'lida' does not exist in type 'Omit<NotificacaoAvaliacao, "id" | "created_at">'.
+src/lib/services/notificacoes-avaliacao.ts(417,42): error TS2339: Property 'data_limite_autoavaliacao' does not exist on type '{ data_limite_autoavaliacao: any; data_limite_aprovacao: any; }[]'.
+src/lib/services/notificacoes-avaliacao.ts(418,42): error TS2339: Property 'data_limite_aprovacao' does not exist on type '{ data_limite_autoavaliacao: any; data_limite_aprovacao: any; }[]'.
+src/lib/workflow-engine.ts(59,43): error TS2503: Cannot find namespace 'cron'.
+src/lib/workflow-engine.ts(101,9): error TS2353: Object literal may only specify known properties, and 'scheduled' does not exist in type 'TaskOptions'.
+src/lib/workflow-engine.ts(197,31): error TS2339: Property 'sql' does not exist on type 'SupabaseClient<any, "public", any>'.
+src/lib/workflow-engine.ts(214,26): error TS18046: 'error' is of type 'unknown'.
+src/lib/workflow-engine.ts(260,18): error TS18046: 'error' is of type 'unknown'.
+src/scripts/test-avaliacao-system.ts(174,7): error TS2353: Object literal may only specify known properties, and 'lida' does not exist in type 'Omit<NotificacaoAvaliacao, "id" | "created_at">'.
+src/services/evaluationService.ts(157,10): error TS2352: Conversion of type '{ id: any; name: any; email: any; role: any; department: any; }[]' to type 'User[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: any; name: any; email: any; role: any; department: any; }' is missing the following properties from type 'User': phoneNumber, firstName, lastName, active, and 2 more.

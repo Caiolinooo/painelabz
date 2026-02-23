@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { supabase } from '@/lib/supabase';
-import { FiPlus, FiTrash2, FiUpload, FiSave, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiUpload, FiSave, FiAlertCircle, FiSearch, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { getToken } from '@/lib/tokenStorage';
 
 // Types
@@ -20,6 +19,7 @@ type POItem = {
 };
 
 type POFormData = {
+    supplier_id?: string;
     provider_name: string;
     provider_trade_name: string;
     provider_cnpj: string;
@@ -31,7 +31,7 @@ type POFormData = {
     observation: string;
     items: POItem[];
     freight_cost: number;
-    sector_id: string; // Add sector_id to type
+    sector_id: string;
 };
 
 export default function PurchaseOrderForm() {
@@ -44,19 +44,24 @@ export default function PurchaseOrderForm() {
     const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
     const [sectors, setSectors] = useState<any[]>([]);
 
+    // Supplier search state
+    const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
+    const [supplierResults, setSupplierResults] = useState<any[]>([]);
+    const [isSearchingTranslators, setIsSearchingSuppliers] = useState(false);
+    const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+
     const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<POFormData>({
         defaultValues: {
             items: [{ description: '', quantity: 1, unit_value: 0, cost_center: '' }],
             freight_cost: 0,
             buyer_name: profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : '',
-            sector_id: '' // Will be set after fetching sectors
+            sector_id: ''
         }
     });
 
-    // Use watch from useForm instead of useWatch hook to avoid initialization order issues
     const sectorId = watch('sector_id');
 
-    // Fetch Sectors and Set Sector ID
     useEffect(() => {
         const fetchSectors = async () => {
             try {
@@ -64,19 +69,11 @@ export default function PurchaseOrderForm() {
                 if (res.ok) {
                     const data = await res.json();
                     setSectors(data);
-                    console.log('Sectors Fetched:', data);
-                    console.log('User Profile Dept:', profile?.department);
-                    console.log('User Sector ID:', profile?.sector_id);
-
                     if (data.length > 0) {
                         let matchedSector = null;
-
-                        // 1. Try to match by sector_id (Most reliable)
                         if (profile?.sector_id) {
                             matchedSector = data.find((s: any) => s.id === profile.sector_id);
                         }
-
-                        // 2. Fallback to matching by department name
                         if (!matchedSector && profile?.department) {
                             const dept = profile.department.toLowerCase();
                             matchedSector = data.find((s: any) =>
@@ -84,17 +81,14 @@ export default function PurchaseOrderForm() {
                                 s.name.toLowerCase().includes(dept)
                             );
                         }
-
                         if (matchedSector) {
                             setValue('sector_id', matchedSector.id);
                         } else {
-                            // First fallback: default "ABZ" or first sector
                             const defaultSector = data.find((s: any) => s.name.toUpperCase() === 'ABZ') || data[0];
                             setValue('sector_id', defaultSector.id);
                         }
                     }
                 }
-
             } catch (err) {
                 console.error('Failed to fetch sectors', err);
             }
@@ -107,7 +101,6 @@ export default function PurchaseOrderForm() {
         name: "items"
     });
 
-    // Watch values for total calculation
     const items = useWatch({ control, name: "items" });
     const freightCost = useWatch({ control, name: "freight_cost" });
 
@@ -115,74 +108,102 @@ export default function PurchaseOrderForm() {
         return acc + (Number(item.quantity || 0) * Number(item.unit_value || 0));
     }, 0) + Number(freightCost || 0);
 
-    // Fetch Config (Global API)
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                console.log('🔧 Fetching config from /api/purchase-orders/config');
                 const token = getToken();
-                console.log('🔧 Token found:', !!token);
-
                 const res = await fetch('/api/purchase-orders/config', {
-                    credentials: 'include', // CRITICAL: Include cookies for auth in incognito mode
+                    credentials: 'include',
                     headers: {
                         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                     }
                 });
-
-                console.log('🔧 Config API Response Status:', res.status);
-
                 if (res.ok) {
                     const json = await res.json();
-                    console.log('🔧 Config API Response:', json);
                     setAllConfigs(json);
-                } else {
-                    const errorText = await res.text();
-                    console.error('🔧 Config API Error:', res.status, errorText);
-                    toast.error('Erro ao carregar configurações. Verifique sua autenticação.');
                 }
             } catch (err) {
-                console.error('🔧 Failed to fetch config:', err);
+                console.error('Failed to fetch config:', err);
                 toast.error('Erro de conexão ao carregar configurações.');
             }
         };
         fetchConfig();
     }, []);
 
-    // Update active config when sectorId or allConfigs changes
     useEffect(() => {
         if (allConfigs && sectorId) {
-            console.log('--- Config Search Debug ---');
-            console.log('Current sectorId:', sectorId);
-            console.log('All Configs (Sectors):', allConfigs.sectors);
-            console.log('All Configs (Users):', allConfigs.users);
-
-            // 1. Try to find config by SECTOR_ID
             let foundConfig = allConfigs.sectors?.find((s: any) => s.sector_id === sectorId);
-
-            // 2. If not found, check if it's a legacy structure or just missing
             if (!foundConfig && allConfigs.data) {
-                console.log('Fallback to legacy data structure');
                 foundConfig = allConfigs.data;
             }
-
             if (foundConfig) {
-                console.log('Config Found:', foundConfig);
                 setConfig(foundConfig);
             } else {
-                console.warn('No config found for sector ID:', sectorId);
                 setConfig(null);
             }
         }
     }, [allConfigs, sectorId]);
 
-    // File Upload (Same as before)
+    // Close autocomplete when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowSupplierDropdown(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Perform supplier search
+    useEffect(() => {
+        const fetchSuppliers = async () => {
+            if (supplierSearchQuery.length < 2) {
+                setSupplierResults([]);
+                return;
+            }
+            setIsSearchingSuppliers(true);
+            try {
+                const res = await fetch(`/api/suppliers?search=${encodeURIComponent(supplierSearchQuery)}&limit=5`);
+                const json = await res.json();
+                if (json.success) {
+                    setSupplierResults(json.data);
+                }
+            } catch (error) {
+                console.error('Supplier search error:', error);
+            } finally {
+                setIsSearchingSuppliers(false);
+            }
+        };
+
+        const timeoutId = setTimeout(fetchSuppliers, 300);
+        return () => clearTimeout(timeoutId);
+    }, [supplierSearchQuery]);
+
+    const selectSupplier = (supplier: any) => {
+        setValue('supplier_id', supplier.id);
+        setValue('provider_name', supplier.legal_name || supplier.trade_name);
+        setValue('provider_trade_name', supplier.trade_name);
+        setValue('provider_cnpj', supplier.document_number || '');
+        setValue('provider_email', supplier.contact_email || '');
+
+        if (supplier.payment_terms) {
+            setValue('payment_terms', supplier.payment_terms);
+        }
+        if (supplier.address) {
+            setValue('delivery_address', supplier.address);
+        }
+
+        setSupplierSearchQuery(supplier.trade_name);
+        setShowSupplierDropdown(false);
+        toast.success(`Fornecedor ${supplier.trade_name} selecionado`);
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
 
         setUploading(true);
         const file = e.target.files[0];
-        const fileName = `${Date.now()}-${user?.id}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
         try {
             const token = getToken();
@@ -219,7 +240,6 @@ export default function PurchaseOrderForm() {
             return;
         }
 
-        // Validate Max Value
         if (config?.max_value && totalValue > config.max_value) {
             toast.error(`${t('purchaseOrders.form.errors.exceedsLimit')} (${new Intl.NumberFormat(locale === 'en-US' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' }).format(config.max_value)})`);
             return;
@@ -228,10 +248,6 @@ export default function PurchaseOrderForm() {
         try {
             const loadingToast = toast.loading('Enviando solicitação...');
 
-            // Ensure sector_id is set
-            const finalSectorId = data.sector_id;
-
-            // Call POST API
             const token = getToken();
             const res = await fetch('/api/purchase-orders', {
                 method: 'POST',
@@ -249,10 +265,9 @@ export default function PurchaseOrderForm() {
                     })),
                     freight_cost: Number(data.freight_cost) || 0,
                     delivery_date: data.delivery_date || null,
-                    sector_id: finalSectorId,
+                    sector_id: data.sector_id,
                     invoice_url: invoiceUrl,
                     total_value: totalValue,
-                    // Note: user_id provided by server from token
                 })
             });
 
@@ -274,9 +289,63 @@ export default function PurchaseOrderForm() {
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-20">
 
-            {/* 1. Provider Details */}
-            <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">{t('purchaseOrders.form.provider.title')}</h2>
+            {/* 1. Supplier Search & Provider Details */}
+            <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm relative" ref={searchRef}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-2 border-b gap-4">
+                    <h2 className="text-lg font-semibold text-gray-800">{t('purchaseOrders.form.provider.title')}</h2>
+                    <div className="w-full sm:w-72 relative">
+                        <div className="relative">
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar fornecedor cadastrado..."
+                                value={supplierSearchQuery}
+                                onChange={(e) => {
+                                    setSupplierSearchQuery(e.target.value);
+                                    setShowSupplierDropdown(true);
+                                }}
+                                onFocus={() => setShowSupplierDropdown(true)}
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            {supplierSearchQuery && (
+                                <button type="button" onClick={() => { setSupplierSearchQuery(''); setShowSupplierDropdown(false); setValue('supplier_id', ''); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <FiX />
+                                </button>
+                            )}
+                        </div>
+
+                        {showSupplierDropdown && supplierSearchQuery.length >= 2 && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 shadow-lg rounded-xl z-50 overflow-hidden max-h-64 overflow-y-auto">
+                                {isSearchingTranslators ? (
+                                    <div className="p-4 text-center text-sm text-gray-500">Buscando...</div>
+                                ) : supplierResults.length > 0 ? (
+                                    <ul className="divide-y divide-gray-100">
+                                        {supplierResults.map((supplier) => (
+                                            <li
+                                                key={supplier.id}
+                                                onClick={() => selectSupplier(supplier)}
+                                                className="p-3 hover:bg-blue-50 cursor-pointer transition flex justify-between items-center"
+                                            >
+                                                <div>
+                                                    <div className="font-medium text-gray-900 text-sm">{supplier.trade_name}</div>
+                                                    <div className="text-xs text-gray-500">{supplier.document_number}</div>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="p-4 text-center">
+                                        <p className="text-sm text-gray-500 mb-2">Fornecedor não encontrado</p>
+                                        <button type="button" onClick={() => window.open('/admin/compras', '_blank')} className="text-sm font-medium text-blue-600 hover:underline">
+                                            Cadastrar novo fornecedor
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="form-control">
                         <label className="label-text">{t('purchaseOrders.form.provider.name')} *</label>

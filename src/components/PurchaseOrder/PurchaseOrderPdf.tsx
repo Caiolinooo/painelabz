@@ -167,10 +167,22 @@ export const PurchaseOrderPdf = ({ data }: { data: any }) => {
                             <Text style={styles.label}>Email:</Text>
                             <Text style={styles.value}>{data.provider_email}</Text>
                         </View>
+                        {data.suppliers?.contact_phone && (
+                            <View style={styles.row}>
+                                <Text style={styles.label}>Telefone:</Text>
+                                <Text style={styles.value}>{data.suppliers.contact_phone}</Text>
+                            </View>
+                        )}
                         <View style={styles.row}>
                             <Text style={styles.label}>Cond. Pagto:</Text>
                             <Text style={styles.value}>{data.payment_terms}</Text>
                         </View>
+                        {data.suppliers?.bank_details && (
+                            <View style={styles.row}>
+                                <Text style={styles.label}>Dados Banc.:</Text>
+                                <Text style={styles.value}>{data.suppliers.bank_details}</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Delivery */}

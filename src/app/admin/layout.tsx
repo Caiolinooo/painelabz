@@ -86,6 +86,14 @@ const adminMenuGroups = [
     ]
   },
   {
+    id: 'hr_admin',
+    label: 'RH e Aprovações',
+    items: [
+      { id: 'leave-requests', href: '/admin/leave-requests', label: 'Todas as Solicitações', icon: FiList },
+      { id: 'leave-settings', href: '/admin/leave-settings', label: 'Hierarquia de Férias', icon: FiSettings },
+    ]
+  },
+  {
     id: 'academy',
     label: 'Academy',
     items: [
@@ -108,6 +116,7 @@ const adminMenuGroups = [
     label: 'Ordens de Compra',
     items: [
       { id: 'purchase-orders', href: '/admin/purchase-orders', label: 'Configurações', icon: FiShoppingCart },
+      { id: 'compras', href: '/admin/compras', label: 'Fornecedores', icon: FiBox },
     ]
   },
   {

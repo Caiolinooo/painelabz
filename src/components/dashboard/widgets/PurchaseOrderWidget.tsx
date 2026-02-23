@@ -15,6 +15,20 @@ export default function PurchaseOrderWidget() {
     const { hasPermission } = useEffectivePermissions();
 
     useEffect(() => {
+        const fetchRecentOrders = async () => {
+            try {
+                const res = await fetch('/api/purchase-orders?limit=5');
+                if (res.ok) {
+                    const json = await res.json();
+                    setOrders(json.data?.slice(0, 5) || []);
+                }
+            } catch (error) {
+                console.error('Widget error:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (user && hasPermission('compras')) {
             fetchRecentOrders();
         } else {
@@ -23,20 +37,6 @@ export default function PurchaseOrderWidget() {
     }, [user, hasPermission]);
 
     if (!user || !hasPermission('compras')) return null;
-
-    const fetchRecentOrders = async () => {
-        try {
-            const res = await fetch('/api/purchase-orders?limit=5');
-            if (res.ok) {
-                const json = await res.json();
-                setOrders(json.data?.slice(0, 5) || []);
-            }
-        } catch (error) {
-            console.error('Widget error:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const getStatusIcon = (status: string) => {
         switch (status) {

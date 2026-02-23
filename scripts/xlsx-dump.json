@@ -1,0 +1,112 @@
+{
+  "Forn. PJ": [
+    [
+      null,
+      "  Lista de Fornecedores - PESSOA JURÍDICA",
+      null,
+      null,
+      null,
+      null,
+      null,
+      "Atualizado em: 14/03/2025"
+    ],
+    [
+      null,
+      "Cód. Forn.",
+      "Nome Fornecedor",
+      "Nome fantasia",
+      "Escopo",
+      "Telefone",
+      "Município",
+      "CNPJ/CPF",
+      "Pessoa (PF/PJ)",
+      "Status",
+      "Observação"
+    ],
+    [
+      null,
+      "9627",
+      "A A A SULIMPRESS ARTES GRAFICAS E CARIMBOS LTDA",
+      "SULIMPRESS",
+      "Impressão de material para usos publicitário",
+      "(22) 2762-0025",
+      "Macae",
+      "29.897.089/0001-12",
+      "Jurídica"
+    ],
+    [
+      null,
+      "881",
+      "A C FREITAS CHOPERIA E ROTISSERIA",
+      "SABORES DO SUL CHOPERIA E ROTISSERIA",
+      "Restaurantes e similares.",
+      "(22) 2142-3441",
+      "Macae",
+      "34.228.524/0001-56",
+      "Jurídica"
+    ],
+    [
+      null,
+      "980",
+      "A. TRINDADE CONSULT. E TREIN. EMPRESARIAL  LTDA",
+      "A. TRINDADE CONSULTORIA E TREINAMENTO EMPRESA",
+      "Manutenção e reparação de máquinas motrizes não elétricas.",
+      "22-999272878",
+      "Campos dos Goytacazes",
+      "47.630.437/0001-72",
+      "Jurídica"
+    ]
+  ],
+  "Forn. PF": [
+    [
+      null,
+      "  Lista de Fornecedores - PESSOA FÍSICA",
+      null,
+      null,
+      null,
+      null,
+      "Atualizado em: 14/03/2025"
+    ],
+    [
+      null,
+      "Cód. Forn.",
+      "Nome Fornecedor",
+      "ESCOPO",
+      "Município",
+      "Telefone",
+      "CNPJ/CPF",
+      "Pessoa (F/J)",
+      "Status"
+    ],
+    [
+      null,
+      "10091",
+      "ADRIANO MARTINS CARLOS",
+      null,
+      "Macae",
+      null,
+      "021.174.577-46",
+      "Física"
+    ],
+    [
+      null,
+      "9774",
+      "ALOIZIO GOMES DA SILVA FILHO",
+      null,
+      "Macae",
+      null,
+      "221.705.451-15",
+      "Física"
+    ],
+    [
+      null,
+      "9797",
+      "ANA KAROLINE SILVA PACHECO",
+      null,
+      "Macae",
+      null,
+      "646.125.893-00",
+      "Física"
+    ]
+  ]
+}

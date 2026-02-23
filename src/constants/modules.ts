@@ -20,6 +20,7 @@ export const SYSTEM_MODULES: SystemModule[] = [
     { id: 'kpi', label: 'KPIs', description: 'Indicadores de desempenho', category: 'hr', href: '/kpi' },
     { id: 'avaliacao', label: 'Avaliação de Desempenho', description: 'Ciclos de avaliação e feedback', category: 'hr', href: '/avaliacao' },
     { id: 'epi', label: 'EPI', description: 'Equipamentos de Proteção Individual', category: 'hr', href: '/epi' },
+    { id: 'ferias', label: 'Férias', description: 'Solicitação e aprovação de férias', category: 'hr', href: '/ferias' },
 
     // Content & Knowledge
     { id: 'manual', label: 'Manual do Colaborador', description: 'Guia de normas e conduta', category: 'department', href: '/manual', visible: false },
