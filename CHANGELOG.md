@@ -1,6 +1,11 @@
 # Changelog
 <br>
 
+## [4.13.1] - 2026-02-23
+
+### Fixed
+- **Build Vercel**: Corrigido erro de compilação causado pela ausência da função `getGeneralEPIReportData` no serviço de EPIs, além da correção de erro de roteamento estático com `request.headers` na rota de exportação de estoque.
+
 ## [4.13.0] - 2026-02-23
 
 ### Added
