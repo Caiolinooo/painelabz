@@ -688,3 +688,84 @@ export async function resetEPIModuleData(): Promise<void> {
     }
 }
 
+/**
+ * Get data for the general EPI report
+ */
+export async function getGeneralEPIReportData(filters: {
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    onlyRequests?: boolean;
+}): Promise<any[]> {
+    let query = supabaseAdmin
+        .from('epi_registrations')
+        .select(`
+            *,
+            user:user_id (
+                id,
+                name,
+                email,
+                sector_id,
+                department,
+                position
+            )
+        `)
+        .order('created_at', { ascending: false });
+
+    if (filters.status) {
+        query = query.eq('status', filters.status);
+    }
+
+    if (filters.onlyRequests) {
+        query = query.in('status', ['pending', 'approved']);
+    }
+
+    if (filters.startDate) {
+        query = query.gte('created_at', `${filters.startDate}T00:00:00.000Z`);
+    }
+
+    if (filters.endDate) {
+        query = query.lte('created_at', `${filters.endDate}T23:59:59.999Z`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error('Error fetching general EPI report data:', error);
+        throw new Error(`Erro ao buscar dados para o relatório: ${error.message}`);
+    }
+
+    // Fetch all EPI types to map CA numbers
+    const { data: epiTypes } = await supabaseAdmin
+        .from('epi_types')
+        .select('name, ca_number');
+
+    const typesMap = (epiTypes || []).reduce((acc: any, type: any) => {
+        acc[type.name] = type.ca_number;
+        return acc;
+    }, {});
+
+    // Fetch all sectors to resolve sector_id → name
+    const { data: sectors } = await supabaseAdmin
+        .from('sectors')
+        .select('id, name');
+
+    const sectorsMap = (sectors || []).reduce((acc: any, s: any) => {
+        acc[s.id] = s.name;
+        return acc;
+    }, {});
+
+    return (data || []).map((item: any) => {
+        const sectorId = item.user?.sector_id;
+        const sectorName = sectorId ? sectorsMap[sectorId] : null;
+        return {
+            ...item,
+            user_name: item.user?.name,
+            user_email: item.user?.email,
+            user_sector: sectorName || item.user?.department || '',
+            user_position: item.user?.position || '',
+            equipment_ca: typesMap[item.equipment_type] || ''
+        };
+    });
+}
+
