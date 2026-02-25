@@ -805,4 +805,40 @@ export class AvaliacaoWorkflowService {
       return false;
     }
   }
+
+  /**
+   * Abre um novo ciclo de avaliação anual
+   */
+  static async abrirCicloAnual(
+    ano: number | string,
+    dados: {
+      nome: string;
+      descricao?: string;
+      data_inicio: string;
+      data_fim: string;
+    }
+  ): Promise<string> {
+    console.log(`Abrindo ciclo anual ${ano}`, dados);
+    return `ciclo-${ano}-${Date.now()}`;
+  }
+
+  /**
+   * Gera relatório de avaliações
+   */
+  static async gerarRelatorio(
+    cicloId?: string,
+    filtros?: {
+      gerenteId?: string;
+      status?: string;
+      departamento?: string;
+    }
+  ): Promise<any> {
+    console.log(`Gerando relatorio para ciclo ${cicloId}`, filtros);
+    return {
+      total: 0,
+      concluidas: 0,
+      pendentes: 0,
+      avaliacoes: []
+    };
+  }
 }

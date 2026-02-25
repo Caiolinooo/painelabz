@@ -244,8 +244,8 @@ export default function EvaluationListClient({
                     <ActivePeriodCard
                       key={item.period.id}
                       period={item.period}
-                      existingEvaluationId={item.existingEvaluationId}
-                      evaluationStatus={item.evaluationStatus}
+                      existingEvaluationId={item.existingEvaluationId === null ? undefined : item.existingEvaluationId}
+                      evaluationStatus={item.evaluationStatus === null ? undefined : item.evaluationStatus}
                       index={index}
                       type="active"
                     />
@@ -269,8 +269,8 @@ export default function EvaluationListClient({
                     <ActivePeriodCard
                       key={item.period.id}
                       period={item.period}
-                      existingEvaluationId={item.existingEvaluationId}
-                      evaluationStatus={item.evaluationStatus}
+                      existingEvaluationId={item.existingEvaluationId === null ? undefined : item.existingEvaluationId}
+                      evaluationStatus={item.evaluationStatus === null ? undefined : item.evaluationStatus}
                       index={index}
                       type="upcoming"
                     />
@@ -333,11 +333,11 @@ export default function EvaluationListClient({
               {myPendingReviews.map((ev, index) => (
                 <EvaluationCard
                   key={ev.id}
-                  evaluation={ev}
-                  employeeName={getEmployeeName(ev.funcionario_id)}
-                  managerName={getManagerName(ev.avaliador_id)}
-                  periodName={getPeriodName(ev.periodo_id)}
-                  cycleName={getCycleName(ev.periodo_id)}
+                  evaluation={ev as any}
+                  employeeName={getEmployeeName(ev.funcionario_id || '')}
+                  managerName={getManagerName(ev.avaliador_id || '')}
+                  periodName={getPeriodName(ev.periodo_id || '')}
+                  cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
                   isManagerView={isEvaluationManager}
                   currentUserRole={currentUser.role}
@@ -363,11 +363,11 @@ export default function EvaluationListClient({
               {pending.map((ev, index) => (
                 <EvaluationCard
                   key={ev.id}
-                  evaluation={ev}
-                  employeeName={getEmployeeName(ev.funcionario_id)}
-                  managerName={getManagerName(ev.avaliador_id)}
-                  periodName={getPeriodName(ev.periodo_id)}
-                  cycleName={getCycleName(ev.periodo_id)}
+                  evaluation={ev as any}
+                  employeeName={getEmployeeName(ev.funcionario_id || '')}
+                  managerName={getManagerName(ev.avaliador_id || '')}
+                  periodName={getPeriodName(ev.periodo_id || '')}
+                  cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
                   isManagerView={isEvaluationManager}
                   currentUserRole={currentUser.role}
@@ -393,11 +393,11 @@ export default function EvaluationListClient({
               {awaitingManagerFiltered.map((ev, index) => (
                 <EvaluationCard
                   key={ev.id}
-                  evaluation={ev}
-                  employeeName={getEmployeeName(ev.funcionario_id)}
-                  managerName={getManagerName(ev.avaliador_id)}
-                  periodName={getPeriodName(ev.periodo_id)}
-                  cycleName={getCycleName(ev.periodo_id)}
+                  evaluation={ev as any}
+                  employeeName={getEmployeeName(ev.funcionario_id || '')}
+                  managerName={getManagerName(ev.avaliador_id || '')}
+                  periodName={getPeriodName(ev.periodo_id || '')}
+                  cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
                   isManagerView={isEvaluationManager}
                   currentUserRole={currentUser.role}
@@ -423,11 +423,11 @@ export default function EvaluationListClient({
               {completed.map((ev, index) => (
                 <EvaluationCard
                   key={ev.id}
-                  evaluation={ev}
-                  employeeName={getEmployeeName(ev.funcionario_id)}
-                  managerName={getManagerName(ev.avaliador_id)}
-                  periodName={getPeriodName(ev.periodo_id)}
-                  cycleName={getCycleName(ev.periodo_id)}
+                  evaluation={ev as any}
+                  employeeName={getEmployeeName(ev.funcionario_id || '')}
+                  managerName={getManagerName(ev.avaliador_id || '')}
+                  periodName={getPeriodName(ev.periodo_id || '')}
+                  cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
                   isManagerView={isEvaluationManager}
                   currentUserRole={currentUser.role}

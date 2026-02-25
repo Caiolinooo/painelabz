@@ -14,6 +14,7 @@ import InviteCodeInput from '@/components/Auth/InviteCodeInput';
 import ForgotPasswordForm from '@/components/Auth/ForgotPasswordForm';
 import { SetPasswordModal } from '@/components/Auth/SetPasswordModal';
 import EmailVerificationPrompt from '@/components/Auth/EmailVerificationPrompt';
+import PostLoginBiometricPrompt from '@/components/Auth/PostLoginBiometricPrompt';
 
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { ToastContainer } from 'react-toastify';
@@ -39,6 +40,9 @@ export default function Login() {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [emailToVerify, setEmailToVerify] = useState('');
   const [isWebAuthnLoading, setIsWebAuthnLoading] = useState(false);
+  const [isWebAuthnAvailable, setIsWebAuthnAvailable] = useState(false);
+  const [hasRegisteredPasskey, setHasRegisteredPasskey] = useState(false);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
 
   // Campos para registro rápido
   const [firstName, setFirstName] = useState('');
@@ -60,10 +64,22 @@ export default function Login() {
     setLoginStep
   } = useSupabaseAuth();
 
-  // Debug: Log do estado loginStep
-  console.log('🎯 DEBUG Frontend - loginStep atual:', loginStep);
-  console.log('🎯 DEBUG Frontend - authStatus atual:', authStatus);
-  console.log('🎯 DEBUG Frontend - loginStep === quick_register?', loginStep === 'quick_register');
+  // WebAuthn feature detection
+  useEffect(() => {
+    const checkWebAuthn = async () => {
+      try {
+        if (typeof window !== 'undefined' && window.PublicKeyCredential) {
+          setIsWebAuthnAvailable(true);
+          // Check if user has previously used passkey login
+          const hadPasskey = localStorage.getItem('hasPasskey') === 'true';
+          setHasRegisteredPasskey(hadPasskey);
+        }
+      } catch {
+        setIsWebAuthnAvailable(false);
+      }
+    };
+    checkWebAuthn();
+  }, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
@@ -113,10 +129,16 @@ export default function Login() {
         // Se a senha estiver expirada, redirecionar para definir senha
         router.replace('/set-password');
       } else {
-        router.replace('/dashboard');
+        // Se suporta biometria, o usuário não registrou neste app e não recuou neste dispositivo, mostrar modal
+        const promptSkipped = localStorage.getItem('passkey_prompt_skipped') === 'true';
+        if (isWebAuthnAvailable && !hasRegisteredPasskey && !promptSkipped) {
+          setShowBiometricPrompt(true);
+        } else {
+          router.replace('/dashboard');
+        }
       }
     }
-  }, [isAuthenticated, passwordExpired, router, searchParams]);
+  }, [isAuthenticated, passwordExpired, router, searchParams, isWebAuthnAvailable, hasRegisteredPasskey]);
 
   // Garantir que o usuário administrador exista
   useEffect(() => {
@@ -238,6 +260,11 @@ export default function Login() {
 
   const handleWebAuthnLogin = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    if (!isWebAuthnAvailable) {
+      const { toast } = await import('react-hot-toast');
+      toast.error(t('auth.biometricNotSupported', 'Biometria indisponível. Verifique se seu navegador suporta e se você está em um ambiente seguro (HTTPS).'));
+      return;
+    }
     try {
       setIsWebAuthnLoading(true);
       setError('');
@@ -274,20 +301,22 @@ export default function Login() {
       const verificationResult = await verificationRes.json();
 
       if (verificationResult.success && verificationResult.token) {
-        setSuccess('Login com biometria realizado com sucesso!');
-        // Salvar the token within cookies and localStorage before redirecting
+        setSuccess(t('auth.biometricSuccess', 'Login com biometria realizado com sucesso!'));
+        // Mark that this device has a passkey for auto-prompt on next visit
+        localStorage.setItem('hasPasskey', 'true');
+        // Save the token
         saveToken(verificationResult.token);
 
-        // Redirecionar para dashboard em breve
+        // Redirect to dashboard
         setTimeout(() => {
           window.location.href = '/dashboard';
         }, 1000);
       } else {
-        throw new Error(verificationResult.error || 'Erro na verificação biométrica');
+        throw new Error(verificationResult.error || t('auth.biometricError', 'Erro na verificação biométrica'));
       }
     } catch (error: any) {
       console.error(error);
-      setError(error.message || 'Erro ao realizar login biométrico');
+      setError(error.message || t('auth.biometricError', 'Erro ao realizar login biométrico'));
     } finally {
       setIsWebAuthnLoading(false);
     }
@@ -542,6 +571,19 @@ export default function Login() {
   return (
     <div className="min-h-screen flex flex-col justify-center px-4 py-6 sm:px-6 sm:py-12 lg:px-8 bg-abz-background">
 
+      {showBiometricPrompt && (
+        <PostLoginBiometricPrompt
+          onSkip={() => {
+            localStorage.setItem('passkey_prompt_skipped', 'true');
+            setShowBiometricPrompt(false);
+            router.replace('/dashboard');
+          }}
+          onSuccess={() => {
+            setShowBiometricPrompt(false);
+            router.replace('/dashboard');
+          }}
+        />
+      )}
 
       {/* Modal de definição de senha */}
       <SetPasswordModal
@@ -645,6 +687,46 @@ export default function Login() {
                   )}
                 </Button>
               </div>
+
+              {/* Biometric Login - Primary Option */}
+              <>
+                <div className="relative mt-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-white px-3 text-gray-400">
+                      {t('auth.biometricOrDivider', 'ou entre com biometria')}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleWebAuthnLogin}
+                  disabled={isWebAuthnLoading}
+                  className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl border-2 border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 group"
+                >
+                  {isWebAuthnLoading ? (
+                    <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                        <FiKey className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <span className="block text-sm font-semibold text-gray-800">
+                          {t('auth.biometricLogin', 'Acessar com Biometria / Passkey')}
+                        </span>
+                        <span className="block text-xs text-gray-500">
+                          {t('auth.biometricLoginDesc', 'Impressão digital, reconhecimento facial ou Windows Hello')}
+                        </span>
+                      </div>
+                      <FiArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                    </>
+                  )}
+                </button>
+              </>
             </form>
           )}
 
@@ -939,7 +1021,7 @@ export default function Login() {
                     ) : (
                       <FiKey className="mr-2 h-4 w-4" />
                     )}
-                    Login com Biometria
+                    {t('auth.biometricLogin', 'Acessar com Biometria / Passkey')}
                   </Button>
 
                   {/* Botão de código de verificação removido para usuários já cadastrados */}

@@ -136,18 +136,18 @@ export async function POST(
     if (result.success) {
       try {
         // Buscar informações da avaliação para notificar o funcionário
-        const evaluationDetails = await EvaluationService.getEvaluationDetails(evaluationId);
+        const evaluationDetails = await EvaluationService.getEvaluationById(id);
 
         if (evaluationDetails.success && evaluationDetails.data) {
           const avaliacao = evaluationDetails.data;
 
           // Enviar notificação ao funcionário sobre a decisão
           await EvaluationWorkflowService.sendDecisionNotifications(
-            evaluationId,
-            data.decisao,
+            id,
+            data.acao,
             data.motivo_devolucao
           );
-          console.log(`✅ Notificação de decisão (${data.decisao}) enviada ao funcionário`);
+          console.log(`✅ Notificação de decisão (${data.acao}) enviada ao funcionário`);
         }
       } catch (notificationError) {
         console.error('❌ Erro ao enviar notificação de decisão:', notificationError);

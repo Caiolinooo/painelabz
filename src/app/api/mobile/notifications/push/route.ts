@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         results.push({
           recipient,
           success: false,
-          error: error.message
+          error: (error as Error).message || 'Erro desconhecido'
         });
       }
     }
@@ -168,7 +168,7 @@ async function sendPushNotification(params: {
   try {
     // Aqui seria implementada a integração com Firebase Cloud Messaging
     // Por enquanto, vamos simular o envio
-    
+
     // Exemplo de implementação com Firebase Admin SDK:
     /*
     const message = {
@@ -230,7 +230,7 @@ async function sendPushNotification(params: {
     console.error('Erro ao enviar notificação push:', error);
     return {
       success: false,
-      error: error.message
+      error: (error as Error).message || 'Erro desconhecido'
     };
   }
 }

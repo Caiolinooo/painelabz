@@ -77,9 +77,9 @@ export default function PainelGerentesUnificado() {
       setUsuarios(dataUsuarios.data.usuarios || []);
 
       // Identificar quem é gerente (quem tem mapeamentos como gerente)
-      const gerentesIds = new Set(
+      const gerentesIds = new Set<string>(
         (dataUsuarios.data.gerentesConfig || [])
-          .map((m: any) => m.gerente_id)
+          .map((m: any) => String(m.gerente_id))
       );
       setGerentes(gerentesIds);
 

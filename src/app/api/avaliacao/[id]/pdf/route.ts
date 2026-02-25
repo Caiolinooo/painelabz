@@ -46,11 +46,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const { width } = page.getSize();
     let y = page.getHeight() - 50;
     const lineHeight = 16;
     const drawLine = (text: string, size = 12, bold = false) => {
-      page.drawText(text, { x: 50, y, size, font, color: undefined, fontWeight: bold ? 'bold' : undefined });
+      page.drawText(text, { x: 50, y, size, font: bold ? fontBold : font });
       y -= lineHeight;
     };
     drawLine(`Relatório de Avaliação`, 20, true);
@@ -63,7 +64,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     y -= 10;
     drawLine('Respostas:', 14, true);
     (respostas || []).forEach(r => {
-      const linha = `Pergunta ${r.pergunta_id}: Nota ${r.nota}${r.comentario ? ' - ' + r.comentario.substring(0,60) : ''}`;
+      const linha = `Pergunta ${r.pergunta_id}: Nota ${r.nota}${r.comentario ? ' - ' + r.comentario.substring(0, 60) : ''}`;
       drawLine(linha);
       if (y < 60) { // nova página se espaço insuficiente
         const newPage = pdfDoc.addPage();

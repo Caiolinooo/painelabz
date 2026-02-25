@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
 
     if (!connectionTest.success) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           message: 'Falha na conexão com o servidor SMTP',
           details: connectionTest.message
         },
@@ -57,14 +57,14 @@ export async function POST(request: NextRequest) {
       success: result.success,
       message: result.success ? 'E-mail de teste enviado com sucesso' : 'Falha ao enviar e-mail de teste',
       details: result.message,
-      previewUrl: result.previewUrl,
+      previewUrl: (result as any).previewUrl,
       usedFallback: (result as any).usedFallback || false
     });
   } catch (error) {
     console.error('Erro ao testar configuração de e-mail:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         message: 'Erro interno do servidor',
         details: error instanceof Error ? error.message : 'Erro desconhecido'
       },
@@ -96,8 +96,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Erro ao testar conexão com o servidor SMTP:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         message: 'Erro interno do servidor',
         details: error instanceof Error ? error.message : 'Erro desconhecido'
       },

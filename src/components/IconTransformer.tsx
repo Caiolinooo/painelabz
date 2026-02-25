@@ -10,6 +10,7 @@ import { useI18n } from '@/contexts/I18nContext';
  * Este componente é usado para resolver problemas com tags de ícones não reconhecidas
  */
 const IconTransformer: React.FC = () => {
+  const { t } = useI18n();
   useEffect(() => {
     // Verificar se o documento está disponível (client-side)
     if (typeof document === 'undefined') {
@@ -73,7 +74,7 @@ const IconTransformer: React.FC = () => {
       // Em vez de manipular o DOM diretamente, vamos apenas registrar os ícones que precisam ser substituídos
       // e deixar que o React cuide da renderização
       console.log(t('components.registrandoIconesParaSubstituicao'), materialIconNames);
-      
+
       // Essa abordagem é mais segura e evita conflitos com o React
       // Não vamos mais tentar substituir tags HTML diretamente
     };

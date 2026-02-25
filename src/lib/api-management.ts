@@ -49,7 +49,7 @@ export class APIKeyManager {
   async generateAPIKey(name: string, permissions: string[], userId: string, rateLimit = 1000): Promise<APIKey> {
     const keyId = crypto.randomUUID();
     const apiKey = `abz_${crypto.randomBytes(32).toString('hex')}`;
-    
+
     const newKey: Omit<APIKey, 'id'> = {
       name,
       key: apiKey,
@@ -70,7 +70,7 @@ export class APIKeyManager {
       .single();
 
     if (error) throw new Error(`Erro ao criar chave API: ${error.message}`);
-    
+
     return data;
   }
 
@@ -126,11 +126,12 @@ export class APIKeyManager {
   // Atualizar último uso
   private async updateLastUsed(keyId: string): Promise<void> {
     const supabase = getSupabaseClient();
+    const { data } = await supabase.from('api_keys').select('usage_count').eq('id', keyId).single();
     await supabase
       .from('api_keys')
       .update({
         last_used: new Date().toISOString(),
-        usage_count: supabase.sql`usage_count + 1`
+        usage_count: (data?.usage_count || 0) + 1
       })
       .eq('id', keyId);
   }
@@ -176,9 +177,11 @@ export class APIKeyManager {
   // Ativar/Desativar chave
   async toggleAPIKey(keyId: string, userId: string): Promise<void> {
     const supabase = getSupabaseClient();
+    const { data } = await supabase.from('api_keys').select('active').eq('id', keyId).eq('user_id', userId).single();
+    if (!data) throw new Error('Chave não encontrada');
     const { error } = await supabase
       .from('api_keys')
-      .update({ active: supabase.sql`NOT active` })
+      .update({ active: !data.active })
       .eq('id', keyId)
       .eq('user_id', userId);
 
@@ -205,7 +208,8 @@ export class APIKeyManager {
     errorRate: number;
   }> {
     const today = new Date().toISOString().split('T')[0];
-    
+    const supabase = getSupabaseClient();
+
     // Total de requisições
     let totalQuery = supabase.from('api_usage').select('*', { count: 'exact', head: true });
     let todayQuery = supabase.from('api_usage').select('*', { count: 'exact', head: true })
@@ -252,20 +256,20 @@ export class APIKeyManager {
   createMiddleware() {
     return async (req: any, res: any, next: any) => {
       const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
-      
+
       if (!apiKey) {
         return res.status(401).json({ error: 'API key required' });
       }
 
       const startTime = Date.now();
       const validation = await this.validateAPIKey(apiKey);
-      
+
       if (!validation.valid) {
         return res.status(401).json({ error: validation.error });
       }
 
       req.apiKey = validation.key;
-      
+
       // Log da requisição
       res.on('finish', () => {
         const responseTime = Date.now() - startTime;

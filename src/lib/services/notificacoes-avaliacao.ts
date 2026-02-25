@@ -32,6 +32,9 @@ export interface NotificacaoAvaliacao {
     data_limite?: string;
   };
   created_at?: string;
+  lida?: boolean;
+  enviada_push?: boolean;
+  enviada_email?: boolean;
 }
 
 /**
@@ -413,9 +416,15 @@ Equipe ABZ Group
       if (!avaliacoesPendentes) return;
 
       for (const avaliacao of avaliacoesPendentes) {
+        const objPeriodos = Array.isArray(avaliacao.periodos_avaliacao)
+          ? avaliacao.periodos_avaliacao[0]
+          : avaliacao.periodos_avaliacao;
+
         const dataLimite = avaliacao.etapa_atual === 'autoavaliacao'
-          ? avaliacao.periodos_avaliacao.data_limite_autoavaliacao
-          : avaliacao.periodos_avaliacao.data_limite_aprovacao;
+          ? objPeriodos?.data_limite_autoavaliacao
+          : objPeriodos?.data_limite_aprovacao;
+
+        if (!dataLimite) continue;
 
         const limite = new Date(dataLimite);
 

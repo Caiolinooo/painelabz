@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  FiBarChart2, 
-  FiTrendingUp, 
-  FiUsers, 
-  FiTarget, 
+import {
+  FiBarChart2,
+  FiTrendingUp,
+  FiUsers,
+  FiTarget,
   FiAlertCircle,
   FiDownload,
   FiSettings,
@@ -66,14 +66,14 @@ export default function AvaliacoesAvancadasPage() {
   const carregarDados = async () => {
     try {
       setLoading(true);
-      
+
       // Carregar KPIs
       const kpisResponse = await fetch('/api/avaliacoes-avancadas/kpis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filtros)
       });
-      
+
       if (kpisResponse.ok) {
         const kpisData = await kpisResponse.json();
         setKpis(kpisData.kpis || []);
@@ -85,7 +85,7 @@ export default function AvaliacoesAvancadasPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filtros)
       });
-      
+
       if (analiseResponse.ok) {
         const analiseResult = await analiseResponse.json();
         setAnaliseData(analiseResult.data);
@@ -118,7 +118,7 @@ export default function AvaliacoesAvancadasPage() {
           formato,
           filtros,
           incluir_graficos: true,
-          incluir_dados_brutos: formato !== 'pdf'
+          incluir_dados_brutos: true
         })
       });
 
@@ -152,7 +152,7 @@ export default function AvaliacoesAvancadasPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.access_token || ''}`
+          'Authorization': `Bearer ${(user as any)?.access_token || ''}`
         },
         body: JSON.stringify({
           reportType,
@@ -212,7 +212,7 @@ export default function AvaliacoesAvancadasPage() {
                 {t('avaliacoes.descricao_avancado', 'Métricas, análises e relatórios detalhados de performance')}
               </p>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setShowFiltros(!showFiltros)}
@@ -221,7 +221,7 @@ export default function AvaliacoesAvancadasPage() {
                 <FiFilter className="mr-2 h-4 w-4" />
                 {t('common.filtros', 'Filtros')}
               </button>
-              
+
               <button
                 onClick={carregarDados}
                 disabled={loading}
@@ -270,22 +270,20 @@ export default function AvaliacoesAvancadasPage() {
           <nav className="flex space-x-8" aria-label="Tabs">
             <button
               onClick={() => setActiveTab('metricas')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'metricas'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'metricas'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               <FiBarChart2 className="inline mr-2" />
               Métricas e Análises
             </button>
             <button
               onClick={() => setActiveTab('relatorios')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'relatorios'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'relatorios'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               <FiDownload className="inline mr-2" />
               Relatórios PDF
@@ -464,9 +462,9 @@ export default function AvaliacoesAvancadasPage() {
                 <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <h4 className="font-medium text-gray-900 mb-2">Performance Individual</h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    • Métricas pessoais<br/>
-                    • Gráficos de evolução<br/>
-                    • Histórico de avaliações<br/>
+                    • Métricas pessoais<br />
+                    • Gráficos de evolução<br />
+                    • Histórico de avaliações<br />
                     • Reembolsos e benefícios
                   </p>
                   <button
@@ -483,9 +481,9 @@ export default function AvaliacoesAvancadasPage() {
                 <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <h4 className="font-medium text-gray-900 mb-2">Análise Departamental</h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    • Comparativo por equipe<br/>
-                    • Rankings de performance<br/>
-                    • Distribuição de notas<br/>
+                    • Comparativo por equipe<br />
+                    • Rankings de performance<br />
+                    • Distribuição de notas<br />
                     • Tendências mensais
                   </p>
                   <button
@@ -502,9 +500,9 @@ export default function AvaliacoesAvancadasPage() {
                 <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <h4 className="font-medium text-gray-900 mb-2">Relatório Executivo</h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    • Visão geral da empresa<br/>
-                    • KPIs principais<br/>
-                    • Resumo por departamento<br/>
+                    • Visão geral da empresa<br />
+                    • KPIs principais<br />
+                    • Resumo por departamento<br />
                     • Insights estratégicos
                   </p>
                   <button

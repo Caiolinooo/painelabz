@@ -9,6 +9,7 @@ const InstructionsPanel: React.FC = () => {
   const [show, setShow] = useState(false);
   const [reachedBottom, setReachedBottom] = useState(false);
   const [showContactButtons, setShowContactButtons] = useState(true);
+  const { t } = useI18n();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,22 +55,22 @@ const InstructionsPanel: React.FC = () => {
         <div className="p-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between sticky bottom-0 z-10">
           <AnimatePresence>
             {reachedBottom && showContactButtons && (
-                <motion.div
-                    className="flex items-center space-x-3 mb-4 sm:mb-0"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                 >
-                    <span className="text-sm text-gray-600">Ainda com dúvidas?</span>
-                    <a
-                        href="https://wa.me/5522992074646" // Replace with your WhatsApp number
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={whatsappButtonStyle}
-                    >
-                        <FaWhatsapp className="mr-2" /> Chamar no Zap
-                    </a>
-                </motion.div>
+              <motion.div
+                className="flex items-center space-x-3 mb-4 sm:mb-0"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+              >
+                <span className="text-sm text-gray-600">Ainda com dúvidas?</span>
+                <a
+                  href="https://wa.me/5522992074646" // Replace with your WhatsApp number
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={whatsappButtonStyle}
+                >
+                  <FaWhatsapp className="mr-2" /> Chamar no Zap
+                </a>
+              </motion.div>
             )}
           </AnimatePresence>
           <button

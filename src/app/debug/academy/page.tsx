@@ -16,7 +16,7 @@ interface DebugInfo {
 }
 
 const AcademyDebugPage: React.FC = () => {
-  const { user, permissions, hasAccess } = useSupabaseAuth();
+  const { user, permissions, hasAccess } = useSupabaseAuth() as any;
   const { t } = useI18n();
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,14 +34,14 @@ const AcademyDebugPage: React.FC = () => {
       // Obter cards
       const cards = getTranslatedCards(t);
       const academyCard = cards.find(card => card.id === 'academy' || card.moduleKey === 'academy');
-      
+
       // Verificar acesso ao Academy
       const hasAcademyAccess = hasAccess('academy');
-      
+
       // Obter permissões de módulos
       const moduleKeys = ['dashboard', 'manual', 'academy', 'reembolso', 'avaliacao'];
       const modulePermissions: Record<string, boolean> = {};
-      
+
       moduleKeys.forEach(key => {
         modulePermissions[key] = hasAccess(key);
       });
@@ -50,10 +50,10 @@ const AcademyDebugPage: React.FC = () => {
         user: {
           id: user?.id,
           email: user?.email,
-          first_name: user?.first_name,
-          last_name: user?.last_name,
-          role: user?.role,
-          is_active: user?.is_active
+          first_name: (user as any)?.first_name,
+          last_name: (user as any)?.last_name,
+          role: (user as any)?.role,
+          is_active: (user as any)?.is_active
         },
         permissions,
         cards: cards.map(card => ({
@@ -140,22 +140,20 @@ const AcademyDebugPage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center">
                   <span className="font-medium mr-2">Acesso ao Academy:</span>
-                  <span className={`px-2 py-1 rounded-full text-sm ${
-                    debugInfo.hasAcademyAccess 
-                      ? 'bg-green-100 text-green-800' 
+                  <span className={`px-2 py-1 rounded-full text-sm ${debugInfo.hasAcademyAccess
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
-                  }`}>
+                    }`}>
                     {debugInfo.hasAcademyAccess ? 'Permitido' : 'Negado'}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center">
                   <span className="font-medium mr-2">Card do Academy encontrado:</span>
-                  <span className={`px-2 py-1 rounded-full text-sm ${
-                    debugInfo.academyCard 
-                      ? 'bg-green-100 text-green-800' 
+                  <span className={`px-2 py-1 rounded-full text-sm ${debugInfo.academyCard
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
-                  }`}>
+                    }`}>
                     {debugInfo.academyCard ? 'Sim' : 'Não'}
                   </span>
                 </div>
@@ -178,11 +176,10 @@ const AcademyDebugPage: React.FC = () => {
                 {Object.entries(debugInfo.modulePermissions).map(([module, hasAccess]) => (
                   <div key={module} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium">{module}</span>
-                    <span className={`px-2 py-1 rounded-full text-sm ${
-                      hasAccess 
-                        ? 'bg-green-100 text-green-800' 
+                    <span className={`px-2 py-1 rounded-full text-sm ${hasAccess
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
-                    }`}>
+                      }`}>
                       {hasAccess ? 'Sim' : 'Não'}
                     </span>
                   </div>
@@ -198,11 +195,10 @@ const AcademyDebugPage: React.FC = () => {
                   <div key={index} className="p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">{card.title}</span>
-                      <span className={`px-2 py-1 rounded-full text-sm ${
-                        card.enabled 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`px-2 py-1 rounded-full text-sm ${card.enabled
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
-                      }`}>
+                        }`}>
                         {card.enabled ? 'Habilitado' : 'Desabilitado'}
                       </span>
                     </div>

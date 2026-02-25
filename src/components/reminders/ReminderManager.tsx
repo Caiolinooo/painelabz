@@ -32,6 +32,7 @@ interface ReminderManagerProps {
 }
 
 const ReminderManager: React.FC<ReminderManagerProps> = ({ userId, postId }) => {
+  const { t } = useI18n();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -82,10 +83,10 @@ const ReminderManager: React.FC<ReminderManagerProps> = ({ userId, postId }) => 
         post_id: postId || null
       };
 
-      const url = editingReminder 
+      const url = editingReminder
         ? `/api/reminders/${editingReminder.id}`
         : '/api/reminders';
-      
+
       const method = editingReminder ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -326,17 +327,17 @@ const ReminderManager: React.FC<ReminderManagerProps> = ({ userId, postId }) => 
                     <h3 className="font-medium text-gray-900">{reminder.title}</h3>
                     {getStatusBadge(reminder.status)}
                   </div>
-                  
+
                   {reminder.message && (
                     <p className="text-gray-600 text-sm mb-2">{reminder.message}</p>
                   )}
-                  
+
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                     <div className="flex items-center">
                       <FiCalendar className="w-4 h-4 mr-1" />
                       <span>{formatDate(reminder.remind_at)}</span>
                     </div>
-                    
+
                     {reminder.target_roles.length > 0 && (
                       <div className="flex items-center">
                         <FiUsers className="w-4 h-4 mr-1" />

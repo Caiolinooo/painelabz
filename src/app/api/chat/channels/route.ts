@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
     } else {
       // Admin sees all
       var { data: fetched, error: err } = await query;
-      channels = fetched;
+      channels = fetched || [];
       error = err;
     }
 
@@ -369,7 +369,7 @@ export async function POST(request: NextRequest) {
         action: 'create_channel',
         entity_type: 'channel',
         entity_id: channel.id,
-        new_values: { name, type, isPublic },
+        new_values: { name, type, isPublic: accessLevel === 'public' },
         user_id: payload.userId,
         user_email: user.email,
         ip_address: request.headers.get('x-forwarded-for') || 'unknown',

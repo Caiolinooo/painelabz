@@ -154,7 +154,7 @@ export const getEmployees = async (): Promise<User[]> => {
     throw error;
   }
 
-  return data as User[];
+  return data as unknown as User[];
 };
 
 /**

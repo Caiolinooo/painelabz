@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     try {
         // Authenticate user
         const authHeader = request.headers.get('authorization');
-        const token = extractTokenFromHeader(authHeader);
+        const token = extractTokenFromHeader(authHeader || undefined);
 
         if (!token) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

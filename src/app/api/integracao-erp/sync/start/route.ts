@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Verificar permissões
     const { data: user } = await supabase
       .from('users_unified')
-      .select('role, access_permissions')
+      .select('role, access_permissions, email')
       .eq('id', authResult.userId)
       .single();
 
@@ -283,7 +283,7 @@ async function startSyncProcess(jobId: string, connectionId: string, module: str
         job_id: jobId,
         level: 'error',
         message: `Erro na sincronização do módulo ${module}`,
-        details: { error: error.message },
+        details: { error: (error as Error).message || 'Erro desconhecido' },
         timestamp: new Date().toISOString()
       });
   }
@@ -292,7 +292,7 @@ async function startSyncProcess(jobId: string, connectionId: string, module: str
 async function syncEmployees(connectionId: string, jobId: string): Promise<number> {
   // Simular sincronização de funcionários
   // Em produção, aqui seria feita a conexão real com o ERP
-  
+
   const mockEmployees = [
     { code: '001', name: 'João Silva', email: 'joao@empresa.com', department: 'TI' },
     { code: '002', name: 'Maria Santos', email: 'maria@empresa.com', department: 'RH' },

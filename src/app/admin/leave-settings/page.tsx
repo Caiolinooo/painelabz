@@ -233,84 +233,86 @@ export default function AdminLeaveSettingsPage() {
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/4">Setor</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/3">1º Aprovador: Líder</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/3">2º Aprovador: Gerente</th>
-                                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredSectors.map(sector => {
-                                    const config = configs.find(c => c.sector_id === sector.id);
-                                    const isEdited = hasUnsavedChanges(sector.id);
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/4">Setor</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/3">1º Aprovador: Líder</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/3">2º Aprovador: Gerente</th>
+                                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredSectors.map(sector => {
+                                        const config = configs.find(c => c.sector_id === sector.id);
+                                        const isEdited = hasUnsavedChanges(sector.id);
 
-                                    const currentLeaderId = isEdited
-                                        ? editedConfigs[sector.id].leader_id
-                                        : (config?.leader_id || '');
+                                        const currentLeaderId = isEdited
+                                            ? editedConfigs[sector.id].leader_id
+                                            : (config?.leader_id || '');
 
-                                    const currentManagerId = isEdited
-                                        ? editedConfigs[sector.id].manager_id
-                                        : (config?.manager_id || '');
+                                        const currentManagerId = isEdited
+                                            ? editedConfigs[sector.id].manager_id
+                                            : (config?.manager_id || '');
 
-                                    return (
-                                        <tr key={sector.id} className={`transition-colors ${isEdited ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
-                                            <td className="px-6 py-4 font-medium text-gray-800">{sector.name}</td>
+                                        return (
+                                            <tr key={sector.id} className={`transition-colors ${isEdited ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
+                                                <td className="px-6 py-4 font-medium text-gray-800">{sector.name}</td>
 
-                                            <td className="px-6 py-4">
-                                                <select
-                                                    value={currentLeaderId || ''}
-                                                    onChange={(e) => handleConfigChange(sector.id, 'leader_id', e.target.value)}
-                                                    className="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                                                >
-                                                    <option value="">-- Sem Líder Definido --</option>
-                                                    {users.map(u => (
-                                                        <option key={`l-${u.id}`} value={u.id}>{u.name} ({u.email})</option>
-                                                    ))}
-                                                </select>
-                                            </td>
+                                                <td className="px-6 py-4">
+                                                    <select
+                                                        value={currentLeaderId || ''}
+                                                        onChange={(e) => handleConfigChange(sector.id, 'leader_id', e.target.value)}
+                                                        className="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                    >
+                                                        <option value="">-- Sem Líder Definido --</option>
+                                                        {users.map(u => (
+                                                            <option key={`l-${u.id}`} value={u.id}>{u.name} ({u.email})</option>
+                                                        ))}
+                                                    </select>
+                                                </td>
 
-                                            <td className="px-6 py-4">
-                                                <select
-                                                    value={currentManagerId || ''}
-                                                    onChange={(e) => handleConfigChange(sector.id, 'manager_id', e.target.value)}
-                                                    className="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                                                >
-                                                    <option value="">-- Sem Gerente Definido --</option>
-                                                    {users.map(u => (
-                                                        <option key={`m-${u.id}`} value={u.id}>{u.name} ({u.email})</option>
-                                                    ))}
-                                                </select>
-                                            </td>
+                                                <td className="px-6 py-4">
+                                                    <select
+                                                        value={currentManagerId || ''}
+                                                        onChange={(e) => handleConfigChange(sector.id, 'manager_id', e.target.value)}
+                                                        className="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                    >
+                                                        <option value="">-- Sem Gerente Definido --</option>
+                                                        {users.map(u => (
+                                                            <option key={`m-${u.id}`} value={u.id}>{u.name} ({u.email})</option>
+                                                        ))}
+                                                    </select>
+                                                </td>
 
-                                            <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => handleSaveSector(sector.id)}
-                                                    disabled={!isEdited || saving === sector.id}
-                                                    className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm transition-colors ${isEdited
-                                                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
-                                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                        }`}
-                                                >
-                                                    <FiSave className={`mr-1.5 ${saving === sector.id ? 'animate-pulse' : ''}`} />
-                                                    {saving === sector.id ? 'Salvando...' : 'Salvar'}
-                                                </button>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={() => handleSaveSector(sector.id)}
+                                                        disabled={!isEdited || saving === sector.id}
+                                                        className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm transition-colors ${isEdited
+                                                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                            }`}
+                                                    >
+                                                        <FiSave className={`mr-1.5 ${saving === sector.id ? 'animate-pulse' : ''}`} />
+                                                        {saving === sector.id ? 'Salvando...' : 'Salvar'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+
+                                    {filteredSectors.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                                                Nenhum setor encontrado com essa busca.
                                             </td>
                                         </tr>
-                                    );
-                                })}
-
-                                {filteredSectors.length === 0 && (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                                            Nenhum setor encontrado com essa busca.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

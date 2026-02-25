@@ -46,7 +46,7 @@ export async function POST(
       );
     }
 
-    const userId = params.id;
+    const { id: userId } = await params;
     if (!userId) {
       return NextResponse.json(
         { error: 'ID do usuário é obrigatório' },

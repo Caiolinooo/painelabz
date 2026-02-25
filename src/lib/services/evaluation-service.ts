@@ -19,7 +19,7 @@ import {
   ApiResponse,
   PaginatedList
 } from '@/lib/schemas/evaluation-schemas';
-import { AvaliacaoWorkflowService } from './avaliacao-workflow-service';
+import { EvaluationWorkflowService } from './evaluation-workflow-service';
 import { EvaluationSettingsService } from './evaluation-settings';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 
@@ -67,7 +67,7 @@ export class EvaluationService {
 
       // Enviar notificações
       try {
-        await AvaliacaoWorkflowService.sendEvaluationNotifications(
+        await EvaluationWorkflowService.sendEvaluationNotifications(
           avaliacao.id,
           data.funcionario_id,
           data.avaliador_id
@@ -274,7 +274,7 @@ export class EvaluationService {
         novoStatus = 'awaiting_manager';
         // Notificar gerente
         try {
-          await AvaliacaoWorkflowService.notifyManager(
+          await EvaluationWorkflowService.notifyManager(
             data.avaliacao_id,
             avaliacao.funcionario_id,
             avaliacao.avaliador_id
@@ -286,7 +286,7 @@ export class EvaluationService {
         novoStatus = 'approved';
         // Notificar colaborador sobre aprovação
         try {
-          await AvaliacaoWorkflowService.notifyApproval(
+          await EvaluationWorkflowService.notifyApproval(
             data.avaliacao_id,
             avaliacao.funcionario_id
           );
@@ -337,7 +337,7 @@ export class EvaluationService {
         .from('avaliacoes_desempenho')
         .update({
           status: data.acao === 'approve' ? 'approved' :
-                 data.acao === 'reject' ? 'rejected' : 'returned_for_adjustment',
+            data.acao === 'reject' ? 'rejected' : 'returned_for_adjustment',
           updated_at: new Date().toISOString()
         })
         .eq('id', data.avaliacao_id);
@@ -368,7 +368,7 @@ export class EvaluationService {
 
       // Enviar notificações
       try {
-        await AvaliacaoWorkflowService.sendDecisionNotifications(
+        await EvaluationWorkflowService.sendDecisionNotifications(
           data.avaliacao_id,
           data.acao,
           data.motivo_devolucao
@@ -520,8 +520,8 @@ export class EvaluationService {
 
       // Calcular progresso
       // Dependente de settings: se líder inclui 16-17
-      const basePerguntas = [11,12,13,14,15];
-      const liderPerguntas = [16,17];
+      const basePerguntas = [11, 12, 13, 14, 15];
+      const liderPerguntas = [16, 17];
       const isLider = respostas.some(r => r.pergunta_id >= 16); // heurística até termos flag robusta
       const totalPerguntas = isLider ? basePerguntas.length + liderPerguntas.length : basePerguntas.length;
       const perguntasRespondidas = new Set(respostas.map(r => r.pergunta_id)).size;

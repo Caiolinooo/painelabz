@@ -55,18 +55,18 @@ export async function POST(request: NextRequest) {
 
           if (createTableError) {
             console.error('Erro ao criar tabela usando execute_sql:', createTableError);
-            
+
             // Se falhar, tentar método alternativo
             console.log('Tentando método alternativo para criar tabela...');
-            
+
             // Usar o método de API REST diretamente
             const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
             const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-            
+
             if (!supabaseUrl || !supabaseKey) {
               throw new Error('Variáveis de ambiente do Supabase não configuradas');
             }
-            
+
             // Tentar criar a tabela inserindo um registro temporário
             const { error: insertError } = await supabaseAdmin
               .from('criterios')
@@ -75,11 +75,11 @@ export async function POST(request: NextRequest) {
                 nome: criteriosPadrao[0].nome,
                 descricao: criteriosPadrao[0].descricao,
                 categoria: criteriosPadrao[0].categoria,
-                peso: criteriosPadrao[0].peso,
+                peso: (criteriosPadrao[0] as any).peso || 1.0,
                 pontuacao_maxima: criteriosPadrao[0].pontuacao_maxima,
                 ativo: true
               });
-            
+
             if (insertError && !insertError.message.includes('already exists')) {
               throw new Error(`Erro ao criar tabela: ${insertError.message}`);
             }
@@ -97,29 +97,29 @@ export async function POST(request: NextRequest) {
 
       // Inserir critérios padrão
       console.log('Inserindo critérios padrão...');
-      
+
       // Verificar quais critérios já existem
       const { data: existingCriterios, error: existingError } = await supabaseAdmin
         .from('criterios')
         .select('id, nome')
         .is('deleted_at', null);
-      
+
       if (existingError) {
         console.error('Erro ao verificar critérios existentes:', existingError);
       }
-      
+
       const existingNames = new Set((existingCriterios || []).map(c => c.nome.toLowerCase()));
-      
+
       // Filtrar apenas critérios que não existem
       const criteriosToInsert = criteriosPadrao.filter(c => !existingNames.has(c.nome.toLowerCase()));
-      
+
       if (criteriosToInsert.length > 0) {
         console.log(`Inserindo ${criteriosToInsert.length} critérios padrão...`);
-        
+
         const { error: insertError } = await supabaseAdmin
           .from('criterios')
           .insert(criteriosToInsert);
-        
+
         if (insertError) {
           console.error('Erro ao inserir critérios padrão:', insertError);
           return NextResponse.json(
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
             { status: 500 }
           );
         }
-        
+
         console.log('Critérios padrão inseridos com sucesso!');
       } else {
         console.log('Todos os critérios padrão já existem no banco');

@@ -77,14 +77,20 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
           type="text/css"
         />
+        {/* Viewport - Critical for mobile rendering */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
         {/* PWA Manifest & Meta */}
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#0B72E7" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="icon" href="/images/LC1_Azul.png" />
+        <link rel="apple-touch-icon" href="/images/LC1_Azul.png" />
         {/* Meta tag para garantir o tipo MIME correto */}
         <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
       </head>
-      <body className="bg-gray-50" suppressHydrationWarning>
+      <body className="bg-gray-50 overflow-x-hidden max-w-[100vw]" suppressHydrationWarning>
         <ClientProviders>
           <ErrorBoundary fallback={<ErrorFallback />}>
             <SiteHead />

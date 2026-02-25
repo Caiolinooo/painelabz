@@ -392,68 +392,70 @@ export default function EngagementDashboard() {
 
                     {/* News Table */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Título</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Publicado</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Views (Únicas)</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                        <div className="flex items-center"><FiClock className="mr-1" /> Tempo Médio</div>
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Engajamento</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-100">
-                                {newsLoading ? (
-                                    <tr><td colSpan={5} className="text-center py-12 text-gray-500">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                            Carregando métricas...
-                                        </div>
-                                    </td></tr>
-                                ) : filteredNewsMetrics.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-12 text-gray-500">Nenhum resultado encontrado</td></tr>
-                                ) : filteredNewsMetrics.map((post) => (
-                                    <tr key={post.id} className="hover:bg-blue-50/50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm font-medium text-gray-900">{post.title}</div>
-                                            <div className="text-xs text-gray-500 mt-0.5">{post.category}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(post.published_at).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap cursor-pointer group" onClick={() => fetchViewers(post.id, post.title)}>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{post.views_unique}</span>
-                                                <span className="text-gray-400 text-xs">({post.views_total} total)</span>
-                                                <FiEye className="w-4 h-4 text-gray-300 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all" />
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${post.avg_time_seconds > 60
-                                                ? 'bg-green-100 text-green-800'
-                                                : post.avg_time_seconds > 30
-                                                    ? 'bg-yellow-100 text-yellow-800'
-                                                    : 'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                {formatTime(post.avg_time_seconds)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-4">
-                                                <span className="flex items-center text-sm">
-                                                    <FiHeart className="mr-1 text-red-400" /> {post.likes}
-                                                </span>
-                                                <span className="flex items-center text-sm text-gray-400">
-                                                    <FiMessageSquare className="mr-1" /> {post.comments}
-                                                </span>
-                                            </div>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Título</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Publicado</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Views (Únicas)</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            <div className="flex items-center"><FiClock className="mr-1" /> Tempo Médio</div>
+                                        </th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Engajamento</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-100">
+                                    {newsLoading ? (
+                                        <tr><td colSpan={5} className="text-center py-12 text-gray-500">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                Carregando métricas...
+                                            </div>
+                                        </td></tr>
+                                    ) : filteredNewsMetrics.length === 0 ? (
+                                        <tr><td colSpan={5} className="text-center py-12 text-gray-500">Nenhum resultado encontrado</td></tr>
+                                    ) : filteredNewsMetrics.map((post) => (
+                                        <tr key={post.id} className="hover:bg-blue-50/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-900">{post.title}</div>
+                                                <div className="text-xs text-gray-500 mt-0.5">{post.category}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {new Date(post.published_at).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap cursor-pointer group" onClick={() => fetchViewers(post.id, post.title)}>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{post.views_unique}</span>
+                                                    <span className="text-gray-400 text-xs">({post.views_total} total)</span>
+                                                    <FiEye className="w-4 h-4 text-gray-300 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all" />
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${post.avg_time_seconds > 60
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : post.avg_time_seconds > 30
+                                                        ? 'bg-yellow-100 text-yellow-800'
+                                                        : 'bg-gray-100 text-gray-600'
+                                                    }`}>
+                                                    {formatTime(post.avg_time_seconds)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-4">
+                                                    <span className="flex items-center text-sm">
+                                                        <FiHeart className="mr-1 text-red-400" /> {post.likes}
+                                                    </span>
+                                                    <span className="flex items-center text-sm text-gray-400">
+                                                        <FiMessageSquare className="mr-1" /> {post.comments}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </>
             )}
@@ -572,134 +574,136 @@ export default function EngagementDashboard() {
                             <h3 className="font-semibold text-gray-900">Ranking de Módulos</h3>
                             <span className="text-sm text-gray-500">Ordenado por acessos</span>
                         </div>
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Módulo</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acessos</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tempo Médio</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Usuários</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Top Usuários</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-100">
-                                {modulesLoading ? (
-                                    <tr><td colSpan={6} className="text-center py-12 text-gray-500">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                                            Carregando módulos...
-                                        </div>
-                                    </td></tr>
-                                ) : !moduleData?.modules?.length ? (
-                                    <tr><td colSpan={6} className="text-center py-12 text-gray-500">
-                                        <FiGrid className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                                        <p>Nenhum acesso registrado ainda</p>
-                                        <p className="text-xs mt-1">Os acessos aparecerão aqui após usuários clicarem nos cards</p>
-                                    </td></tr>
-                                ) : moduleData.modules.map((mod, index) => (
-                                    <React.Fragment key={mod.module_id}>
-                                        <tr
-                                            className="hover:bg-purple-50/50 transition-colors cursor-pointer"
-                                            onClick={() => setExpandedModule(expandedModule === mod.module_id ? null : mod.module_id)}
-                                        >
-                                            <td className="px-6 py-4">
-                                                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                    index === 1 ? 'bg-gray-200 text-gray-600' :
-                                                        index === 2 ? 'bg-orange-100 text-orange-700' :
-                                                            'bg-gray-100 text-gray-500'
-                                                    }`}>
-                                                    {index + 1}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-medium text-gray-900 flex items-center gap-2">
-                                                    {mod.module_name}
-                                                    <span className={`text-xs transform transition-transform ${expandedModule === mod.module_id ? 'rotate-180' : ''}`}>▼</span>
-                                                </div>
-                                                <div className="text-xs text-gray-400">ID: {mod.module_id}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-lg font-bold text-purple-600">{mod.total_accesses}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {mod.avg_duration > 60 ? (
-                                                    <span className="text-sm font-medium text-blue-600">{Math.round(mod.avg_duration / 60)}min</span>
-                                                ) : (
-                                                    <span className="text-sm font-medium text-blue-600">{Math.round(mod.avg_duration || 0)}s</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm font-medium text-gray-700">{mod.unique_users}</span>
-                                                <span className="text-xs text-gray-400 ml-1">únicos</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex -space-x-2">
-                                                    {mod.top_users.slice(0, 4).map((user) => (
-                                                        <div
-                                                            key={user.user_id}
-                                                            className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center overflow-hidden"
-                                                            title={user.name || user.email || user.user_id}
-                                                        >
-                                                            {user.avatar ? (
-                                                                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <span className="text-xs font-medium text-gray-600">
-                                                                    {(user.name || 'U')[0]}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                    {mod.top_users.length > 4 && (
-                                                        <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">
-                                                            <span className="text-xs text-gray-500">+{mod.top_users.length - 4}</span>
-                                                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Módulo</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acessos</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tempo Médio</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Usuários</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Top Usuários</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-100">
+                                    {modulesLoading ? (
+                                        <tr><td colSpan={6} className="text-center py-12 text-gray-500">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                                                Carregando módulos...
+                                            </div>
+                                        </td></tr>
+                                    ) : !moduleData?.modules?.length ? (
+                                        <tr><td colSpan={6} className="text-center py-12 text-gray-500">
+                                            <FiGrid className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                                            <p>Nenhum acesso registrado ainda</p>
+                                            <p className="text-xs mt-1">Os acessos aparecerão aqui após usuários clicarem nos cards</p>
+                                        </td></tr>
+                                    ) : moduleData.modules.map((mod, index) => (
+                                        <React.Fragment key={mod.module_id}>
+                                            <tr
+                                                className="hover:bg-purple-50/50 transition-colors cursor-pointer"
+                                                onClick={() => setExpandedModule(expandedModule === mod.module_id ? null : mod.module_id)}
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                        index === 1 ? 'bg-gray-200 text-gray-600' :
+                                                            index === 2 ? 'bg-orange-100 text-orange-700' :
+                                                                'bg-gray-100 text-gray-500'
+                                                        }`}>
+                                                        {index + 1}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-medium text-gray-900 flex items-center gap-2">
+                                                        {mod.module_name}
+                                                        <span className={`text-xs transform transition-transform ${expandedModule === mod.module_id ? 'rotate-180' : ''}`}>▼</span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-400">ID: {mod.module_id}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-lg font-bold text-purple-600">{mod.total_accesses}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {mod.avg_duration > 60 ? (
+                                                        <span className="text-sm font-medium text-blue-600">{Math.round(mod.avg_duration / 60)}min</span>
+                                                    ) : (
+                                                        <span className="text-sm font-medium text-blue-600">{Math.round(mod.avg_duration || 0)}s</span>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        {expandedModule === mod.module_id && (
-                                            <tr>
-                                                <td colSpan={6} className="px-6 py-4 bg-purple-50/30">
-                                                    <div className="text-sm font-medium text-gray-700 mb-3">👥 Usuários que acessaram este módulo:</div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                        {mod.top_users.length > 0 ? mod.top_users.map((user) => (
-                                                            <div key={user.user_id} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                                    {user.avatar ? (
-                                                                        <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-                                                                    ) : (
-                                                                        <span className="text-sm font-bold text-white">
-                                                                            {(user.name || 'U')[0]}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="font-medium text-gray-900 truncate">{user.name || 'Usuário'}</div>
-                                                                    <div className="text-xs text-gray-500 truncate">{user.email || user.user_id}</div>
-                                                                </div>
-                                                                <div className="text-right flex-shrink-0">
-                                                                    <div className="text-lg font-bold text-purple-600">
-                                                                        {user.total_duration > 60
-                                                                            ? `${Math.round(user.total_duration / 60)}min`
-                                                                            : `${Math.round(user.total_duration)}s`}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-400">{user.access_count} acessos</div>
-                                                                </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm font-medium text-gray-700">{mod.unique_users}</span>
+                                                    <span className="text-xs text-gray-400 ml-1">únicos</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex -space-x-2">
+                                                        {mod.top_users.slice(0, 4).map((user) => (
+                                                            <div
+                                                                key={user.user_id}
+                                                                className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center overflow-hidden"
+                                                                title={user.name || user.email || user.user_id}
+                                                            >
+                                                                {user.avatar ? (
+                                                                    <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className="text-xs font-medium text-gray-600">
+                                                                        {(user.name || 'U')[0]}
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                        )) : (
-                                                            <div className="col-span-full text-center py-4 text-gray-400">
-                                                                Sem dados de usuário identificado
+                                                        ))}
+                                                        {mod.top_users.length > 4 && (
+                                                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                                <span className="text-xs text-gray-500">+{mod.top_users.length - 4}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                 </td>
                                             </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </tbody>
-                        </table>
+                                            {expandedModule === mod.module_id && (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-4 bg-purple-50/30">
+                                                        <div className="text-sm font-medium text-gray-700 mb-3">👥 Usuários que acessaram este módulo:</div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                            {mod.top_users.length > 0 ? mod.top_users.map((user) => (
+                                                                <div key={user.user_id} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                                        {user.avatar ? (
+                                                                            <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <span className="text-sm font-bold text-white">
+                                                                                {(user.name || 'U')[0]}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="font-medium text-gray-900 truncate">{user.name || 'Usuário'}</div>
+                                                                        <div className="text-xs text-gray-500 truncate">{user.email || user.user_id}</div>
+                                                                    </div>
+                                                                    <div className="text-right flex-shrink-0">
+                                                                        <div className="text-lg font-bold text-purple-600">
+                                                                            {user.total_duration > 60
+                                                                                ? `${Math.round(user.total_duration / 60)}min`
+                                                                                : `${Math.round(user.total_duration)}s`}
+                                                                        </div>
+                                                                        <div className="text-xs text-gray-400">{user.access_count} acessos</div>
+                                                                    </div>
+                                                                </div>
+                                                            )) : (
+                                                                <div className="col-span-full text-center py-4 text-gray-400">
+                                                                    Sem dados de usuário identificado
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </>
             )}

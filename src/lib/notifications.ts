@@ -396,7 +396,7 @@ export async function sendReimbursementConfirmationEmail(
         const employeeName = formData.nome.replace(/\s+/g, '_');
 
         // Gerar PDF do formulário
-        const formPdfBuffer = await generateReimbursementPDF(formData, protocolo);
+        const formPdfBuffer = await generateReimbursementPDF(formData as any);
         console.log('PDF do formulário gerado com sucesso');
 
         // Adicionar PDF do formulário aos anexos (como primeiro item)

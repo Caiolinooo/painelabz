@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // Filtros para métricas
     const filters = {
-      status: searchParams.get('status')?.split(',') || undefined,
+      status: (searchParams.get('status')?.split(',') as any) || undefined,
       funcionario_id: searchParams.get('funcionario_id') || undefined,
       avaliador_id: searchParams.get('avaliador_id') || undefined,
       ciclo_id: searchParams.get('ciclo_id') || undefined,

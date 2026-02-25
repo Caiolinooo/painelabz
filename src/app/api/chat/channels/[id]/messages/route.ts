@@ -22,7 +22,7 @@ export async function GET(
       }, { status: 401 });
     }
 
-    const channelId = params.id;
+    const { id: channelId } = await params;
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
@@ -44,8 +44,8 @@ export async function GET(
     }
 
     const hasAccess = channel.permissions?.isPublic ||
-                     channel.permissions?.members?.includes(payload.userId) ||
-                     channel.permissions?.viewers?.includes(payload.userId);
+      channel.permissions?.members?.includes(payload.userId) ||
+      channel.permissions?.viewers?.includes(payload.userId);
 
     if (!hasAccess) {
       return NextResponse.json({

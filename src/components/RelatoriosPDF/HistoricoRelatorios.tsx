@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  FiDownload, 
-  FiEye, 
-  FiRefreshCw, 
-  FiTrash2, 
+import {
+  FiDownload,
+  FiEye,
+  FiRefreshCw,
+  FiTrash2,
   FiCalendar,
   FiFileText,
   FiUser,
@@ -31,9 +31,9 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
   const historicoFiltrado = historico
     .filter(item => !filtroStatus || item.status === filtroStatus)
     .sort((a, b) => {
-      const valorA = a[ordenacao.campo as keyof HistoricoRelatorio];
-      const valorB = b[ordenacao.campo as keyof HistoricoRelatorio];
-      
+      const valorA = a[ordenacao.campo as keyof HistoricoRelatorio] || '';
+      const valorB = b[ordenacao.campo as keyof HistoricoRelatorio] || '';
+
       if (ordenacao.direcao === 'asc') {
         return valorA > valorB ? 1 : -1;
       } else {
@@ -97,7 +97,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
               <option value="expirado">{t('relatorios.expirado', 'Expirado')}</option>
             </select>
           </div>
-          
+
           <div className="text-sm text-gray-500">
             {historicoFiltrado.length} relatório(s) encontrado(s)
           </div>
@@ -120,7 +120,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                     {t('relatorios.relatorio', 'Relatório')}
                   </div>
                 </th>
-                
+
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -131,7 +131,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                     {t('relatorios.gerado_em', 'Gerado em')}
                   </div>
                 </th>
-                
+
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -142,25 +142,25 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                     {t('relatorios.gerado_por', 'Gerado por')}
                   </div>
                 </th>
-                
+
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('relatorios.detalhes', 'Detalhes')}
                 </th>
-                
+
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('common.status', 'Status')}
                 </th>
-                
+
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('relatorios.downloads', 'Downloads')}
                 </th>
-                
+
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">{t('common.acoes', 'Ações')}</span>
                 </th>
               </tr>
             </thead>
-            
+
             <tbody className="bg-white divide-y divide-gray-200">
               {historicoFiltrado.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
@@ -177,28 +177,28 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                       </div>
                     </div>
                   </td>
-                  
+
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatarData(item.gerado_em)}
                   </td>
-                  
+
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {item.gerado_por}
                   </td>
-                  
+
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="space-y-1">
                       <div>{formatarTamanhoArquivo(item.tamanho_arquivo)}</div>
                       <div>{item.paginas} página(s)</div>
                     </div>
                   </td>
-                  
+
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
                       {item.status}
                     </span>
                   </td>
-                  
+
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center">
                       <FiDownload className="h-4 w-4 text-gray-400 mr-1" />
@@ -210,7 +210,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                       </div>
                     )}
                   </td>
-                  
+
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       {item.status === 'ativo' && (
@@ -222,7 +222,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                           >
                             <FiDownload className="h-4 w-4" />
                           </button>
-                          
+
                           <button
                             onClick={() => window.open(item.arquivo_url, '_blank')}
                             className="text-green-600 hover:text-green-900"
@@ -232,7 +232,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                           </button>
                         </>
                       )}
-                      
+
                       <button
                         onClick={() => onRegenerate(item)}
                         className="text-orange-600 hover:text-orange-900"
@@ -240,7 +240,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                       >
                         <FiRefreshCw className="h-4 w-4" />
                       </button>
-                      
+
                       {item.status === 'arquivado' && (
                         <button
                           onClick={() => {
@@ -270,7 +270,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
             {t('relatorios.nenhum_historico', 'Nenhum relatório no histórico')}
           </h3>
           <p className="text-gray-600">
-            {filtroStatus 
+            {filtroStatus
               ? t('relatorios.ajuste_filtro_status', 'Ajuste o filtro de status para ver mais relatórios')
               : t('relatorios.nenhum_historico_desc', 'Os relatórios gerados aparecerão aqui')
             }
@@ -284,7 +284,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             {t('relatorios.estatisticas', 'Estatísticas')}
           </h3>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
@@ -294,7 +294,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                 {t('relatorios.total_relatorios', 'Total de Relatórios')}
               </div>
             </div>
-            
+
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
                 {historico.filter(h => h.status === 'ativo').length}
@@ -303,7 +303,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                 {t('relatorios.ativos', 'Ativos')}
               </div>
             </div>
-            
+
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
                 {historico.reduce((sum, h) => sum + h.downloads, 0)}
@@ -312,7 +312,7 @@ export default function HistoricoRelatorios({ historico, onDownload, onRegenerat
                 {t('relatorios.total_downloads', 'Total de Downloads')}
               </div>
             </div>
-            
+
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
                 {formatarTamanhoArquivo(historico.reduce((sum, h) => sum + h.tamanho_arquivo, 0))}

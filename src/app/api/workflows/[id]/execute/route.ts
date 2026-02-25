@@ -28,7 +28,7 @@ export async function POST(
       }, { status: 401 });
     }
 
-    const workflowId = params.id;
+    const { id: workflowId } = await params;
     const body = await request.json();
     const { variables = {}, triggerData = {} } = body;
 
@@ -56,8 +56,8 @@ export async function POST(
 
     // Verificar permissões de execução
     const hasExecutePermission = workflow.created_by === authResult.userId ||
-                                workflow.permissions?.executors?.includes(authResult.userId) ||
-                                workflow.permissions?.isPublic;
+      workflow.permissions?.executors?.includes(authResult.userId) ||
+      workflow.permissions?.isPublic;
 
     if (!hasExecutePermission) {
       // Verificar se usuário é admin
@@ -91,7 +91,7 @@ export async function POST(
 
     // Criar execução
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const execution: WorkflowExecution = {
       id: executionId,
       workflowId: workflowId,
@@ -192,7 +192,7 @@ async function executeWorkflowAsync(execution: WorkflowExecution, workflow: any)
     // Executar steps sequencialmente
     for (let i = 0; i < workflow.steps.length; i++) {
       const step = workflow.steps[i];
-      
+
       const stepExecution: StepExecution = {
         id: `step_${i + 1}`,
         stepId: step.id,
@@ -209,27 +209,27 @@ async function executeWorkflowAsync(execution: WorkflowExecution, workflow: any)
       try {
         // Simular execução do step
         await executeStep(step, execution, stepExecution);
-        
+
         stepExecution.status = 'success';
         stepExecution.endTime = new Date().toISOString();
         stepExecution.duration = new Date(stepExecution.endTime).getTime() - new Date(stepExecution.startTime!).getTime();
-        
+
         await addExecutionLog(execution.id, 'info', `Step '${step.name}' executado com sucesso`, step.id, step.name);
-        
+
       } catch (stepError) {
         stepExecution.status = 'failed';
         stepExecution.endTime = new Date().toISOString();
         stepExecution.error = stepError instanceof Error ? stepError.message : 'Erro desconhecido';
-        
+
         await addExecutionLog(execution.id, 'error', `Erro no step '${step.name}': ${stepExecution.error}`, step.id, step.name);
-        
+
         // Verificar estratégia de tratamento de erro
         if (step.errorHandling?.strategy === 'stop') {
           execution.status = 'failed';
           break;
         }
       }
-      
+
       await updateExecution(execution);
     }
 
@@ -237,10 +237,10 @@ async function executeWorkflowAsync(execution: WorkflowExecution, workflow: any)
     if (execution.status === 'running') {
       execution.status = 'success';
     }
-    
+
     execution.endTime = new Date().toISOString();
     execution.duration = new Date(execution.endTime).getTime() - new Date(execution.startTime).getTime();
-    
+
     await updateExecution(execution);
     await addExecutionLog(execution.id, 'info', `Execução finalizada com status: ${execution.status}`);
 
@@ -249,11 +249,11 @@ async function executeWorkflowAsync(execution: WorkflowExecution, workflow: any)
 
   } catch (error) {
     console.error('Erro na execução do workflow:', error);
-    
+
     execution.status = 'failed';
     execution.endTime = new Date().toISOString();
     execution.duration = execution.endTime ? new Date(execution.endTime).getTime() - new Date(execution.startTime).getTime() : 0;
-    
+
     await updateExecution(execution);
     await addExecutionLog(execution.id, 'error', `Erro fatal na execução: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
   }
@@ -282,7 +282,7 @@ async function executeStep(step: any, execution: WorkflowExecution, stepExecutio
 
 async function executeActionStep(step: any, execution: WorkflowExecution, stepExecution: StepExecution) {
   const actionType = step.config?.actionType;
-  
+
   switch (actionType) {
     case 'email':
       // Simular envio de email
@@ -312,7 +312,7 @@ async function executeActionStep(step: any, execution: WorkflowExecution, stepEx
 async function executeConditionStep(step: any, execution: WorkflowExecution, stepExecution: StepExecution) {
   // Simular avaliação de condição
   await new Promise(resolve => setTimeout(resolve, 200));
-  
+
   const conditionResult = Math.random() > 0.2; // 80% de chance de sucesso
   stepExecution.output = { conditionMet: conditionResult, conditions: step.config?.conditions };
 }
@@ -320,9 +320,9 @@ async function executeConditionStep(step: any, execution: WorkflowExecution, ste
 async function executeDelayStep(step: any, execution: WorkflowExecution, stepExecution: StepExecution) {
   const delayDuration = step.config?.delayDuration || 1;
   const delayUnit = step.config?.delayUnit || 'seconds';
-  
+
   let delayMs = delayDuration * 1000; // padrão em segundos
-  
+
   switch (delayUnit) {
     case 'minutes':
       delayMs = delayDuration * 60 * 1000;
@@ -334,10 +334,10 @@ async function executeDelayStep(step: any, execution: WorkflowExecution, stepExe
       delayMs = delayDuration * 24 * 60 * 60 * 1000;
       break;
   }
-  
+
   // Limitar delay máximo para demonstração (5 segundos)
   delayMs = Math.min(delayMs, 5000);
-  
+
   await new Promise(resolve => setTimeout(resolve, delayMs));
   stepExecution.output = { delayCompleted: true, duration: delayMs };
 }
@@ -346,11 +346,11 @@ async function executeNotificationStep(step: any, execution: WorkflowExecution, 
   // Simular envio de notificação
   execution.metrics.notificationsSent++;
   await new Promise(resolve => setTimeout(resolve, 300));
-  
-  stepExecution.output = { 
-    notificationSent: true, 
+
+  stepExecution.output = {
+    notificationSent: true,
     type: step.config?.notificationType,
-    recipients: step.config?.recipients 
+    recipients: step.config?.recipients
   };
 }
 
@@ -369,10 +369,10 @@ async function updateExecution(execution: WorkflowExecution) {
 }
 
 async function addExecutionLog(
-  executionId: string, 
-  level: 'error' | 'warn' | 'info' | 'debug', 
-  message: string, 
-  stepId?: string, 
+  executionId: string,
+  level: 'error' | 'warn' | 'info' | 'debug',
+  message: string,
+  stepId?: string,
   stepName?: string
 ) {
   const log: ExecutionLog = {

@@ -47,6 +47,26 @@ export async function POST(req: NextRequest) {
         // Get existing user passkeys to exclude them
         const existingPasskeys = await getUserPasskeys(userId);
 
+        // Parse body mapping attachment preferences
+        let attachment: 'platform' | 'cross-platform' | undefined;
+        try {
+            const body = await req.json();
+            if (body.attachment === 'platform' || body.attachment === 'cross-platform') {
+                attachment = body.attachment;
+            }
+        } catch (e) {
+            // No body or invalid json
+        }
+
+        const authenticatorSelection: any = {
+            residentKey: 'required',
+            userVerification: 'preferred',
+        };
+
+        if (attachment) {
+            authenticatorSelection.authenticatorAttachment = attachment;
+        }
+
         const options = await generateRegistrationOptions({
             rpName,
             rpID,
@@ -59,10 +79,7 @@ export async function POST(req: NextRequest) {
                 type: 'public-key',
                 transports: key.transports ? key.transports.split(',') : ['internal'],
             })),
-            authenticatorSelection: {
-                residentKey: 'required',
-                userVerification: 'preferred',
-            }
+            authenticatorSelection
         });
 
         // Store challenge

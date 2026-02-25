@@ -27,7 +27,7 @@ export async function GET(
       }, { status: 401 });
     }
 
-    const dashboardId = params.id;
+    const { id: dashboardId } = await params;
 
     // Buscar dashboard
     const { data: dashboard, error } = await supabase
@@ -65,9 +65,9 @@ export async function GET(
 
     // Verificar permissões de acesso
     const hasAccess = dashboard.is_public ||
-                     dashboard.created_by === authResult.userId ||
-                     dashboard.permissions?.viewers?.includes(authResult.userId) ||
-                     dashboard.permissions?.editors?.includes(authResult.userId);
+      dashboard.created_by === authResult.userId ||
+      dashboard.permissions?.viewers?.includes(authResult.userId) ||
+      dashboard.permissions?.editors?.includes(authResult.userId);
 
     if (!hasAccess) {
       // Verificar se usuário é admin
@@ -142,7 +142,7 @@ export async function POST(
       }, { status: 401 });
     }
 
-    const dashboardId = params.id;
+    const { id: dashboardId } = await params;
     const body = await request.json();
     const { action } = body;
 
@@ -163,13 +163,13 @@ export async function POST(
     switch (action) {
       case 'duplicate':
         return await duplicateDashboard(request, dashboard, authResult.userId);
-      
+
       case 'export':
         return await exportDashboard(request, dashboard, body.options);
-      
+
       case 'refresh':
         return await refreshDashboard(request, dashboard);
-      
+
       default:
         return NextResponse.json({
           success: false,

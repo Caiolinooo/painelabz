@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import axios from 'axios';
 
 const supabase = createClient(
@@ -97,13 +97,11 @@ export class WorkflowEngine {
     try {
       const task = cron.schedule(cronExpression, async () => {
         await this.executeWorkflow(workflow.id, {});
-      }, {
-        scheduled: false
       });
 
       this.scheduledJobs.set(workflow.id, task);
       task.start();
-      
+
       console.log(`Workflow ${workflow.name} agendado: ${cronExpression}`);
     } catch (error) {
       console.error(`Erro ao agendar workflow ${workflow.name}:`, error);
@@ -142,7 +140,7 @@ export class WorkflowEngine {
   // Executar workflow
   async executeWorkflow(workflowId: string, inputData: Record<string, any>): Promise<WorkflowExecution> {
     const startTime = Date.now();
-    
+
     // Buscar workflow
     const { data: workflow, error } = await supabase
       .from('workflows')
@@ -173,7 +171,7 @@ export class WorkflowEngine {
     try {
       // Executar steps
       const result = await this.executeSteps(workflow.steps, inputData, execution.id);
-      
+
       const duration = Date.now() - startTime;
 
       // Atualizar execução como concluída
@@ -194,7 +192,7 @@ export class WorkflowEngine {
         .from('workflows')
         .update({
           last_run: new Date().toISOString(),
-          run_count: supabase.sql`run_count + 1`
+          run_count: (workflow.run_count || 0) + 1
         })
         .eq('id', workflowId);
 
@@ -211,7 +209,7 @@ export class WorkflowEngine {
           status: 'failed',
           completed_at: new Date().toISOString(),
           duration_ms: duration,
-          error_message: error.message
+          error_message: error instanceof Error ? error.message : String(error)
         })
         .eq('id', execution.id);
 
@@ -231,10 +229,10 @@ export class WorkflowEngine {
 
     for (const step of steps) {
       const stepStartTime = Date.now();
-      
+
       try {
         const stepResult = await this.executeStep(step, currentData);
-        
+
         const executedStep: ExecutedStep = {
           step_id: step.id,
           status: 'success',
@@ -257,12 +255,12 @@ export class WorkflowEngine {
           started_at: new Date(stepStartTime).toISOString(),
           completed_at: new Date().toISOString(),
           input: currentData,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         };
 
         executedSteps.push(executedStep);
         await this.updateExecutionSteps(executionId, executedSteps);
-        
+
         throw error;
       }
     }
@@ -290,7 +288,7 @@ export class WorkflowEngine {
   private async executeConditionStep(step: WorkflowStep, data: Record<string, any>): Promise<Record<string, any>> {
     const { condition, operator, value } = step.config;
     const dataValue = this.getNestedValue(data, condition);
-    
+
     let result = false;
     switch (operator) {
       case 'equals':
@@ -364,7 +362,7 @@ export class WorkflowEngine {
 
     // Aqui você integraria com seu sistema de email
     console.log('Enviando email:', { to: processedTo, subject: processedSubject });
-    
+
     return { email_sent: true, recipient: processedTo };
   }
 
@@ -379,7 +377,7 @@ export class WorkflowEngine {
       .single();
 
     if (error) throw new Error(`Erro ao criar registro: ${error.message}`);
-    
+
     return { created_record: record };
   }
 
@@ -389,14 +387,14 @@ export class WorkflowEngine {
     const processedFields = this.processObjectTemplate(fields, data);
 
     let query = supabase.from(table).update(processedFields);
-    
+
     Object.entries(processedWhere).forEach(([key, value]) => {
       query = query.eq(key, value);
     });
 
     const { data: records, error } = await query.select();
     if (error) throw new Error(`Erro ao atualizar registro: ${error.message}`);
-    
+
     return { updated_records: records };
   }
 
@@ -413,7 +411,7 @@ export class WorkflowEngine {
       data: processedBody
     });
 
-    return { 
+    return {
       http_response: {
         status: response.status,
         data: response.data
@@ -428,12 +426,12 @@ export class WorkflowEngine {
     const processedMessage = this.processTemplate(message, data);
 
     // Implementar sistema de notificações
-    console.log('Enviando notificação:', { 
-      userId: processedUserId, 
-      title: processedTitle, 
-      message: processedMessage 
+    console.log('Enviando notificação:', {
+      userId: processedUserId,
+      title: processedTitle,
+      message: processedMessage
     });
-    
+
     return { notification_sent: true, user_id: processedUserId };
   }
 
@@ -446,7 +444,7 @@ export class WorkflowEngine {
 
   private processObjectTemplate(obj: Record<string, any>, data: Record<string, any>): Record<string, any> {
     const result: Record<string, any> = {};
-    
+
     Object.entries(obj).forEach(([key, value]) => {
       if (typeof value === 'string') {
         result[key] = this.processTemplate(value, data);

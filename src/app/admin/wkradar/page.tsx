@@ -130,15 +130,15 @@ export default function WKRadarAdminPage() {
 
     // Gera username padrão para um usuário
     const generateDefaultUsername = (user: User) => {
-        const firstName = user.first_name || user.firstName || '';
-        const lastName = user.last_name || user.lastName || '';
+        const firstName = user?.first_name || user?.firstName || '';
+        const lastName = user?.last_name || user?.lastName || '';
 
         if (firstName && lastName) {
             const fn = firstName.toLowerCase().trim().split(' ')[0];
             const ln = lastName.toLowerCase().trim().split(' ')[0];
             return `${fn}.${ln}`;
         }
-        return user.email?.split('@')[0]?.toLowerCase() || '';
+        return user?.email?.split('@')[0]?.toLowerCase() || '';
     };
 
     // Verifica se um usuário tem credenciais customizadas
@@ -339,129 +339,131 @@ export default function WKRadarAdminPage() {
 
             {/* Tabela de usuários */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {t('common.user', 'Usuário')}
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {t('wkradar.wkUsername', 'Login WKRadar')}
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {t('wkradar.wkPassword', 'Senha WKRadar')}
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {t('common.status', 'Status')}
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {t('common.actions')}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredUsers.map((user) => {
-                            const creds = getUserCredentials(user.id);
-                            const isEditing = editingUser === user.id;
-                            const defaultUsername = generateDefaultUsername(user);
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {t('common.user', 'Usuário')}
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {t('wkradar.wkUsername', 'Login WKRadar')}
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {t('wkradar.wkPassword', 'Senha WKRadar')}
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {t('common.status', 'Status')}
+                                </th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {t('common.actions')}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredUsers.map((user) => {
+                                const creds = getUserCredentials(user.id);
+                                const isEditing = editingUser === user.id;
+                                const defaultUsername = generateDefaultUsername(user);
 
-                            return (
-                                <tr key={user.id} className={isEditing ? 'bg-indigo-50' : 'hover:bg-gray-50'}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                <FiUsers className="h-5 w-5 text-indigo-600" />
-                                            </div>
-                                            <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {user.first_name} {user.last_name}
+                                return (
+                                    <tr key={user.id} className={isEditing ? 'bg-indigo-50' : 'hover:bg-gray-50'}>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                    <FiUsers className="h-5 w-5 text-indigo-600" />
                                                 </div>
-                                                <div className="text-sm text-gray-500">{user.email}</div>
+                                                <div className="ml-4">
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {user.first_name} {user.last_name}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                value={editForm.username}
-                                                onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                                                className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
-                                            />
-                                        ) : (
-                                            <span className="text-sm text-gray-900">
-                                                {creds?.username || defaultUsername}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                value={editForm.password}
-                                                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                                                className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
-                                            />
-                                        ) : (
-                                            <span className="text-sm text-gray-500">
-                                                {creds ? '••••••••' : 'Abz@2025'}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {creds ? (
-                                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
-                                                {t('wkradar.customized', 'Customizado')}
-                                            </span>
-                                        ) : (
-                                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                                                {t('common.default', 'Padrão')}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        {isEditing ? (
-                                            <div className="flex justify-end space-x-2">
-                                                <button
-                                                    onClick={() => saveCredentials(user.id)}
-                                                    disabled={saving}
-                                                    className="text-green-600 hover:text-green-900 disabled:opacity-50"
-                                                >
-                                                    <FiSave className="h-5 w-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => setEditingUser(null)}
-                                                    className="text-gray-600 hover:text-gray-900"
-                                                >
-                                                    <FiX className="h-5 w-5" />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="flex justify-end space-x-2">
-                                                <button
-                                                    onClick={() => startEditing(user)}
-                                                    className="text-indigo-600 hover:text-indigo-900"
-                                                    title={t('common.edit')}
-                                                >
-                                                    <FiEdit2 className="h-5 w-5" />
-                                                </button>
-                                                {creds && (
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    value={editForm.username}
+                                                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                                                    className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                            ) : (
+                                                <span className="text-sm text-gray-900">
+                                                    {creds?.username || defaultUsername}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    value={editForm.password}
+                                                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                                                    className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                            ) : (
+                                                <span className="text-sm text-gray-500">
+                                                    {creds ? '••••••••' : 'Abz@2025'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {creds ? (
+                                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
+                                                    {t('wkradar.customized', 'Customizado')}
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                                                    {t('common.default', 'Padrão')}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            {isEditing ? (
+                                                <div className="flex justify-end space-x-2">
                                                     <button
-                                                        onClick={() => removeCredentials(user.id)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                        title={t('common.delete')}
+                                                        onClick={() => saveCredentials(user.id)}
+                                                        disabled={saving}
+                                                        className="text-green-600 hover:text-green-900 disabled:opacity-50"
                                                     >
-                                                        <FiTrash2 className="h-5 w-5" />
+                                                        <FiSave className="h-5 w-5" />
                                                     </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                                    <button
+                                                        onClick={() => setEditingUser(null)}
+                                                        className="text-gray-600 hover:text-gray-900"
+                                                    >
+                                                        <FiX className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-end space-x-2">
+                                                    <button
+                                                        onClick={() => startEditing(user)}
+                                                        className="text-indigo-600 hover:text-indigo-900"
+                                                        title={t('common.edit')}
+                                                    >
+                                                        <FiEdit2 className="h-5 w-5" />
+                                                    </button>
+                                                    {creds && (
+                                                        <button
+                                                            onClick={() => removeCredentials(user.id)}
+                                                            className="text-red-600 hover:text-red-900"
+                                                            title={t('common.delete')}
+                                                        >
+                                                            <FiTrash2 className="h-5 w-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
 
                 {filteredUsers.length === 0 && (
                     <div className="text-center py-12 text-gray-500">

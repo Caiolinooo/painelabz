@@ -108,13 +108,13 @@ const SocialFeed: React.FC<SocialFeedProps> = ({ className = '' }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setPosts(prev => prev.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                user_liked: data.liked, 
-                likes_count: data.likes_count 
-              }
+        setPosts(prev => prev.map(post =>
+          post.id === postId
+            ? {
+              ...post,
+              user_liked: data.liked,
+              likes_count: data.likes_count
+            }
             : post
         ));
       }
@@ -149,10 +149,10 @@ const SocialFeed: React.FC<SocialFeedProps> = ({ className = '' }) => {
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
-    
-    return date.toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: 'short' 
+
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short'
     });
   };
 
@@ -234,11 +234,11 @@ const SocialFeed: React.FC<SocialFeedProps> = ({ className = '' }) => {
         >
           <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
             <span className="text-white font-medium">
-              {user?.first_name?.charAt(0) || 'U'}
+              {(user as any)?.first_name?.charAt(0) || 'U'}
             </span>
           </div>
           <span className="text-gray-500 flex-1 text-left">
-            No que você está pensando, {user?.first_name}?
+            No que você está pensando, {(user as any)?.first_name}?
           </span>
           <PlusIcon className="w-5 h-5 text-gray-400" />
         </button>
@@ -311,11 +311,10 @@ const SocialFeed: React.FC<SocialFeedProps> = ({ className = '' }) => {
               <div className="flex items-center space-x-6">
                 <button
                   onClick={() => handleLike(post.id)}
-                  className={`flex items-center space-x-2 transition-colors ${
-                    post.user_liked 
-                      ? 'text-red-600' 
+                  className={`flex items-center space-x-2 transition-colors ${post.user_liked
+                      ? 'text-red-600'
                       : 'text-gray-500 hover:text-red-600'
-                  }`}
+                    }`}
                 >
                   {post.user_liked ? (
                     <HeartSolidIcon className="w-5 h-5" />
@@ -347,8 +346,8 @@ const SocialFeed: React.FC<SocialFeedProps> = ({ className = '' }) => {
               postId={post.id}
               onCommentAdded={() => {
                 // Atualizar contador de comentários
-                setPosts(prev => prev.map(p => 
-                  p.id === post.id 
+                setPosts(prev => prev.map(p =>
+                  p.id === post.id
                     ? { ...p, comments_count: p.comments_count + 1 }
                     : p
                 ));

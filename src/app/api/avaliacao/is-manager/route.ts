@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
     // Fallback: tentar via cookies
     if (!userId) {
       const authResult = await verifyRequestToken(request);
-      if (authResult?.user) {
-        userId = authResult.user.id;
+      if (authResult?.payload?.userId) {
+        userId = authResult.payload.userId;
       }
     }
 

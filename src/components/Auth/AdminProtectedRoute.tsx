@@ -22,6 +22,7 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
   redirectTo = '/dashboard',
 }) => {
   const { user, profile, isLoading, isAdmin } = useSupabaseAuth();
+  const { t } = useI18n();
   const router = useRouter();
 
   // Verificar se estamos em ambiente de desenvolvimento
@@ -48,7 +49,7 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
       <FiAlertCircle className="h-16 w-16 text-red-500 mb-4" />
       <h1 className="text-2xl font-bold text-gray-800 mb-2">Acesso Negado</h1>
       <p className="text-gray-600 mb-4">Você não tem permissão para acessar esta página.</p>
-      <Link 
+      <Link
         href={redirectTo}
         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
       >

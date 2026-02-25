@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       console.error('Erro ao inserir card social:', insertError);
       return NextResponse.json({
         error: 'Erro ao inserir card social',
-        details: insertError.message
+        details: insertError?.message || 'Erro desconhecido'
       }, { status: 500 });
     }
 

@@ -87,11 +87,11 @@ const NewsCommentSection: React.FC<Props> = ({ postId, userId }) => {
 
   // Autor OU moderadores (admins/gerentes via permissão comments.moderate)
   const canEditComment = (c: NewsComment) => {
-    return c.user?.id === userId || hasPermission('comments', 'moderate');
+    return c.user?.id === userId || hasPermission('comments.moderate' as any);
   };
 
   const canDeleteComment = (c: NewsComment) => {
-    return c.user?.id === userId || hasPermission('comments', 'moderate');
+    return c.user?.id === userId || hasPermission('comments.moderate' as any);
   };
 
   const handleEdit = async (commentId: string, newContent: string) => {

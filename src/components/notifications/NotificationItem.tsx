@@ -1,10 +1,24 @@
 import { useI18n } from '@/contexts/I18nContext';
 import { FiHeart, FiMessageCircle, FiUserPlus, FiClipboard, FiInfo, FiBell } from 'react-icons/fi';
 
+export interface AppNotification {
+    id: string;
+    read_at?: string | null;
+    type: string;
+    actor?: { first_name?: string; last_name?: string; avatar?: string | null };
+    metadata?: any;
+    resource_id?: string;
+    message?: string;
+    title?: string;
+    created_at: string;
+    link?: string;
+    action_url?: string;
+}
+
 interface NotificationItemProps {
-    notification: Notification;
+    notification: AppNotification;
     onRead: (id: string) => void;
-    onClick: (notification: Notification) => void;
+    onClick: (notification: AppNotification) => void;
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRead, onClick }) => {

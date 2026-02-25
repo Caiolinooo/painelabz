@@ -176,7 +176,7 @@ export default function EPIPage() {
     return (
         <MainLayout>
             <ErrorBoundary>
-                <div className="container mx-auto px-4 py-8">
+                <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 w-full max-w-full overflow-hidden">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                         <div className="flex items-center gap-3">
@@ -191,7 +191,7 @@ export default function EPIPage() {
                         <div className="flex flex-col sm:flex-row gap-2">
                             <button
                                 onClick={handleGenerateReport}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
                             >
                                 <FiList className="w-4 h-4" />
                                 Relatório
@@ -199,7 +199,7 @@ export default function EPIPage() {
                             {hasItemsToSign && (
                                 <button
                                     onClick={handleOpenSignature}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
                                 >
                                     <FiCheck className="w-4 h-4" />
                                     Assinar Recebimento ({approvedCount})
@@ -207,7 +207,7 @@ export default function EPIPage() {
                             )}
                             <button
                                 onClick={() => setShowForm(true)}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-sm"
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-sm"
                             >
                                 <FiPlus className="w-4 h-4" />
                                 Solicitar EPI
@@ -263,12 +263,12 @@ export default function EPIPage() {
                     )}
 
                     {/* Tabs */}
-                    <div className="bg-white rounded-lg shadow">
-                        <div className="border-b border-gray-200 overflow-x-auto">
+                    <div className="bg-white rounded-lg shadow w-full">
+                        <div className="border-b border-gray-200 overflow-x-auto w-full scrollbar-hide">
                             <nav className="flex -mb-px">
                                 <button
                                     onClick={() => { setActiveTab('list'); setShowForm(false); }}
-                                    className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'list' && !showForm
+                                    className={`px-4 sm:px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'list' && !showForm
                                         ? 'border-yellow-500 text-yellow-600'
                                         : 'border-transparent text-gray-500 hover:text-gray-700'
                                         }`}
@@ -277,7 +277,7 @@ export default function EPIPage() {
                                 </button>
                                 <button
                                     onClick={() => setShowForm(true)}
-                                    className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${showForm
+                                    className={`px-4 sm:px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${showForm
                                         ? 'border-yellow-500 text-yellow-600'
                                         : 'border-transparent text-gray-500 hover:text-gray-700'
                                         }`}
@@ -286,7 +286,7 @@ export default function EPIPage() {
                                 </button>
                                 <button
                                     onClick={() => { setActiveTab('history'); setShowForm(false); }}
-                                    className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'history' && !showForm
+                                    className={`px-4 sm:px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'history' && !showForm
                                         ? 'border-yellow-500 text-yellow-600'
                                         : 'border-transparent text-gray-500 hover:text-gray-700'
                                         }`}
@@ -304,7 +304,7 @@ export default function EPIPage() {
                             </nav>
                         </div>
 
-                        <div className="p-6">
+                        <div className="p-3 sm:p-6 w-full max-w-full overflow-hidden">
                             {isLoading ? (
                                 <div className="flex items-center justify-center py-12">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>

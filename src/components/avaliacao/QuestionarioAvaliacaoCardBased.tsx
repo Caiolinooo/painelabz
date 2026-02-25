@@ -160,7 +160,7 @@ export default function QuestionarioAvaliacaoCardBased({
             rows={4}
           />
           <p className="text-xs text-gray-500 mt-2">
-            {question.obrigatorio ? t('evaluation.requiredField') : t('evaluation.optionalField')}
+            {question.obrigatoria ? t('evaluation.requiredField') : t('evaluation.optionalField')}
           </p>
         </div>
       </motion.div>

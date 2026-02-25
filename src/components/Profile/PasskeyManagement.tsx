@@ -38,6 +38,11 @@ export default function PasskeyManagement() {
     };
 
     const handleRegister = async () => {
+        if (typeof window === 'undefined' || !window.PublicKeyCredential) {
+            toast.error('Biometria indisponível. Verifique se seu navegador suporta e se você está em um ambiente seguro (HTTPS).', { duration: 5000 });
+            return;
+        }
+
         try {
             setIsRegistering(true);
 
@@ -45,6 +50,7 @@ export default function PasskeyManagement() {
             const optionsRes = await fetch('/api/auth/webauthn/register/options', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
             });
 
             if (!optionsRes.ok) {

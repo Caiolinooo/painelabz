@@ -122,97 +122,99 @@ export default function AdminSectorsPage() {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
-                        <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Setor</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Módulos Permitidos</th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {sectors.map(sector => (
-                            <tr key={sector.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-4 py-3 font-medium text-gray-800 align-top">{sector.name}</td>
-                                <td className="px-4 py-3">
-                                    {editingSector?.id === sector.id ? (
-                                        <div className="space-y-4">
-                                            {Object.entries(groupedModules).map(([catKey, modules]) => (
-                                                <div key={catKey}>
-                                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                                                        {(MODULE_CATEGORIES as any)[catKey] || catKey}
-                                                    </h4>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {modules.map(mod => {
-                                                            const isEnabled = editingSector.allowed_modules?.includes(mod.id);
-                                                            return (
-                                                                <button
-                                                                    key={mod.id}
-                                                                    onClick={() => handleModuleToggle(mod.id)}
-                                                                    className={`px-2 py-1 text-xs rounded-full border transition-colors ${isEnabled
-                                                                        ? 'bg-blue-100 border-blue-300 text-blue-700'
-                                                                        : 'bg-gray-100 border-gray-200 text-gray-500'
-                                                                        }`}
-                                                                    title={mod.description}
-                                                                >
-                                                                    {isEnabled ? <FiCheck className="inline mr-1" /> : <FiX className="inline mr-1" />}
-                                                                    {mod.label}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-wrap gap-1">
-                                            {(sector.allowed_modules || []).length > 0 ? (
-                                                sector.allowed_modules.map(modId => {
-                                                    const mod = SYSTEM_MODULES.find(m => m.id === modId);
-                                                    return (
-                                                        <span key={modId} className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded-full" title={mod?.description}>
-                                                            {mod?.label || modId}
-                                                        </span>
-                                                    );
-                                                })
-                                            ) : (
-                                                <span className="text-gray-400 text-sm italic">Nenhum (herda do Role)</span>
-                                            )}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-4 py-3 text-right align-top">
-                                    {editingSector?.id === sector.id ? (
-                                        <div className="flex gap-2 justify-end">
-                                            <button
-                                                onClick={() => setEditingSector(null)}
-                                                className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                            >
-                                                Cancelar
-                                            </button>
-                                            <button
-                                                onClick={handleSave}
-                                                disabled={saving === sector.id}
-                                                className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
-                                            >
-                                                <FiSave className="w-4 h-4" />
-                                                {saving === sector.id ? 'Salvando...' : 'Salvar'}
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => setEditingSector({ ...sector, allowed_modules: sector.allowed_modules || [], allowed_cards: sector.allowed_cards || [] })}
-                                            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
-                                        >
-                                            <FiSettings className="w-4 h-4" />
-                                            Configurar
-                                        </button>
-                                    )}
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Setor</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Módulos Permitidos</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Ações</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {sectors.map(sector => (
+                                <tr key={sector.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 py-3 font-medium text-gray-800 align-top">{sector.name}</td>
+                                    <td className="px-4 py-3">
+                                        {editingSector?.id === sector.id ? (
+                                            <div className="space-y-4">
+                                                {Object.entries(groupedModules).map(([catKey, modules]) => (
+                                                    <div key={catKey}>
+                                                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                                            {(MODULE_CATEGORIES as any)[catKey] || catKey}
+                                                        </h4>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {modules.map(mod => {
+                                                                const isEnabled = editingSector.allowed_modules?.includes(mod.id);
+                                                                return (
+                                                                    <button
+                                                                        key={mod.id}
+                                                                        onClick={() => handleModuleToggle(mod.id)}
+                                                                        className={`px-2 py-1 text-xs rounded-full border transition-colors ${isEnabled
+                                                                            ? 'bg-blue-100 border-blue-300 text-blue-700'
+                                                                            : 'bg-gray-100 border-gray-200 text-gray-500'
+                                                                            }`}
+                                                                        title={mod.description}
+                                                                    >
+                                                                        {isEnabled ? <FiCheck className="inline mr-1" /> : <FiX className="inline mr-1" />}
+                                                                        {mod.label}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-1">
+                                                {(sector.allowed_modules || []).length > 0 ? (
+                                                    sector.allowed_modules.map(modId => {
+                                                        const mod = SYSTEM_MODULES.find(m => m.id === modId);
+                                                        return (
+                                                            <span key={modId} className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded-full" title={mod?.description}>
+                                                                {mod?.label || modId}
+                                                            </span>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <span className="text-gray-400 text-sm italic">Nenhum (herda do Role)</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 text-right align-top">
+                                        {editingSector?.id === sector.id ? (
+                                            <div className="flex gap-2 justify-end">
+                                                <button
+                                                    onClick={() => setEditingSector(null)}
+                                                    className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={saving === sector.id}
+                                                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                                                >
+                                                    <FiSave className="w-4 h-4" />
+                                                    {saving === sector.id ? 'Salvando...' : 'Salvar'}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setEditingSector({ ...sector, allowed_modules: sector.allowed_modules || [], allowed_cards: sector.allowed_cards || [] })}
+                                                className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                <FiSettings className="w-4 h-4" />
+                                                Configurar
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">

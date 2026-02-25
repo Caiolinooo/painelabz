@@ -18,7 +18,7 @@ export interface CriterioAvaliacao {
 // Função para gerar UUIDs v4 compatíveis com o formato do banco de dados
 function generateUUID(): string {
   // Implementação simples de UUID v4
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
@@ -359,19 +359,17 @@ export function calcularMediaSimples(
 
   // Calcular médias por competência específica (usando os nomes dos critérios)
   const mediasPorCompetencia: Record<string, number> = {};
+  const notasPorCompetencia: Record<string, number[]> = {};
   avaliacoesValidas.forEach(({ criterio, nota }) => {
-    if (!mediasPorCompetencia[criterio.nome]) {
-      mediasPorCompetencia[criterio.nome] = [];
+    if (!notasPorCompetencia[criterio.nome]) {
+      notasPorCompetencia[criterio.nome] = [];
     }
-    // Para competências que podem ter múltiplas avaliações (raro neste modelo)
-    if (Array.isArray(mediasPorCompetencia[criterio.nome])) {
-      mediasPorCompetencia[criterio.nome].push(nota);
-    }
+    notasPorCompetencia[criterio.nome].push(nota);
   });
 
   // Calcular médias das competências
-  Object.entries(mediasPorCompetencia).forEach(([competencia, notas]) => {
-    if (Array.isArray(notas)) {
+  Object.entries(notasPorCompetencia).forEach(([competencia, notas]) => {
+    if (notas && Array.isArray(notas) && notas.length > 0) {
       const soma = notas.reduce((acc, nota) => acc + nota, 0);
       mediasPorCompetencia[competencia] = Number((soma / notas.length).toFixed(1));
     }
@@ -411,8 +409,7 @@ export function validarAvaliacaoCompleta(
 
   // Validações específicas
   if (tipoUsuario === 'gerente') {
-    // Comentário do avaliador (questão 15) é obrigatório para aprovação
-    if (!notas['q15-comentario-avaliador'] || notas['q15-comentario-avaliador']?.trim() === '') {
+    if (!notas['q15-comentario-avaliador'] || notas['q15-comentario-avaliador'] === 0) {
       mensagens.push('O comentário do avaliador (questão 15) é obrigatório para aprovar a avaliação');
     }
   }

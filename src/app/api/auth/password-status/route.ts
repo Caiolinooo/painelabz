@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Verificar se a senha expirou
-      const expired = isPasswordExpired(userData.password_last_changed, userData.role);
+      const expired = await isPasswordExpired(payload.userId);
 
       return NextResponse.json({
         expired,
