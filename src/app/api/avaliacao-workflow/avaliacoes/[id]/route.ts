@@ -42,8 +42,8 @@ export async function GET(
     }
 
     // Verificar permissão
-    const isOwner = avaliacao.funcionario_id === currentUser.userId;
-    const isEvaluator = avaliacao.avaliador_id === currentUser.userId;
+    const isOwner = avaliacao.funcionario_id === currentUser.id;
+    const isEvaluator = avaliacao.avaliador_id === currentUser.id;
     const isAdmin = currentUser.role === 'ADMIN';
 
     if (!isOwner && !isEvaluator && !isAdmin) {
@@ -106,7 +106,7 @@ export async function PATCH(
     switch (acao) {
       case 'salvar_autoavaliacao':
         // Verificar se é o dono da avaliação
-        if (avaliacao.funcionario_id !== currentUser.userId && currentUser.role !== 'ADMIN') {
+        if (avaliacao.funcionario_id !== currentUser.id && currentUser.role !== 'ADMIN') {
           return NextResponse.json({
             success: false,
             error: 'Sem permissão para salvar esta avaliação'
@@ -115,14 +115,14 @@ export async function PATCH(
 
         success = await AvaliacaoWorkflowService.salvarAutoavaliacao(
           avaliacaoId,
-          currentUser.userId,
+          currentUser.id,
           dados
         );
         break;
 
       case 'salvar_avaliacao_gerente':
         // Verificar se é o avaliador
-        if (avaliacao.avaliador_id !== currentUser.userId && currentUser.role !== 'ADMIN') {
+        if (avaliacao.avaliador_id !== currentUser.id && currentUser.role !== 'ADMIN') {
           return NextResponse.json({
             success: false,
             error: 'Sem permissão para salvar esta avaliação'
@@ -131,7 +131,7 @@ export async function PATCH(
 
         success = await AvaliacaoWorkflowService.salvarAvaliacaoGerente(
           avaliacaoId,
-          currentUser.userId,
+          currentUser.id,
           dados
         );
         break;
@@ -196,7 +196,7 @@ export async function POST(
     switch (acao) {
       case 'submeter_colaborador':
         // Verificar se é o dono da avaliação
-        if (avaliacao.funcionario_id !== currentUser.userId) {
+        if (avaliacao.funcionario_id !== currentUser.id) {
           return NextResponse.json({
             success: false,
             error: 'Apenas o colaborador pode submeter sua própria avaliação'
@@ -205,14 +205,14 @@ export async function POST(
 
         success = await AvaliacaoWorkflowService.submeterAvaliacaoColaborador(
           avaliacaoId,
-          currentUser.userId,
+          currentUser.id,
           dados
         );
         break;
 
       case 'aprovar':
         // Verificar se é o avaliador
-        if (avaliacao.avaliador_id !== currentUser.userId) {
+        if (avaliacao.avaliador_id !== currentUser.id) {
           return NextResponse.json({
             success: false,
             error: 'Apenas o avaliador pode aprovar esta avaliação'
@@ -221,14 +221,14 @@ export async function POST(
 
         success = await AvaliacaoWorkflowService.aprovarAvaliacao(
           avaliacaoId,
-          currentUser.userId,
+          currentUser.id,
           dados
         );
         break;
 
       case 'devolver':
         // Verificar se é o avaliador
-        if (avaliacao.avaliador_id !== currentUser.userId) {
+        if (avaliacao.avaliador_id !== currentUser.id) {
           return NextResponse.json({
             success: false,
             error: 'Apenas o avaliador pode devolver esta avaliação'
@@ -237,14 +237,14 @@ export async function POST(
 
         success = await AvaliacaoWorkflowService.devolverAvaliacao(
           avaliacaoId,
-          currentUser.userId,
+          currentUser.id,
           dados
         );
         break;
 
       case 'reenviar':
         // Verificar se é o dono da avaliação
-        if (avaliacao.funcionario_id !== currentUser.userId) {
+        if (avaliacao.funcionario_id !== currentUser.id) {
           return NextResponse.json({
             success: false,
             error: 'Apenas o colaborador pode reenviar sua avaliação'
@@ -253,7 +253,7 @@ export async function POST(
 
         success = await AvaliacaoWorkflowService.reenviarAvaliacao(
           avaliacaoId,
-          currentUser.userId
+          currentUser.id
         );
         break;
 

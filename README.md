@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-4.13.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-4.13.2-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -74,8 +74,9 @@ npm run dev
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
 
-## 🚀 Últimas Atualizações (v4.13.0)
+## 🚀 Últimas Atualizações (v4.13.2)
 
+- **Estabilidade & Type Safety**: Refinamento completo da stack TypeScript corrigindo múltiplos gargalos de build para garantir zero runtime errors.
 - **Biometria (Passkeys)**: Suporte completo a login biométrico (Face ID, Touch ID, Windows Hello) via WebAuthn, garantindo acesso ultraveloz sem senhas.
 - **Assinatura Dinâmica**: Integração de biometria para a assinatura digital do recebimento de EPIs, simplificando o processo do funcionário.
 - **Gestão de Passkeys**: Aba de gerenciamento no Perfil do Usuário para adicionar/remover dispositivos verificados.

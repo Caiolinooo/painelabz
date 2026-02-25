@@ -15,7 +15,8 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    console.log('File download request received:', params.path);
+    const { path: routePath } = await params;
+    console.log('File download request received:', routePath);
 
     // Check authentication
     const authHeader = request.headers.get('authorization') || '';
@@ -56,7 +57,7 @@ export async function GET(
     }
 
     // Join path segments
-    const filePath = params.path.join('/');
+    const filePath = routePath.join('/');
     console.log('Requested file path:', filePath);
 
     // Check if the file is a reimbursement attachment
@@ -113,7 +114,7 @@ export async function GET(
 
     // Try to get the file from Supabase storage first
     let supabaseFileFound = false;
-    
+
     try {
       console.log('Attempting to download from Supabase storage:', filePath);
 

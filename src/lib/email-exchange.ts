@@ -143,7 +143,7 @@ export async function sendEmail(
       contentType?: string;
     }>;
   }
-) {
+): Promise<{ success: boolean; message: string; messageId?: string; previewUrl?: string }> {
   try {
     // Criar transporte
     const transport = await createTransport();

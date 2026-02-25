@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { generateToken, generateRefreshToken } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
-import { 
-  MobileAuthRequest, 
-  MobileAuthResponse, 
+import {
+  MobileAuthRequest,
+  MobileAuthResponse,
   MobileUser,
   MobileAppSettings,
-  SyncData 
+  SyncData
 } from '@/types/api-mobile';
 
 export const runtime = 'nodejs';
@@ -16,14 +16,14 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body: MobileAuthRequest = await request.json();
-    const { 
-      email, 
-      password, 
-      deviceId, 
-      deviceName, 
-      deviceType, 
+    const {
+      email,
+      password,
+      deviceId,
+      deviceName,
+      deviceType,
       pushToken,
-      biometricEnabled 
+      biometricEnabled
     } = body;
 
     // Validar campos obrigatórios
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Atualizar último login
     await supabase
       .from('users_unified')
-      .update({ 
+      .update({
         last_login: new Date().toISOString(),
         profile_data: {
           ...user.profile_data,
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     const refreshToken = generateRefreshToken({
       userId: user.id,
       deviceId
-    });
+    }).token;
 
     // Preparar dados do usuário
     const mobileUser: MobileUser = {
@@ -204,9 +204,9 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         device_id: deviceId,
         action: 'login',
-        ip_address: request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
-                   'unknown',
+        ip_address: request.headers.get('x-forwarded-for') ||
+          request.headers.get('x-real-ip') ||
+          'unknown',
         user_agent: request.headers.get('user-agent'),
         success: true,
         timestamp: new Date().toISOString()
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Erro no login mobile:', error);
-    
+
     // Registrar erro no log
     try {
       const body = await request.json();
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
           ip_address: request.headers.get('x-forwarded-for') || 'unknown',
           user_agent: request.headers.get('user-agent'),
           success: false,
-          error_message: error.message,
+          error_message: (error as Error).message || 'Erro desconhecido',
           timestamp: new Date().toISOString()
         });
     } catch (logError) {
@@ -316,7 +316,7 @@ async function getSyncData(userId: string, deviceId: string): Promise<SyncData> 
       .eq('user_id', userId)
       .gte('deleted_at', lastSyncDate);
 
-    const deletedByType = {
+    const deletedByType: Record<string, string[]> = {
       avaliacoes: [],
       reembolsos: [],
       noticias: [],
@@ -358,7 +358,7 @@ async function getSyncData(userId: string, deviceId: string): Promise<SyncData> 
         eventos: eventos || [],
         notificacoes: notificacoes || []
       },
-      deletedIds: deletedByType
+      deletedIds: deletedByType as { avaliacoes: string[]; reembolsos: string[]; noticias: string[]; eventos: string[]; }
     };
 
   } catch (error) {

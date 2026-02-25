@@ -18,7 +18,7 @@ async function validatePermissions(request: NextRequest, moduleKey: string, acti
         // Fetch module permissions
         const { data: moduleData, error } = await supabaseAdmin
             .from('sys_modules')
-            .select('permissions, is_system')
+            .select('permissions, is_system, table_name')
             .eq('key', moduleKey)
             .single();
 
@@ -49,8 +49,8 @@ async function validatePermissions(request: NextRequest, moduleKey: string, acti
 }
 
 // GET: List records or get a single record
-export async function GET(request: NextRequest, { params }: { params: { moduleKey: string } }) {
-    const { moduleKey } = params;
+export async function GET(request: NextRequest, { params }: { params: Promise<{ moduleKey: string }> }) {
+    const { moduleKey } = await params;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -64,9 +64,9 @@ export async function GET(request: NextRequest, { params }: { params: { moduleKe
 
         let query;
 
-        if (module.table_name && module.table_name !== 'sys_dynamic_records') {
+        if (module!.table_name && module!.table_name !== 'sys_dynamic_records') {
             // System module with dedicated table
-            query = supabaseAdmin.from(module.table_name).select('*');
+            query = supabaseAdmin.from(module!.table_name).select('*');
             if (id) query = query.eq('id', id).single();
         } else {
             // Dynamic module
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest, { params }: { params: { moduleKe
             query = supabaseAdmin
                 .from('sys_dynamic_records')
                 .select('*')
-                .eq('module_id', moduleInfo.id);
+                .eq('module_id', moduleInfo!.id);
 
             if (id) query = query.eq('id', id).single();
         }
@@ -93,8 +93,8 @@ export async function GET(request: NextRequest, { params }: { params: { moduleKe
 }
 
 // POST: Create a record
-export async function POST(request: NextRequest, { params }: { params: { moduleKey: string } }) {
-    const { moduleKey } = params;
+export async function POST(request: NextRequest, { params }: { params: Promise<{ moduleKey: string }> }) {
+    const { moduleKey } = await params;
     const body = await request.json();
 
     const { authorized, error, module } = await validatePermissions(request, moduleKey, 'write');
@@ -103,10 +103,10 @@ export async function POST(request: NextRequest, { params }: { params: { moduleK
     try {
         let result;
 
-        if (module.table_name && module.table_name !== 'sys_dynamic_records') {
+        if (module!.table_name && module!.table_name !== 'sys_dynamic_records') {
             // System module
             const { data, error: dbError } = await supabaseAdmin
-                .from(module.table_name)
+                .from(module!.table_name)
                 .insert(body)
                 .select()
                 .single();
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest, { params }: { params: { moduleK
             const { data, error: dbError } = await supabaseAdmin
                 .from('sys_dynamic_records')
                 .insert({
-                    module_id: moduleInfo.id,
+                    module_id: moduleInfo!.id,
                     data: body,
                     // created_by: userId // We should extract userId from token
                 })
@@ -137,8 +137,8 @@ export async function POST(request: NextRequest, { params }: { params: { moduleK
 }
 
 // PUT: Update a record
-export async function PUT(request: NextRequest, { params }: { params: { moduleKey: string } }) {
-    const { moduleKey } = params;
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ moduleKey: string }> }) {
+    const { moduleKey } = await params;
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -150,10 +150,10 @@ export async function PUT(request: NextRequest, { params }: { params: { moduleKe
     try {
         let result;
 
-        if (module.table_name && module.table_name !== 'sys_dynamic_records') {
+        if (module!.table_name && module!.table_name !== 'sys_dynamic_records') {
             // System module
             const { data, error: dbError } = await supabaseAdmin
-                .from(module.table_name)
+                .from(module!.table_name)
                 .update(updateData)
                 .eq('id', id)
                 .select()
@@ -190,8 +190,8 @@ export async function PUT(request: NextRequest, { params }: { params: { moduleKe
 }
 
 // DELETE: Delete a record
-export async function DELETE(request: NextRequest, { params }: { params: { moduleKey: string } }) {
-    const { moduleKey } = params;
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ moduleKey: string }> }) {
+    const { moduleKey } = await params;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -201,10 +201,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { modul
     if (!authorized) return NextResponse.json({ error }, { status: 403 });
 
     try {
-        if (module.table_name && module.table_name !== 'sys_dynamic_records') {
+        if (module!.table_name && module!.table_name !== 'sys_dynamic_records') {
             // System module
             const { error: dbError } = await supabaseAdmin
-                .from(module.table_name)
+                .from(module!.table_name)
                 .delete()
                 .eq('id', id);
             if (dbError) throw dbError;

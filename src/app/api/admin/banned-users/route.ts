@@ -202,7 +202,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Remover usuário da lista de banidos
-    const result = await unbanUser(email, phoneNumber, cpf);
+    const result = await unbanUser(email, cpf);
 
     if (!result.success) {
       return NextResponse.json(

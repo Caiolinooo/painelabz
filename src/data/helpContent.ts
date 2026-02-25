@@ -18,7 +18,9 @@ export interface HelpCategory {
     articles: HelpArticle[];
 }
 
-export const helpCategories: HelpCategory[] = [
+import { helpCategoriesEn } from './helpContentEn';
+
+export const helpCategoriesPt: HelpCategory[] = [
     // ==========================================
     // CATEGORIA: PORTAL ABZ
     // ==========================================
@@ -591,11 +593,13 @@ Atualize sua foto de perfil para facilitar a identificação.
 ];
 
 // Helper function to search articles
-export function searchHelpArticles(query: string): HelpArticle[] {
+export function searchHelpArticles(query: string, lang: string = 'pt'): HelpArticle[] {
     const lowerQuery = query.toLowerCase();
     const results: HelpArticle[] = [];
 
-    helpCategories.forEach(category => {
+    const categories = lang === 'en' ? helpCategoriesEn : helpCategoriesPt;
+
+    categories.forEach(category => {
         category.articles.forEach(article => {
             const matchesTitle = article.title.toLowerCase().includes(lowerQuery);
             const matchesContent = article.content.toLowerCase().includes(lowerQuery);
@@ -610,14 +614,21 @@ export function searchHelpArticles(query: string): HelpArticle[] {
     return results;
 }
 
+// Get all categories based on language
+export function getHelpCategories(lang: string = 'pt'): HelpCategory[] {
+    return lang === 'en' ? helpCategoriesEn : helpCategoriesPt;
+}
+
 // Get all articles flat
-export function getAllArticles(): HelpArticle[] {
-    return helpCategories.flatMap(cat => cat.articles);
+export function getAllArticles(lang: string = 'pt'): HelpArticle[] {
+    const categories = lang === 'en' ? helpCategoriesEn : helpCategoriesPt;
+    return categories.flatMap(cat => cat.articles);
 }
 
 // Get article by ID
-export function getArticleById(id: string): HelpArticle | undefined {
-    for (const category of helpCategories) {
+export function getArticleById(id: string, lang: string = 'pt'): HelpArticle | undefined {
+    const categories = lang === 'en' ? helpCategoriesEn : helpCategoriesPt;
+    for (const category of categories) {
         const article = category.articles.find(a => a.id === id);
         if (article) return article;
     }
@@ -625,6 +636,7 @@ export function getArticleById(id: string): HelpArticle | undefined {
 }
 
 // Get category by ID
-export function getCategoryById(id: string): HelpCategory | undefined {
-    return helpCategories.find(cat => cat.id === id);
+export function getCategoryById(id: string, lang: string = 'pt'): HelpCategory | undefined {
+    const categories = lang === 'en' ? helpCategoriesEn : helpCategoriesPt;
+    return categories.find(cat => cat.id === id);
 }

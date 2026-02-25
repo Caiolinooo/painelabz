@@ -168,10 +168,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const isActive = pathname === item.href;
     const Icon = item.icon;
 
+    const handleItemClick = () => {
+      if (isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
     return (
       <Link
         key={item.id}
         href={item.href}
+        onClick={handleItemClick}
         className={`relative flex items-center px-4 py-3.5 my-1 mx-2 rounded-xl transition-all duration-200 group
           ${isActive
             ? 'bg-[#0066FF] text-white shadow-md shadow-blue-500/30'
@@ -210,13 +217,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <GlobalTimeTracker />
       <div className="min-h-screen bg-gray-50 flex font-sans">
 
+        {/* Mobile Overlay */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 md:hidden transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
         <aside
-          className={`bg-white fixed z-40 inset-y-0 left-0 border-r border-gray-100 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+          className={`bg-white fixed z-40 inset-y-0 left-0 border-r border-gray-100 flex flex-col transition-transform duration-300 w-64 ${isCollapsed ? 'md:w-20' : 'md:w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
           {/* Logo */}
-          <div className={`h-20 flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
-            {!isCollapsed && (
+          <div className={`h-20 flex items-center ${isCollapsed ? 'md:justify-center px-6 md:px-0' : 'px-6'} justify-between`}>
+            {(!isCollapsed || isMobileMenuOpen) && (
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
                   <img
@@ -235,13 +250,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </div>
             )}
 
-            {/* Collapse toggle */}
+            {/* Collapse toggle (Desktop only) */}
             <button
               onClick={toggleSidebar}
-              className={`p-1.5 rounded-lg transition-colors duration-200 text-[#0066FF] hover:bg-blue-50 ${isCollapsed ? '' : 'ml-auto'}`}
-              title={isCollapsed ? "Expandir" : "Recolher"}
+              className={`hidden md:block p-1.5 rounded-lg transition-colors duration-200 text-[#0066FF] hover:bg-blue-50 ${isCollapsed ? '' : 'ml-auto'}`}
+              title={isCollapsed ? t('layout.expand', 'Expandir') : t('layout.collapse', 'Recolher')}
             >
               <FiSidebar className="w-6 h-6" />
+            </button>
+
+            {/* Close Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors ml-auto"
+            >
+              <FiBriefcase className="w-6 h-6 opacity-0" /> {/* Just for spacing if needed, but we can use real close icon or let overlay handle it */}
+              <span className="material-symbols-outlined w-6 h-6 flex items-center justify-center">close</span>
             </button>
           </div>
 
@@ -309,10 +333,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <button
                 onClick={() => setIsMenuCustomizerOpen(true)}
                 className={`group flex items-center justify-center gap-2 w-full p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all ${isCollapsed ? 'w-10 h-10' : ''}`}
-                title="Personalizar Menu"
+                title={t('layout.customizeMenu', 'Personalizar Menu')}
               >
                 <FiEdit3 className="w-4 h-4" />
-                {!isCollapsed && <span className="text-xs font-semibold">Editar Menu</span>}
+                {!isCollapsed && <span className="text-xs font-semibold">{t('layout.editMenu', 'Editar Menu')}</span>}
               </button>
             </div>
           )}
@@ -321,7 +345,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           {!isCollapsed && (
             <div className="p-6 mt-auto">
               <div className="pt-4 border-t border-gray-100 text-[11px] text-gray-500 font-medium leading-relaxed">
-                Desenvolvido por <a href="https://github.com/Caiolinooo" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600 transition-colors">Caio Correia</a>.
+                {t('layout.developedBy', 'Desenvolvido por')} <a href="https://github.com/Caiolinooo" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600 transition-colors">Caio Correia</a>.
                 <br />
                 2026 © All rights reserved.
               </div>
@@ -333,9 +357,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
 
           {/* Top Header */}
-          {/* Top Header */}
-          <header className="h-20 px-8 flex items-center justify-end bg-transparent z-30 sticky top-0 pointer-events-none">
-            <div className="pointer-events-auto flex items-center bg-white rounded-full shadow-sm border border-gray-100 px-2 py-1.5 mt-4 mr-4 gap-1">
+          <header className="h-20 px-4 md:px-8 flex items-center justify-between md:justify-end bg-transparent z-20 sticky top-0 pointer-events-none">
+            {/* Mobile Menu Toggle (Left Side) */}
+            <div className="pointer-events-auto md:hidden mt-4">
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="p-2 bg-white border border-gray-100 rounded-lg shadow-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center h-11 w-11"
+              >
+                <FiMenu className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Right Side Actions */}
+            <div className="pointer-events-auto flex items-center bg-white rounded-full shadow-sm border border-gray-100 px-2 py-1.5 mt-4 gap-1">
               {/* Notification Button */}
               <NotificationHUD
                 userId={user?.id || ''}
@@ -371,7 +405,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         </div>
                         <div className="flex flex-col overflow-hidden">
                           <span className="text-sm font-semibold text-gray-800 truncate">
-                            {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : (user?.email?.split('@')[0] || 'Usuário')}
+                            {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : (user?.email?.split('@')[0] || t('dashboard.usuario', 'User'))}
                           </span>
                           <span className="text-xs text-gray-500 truncate">{user?.email}</span>
                         </div>
@@ -381,13 +415,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     {isAdmin && (
                       <Link href="/admin" className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
                         <FiShield className="w-4 h-4" />
-                        <span>Painel Admin</span>
+                        <span>{t('layout.adminPanel', 'Painel Admin')}</span>
                       </Link>
                     )}
 
                     <Link href="/profile" className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
                       <FiUser className="w-4 h-4" />
-                      <span>Meu Perfil</span>
+                      <span>{t('layout.myProfile', 'Meu Perfil')}</span>
                     </Link>
 
                     <DropdownMenu.Item

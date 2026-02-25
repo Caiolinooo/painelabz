@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
         try {
           console.log('Generating PDF for approved reimbursement');
           // Voltar a usar generateReimbursementPDF com os parâmetros corretos
-          const pdfBuffer = await generateReimbursementPDF(reimbursement as any, reimbursement.protocolo);
+          const pdfBuffer = await generateReimbursementPDF(reimbursement as any);
 
           if (pdfBuffer && pdfBuffer.length > 0) {
             console.log('PDF generated successfully, adding to attachments');

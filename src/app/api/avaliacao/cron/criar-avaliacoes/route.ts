@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         for (const usuario of usuarios) {
           try {
             // Buscar gerentes do usuário
-            const gerentes = await buscarGerentesUsuario(usuario.id, periodo.id);
+            const gerentes = await buscarGerentesUsuario(usuario.id as string, periodo.id as string);
 
             if (!gerentes || gerentes.length === 0) {
               console.log(`   ⚠️  Usuário ${usuario.first_name} ${usuario.last_name} sem gerente configurado`);
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
             total_avaliacoes_criadas: avaliacoesCriadas,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', periodo.id);
+          .eq('id', periodo.id as string);
 
         if (updateError) {
           console.error(`   ❌ Erro ao atualizar período:`, updateError.message);

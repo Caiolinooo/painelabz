@@ -4,11 +4,11 @@ import { verifyRequestToken } from '@/lib/auth';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Chart } from 'chart.js';
-import { 
-  ConfiguracaoRelatorio, 
-  DadosRelatorio, 
+import {
+  ConfiguracaoRelatorio,
+  DadosRelatorio,
   FiltroRelatorio,
-  ResultadoGeracao 
+  ResultadoGeracao
 } from '@/types/relatorios-pdf';
 
 export const runtime = 'nodejs';
@@ -128,12 +128,12 @@ async function processarRelatorio(
 
   } catch (error) {
     console.error('Erro ao processar relatório:', error);
-    
+
     await supabase
       .from('solicitacoes_relatorio')
       .update({
         status: 'erro',
-        erro_mensagem: error.message,
+        erro_mensagem: (error as Error).message,
         processado_em: new Date().toISOString()
       })
       .eq('id', solicitacaoId);
@@ -161,17 +161,17 @@ async function coletarDados(
       dadosPrincipais = await coletarDadosAvaliacoes(filtros);
       metricas = await calcularMetricasAvaliacoes(filtros);
       break;
-    
+
     case 'desempenho':
       dadosPrincipais = await coletarDadosDesempenho(filtros);
       metricas = await calcularMetricasDesempenho(filtros);
       break;
-    
+
     case 'departamento':
       dadosPrincipais = await coletarDadosDepartamento(filtros, parametros.departamento);
       metricas = await calcularMetricasDepartamento(filtros, parametros.departamento);
       break;
-    
+
     default:
       dadosPrincipais = [];
       metricas = {};
@@ -215,8 +215,8 @@ async function calcularMetricasAvaliacoes(filtros: FiltroRelatorio) {
   const avaliacoes = data || [];
   const concluidas = avaliacoes.filter(a => a.status === 'concluida');
   const pontuacoes = concluidas.map(a => a.pontuacao_total).filter(p => p > 0);
-  
-  const mediaGeral = pontuacoes.length > 0 ? 
+
+  const mediaGeral = pontuacoes.length > 0 ?
     pontuacoes.reduce((sum, p) => sum + p, 0) / pontuacoes.length : 0;
 
   return {
@@ -348,7 +348,7 @@ async function criarPDF(
 
   // Adicionar rodapé
   if (configuracao.rodape.mostrar_numeracao) {
-    const pageCount = pdf.internal.getNumberOfPages();
+    const pageCount = (pdf.internal as any).getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       pdf.setPage(i);
       pdf.setFontSize(10);

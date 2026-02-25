@@ -114,10 +114,10 @@ export default function ManageManagersClient({
                 >
                   <option value="">Selecione</option>
                   {initialEmployees
-                    .filter(u => u.role === 'user')
+                    .filter(u => u.role === 'USER')
                     .map(u => (
                       <option key={u.id} value={u.id}>
-                        {u.name}
+                        {u.firstName} {u.lastName}
                       </option>
                     ))}
                 </select>
@@ -132,10 +132,10 @@ export default function ManageManagersClient({
                 >
                   <option value="">Selecione</option>
                   {initialEmployees
-                    .filter(u => u.role === 'manager')
+                    .filter(u => u.role === 'MANAGER' || u.role === 'ADMIN')
                     .map(u => (
                       <option key={u.id} value={u.id}>
-                        {u.name}
+                        {u.firstName} {u.lastName}
                       </option>
                     ))}
                 </select>

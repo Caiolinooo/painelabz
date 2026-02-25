@@ -97,12 +97,12 @@ export default function ProfilePage() {
 
       if (error) throw error;
 
-      toast.success(t('profile.perfilAtualizadoComSucesso'));
+      toast.success(t('profile.updateSuccess', 'Perfil atualizado com sucesso! 🎉'));
       setEditing(false);
       refreshProfile();
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
-      toast.error(t('profile.erroAoAtualizarPerfil'));
+      toast.error(t('profile.updateError', 'Erro ao atualizar perfil'));
     }
   };
 
@@ -111,7 +111,7 @@ export default function ProfilePage() {
       setUploading(true);
 
       if (!event.target.files || event.target.files.length === 0) {
-        throw new Error(t('profile.selecioneUmaImagemParaEnviar'));
+        throw new Error(t('profile.selectImageToUpload', 'Por favor, selecione uma imagem para enviar'));
       }
 
       const file = event.target.files[0];
@@ -142,10 +142,10 @@ export default function ProfilePage() {
 
       setProfileImage(data.publicUrl);
       refreshProfile();
-      toast.success(t('profile.fotoDePerfilAtualizadaComSucesso'));
+      toast.success(t('profile.photoUpdatedSuccess', 'Foto de perfil atualizada com sucesso'));
     } catch (error: any) {
       console.error('Erro ao fazer upload da imagem:', error);
-      toast.error(error.message || t('profile.erroAoFazerUploadDaImagem'));
+      toast.error(error.message || t('profile.errorUpdatingPhoto', 'Erro ao atualizar foto de perfil'));
     } finally {
       setUploading(false);
     }
@@ -156,7 +156,7 @@ export default function ProfilePage() {
       setCoverUploading(true);
 
       if (!event.target.files || event.target.files.length === 0) {
-        throw new Error(t('profile.selecioneUmaImagemParaEnviar'));
+        throw new Error(t('profile.selectImageToUpload', 'Por favor, selecione uma imagem para enviar'));
       }
 
       const file = event.target.files[0];
@@ -182,16 +182,16 @@ export default function ProfilePage() {
       if (updateError) throw updateError;
 
       refreshProfile();
-      toast.success('Foto de capa atualizada!');
+      toast.success(t('profile.coverPhotoUpdatedSuccess', 'Foto de capa atualizada com sucesso'));
     } catch (error: any) {
       console.error('Erro ao fazer upload da capa:', error);
-      toast.error(error.message || 'Erro ao atualizar capa');
+      toast.error(error.message || t('profile.errorUpdatingCover', 'Erro ao atualizar foto de capa'));
     } finally {
       setCoverUploading(false);
     }
   };
 
-  if (isLoading || !isClient) {
+  if (isLoading || !isClient || !user || !profile) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -203,16 +203,16 @@ export default function ProfilePage() {
 
   return (
     <MainLayout>
-      <div className="p-6 min-h-screen bg-gray-50/50">
+      <div className="p-0 sm:p-4 md:p-6 min-h-screen bg-gray-50/50 overflow-x-hidden">
 
         {editing ? (
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 max-w-4xl mx-auto animation-fadeIn mb-8 relative overflow-hidden">
+          <div className="bg-white sm:rounded-xl sm:shadow-lg sm:border border-gray-100 p-4 md:p-8 w-full max-w-4xl mx-auto animation-fadeIn mb-8 relative overflow-hidden">
 
             {/* Header Configuration */}
-            <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
-              <h2 className="text-2xl font-bold text-gray-800">Editar Perfil</h2>
-              <button onClick={() => setEditing(false)} className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-                Cancelar
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8 border-b border-gray-100 pb-4">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800">{t('profile.edit', 'Editar Perfil')}</h2>
+              <button onClick={() => setEditing(false)} className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors w-full sm:w-auto text-center font-medium">
+                {t('profile.cancel', 'Cancelar')}
               </button>
             </div>
 
@@ -220,15 +220,15 @@ export default function ProfilePage() {
 
               {/* Visual Identity Section (Cover & Avatar) */}
               <div className="md:col-span-2 space-y-6">
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="p-4 bg-blue-50/50 md:bg-blue-50 rounded-xl border border-blue-100">
                   <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                    <FiImage /> Identidade Visual
+                    <FiImage /> {t('profile.visualIdentity', 'Identidade Visual')}
                   </h3>
 
-                  <div className="grid gap-6 md:grid-cols-2">
+                  <div className="grid gap-6 sm:grid-cols-2">
                     {/* Cover Upload */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700 block">Foto de Capa</label>
+                      <label className="text-sm font-medium text-gray-700 block">{t('profile.coverPhoto', 'Foto de Capa')}</label>
                       <div
                         onClick={() => coverInputRef.current?.click()}
                         className="h-32 w-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 group overflow-hidden relative"
@@ -238,7 +238,7 @@ export default function ProfilePage() {
                         ) : null}
                         <div className="z-10 flex flex-col items-center">
                           <FiImage className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                          <span className="text-xs text-gray-500 font-medium">Alterar Capa</span>
+                          <span className="text-xs text-gray-500 font-medium">{t('profile.changeCover', 'Alterar Capa')}</span>
                         </div>
                         {coverUploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div></div>}
                       </div>
@@ -247,7 +247,7 @@ export default function ProfilePage() {
 
                     {/* Avatar Upload */}
                     <div className="space-y-2 flex flex-col items-center">
-                      <label className="text-sm font-medium text-gray-700 block w-full text-center">Foto de Perfil</label>
+                      <label className="text-sm font-medium text-gray-700 block w-full text-center">{t('profile.profilePhoto', 'Foto de Perfil')}</label>
                       <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                         <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-blue-500 transition-colors relative">
                           <UserAvatar user={user} profile={profile} className="w-full h-full" />
@@ -259,7 +259,7 @@ export default function ProfilePage() {
                           <FiEdit className="w-3 h-3" />
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500">Clique para alterar</p>
+                      <p className="text-xs text-gray-500">{t('profile.changeAvatar', 'Clique para alterar')}</p>
                       <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
                     </div>
                   </div>
@@ -267,7 +267,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Nome</label>
+                <label className="text-sm font-medium text-gray-700">{t('profile.firstName', 'Nome')}</label>
                 <input
                   type="text"
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -276,7 +276,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Sobrenome</label>
+                <label className="text-sm font-medium text-gray-700">{t('profile.lastName', 'Sobrenome')}</label>
                 <input
                   type="text"
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -285,7 +285,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Telefone</label>
+                <label className="text-sm font-medium text-gray-700">{t('profile.phone', 'Telefone')}</label>
                 <input
                   type="text"
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -294,7 +294,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Cargo</label>
+                <label className="text-sm font-medium text-gray-700">{t('profile.position', 'Cargo')}</label>
                 <input
                   type="text"
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -303,7 +303,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Departamento</label>
+                <label className="text-sm font-medium text-gray-700">{t('profile.department', 'Departamento')}</label>
                 <input
                   type="text"
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -313,18 +313,18 @@ export default function ProfilePage() {
               </div>
 
               <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-medium text-gray-700">Biografia</label>
+                <label className="text-sm font-medium text-gray-700">{t('profile.bio', 'Biografia')}</label>
                 <textarea
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-24 resize-none"
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="Conte um pouco sobre você..."
+                  placeholder={t('profile.bioPlaceholder', 'Conte um pouco sobre você...')}
                 />
               </div>
 
-              <div className="md:col-span-2 pt-6 border-t border-gray-100 flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setEditing(false)} size="lg">Cancelar</Button>
-                <Button onClick={handleUpdateProfile} className="bg-blue-600 text-white hover:bg-blue-700 px-8" size="lg">Salvar Alterações</Button>
+              <div className="md:col-span-2 pt-6 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3 mt-4">
+                <Button variant="outline" onClick={() => setEditing(false)} size="lg" className="w-full sm:w-auto">{t('profile.cancel', 'Cancelar')}</Button>
+                <Button onClick={handleUpdateProfile} className="w-full sm:w-auto bg-blue-600 text-white hover:bg-blue-700 px-8" size="lg">{t('profile.save', 'Salvar Alterações')}</Button>
               </div>
             </div>
           </div>
@@ -338,49 +338,49 @@ export default function ProfilePage() {
 
             {/* Additional Settings Sections */}
             <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="flex border-b border-gray-100 overflow-x-auto">
+              <div className="bg-white sm:rounded-xl sm:shadow-sm sm:border border-gray-100 overflow-hidden w-full">
+                <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">
                   <button
                     onClick={() => setActiveTab('password')}
-                    className={`px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'password' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    className={`px-4 md:px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'password' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                   >
                     <div className="flex items-center gap-2">
                       <FiLock className="w-4 h-4" />
-                      Segurança
+                      {t('profile.security', 'Segurança')}
                     </div>
                   </button>
                   <button
                     onClick={() => setActiveTab('notifications')}
-                    className={`px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'notifications' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    className={`px-4 md:px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'notifications' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                   >
                     <div className="flex items-center gap-2">
                       <FiSettings className="w-4 h-4" />
-                      Preferências
+                      {t('profile.preferences', 'Preferências')}
                     </div>
                   </button>
                   <button
                     onClick={() => setActiveTab('passkeys')}
-                    className={`px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'passkeys' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    className={`px-4 md:px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'passkeys' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                   >
                     <div className="flex items-center gap-2">
                       <FiKey className="w-4 h-4" />
-                      Biometria (Passkeys)
+                      {t('profile.passkeys', 'Biometria (Passkeys)')}
                     </div>
                   </button>
                   {(profile?.role === 'admin' || profile?.role === 'manager') && (
                     <button
                       onClick={() => setActiveTab('admin_reimbursement')}
-                      className={`px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'admin_reimbursement' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                      className={`px-4 md:px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'admin_reimbursement' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                     >
                       <div className="flex items-center gap-2">
                         <FiDollarSign className="w-4 h-4" />
-                        Reembolso (Admin)
+                        {t('profile.adminReimbursement', 'Reembolso (Admin)')}
                       </div>
                     </button>
                   )}
                 </div>
 
-                <div className="p-6">
+                <div className="p-4 md:p-6 pb-6 md:pb-6 overflow-x-hidden">
                   {activeTab === 'password' && <ChangePasswordTab />}
                   {activeTab === 'notifications' && <NotificationPreferencesPanel />}
                   {activeTab === 'passkeys' && <PasskeyManagement />}

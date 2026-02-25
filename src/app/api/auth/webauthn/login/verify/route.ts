@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         const expectedChallenge = req.cookies.get('webauthn_challenge')?.value;
 
         if (!expectedChallenge) {
-            return NextResponse.json({ error: 'Sessão WebAuthn expirada. Tente novamente.' }, { status: 400 });
+            return NextResponse.json({ error: 'WebAuthn session expired. Please try again.' }, { status: 400 });
         }
 
         const credentialIdBase64url = body.id;
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (!passkey) {
-            return NextResponse.json({ error: 'Credencial não encontrada' }, { status: 404 });
+            return NextResponse.json({ error: 'Credential not found' }, { status: 404 });
         }
 
         // Find user
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (!user || user.active === false) {
-            return NextResponse.json({ error: 'Usuário não encontrado ou inativo' }, { status: 403 });
+            return NextResponse.json({ error: 'User not found or inactive' }, { status: 403 });
         }
 
         const host = req.headers.get('host');
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
             const response = NextResponse.json({
                 success: true,
-                message: 'Login realizado com sucesso',
+                message: 'Login successful',
                 token,
                 user: {
                     id: user.id,
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
             return response;
         }
 
-        return NextResponse.json({ error: 'Falha na verificação da biometria' }, { status: 400 });
+        return NextResponse.json({ error: 'Biometric verification failed' }, { status: 400 });
 
     } catch (error: any) {
         console.error('Error verifying webauthn login:', error);

@@ -44,6 +44,7 @@ interface CalendarEvent {
 const GoogleCalendarIntegration: React.FC = () => {
   const { user } = useSupabaseAuth();
   const { config } = useSiteConfig();
+  const { t } = useI18n();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
@@ -115,7 +116,7 @@ const GoogleCalendarIntegration: React.FC = () => {
     try {
       const response = await fetch('/api/calendar/auth?action=url');
       const data = await response.json();
-      
+
       if (response.ok) {
         setAuthUrl(data.authUrl);
         // Abrir em nova janela
@@ -201,7 +202,7 @@ const GoogleCalendarIntegration: React.FC = () => {
     const diffMs = endDate.getTime() - startDate.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (diffHours > 0) {
       return `${diffHours}h${diffMinutes > 0 ? ` ${diffMinutes}min` : ''}`;
     }
@@ -312,7 +313,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         <div className="flex items-center">
           <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600 mr-2" />
           <p className="text-sm text-yellow-800">
-            <strong>Modo de Demonstração:</strong> Esta é uma simulação da integração com Google Calendar. 
+            <strong>Modo de Demonstração:</strong> Esta é uma simulação da integração com Google Calendar.
             Os eventos mostrados são fictícios para demonstrar a funcionalidade.
           </p>
         </div>
@@ -334,7 +335,7 @@ const GoogleCalendarIntegration: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {event.summary}
                   </h3>
-                  
+
                   {event.description && (
                     <p className="text-gray-600 mb-3">{event.description}</p>
                   )}
@@ -397,7 +398,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Criar Novo Evento</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

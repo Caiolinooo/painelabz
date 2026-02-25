@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       if (error) {
         debugLogs.push('❌ ERRO no Supabase Storage');
         debugLogs.push(`   Mensagem: ${error.message}`);
-        debugLogs.push(`   Status: ${error.statusCode || 'N/A'}`);
+        debugLogs.push(`   Status: ${(error as any).statusCode || 'N/A'}`);
         debugLogs.push(`   Nome: ${error.name || 'N/A'}`);
         debugLogs.push(`   Arquivo: ${file.name}`);
         debugLogs.push(`   Caminho: ${filePath}`);
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 
         console.error('❌ [NEWS UPLOAD] ERRO no Supabase Storage:');
         console.error('   Mensagem:', error.message);
-        console.error('   Status:', error.statusCode);
+        console.error('   Status:', (error as any).statusCode);
         console.error('   Nome:', error.name);
         console.error('   Objeto completo:', JSON.stringify(error, null, 2));
         console.error('   Arquivo:', file.name);
@@ -139,15 +139,15 @@ export async function POST(request: NextRequest) {
           error: 'Erro ao fazer upload para o Supabase Storage',
           details: error.message,
           errorName: error.name,
-          statusCode: error.statusCode,
+          statusCode: (error as any).statusCode,
           file: file.name,
           path: filePath,
           debugLogs,
           supabaseError: {
             message: error.message,
             name: error.name,
-            statusCode: error.statusCode,
-            error: error.error
+            statusCode: (error as any).statusCode,
+            error: (error as any).error
           }
         }, { status: 500 });
       }

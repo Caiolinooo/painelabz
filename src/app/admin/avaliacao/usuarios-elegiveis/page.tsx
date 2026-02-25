@@ -57,7 +57,7 @@ export default function UsuariosElegiveisPage() {
       }
 
       if (dataElegiveis.success) {
-        const ids = new Set(dataElegiveis.usuarios?.map((u: any) => u.usuario_id) || []);
+        const ids = new Set<string>(dataElegiveis.usuarios?.map((u: any) => u.usuario_id) || []);
         setElegiveisIds(ids);
       }
     } catch (error) {
@@ -240,75 +240,77 @@ export default function UsuariosElegiveisPage() {
           </div>
         ) : (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={usuarios.length === elegiveisIds.size && usuarios.length > 0}
-                      onChange={toggleTodos}
-                      className="h-4 w-4 text-blue-600 rounded"
-                    />
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Usuário
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Cargo
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Departamento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {usuariosFiltrados.map((usuario) => (
-                  <tr key={usuario.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left">
                       <input
                         type="checkbox"
-                        checked={elegiveisIds.has(usuario.id)}
-                        onChange={() => toggleElegivel(usuario.id)}
+                        checked={usuarios.length === elegiveisIds.size && usuarios.length > 0}
+                        onChange={toggleTodos}
                         className="h-4 w-4 text-blue-600 rounded"
                       />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                          {usuario.first_name?.[0]}{usuario.last_name?.[0]}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {usuario.first_name} {usuario.last_name}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Usuário
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Cargo
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Departamento
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {usuariosFiltrados.map((usuario) => (
+                    <tr key={usuario.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={elegiveisIds.has(usuario.id)}
+                          onChange={() => toggleElegivel(usuario.id)}
+                          className="h-4 w-4 text-blue-600 rounded"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                            {usuario.first_name?.[0]}{usuario.last_name?.[0]}
                           </div>
-                          <div className="text-sm text-gray-500">{usuario.email}</div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {usuario.first_name} {usuario.last_name}
+                            </div>
+                            <div className="text-sm text-gray-500">{usuario.email}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {usuario.position || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {usuario.department || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${usuario.status === 'active'
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {usuario.position || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {usuario.department || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${usuario.status === 'active'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-800'
-                          }`}
-                      >
-                        {usuario.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                            }`}
+                        >
+                          {usuario.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

@@ -110,28 +110,28 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
                     )}
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-4 mt-6">
                     <button
                         onClick={clear}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border sm:border-transparent font-medium"
                     >
                         <FiRefreshCcw className="w-4 h-4" />
                         Limpar
                     </button>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <button
                             onClick={onClose}
                             disabled={isSubmitting || isPasskeyLoading}
-                            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                            className="w-full sm:w-auto px-4 py-3 sm:py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handlePasskeySign}
                             disabled={isSubmitting || isPasskeyLoading}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium
+                            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 rounded-lg text-white font-medium
                                 ${isSubmitting || isPasskeyLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
                             `}
                         >
@@ -145,7 +145,7 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
                         <button
                             onClick={handleConfirm}
                             disabled={isEmpty || isSubmitting || isPasskeyLoading}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium
+                            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 rounded-lg text-white font-medium
                                 ${isEmpty || isSubmitting || isPasskeyLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}
                             `}
                         >

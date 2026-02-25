@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log(`API de admin/cards/${params.id} Supabase - Recebendo requisição GET`);
+    console.log(`API de admin/cards/${(await params).id} Supabase - Recebendo requisição GET`);
 
     // Verificar autenticação
     const authHeader = request.headers.get('authorization') || '';
@@ -128,7 +128,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log(`API de admin/cards/${params.id} Supabase - Recebendo requisição PUT`);
+    console.log(`API de admin/cards/${(await params).id} Supabase - Recebendo requisição PUT`);
 
     // Verificar autenticação
     const authHeader = request.headers.get('authorization') || '';
@@ -277,7 +277,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log(`API de admin/cards/${params.id} Supabase - Recebendo requisição DELETE`);
+    console.log(`API de admin/cards/${(await params).id} Supabase - Recebendo requisição DELETE`);
 
     // Verificar autenticação
     const authHeader = request.headers.get('authorization') || '';

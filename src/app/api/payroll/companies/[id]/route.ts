@@ -16,7 +16,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from('payroll_companies')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .single();
 
     if (error) {
@@ -71,7 +71,7 @@ export async function PUT(
       .from('payroll_companies')
       .select('id')
       .eq('cnpj', body.cnpj)
-      .neq('id', params.id)
+      .neq('id', (await params).id)
       .single();
 
     if (existingCompany) {
@@ -94,7 +94,7 @@ export async function PUT(
         is_active: body.isActive,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .select()
       .single();
 
@@ -140,7 +140,7 @@ export async function DELETE(
     const { data: employees } = await supabaseAdmin
       .from('payroll_employees')
       .select('id')
-      .eq('company_id', params.id)
+      .eq('company_id', (await params).id)
       .limit(1);
 
     if (employees && employees.length > 0) {
@@ -154,7 +154,7 @@ export async function DELETE(
     const { data: sheets } = await supabaseAdmin
       .from('payroll_sheets')
       .select('id')
-      .eq('company_id', params.id)
+      .eq('company_id', (await params).id)
       .limit(1);
 
     if (sheets && sheets.length > 0) {
@@ -168,7 +168,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('payroll_companies')
       .delete()
-      .eq('id', params.id);
+      .eq('id', (await params).id);
 
     if (error) {
       console.error('Erro ao remover empresa:', error);

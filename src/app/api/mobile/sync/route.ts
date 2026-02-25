@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
-import { 
-  MobileSyncRequest, 
-  MobileSyncResponse, 
+import {
+  MobileSyncRequest,
+  MobileSyncResponse,
   SyncData,
   SyncConflict,
-  SyncError 
+  SyncError
 } from '@/types/api-mobile';
 
 export const runtime = 'nodejs';
@@ -110,7 +110,7 @@ async function processLocalChanges(
         errors.push({
           id: avaliacao.id,
           type: 'avaliacao',
-          message: error.message,
+          message: (error as Error).message,
           retryable: true
         });
       }
@@ -128,7 +128,7 @@ async function processLocalChanges(
         errors.push({
           id: reembolso.id,
           type: 'reembolso',
-          message: error.message,
+          message: (error as Error).message,
           retryable: true
         });
       }
@@ -151,7 +151,7 @@ async function processLocalChanges(
       errors.push({
         id: 'configuracoes',
         type: 'configuracao',
-        message: error.message,
+        message: (error as Error).message,
         retryable: true
       });
     }
@@ -332,7 +332,7 @@ async function getServerData(
     .eq('user_id', userId)
     .gte('deleted_at', syncDate);
 
-  const deletedIds = {
+  const deletedIds: Record<string, string[]> = {
     avaliacoes: [],
     reembolsos: [],
     noticias: [],
@@ -355,7 +355,7 @@ async function getServerData(
       eventos: eventos || [],
       notificacoes: notificacoes || []
     },
-    deletedIds
+    deletedIds: deletedIds as { avaliacoes: string[]; reembolsos: string[]; noticias: string[]; eventos: string[]; }
   };
 }
 
@@ -391,7 +391,7 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const syncData = await getServerData(userId, deviceId, lastSync, version);
+    const syncData = await getServerData(userId, deviceId, lastSync || undefined, version);
 
     return NextResponse.json({
       success: true,

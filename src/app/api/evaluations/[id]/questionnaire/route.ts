@@ -121,7 +121,7 @@ export async function POST(
     if (result.success) {
       try {
         // Buscar informações da avaliação para notificar o gerente
-        const evaluationDetails = await EvaluationService.getEvaluationDetails(evaluationId);
+        const evaluationDetails = await EvaluationService.getEvaluationById(id);
 
         if (evaluationDetails.success && evaluationDetails.data) {
           const avaliacao = evaluationDetails.data;
@@ -129,7 +129,7 @@ export async function POST(
           // Se for resposta do colaborador, notificar o gerente
           if (completeData.respondente_tipo === 'collaborator') {
             await EvaluationWorkflowService.notifyManager(
-              evaluationId,
+              id,
               avaliacao.funcionario_id,
               avaliacao.avaliador_id
             );

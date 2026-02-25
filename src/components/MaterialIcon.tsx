@@ -17,7 +17,7 @@ const iconComponents = {
   schedule: lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiClock }))),
   assessment: lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiBarChart2 }))),
   admin_panel_settings: lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiSettings }))),
-  
+
   // Outros ícones comuns
   dashboard: lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiGrid }))),
   people: lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiUsers }))),
@@ -50,15 +50,16 @@ interface MaterialIconProps {
   color?: string;
 }
 
-const MaterialIcon: React.FC<MaterialIconProps> = ({ 
-  name, 
-  className = '', 
-  size, 
-  color 
+const MaterialIcon: React.FC<MaterialIconProps> = ({
+  name,
+  className = '',
+  size,
+  color
 }) => {
+  const { t } = useI18n();
   // Verificar se o ícone existe no mapeamento
   const IconComponent = iconComponents[name as keyof typeof iconComponents];
-  
+
   // Se o ícone não existir, usar um ícone padrão carregado dinamicamente
   if (!IconComponent) {
     console.warn(`${t('components.icone', 'Ícone')} ${name} ${t('components.naoEncontradoUsandoIconePadrao', 'não encontrado, usando ícone padrão')}`);
@@ -69,7 +70,7 @@ const MaterialIcon: React.FC<MaterialIconProps> = ({
       </Suspense>
     );
   }
-  
+
   // Renderizar o ícone com carregamento lazy
   return (
     <Suspense fallback={<IconFallback />}>

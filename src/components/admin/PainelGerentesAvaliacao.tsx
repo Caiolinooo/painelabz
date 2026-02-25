@@ -15,6 +15,9 @@ interface Funcionario {
   is_authorized: boolean;
   active: boolean;
   is_gerente_avaliacao?: boolean;
+  nome?: string;
+  cargo?: string;
+  departamento?: string;
 }
 
 export default function PainelGerentesAvaliacao() {
@@ -48,6 +51,7 @@ export default function PainelGerentesAvaliacao() {
         ...user,
         nome: `${user.first_name} ${user.last_name}`.trim(),
         cargo: user.position,
+        departamento: user.department,
         is_gerente_avaliacao: user.role === 'ADMIN' || user.role === 'MANAGER'
       }));
 
@@ -61,7 +65,7 @@ export default function PainelGerentesAvaliacao() {
     }
   };
 
-  const toggleGerenteAvaliacao = async (funcionarioId: string, isGerente: boolean) => {
+  const toggleGerenteAvaliacao = async (funcionarioId: string, isGerente?: boolean) => {
     setUpdating(funcionarioId);
 
     // Apenas mostrar feedback visual pois não temos a coluna na tabela users_unified

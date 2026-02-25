@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
     const payload = verifyToken(token);
 
     if (!payload) {
-       return NextResponse.json(
-         { error: 'Token inválido ou expirado' },
-         { status: 401 }
-       );
+      return NextResponse.json(
+        { error: 'Token inválido ou expirado' },
+        { status: 401 }
+      );
     }
 
     if (payload.role !== 'ADMIN') {
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Admin user authenticated, executing schema fixes...');
 
     // Lista de comandos SQL para executar
-    const sqlCommands = [
+    const sqlCommands: string[] = [
       // Adicionar coluna deleted_at à users_unified
       'ALTER TABLE users_unified ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;',
 
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'apikey': ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`,
+            'apikey': ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
             'Prefer': 'return=minimal'
           },
           body: ***REMOVED***
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     // Verificação final
     console.log('\n🔍 Realizando verificação final...');
 
-    const verificationResults = {};
+    const verificationResults: Record<string, any> = {};
 
     // Verificar users_unified.deleted_at
     try {

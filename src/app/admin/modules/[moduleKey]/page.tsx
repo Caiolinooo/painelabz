@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 export default function UniversalModulePage() {
     const params = useParams();
-    const moduleKey = params.moduleKey as string;
+    const moduleKey = params?.moduleKey as string;
 
     const [moduleConfig, setModuleConfig] = useState<any>(null);
     const [records, setRecords] = useState<any[]>([]);
@@ -219,47 +219,49 @@ export default function UniversalModulePage() {
                 </div>
             ) : (
                 <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                {moduleConfig.fields.filter((f: any) => f.is_list_visible).map((field: any) => (
-                                    <th key={field.id} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        {field.label}
-                                    </th>
-                                ))}
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {records.length === 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
                                 <tr>
-                                    <td colSpan={moduleConfig.fields.length + 1} className="px-6 py-4 text-center text-gray-500">
-                                        No records found.
-                                    </td>
+                                    {moduleConfig.fields.filter((f: any) => f.is_list_visible).map((field: any) => (
+                                        <th key={field.id} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            {field.label}
+                                        </th>
+                                    ))}
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
                                 </tr>
-                            ) : (
-                                records.map((record) => (
-                                    <tr key={record.id}>
-                                        {moduleConfig.fields.filter((f: any) => f.is_list_visible).map((field: any) => (
-                                            <td key={`${record.id}-${field.id}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {String(record[field.name] || '')}
-                                            </td>
-                                        ))}
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button onClick={() => handleEdit(record)} className="text-blue-600 hover:text-blue-900 mr-4">
-                                                <FiEdit />
-                                            </button>
-                                            <button onClick={() => handleDelete(record.id)} className="text-red-600 hover:text-red-900">
-                                                <FiTrash />
-                                            </button>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {records.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={moduleConfig.fields.length + 1} className="px-6 py-4 text-center text-gray-500">
+                                            No records found.
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                ) : (
+                                    records.map((record) => (
+                                        <tr key={record.id}>
+                                            {moduleConfig.fields.filter((f: any) => f.is_list_visible).map((field: any) => (
+                                                <td key={`${record.id}-${field.id}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {String(record[field.name] || '')}
+                                                </td>
+                                            ))}
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button onClick={() => handleEdit(record)} className="text-blue-600 hover:text-blue-900 mr-4">
+                                                    <FiEdit />
+                                                </button>
+                                                <button onClick={() => handleDelete(record.id)} className="text-red-600 hover:text-red-900">
+                                                    <FiTrash />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
         </div>

@@ -13,6 +13,8 @@ import {
     FiMapPin,
     FiFileText,
     FiDollarSign,
+    FiAlertCircle,
+    FiHeart,
     FiMonitor,
     FiMessageSquare,
     FiChevronRight,
@@ -20,10 +22,12 @@ import {
     FiArrowRight
 } from 'react-icons/fi';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { helpCategories, searchHelpArticles, HelpArticle } from '@/data/helpContent';
+import { useI18n } from '@/contexts/I18nContext';
+import { getHelpCategories, searchHelpArticles, HelpArticle } from '@/data/helpContent';
 
 export default function AjudaPage() {
     const { user } = useSupabaseAuth();
+    const { t, locale } = useI18n();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<HelpArticle[]>([]);
     const [expandedArticles, setExpandedArticles] = useState<Record<string, boolean>>({});
@@ -39,7 +43,7 @@ export default function AjudaPage() {
         const query = e.target.value;
         setSearchQuery(query);
         if (query.trim().length > 2) {
-            setSearchResults(searchHelpArticles(query));
+            setSearchResults(searchHelpArticles(query, locale));
         } else {
             setSearchResults([]);
         }
@@ -71,9 +75,9 @@ export default function AjudaPage() {
                         {/* Content Layer (Visible overflow for dropdown) */}
                         <div className="relative z-10 p-8 md:p-12 text-center text-white">
                             <div className="max-w-3xl mx-auto space-y-6">
-                                <h1 className="text-3xl md:text-5xl font-bold tracking-tight">Como podemos ajudar?</h1>
+                                <h1 className="text-3xl md:text-5xl font-bold tracking-tight">{t('ajuda.heroTitle', 'Como podemos ajudar?')}</h1>
                                 <p className="text-blue-100 text-lg md:text-xl">
-                                    Encontre guias, procedimentos e canais de atendimento.
+                                    {t('ajuda.heroSubtitle', 'Encontre guias, procedimentos e canais de atendimento.')}
                                 </p>
 
                                 <div className="relative max-w-2xl mx-auto mt-8">
@@ -81,7 +85,7 @@ export default function AjudaPage() {
                                         <FiSearch className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
                                         <input
                                             type="text"
-                                            placeholder="Buscar por artigos, termos ou dúvidas..."
+                                            placeholder={t('ajuda.searchPlaceholder', 'Buscar por artigos, termos ou dúvidas...')}
                                             className="w-full pl-14 pr-4 py-4 rounded-2xl text-gray-900 shadow-lg border-0 focus:ring-4 focus:ring-blue-500/30 outline-none transition-all placeholder:text-gray-400 text-lg"
                                             value={searchQuery}
                                             onChange={handleSearch}
@@ -106,7 +110,7 @@ export default function AjudaPage() {
                                                 ))
                                             ) : (
                                                 <div className="p-8 text-center text-gray-500">
-                                                    Nenhum resultado encontrado para "{searchQuery}"
+                                                    {t('ajuda.noResults', 'Nenhum resultado encontrado para "{query}"').replace('{query}', searchQuery)}
                                                 </div>
                                             )}
                                         </div>
@@ -121,15 +125,15 @@ export default function AjudaPage() {
                         {/* Departamentos Column */}
                         <div className="lg:col-span-8 space-y-6">
                             <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                                <FiPhone className="mr-3 text-blue-600" /> Canais de Atendimento & Ramais
+                                <FiPhone className="mr-3 text-blue-600" /> {t('ajuda.channelsTitle', 'Canais de Atendimento & Ramais')}
                             </h2>
                             <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden">
                                 <div className="divide-y divide-gray-100">
                                     {/* Logística */}
                                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="mb-4 md:mb-0">
-                                            <h3 className="font-bold text-gray-900 text-lg">Logística</h3>
-                                            <p className="text-sm text-gray-500">Programação de escala, embarque, dobras, faltas e folga indenizada</p>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.logistics', 'Logística')}</h3>
+                                            <p className="text-sm text-gray-500">{t('ajuda.logisticsDesc', 'Programação de escala, embarque, dobras, faltas e folga indenizada')}</p>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                                             <a href="https://wa.me/5522992074646" target="_blank" rel="noopener noreferrer" className="flex items-center text-green-600 font-medium hover:text-green-700 bg-green-50 px-4 py-2 rounded-full">
@@ -144,8 +148,8 @@ export default function AjudaPage() {
                                     {/* DP - Folha */}
                                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="mb-4 md:mb-0">
-                                            <h3 className="font-bold text-gray-900 text-lg">Departamento Pessoal</h3>
-                                            <p className="text-sm text-gray-500">Dúvidas sobre Folha de Pagamento</p>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.hr', 'Departamento Pessoal')}</h3>
+                                            <p className="text-sm text-gray-500">{t('ajuda.hrPayroll', 'Dúvidas sobre Folha de Pagamento')}</p>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                                             <div className="flex flex-col gap-2">
@@ -165,8 +169,8 @@ export default function AjudaPage() {
                                     {/* DP - Ponto */}
                                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="mb-4 md:mb-0">
-                                            <h3 className="font-bold text-gray-900 text-lg">Departamento Pessoal</h3>
-                                            <p className="text-sm text-gray-500">Registro de Folha de Ponto</p>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.hr', 'Departamento Pessoal')}</h3>
+                                            <p className="text-sm text-gray-500">{t('ajuda.hrTimekeeping', 'Registro de Folha de Ponto')}</p>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                                             <a href="https://wa.me/5522992387332" target="_blank" rel="noopener noreferrer" className="flex items-center text-green-600 font-medium hover:text-green-700 bg-green-50 px-4 py-2 rounded-full">
@@ -181,8 +185,8 @@ export default function AjudaPage() {
                                     {/* DP - Benefícios */}
                                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="mb-4 md:mb-0">
-                                            <h3 className="font-bold text-gray-900 text-lg">Departamento Pessoal</h3>
-                                            <p className="text-sm text-gray-500">Benefícios (Plano de saúde, VA, VR, entre outros)</p>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.hr', 'Departamento Pessoal')}</h3>
+                                            <p className="text-sm text-gray-500">{t('ajuda.hrBenefits', 'Benefícios (Plano de saúde, VA, VR, entre outros)')}</p>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                                             <a href="https://wa.me/5522992081661" target="_blank" rel="noopener noreferrer" className="flex items-center text-green-600 font-medium hover:text-green-700 bg-green-50 px-4 py-2 rounded-full">
@@ -197,8 +201,8 @@ export default function AjudaPage() {
                                     {/* QHSE */}
                                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="mb-4 md:mb-0">
-                                            <h3 className="font-bold text-gray-900 text-lg">QHSE (SGI)</h3>
-                                            <p className="text-sm text-gray-500">EPI, registro de acidentes ou doenças ocupacionais</p>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.qhse', 'QHSE (SGI)')}</h3>
+                                            <p className="text-sm text-gray-500">{t('ajuda.qhseDesc', 'EPI, registro de acidentes ou doenças ocupacionais')}</p>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                                             <a href="https://wa.me/5522999494705" target="_blank" rel="noopener noreferrer" className="flex items-center text-green-600 font-medium hover:text-green-700 bg-green-50 px-4 py-2 rounded-full">
@@ -213,8 +217,8 @@ export default function AjudaPage() {
                                     {/* Ouvidoria */}
                                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="mb-4 md:mb-0">
-                                            <h3 className="font-bold text-gray-900 text-lg">Ouvidoria</h3>
-                                            <p className="text-sm text-gray-500">Denúncias, queixas, elogios ou sugestões</p>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.ombudsman', 'Ouvidoria')}</h3>
+                                            <p className="text-sm text-gray-500">{t('ajuda.ombudsmanDesc', 'Denúncias, queixas, elogios ou sugestões')}</p>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                                             <a href="mailto:ouvidoria@groupabz.com" className="flex items-center text-gray-600 hover:text-blue-600">
@@ -226,8 +230,8 @@ export default function AjudaPage() {
                                     {/* Suporte Técnico */}
                                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="mb-4 md:mb-0">
-                                            <h3 className="font-bold text-gray-900 text-lg">Suporte Técnico</h3>
-                                            <p className="text-sm text-gray-500">Problemas com o sistema</p>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.techSupport', 'Suporte Técnico')}</h3>
+                                            <p className="text-sm text-gray-500">{t('ajuda.techSupportDesc', 'Problemas com o sistema')}</p>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                                             <a href="mailto:suporte@grupoabz.com" className="flex items-center text-gray-600 hover:text-blue-600">
@@ -242,37 +246,43 @@ export default function AjudaPage() {
                         {/* Emergency Column */}
                         <div className="lg:col-span-4 space-y-6">
                             <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                                <FiAlertTriangle className="mr-3 text-red-600" /> Emergência Pública
+                                <FiAlertTriangle className="mr-3 text-red-600" /> {t('ajuda.emergencyTitle', 'Emergência Pública')}
                             </h2>
                             <div className="space-y-4">
                                 <div className="bg-red-50 rounded-[1.5rem] border border-red-100 p-6 flex items-center justify-between hover:bg-red-100 transition-colors">
                                     <div className="flex items-center">
-                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-red-600 shadow-sm mr-4">
-                                            <FiAlertTriangle className="w-5 h-5" />
+                                        <div className="bg-red-100 p-3 rounded-xl mr-4">
+                                            <FiPhone className="w-6 h-6 text-red-600" />
                                         </div>
-                                        <span className="font-bold text-red-900 text-lg">Bombeiros</span>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.fireDept', 'Bombeiros')}</h3>
+                                            <p className="text-xl font-black text-red-600">193</p>
+                                        </div>
                                     </div>
-                                    <span className="text-3xl font-bold text-red-600">193</span>
                                 </div>
 
                                 <div className="bg-red-50 rounded-[1.5rem] border border-red-100 p-6 flex items-center justify-between hover:bg-red-100 transition-colors">
                                     <div className="flex items-center">
-                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-red-600 shadow-sm mr-4">
-                                            <FiAlertTriangle className="w-5 h-5" />
+                                        <div className="bg-gray-100 p-3 rounded-xl mr-4">
+                                            <FiAlertCircle className="w-6 h-6 text-gray-700" />
                                         </div>
-                                        <span className="font-bold text-red-900 text-lg">Polícia</span>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.police', 'Polícia')}</h3>
+                                            <p className="text-xl font-black text-gray-900">190</p>
+                                        </div>
                                     </div>
-                                    <span className="text-3xl font-bold text-red-600">190</span>
                                 </div>
 
                                 <div className="bg-red-50 rounded-[1.5rem] border border-red-100 p-6 flex items-center justify-between hover:bg-red-100 transition-colors">
                                     <div className="flex items-center">
-                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-red-600 shadow-sm mr-4">
-                                            <FiAlertTriangle className="w-5 h-5" />
+                                        <div className="bg-blue-100 p-3 rounded-xl mr-4">
+                                            <FiHeart className="w-6 h-6 text-blue-600" />
                                         </div>
-                                        <span className="font-bold text-red-900 text-lg">SAMU</span>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 text-lg">{t('ajuda.samu', 'SAMU')}</h3>
+                                            <p className="text-xl font-black text-blue-600">192</p>
+                                        </div>
                                     </div>
-                                    <span className="text-3xl font-bold text-red-600">192</span>
                                 </div>
                             </div>
                         </div>
@@ -280,9 +290,9 @@ export default function AjudaPage() {
 
                     {/* Knowledge Base Categories */}
                     <div className="space-y-6">
-                        <h2 className="text-2xl font-bold text-gray-900">Base de Conhecimento</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{t('ajuda.knowledgeBaseTitle', 'Base de Conhecimento')}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {helpCategories.map((category) => (
+                            {getHelpCategories(locale).map((category) => (
                                 <div key={category.id} className="bg-white rounded-[1.5rem] border border-gray-100 p-8 hover:shadow-lg transition-all duration-300 group h-fit">
                                     <div className="flex items-center space-x-4 mb-6">
                                         <span className="text-blue-600 bg-blue-50 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
@@ -312,7 +322,7 @@ export default function AjudaPage() {
                                                                 {article.content}
                                                             </ReactMarkdown>
                                                         ) : (
-                                                            "Conteúdo em desenvolvimento. Entre em contato com o suporte para mais detalhes."
+                                                            t('ajuda.inDevelopment', 'Conteúdo em desenvolvimento. Entre em contato com o suporte para mais detalhes.')
                                                         )}
                                                     </div>
                                                 </div>
@@ -327,15 +337,15 @@ export default function AjudaPage() {
                     {/* Location / Map Section */}
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                            <FiMapPin className="mr-3 text-red-500" /> Nossa Localização
+                            <FiMapPin className="mr-3 text-red-500" /> {t('ajuda.locationTitle', 'Nossa Localização')}
                         </h2>
 
                         <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-200 overflow-hidden flex flex-col md:flex-row min-h-[400px]">
                             {/* Info */}
                             <div className="p-10 md:w-1/3 bg-gray-50 flex flex-col justify-center space-y-8">
                                 <div>
-                                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">Sede</span>
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-1">Escritório Central</h3>
+                                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">{t('ajuda.headquarters', 'Sede')}</span>
+                                    <h3 className="text-2xl font-bold text-gray-900 mb-1">{t('ajuda.hqTitle', 'Escritório Central')}</h3>
                                     <p className="text-blue-600 font-medium text-lg">Macaé, RJ</p>
                                 </div>
 
@@ -343,9 +353,13 @@ export default function AjudaPage() {
                                     <div className="flex items-start space-x-3 text-gray-600">
                                         <FiMapPin className="mt-1 flex-shrink-0 text-blue-500" />
                                         <span>
-                                            Edifício The Corporate<br />
-                                            Av. Prefeito Aristeu Ferreira da Silva, 370<br />
-                                            Granja dos Cavaleiros, Macaé - RJ, 27930-070
+                                            <p className="text-gray-600">
+                                                <strong className="text-gray-900">{t('ajuda.hq', 'Sede ABZ')}</strong><br />
+                                                Av. Nsa. Sra. da Glória, 2987<br />
+                                                {t('ajuda.building', 'Edifício The Corporate')}<br />
+                                                Cavaleiros, Macaé - RJ<br />
+                                                CEP: 27920-360
+                                            </p>
                                         </span>
                                     </div>
 
@@ -361,7 +375,7 @@ export default function AjudaPage() {
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 hover:transform hover:-translate-y-1"
                                 >
-                                    <FiMapPin className="mr-2" /> Abrir no Google Maps
+                                    <FiMapPin className="mr-2" /> {t('ajuda.openInMaps', 'Abrir no Google Maps')}
                                 </a>
                             </div>
 

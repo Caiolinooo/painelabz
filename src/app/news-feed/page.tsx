@@ -42,7 +42,7 @@ interface Comment {
 const NewsFeedPage: React.FC = () => {
   const { user } = useSupabaseAuth();
   const searchParams = useSearchParams();
-  const highlightPostId = searchParams.get('post_id');
+  const highlightPostId = searchParams?.get('post_id');
 
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -424,7 +424,7 @@ const NewsFeedPage: React.FC = () => {
                       <div className="flex space-x-2">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                           <span className="text-white font-semibold text-xs">
-                            {user.first_name?.charAt(0) || user.email?.charAt(0)}
+                            {(user as any).first_name?.charAt(0) || user.email?.charAt(0)}
                           </span>
                         </div>
                         <div className="flex-1 flex space-x-2">

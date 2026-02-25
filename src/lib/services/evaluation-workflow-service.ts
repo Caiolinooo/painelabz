@@ -184,16 +184,16 @@ export class EvaluationWorkflowService {
       if (avaliacao) {
         const messages = {
           approve: {
-            title: 'Avaliação Aprovada!',
-            message: 'Parabéns! Sua avaliação foi aprovada pelo gerente.'
+            titulo: 'Avaliação Aprovada!',
+            mensagem: 'Parabéns! Sua avaliação foi aprovada pelo gerente.'
           },
           reject: {
-            title: 'Avaliação Rejeitada',
-            message: 'Sua avaliação não foi aprovada. Entre em contato com seu gerente para mais informações.'
+            titulo: 'Avaliação Rejeitada',
+            mensagem: 'Sua avaliação não foi aprovada. Entre em contato com seu gerente para mais informações.'
           },
           return: {
-            title: 'Avaliação Devolvida para Ajustes',
-            message: motivo || 'Sua avaliação foi devolvida para ajustes.'
+            titulo: 'Avaliação Devolvida para Ajustes',
+            mensagem: motivo || 'Sua avaliação foi devolvida para ajustes.'
           }
         };
 
@@ -228,7 +228,7 @@ export class EvaluationWorkflowService {
       await this.createNotification({
         tipo: 'aprovacao',
         titulo: 'Avaliação Aprovada!',
-        message: 'Parabéns! Sua avaliação foi aprovada e concluída com sucesso.',
+        mensagem: 'Parabéns! Sua avaliação foi aprovada e concluída com sucesso.',
         usuario_id: funcionarioId,
         avaliacao_id: avaliacaoId,
         dados: {
@@ -276,8 +276,8 @@ export class EvaluationWorkflowService {
         try {
           await this.createNotification({
             tipo: 'lembrete',
-            title: 'Prazo da Avaliação Próximo',
-            message: `Sua avaliação do período ${avaliacao.periodo} vence em 3 dias. Não deixe de responder a tempo!`,
+            titulo: 'Prazo da Avaliação Próximo',
+            mensagem: `Sua avaliação do período ${avaliacao.periodo} vence em 3 dias. Não deixe de responder a tempo!`,
             usuario_id: avaliacao.funcionario_id,
             avaliacao_id: avaliacao.id,
             dados: {
@@ -376,8 +376,8 @@ export class EvaluationWorkflowService {
             // Enviar notificação de abertura
             await this.createNotification({
               tipo: 'ciclo_abertura',
-              title: `Ciclo de Avaliação ${ciclo.ano} Aberto`,
-              message: `O ciclo de avaliação ${ciclo.ano} foi aberto. Acesse o sistema para iniciar sua autoavaliação.`,
+              titulo: `Ciclo de Avaliação ${ciclo.ano} Aberto`,
+              mensagem: `O ciclo de avaliação ${ciclo.ano} foi aberto. Acesse o sistema para iniciar sua autoavaliação.`,
               usuario_id: userId,
               dados: {
                 ciclo_id: cicloId,
@@ -441,7 +441,7 @@ export class EvaluationWorkflowService {
     currentStatus: EvaluationStatus,
     acao: string
   ): EvaluationStatus {
-    const transitions: Record<string, Record<EvaluationStatus, EvaluationStatus>> = {
+    const transitions: Record<string, Partial<Record<EvaluationStatus, EvaluationStatus>>> = {
       submit: {
         'pending_response': 'awaiting_manager',
         'under_review': 'awaiting_manager'

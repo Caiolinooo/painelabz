@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: 'Erro interno do servidor',
-      details: error.message
+      details: (error as Error).message || 'Erro desconhecido'
     }, { status: 500 });
   }
 }

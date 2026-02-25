@@ -76,7 +76,7 @@ export default function EditorPermissionsManager() {
       setStats(data.stats);
     } catch (error) {
       console.error(t('components.erroAoCarregarUsuarios'), error);
-      setError(error.message);
+      setError((error as Error).message || 'Erro desconhecido');
     } finally {
       setIsLoading(false);
     }
@@ -113,12 +113,12 @@ export default function EditorPermissionsManager() {
 
       const data = await response.json();
       setSuccess(t('components.permissoesAtualizadasParaDatausername'));
-      
+
       // Recarregar lista de usuários
       await fetchUsers();
     } catch (error) {
       console.error(t('components.erroAoAtualizarPermissoes'), error);
-      setError(error.message);
+      setError((error as Error).message || 'Erro desconhecido');
     } finally {
       setIsSaving(false);
     }
@@ -126,13 +126,13 @@ export default function EditorPermissionsManager() {
 
   // Filtrar usuários
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+    const matchesSearch =
       user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
-    
+
     return matchesSearch && matchesRole;
   });
 
@@ -309,11 +309,10 @@ export default function EditorPermissionsManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
-                        user.role === 'MANAGER' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
+                          user.role === 'MANAGER' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                        }`}>
                         {user.role}
                       </span>
                     </td>
@@ -323,11 +322,10 @@ export default function EditorPermissionsManager() {
                           academy_editor: !user.permissions_summary.academy_editor
                         })}
                         disabled={isSaving}
-                        className={`p-2 rounded-full ${
-                          user.permissions_summary.academy_editor
+                        className={`p-2 rounded-full ${user.permissions_summary.academy_editor
                             ? 'bg-green-100 text-green-600 hover:bg-green-200'
                             : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                        } disabled:opacity-50`}
+                          } disabled:opacity-50`}
                       >
                         {user.permissions_summary.academy_editor ? <FiCheck /> : <FiX />}
                       </button>
@@ -338,11 +336,10 @@ export default function EditorPermissionsManager() {
                           academy_moderator: !user.permissions_summary.academy_moderator
                         })}
                         disabled={isSaving}
-                        className={`p-2 rounded-full ${
-                          user.permissions_summary.academy_moderator
+                        className={`p-2 rounded-full ${user.permissions_summary.academy_moderator
                             ? 'bg-green-100 text-green-600 hover:bg-green-200'
                             : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                        } disabled:opacity-50`}
+                          } disabled:opacity-50`}
                       >
                         {user.permissions_summary.academy_moderator ? <FiCheck /> : <FiX />}
                       </button>
@@ -353,11 +350,10 @@ export default function EditorPermissionsManager() {
                           social_editor: !user.permissions_summary.social_editor
                         })}
                         disabled={isSaving}
-                        className={`p-2 rounded-full ${
-                          user.permissions_summary.social_editor
+                        className={`p-2 rounded-full ${user.permissions_summary.social_editor
                             ? 'bg-green-100 text-green-600 hover:bg-green-200'
                             : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                        } disabled:opacity-50`}
+                          } disabled:opacity-50`}
                       >
                         {user.permissions_summary.social_editor ? <FiCheck /> : <FiX />}
                       </button>
@@ -368,11 +364,10 @@ export default function EditorPermissionsManager() {
                           social_moderator: !user.permissions_summary.social_moderator
                         })}
                         disabled={isSaving}
-                        className={`p-2 rounded-full ${
-                          user.permissions_summary.social_moderator
+                        className={`p-2 rounded-full ${user.permissions_summary.social_moderator
                             ? 'bg-green-100 text-green-600 hover:bg-green-200'
                             : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                        } disabled:opacity-50`}
+                          } disabled:opacity-50`}
                       >
                         {user.permissions_summary.social_moderator ? <FiCheck /> : <FiX />}
                       </button>

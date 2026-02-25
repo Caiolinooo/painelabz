@@ -1,6 +1,15 @@
 # Changelog
 <br>
 
+## [4.13.2] - 2026-02-24
+
+### Fixed
+- **TypeScript & Type Safety**: Erradicação de erros na build de TypeScript garantindo segurança estrita de tipos arquitetada em todos os módulos fronteiriços (0 erros `tsc --noEmit`).
+  - Componente `NewsCommentSection` com validações rigorosas em checadores de permissão.
+  - Conversões unificadas e seguras (`??` nulos) no painel de avaliações (`EvaluationListClient`), prevenindo crashes client-side em renders.
+  - Sincronia de inferência de notificação unificando interface em `AppNotification` e eliminando mismatches silenciosos de perfil de ator (`avatar`).
+  - Correção cirúrgica das chamadas de requisição PDF em processadores de reembolsos e consistência de APIs sem checagem (`user-shortcuts`).
+
 ## [4.13.1] - 2026-02-23
 
 ### Fixed

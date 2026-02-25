@@ -64,7 +64,7 @@ export default function NewEvaluationClient({ periods, employees }: NewEvaluatio
                 <select {...field} className="select select-bordered w-full">
                   <option value="">Selecione um funcionário</option>
                   {employees.map(e => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
+                    <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
                   ))}
                 </select>
               )}
@@ -111,16 +111,16 @@ export default function NewEvaluationClient({ periods, employees }: NewEvaluatio
         </div>
 
         <div className="mt-8 flex justify-end gap-4">
-          <button 
-            type="button" 
-            onClick={() => router.back()} 
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="btn btn-ghost"
             disabled={isSubmitting}
           >
             Cancelar
           </button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn btn-primary"
             disabled={isSubmitting}
           >

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiCalendar, FiClock, FiUsers, FiCheck, FiX } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
+import { NotificacoesAvaliacaoService } from '@/lib/services/notificacoes-avaliacao';
 
 interface PeriodoAvaliacao {
   id: string;
@@ -173,7 +174,7 @@ export default function PainelPeriodosAvaliacao() {
   const toggleAtivo = async (periodo: PeriodoAvaliacao) => {
     try {
       const novoStatus = !periodo.ativo;
-      
+
       const { error } = await supabase
         .from('periodos_avaliacao')
         .update({ ativo: novoStatus })
@@ -221,11 +222,11 @@ export default function PainelPeriodosAvaliacao() {
 
   const getStatusColor = (periodo: PeriodoAvaliacao) => {
     if (!periodo.ativo) return 'bg-gray-100 text-gray-600';
-    
+
     const hoje = new Date();
     const inicio = new Date(periodo.data_inicio);
     const fim = new Date(periodo.data_fim);
-    
+
     if (hoje < inicio) return 'bg-blue-100 text-blue-600';
     if (hoje > fim) return 'bg-red-100 text-red-600';
     return 'bg-green-100 text-green-600';
@@ -233,11 +234,11 @@ export default function PainelPeriodosAvaliacao() {
 
   const getStatusText = (periodo: PeriodoAvaliacao) => {
     if (!periodo.ativo) return 'Inativo';
-    
+
     const hoje = new Date();
     const inicio = new Date(periodo.data_inicio);
     const fim = new Date(periodo.data_fim);
-    
+
     if (hoje < inicio) return 'Agendado';
     if (hoje > fim) return 'Finalizado';
     return 'Ativo';
@@ -308,7 +309,7 @@ export default function PainelPeriodosAvaliacao() {
                     {getStatusText(periodo)}
                   </span>
                 </div>
-                
+
                 {periodo.descricao && (
                   <p className="text-gray-600 mb-4">{periodo.descricao}</p>
                 )}
@@ -336,11 +337,10 @@ export default function PainelPeriodosAvaliacao() {
               <div className="flex items-center space-x-2 ml-4">
                 <button
                   onClick={() => toggleAtivo(periodo)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    periodo.ativo 
-                      ? 'text-green-600 hover:bg-green-50' 
+                  className={`p-2 rounded-lg transition-colors ${periodo.ativo
+                      ? 'text-green-600 hover:bg-green-50'
                       : 'text-gray-400 hover:bg-gray-50'
-                  }`}
+                    }`}
                   title={periodo.ativo ? 'Desativar período' : 'Ativar período'}
                 >
                   {periodo.ativo ? <FiCheck size={16} /> : <FiX size={16} />}

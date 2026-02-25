@@ -32,7 +32,7 @@ export default function ResetPassword() {
   useEffect(() => {
     setIsClient(true);
 
-    const token = searchParams.get('token');
+    const token = searchParams?.get('token');
 
     if (!token) {
       setTokenValid(false);
@@ -86,7 +86,7 @@ export default function ResetPassword() {
     setIsLoading(true);
 
     try {
-      const token = searchParams.get('token');
+      const token = searchParams?.get('token');
 
       if (!token) {
         setError('Token de redefinição não encontrado');

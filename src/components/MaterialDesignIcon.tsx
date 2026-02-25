@@ -11,7 +11,7 @@ const loadIcon = async (iconName: string): Promise<IconType | null> => {
     const IconComponent = iconModule[iconName as keyof typeof iconModule] as IconType;
     return IconComponent || null;
   } catch (error) {
-    console.warn(t('components.erroAoCarregarIconeIconname'), error);
+    console.warn('Erro ao carregar ícone:', iconName, error);
     return null;
   }
 };
@@ -42,6 +42,7 @@ const MaterialDesignIcon: React.FC<MaterialDesignIconProps> = ({
   size = 24,
   color
 }) => {
+  const { t } = useI18n();
   const [IconComponent, setIconComponent] = useState<IconType | null>(null);
   const [loading, setLoading] = useState(true);
 

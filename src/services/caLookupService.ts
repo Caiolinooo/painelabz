@@ -21,9 +21,8 @@ const MTE_CONSULTA_URL = 'https://caepi.mte.gov.br/internet/ConsultaCAInternet.a
 const CONSULTA_CA_URL = 'https://consultaca.com';
 const CACHE_TTL_HOURS = 24;
 
-// SCRAPING DISABLED: Both MTE (anti-bot) and consultaca.com (Cloudflare) are blocked in this environment.
-// We rely on Cache and Manual Verification via the link in UI.
-const ENABLE_SCRAPING = false;
+// Scraping toggle: enable by default, disable via env var ENABLE_CA_SCRAPING=false
+const ENABLE_SCRAPING = process.env.ENABLE_CA_SCRAPING !== 'false';
 
 // Open-source API fallback (if someone hosts API_BaseCAEPI Docker)
 const API_BASE_CAEPI_URL = process.env.API_BASE_CAEPI_URL || '';
@@ -48,35 +47,50 @@ export async function lookupCA(caNumber: string): Promise<CALookupResult | null>
             return cached;
         }
 
-        // 2. Try official MTE site scraping
-        if (ENABLE_SCRAPING) {
-            console.log(`[CA Lookup] Cache miss for CA ${cleanCA}, trying MTE...`);
-            const mteResult = await scrapeMTEConsulta(cleanCA);
-            if (mteResult) {
-                await cacheCAResult(mteResult);
-                return mteResult;
-            }
-        } else {
-            console.log(`[CA Lookup] Scraping disabled. Skipping MTE.`);
+        // Generate variants: original + zero-padded to common lengths
+        const variants = [cleanCA];
+        if (cleanCA.length < 5) {
+            variants.push(cleanCA.padStart(5, '0')); // e.g. 212 → 00212
         }
 
-        // 3. Try consultaca.com as fallback
+        let result: CALookupResult | null = null;
+
+        // 2. Try official MTE site scraping
         if (ENABLE_SCRAPING) {
-            console.log(`[CA Lookup] MTE miss for CA ${cleanCA}, trying consultaca.com...`);
-            const scrapedResult = await scrapeConsultaCA(cleanCA);
-            if (scrapedResult) {
-                await cacheCAResult(scrapedResult);
-                return scrapedResult;
+            for (const variant of variants) {
+                console.log(`[CA Lookup] Cache miss, trying MTE for CA ${variant}...`);
+                result = await scrapeMTEConsulta(variant);
+                if (result) {
+                    result.ca_number = cleanCA; // Normalize back to original
+                    await cacheCAResult(result);
+                    return result;
+                }
             }
+
+            // 3. Try consultaca.com as fallback (independent of MTE success)
+            for (const variant of variants) {
+                console.log(`[CA Lookup] MTE miss, trying consultaca.com for CA ${variant}...`);
+                result = await scrapeConsultaCA(variant);
+                if (result) {
+                    result.ca_number = cleanCA;
+                    await cacheCAResult(result);
+                    return result;
+                }
+            }
+        } else {
+            console.log(`[CA Lookup] Scraping disabled (set ENABLE_CA_SCRAPING=true to enable). Skipping MTE and consultaca.com.`);
         }
 
         // 4. Try open-source API if configured
         if (API_BASE_CAEPI_URL) {
-            console.log(`[CA Lookup] Trying API_BaseCAEPI for CA ${cleanCA}...`);
-            const apiResult = await queryAPIBaseCAEPI(cleanCA);
-            if (apiResult) {
-                await cacheCAResult(apiResult);
-                return apiResult;
+            for (const variant of variants) {
+                console.log(`[CA Lookup] Trying API_BaseCAEPI for CA ${variant}...`);
+                result = await queryAPIBaseCAEPI(variant);
+                if (result) {
+                    result.ca_number = cleanCA;
+                    await cacheCAResult(result);
+                    return result;
+                }
             }
         }
 
@@ -170,19 +184,15 @@ function mapCacheToResult(data: any): CALookupResult {
  */
 async function scrapeMTEConsulta(caNumber: string): Promise<CALookupResult | null> {
     try {
-        // Step 1: GET the page to extract ASP.NET form tokens
+        // Step 1: GET the page to extract ASP.NET form tokens + dropdown defaults
         const controller1 = new AbortController();
         const timeout1 = setTimeout(() => controller1.abort(), 15000);
 
-        // FULL Chrome Headers for GET
         const commonHeaders = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
             'Cache-Control': 'no-cache',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Dest': 'document',
             'Upgrade-Insecure-Requests': '1'
         };
 
@@ -198,6 +208,7 @@ async function scrapeMTEConsulta(caNumber: string): Promise<CALookupResult | nul
         }
 
         const html = await getResponse.text();
+        console.log(`[CA Lookup] MTE GET OK (${html.length} bytes)`);
 
         // Extract ASP.NET hidden fields
         const viewState = extractHiddenField(html, '__VIEWSTATE');
@@ -209,32 +220,36 @@ async function scrapeMTEConsulta(caNumber: string): Promise<CALookupResult | nul
             return null;
         }
 
-        // Extract the cookies from GET response AND FIX FORMAT
-        // Node fetch might return combined string with commas. We need semicolon separated name=value.
+        // Extract actual default option values from each dropdown (ASP.NET __EVENTVALIDATION
+        // will reject any value that wasn't rendered in the page)
+        const equipDefault = extractFirstOptionValue(html, 'cboEquipamento');
+        const fabDefault = extractFirstOptionValue(html, 'cboFabricante');
+        const tipoDefault = extractFirstOptionValue(html, 'cboTipoProtecao');
+        console.log(`[CA Lookup] MTE dropdown defaults: equip="${equipDefault}", fab="${fabDefault}", tipo="${tipoDefault}"`);
+
+        // Extract cookies from GET response
         const setCookie = getResponse.headers.get('set-cookie') || '';
         const cookies = setCookie.split(',')
-            .map(c => c.split(';')[0].trim()) // Take only name=value
+            .map(c => c.split(';')[0].trim())
             .filter(c => c.length > 0)
             .join('; ');
 
-        // Delay to simulate human (and ensure session is registered?)
-        await new Promise(r => setTimeout(r, 500));
+        // Small delay to avoid anti-bot
+        await new Promise(r => setTimeout(r, 300));
 
-        // Step 2: POST with CA number (ASP.NET AJAX)
+        // Step 2: Standard form POST with exact values from the page
         const formData = new URLSearchParams();
         formData.set('__VIEWSTATE', viewState);
         if (viewStateGenerator) formData.set('__VIEWSTATEGENERATOR', viewStateGenerator);
         formData.set('__EVENTVALIDATION', eventValidation);
-
-        // Form Fields
-        formData.set('ctl00$PlaceHolderConteudo$txtNumeroCA', caNumber);
-        formData.set('ctl00$PlaceHolderConteudo$cboEquipamento', '*******Selecione*******'); // Required?
-        formData.set('ctl00$PlaceHolderConteudo$btnConsultar', 'Consultar');
-
-        // AJAX Params - UniqueID with 't' prefix found in _initialize
-        formData.set('ctl00$ScriptManager1', 'tctl00$PlaceHolderConteudo$panel|ctl00$PlaceHolderConteudo$btnConsultar');
-        formData.set('__EVENTTARGET', 'ctl00$PlaceHolderConteudo$btnConsultar');
+        formData.set('__EVENTTARGET', '');
         formData.set('__EVENTARGUMENT', '');
+        formData.set('ctl00$PlaceHolderConteudo$txtNumeroCA', caNumber);
+        // Use exact dropdown defaults from the rendered page
+        if (equipDefault) formData.set('ctl00$PlaceHolderConteudo$cboEquipamento', equipDefault);
+        if (fabDefault) formData.set('ctl00$PlaceHolderConteudo$cboFabricante', fabDefault);
+        if (tipoDefault) formData.set('ctl00$PlaceHolderConteudo$cboTipoProtecao', tipoDefault);
+        formData.set('ctl00$PlaceHolderConteudo$btnConsultar', 'Consultar');
 
         const controller2 = new AbortController();
         const timeout2 = setTimeout(() => controller2.abort(), 15000);
@@ -247,10 +262,7 @@ async function scrapeMTEConsulta(caNumber: string): Promise<CALookupResult | nul
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Referer': MTE_CONSULTA_URL,
                 'Origin': 'https://caepi.mte.gov.br',
-                'Cookie': cookies,
-                'X-MicrosoftAjax': 'Delta=true',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Dest': 'empty'
+                'Cookie': cookies
             },
             body: formData.toString()
         });
@@ -262,13 +274,21 @@ async function scrapeMTEConsulta(caNumber: string): Promise<CALookupResult | nul
         }
 
         const resultHtml = await postResponse.text();
-        // Check if we got a real result or just the form again
-        // In AJAX Delta, format is 1|#||4|...
+        console.log(`[CA Lookup] MTE POST OK (${resultHtml.length} bytes)`);
 
-        if (resultHtml.indexOf('lblSituacao') === -1 && resultHtml.indexOf('lblDataValidade') === -1) {
-            console.warn('[CA Lookup] MTE POST returned form (search failed). Fallback to consultaca.com');
-            // Log a snippet for debugging (optional)
-            // console.log('MTE Response Snippet:', resultHtml.substring(0, 500));
+        // Check for result indicators in the full HTML response
+        const hasResults = resultHtml.includes('lblSituacao') ||
+            resultHtml.includes('lblDataValidade') ||
+            resultHtml.includes('lblRazaoSocial') ||
+            resultHtml.includes('Razão Social') ||
+            resultHtml.includes('Raz&atilde;o Social') ||
+            resultHtml.includes('grdResultado') ||
+            resultHtml.includes('NRProcesso') ||
+            resultHtml.includes('_lblCA');
+
+        if (!hasResults) {
+            const snippet = resultHtml.substring(0, 1000).replace(/\s+/g, ' ');
+            console.warn(`[CA Lookup] MTE POST: no result indicators found. Snippet: ${snippet}`);
             return null;
         }
 
@@ -277,6 +297,28 @@ async function scrapeMTEConsulta(caNumber: string): Promise<CALookupResult | nul
         console.warn(`[CA Lookup] MTE scraping failed:`, error.message);
         return null;
     }
+}
+
+/**
+ * Extract the first <option> value from a <select> by partial ID match.
+ * ASP.NET renders: <select id="PlaceHolderConteudo_cboEquipamento" name="ctl00$PlaceHolderConteudo$cboEquipamento">
+ */
+function extractFirstOptionValue(html: string, selectPartialId: string): string {
+    // Find the <select> tag, then its first <option>
+    const selectPattern = new RegExp(
+        `<select[^>]*(?:id|name)="[^"]*${selectPartialId}"[^>]*>\\s*<option[^>]*value="([^"]*)"`,
+        'i'
+    );
+    const match = html.match(selectPattern);
+    if (match?.[1]) return match[1];
+
+    // Fallback: try selected="selected"
+    const selectedPattern = new RegExp(
+        `<select[^>]*${selectPartialId}[^>]*>[\\s\\S]*?<option[^>]*selected[^>]*value="([^"]*)"`,
+        'i'
+    );
+    const selectedMatch = html.match(selectedPattern);
+    return selectedMatch?.[1] || '';
 }
 
 function extractHiddenField(html: string, fieldName: string): string | null {
