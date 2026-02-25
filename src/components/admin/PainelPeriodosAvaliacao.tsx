@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiCalendar, FiClock, FiUsers, FiCheck, FiX } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
-import { NotificacoesAvaliacaoService } from '@/lib/services/notificacoes-avaliacao';
+
 
 interface PeriodoAvaliacao {
   id: string;
@@ -188,11 +188,19 @@ export default function PainelPeriodosAvaliacao() {
 
       // Se ativou o período, notificar funcionários
       if (novoStatus) {
-        await NotificacoesAvaliacaoService.notificarInicioPeriodo(
-          periodo.id,
-          periodo.nome,
-          periodo.data_limite_autoavaliacao
-        );
+        try {
+          await fetch('/api/avaliacao/notificar-inicio-periodo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: ***REMOVED***
+              periodoId: periodo.id,
+              periodoNome: periodo.nome,
+              dataLimite: periodo.data_limite_autoavaliacao
+            })
+          });
+        } catch (err) {
+          console.error('Erro ao chamar API de notificação:', err);
+        }
       }
 
       await carregarPeriodos();
@@ -338,8 +346,8 @@ export default function PainelPeriodosAvaliacao() {
                 <button
                   onClick={() => toggleAtivo(periodo)}
                   className={`p-2 rounded-lg transition-colors ${periodo.ativo
-                      ? 'text-green-600 hover:bg-green-50'
-                      : 'text-gray-400 hover:bg-gray-50'
+                    ? 'text-green-600 hover:bg-green-50'
+                    : 'text-gray-400 hover:bg-gray-50'
                     }`}
                   title={periodo.ativo ? 'Desativar período' : 'Ativar período'}
                 >
