@@ -22,6 +22,7 @@ export interface LeaveRequest {
     status: 'PENDING_LEADER' | 'PENDING_MANAGER' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
     justification?: string;
     rejection_reason?: string;
+    pecuniary_allowance?: boolean;
     created_at: string;
     updated_at: string;
     // Joins
@@ -204,7 +205,8 @@ export async function createLeaveRequest(
     startDate: string,
     endDate: string,
     justification?: string,
-    periods?: Array<{ start_date: string; end_date: string; duration: number }>
+    periods?: Array<{ start_date: string; end_date: string; duration: number }>,
+    pecuniaryAllowance?: boolean
 ): Promise<{ success: boolean; data?: LeaveRequest; error?: any }> {
     // 1. Get user and config to determine initial status
     const { data: user } = await supabaseAdmin.from('users_unified').select('sector_id').eq('id', userId).single();
@@ -240,7 +242,8 @@ export async function createLeaveRequest(
             end_date: endDate,
             periods: periods || [],
             status: initialStatus,
-            justification
+            justification,
+            pecuniary_allowance: pecuniaryAllowance || false
         }])
         .select()
         .single();
