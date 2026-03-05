@@ -153,41 +153,56 @@ export async function POST(request: NextRequest) {
 
                 // 3. Email Approvers (Dynamic based on Tiered Rules)
                 let approversToNotify: string[] = [];
+                let configToUse = null;
 
-                // Fetch User's Sector Config to find Approvers
-                if (user.sector_id) {
-                    const { data: config } = await supabaseAdmin
+                // 3.1 Check User Exception Config First
+                const { data: userConfig } = await supabaseAdmin
+                    .from('purchase_order_configs')
+                    .select('approval_rules, approver_emails')
+                    .eq('user_id', payload.userId)
+                    .maybeSingle();
+
+                if (userConfig) {
+                    configToUse = userConfig;
+                } else if (user.sector_id) {
+                    // 3.2 Fallback to Sector Config
+                    const { data: sectorConfig } = await supabaseAdmin
                         .from('purchase_order_configs')
                         .select('approval_rules, approver_emails')
                         .eq('sector_id', user.sector_id)
+                        .is('user_id', null)
                         .maybeSingle();
 
-                    if (config) {
-                        const rules = config.approval_rules as { email: string, limit: number }[] || [];
-                        const poValue = Number(body.total_value);
+                    if (sectorConfig) {
+                        configToUse = sectorConfig;
+                    }
+                }
 
-                        if (rules.length > 0) {
-                            // Sort by limit ascending
-                            rules.sort((a, b) => a.limit - b.limit);
+                if (configToUse) {
+                    const rules = configToUse.approval_rules as { email: string, limit: number }[] || [];
+                    const poValue = Number(body.total_value);
 
-                            // Find the first rule that covers this value (Lowest Sufficient Authority)
-                            const targetRule = rules.find(r => r.limit >= poValue);
-                            let targetLimit = targetRule ? targetRule.limit : -1;
+                    if (rules.length > 0) {
+                        // Sort by limit ascending
+                        rules.sort((a, b) => a.limit - b.limit);
 
-                            if (targetRule) {
-                                // Add EVERYONE who has this specific limit (in case of multiple peers at same level)
-                                const peers = rules.filter(r => r.limit === targetLimit);
-                                peers.forEach(p => approversToNotify.push(p.email));
-                            } else {
-                                // Value exceeds all limits? Notify the highest tier(s)
-                                const highestLimit = rules[rules.length - 1].limit;
-                                const highestTierApprovers = rules.filter(r => r.limit === highestLimit);
-                                highestTierApprovers.forEach(p => approversToNotify.push(p.email));
-                            }
-                        } else if (config.approver_emails && config.approver_emails.length > 0) {
-                            // Fallback to legacy list
-                            approversToNotify = config.approver_emails;
+                        // Find the first rule that covers this value (Lowest Sufficient Authority)
+                        const targetRule = rules.find(r => r.limit >= poValue);
+                        let targetLimit = targetRule ? targetRule.limit : -1;
+
+                        if (targetRule) {
+                            // Add EVERYONE who has this specific limit (in case of multiple peers at same level)
+                            const peers = rules.filter(r => r.limit === targetLimit);
+                            peers.forEach(p => approversToNotify.push(p.email));
+                        } else {
+                            // Value exceeds all limits? Notify the highest tier(s)
+                            const highestLimit = rules[rules.length - 1].limit;
+                            const highestTierApprovers = rules.filter(r => r.limit === highestLimit);
+                            highestTierApprovers.forEach(p => approversToNotify.push(p.email));
                         }
+                    } else if (configToUse.approver_emails && configToUse.approver_emails.length > 0) {
+                        // Fallback to legacy list
+                        approversToNotify = configToUse.approver_emails;
                     }
                 }
 

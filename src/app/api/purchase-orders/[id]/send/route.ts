@@ -32,32 +32,62 @@ export async function POST(
         }
 
         // 2. Determine Configuration (Workflow Automation)
-        // 2.1 Check for User-Specific Override
-        let { data: config } = await supabaseAdmin
-            .from('purchase_order_configs')
-            .select('approver_emails, max_value, cost_centers')
-            .eq('user_id', po.user_id)
-            .single();
+        let approversToNotify: string[] = [];
+        let configToUse = null;
 
-        // 2.2 If no user override, fetch Sector Default
-        if (!config) {
+        // 2.1 Check User Exception Config First
+        const { data: userConfig } = await supabaseAdmin
+            .from('purchase_order_configs')
+            .select('approval_rules, approver_emails')
+            .eq('user_id', po.user_id)
+            .maybeSingle();
+
+        if (userConfig) {
+            configToUse = userConfig;
+        } else if (po.sector_id) {
+            // 2.2 Fallback to Sector Config
             const { data: sectorConfig } = await supabaseAdmin
                 .from('purchase_order_configs')
-                .select('approver_emails, max_value, cost_centers')
+                .select('approval_rules, approver_emails')
                 .eq('sector_id', po.sector_id)
                 .is('user_id', null)
-                .single();
+                .maybeSingle();
 
-            config = sectorConfig;
+            if (sectorConfig) {
+                configToUse = sectorConfig;
+            }
         }
 
-        const approverEmails = (config?.approver_emails || []) as string[];
+        if (configToUse) {
+            const rules = configToUse.approval_rules as { email: string, limit: number }[] || [];
+            const poValue = Number(po.total_value);
 
-        // Also send to the creator?
-        // We can fetch user email from users_unified if needed, but for now stick to approvers.
+            if (rules.length > 0) {
+                // Sort by limit ascending
+                rules.sort((a, b) => a.limit - b.limit);
+                // Find target limit
+                const targetRule = rules.find(r => r.limit >= poValue);
+                if (targetRule) {
+                    const peers = rules.filter(r => r.limit === targetRule.limit);
+                    peers.forEach(p => approversToNotify.push(p.email));
+                } else {
+                    const highestLimit = rules[rules.length - 1].limit;
+                    const highestTierApprovers = rules.filter(r => r.limit === highestLimit);
+                    highestTierApprovers.forEach(p => approversToNotify.push(p.email));
+                }
+            } else if (configToUse.approver_emails && configToUse.approver_emails.length > 0) {
+                approversToNotify = configToUse.approver_emails;
+            }
+        }
 
-        if (approverEmails.length === 0) {
-            console.warn(`No approver emails configured for PO ${poId} (User: ${po.user_id}, Sector: ${po.sector_id})`);
+        if (approversToNotify.length === 0) {
+            approversToNotify = ['gordon@groupabz.com', 'william@groupabz.com'];
+        }
+
+        approversToNotify = [...new Set(approversToNotify.filter(e => e && e.includes('@')))];
+
+        if (approversToNotify.length === 0) {
+            console.warn(`No valid approver emails for PO ${poId}`);
         } else {
             // 3. Workflow Notifications (In-Portal)
             try {
@@ -65,7 +95,7 @@ export async function POST(
                 const { data: approverUsers } = await supabaseAdmin
                     .from('users_unified')
                     .select('id, email')
-                    .in('email', approverEmails);
+                    .in('email', approversToNotify);
 
                 if (approverUsers && approverUsers.length > 0) {
                     const notificationsToInsert = approverUsers.map(approver => ({
@@ -109,13 +139,6 @@ export async function POST(
         // 5. Fetch Invoice if exists
         if (po.invoice_url) {
             try {
-                // Parse path from URL? 
-                // URL format: https://.../storage/v1/object/public/purchase-orders/invoices/filename
-                // We need the relative path: "invoices/filename"
-                const urlObj = new URL(po.invoice_url);
-                // Assuming standard supabase storage url structure.
-                // We can likely just download it via fetch if it's public.
-
                 const invoiceRes = await fetch(po.invoice_url);
                 if (invoiceRes.ok) {
                     const invoiceBuffer = await invoiceRes.arrayBuffer();
@@ -132,28 +155,55 @@ export async function POST(
             }
         }
 
-        // 7. Send Email
-        const emailHtml = `
-      <h2>Nova Ordem de Compra Recebida</h2>
-      <p>Uma nova solicitação de compra foi criada e aguarda sua aprovação.</p>
-      <ul>
-        <li><strong>Número:</strong> ${po.po_number || 'N/A'}</li>
-        <li><strong>Solicitante:</strong> ${po.buyer_name}</li>
-        <li><strong>Valor Total:</strong> ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(po.total_value)}</li>
-      </ul>
-      <p>Acesse o portal para aprovar ou rejeitar.</p>
-      <hr />
-      <p>Veja os detalhes no anexo.</p>
-    `;
+        // 6. Send Email using Standard Templates
+        const { getTranslation } = await import('@/i18n');
+        const { poApprovalRequestTemplate } = await import('@/lib/emailTemplates');
+
+        let userLocale = request.headers.get('x-client-locale');
+        const acceptLanguage = request.headers.get('accept-language');
+        if (!userLocale && acceptLanguage) {
+            userLocale = acceptLanguage.split(',')[0].trim();
+        }
+        userLocale = userLocale || 'pt-BR';
+        const t = (key: string, locale: string, params?: any) => getTranslation(locale as any, key, undefined, params);
+
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://painel.abzgroup.com.br';
+        const viewUrl = `${baseUrl}/department/purchase-orders/${po.id}`;
+        const poNumber = po.po_number || poId;
 
         // Only send if we have recipients
-        if (approverEmails.length > 0) {
-            await sendEmail({
-                to: approverEmails,
-                subject: `[Aprovação Pendente] ${po.po_number || 'OC'} - ${po.provider_name}`,
-                html: emailHtml,
-                attachments
-            });
+        if (approversToNotify.length > 0) {
+            for (const email of approversToNotify) {
+                let approverName = 'Aprovador';
+                const { data: approverData } = await supabaseAdmin
+                    .from('users_unified')
+                    .select('name')
+                    .eq('email', email)
+                    .maybeSingle();
+
+                if (approverData?.name) {
+                    approverName = approverData.name.split(' ')[0];
+                }
+
+                const emailHtml = poApprovalRequestTemplate(
+                    approverName,
+                    po.buyer_name || 'Colaborador',
+                    poNumber,
+                    po.provider_name,
+                    po.total_value,
+                    po.items?.length || 0,
+                    viewUrl,
+                    po.invoice_url,
+                    userLocale
+                );
+
+                await sendEmail({
+                    to: email, // Notice: sendEmail here takes an object due to the signature in @/lib/email/service (resend logic?)
+                    subject: t('emails.purchaseOrder.subject.approval', userLocale, { number: poNumber }),
+                    html: emailHtml,
+                    attachments
+                });
+            }
         }
 
         return NextResponse.json({ success: true });

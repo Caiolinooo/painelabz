@@ -20,6 +20,7 @@ interface SectorConfig {
     max_value: number;
     approver_emails: string[];
     cost_centers: string[];
+    payment_terms: string[];
     approval_rules: ApprovalRule[];
 }
 
@@ -33,6 +34,7 @@ export default function PurchaseOrderSettingsPage() {
     const [sectorId, setSectorId] = useState<string | null>(null);
     const [mySectorName, setMySectorName] = useState<string>('');
     const [costCenters, setCostCenters] = useState<string[]>([]);
+    const [paymentTerms, setPaymentTerms] = useState<string[]>([]);
     const [maxValue, setMaxValue] = useState<number>(0);
     const [approvalRules, setApprovalRules] = useState<ApprovalRule[]>([]);
 
@@ -41,6 +43,7 @@ export default function PurchaseOrderSettingsPage() {
 
     // Inputs
     const [newCenter, setNewCenter] = useState('');
+    const [newTerm, setNewTerm] = useState('');
 
     const isAdmin = profile?.role === 'ADMIN';
 
@@ -91,10 +94,12 @@ export default function PurchaseOrderSettingsPage() {
         setSectorId(config.sector_id);
         setMySectorName(config.sector_name || '');
         setCostCenters(config.cost_centers || []);
+        setPaymentTerms(config.payment_terms || []);
         setMaxValue(config.max_value || 0);
         setApprovalRules(config.approval_rules || []);
         // Reset inputs
         setNewCenter('');
+        setNewTerm('');
     };
 
     const handleSectorChange = (newSectorId: string) => {
@@ -119,6 +124,7 @@ export default function PurchaseOrderSettingsPage() {
                 body: JSON.stringify({
                     sector_id: sectorId,
                     cost_centers: costCenters,
+                    payment_terms: paymentTerms,
                     max_value: maxValue,
                     approval_rules: approvalRules
                 })
@@ -132,7 +138,7 @@ export default function PurchaseOrderSettingsPage() {
             // Update local state "allSectors" to reflect changes without re-fetching
             setAllSectors(prev => prev.map(s =>
                 s.sector_id === sectorId
-                    ? { ...s, cost_centers: costCenters, max_value: maxValue, approval_rules: approvalRules }
+                    ? { ...s, cost_centers: costCenters, payment_terms: paymentTerms, max_value: maxValue, approval_rules: approvalRules }
                     : s
             ));
 
@@ -156,6 +162,20 @@ export default function PurchaseOrderSettingsPage() {
 
     const removeCostCenter = (center: string) => {
         setCostCenters(costCenters.filter(c => c !== center));
+    };
+
+    const addPaymentTerm = () => {
+        if (!newTerm.trim()) return;
+        if (paymentTerms.includes(newTerm.trim())) {
+            toast.error('Esta condição já existe.');
+            return;
+        }
+        setPaymentTerms([...paymentTerms, newTerm.trim()]);
+        setNewTerm('');
+    };
+
+    const removePaymentTerm = (term: string) => {
+        setPaymentTerms(paymentTerms.filter(t => t !== term));
     };
 
     if (!isAdmin) {
@@ -298,6 +318,41 @@ export default function PurchaseOrderSettingsPage() {
                                 <div key={center} className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-2 text-sm text-gray-700">
                                     <span>{center}</span>
                                     <button onClick={() => removeCostCenter(center)} className="text-gray-400 hover:text-red-500">
+                                        <FiTrash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Payment Terms */}
+                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+                            Condições de Pagamento
+                        </h2>
+
+                        <div className="flex gap-2 mb-4">
+                            <input
+                                type="text"
+                                value={newTerm}
+                                onChange={e => setNewTerm(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && addPaymentTerm()}
+                                placeholder="E.g., PIX, Boleto 30 Dias"
+                                className="flex-1 border rounded-lg p-2"
+                            />
+                            <button onClick={addPaymentTerm} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <FiPlus /> Adicionar
+                            </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            {paymentTerms.length === 0 && (
+                                <p className="text-gray-400 italic">Nenhuma condição de pagamento cadastrada. O usuário deverá digitar manualmente.</p>
+                            )}
+                            {paymentTerms.map(term => (
+                                <div key={term} className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-2 text-sm text-gray-700">
+                                    <span>{term}</span>
+                                    <button onClick={() => removePaymentTerm(term)} className="text-gray-400 hover:text-red-500">
                                         <FiTrash2 size={14} />
                                     </button>
                                 </div>
