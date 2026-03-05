@@ -117,23 +117,7 @@ async function recordMovement(
             throw new Error(`Tipo de movimentação inválido: ${movementType}`);
     }
 
-    // Update stock level
-    const updateData: any = {
-        current_quantity: newQty,
-        updated_at: new Date().toISOString(),
-    };
-    if (movementType === 'entry') {
-        updateData.last_restocked_at = new Date().toISOString();
-    }
-
-    const { error: updateError } = await supabaseAdmin
-        .from('epi_stock')
-        .update(updateData)
-        .eq('id', stock.id);
-
-    if (updateError) throw new Error(`Erro ao atualizar estoque: ${updateError.message}`);
-
-    // Record movement
+    // 1. Record movement FIRST
     const { data: movement, error: movementError } = await supabaseAdmin
         .from('epi_stock_movements')
         .insert({
@@ -151,6 +135,27 @@ async function recordMovement(
         .single();
 
     if (movementError) throw new Error(`Erro ao registrar movimentação: ${movementError.message}`);
+
+    // 2. Update stock level SECOND
+    const updateData: any = {
+        current_quantity: newQty,
+        updated_at: new Date().toISOString(),
+    };
+    if (movementType === 'entry') {
+        updateData.last_restocked_at = new Date().toISOString();
+    }
+
+    const { error: updateError } = await supabaseAdmin
+        .from('epi_stock')
+        .update(updateData)
+        .eq('id', stock.id);
+
+    if (updateError) {
+        // Warning: At this point the movement is recorded but stock update failed.
+        // In a perfect world we would use a true SQL transaction or RPC to prevent this,
+        // but since we are relying on separate REST calls, it's safer to log before updating.
+        throw new Error(`Erro ao atualizar estoque: ${updateError.message}`);
+    }
 
     // Check for low stock and notify if needed
     try {

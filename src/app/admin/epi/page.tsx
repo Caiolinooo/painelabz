@@ -476,7 +476,24 @@ function TypesGrid({ types, onCreate, onDelete, showModal, setShowModal }: { typ
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
-                                <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full border rounded-lg px-3 py-2" required />
+                                <select
+                                    value={formData.category}
+                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                    required
+                                >
+                                    <option value="">Selecione a categoria...</option>
+                                    <option value="Proteção da Cabeça">Proteção da Cabeça</option>
+                                    <option value="Proteção dos Olhos e Face">Proteção dos Olhos e Face</option>
+                                    <option value="Proteção Auditiva">Proteção Auditiva</option>
+                                    <option value="Proteção Respiratória">Proteção Respiratória</option>
+                                    <option value="Proteção do Tronco">Proteção do Tronco</option>
+                                    <option value="Proteção dos Membros Superiores">Proteção dos Membros Superiores</option>
+                                    <option value="Proteção dos Membros Inferiores">Proteção dos Membros Inferiores</option>
+                                    <option value="Proteção contra Quedas">Proteção contra Quedas</option>
+                                    <option value="Vestimentas de Trabalho">Vestimentas de Trabalho / Uniformes</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
                             </div>
                             <div className="flex items-center gap-2">
                                 <input type="checkbox" checked={formData.is_required} onChange={(e) => setFormData({ ...formData, is_required: e.target.checked })} id="is_required" />

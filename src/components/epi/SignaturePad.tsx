@@ -37,8 +37,12 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
             try {
                 asseResp = await startAuthentication({ optionsJSON: options });
             } catch (err: any) {
-                if (err.name === 'NotAllowedError') return;
-                throw new Error('Assinatura biométrica cancelada ou falhou');
+                console.error('WebAuthn error:', err);
+                if (err.name === 'NotAllowedError') {
+                    // Ignora silentemente se o usuário apenas fechou o prompt
+                    return;
+                }
+                throw new Error('Falha ao usar biometria. Verifique se há uma Passkey cadastrada neste dispositivo.');
             }
 
             const verifyRes = await fetch('/api/auth/webauthn/sign/verify', {
@@ -110,28 +114,28 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
                     )}
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-4 mt-6">
+                <div className="flex flex-wrap-reverse sm:flex-wrap items-center justify-between gap-4 mt-6">
                     <button
                         onClick={clear}
                         disabled={isSubmitting}
-                        className="flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border sm:border-transparent font-medium"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border font-medium border-gray-300"
                     >
                         <FiRefreshCcw className="w-4 h-4" />
                         Limpar
                     </button>
 
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1 sm:justify-end">
                         <button
                             onClick={onClose}
                             disabled={isSubmitting || isPasskeyLoading}
-                            className="w-full sm:w-auto px-4 py-3 sm:py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+                            className="flex-1 sm:flex-none px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium border border-transparent whitespace-nowrap"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handlePasskeySign}
                             disabled={isSubmitting || isPasskeyLoading}
-                            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 rounded-lg text-white font-medium
+                            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-white font-medium whitespace-nowrap
                                 ${isSubmitting || isPasskeyLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
                             `}
                         >
@@ -140,19 +144,20 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
                             ) : (
                                 <FiKey className="w-4 h-4" />
                             )}
-                            Usar Biometria
+                            <span className="hidden xs:inline">Usar Biometria</span>
+                            <span className="xs:hidden">Biometria</span>
                         </button>
                         <button
                             onClick={handleConfirm}
                             disabled={isEmpty || isSubmitting || isPasskeyLoading}
-                            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 rounded-lg text-white font-medium
+                            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-white font-medium whitespace-nowrap
                                 ${isEmpty || isSubmitting || isPasskeyLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}
                             `}
                         >
                             {isSubmitting && !isPasskeyLoading ? (
                                 <>
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    Processando...
+                                    <span className="hidden xs:inline">Processando...</span>
                                 </>
                             ) : (
                                 <>

@@ -235,7 +235,13 @@ export async function generateFichaEPI(data: FichaData) {
     });
 
     // ==================== SIGNATURE ====================
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Check if there is enough space for the signature block (about 35mm)
+    if (finalY + 35 > pageHeight - margin) {
+        doc.addPage();
+        finalY = margin + 10;
+    }
 
     if (signatureUrl) {
         if (signatureUrl === 'PASSKEY_SIGNED') {

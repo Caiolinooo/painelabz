@@ -17,7 +17,8 @@ export async function getUserEPIRegistrations(userId: string): Promise<EPIWithUs
         .from('epi_registrations')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
     if (error) {
         console.error('Error fetching EPI registrations:', error);
@@ -57,7 +58,8 @@ export async function getAllEPIRegistrations(status?: string): Promise<EPIWithUs
                 department
             )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
     if (status) {
         query = query.eq('status', status);
