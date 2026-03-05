@@ -49,15 +49,18 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
 
                 // Filter for highlights and check expiration
                 const validHighlights = posts.filter((post: any) => {
-                    const isHighlight = post.metadata?.type === 'highlight';
-                    if (!isHighlight) return false;
+                    const isExplicitHighlight = post.metadata?.type === 'highlight';
 
-                    const expiresAt = post.metadata?.expiresAt;
-                    if (expiresAt && new Date(expiresAt) < new Date()) {
-                        return false;
+                    if (isExplicitHighlight) {
+                        const expiresAt = post.metadata?.expiresAt;
+                        if (expiresAt && new Date(expiresAt) < new Date()) {
+                            return false;
+                        }
+                        return true;
                     }
 
-                    return true;
+                    // Se não for 'highlight' explícito, mas estiver marcado como destaque (featured), inclui
+                    return post.featured === true;
                 });
 
                 setHighlights(validHighlights);
@@ -73,9 +76,47 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
         loadHighlights();
     }, []);
 
-    const handleHighlightClick = (highlight: Highlight) => {
+    const handleHighlightClick = async (highlight: Highlight) => {
         setSelectedHighlight(highlight);
-        // TODO: Increment view count
+
+        // Registrar visualização
+        const sessionKey = `viewed-highlight-${highlight.id}`;
+        if (!sessionStorage.getItem(sessionKey)) {
+            try {
+                // Optimistic UI update
+                setHighlights(prev => prev.map(h => {
+                    if (h.id === highlight.id) {
+                        return {
+                            ...h,
+                            metadata: {
+                                ...h.metadata,
+                                viewCount: (h.metadata?.viewCount || 0) + 1
+                            }
+                        };
+                    }
+                    return h;
+                }));
+                // Update selected highlight immediately to show the new count
+                setSelectedHighlight(prev => prev ? {
+                    ...prev,
+                    metadata: {
+                        ...prev.metadata,
+                        viewCount: (prev.metadata?.viewCount || 0) + 1
+                    }
+                } : prev);
+
+                await fetchWithToken(`/api/news/${highlight.id}/view`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: ***REMOVED*** userId })
+                });
+
+                sessionStorage.setItem(sessionKey, 'true');
+            } catch (error) {
+                console.error('Erro ao registrar view do destaque:', error);
+                // We don't necessarily need to revert optimistic update for views since it's just a metric
+            }
+        }
     };
 
     const handleDeleteHighlight = async (highlightId: string) => {

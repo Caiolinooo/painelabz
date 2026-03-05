@@ -314,7 +314,7 @@ const HighlightCreator: React.FC<HighlightCreatorProps> = ({
             disabled={isSubmitting || !title || !selectedFile}
             className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? t('common.highlight.creating') : t('common.highlight.create')}
+            {isSubmitting ? t('newsSystem.highlight.creating') : t('newsSystem.highlight.create')}
           </button>
         </div>
       </motion.div>

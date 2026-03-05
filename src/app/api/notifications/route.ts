@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       if (actorIds.length > 0) {
         const { data: actors } = await supabaseAdmin
           .from('users_unified')
-          .select('id, first_name, last_name, avatar')
+          .select('id, first_name, last_name, avatar, drive_photo_url')
           .in('id', actorIds);
 
         const actorsMap = new Map(actors?.map((a: any) => [a.id, a]) || []);

@@ -30,4 +30,10 @@ export interface NewsPost {
     pinned: boolean;
     user_liked?: boolean;
     metadata?: any;
+    latest_likes?: Array<{
+        userId: string;
+        firstName: string;
+        lastName: string;
+        avatar?: string;
+    }>;
 }

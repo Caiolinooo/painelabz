@@ -327,19 +327,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
           </nav>
 
-          {/* Admin Customization Trigger */}
-          {isAdmin && (
-            <div className={`px-4 py-2 mt-2 ${isCollapsed ? 'flex justify-center' : ''}`}>
-              <button
-                onClick={() => setIsMenuCustomizerOpen(true)}
-                className={`group flex items-center justify-center gap-2 w-full p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all ${isCollapsed ? 'w-10 h-10' : ''}`}
-                title={t('layout.customizeMenu', 'Personalizar Menu')}
-              >
-                <FiEdit3 className="w-4 h-4" />
-                {!isCollapsed && <span className="text-xs font-semibold">{t('layout.editMenu', 'Editar Menu')}</span>}
-              </button>
-            </div>
-          )}
+
 
           {/* Credits */}
           {!isCollapsed && (
@@ -388,7 +376,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 outline-none hover:ring-2 hover:ring-blue-100 transition-all focus:ring-2 focus:ring-blue-100 flex-shrink-0 relative">
-                    <UserAvatar user={user} profile={profile} className="w-full h-full" />
+                    <div className="w-full h-full rounded-full overflow-hidden relative">
+                      <UserAvatar user={user} profile={profile} className="w-full h-full" />
+                    </div>
                   </button>
                 </DropdownMenu.Trigger>
 
@@ -413,10 +403,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     </div>
 
                     {isAdmin && (
-                      <Link href="/admin" className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
-                        <FiShield className="w-4 h-4" />
-                        <span>{t('layout.adminPanel', 'Painel Admin')}</span>
-                      </Link>
+                      <>
+                        <Link href="/admin" className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">
+                          <FiShield className="w-4 h-4" />
+                          <span>{t('layout.adminPanel', 'Painel Admin')}</span>
+                        </Link>
+                        <DropdownMenu.Item
+                          onClick={() => setIsMenuCustomizerOpen(true)}
+                          className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors"
+                        >
+                          <FiEdit3 className="w-4 h-4" />
+                          <span>{t('layout.editMenu', 'Editar Menu')}</span>
+                        </DropdownMenu.Item>
+                      </>
                     )}
 
                     <Link href="/profile" className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg cursor-pointer outline-none transition-colors">

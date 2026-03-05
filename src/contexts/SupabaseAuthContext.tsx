@@ -629,6 +629,17 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           }
 
           setUser(response.user);
+          
+          // Set profile from login response to ensure avatar data is available immediately
+          if (response.user) {
+            const profileData: UserProfile = {
+              ...response.user,
+              id: response.user.id || (response.user as any)._id,
+              accessPermissions: (response.user as any).access_permissions || {}
+            };
+            setProfile(profileData);
+          }
+          
           setLoginStep('complete');
 
           // Verificar status da senha
