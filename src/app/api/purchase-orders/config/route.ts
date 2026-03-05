@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
                     max_value: config?.max_value || 0,
                     approver_emails: config?.approver_emails || [],
                     cost_centers: config?.cost_centers || [],
+                    payment_terms: config?.payment_terms || [],
                     approval_rules: config?.approval_rules || [] // New Field
                 };
             });
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
                         max_value: c.max_value || 0,
                         approver_emails: c.approver_emails || [],
                         cost_centers: c.cost_centers || [],
+                        payment_terms: c.payment_terms || [],
                         approval_rules: c.approval_rules || []
                     };
                 });
@@ -108,6 +110,7 @@ export async function GET(request: NextRequest) {
                         max_value: config.max_value,
                         approver_emails: config.approver_emails,
                         cost_centers: config.cost_centers,
+                        payment_terms: config.payment_terms || [],
                         approval_rules: config.approval_rules || []
                     }];
                 }
@@ -161,6 +164,7 @@ export async function POST(request: NextRequest) {
         let result;
         const updateData = {
             cost_centers: body.cost_centers || [],
+            payment_terms: body.payment_terms || [],
             max_value: body.max_value || 0,
             approver_emails: body.approver_emails || [], // Legacy Support
             approval_rules: body.approval_rules || [], // New Tiered Support

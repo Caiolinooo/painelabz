@@ -61,6 +61,27 @@ export default function PurchaseOrderForm() {
     });
 
     const sectorId = watch('sector_id');
+    const selectedPaymentTerm = watch('payment_terms');
+    const [customPaymentTerm, setCustomPaymentTerm] = useState('');
+
+    const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value.replace(/\D/g, "");
+        if (value.length > 14) value = value.slice(0, 14);
+
+        if (value.length <= 11) {
+            value = value.replace(/(\d{3})(\d)/, "$1.$2");
+            value = value.replace(/(\d{3})(\d)/, "$1.$2");
+            value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        } else {
+            value = value.replace(/^(\d{2})(\d)/, "$1.$2");
+            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+            value = value.replace(/\.(\d{3})(\d)/, ".$1/$2");
+            value = value.replace(/(\d{4})(\d)/, "$1-$2");
+        }
+        setValue("provider_cnpj", value, { shouldValidate: true });
+        // Need to update the input's actual display value explicitly if we are bypassing register onChange
+        e.target.value = value;
+    };
 
     useEffect(() => {
         const fetchSectors = async () => {
@@ -268,6 +289,7 @@ export default function PurchaseOrderForm() {
                     sector_id: data.sector_id,
                     invoice_url: invoiceUrl,
                     total_value: totalValue,
+                    payment_terms: data.payment_terms === 'Outros' ? customPaymentTerm : data.payment_terms
                 })
             });
 
@@ -358,7 +380,16 @@ export default function PurchaseOrderForm() {
                     </div>
                     <div className="form-control">
                         <label className="label-text">{t('purchaseOrders.form.provider.cnpj')} *</label>
-                        <input {...register('provider_cnpj', { required: true })} className="input-field w-full border rounded-lg p-2" placeholder={t('purchaseOrders.form.provider.placeholder.cnpj')} />
+                        <input
+                            {...register('provider_cnpj', { required: true })}
+                            onChange={(e) => {
+                                handleDocumentChange(e);
+                                register('provider_cnpj').onChange(e);
+                            }}
+                            maxLength={18}
+                            className="input-field w-full border rounded-lg p-2"
+                            placeholder={t('purchaseOrders.form.provider.placeholder.cnpj')}
+                        />
                         {errors.provider_cnpj && <span className="text-red-500 text-xs">{t('purchaseOrders.form.errors.required')}</span>}
                     </div>
                     <div className="form-control">
@@ -375,7 +406,27 @@ export default function PurchaseOrderForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="form-control">
                         <label className="label-text">{t('purchaseOrders.form.delivery.paymentTerms')} *</label>
-                        <input {...register('payment_terms', { required: true })} className="input-field w-full border rounded-lg p-2" placeholder={t('purchaseOrders.form.delivery.placeholder.paymentTerms')} />
+                        {config?.payment_terms && config.payment_terms.length > 0 ? (
+                            <select {...register('payment_terms', { required: true })} className="input-field w-full border rounded-lg p-2 bg-white">
+                                <option value="">{t('purchaseOrders.form.items.placeholder.select')}</option>
+                                {config.payment_terms.map((term: string) => (
+                                    <option key={term} value={term}>{term}</option>
+                                ))}
+                                <option value="Outros">Outros</option>
+                            </select>
+                        ) : (
+                            <input {...register('payment_terms', { required: true })} className="input-field w-full border rounded-lg p-2" placeholder={t('purchaseOrders.form.delivery.placeholder.paymentTerms')} />
+                        )}
+                        {selectedPaymentTerm === 'Outros' && (
+                            <input
+                                type="text"
+                                value={customPaymentTerm}
+                                onChange={(e) => setCustomPaymentTerm(e.target.value)}
+                                className="input-field w-full border rounded-lg p-2 mt-2"
+                                placeholder="Digite a condição de pagamento"
+                                required
+                            />
+                        )}
                     </div>
                     <div className="form-control">
                         <label className="label-text">{t('purchaseOrders.form.delivery.buyer')}</label>
