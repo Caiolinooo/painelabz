@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   StarIcon,
   PencilIcon,
   TrashIcon,
@@ -18,7 +18,7 @@ interface User {
   id: string;
   first_name: string;
   last_name: string;
-  profile_data?: any;
+  avatar?: string;
 }
 
 interface Rating {
@@ -27,7 +27,7 @@ interface Rating {
   user_id: string;
   rating: number;
   review?: string;
-  is_active: boolean;
+  is_approved: boolean;
   is_edited: boolean;
   helpful_count: number;
   created_at: string;
@@ -93,7 +93,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
 
   const handleSubmitRating = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user || !userRating) return;
 
     setSubmitting(true);
@@ -202,7 +202,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
     return Array.from({ length: 5 }, (_, i) => {
       const starNumber = i + 1;
       const isFilled = starNumber <= rating;
-      
+
       return (
         <button
           key={i}
@@ -230,7 +230,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
     if (diffDays === 1) return 'Hoje';
     if (diffDays === 2) return 'Ontem';
     if (diffDays <= 7) return t('components.diffdaysDiasAtras');
-    
+
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -239,8 +239,8 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
   };
 
   const getUserAvatar = (user: User) => {
-    if (user.profile_data?.avatar_url) {
-      return user.profile_data.avatar_url;
+    if (user.avatar) {
+      return user.avatar;
     }
     return null;
   };
@@ -295,12 +295,12 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
                 {[5, 4, 3, 2, 1].map(star => {
                   const count = stats.rating_distribution[star as keyof typeof stats.rating_distribution];
                   const percentage = stats.total_ratings > 0 ? (count / stats.total_ratings) * 100 : 0;
-                  
+
                   return (
                     <div key={star} className="flex items-center space-x-2">
                       <span className="text-sm text-gray-600 w-8">{star}★</span>
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${percentage}%` }}
                         />
@@ -434,18 +434,18 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
               <div key={rating.id} className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 w-10 h-10">
                       {getUserAvatar(rating.user) ? (
                         <img
-                          src={getUserAvatar(rating.user)}
+                          src={getUserAvatar(rating.user) as string}
                           alt={`${rating.user.first_name} ${rating.user.last_name}`}
-                          className="w-10 h-10 rounded-full object-cover"
+                          className="w-full h-full rounded-full object-cover"
                         />
                       ) : (
                         <UserCircleIcon className="w-10 h-10 text-gray-400" />
                       )}
                     </div>
-                    
+
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <span className="font-medium text-gray-900">
@@ -459,7 +459,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
                           <span className="text-xs text-gray-400">(editado)</span>
                         )}
                       </div>
-                      
+
                       {editingRating === rating.id ? (
                         <div className="mt-3">
                           <div className="mb-3">
@@ -470,7 +470,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
                               {renderStars(editRating, true, setEditRating)}
                             </div>
                           </div>
-                          
+
                           <textarea
                             value={editReview}
                             onChange={(e) => setEditReview(e.target.value)}
@@ -509,7 +509,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
                           {rating.review && (
                             <p className="text-gray-700 mt-2 whitespace-pre-wrap">{rating.review}</p>
                           )}
-                          
+
                           <div className="flex items-center space-x-4 mt-3">
                             <button className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
                               <HandThumbUpIcon className="w-4 h-4 mr-1" />
@@ -520,7 +520,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Menu de ações */}
                   {user && (canEditRating(rating) || canDeleteRating(rating)) && (
                     <div className="relative">
@@ -530,7 +530,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
                       >
                         <EllipsisVerticalIcon className="w-5 h-5" />
                       </button>
-                      
+
                       {showDropdown === rating.id && (
                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
                           <div className="py-1">
@@ -548,7 +548,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
                                 Editar
                               </button>
                             )}
-                            
+
                             {canDeleteRating(rating) && (
                               <button
                                 onClick={() => {

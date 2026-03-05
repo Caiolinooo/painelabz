@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/Layout/MainLayout';
-import { 
-  PlayIcon, 
-  ClockIcon, 
+import {
+  PlayIcon,
+  ClockIcon,
   UserIcon,
   BookOpenIcon,
   StarIcon,
@@ -89,7 +89,7 @@ const MyCoursesPage: React.FC = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       const data = await response.json();
 
       if (data.success) {
@@ -143,7 +143,7 @@ const MyCoursesPage: React.FC = () => {
   // Filtrar matrículas
   const filteredEnrollments = enrollments.filter(enrollment => {
     const progress = enrollment.progress?.[0]?.progress_percentage || 0;
-    
+
     switch (filter) {
       case 'completed':
         return enrollment.completed_at || progress >= 100;
@@ -169,9 +169,9 @@ const MyCoursesPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Acesso restrito</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">{t('academy.acessoRestrito')}</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Faça login para ver seus cursos matriculados.
+              {t('academy.facaLoginParaVerSeusCursos')}
             </p>
           </div>
         </div>
@@ -201,7 +201,7 @@ const MyCoursesPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Erro</h3>
+                <h3 className="text-sm font-medium text-red-800">{t('academy.erro')}</h3>
                 <div className="mt-2 text-sm text-red-700">
                   <p>{error}</p>
                 </div>
@@ -210,7 +210,7 @@ const MyCoursesPage: React.FC = () => {
                     onClick={() => loadEnrollments()}
                     className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
                   >
-                    Tentar novamente
+                    {t('academy.tentarNovamente')}
                   </button>
                 </div>
               </div>
@@ -231,16 +231,16 @@ const MyCoursesPage: React.FC = () => {
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeftIcon className="h-5 w-5 mr-2" />
-            Voltar ao Academy
+            {t('academy.voltarAoAcademy')}
           </button>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <BookOpenIcon className="w-8 h-8 text-blue-600 mr-3" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Meus Cursos</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{t('academy.meusCursos')}</h1>
                 <p className="text-gray-600 mt-1">
-                  Acompanhe seu progresso e continue aprendendo
+                  {t('academy.acompanheSeuProgresso')}
                 </p>
               </div>
             </div>
@@ -255,7 +255,7 @@ const MyCoursesPage: React.FC = () => {
                 <BookOpenIcon className="h-8 w-8 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total de Cursos</p>
+                <p className="text-sm font-medium text-gray-600">{t('academy.totalDeCursos')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
               </div>
             </div>
@@ -267,7 +267,7 @@ const MyCoursesPage: React.FC = () => {
                 <TrophyIcon className="h-8 w-8 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Concluídos</p>
+                <p className="text-sm font-medium text-gray-600">{t('academy.concluidos')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
               </div>
             </div>
@@ -279,7 +279,7 @@ const MyCoursesPage: React.FC = () => {
                 <PlayIcon className="h-8 w-8 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Em Progresso</p>
+                <p className="text-sm font-medium text-gray-600">{t('academy.emProgresso')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
               </div>
             </div>
@@ -291,7 +291,7 @@ const MyCoursesPage: React.FC = () => {
                 <ClockIcon className="h-8 w-8 text-gray-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Não Iniciados</p>
+                <p className="text-sm font-medium text-gray-600">{t('academy.naoIniciados')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.notStarted}</p>
               </div>
             </div>
@@ -303,33 +303,30 @@ const MyCoursesPage: React.FC = () => {
           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
             <button
               onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                filter === 'all'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === 'all'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
             >
-              Todos ({stats.total})
+              {t('academy.todos')} ({stats.total})
             </button>
             <button
               onClick={() => setFilter('in_progress')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                filter === 'in_progress'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === 'in_progress'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
             >
-              Em Progresso ({stats.inProgress})
+              {t('academy.emProgresso')} ({stats.inProgress})
             </button>
             <button
               onClick={() => setFilter('completed')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                filter === 'completed'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === 'completed'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
             >
-              Concluídos ({stats.completed})
+              {t('academy.concluidos')} ({stats.completed})
             </button>
           </div>
         </div>
@@ -339,13 +336,13 @@ const MyCoursesPage: React.FC = () => {
           <div className="text-center py-12">
             <BookOpenIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">
-              {filter === 'all' ? 'Nenhum curso matriculado' : 
-               filter === 'completed' ? t('academy.nenhumCursoConcluido') :
-               'Nenhum curso em progresso'}
+              {filter === 'all' ? t('academy.nenhumCursoMatriculado') :
+                filter === 'completed' ? t('academy.nenhumCursoConcluido') :
+                  t('academy.nenhumCursoEmProgresso')}
             </h3>
             <p className="mt-1 text-sm text-gray-500">
               {filter === 'all' ? t('academy.exploreNossosCursosDisponiveisEComeceAAprender') :
-               'Continue estudando para completar seus cursos.'}
+                t('academy.continueEstudando')}
             </p>
             {filter === 'all' && (
               <div className="mt-6">
@@ -353,7 +350,7 @@ const MyCoursesPage: React.FC = () => {
                   onClick={() => router.push('/academy')}
                   className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                 >
-                  Explorar Cursos
+                  {t('academy.explorarCursos')}
                 </button>
               </div>
             )}
@@ -364,30 +361,30 @@ const MyCoursesPage: React.FC = () => {
               const progress = enrollment.progress?.[0];
               const progressPercentage = progress?.progress_percentage || 0;
               const isCompleted = enrollment.completed_at || progressPercentage >= 100;
-              
+
               return (
                 <div key={enrollment.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                   <div className="relative">
                     <img
-                      src={enrollment.course.thumbnail_url || '/images/course-default.jpg'}
+                      src={enrollment.course.thumbnail_url || '/images/course-default.svg'}
                       alt={enrollment.course.title}
                       className="w-full h-48 object-cover"
                     />
-                    
+
                     {/* Status badge */}
                     <div className="absolute top-4 left-4">
                       {isCompleted ? (
                         <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full flex items-center">
                           <CheckCircleIcon className="w-3 h-3 mr-1" />
-                          Concluído
+                          {t('academy.concluido')}
                         </span>
                       ) : progressPercentage > 0 ? (
                         <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">
-                          Em progresso
+                          {t('academy.emProgresso')}
                         </span>
                       ) : (
                         <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2 py-1 rounded-full">
-                          Não iniciado
+                          {t('academy.naoIniciado')}
                         </span>
                       )}
                     </div>
@@ -401,38 +398,38 @@ const MyCoursesPage: React.FC = () => {
                     {/* Progress bar overlay */}
                     <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-4">
                       <div className="flex justify-between text-white text-xs mb-1">
-                        <span>Progresso</span>
+                        <span>{t('academy.progresso')}</span>
                         <span>{progressPercentage}%</span>
                       </div>
                       <div className="w-full bg-gray-300 rounded-full h-1">
-                        <div 
+                        <div
                           className="bg-white h-1 rounded-full transition-all duration-300"
                           style={{ width: `${progressPercentage}%` }}
                         ></div>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-gray-900 line-clamp-2 flex-1">{enrollment.course.title}</h3>
                       {enrollment.course.category && (
-                        <span 
+                        <span
                           className="ml-2 px-2 py-1 text-xs font-medium rounded-full flex-shrink-0"
-                          style={{ 
+                          style={{
                             backgroundColor: `${enrollment.course.category.color}20`,
-                            color: enrollment.course.category.color 
+                            color: enrollment.course.category.color
                           }}
                         >
                           {enrollment.course.category.name}
                         </span>
                       )}
                     </div>
-                    
+
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                       {enrollment.course.short_description || enrollment.course.description}
                     </p>
-                    
+
                     {/* Informações do curso */}
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
                       <div className="flex items-center space-x-4">
@@ -452,22 +449,21 @@ const MyCoursesPage: React.FC = () => {
                     {/* Data de matrícula */}
                     <div className="flex items-center text-xs text-gray-500 mb-4">
                       <CalendarIcon className="w-4 h-4 mr-1" />
-                      Matriculado em {formatDate(enrollment.enrolled_at)}
+                      {t('academy.matriculadoEm')} {formatDate(enrollment.enrolled_at)}
                     </div>
 
                     {/* Botão de ação */}
-                    <button 
+                    <button
                       onClick={() => router.push(`/academy/course/${enrollment.course.id}`)}
-                      className={`w-full py-2 px-4 rounded-lg transition-colors flex items-center justify-center ${
-                        isCompleted 
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : progressPercentage > 0
+                      className={`w-full py-2 px-4 rounded-lg transition-colors flex items-center justify-center ${isCompleted
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : progressPercentage > 0
                           ? 'bg-blue-600 text-white hover:bg-blue-700'
                           : 'bg-gray-600 text-white hover:bg-gray-700'
-                      }`}
+                        }`}
                     >
                       <PlayIcon className="w-4 h-4 mr-2" />
-                      {isCompleted ? 'Revisar' : progressPercentage > 0 ? 'Continuar' : 'Iniciar'}
+                      {isCompleted ? t('academy.revisar') : progressPercentage > 0 ? t('academy.continuar') : t('academy.iniciar')}
                     </button>
                   </div>
                 </div>

@@ -94,14 +94,19 @@ const AcademyPage: React.FC = () => {
     setError(null);
 
     try {
-      await Promise.all([
+      // Load independently so one failure doesn't block others
+      const results = await Promise.allSettled([
         loadCategories(),
         loadCourses(),
         user?.id ? loadEnrollments() : Promise.resolve()
       ]);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      setError('Erro ao carregar dados do Academy');
+
+      // Check if courses failed specifically (most critical)
+      const coursesResult = results[1];
+      if (coursesResult.status === 'rejected') {
+        console.error('Falha ao carregar cursos:', coursesResult.reason);
+        setError('Erro ao carregar cursos');
+      }
     } finally {
       setLoading(false);
     }
@@ -110,12 +115,11 @@ const AcademyPage: React.FC = () => {
   const loadCategories = async () => {
     try {
       const response = await fetch('/api/academy/categories');
+      if (!response.ok) return;
       const data = await response.json();
 
       if (data.success) {
         setCategories(data.categories);
-      } else {
-        console.error('Erro ao carregar categorias:', data.error);
       }
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
@@ -123,32 +127,31 @@ const AcademyPage: React.FC = () => {
   };
 
   const loadCourses = async () => {
-    try {
-      const params = new URLSearchParams();
+    const params = new URLSearchParams();
 
-      // Filtros
-      if (selectedCategory !== 'all') params.append('category_id', selectedCategory);
-      if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
-      if (searchTerm) params.append('search', searchTerm);
+    // Filtros
+    if (selectedCategory !== 'all') params.append('category_id', selectedCategory);
+    if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
+    if (searchTerm) params.append('search', searchTerm);
 
-      // Apenas cursos publicados para usuários normais
-      params.append('published', 'true');
+    // Apenas cursos publicados para usuários normais
+    params.append('published', 'true');
 
-      // Cursos em destaque
-      if (viewMode === 'featured') {
-        params.append('featured', 'true');
-      }
+    // Cursos em destaque
+    if (viewMode === 'featured') {
+      params.append('featured', 'true');
+    }
 
-      const response = await fetch(`/api/academy/courses?${params}`);
-      const data = await response.json();
+    const response = await fetch(`/api/academy/courses?${params}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
 
-      if (data.success) {
-        setCourses(data.courses);
-      } else {
-        console.error('Erro ao carregar cursos:', data.error);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar cursos:', error);
+    if (data.success) {
+      setCourses(data.courses);
+    } else {
+      console.error('Erro ao carregar cursos:', data.error);
     }
   };
 
@@ -264,9 +267,8 @@ const AcademyPage: React.FC = () => {
     return Array.from({ length: 5 }, (_, i) => (
       <StarIcon
         key={i}
-        className={`h-4 w-4 ${
-          i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-        }`}
+        className={`h-4 w-4 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
+          }`}
       />
     ));
   };
@@ -301,7 +303,7 @@ const AcademyPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Erro ao carregar Academy</h3>
+                <h3 className="text-sm font-medium text-red-800">{t('academy.erroAoCarregarAcademy')}</h3>
                 <div className="mt-2 text-sm text-red-700">
                   <p>{error}</p>
                 </div>
@@ -310,7 +312,7 @@ const AcademyPage: React.FC = () => {
                     onClick={() => loadData()}
                     className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
                   >
-                    Tentar novamente
+                    {t('academy.tentarNovamente')}
                   </button>
                 </div>
               </div>
@@ -332,7 +334,7 @@ const AcademyPage: React.FC = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">ABZ Academy</h1>
                 <p className="text-gray-600 mt-1">
-                  Centro de treinamento e desenvolvimento profissional da ABZ Group
+                  {t('academy.centroDeTreinamento')}
                 </p>
               </div>
             </div>
@@ -348,14 +350,14 @@ const AcademyPage: React.FC = () => {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    <span>Dashboard</span>
+                    <span>{t('academy.dashboard')}</span>
                   </button>
                   <button
                     onClick={() => window.location.href = '/academy/my-courses'}
                     className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
                   >
                     <BookOpenIcon className="w-5 h-5" />
-                    <span>Meus Cursos ({enrollments.length})</span>
+                    <span>{t('academy.meusCursos')} ({enrollments.length})</span>
                   </button>
                   <button
                     onClick={() => window.location.href = '/academy/certificates'}
@@ -364,7 +366,7 @@ const AcademyPage: React.FC = () => {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                     </svg>
-                    <span>Certificados</span>
+                    <span>{t('academy.certificados')}</span>
                   </button>
                 </>
               )}
@@ -377,7 +379,7 @@ const AcademyPage: React.FC = () => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  <span>Criar Curso</span>
+                  <span>{t('academy.criarCurso')}</span>
                 </button>
               )}
             </div>
@@ -389,34 +391,31 @@ const AcademyPage: React.FC = () => {
           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
             <button
               onClick={() => setViewMode('all')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'all'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'all'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
             >
-              Todos os Cursos
+              {t('academy.todosOsCursos')}
             </button>
             <button
               onClick={() => setViewMode('featured')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'featured'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'featured'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
             >
-              Em Destaque
+              {t('academy.emDestaque')}
             </button>
             {user && (
               <button
                 onClick={() => setViewMode('enrolled')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'enrolled'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'enrolled'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
-                Meus Cursos ({enrollments.length})
+                {t('academy.meusCursos')} ({enrollments.length})
               </button>
             )}
           </div>
@@ -430,7 +429,7 @@ const AcademyPage: React.FC = () => {
               <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar cursos..."
+                placeholder={t('academy.buscarCursos')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -443,7 +442,7 @@ const AcademyPage: React.FC = () => {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">Todas as categorias</option>
+              <option value="all">{t('academy.todasAsCategorias')}</option>
               {categories.map(category => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
@@ -455,10 +454,10 @@ const AcademyPage: React.FC = () => {
               onChange={(e) => setSelectedDifficulty(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">Todas as dificuldades</option>
-              <option value="beginner">Iniciante</option>
-              <option value="intermediate">Intermediário</option>
-              <option value="advanced">Avançado</option>
+              <option value="all">{t('academy.todasAsDificuldades')}</option>
+              <option value="beginner">{t('academy.iniciante')}</option>
+              <option value="intermediate">{t('academy.intermediario')}</option>
+              <option value="advanced">{t('academy.avancado')}</option>
             </select>
 
             {/* Estatísticas */}
@@ -476,25 +475,25 @@ const AcademyPage: React.FC = () => {
           {viewMode === 'enrolled' && enrollments.length === 0 ? (
             <div className="text-center py-12">
               <BookOpenIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum curso matriculado</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">{t('academy.nenhumCursoMatriculado')}</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Explore nossos cursos disponíveis e comece a aprender hoje mesmo.
+                {t('academy.exploreNossosCursosDisponiveisEComeceAAprender')}
               </p>
               <div className="mt-6">
                 <button
                   onClick={() => setViewMode('all')}
                   className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                 >
-                  Ver Todos os Cursos
+                  {t('academy.verTodosOsCursos')}
                 </button>
               </div>
             </div>
           ) : filteredCourses.length === 0 ? (
             <div className="text-center py-12">
               <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum curso encontrado</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">{t('academy.nenhumCursoEncontrado')}</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Tente ajustar os filtros ou termos de busca.
+                {t('academy.tenteAjustarOsFiltros')}
               </p>
             </div>
           ) : (
@@ -507,14 +506,14 @@ const AcademyPage: React.FC = () => {
                   <div key={course.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                     <div className="relative">
                       <img
-                        src={course.thumbnail_url || '/images/course-default.jpg'}
+                        src={course.thumbnail_url || '/images/course-default.svg'}
                         alt={course.title}
                         className="w-full h-48 object-cover"
                       />
                       <div className="absolute top-4 left-4">
                         {course.is_featured && (
                           <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">
-                            Destaque
+                            {t('academy.destaque')}
                           </span>
                         )}
                       </div>
@@ -527,7 +526,7 @@ const AcademyPage: React.FC = () => {
                         <div className="absolute bottom-4 left-4 right-4">
                           <div className="bg-black bg-opacity-50 rounded-lg p-2">
                             <div className="flex justify-between text-white text-xs mb-1">
-                              <span>Progresso</span>
+                              <span>{t('academy.progresso')}</span>
                               <span>{progress}%</span>
                             </div>
                             <div className="w-full bg-gray-300 rounded-full h-1">
@@ -584,7 +583,7 @@ const AcademyPage: React.FC = () => {
                             {renderStars(course.stats.average_rating)}
                           </div>
                           <span className="text-sm text-gray-600">
-                            {course.stats.average_rating.toFixed(1)} ({course.stats.ratings_count} avaliações)
+                            {course.stats.average_rating.toFixed(1)} ({course.stats.ratings_count} {t('academy.avaliacoes')})
                           </span>
                         </div>
                       )}
@@ -596,7 +595,7 @@ const AcademyPage: React.FC = () => {
                           className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
                         >
                           <PlayIcon className="w-4 h-4 mr-2" />
-                          {progress > 0 ? 'Continuar' : 'Iniciar'}
+                          {progress > 0 ? t('academy.continuar') : t('academy.iniciar')}
                         </button>
                       ) : (
                         <button
@@ -604,7 +603,7 @@ const AcademyPage: React.FC = () => {
                           className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
                         >
                           <BookOpenIcon className="w-4 h-4 mr-2" />
-                          Matricular-se
+                          {t('academy.matricularSe')}
                         </button>
                       )}
                     </div>

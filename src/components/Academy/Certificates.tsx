@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   AcademicCapIcon,
   DocumentArrowDownIcon,
   EyeIcon,
@@ -68,17 +68,18 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       const data = await response.json();
 
       if (data.success) {
         setCertificates(data.certificates);
       } else {
-        setError(data.error || 'Erro ao carregar certificados');
+        console.error('API Error: ', data);
+        setError(data.error || t('academy.erroAoCarregarCertificados') || 'Erro ao carregar certificados');
       }
     } catch (error) {
       console.error('Erro ao carregar certificados:', error);
-      setError('Erro ao carregar certificados');
+      setError(t('academy.erroAoCarregarCertificados') || 'Erro ao carregar certificados');
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
   const handleViewCertificate = async (certificate: Certificate) => {
     try {
       setGeneratingCertificate(certificate.id);
-      
+
       const token = await getToken();
       if (!token) return;
 
@@ -99,7 +100,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
 
       if (response.ok) {
         const htmlContent = await response.text();
-        
+
         // Abrir certificado em nova janela
         const newWindow = window.open('', '_blank');
         if (newWindow) {
@@ -107,11 +108,11 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
           newWindow.document.close();
         }
       } else {
-        alert('Erro ao gerar certificado');
+        alert(t('academy.erroAoGerarCertificado') || 'Erro ao gerar certificado');
       }
     } catch (error) {
       console.error('Erro ao visualizar certificado:', error);
-      alert('Erro ao visualizar certificado');
+      alert(t('academy.erroAoVisualizarCertificado') || 'Erro ao visualizar certificado');
     } finally {
       setGeneratingCertificate(null);
     }
@@ -120,7 +121,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
   const handleDownloadCertificate = async (certificate: Certificate) => {
     try {
       setGeneratingCertificate(certificate.id);
-      
+
       const token = await getToken();
       if (!token) return;
 
@@ -132,25 +133,25 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
 
       if (response.ok) {
         const htmlContent = await response.text();
-        
+
         // Criar blob e download
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement('a');
         a.href = url;
         a.download = `certificado-${certificate.course_title.replace(/[^a-zA-Z0-9]/g, '-')}.html`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
+
         URL.revokeObjectURL(url);
       } else {
-        alert('Erro ao gerar certificado');
+        alert(t('academy.erroAoGerarCertificado') || 'Erro ao gerar certificado');
       }
     } catch (error) {
       console.error('Erro ao baixar certificado:', error);
-      alert('Erro ao baixar certificado');
+      alert(t('academy.erroAoBaixarCertificado') || 'Erro ao baixar certificado');
     } finally {
       setGeneratingCertificate(null);
     }
@@ -175,9 +176,9 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
 
   const getDifficultyLabel = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
-      case 'beginner': return 'Iniciante';
-      case 'intermediate': return t('components.intermediario');
-      case 'advanced': return t('components.avancado');
+      case 'beginner': return t('components.iniciante') || 'Iniciante';
+      case 'intermediate': return t('components.intermediario') || 'Intermediário';
+      case 'advanced': return t('components.avancado') || 'Avançado';
       default: return difficulty;
     }
   };
@@ -196,9 +197,9 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
       <div className={`${className}`}>
         <div className="text-center py-12">
           <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Acesso restrito</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">{t('components.acessoRestrito') || 'Acesso restrito'}</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Faça login para ver seus certificados.
+            {t('academy.facaLoginParaVerSeusCertificados') || 'Faça login para ver seus certificados.'}
           </p>
         </div>
       </div>
@@ -226,7 +227,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Erro</h3>
+              <h3 className="text-sm font-medium text-red-800">{t('academy.erro') || 'Erro'}</h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>{error}</p>
               </div>
@@ -235,7 +236,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
                   onClick={() => loadCertificates()}
                   className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
                 >
-                  Tentar novamente
+                  {t('academy.tentarNovamente') || 'Tentar novamente'}
                 </button>
               </div>
             </div>
@@ -250,15 +251,15 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
           <TrophyIcon className="w-5 h-5 mr-2" />
-          Meus Certificados ({certificates.length})
+          {t('academy.meusCertificados') || 'Meus Certificados'} ({certificates.length})
         </h3>
 
         {certificates.length === 0 ? (
           <div className="text-center py-12">
             <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum certificado ainda</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">{t('admin.nenhumCertificadoAinda') || 'Nenhum certificado ainda'}</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Complete cursos para ganhar certificados de conclusão.
+              {t('academy.completeCursosParaGanharCertificados') || 'Complete cursos para ganhar certificados de conclusão.'}
             </p>
           </div>
         ) : (
@@ -271,20 +272,20 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
                       <h4 className="font-semibold text-gray-900 line-clamp-2 mb-2">
                         {certificate.course_title}
                       </h4>
-                      
+
                       {certificate.category && (
-                        <span 
+                        <span
                           className="inline-block px-2 py-1 text-xs font-medium rounded-full mb-2"
-                          style={{ 
+                          style={{
                             backgroundColor: `${certificate.category.color}20`,
-                            color: certificate.category.color 
+                            color: certificate.category.color
                           }}
                         >
                           {certificate.category.name}
                         </span>
                       )}
                     </div>
-                    
+
                     <TrophyIcon className="w-6 h-6 text-yellow-500 flex-shrink-0" />
                   </div>
 
@@ -293,7 +294,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
                       <ClockIcon className="w-4 h-4 mr-2" />
                       {formatDuration(certificate.course_duration)}
                     </div>
-                    
+
                     <div className="flex items-center text-sm text-gray-600">
                       <TagIcon className="w-4 h-4 mr-2" />
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDifficultyColor(certificate.course_difficulty)}`}>
@@ -310,7 +311,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
 
                     <div className="flex items-center text-sm text-gray-600">
                       <CalendarIcon className="w-4 h-4 mr-2" />
-                      Concluído em {formatDate(certificate.completed_at)}
+                      {t('academy.concluidoEm') || 'Concluído em'} {formatDate(certificate.completed_at)}
                     </div>
                   </div>
 
@@ -325,9 +326,9 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
                       ) : (
                         <EyeIcon className="w-4 h-4 mr-2" />
                       )}
-                      {generatingCertificate === certificate.id ? 'Gerando...' : 'Visualizar'}
+                      {generatingCertificate === certificate.id ? (t('components.gerando') || 'Gerando...') : (t('components.visualizar') || 'Visualizar')}
                     </button>
-                    
+
                     <button
                       onClick={() => handleDownloadCertificate(certificate)}
                       disabled={generatingCertificate === certificate.id}
@@ -338,7 +339,7 @@ const Certificates: React.FC<CertificatesProps> = ({ className = '' }) => {
                       ) : (
                         <DocumentArrowDownIcon className="w-4 h-4 mr-2" />
                       )}
-                      {generatingCertificate === certificate.id ? 'Gerando...' : 'Baixar'}
+                      {generatingCertificate === certificate.id ? (t('components.gerando') || 'Gerando...') : (t('components.baixar') || 'Baixar')}
                     </button>
                   </div>
                 </div>

@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
 
     // Se for para gerar um certificado específico
     if (generate && (courseId || enrollmentId)) {
-      return await generateCertificate(user, courseId, enrollmentId);
+      const host = request.headers.get('host') || '';
+      return await generateCertificate(user, courseId, enrollmentId, host);
     }
 
     // Listar certificados do usuário
@@ -57,7 +58,6 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .not('completed_at', 'is', null);
 
     if (error) {
@@ -65,24 +65,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao buscar certificados' }, { status: 500 });
     }
 
-    const certificates = enrollments?.map((enrollment: any) => {
-      const courseData = enrollment.course?.[0] || enrollment.course;
-      const category = Array.isArray(courseData?.category) ? courseData.category[0] : courseData?.category;
-      const instructor = Array.isArray(courseData?.instructor) ? courseData.instructor[0] : courseData?.instructor;
+    const certificates = (enrollments || [])
+      .filter((enrollment: any) => {
+        const courseData = enrollment.course?.[0] || enrollment.course;
+        return courseData != null; // Ensure the related course still exists
+      })
+      .map((enrollment: any) => {
+        const courseData = enrollment.course?.[0] || enrollment.course;
+        const category = Array.isArray(courseData?.category) ? courseData.category[0] : courseData?.category;
+        const instructor = Array.isArray(courseData?.instructor) ? courseData.instructor[0] : courseData?.instructor;
 
-      return {
-        id: enrollment.id,
-        course_id: enrollment.course_id,
-        course_title: courseData?.title,
-        course_duration: courseData?.duration,
-        course_difficulty: courseData?.difficulty_level,
-        category,
-        instructor,
-        completed_at: enrollment.completed_at,
-        enrolled_at: enrollment.enrolled_at,
-        certificate_url: `/api/academy/certificates?enrollment_id=${enrollment.id}&generate=true`
-      };
-    }) || [];
+        return {
+          id: enrollment.id,
+          course_id: enrollment.course_id,
+          course_title: courseData?.title,
+          course_duration: courseData?.duration,
+          course_difficulty: courseData?.difficulty_level,
+          category,
+          instructor,
+          completed_at: enrollment.completed_at,
+          enrolled_at: enrollment.enrolled_at,
+          certificate_url: `/api/academy/certificates?enrollment_id=${enrollment.id}&generate=true`
+        };
+      });
 
     return NextResponse.json({
       success: true,
@@ -95,123 +100,87 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function generateCertificate(user: any, courseId?: string | null, enrollmentId?: string | null) {
+async function generateCertificate(user: any, courseId?: string | null, enrollmentId?: string | null, requestHost?: string) {
   try {
     let enrollment;
+    const enrollmentSelect = `
+      *,
+      course:academy_courses(
+        id,
+        title,
+        description,
+        duration,
+        difficulty_level,
+        instructor_signature_url,
+        category:academy_categories(id, name, color),
+        instructor:users_unified(id, first_name, last_name)
+      )
+    `;
 
     if (enrollmentId) {
-      // Buscar por enrollment_id
       const { data, error } = await supabaseAdmin
         .from('academy_enrollments')
-        .select(`
-          *,
-          course:academy_courses(
-            id,
-            title,
-            description,
-            duration,
-            difficulty_level,
-            category:academy_categories(
-              id,
-              name,
-              color
-            ),
-            instructor:users_unified(
-              id,
-              first_name,
-              last_name
-            )
-          )
-        `)
+        .select(enrollmentSelect)
         .eq('id', enrollmentId)
         .eq('user_id', user.id)
-        .eq('is_active', true)
         .single();
-
-      if (error || !data) {
-        return NextResponse.json({ error: 'Matrícula não encontrada' }, { status: 404 });
-      }
-
+      if (error || !data) return NextResponse.json({ error: 'Matrícula não encontrada' }, { status: 404 });
       enrollment = data;
     } else if (courseId) {
-      // Buscar por course_id
       const { data, error } = await supabaseAdmin
         .from('academy_enrollments')
-        .select(`
-          *,
-          course:academy_courses(
-            id,
-            title,
-            description,
-            duration,
-            difficulty_level,
-            category:academy_categories(
-              id,
-              name,
-              color
-            ),
-            instructor:users_unified(
-              id,
-              first_name,
-              last_name
-            )
-          )
-        `)
+        .select(enrollmentSelect)
         .eq('course_id', courseId)
         .eq('user_id', user.id)
-        .eq('is_active', true)
         .single();
-
-      if (error || !data) {
-        return NextResponse.json({ error: 'Matrícula não encontrada' }, { status: 404 });
-      }
-
+      if (error || !data) return NextResponse.json({ error: 'Matrícula não encontrada' }, { status: 404 });
       enrollment = data;
     } else {
       return NextResponse.json({ error: 'course_id ou enrollment_id é obrigatório' }, { status: 400 });
     }
 
-    // Verificar se o curso foi concluído
     if (!enrollment.completed_at) {
       return NextResponse.json({ error: 'Curso não foi concluído' }, { status: 400 });
     }
 
-    // Gerar certificado PDF
+    const courseData = Array.isArray(enrollment.course) ? enrollment.course[0] : enrollment.course;
+    const instructor = Array.isArray(courseData?.instructor) ? courseData.instructor[0] : courseData?.instructor;
+    const resolvedCourseId = courseData?.id || enrollment.course_id;
+
+    // Fetch modules for "Conteúdo Programático"
+    const { data: modules } = await supabaseAdmin
+      .from('academy_modules')
+      .select('title, sort_order')
+      .eq('course_id', resolvedCourseId)
+      .eq('is_published', true)
+      .order('sort_order', { ascending: true });
+
+    const moduleTitles = (modules || []).map(m => m.title);
+    const durationHours = Math.max(1, Math.round((courseData?.duration || 0) / 3600));
+
+    // Build base URL for assets
+    const protocol = requestHost?.includes('localhost') ? 'http' : 'https';
+    const baseUrl = requestHost ? `${protocol}://${requestHost}` : '';
+
     const certificateData = {
-      student_name: `${user.first_name} ${user.last_name}`,
-      course_title: enrollment.course.title,
-      course_duration: formatDuration(enrollment.course.duration),
-      course_difficulty: getDifficultyLabel(enrollment.course.difficulty_level),
-      category: enrollment.course.category?.name || 'Geral',
-      instructor_name: `${enrollment.course.instructor.first_name} ${enrollment.course.instructor.last_name}`,
-      completion_date: new Date(enrollment.completed_at).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      }),
-      enrollment_date: new Date(enrollment.enrolled_at).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      }),
+      student_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+      course_title: courseData?.title || '',
+      course_duration_hours: String(durationHours).padStart(2, '0'),
+      instructor_name: `${instructor?.first_name || ''} ${instructor?.last_name || ''}`.trim(),
+      instructor_signature_url: courseData?.instructor_signature_url || null,
+      completion_date: new Date(enrollment.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       certificate_id: `ABZ-${enrollment.id.toUpperCase().slice(0, 8)}`,
-      issue_date: new Date().toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      })
+      module_titles: moduleTitles,
+      baseUrl,
     };
 
-    // Gerar HTML do certificado
     const certificateHTML = generateCertificateHTML(certificateData);
 
-    // Log da ação
     logAction(user, 'GENERATE_CERTIFICATE', 'certificate', enrollment.id, {
       course_id: enrollment.course_id,
-      course_title: enrollment.course.title
+      course_title: courseData?.title
     });
 
-    // Retornar HTML para conversão em PDF no frontend
     return new NextResponse(certificateHTML, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
@@ -225,355 +194,293 @@ async function generateCertificate(user: any, courseId?: string | null, enrollme
   }
 }
 
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds} segundos`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} minutos`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return `${hours} hora${hours > 1 ? 's' : ''}${remainingMinutes > 0 ? ` e ${remainingMinutes} minuto${remainingMinutes > 1 ? 's' : ''}` : ''}`;
-}
+function generateCertificateHTML(data: {
+  student_name: string;
+  course_title: string;
+  course_duration_hours: string;
+  instructor_name: string;
+  instructor_signature_url: string | null;
+  completion_date: string;
+  certificate_id: string;
+  module_titles: string[];
+  baseUrl: string;
+}): string {
+  const conteudoProgramatico = data.module_titles.length > 0
+    ? data.module_titles.join('; ') + '.'
+    : '';
 
-function getDifficultyLabel(difficulty: string): string {
-  switch (difficulty.toLowerCase()) {
-    case 'beginner': return 'Iniciante';
-    case 'intermediate': return 'Intermediário';
-    case 'advanced': return 'Avançado';
-    default: return difficulty;
+  const hasBiometric = data.instructor_signature_url === 'PASSKEY_SIGNED';
+  const hasDrawnSignature = data.instructor_signature_url && !hasBiometric;
+
+  // Signature HTML block
+  let signatureHtml = '';
+  if (hasDrawnSignature) {
+    signatureHtml = `
+      <div class="sig-img">
+        <img src="${data.instructor_signature_url}" alt="Assinatura" style="max-height:50px; display:block;" />
+      </div>
+      <div class="sig-line">
+        <span class="sig-name">${data.instructor_name}</span> <span class="sig-role">| Facilitador</span>
+      </div>
+      <p class="bio-note">Assinatura reforçada com confirmação biométrica</p>
+    `;
+  } else if (hasBiometric) {
+    signatureHtml = `
+      <div class="sig-line">
+        <span class="sig-name">${data.instructor_name}</span> <span class="sig-role">| Facilitador</span>
+      </div>
+      <p class="bio-note">✓ Assinatura digital confirmada via biometria</p>
+    `;
+  } else {
+    signatureHtml = `
+      <div class="sig-line">
+        <span class="sig-name">${data.instructor_name}</span> <span class="sig-role">| Facilitador</span>
+      </div>
+    `;
   }
-}
 
-function generateCertificateHTML(data: any): string {
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificado de Conclusão - ${data.course_title}</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        
-        .certificate {
-            background: white;
-            width: 800px;
-            max-width: 100%;
-            padding: 60px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .certificate::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c);
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        
-        .logo {
-            font-size: 32px;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            font-size: 16px;
-            color: #666;
-            font-weight: 300;
-        }
-        
-        .title {
-            font-family: 'Playfair Display', serif;
-            font-size: 48px;
-            font-weight: 700;
-            color: #2d3748;
-            text-align: center;
-            margin: 40px 0;
-            line-height: 1.2;
-        }
-        
-        .content {
-            text-align: center;
-            margin: 40px 0;
-        }
-        
-        .student-name {
-            font-family: 'Playfair Display', serif;
-            font-size: 36px;
-            font-weight: 700;
-            color: #667eea;
-            margin: 20px 0;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 10px;
-            display: inline-block;
-        }
-        
-        .course-info {
-            margin: 30px 0;
-            padding: 30px;
-            background: #f8fafc;
-            border-radius: 15px;
-            border-left: 5px solid #667eea;
-        }
-        
-        .course-title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 15px;
-        }
-        
-        .course-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .detail-item {
-            text-align: left;
-        }
-        
-        .detail-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #718096;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-        
-        .detail-value {
-            font-size: 16px;
-            font-weight: 500;
-            color: #2d3748;
-        }
-        
-        .completion-info {
-            margin: 40px 0;
-            text-align: center;
-        }
-        
-        .completion-text {
-            font-size: 18px;
-            color: #4a5568;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-        
-        .date {
-            font-size: 16px;
-            font-weight: 600;
-            color: #667eea;
-        }
-        
-        .footer {
-            margin-top: 50px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            align-items: end;
-        }
-        
-        .signature-section {
-            text-align: center;
-        }
-        
-        .signature-line {
-            border-top: 2px solid #e2e8f0;
-            margin-bottom: 10px;
-            width: 200px;
-            margin: 0 auto 10px;
-        }
-        
-        .signature-name {
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 5px;
-        }
-        
-        .signature-title {
-            font-size: 14px;
-            color: #718096;
-        }
-        
-        .certificate-id {
-            text-align: right;
-            align-self: end;
-        }
-        
-        .id-label {
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 5px;
-        }
-        
-        .id-value {
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: 600;
-            color: #2d3748;
-            background: #f1f5f9;
-            padding: 8px 12px;
-            border-radius: 6px;
-            display: inline-block;
-        }
-        
-        .decorative-elements {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 100px;
-            height: 100px;
-            opacity: 0.1;
-            background: radial-gradient(circle, #667eea, transparent);
-            border-radius: 50%;
-        }
-        
-        .decorative-elements::after {
-            content: '';
-            position: absolute;
-            bottom: -120px;
-            left: -120px;
-            width: 80px;
-            height: 80px;
-            background: radial-gradient(circle, #764ba2, transparent);
-            border-radius: 50%;
-        }
-        
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-            }
-            
-            .certificate {
-                box-shadow: none;
-                border: 2px solid #e2e8f0;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .certificate {
-                padding: 40px 30px;
-            }
-            
-            .title {
-                font-size: 36px;
-            }
-            
-            .student-name {
-                font-size: 28px;
-            }
-            
-            .course-details {
-                grid-template-columns: 1fr;
-            }
-            
-            .footer {
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificado de Participação - ${data.course_title}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page { size: landscape A4; margin: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .cert {
+      width: 1056px;
+      height: 748px;
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+    }
+
+    /* Waves decoration — right side */
+    .wave-deco {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 200px;
+      height: 100%;
+      z-index: 1;
+    }
+    .wave-deco img {
+      position: absolute;
+      right: 0;
+      top: 0;
+      height: 100%;
+      width: auto;
+      object-fit: cover;
+    }
+
+    /* Content */
+    .cert-content {
+      position: relative;
+      z-index: 2;
+      padding: 48px 240px 36px 56px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Icons */
+    .top-icons { margin-bottom: 24px; }
+    .top-icons img { height: 32px; }
+
+    /* Title */
+    .cert-title {
+      font-family: 'Merriweather', serif;
+      font-size: 24px;
+      font-weight: 400;
+      color: #111;
+      letter-spacing: -0.5px;
+      margin-bottom: 56px;
+      text-align: left;
+    }
+
+    /* Body */
+    .cert-body { flex: 1; }
+    .certifica-que {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    .student-name {
+      font-family: 'Merriweather', serif;
+      font-size: 30px;
+      font-weight: 700;
+      font-style: italic;
+      color: #111;
+      margin-bottom: 24px;
+      letter-spacing: -0.3px;
+      text-align: left;
+    }
+    .participation-text {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      color: #222;
+      line-height: 1.6;
+      text-align: left;
+      max-width: 680px;
+    }
+    .participation-text .highlight {
+      color: #0b6bff;
+      font-weight: 400;
+    }
+
+    /* Signature */
+    .facilitador-section { 
+      margin-top: 50px; 
+      width: 250px;
+    }
+    .sig-img {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      min-height: 50px;
+      margin-bottom: 4px;
+    }
+    .sig-line {
+      border-top: 1px solid #333;
+      padding-top: 5px;
+      text-align: center;
+      width: 100%;
+    }
+    .sig-name { 
+      font-family: 'Merriweather', serif;
+      font-size: 7px; 
+      font-weight: 400; 
+      color: #111; 
+    }
+    .sig-role { 
+      font-family: 'Merriweather', serif;
+      font-size: 7px; 
+      font-weight: 400;
+      color: #444; 
+    }
+    .bio-note {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 7px;
+      color: #777;
+      margin-top: 3px;
+      letter-spacing: 0.2px;
+      text-align: center;
+      width: 100%;
+    }
+
+    /* Bottom */
+    .cert-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: auto;
+      padding-top: 12px;
+    }
+    .conteudo-programatico { 
+      max-width: 480px; 
+      margin-bottom: -10px;
+    }
+    .conteudo-programatico h4 {
+      font-family: 'Merriweather', serif;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 4px;
+      text-align: left;
+    }
+    .conteudo-programatico p {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10.5px;
+      font-weight: 400;
+      color: #333;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .abz-logo { 
+      text-align: right; 
+      margin-right: -20px;
+    }
+    .abz-logo img { height: 50px; }
+
+    .cert-id-small {
+      position: absolute;
+      bottom: 10px;
+      right: 240px;
+      font-size: 8px;
+      color: #bbb;
+      z-index: 3;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .cert { box-shadow: none; }
+    }
+  </style>
 </head>
 <body>
-    <div class="certificate">
-        <div class="decorative-elements"></div>
-        
-        <div class="header">
-            <div class="logo">ABZ Academy</div>
-            <div class="subtitle">Centro de Excelência em Educação Profissional</div>
-        </div>
-        
-        <h1 class="title">Certificado de Conclusão</h1>
-        
-        <div class="content">
-            <p style="font-size: 18px; color: #4a5568; margin-bottom: 10px;">
-                Certificamos que
-            </p>
-            
-            <div class="student-name">${data.student_name}</div>
-            
-            <p style="font-size: 18px; color: #4a5568; margin: 20px 0;">
-                concluiu com êxito o curso
-            </p>
-            
-            <div class="course-info">
-                <div class="course-title">${data.course_title}</div>
-                
-                <div class="course-details">
-                    <div class="detail-item">
-                        <div class="detail-label">Categoria</div>
-                        <div class="detail-value">${data.category}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Duração</div>
-                        <div class="detail-value">${data.course_duration}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Nível</div>
-                        <div class="detail-value">${data.course_difficulty}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Instrutor</div>
-                        <div class="detail-value">${data.instructor_name}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="completion-info">
-                <p class="completion-text">
-                    Curso iniciado em <strong>${data.enrollment_date}</strong><br>
-                    e concluído em <strong>${data.completion_date}</strong>
-                </p>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <div class="signature-section">
-                <div class="signature-line"></div>
-                <div class="signature-name">ABZ Academy</div>
-                <div class="signature-title">Coordenação Acadêmica</div>
-            </div>
-            
-            <div class="certificate-id">
-                <div class="id-label">ID do Certificado</div>
-                <div class="id-value">${data.certificate_id}</div>
-                <div style="margin-top: 10px; font-size: 12px; color: #718096;">
-                    Emitido em ${data.issue_date}
-                </div>
-            </div>
-        </div>
+  <div class="cert">
+    <!-- Wave decoration -->
+    <div class="wave-deco">
+      <img src="${data.baseUrl}/images/cert-waves.png" alt="" />
     </div>
+
+    <div class="cert-content">
+      <!-- Icons -->
+      <div class="top-icons">
+        <img src="${data.baseUrl}/images/cert-icons.png" alt="" />
+      </div>
+
+      <h1 class="cert-title">Certificado de Participação</h1>
+
+      <div class="cert-body">
+        <p class="certifica-que">ABZ Group SAS certifica que</p>
+        <p class="student-name">${data.student_name}</p>
+        <p class="participation-text">
+          Participou do treinamento de <span class="highlight">${data.course_title}</span>,
+          realizado no dia ${data.completion_date},
+          com carga horária de ${data.course_duration_hours} horas,
+          através da modalidade presencial.
+        </p>
+
+        <div class="facilitador-section">
+          ${signatureHtml}
+        </div>
+      </div>
+
+      <div class="cert-bottom">
+        <div class="conteudo-programatico">
+          ${conteudoProgramatico ? `
+            <h4>Conteúdo Programático</h4>
+            <p>${conteudoProgramatico}</p>
+          ` : ''}
+        </div>
+        <div class="abz-logo">
+          <img src="${data.baseUrl}/images/cert-logo.png" alt="ABZ Group" />
+        </div>
+      </div>
+    </div>
+
+    <span class="cert-id-small">${data.certificate_id}</span>
+  </div>
 </body>
-</html>
-  `.trim();
+</html>`;
 }

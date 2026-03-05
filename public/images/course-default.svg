@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" /> <!-- Blue 600 -->
+      <stop offset="100%" stop-color="#3b82f6" /> <!-- Blue 500 -->
+    </linearGradient>
+    
+    <linearGradient id="icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#f8fafc" stop-opacity="0.7"/>
+    </linearGradient>
+
+    <!-- Subtle pattern -->
+    <pattern id="dot-pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="2" fill="#ffffff" opacity="0.1" />
+    </pattern>
+  </defs>
+
+  <!-- Base -->
+  <rect width="800" height="600" fill="url(#bg-grad)" />
+  <rect width="800" height="600" fill="url(#dot-pattern)" />
+
+  <!-- Book Icon Group -->
+  <g transform="translate(320, 220)" fill="url(#icon-grad)">
+    <!-- Left page -->
+    <path d="M12 12C12 12 36 0 76 0C116 0 148 12 148 12V132C148 132 116 120 76 120C36 120 12 132 12 132V12Z" />
+    <!-- Right page -->
+    <path d="M148 12C148 12 180 0 220 0C260 0 284 12 284 12V132C284 132 260 120 220 120C180 120 148 132 148 132V12Z" />
+    <!-- Spine / Center line -->
+    <path d="M148 12V132" stroke="#2563eb" stroke-width="8" stroke-linecap="round" fill="none" />
+    
+    <!-- Left page text lines -->
+    <rect x="36" y="32" width="80" height="8" rx="4" fill="#2563eb" fill-opacity="0.2" />
+    <rect x="36" y="56" width="60" height="8" rx="4" fill="#2563eb" fill-opacity="0.2" />
+    <rect x="36" y="80" width="70" height="8" rx="4" fill="#2563eb" fill-opacity="0.2" />
+    
+    <!-- Right page text lines -->
+    <rect x="180" y="32" width="70" height="8" rx="4" fill="#2563eb" fill-opacity="0.2" />
+    <rect x="180" y="56" width="80" height="8" rx="4" fill="#2563eb" fill-opacity="0.2" />
+    <rect x="180" y="80" width="50" height="8" rx="4" fill="#2563eb" fill-opacity="0.2" />
+  </g>
+
+  <!-- Cap Icon (Graduation) overlapping -->
+  <g transform="translate(360, 160)" fill="#facc15"> <!-- Yellow 400 -->
+    <polygon points="80,0 160,40 80,80 0,40" />
+    <polygon points="20,50 20,80 80,110 140,80 140,50 80,80" fill="#eab308" /> <!-- Yellow 500 -->
+    <path d="M140 60V100C140 100 145 110 155 110" stroke="#facc15" stroke-width="4" fill="none" />
+    <circle cx="155" cy="115" r="8" fill="#facc15" />
+  </g>
+
+  <!-- Logo/Text area at bottom -->
+  <text x="400" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle" opacity="0.9">
+    ABZ Academy
+  </text>
+  <text x="400" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="normal" fill="#ffffff" text-anchor="middle" opacity="0.7">
+    Centro de Treinamento
+  </text>
+</svg>
