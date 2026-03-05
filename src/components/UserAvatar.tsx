@@ -37,7 +37,7 @@ export default function UserAvatar({ user, profile, className = "" }: UserAvatar
     }, [avatarUrl]);
 
     return (
-        <div className={`relative overflow-hidden ${className}`}>
+        <div className={`relative overflow-hidden rounded-full ${className}`}>
             {/* Background Initials (Visible if no image, or image error, or image loading) */}
             {(!avatarUrl || imgError || !imgLoaded) && (
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold z-0">

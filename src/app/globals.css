@@ -22,6 +22,13 @@ img {
   object-fit: contain;
 }
 
+/* Override for avatar images that use object-cover */
+img.object-cover {
+  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* Componentes personalizados */
 @layer components {
   .abz-container {

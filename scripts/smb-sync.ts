@@ -285,7 +285,7 @@ async function main() {
             last_sync_error: errors.length > 0 ? errors[0] : null,
         }).eq('id', conn.id);
 
-        try { client.close(); } catch { }
+        try { (client as any).close(); } catch { }
 
         console.log(`\n📊 Resultado: ${synced} sincronizados, ${failed} falhas, ${skipped} pulados`);
         if (errors.length) console.log(`⚠ Erros:\n${errors.map(e => `  - ${e}`).join('\n')}`);
