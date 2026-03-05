@@ -197,11 +197,11 @@ const AcademyDashboard: React.FC = () => {
         setRecentActivity(activities.slice(0, 10));
 
       } else {
-        setError(enrollmentsData.error || 'Erro ao carregar dados');
+        setError(enrollmentsData.error || t('academy.erroAoCarregarDados'));
       }
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
-      setError('Erro ao carregar dashboard');
+      setError(t('academy.erroAoCarregarDashboard'));
     } finally {
       setLoading(false);
     }
@@ -220,8 +220,8 @@ const AcademyDashboard: React.FC = () => {
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 1) return 'Hoje';
-    if (diffDays === 2) return 'Ontem';
+    if (diffDays === 1) return t('academy.hoje');
+    if (diffDays === 2) return t('academy.ontem');
     if (diffDays <= 7) return t('academy.diffdaysDiasAtras');
 
     return date.toLocaleDateString('pt-BR', {
@@ -253,7 +253,7 @@ const AcademyDashboard: React.FC = () => {
       case 'progress':
         return `${t('academy.progressoAtualizadoEm')} "${activity.courseTitle}" (${activity.progress}%)`;
       default:
-        return `Atividade em "${activity.courseTitle}"`;
+        return `${t('academy.atividadeEm')} "${activity.courseTitle}"`;
     }
   };
 
@@ -263,9 +263,9 @@ const AcademyDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Acesso restrito</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">{t('academy.acessoRestrito')}</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Faça login para ver seu dashboard de aprendizagem.
+              {t('academy.facaLoginParaVerSeuDashboardDeAprendizagem')}
             </p>
           </div>
         </div>
@@ -295,7 +295,7 @@ const AcademyDashboard: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Erro</h3>
+                <h3 className="text-sm font-medium text-red-800">{t('academy.erro')}</h3>
                 <div className="mt-2 text-sm text-red-700">
                   <p>{error}</p>
                 </div>
@@ -304,7 +304,7 @@ const AcademyDashboard: React.FC = () => {
                     onClick={() => loadDashboardData()}
                     className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
                   >
-                    Tentar novamente
+                    {t('academy.tentarNovamente')}
                   </button>
                 </div>
               </div>
@@ -325,16 +325,16 @@ const AcademyDashboard: React.FC = () => {
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeftIcon className="h-5 w-5 mr-2" />
-            Voltar ao Academy
+            {t('academy.voltarAoAcademy')}
           </button>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <ChartBarIcon className="w-8 h-8 text-blue-600 mr-3" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Dashboard de Aprendizagem</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{t('academy.dashboardDeAprendizagem')}</h1>
                 <p className="text-gray-600 mt-1">
-                  Acompanhe seu progresso e conquistas
+                  {t('academy.acompanheSeuProgressoEConquistas')}
                 </p>
               </div>
             </div>
@@ -351,7 +351,7 @@ const AcademyDashboard: React.FC = () => {
                     <BookOpenIcon className="h-8 w-8 text-blue-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Cursos Matriculados</p>
+                    <p className="text-sm font-medium text-gray-600">{t('academy.cursosMatriculados')}</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
                   </div>
                 </div>
@@ -363,7 +363,7 @@ const AcademyDashboard: React.FC = () => {
                     <TrophyIcon className="h-8 w-8 text-green-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Cursos Concluídos</p>
+                    <p className="text-sm font-medium text-gray-600">{t('academy.cursosConcluidos')}</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.completedCourses}</p>
                   </div>
                 </div>
@@ -375,7 +375,7 @@ const AcademyDashboard: React.FC = () => {
                     <ClockIcon className="h-8 w-8 text-purple-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Tempo de Estudo</p>
+                    <p className="text-sm font-medium text-gray-600">{t('academy.tempoDeEstudo')}</p>
                     <p className="text-2xl font-bold text-gray-900">{formatTime(stats.totalWatchTime)}</p>
                   </div>
                 </div>
@@ -387,7 +387,7 @@ const AcademyDashboard: React.FC = () => {
                     <ChartBarIcon className="h-8 w-8 text-orange-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Progresso Médio</p>
+                    <p className="text-sm font-medium text-gray-600">{t('academy.progressoMedio')}</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.averageProgress}%</p>
                   </div>
                 </div>
@@ -396,7 +396,7 @@ const AcademyDashboard: React.FC = () => {
 
             {/* Progresso geral */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Visão Geral do Progresso</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('academy.visaoGeralDoProgresso')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
                   <div className="relative w-24 h-24 mx-auto mb-3">
@@ -426,7 +426,7 @@ const AcademyDashboard: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-gray-600">Taxa de Conclusão</p>
+                  <p className="text-sm font-medium text-gray-600">{t('academy.taxaDeConclusao')}</p>
                 </div>
 
                 <div className="text-center">
@@ -457,7 +457,7 @@ const AcademyDashboard: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-gray-600">Em Progresso</p>
+                  <p className="text-sm font-medium text-gray-600">{t('academy.emProgresso')}</p>
                 </div>
 
                 <div className="text-center">
@@ -486,7 +486,7 @@ const AcademyDashboard: React.FC = () => {
                       <span className="text-lg font-bold text-gray-900">{stats.averageProgress}%</span>
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-gray-600">Progresso Médio</p>
+                  <p className="text-sm font-medium text-gray-600">{t('academy.progressoMedio')}</p>
                 </div>
               </div>
             </div>
@@ -495,27 +495,27 @@ const AcademyDashboard: React.FC = () => {
               {/* Cursos recentes */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Cursos Recentes</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('academy.cursosRecentes')}</h3>
                   <button
                     onClick={() => router.push('/academy/my-courses')}
                     className="text-sm text-blue-600 hover:text-blue-700"
                   >
-                    Ver todos
+                    {t('academy.verTodos')}
                   </button>
                 </div>
 
                 {recentCourses.length === 0 ? (
                   <div className="text-center py-8">
                     <BookOpenIcon className="mx-auto h-8 w-8 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">Nenhum curso acessado recentemente</p>
+                    <p className="mt-2 text-sm text-gray-500">{t('academy.nenhumCursoAcessadoRecentemente')}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {recentCourses.map((course) => (
                       <div key={course.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
-                           onClick={() => router.push(`/academy/course/${course.id}`)}>
+                        onClick={() => router.push(`/academy/course/${course.id}`)}>
                         <img
-                          src={course.thumbnail_url || '/images/course-default.jpg'}
+                          src={course.thumbnail_url || '/images/course-default.svg'}
                           alt={course.title}
                           className="w-12 h-12 rounded-lg object-cover"
                         />
@@ -546,12 +546,12 @@ const AcademyDashboard: React.FC = () => {
 
               {/* Atividade recente */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Atividade Recente</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('academy.atividadeRecente')}</h3>
 
                 {recentActivity.length === 0 ? (
                   <div className="text-center py-8">
                     <CalendarIcon className="mx-auto h-8 w-8 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">Nenhuma atividade recente</p>
+                    <p className="mt-2 text-sm text-gray-500">{t('academy.nenhumaAtividadeRecente')}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">

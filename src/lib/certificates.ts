@@ -5,7 +5,7 @@ import path from 'path';
 
 export type CertificateConfig = {
   page?: number;
-  fields: Record<string, { x: number; y: number; size: number; color?: string; font?: 'Helvetica' | 'TimesRoman' | 'Courier'; align?: 'left' | 'center' | 'right' }>;
+  fields: Record<string, { x: number; y: number; size: number; color?: string; font?: string; align?: 'left' | 'center' | 'right'; maxWidth?: number; lineHeight?: number }>;
 };
 
 export async function ensureCertificatesBucket() {
@@ -68,6 +68,19 @@ export async function generateAndStoreCertificate(enrollmentId: string): Promise
   const user = Array.isArray(enr.user) ? enr.user[0] : enr.user;
   const instructor = Array.isArray(course?.instructor) ? course.instructor[0] : course?.instructor;
 
+  // Fetch modules for "Conteúdo Programático"
+  const { data: modulesData } = await supabaseAdmin
+    .from('academy_modules')
+    .select('title, sort_order')
+    .eq('course_id', course?.id || '')
+    .eq('is_published', true)
+    .order('sort_order', { ascending: true });
+  let content_programmatic = (modulesData || []).map(m => m.title).join('; ') + ((modulesData || []).length > 0 ? '.' : '');
+  // Prevent super long text from overflowing the bottom of the page
+  if (content_programmatic.length > 250) {
+    content_programmatic = content_programmatic.substring(0, 247) + '...';
+  }
+
   const tpl = await getActiveTemplate(course?.id);
   if (!tpl) { console.warn('No active certificate template found'); return null; }
 
@@ -79,11 +92,12 @@ export async function generateAndStoreCertificate(enrollmentId: string): Promise
   // Prepare data
   const student_name = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
   const course_title = course?.title || '';
-  const course_duration = `${course?.duration || 0} horas`;
+  const durationHours = Math.max(1, Math.round((course?.duration || 0) / 3600));
+  const course_duration = `${String(durationHours).padStart(2, '0')} horas`;
   const course_difficulty = (course?.difficulty_level || '').toString();
-  const completion_date = enr.completed_at ? new Date(enr.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
+  const completion_date = enr.completed_at ? new Date(enr.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
   const enrollment_date = enr.enrolled_at ? new Date(enr.enrolled_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
-  const certificate_id = `ABZ-${enrollmentId.toUpperCase().slice(0,8)}`;
+  const certificate_id = `ABZ-${enrollmentId.toUpperCase().slice(0, 8)}`;
   const issue_date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const instructor_name = `${instructor?.first_name || ''} ${instructor?.last_name || ''}`.trim();
 
@@ -95,34 +109,65 @@ export async function generateAndStoreCertificate(enrollmentId: string): Promise
   const pages = pdfDoc.getPages();
   const page = pages[Math.min(pageIndex, pages.length - 1)];
 
-  const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const times = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-  const courier = await pdfDoc.embedFont(StandardFonts.Courier);
-  const pickFont = (name?: string) => name === 'TimesRoman' ? times : name === 'Courier' ? courier : helv;
+  let customFontBlack;
+  let customFontRegular;
+  let customFontBlackItalic;
+  let customFontPjsRegular;
 
-  const entries: Record<string,string> = {
-    student_name,
-    course_title,
-    course_duration,
-    course_difficulty,
-    completion_date,
-    enrollment_date,
-    certificate_id,
-    issue_date,
-    instructor_name
-  };
+  try {
+    customFontRegular = await pdfDoc.embedFont(fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'Merriweather-Regular.ttf')));
+    customFontBlack = await pdfDoc.embedFont(fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'Merriweather-Black.ttf')));
+    customFontBlackItalic = await pdfDoc.embedFont(fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'Merriweather-BlackItalic.ttf')));
+    customFontPjsRegular = await pdfDoc.embedFont(fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'PlusJakartaSans-Regular.ttf')));
+  } catch (e) {
+    console.warn('Failed to load fonts from public/fonts, falling back to Helvetica', e);
+    customFontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    customFontBlack = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    customFontBlackItalic = await pdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
+    customFontPjsRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
 
-  Object.entries(cfg.fields || {}).forEach(([key, pos]) => {
-    const val = (entries as any)[key];
-    if (!val) return;
-    const font = pickFont(pos.font);
-    let x = pos.x;
-    try {
-      const w = font.widthOfTextAtSize(String(val), pos.size);
-      if (pos.align === 'center') x = pos.x - w / 2;
-      else if (pos.align === 'right') x = pos.x - w;
-    } catch {}
-    page.drawText(String(val), { x, y: pos.y, size: pos.size, font, color: parseColor(pos.color) });
+  const startX = 110;
+
+  // 1. student_name
+  page.drawText(student_name, {
+    x: startX, y: 320, size: 30, font: customFontBlackItalic, color: parseColor('#000000')
+  });
+
+  // 2. course_title
+  page.drawText(course_title, {
+    x: startX, y: 280, size: 24, font: customFontRegular, color: parseColor('#000000') // Merriweather Regular, Esquerda
+  });
+
+  // 3. Texto abaixo
+  const txtAbaixo = `Participou do treinamento realizado no dia ${completion_date}, com carga horária de ${course_duration}, através da modalidade presencial.`;
+  page.drawText(txtAbaixo, {
+    x: startX, y: 245, size: 14, font: customFontPjsRegular, color: parseColor('#333333'), maxWidth: 600, lineHeight: 22 // Plus Jakarta Sans 14px
+  });
+
+  // 4. Facilitador
+  const textFacil = `${instructor_name} | Facilitador`;
+  const wFacil = customFontRegular.widthOfTextAtSize(textFacil, 7);
+  // Centered underneath the left-side signature line
+  page.drawText(textFacil, {
+    x: 210 - (wFacil / 2), y: 155, size: 7, font: customFontRegular, color: parseColor('#000000')
+  });
+
+  // 5. Conteúdo Programático
+  page.drawText('Conteúdo Programático', {
+    x: startX, y: 80, size: 10.5, font: customFontBlack, color: parseColor('#000000') // Merriweather Bold
+  });
+
+  if (content_programmatic) {
+    page.drawText(content_programmatic, {
+      x: startX, y: 65, size: 10.5, font: customFontPjsRegular, color: parseColor('#666666'), maxWidth: 600, lineHeight: 15 // Plus Jakarta Sans Normal
+    });
+  }
+
+  // 6. ID do Certificado
+  const wCert = customFontBlack.widthOfTextAtSize(certificate_id, 10);
+  page.drawText(certificate_id, {
+    x: page.getWidth() - startX - wCert, y: 30, size: 10, font: customFontBlack, color: parseColor('#999999')
   });
 
   const pdfBytes = await pdfDoc.save();
@@ -143,7 +188,7 @@ export async function generateAndStoreCertificate(enrollmentId: string): Promise
   try {
     const { data: signed } = await supabaseAdmin.storage.from('certificates').createSignedUrl(outPath, 60 * 60 * 24 * 7);
     signedUrl = signed?.signedUrl;
-  } catch {}
+  } catch { }
 
   return { issueId: issue?.id || '', pdfPath: outPath, pdfBytes, signedUrl };
 }
@@ -160,22 +205,22 @@ export async function initTemplateFromRepoDefault() {
     const storagePath = `templates/template-certificados.pdf`;
     await supabaseAdmin.storage.from('certificates').upload(storagePath, buf, { contentType: 'application/pdf', upsert: true } as any);
 
-    // Default config (ajustável no Admin). Coordenadas exemplo; ajustar conforme necessário.
     const defaultConfig: CertificateConfig = {
       page: 1,
       fields: {
-        student_name: { x: 200, y: 360, size: 24, font: 'TimesRoman' },
-        course_title: { x: 200, y: 320, size: 16 },
-        completion_date: { x: 200, y: 280, size: 12 },
-        enrollment_date: { x: 200, y: 260, size: 12 },
-        certificate_id: { x: 60, y: 80, size: 10 },
-        instructor_name: { x: 420, y: 120, size: 12 }
+        student_name: { x: 110, y: 320, size: 30, align: 'left', font: 'Merriweather-BlackItalic', color: '#000000' },
+        course_title: { x: 110, y: 280, size: 24, align: 'left', font: 'Merriweather-Regular', color: '#000000' },
+        full_text: { x: 110, y: 245, size: 14, align: 'left', font: 'PlusJakartaSans-Regular', color: '#333333', maxWidth: 600, lineHeight: 22 },
+        instructor_name: { x: 420, y: 150, size: 7, align: 'center', font: 'Merriweather-Regular', color: '#000000' },
+        content_programmatic_title: { x: 110, y: 80, size: 10.5, align: 'left', font: 'Merriweather-Black', color: '#666666' },
+        content_programmatic: { x: 110, y: 65, size: 10.5, align: 'left', font: 'PlusJakartaSans-Regular', color: '#666666', maxWidth: 600, lineHeight: 15 },
+        certificate_id: { x: 650, y: 30, size: 10, align: 'right', font: 'Merriweather-Black', color: '#999999' }
       }
     };
 
     // Upsert template row
     const { error } = await supabaseAdmin.from('certificate_templates').upsert({
-      name: 'Padrão ABZ (docs/Template Certificados.pdf)',
+      name: 'Padrão ABZ Esquerda (com full_text + PlusJakartaSans)',
       storage_path: storagePath,
       config_json: defaultConfig,
       active: true
@@ -187,4 +232,3 @@ export async function initTemplateFromRepoDefault() {
     return { ok: false, reason: String(e) };
   }
 }
-

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withAcademyAuth } from '@/lib/middleware/academy-auth';
 import { generateAndStoreCertificate } from '@/lib/certificates';
 
 export const dynamic = 'force-dynamic';
@@ -7,19 +8,10 @@ export const dynamic = 'force-dynamic';
 // GET - Obter progresso do usuário
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
-    }
+    const { user, error: authError } = await withAcademyAuth(request, { requireAuth: true });
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verificar token e obter usuário
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+      return authError || NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -63,26 +55,25 @@ export async function GET(request: NextRequest) {
       query = query.eq('enrollment_id', enrollmentId);
     } else if (courseId) {
       // Buscar progresso por curso e usuário
-      const { data: enrollment, error: enrollmentError } = await supabaseAdmin
+      const { data: enrollments, error: enrollmentError } = await supabaseAdmin
         .from('academy_enrollments')
         .select('id')
         .eq('user_id', userId)
         .eq('course_id', courseId)
-        .eq('is_active', true)
-        .single();
+        .order('enrolled_at', { ascending: false })
+        .limit(1);
 
-      if (enrollmentError || !enrollment) {
+      if (enrollmentError || !enrollments || enrollments.length === 0) {
         return NextResponse.json({ error: 'Matrícula não encontrada' }, { status: 404 });
       }
 
-      query = query.eq('enrollment_id', enrollment.id);
+      query = query.eq('enrollment_id', enrollments[0].id);
     } else {
       // Buscar todos os progressos do usuário
       const { data: enrollments, error: enrollmentsError } = await supabaseAdmin
         .from('academy_enrollments')
         .select('id')
-        .eq('user_id', userId)
-        .eq('is_active', true);
+        .eq('user_id', userId);
 
       if (enrollmentsError) {
         return NextResponse.json({ error: 'Erro ao buscar matrículas' }, { status: 500 });
@@ -120,25 +111,17 @@ export async function GET(request: NextRequest) {
 // POST - Atualizar progresso
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
-    }
+    const { user, error: authError } = await withAcademyAuth(request, { requireAuth: true });
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verificar token e obter usuário
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+      return authError || NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const body = await request.json();
     const {
       enrollment_id,
       course_id,
+      module_id,
       progress_percentage,
       last_watched_position,
       watch_time_increment
@@ -152,19 +135,19 @@ export async function POST(request: NextRequest) {
 
     // Se course_id foi fornecido, buscar enrollment_id
     if (!targetEnrollmentId && course_id) {
-      const { data: enrollment, error: enrollmentError } = await supabaseAdmin
+      const { data: enrollments, error: enrollmentError } = await supabaseAdmin
         .from('academy_enrollments')
         .select('id, user_id')
         .eq('user_id', user.id)
         .eq('course_id', course_id)
-        .eq('is_active', true)
-        .single();
+        .order('enrolled_at', { ascending: false })
+        .limit(1);
 
-      if (enrollmentError || !enrollment) {
+      if (enrollmentError || !enrollments || enrollments.length === 0) {
         return NextResponse.json({ error: 'Matrícula não encontrada' }, { status: 404 });
       }
 
-      targetEnrollmentId = enrollment.id;
+      targetEnrollmentId = enrollments[0].id;
     }
 
     // Verificar se o usuário é dono da matrícula
@@ -182,6 +165,125 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Permissão negada' }, { status: 403 });
     }
 
+    // ── Module-level progress ──
+    if (module_id) {
+      // Upsert module progress
+      const { data: existingModProg } = await supabaseAdmin
+        .from('academy_module_progress')
+        .select('*')
+        .eq('enrollment_id', targetEnrollmentId)
+        .eq('module_id', module_id)
+        .single();
+
+      const modUpdateData: any = {
+        last_accessed_at: new Date().toISOString()
+      };
+
+      if (progress_percentage !== undefined) {
+        modUpdateData.progress_percentage = existingModProg
+          ? Math.max(existingModProg.progress_percentage || 0, Math.min(100, Math.round(progress_percentage)))
+          : Math.min(100, Math.max(0, Math.round(progress_percentage)));
+      }
+      if (last_watched_position !== undefined) {
+        modUpdateData.last_watched_position = Math.floor(Math.max(0, last_watched_position));
+      }
+      if (watch_time_increment !== undefined && existingModProg) {
+        modUpdateData.total_watch_time = Math.floor((existingModProg.total_watch_time || 0) + Math.max(0, watch_time_increment));
+      }
+      if (modUpdateData.progress_percentage >= 100) {
+        modUpdateData.completed_at = existingModProg?.completed_at || new Date().toISOString();
+      }
+
+      if (existingModProg) {
+        const { error: updateError } = await supabaseAdmin
+          .from('academy_module_progress')
+          .update(modUpdateData)
+          .eq('enrollment_id', targetEnrollmentId)
+          .eq('module_id', module_id);
+
+        if (updateError) console.error('Error updating module progress:', updateError);
+      } else {
+        const { error: insertError } = await supabaseAdmin
+          .from('academy_module_progress')
+          .insert({
+            enrollment_id: targetEnrollmentId,
+            module_id,
+            progress_percentage: modUpdateData.progress_percentage || 0,
+            last_watched_position: modUpdateData.last_watched_position || 0,
+            total_watch_time: Math.floor(watch_time_increment || 0),
+            completed_at: modUpdateData.completed_at || null,
+            last_accessed_at: modUpdateData.last_accessed_at
+          });
+
+        if (insertError) console.error('Error inserting module progress:', insertError);
+      }
+
+      // Recalculate overall progress from modules
+      const { data: allModules } = await supabaseAdmin
+        .from('academy_modules')
+        .select('id')
+        .eq('course_id', enrollment.course_id)
+        .eq('is_published', true);
+
+      const totalModules = allModules?.length || 0;
+
+      if (totalModules > 0) {
+        const { data: allModuleProgress } = await supabaseAdmin
+          .from('academy_module_progress')
+          .select('progress_percentage')
+          .eq('enrollment_id', targetEnrollmentId);
+
+        const totalProgressSum = (allModuleProgress || []).reduce(
+          (sum: number, mp: any) => sum + (mp.progress_percentage || 0), 0
+        );
+        const overallPercentage = Math.round(totalProgressSum / totalModules);
+
+        // Update or create overall progress
+        const { data: existingOverall } = await supabaseAdmin
+          .from('academy_progress')
+          .select('id')
+          .eq('enrollment_id', targetEnrollmentId)
+          .single();
+
+        const nowIso = new Date().toISOString();
+        if (existingOverall) {
+          await supabaseAdmin
+            .from('academy_progress')
+            .update({
+              progress_percentage: overallPercentage,
+              last_accessed_at: nowIso,
+              updated_at: nowIso
+            })
+            .eq('enrollment_id', targetEnrollmentId);
+        } else {
+          await supabaseAdmin
+            .from('academy_progress')
+            .insert({
+              enrollment_id: targetEnrollmentId,
+              progress_percentage: overallPercentage,
+              last_watched_position: 0,
+              total_watch_time: 0,
+              last_accessed_at: nowIso,
+              updated_at: nowIso
+            });
+        }
+
+        // Fetch final progress
+        const { data: finalProgress } = await supabaseAdmin
+          .from('academy_progress')
+          .select('*')
+          .eq('enrollment_id', targetEnrollmentId)
+          .single();
+
+        return NextResponse.json({
+          success: true,
+          message: 'Progresso do módulo atualizado',
+          progress: finalProgress
+        });
+      }
+    }
+
+    // ── Course-level progress (no modules / legacy) ──
     // Buscar progresso atual
     const { data: currentProgress, error: progressError } = await supabaseAdmin
       .from('academy_progress')
@@ -200,16 +302,18 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString()
     };
 
-    if (progress_percentage !== undefined) {
+    if (progress_percentage !== undefined && currentProgress) {
+      updateData.progress_percentage = Math.max(currentProgress.progress_percentage || 0, Math.min(100, Math.max(0, progress_percentage)));
+    } else if (progress_percentage !== undefined) {
       updateData.progress_percentage = Math.min(100, Math.max(0, progress_percentage));
     }
 
     if (last_watched_position !== undefined) {
-      updateData.last_watched_position = Math.max(0, last_watched_position);
+      updateData.last_watched_position = Math.floor(Math.max(0, last_watched_position));
     }
 
     if (watch_time_increment !== undefined && currentProgress) {
-      updateData.total_watch_time = (currentProgress.total_watch_time || 0) + Math.max(0, watch_time_increment);
+      updateData.total_watch_time = Math.floor((currentProgress.total_watch_time || 0) + Math.max(0, watch_time_increment));
     }
 
     let updatedProgress;
@@ -340,19 +444,10 @@ export async function POST(request: NextRequest) {
 // PUT - Resetar progresso
 export async function PUT(request: NextRequest) {
   try {
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
-    }
+    const { user, error: authError } = await withAcademyAuth(request, { requireAuth: true });
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verificar token e obter usuário
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+      return authError || NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const body = await request.json();

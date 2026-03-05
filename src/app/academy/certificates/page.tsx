@@ -4,13 +4,15 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/Layout/MainLayout';
 import Certificates from '@/components/Academy/Certificates';
-import { 
+import {
   ArrowLeftIcon,
   TrophyIcon
 } from '@heroicons/react/24/outline';
+import { useI18n } from '@/contexts/I18nContext';
 
 const CertificatesPage: React.FC = () => {
   const router = useRouter();
+  const { t } = useI18n();
 
   return (
     <MainLayout>
@@ -22,15 +24,15 @@ const CertificatesPage: React.FC = () => {
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeftIcon className="h-5 w-5 mr-2" />
-            Voltar ao Academy
+            {t('academy.voltarAoAcademy')}
           </button>
-          
+
           <div className="flex items-center">
             <TrophyIcon className="w-8 h-8 text-yellow-600 mr-3" />
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Meus Certificados</h1>
+              <h1 className="text-3xl font-bold text-gray-900">{t('academy.meusCertificados')}</h1>
               <p className="text-gray-600 mt-1">
-                Certificados dos cursos que você concluiu
+                {t('academy.certificadosDosCursosQueVoceConcluiu')}
               </p>
             </div>
           </div>

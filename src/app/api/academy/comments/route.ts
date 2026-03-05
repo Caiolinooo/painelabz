@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
           id,
           first_name,
           last_name,
-          profile_data
+          avatar
         ),
         replies:academy_comments!parent_id(
           *,
@@ -33,12 +33,12 @@ export async function GET(request: NextRequest) {
             id,
             first_name,
             last_name,
-            profile_data
+            avatar
           )
         )
       `)
       .eq('course_id', courseId)
-      .eq('is_active', true)
+      .eq('is_approved', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         .from('academy_comments')
         .select('id, course_id')
         .eq('id', parent_id)
-        .eq('is_active', true)
+        .eq('is_approved', true)
         .single();
 
       if (parentError || !parentComment) {
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         content: content.trim(),
         parent_id: parent_id || null,
-        is_active: true,
+        is_approved: true,
         created_at: new Date().toISOString()
       })
       .select(`
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
           id,
           first_name,
           last_name,
-          profile_data
+          avatar
         )
       `)
       .single();
@@ -157,10 +157,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Log da ação
-    logAction(user, 'CREATE_COMMENT', 'comment', comment.id, { 
-      course_id, 
+    logAction(user, 'CREATE_COMMENT', 'comment', comment.id, {
+      course_id,
       parent_id,
-      content_length: content.length 
+      content_length: content.length
     });
 
     console.log(`✅ Comentário criado por ${user.first_name} ${user.last_name} no curso ${course.title}`);
@@ -249,7 +249,7 @@ export async function PUT(request: NextRequest) {
           id,
           first_name,
           last_name,
-          profile_data
+          avatar
         )
       `)
       .single();

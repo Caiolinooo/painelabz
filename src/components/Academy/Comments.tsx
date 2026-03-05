@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   ChatBubbleLeftIcon,
   PaperAirplaneIcon,
   EllipsisVerticalIcon,
@@ -18,7 +18,7 @@ interface User {
   id: string;
   first_name: string;
   last_name: string;
-  profile_data?: any;
+  avatar?: string;
 }
 
 interface Comment {
@@ -27,7 +27,7 @@ interface Comment {
   user_id: string;
   content: string;
   parent_id?: string;
-  is_active: boolean;
+  is_approved: boolean;
   is_edited: boolean;
   created_at: string;
   updated_at: string;
@@ -76,7 +76,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user || !newComment.trim()) return;
 
     setSubmitting(true);
@@ -223,7 +223,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
     if (diffDays === 1) return 'Hoje';
     if (diffDays === 2) return 'Ontem';
     if (diffDays <= 7) return t('components.diffdaysDiasAtras');
-    
+
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -232,8 +232,8 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
   };
 
   const getUserAvatar = (user: User) => {
-    if (user.profile_data?.avatar_url) {
-      return user.profile_data.avatar_url;
+    if (user.avatar) {
+      return user.avatar;
     }
     return null;
   };
@@ -251,18 +251,18 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start space-x-3 flex-1">
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 w-8 h-8">
               {getUserAvatar(comment.user) ? (
                 <img
-                  src={getUserAvatar(comment.user)}
+                  src={getUserAvatar(comment.user) as string}
                   alt={`${comment.user.first_name} ${comment.user.last_name}`}
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-full h-full rounded-full object-cover"
                 />
               ) : (
                 <UserCircleIcon className="w-8 h-8 text-gray-400" />
               )}
             </div>
-            
+
             <div className="flex-1">
               <div className="flex items-center space-x-2 mb-1">
                 <span className="font-medium text-gray-900">
@@ -273,7 +273,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
                   <span className="text-xs text-gray-400">(editado)</span>
                 )}
               </div>
-              
+
               {editingComment === comment.id ? (
                 <div className="mt-2">
                   <textarea
@@ -311,7 +311,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
               ) : (
                 <>
                   <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
-                  
+
                   {!isReply && (
                     <div className="flex items-center space-x-4 mt-2">
                       <button
@@ -321,7 +321,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
                         <ChatBubbleLeftIcon className="w-4 h-4 mr-1" />
                         Responder
                       </button>
-                      
+
                       {comment.replies && comment.replies.length > 0 && (
                         <span className="text-sm text-gray-500">
                           {comment.replies.length} resposta{comment.replies.length > 1 ? 's' : ''}
@@ -333,7 +333,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
               )}
             </div>
           </div>
-          
+
           {/* Menu de ações */}
           {user && (canEditComment(comment) || canDeleteComment(comment)) && (
             <div className="relative">
@@ -343,7 +343,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
               >
                 <EllipsisVerticalIcon className="w-5 h-5" />
               </button>
-              
+
               {showDropdown === comment.id && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
                   <div className="py-1">
@@ -360,7 +360,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
                         Editar
                       </button>
                     )}
-                    
+
                     {canDeleteComment(comment) && (
                       <button
                         onClick={() => {
@@ -380,7 +380,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
           )}
         </div>
       </div>
-      
+
       {/* Formulário de resposta */}
       {replyingTo === comment.id && (
         <div className="ml-12 mt-3">
@@ -424,7 +424,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
           </div>
         </div>
       )}
-      
+
       {/* Respostas */}
       {comment.replies && comment.replies.length > 0 && (
         <div className="mt-3">
@@ -451,7 +451,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
           <ChatBubbleLeftIcon className="w-5 h-5 mr-2" />
           Comentários ({comments.length})
         </h3>
-        
+
         {/* Formulário de novo comentário */}
         {user ? (
           <form onSubmit={handleSubmitComment} className="mb-6">
@@ -488,7 +488,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
             <p className="text-gray-600">Faça login para comentar neste curso.</p>
           </div>
         )}
-        
+
         {/* Lista de comentários */}
         {comments.length === 0 ? (
           <div className="text-center py-8">

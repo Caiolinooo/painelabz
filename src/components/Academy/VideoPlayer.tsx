@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useI18n } from '@/contexts/I18nContext';
 import {
   PlayIcon,
@@ -11,6 +11,42 @@ import {
   ArrowsPointingInIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
+
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
+// Função para extrair ID do vídeo do YouTube
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
+  return null;
+};
+
+// Função para extrair ID do vídeo do Google Drive
+const getGoogleDriveVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+
+  const idMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (idMatch) return idMatch[1];
+
+  return null;
+};
 
 interface VideoPlayerProps {
   src: string;
@@ -35,6 +71,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const ytIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastProgressReportRef = useRef<number>(0); // Track last reported time
+  const onProgressRef = useRef(onProgress); // Stable ref for callbacks
+  const onCompleteRef = useRef(onComplete);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -50,6 +91,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Timer para esconder controles
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // Keep refs in sync without re-triggering effects
+  useEffect(() => { onProgressRef.current = onProgress; }, [onProgress]);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
+  // Fire progress at most every 5 seconds
+  const fireProgress = useCallback((time: number, percentage: number) => {
+    const now = Date.now();
+    if (now - lastProgressReportRef.current >= 4500) { // ~5s with tolerance
+      lastProgressReportRef.current = now;
+      onProgressRef.current?.(time, percentage);
+    }
+  }, []);
+
+  // Native video events
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -57,8 +112,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
       setIsLoading(false);
-      
-      // Definir posição inicial se fornecida
       if (initialPosition > 0) {
         video.currentTime = initialPosition;
       }
@@ -67,25 +120,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const handleTimeUpdate = () => {
       const current = video.currentTime;
       setCurrentTime(current);
-      
-      // Calcular porcentagem de progresso
-      const percentage = duration > 0 ? (current / duration) * 100 : 0;
-      
-      // Chamar callback de progresso a cada 5 segundos
-      if (onProgress && Math.floor(current) % 5 === 0) {
-        onProgress(current, percentage);
-      }
+      const percentage = video.duration > 0 ? (current / video.duration) * 100 : 0;
+      fireProgress(current, percentage);
     };
 
     const handleEnded = () => {
       setIsPlaying(false);
-      if (onComplete) {
-        onComplete();
-      }
-      // Marcar como 100% completo
-      if (onProgress) {
-        onProgress(duration, 100);
-      }
+      onCompleteRef.current?.();
     };
 
     const handleError = () => {
@@ -110,14 +151,134 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('error', handleError);
       video.removeEventListener('canplay', handleCanPlay);
     };
-  }, [duration, initialPosition, onProgress, onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, fireProgress]);
 
-  // Gerenciar fullscreen
+  // YouTube Player — NO callback in deps, use refs
+  useEffect(() => {
+    const youtubeVideoId = getYouTubeVideoId(src);
+    if (!youtubeVideoId) return;
+
+    const initYTPlayer = () => {
+      if (!window.YT || !window.YT.Player) return;
+
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.destroy();
+        ytPlayerRef.current = null;
+      }
+
+      ytPlayerRef.current = new window.YT.Player('youtube-player-container', {
+        videoId: youtubeVideoId,
+        playerVars: {
+          autoplay: 0,
+          rel: 0,
+          modestbranding: 1,
+          start: initialPosition > 0 ? Math.floor(initialPosition) : 0,
+        },
+        events: {
+          onReady: (event: any) => {
+            const playerDuration = event.target.getDuration();
+            setDuration(playerDuration);
+            setIsLoading(false);
+          },
+          onStateChange: (event: any) => {
+            if (event.data === window.YT.PlayerState.PLAYING) {
+              setIsPlaying(true);
+
+              if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+              ytIntervalRef.current = setInterval(() => {
+                if (ytPlayerRef.current?.getCurrentTime) {
+                  const current = ytPlayerRef.current.getCurrentTime();
+                  const playerDuration = ytPlayerRef.current.getDuration();
+                  setCurrentTime(current);
+
+                  const percentage = playerDuration > 0 ? (current / playerDuration) * 100 : 0;
+
+                  // Use ref-based progress reporting with throttle
+                  const now = Date.now();
+                  if (now - lastProgressReportRef.current >= 4500) {
+                    lastProgressReportRef.current = now;
+                    onProgressRef.current?.(current, percentage);
+                  }
+                }
+              }, 1000);
+
+            } else {
+              setIsPlaying(false);
+              if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+
+              if (event.data === window.YT.PlayerState.ENDED) {
+                onCompleteRef.current?.();
+              }
+            }
+          },
+          onError: () => {
+            setError(t('components.erroAoCarregarOVideo'));
+            setIsLoading(false);
+          }
+        }
+      });
+    };
+
+    // Load YouTube API if not loaded
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      if (firstScriptTag?.parentNode) {
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      }
+
+      window.onYouTubeIframeAPIReady = () => {
+        initYTPlayer();
+      };
+    } else {
+      initYTPlayer();
+    }
+
+    return () => {
+      if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.destroy();
+        ytPlayerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src]); // ← DO NOT put initialPosition or t in deps! It causes recreate loops.
+
+  // Google Drive progress tracking
+  useEffect(() => {
+    const driveVideoId = getGoogleDriveVideoId(src);
+    if (!driveVideoId) return;
+
+    if (initialPosition > 0 && currentTime === 0) {
+      setCurrentTime(initialPosition);
+    }
+
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        setCurrentTime((prev) => {
+          const newTime = prev + 5;
+          // Use ref-based callback
+          const now = Date.now();
+          if (now - lastProgressReportRef.current >= 4500) {
+            lastProgressReportRef.current = now;
+            onProgressRef.current?.(newTime, 0);
+          }
+          return newTime;
+        });
+      }
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src]);
+
+  // Fullscreen
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
-
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
@@ -125,37 +286,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Auto-hide controls
   useEffect(() => {
     const resetControlsTimeout = () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-      
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       setShowControls(true);
-      
       if (isPlaying) {
-        controlsTimeoutRef.current = setTimeout(() => {
-          setShowControls(false);
-        }, 3000);
+        controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
       }
     };
-
     resetControlsTimeout();
-
-    return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-    };
+    return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
   }, [isPlaying]);
 
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
-
-    if (isPlaying) {
-      video.pause();
-    } else {
-      video.play();
-    }
+    if (isPlaying) { video.pause(); } else { video.play(); }
     setIsPlaying(!isPlaying);
   };
 
@@ -163,12 +307,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const video = videoRef.current;
     const progressBar = progressRef.current;
     if (!video || !progressBar || duration === 0) return;
-
     const rect = progressBar.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const percentage = clickX / rect.width;
     const newTime = percentage * duration;
-    
     video.currentTime = newTime;
     setCurrentTime(newTime);
   };
@@ -176,7 +318,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
-
     video.muted = !isMuted;
     setIsMuted(!isMuted);
   };
@@ -184,7 +325,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
     if (!video) return;
-
     const newVolume = parseFloat(e.target.value);
     video.volume = newVolume;
     setVolume(newVolume);
@@ -194,18 +334,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const toggleFullscreen = () => {
     const container = containerRef.current;
     if (!container) return;
-
-    if (!isFullscreen) {
-      container.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
+    if (!isFullscreen) { container.requestFullscreen(); } else { document.exitFullscreen(); }
   };
 
   const changePlaybackRate = (rate: number) => {
     const video = videoRef.current;
     if (!video) return;
-
     video.playbackRate = rate;
     setPlaybackRate(rate);
     setShowSettings(false);
@@ -219,6 +353,43 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  const youtubeVideoId = getYouTubeVideoId(src);
+  const isYouTube = !!youtubeVideoId;
+  const driveVideoId = getGoogleDriveVideoId(src);
+  const isDrive = !!driveVideoId;
+
+  // YouTube player
+  if (isYouTube) {
+    return (
+      <div
+        ref={containerRef}
+        className={`relative bg-black rounded-lg overflow-hidden ${className}`}
+        style={{ paddingBottom: '56.25%', height: 0 }}
+      >
+        <div id="youtube-player-container" className="absolute top-0 left-0 w-full h-full border-0"></div>
+      </div>
+    );
+  }
+
+  // Google Drive player
+  if (isDrive) {
+    return (
+      <div
+        ref={containerRef}
+        className={`relative bg-black rounded-lg overflow-hidden ${className}`}
+        style={{ paddingBottom: '56.25%', height: 0 }}
+      >
+        <iframe
+          src={`https://drive.google.com/file/d/${driveVideoId}/preview`}
+          className="absolute top-0 left-0 w-full h-full border-0"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+        ></iframe>
+      </div>
+    );
+  }
+
+  // Native video player
   if (error) {
     return (
       <div className={`bg-gray-900 rounded-lg flex items-center justify-center h-64 ${className}`}>
@@ -235,7 +406,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative bg-black rounded-lg overflow-hidden group ${className}`}
       onMouseMove={() => setShowControls(true)}
@@ -258,10 +429,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       {/* Controls overlay */}
-      <div 
-        className={`absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0'
-        }`}
+      <div
+        className={`absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'
+          }`}
       >
         {/* Play button overlay */}
         {!isPlaying && !isLoading && (
@@ -278,12 +448,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Bottom controls */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
           {/* Progress bar */}
-          <div 
+          <div
             ref={progressRef}
             className="w-full h-1 bg-white bg-opacity-30 rounded-full cursor-pointer mb-4"
             onClick={handleProgressClick}
           >
-            <div 
+            <div
               className="h-full bg-blue-500 rounded-full transition-all duration-200"
               style={{ width: `${progressPercentage}%` }}
             />
@@ -339,7 +509,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 >
                   <Cog6ToothIcon className="w-6 h-6" />
                 </button>
-                
+
                 {showSettings && (
                   <div className="absolute bottom-8 right-0 bg-black bg-opacity-90 rounded-lg p-2 min-w-32">
                     <div className="text-white text-sm mb-2">Velocidade</div>
@@ -347,9 +517,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       <button
                         key={rate}
                         onClick={() => changePlaybackRate(rate)}
-                        className={`block w-full text-left px-2 py-1 text-sm rounded hover:bg-white hover:bg-opacity-20 ${
-                          playbackRate === rate ? 'text-blue-400' : 'text-white'
-                        }`}
+                        className={`block w-full text-left px-2 py-1 text-sm rounded hover:bg-white hover:bg-opacity-20 ${playbackRate === rate ? 'text-blue-400' : 'text-white'
+                          }`}
                       >
                         {rate}x
                       </button>

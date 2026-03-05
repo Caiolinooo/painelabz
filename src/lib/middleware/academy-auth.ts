@@ -37,14 +37,10 @@ export async function withAcademyAuth(
   } = options;
 
   try {
-    // Se não requer autenticação, retornar sem usuário
-    if (!requireAuth) {
-      return { user: null, error: null };
-    }
-
     // Verificar header de autorização
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
+      if (!requireAuth) return { user: null, error: null };
       return {
         user: null,
         error: NextResponse.json(
@@ -57,6 +53,7 @@ export async function withAcademyAuth(
     // Extrair token usando método consistente
     const token = extractTokenFromHeader(authHeader);
     if (!token) {
+      if (!requireAuth) return { user: null, error: null };
       return {
         user: null,
         error: NextResponse.json(
@@ -69,6 +66,7 @@ export async function withAcademyAuth(
     // Verificar token usando método padronizado
     const payload = verifyToken(token);
     if (!payload || !payload.userId) {
+      if (!requireAuth) return { user: null, error: null };
       return {
         user: null,
         error: NextResponse.json(
@@ -251,7 +249,7 @@ export function canModerateContent(
  */
 export function extractAuthParams(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  
+
   return {
     userId: searchParams.get('user_id'),
     courseId: searchParams.get('course_id'),
@@ -269,7 +267,7 @@ export function withAuth(
 ) {
   return async (request: NextRequest) => {
     const { user, error } = await withAcademyAuth(request, options);
-    
+
     if (error) {
       return error;
     }

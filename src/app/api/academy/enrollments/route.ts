@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { user, error: authError } = await withAcademyAuth(request, { requireAuth: true });
-    
+
     if (authError) {
       return authError;
     }
@@ -49,6 +49,12 @@ export async function GET(request: NextRequest) {
           first_name,
           last_name,
           email
+        ),
+        progress:academy_progress(
+          progress_percentage,
+          last_watched_position,
+          total_watch_time,
+          last_accessed_at
         )
       `)
       .order('enrolled_at', { ascending: false });
@@ -69,9 +75,7 @@ export async function GET(request: NextRequest) {
     if (status === 'completed') {
       query = query.not('completed_at', 'is', null);
     } else if (status === 'active') {
-      query = query.is('completed_at', null).eq('is_active', true);
-    } else if (status !== 'all') {
-      query = query.eq('is_active', true);
+      query = query.is('completed_at', null);
     }
 
     // Paginação
@@ -99,7 +103,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user, error: authError } = await withAcademyAuth(request, { requireAuth: true });
-    
+
     if (authError) {
       return authError;
     }
@@ -130,44 +134,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se já existe matrícula
-    const { data: existingEnrollment, error: checkError } = await supabaseAdmin
+    const { data: existingEnrollments, error: checkError } = await supabaseAdmin
       .from('academy_enrollments')
-      .select('id, is_active')
+      .select('id')
       .eq('user_id', targetUserId)
       .eq('course_id', course_id)
-      .single();
+      .limit(1);
 
-    if (existingEnrollment) {
-      if (existingEnrollment.is_active) {
-        return NextResponse.json({ error: 'Usuário já está matriculado neste curso' }, { status: 409 });
-      } else {
-        // Reativar matrícula existente
-        const { data: reactivated, error: reactivateError } = await supabaseAdmin
-          .from('academy_enrollments')
-          .update({ is_active: true, enrolled_at: new Date().toISOString() })
-          .eq('id', existingEnrollment.id)
-          .select()
-          .single();
-
-        if (reactivateError) {
-          console.error('Erro ao reativar matrícula:', reactivateError);
-          return NextResponse.json({ error: 'Erro ao reativar matrícula' }, { status: 500 });
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: 'Matrícula reativada com sucesso',
-          enrollment: reactivated
-        });
-      }
+    if (existingEnrollments && existingEnrollments.length > 0) {
+      return NextResponse.json({ error: 'Usuário já está matriculado neste curso' }, { status: 409 });
     }
 
     // Criar nova matrícula
     const enrollmentData = {
       user_id: targetUserId,
       course_id: course_id,
-      enrolled_at: new Date().toISOString(),
-      is_active: true
+      enrolled_at: new Date().toISOString()
     };
 
     const { data: enrollment, error: createError } = await supabaseAdmin
@@ -193,13 +175,11 @@ export async function POST(request: NextRequest) {
 
     // Criar registro de progresso inicial
     const progressData = {
-      user_id: targetUserId,
-      course_id: course_id,
       enrollment_id: enrollment.id,
       progress_percentage: 0,
-      time_watched: 0,
-      last_position: 0,
-      completed: false
+      total_watch_time: 0,
+      last_watched_position: 0,
+      last_accessed_at: new Date().toISOString()
     };
 
     const { error: progressError } = await supabaseAdmin
@@ -227,7 +207,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { user, error: authError } = await withAcademyAuth(request, { requireAuth: true });
-    
+
     if (authError) {
       return authError;
     }
@@ -238,8 +218,8 @@ export async function DELETE(request: NextRequest) {
     const userId = searchParams.get('user_id');
 
     if (!enrollmentId && (!courseId || !userId)) {
-      return NextResponse.json({ 
-        error: 'ID da matrícula ou combinação curso_id + user_id é obrigatória' 
+      return NextResponse.json({
+        error: 'ID da matrícula ou combinação curso_id + user_id é obrigatória'
       }, { status: 400 });
     }
 
@@ -256,20 +236,22 @@ export async function DELETE(request: NextRequest) {
       query = query.eq('user_id', user?.id);
     }
 
-    const { data: enrollment, error: findError } = await query.select('*').single();
+    const { data: enrollments, error: findError } = await query.select('*').limit(1);
 
-    if (findError || !enrollment) {
+    if (findError || !enrollments || enrollments.length === 0) {
       return NextResponse.json({ error: 'Matrícula não encontrada' }, { status: 404 });
     }
 
-    // Desativar matrícula ao invés de deletar
-    const { error: updateError } = await supabaseAdmin
-      .from('academy_enrollments')
-      .update({ is_active: false })
-      .eq('id', enrollment.id);
+    const enrollment = enrollments[0];
 
-    if (updateError) {
-      console.error('Erro ao cancelar matrícula:', updateError);
+    // Desativar matrícula ao invés de deletar
+    const { error: deleteError } = await supabaseAdmin
+      .from('academy_enrollments')
+      .delete()
+      .eq('id', enrollment.id); // Changed from enrollmentId to enrollment.id for consistency with found enrollment
+
+    if (deleteError) {
+      console.error('Erro ao cancelar matrícula:', deleteError);
       return NextResponse.json({ error: 'Erro ao cancelar matrícula' }, { status: 500 });
     }
 
