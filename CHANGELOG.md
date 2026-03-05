@@ -1,6 +1,76 @@
 # Changelog
 <br>
 
+## [5.0.0] - 2026-03-05
+
+### Added
+- **Sistema de Quizzes e Avaliações (BIG FEATURE)**: Sistema completo de quizzes e avaliações para o módulo Academy.
+  - Sistema de quizzes com perguntas e respostas
+  - Módulos de cursos reorganizados
+  - Avaliações pendentes para instrutores
+  - Editor visual de quizzes
+  - Componente de avaliação de quizzes
+  - Modal para exclusão de cursos
+  - APIs completas: answers, assessments, modules, questions, setup-quizzes, signatures
+  - Migration: `20260302_create_academy_quizzes.sql`
+
+### BREAKING CHANGES
+- Nova tabela `academy_quizzes` no banco de dados
+- Nova estrutura de módulos de curso
+
+## [4.14.2] - 2026-03-05
+
+### Added
+- **Adicional Pecuniário para Férias**: Sistema de adicional pecuniário para férias.
+  - Nova coluna para configuração de adicional
+  - Melhorias na página de solicitação de férias
+  - Migration: `20260227123044_add_pecuniary_allowance_to_leave_requests.sql`
+
+## [4.14.1] - 2026-03-05
+
+### Added
+- **Termos de Pagamento em Purchase Orders**: Adição de termos de pagamento nas configurações de PO.
+  - Envio de PDF por email aprimorado
+  - Melhorias no formulário de purchase orders
+  - Migration: `20260227131000_add_payment_terms_to_po_config.sql`
+
+## [4.14.0] - 2026-03-05
+
+### Added
+- **Melhorias no Módulo Academy**:
+  - Editor de cursos aprimorado
+  - Novo player de vídeo com melhor experiência
+  - Sistema de comentários e ratings melhorado
+  - Certificados com design atualizado
+  - Novas fontes Merriweather para certificados
+  - Imagens default para cursos
+  - Melhorias no dashboard e notificações
+
+## [4.13.5] - 2026-03-05
+
+### Added
+- Scripts para manutenção do banco de dados
+- Ajustes no CSS global
+- Correções no componente de avatar de usuário
+
+## [4.13.4] - 2026-03-05
+
+### Added
+- Aprimoramentos no módulo de Noticias e Highlights
+- Sistema de comentários para notícias
+- Melhorias nas notificações
+- Atualizações de tradução pt-BR e en-US
+- Correções na autenticação via contexto
+
+## [4.13.3] - 2026-03-05
+
+### Fixed
+- Correção de chave estrangeira no estoque de EPI
+- Melhorias no formulário de EPI
+- Aprimoramentos na assinatura digital
+- Correções na geração de checklist PDF
+- Migration: `20260227123900_fix_epi_stock_fk.sql`
+
 ## [4.13.2] - 2026-02-24
 
 ### Fixed
