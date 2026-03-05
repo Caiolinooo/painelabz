@@ -28,9 +28,11 @@ export default function FeriasPage() {
     const [formData, setFormData] = useState<{
         periods: { startDate: string; endDate: string }[];
         justification: string;
+        pecuniaryAllowance: boolean;
     }>({
         periods: [{ startDate: '', endDate: '' }],
-        justification: ''
+        justification: '',
+        pecuniaryAllowance: false
     });
 
     // ==========================================
@@ -155,7 +157,8 @@ export default function FeriasPage() {
                     start_date: formData.periods[0].startDate, // Keep for backward comp / boundary tracking
                     end_date: formData.periods[formData.periods.length - 1].endDate,
                     periods: preparedPeriods,
-                    justification: formData.justification
+                    justification: formData.justification,
+                    pecuniary_allowance: formData.pecuniaryAllowance
                 })
             });
 
@@ -163,7 +166,7 @@ export default function FeriasPage() {
 
             toast.success('Solicitação de férias enviada com sucesso!');
             setShowModal(false);
-            setFormData({ periods: [{ startDate: '', endDate: '' }], justification: '' });
+            setFormData({ periods: [{ startDate: '', endDate: '' }], justification: '', pecuniaryAllowance: false });
             loadRequests();
         } catch (error) {
             console.error('Error submitting leave request:', error);
@@ -384,6 +387,11 @@ export default function FeriasPage() {
                                                                 {statusStyle.icon}
                                                                 {statusStyle.label}
                                                             </span>
+                                                            {request.pecuniary_allowance && (
+                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-purple-100 text-purple-700 border-purple-200">
+                                                                    <span>Abono Pecuniário: SIM</span>
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <p className="text-sm text-gray-500">
@@ -447,6 +455,11 @@ export default function FeriasPage() {
                                                     <span className="text-xs text-gray-400">
                                                         Enviada em {new Date(request.created_at).toLocaleDateString('pt-BR')}
                                                     </span>
+                                                    {request.pecuniary_allowance && (
+                                                        <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 tracking-wide uppercase border border-purple-200">
+                                                            Pecúnia
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 <div className="flex items-center gap-3">
@@ -546,93 +559,123 @@ export default function FeriasPage() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmitRequest} className="p-6 space-y-5">
-                                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                                    {formData.periods.map((period, index) => (
-                                        <div key={index} className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm relative">
-                                            {formData.periods.length > 1 && (
-                                                <div className="absolute top-2 right-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setFormData(prev => ({
-                                                            ...prev,
-                                                            periods: prev.periods.filter((_, i) => i !== index)
-                                                        }))}
-                                                        className="text-red-500 hover:text-red-700 p-1"
-                                                    >
-                                                        <FiX />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <h4 className="text-sm font-semibold text-gray-700 mb-3">{index + 1}º Período</h4>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-sm font-medium text-gray-700">Data de Início</label>
-                                                    <input
-                                                        type="date"
-                                                        required
-                                                        value={period.startDate}
-                                                        onChange={(e) => {
-                                                            const newPeriods = [...formData.periods];
-                                                            newPeriods[index].startDate = e.target.value;
-                                                            setFormData(prev => ({ ...prev, periods: newPeriods }));
-                                                        }}
-                                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-sm font-medium text-gray-700">Data de Retorno</label>
-                                                    <input
-                                                        type="date"
-                                                        required
-                                                        value={period.endDate}
-                                                        onChange={(e) => {
-                                                            const newPeriods = [...formData.periods];
-                                                            newPeriods[index].endDate = e.target.value;
-                                                            setFormData(prev => ({ ...prev, periods: newPeriods }));
-                                                        }}
-                                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                                    />
+                            {/* Informações da CLT */}
+                            <div className="bg-blue-50/80 px-6 py-4 border-b border-blue-100 text-sm text-blue-800">
+                                <div className="flex gap-2 items-start">
+                                    <FiInfo className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold mb-1 text-blue-900">Orientações Importantes da CLT:</p>
+                                        <ul className="list-disc pl-4 space-y-1 text-xs">
+                                            <li>As férias não podem iniciar em DSR ou nos dois dias que antecedem feriados e repousos (não podem cair na Quinta, Sexta, Sábado ou Domingo).</li>
+                                            <li>O período mínimo para cada bloco de férias é de <strong>5 dias</strong>.</li>
+                                            <li>Se dividir as férias, um dos períodos deve obrigatoriamente ter <strong>no mínimo 14 dias</strong>.</li>
+                                            <li>Cancelamentos só podem ser feitos antes da aprovação final pelo RH.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleSubmitRequest} className="p-0 flex flex-col h-full max-h-[80vh]">
+                                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+                                    <div className="space-y-4">
+                                        {formData.periods.map((period, index) => (
+                                            <div key={index} className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm relative">
+                                                {formData.periods.length > 1 && (
+                                                    <div className="absolute top-2 right-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData(prev => ({
+                                                                ...prev,
+                                                                periods: prev.periods.filter((_, i) => i !== index)
+                                                            }))}
+                                                            className="text-red-500 hover:text-red-700 p-1"
+                                                        >
+                                                            <FiX />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-3">{index + 1}º Período</h4>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-sm font-medium text-gray-700">Data de Início</label>
+                                                        <input
+                                                            type="date"
+                                                            required
+                                                            value={period.startDate}
+                                                            onChange={(e) => {
+                                                                const newPeriods = [...formData.periods];
+                                                                newPeriods[index].startDate = e.target.value;
+                                                                setFormData(prev => ({ ...prev, periods: newPeriods }));
+                                                            }}
+                                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-sm font-medium text-gray-700">Data de Retorno</label>
+                                                        <input
+                                                            type="date"
+                                                            required
+                                                            value={period.endDate}
+                                                            onChange={(e) => {
+                                                                const newPeriods = [...formData.periods];
+                                                                newPeriods[index].endDate = e.target.value;
+                                                                setFormData(prev => ({ ...prev, periods: newPeriods }));
+                                                            }}
+                                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
 
-                                    {formData.periods.length < 3 && (
+                                        {formData.periods.length < 3 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(prev => ({
+                                                    ...prev,
+                                                    periods: [...prev.periods, { startDate: '', endDate: '' }]
+                                                }))}
+                                                className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-500 font-medium rounded-xl hover:bg-gray-50 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <FiPlus />
+                                                Adicionar Período (Dividir Férias)
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50 shrink-0">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-gray-800">Abono Pecuniário</h4>
+                                            <p className="text-xs text-gray-500 mt-1">Desejo "vender" 10 dias de férias (conversão em dinheiro).</p>
+                                        </div>
                                         <button
                                             type="button"
-                                            onClick={() => setFormData(prev => ({
-                                                ...prev,
-                                                periods: [...prev.periods, { startDate: '', endDate: '' }]
-                                            }))}
-                                            className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-500 font-medium rounded-xl hover:bg-gray-50 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
+                                            role="switch"
+                                            aria-checked={formData.pecuniaryAllowance}
+                                            onClick={() => setFormData(prev => ({ ...prev, pecuniaryAllowance: !prev.pecuniaryAllowance }))}
+                                            className={`${formData.pecuniaryAllowance ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
                                         >
-                                            <FiPlus />
-                                            Adicionar Período (Dividir Férias)
+                                            <span className="sr-only">Abono Pecuniário</span>
+                                            <span
+                                                aria-hidden="true"
+                                                className={`${formData.pecuniaryAllowance ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                                            />
                                         </button>
-                                    )}
+                                    </div>
+
+                                    <div className="space-y-1.5 shrink-0 mb-4">
+                                        <label className="text-sm font-medium text-gray-700">Observações <span className="text-gray-400 font-normal">(Opcional)</span></label>
+                                        <textarea
+                                            rows={3}
+                                            value={formData.justification}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, justification: e.target.value }))}
+                                            placeholder="Alguma observação para seu líder/gerente..."
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                                        />
+                                    </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-gray-700">Observações <span className="text-gray-400 font-normal">(Opcional)</span></label>
-                                    <textarea
-                                        rows={3}
-                                        value={formData.justification}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, justification: e.target.value }))}
-                                        placeholder="Alguma observação para seu líder/gerente..."
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
-                                    />
-                                </div>
-
-                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-2">
-                                    <FiAlertCircle className="text-blue-600 mt-0.5" />
-                                    <p className="text-xs text-blue-800">
-                                        Esta solicitação será encaminhada para aprovação conforme a hierarquia do seu setor. <br />
-                                        <strong>As férias não podem iniciar em Quintas, Sextas, Sábados ou Domingos e devem ter no mínimo 5 dias.</strong>
-                                    </p>
-                                </div>
-
-                                <div className="pt-2 flex items-center justify-end gap-3">
+                                <div className="p-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-white shrink-0">
                                     <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
                                         Cancelar
                                     </button>
@@ -648,45 +691,48 @@ export default function FeriasPage() {
                         </div>
                     </div>,
                     document.body
-                )}
+                )
+                }
 
                 {/* 2. Modal Rejeitar Solicitação */}
-                {showRejectModal && mounted && createPortal(
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
-                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95">
-                            <h3 className="text-lg font-bold text-gray-900 mb-2">Rejeitar Solicitação</h3>
-                            <p className="text-sm text-gray-500 mb-6">
-                                Você está rejeitando o pedido de {rejectingRequest?.user?.name}. Por favor, informe o motivo.
-                            </p>
+                {
+                    showRejectModal && mounted && createPortal(
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
+                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95">
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">Rejeitar Solicitação</h3>
+                                <p className="text-sm text-gray-500 mb-6">
+                                    Você está rejeitando o pedido de {rejectingRequest?.user?.name}. Por favor, informe o motivo.
+                                </p>
 
-                            <textarea
-                                className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none min-h-[100px] mb-6"
-                                placeholder="Justificativa da rejeição..."
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                            />
+                                <textarea
+                                    className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none min-h-[100px] mb-6"
+                                    placeholder="Justificativa da rejeição..."
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                />
 
-                            <div className="flex gap-3 justify-end">
-                                <button
-                                    onClick={() => setShowRejectModal(false)}
-                                    className="px-4 py-2 font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={submitReject}
-                                    disabled={processingId === rejectingRequest?.id || !rejectReason.trim()}
-                                    className="px-4 py-2 font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {processingId === rejectingRequest?.id ? 'Rejeitando...' : 'Confirmar Rejeição'}
-                                </button>
+                                <div className="flex gap-3 justify-end">
+                                    <button
+                                        onClick={() => setShowRejectModal(false)}
+                                        className="px-4 py-2 font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={submitReject}
+                                        disabled={processingId === rejectingRequest?.id || !rejectReason.trim()}
+                                        className="px-4 py-2 font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {processingId === rejectingRequest?.id ? 'Rejeitando...' : 'Confirmar Rejeição'}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </div>,
-                    document.body
-                )}
+                        </div>,
+                        document.body
+                    )
+                }
 
-            </div>
-        </MainLayout>
+            </div >
+        </MainLayout >
     );
 }
