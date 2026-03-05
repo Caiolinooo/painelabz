@@ -9,7 +9,7 @@ import { EPIType } from '@/types/epi';
 
 const epiSchema = z.object({
     equipment_type: z.string().min(1, 'Tipo de EPI é obrigatório'),
-    quantity: z.number().min(1, 'Quantidade deve ser maior que 0').max(10, 'Quantidade máxima é 10'),
+    quantity: z.number().min(1, 'Quantidade deve ser maior que 0'),
     reason: z.string().min(10, 'Motivo deve ter pelo menos 10 caracteres').max(500, 'Motivo deve ter no máximo 500 caracteres'),
 });
 
@@ -118,7 +118,6 @@ export default function EPIForm({ epiTypes, onSubmit, onCancel }: EPIFormProps) 
                         type="number"
                         id="quantity"
                         min="1"
-                        max="10"
                         {...register('quantity', { valueAsNumber: true })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500"
                     />
