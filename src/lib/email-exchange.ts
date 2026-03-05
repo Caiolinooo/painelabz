@@ -36,8 +36,8 @@ const emailConfig = {
   logger: process.env.NODE_ENV !== 'production',
   // Configurações para melhorar a entregabilidade
   pool: true, // Usar conexões persistentes
-  maxConnections: 5,
-  maxMessages: 100,
+  maxConnections: 2, // Office 365 tem limite de 3 conexões simultâneas, mantemos em 2 para margem de segurança
+  maxMessages: 50, // Reduzido de 100 para evitar limites de taxa por sessão
   // Configurações de timeout
   connectionTimeout: 10000, // 10 segundos
   greetingTimeout: 10000,
@@ -70,11 +70,19 @@ console.log('Configuração de email carregada:', {
   user: emailConfig.auth.user
 });
 
+// Variável global para armazenar a instância do transporter e evitar limite de conexões
+const globalForNodemailer = global as unknown as { transporter: nodemailer.Transporter | null };
+
 /**
  * Inicializa o transporte de e-mail com Exchange/Office 365
  * @returns Transporter configurado
  */
 export async function createTransport() {
+  // Retornar a instância existente se houver (para evitar estourar o limite de conexões concorrentes)
+  if (globalForNodemailer.transporter) {
+    return globalForNodemailer.transporter;
+  }
+
   try {
     console.log('Inicializando transporte de email com Exchange/Office 365');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
@@ -91,13 +99,17 @@ export async function createTransport() {
     // Criar transporter com configuração otimizada para Exchange
     const transporter = nodemailer.createTransport(emailConfig);
 
-    // Verificar conexão
+    // Verificar conexão apenas na inicialização (primeira vez)
     console.log('Verificando conexão com o servidor SMTP...');
     await transporter.verify();
     console.log('Conexão com o servidor SMTP verificada com sucesso');
 
+    // Armazenar na global para reuso
+    globalForNodemailer.transporter = transporter;
+
     return transporter;
   } catch (error) {
+    globalForNodemailer.transporter = null;
     console.error('ERRO CRÍTICO - Falha ao inicializar transporte de email Exchange');
     console.error('Detalhes:', error instanceof Error ? error.message : 'Erro desconhecido');
 

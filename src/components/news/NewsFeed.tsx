@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiHeart, FiMessageCircle, FiShare2, FiBookmark, FiMoreHorizontal, FiEye, FiCalendar, FiUser, FiImage, FiStar, FiPlus } from 'react-icons/fi';
+import { FiHeart, FiMessageCircle, FiShare2, FiBookmark, FiMoreHorizontal, FiEye, FiCalendar, FiUser, FiUsers, FiMapPin, FiClock, FiImage, FiStar, FiPlus } from 'react-icons/fi';
 import { FaHeart } from 'react-icons/fa';
 import { useACLPermissions } from '@/hooks/useACLPermissions';
 import { useI18n } from '@/contexts/I18nContext';
@@ -54,6 +54,7 @@ interface NewsPost {
   featured: boolean;
   pinned: boolean;
   user_liked?: boolean;
+  metadata?: any;
   latest_likes?: Array<{
     userId: string;
     firstName: string;
@@ -311,15 +312,25 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
     if (!userId) return;
 
     // Atualização otimista da UI
-    setPosts(prev => prev.map(post =>
-      post.id === postId
-        ? {
+    setPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        let newLatestLikes = post.latest_likes || [];
+        if (!post.user_liked) {
+          if (!newLatestLikes.find(l => l.userId === userId)) {
+            newLatestLikes = [{ userId: userId, firstName: 'Você', lastName: '' }, ...newLatestLikes];
+          }
+        } else {
+          newLatestLikes = newLatestLikes.filter(l => l.userId !== userId);
+        }
+        return {
           ...post,
           likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
-          user_liked: !post.user_liked
-        }
-        : post
-    ));
+          user_liked: !post.user_liked,
+          latest_likes: newLatestLikes
+        };
+      }
+      return post;
+    }));
 
     try {
       const response = await fetch(`/api/news/posts/${postId}/like`, {
@@ -332,28 +343,44 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
 
       if (!response.ok) {
         // Reverter se houver erro
-        setPosts(prev => prev.map(post =>
-          post.id === postId
-            ? {
+        setPosts(prev => prev.map(post => {
+          if (post.id === postId) {
+            let revertLatestLikes = post.latest_likes || [];
+            if (post.user_liked) { // reverting back to liked
+              if (!revertLatestLikes.find(l => l.userId === userId)) revertLatestLikes = [{ userId: userId, firstName: 'Você', lastName: '' }, ...revertLatestLikes];
+            } else { // reverting back to unliked
+              revertLatestLikes = revertLatestLikes.filter(l => l.userId !== userId);
+            }
+            return {
               ...post,
               likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
-              user_liked: !post.user_liked
-            }
-            : post
-        ));
+              user_liked: !post.user_liked,
+              latest_likes: revertLatestLikes
+            };
+          }
+          return post;
+        }));
       }
     } catch (error) {
       console.error('Erro ao curtir post:', error);
       // Reverter em caso de erro
-      setPosts(prev => prev.map(post =>
-        post.id === postId
-          ? {
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          let revertLatestLikes = post.latest_likes || [];
+          if (post.user_liked) { // reverting back to liked
+            if (!revertLatestLikes.find(l => l.userId === userId)) revertLatestLikes = [{ userId: userId, firstName: 'Você', lastName: '' }, ...revertLatestLikes];
+          } else { // reverting back to unliked
+            revertLatestLikes = revertLatestLikes.filter(l => l.userId !== userId);
+          }
+          return {
             ...post,
             likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
-            user_liked: !post.user_liked
-          }
-          : post
-      ));
+            user_liked: !post.user_liked,
+            latest_likes: revertLatestLikes
+          };
+        }
+        return post;
+      }));
     }
   };
 
@@ -530,6 +557,51 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
             <h2 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h2>
             <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{post.excerpt}</p>
 
+            {/* Componente visual de evento */}
+            {post.metadata?.type === 'event' && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-100 rounded-lg shadow-sm">
+                <div className="flex items-center space-x-2 text-green-800 mb-2">
+                  <FiCalendar className="w-5 h-5" />
+                  <span className="font-semibold">Detalhes do Evento</span>
+                </div>
+                <div className="space-y-2 mt-3 text-sm text-gray-700">
+                  {post.metadata.startDate && (
+                    <div className="flex items-center space-x-2">
+                      <FiClock className="w-4 h-4 text-green-600" />
+                      <span>
+                        <strong>Data/Hora:</strong>{' '}
+                        {new Date(post.metadata.startDate).toLocaleString('pt-BR', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })}
+                        {post.metadata.endDate && post.metadata.endDate !== post.metadata.startDate &&
+                          ` até ${new Date(post.metadata.endDate).toLocaleString('pt-BR', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })}`
+                        }
+                      </span>
+                    </div>
+                  )}
+                  {post.metadata.location && (
+                    <div className="flex items-center space-x-2">
+                      <FiMapPin className="w-4 h-4 text-green-600" />
+                      <span><strong>Local:</strong> {post.metadata.location}</span>
+                    </div>
+                  )}
+                  {post.metadata.attendees && post.metadata.attendees.length > 0 && (
+                    <div className="flex items-start space-x-2">
+                      <FiUsers className="w-4 h-4 text-green-600 mt-1" />
+                      <span>
+                        <strong>Convidados ({post.metadata.attendees.length}):</strong>{' '}
+                        {post.metadata.attendees.join(', ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Tags */}
             {Array.isArray(post.tags) && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
@@ -692,9 +764,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
                 </button>
               </div>
 
-              <button className="text-gray-500 hover:text-yellow-500 transition-colors">
-                <FiBookmark className="w-5 h-5" />
-              </button>
+
             </div>
 
             {/* Liked By Section - Instagram Style */}

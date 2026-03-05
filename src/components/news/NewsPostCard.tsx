@@ -54,7 +54,21 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
         const newLikedState = !post.user_liked;
         const newLikesCount = post.likes_count + (newLikedState ? 1 : -1);
 
-        const updatedPost = { ...post, user_liked: newLikedState, likes_count: newLikesCount };
+        let newLatestLikes = post.latest_likes || [];
+        if (newLikedState) {
+            if (!newLatestLikes.find((l: any) => l.userId === userId)) {
+                newLatestLikes = [{ userId: userId, firstName: 'Você', lastName: '', avatar: '' }, ...newLatestLikes];
+            }
+        } else {
+            newLatestLikes = newLatestLikes.filter((l: any) => l.userId !== userId);
+        }
+
+        const updatedPost = {
+            ...post,
+            user_liked: newLikedState,
+            likes_count: newLikesCount,
+            latest_likes: newLatestLikes
+        };
         setPost(updatedPost);
         if (onPostUpdated) onPostUpdated(updatedPost);
 

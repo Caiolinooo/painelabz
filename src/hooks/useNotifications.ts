@@ -20,6 +20,7 @@ export interface Notification {
     first_name: string;
     last_name: string;
     avatar: string | null;
+    drive_photo_url?: string | null;
   };
 }
 
