@@ -8,6 +8,7 @@
 
 import nodemailer from 'nodemailer';
 import { MailService } from '@sendgrid/mail';
+import { buildAppUrl } from './app-url';
 
 // Validate required environment variables
 function validateSendGridConfig() {
@@ -257,7 +258,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
 <body>
   <div class="container">
     <div class="header">
-      <img src="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/images/LC1_Azul.png" alt="ABZ Group Logo" class="logo" style="max-width: 200px; height: auto;">
+      <img src="${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.groupabz.com'}/images/logo-abz.png" alt="ABZ Group Logo" class="logo" style="max-width: 200px; height: auto;">
       <h2>Código de Verificação</h2>
     </div>
 
@@ -300,7 +301,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
  * @returns Resultado do envio
  */
 export async function sendPasswordSetupEmail(email: string, code: string, isNewUser: boolean = false) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = buildAppUrl();
 
   // Texto simples para clientes que não suportam HTML
   const text = `
@@ -342,7 +343,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
 <body>
   <div class="container">
     <div class="header">
-      <img src="${appUrl}/images/LC1_Azul.png" alt="ABZ Group Logo" class="logo" style="max-width: 200px; height: auto;">
+      <img src="${appUrl}/images/logo-abz.png" alt="ABZ Group Logo" class="logo" style="max-width: 200px; height: auto;">
       <h2>${isNewUser ? 'Bem-vindo ao ABZ Group' : 'Código de Verificação'}</h2>
     </div>
 

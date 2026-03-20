@@ -23,6 +23,7 @@ export interface LeaveRequest {
     justification?: string;
     rejection_reason?: string;
     pecuniary_allowance?: boolean;
+    advance_13th_salary?: boolean;
     created_at: string;
     updated_at: string;
     // Joins
@@ -206,7 +207,8 @@ export async function createLeaveRequest(
     endDate: string,
     justification?: string,
     periods?: Array<{ start_date: string; end_date: string; duration: number }>,
-    pecuniaryAllowance?: boolean
+    pecuniaryAllowance?: boolean,
+    advance13thSalary?: boolean
 ): Promise<{ success: boolean; data?: LeaveRequest; error?: any }> {
     // 1. Get user and config to determine initial status
     const { data: user } = await supabaseAdmin.from('users_unified').select('sector_id').eq('id', userId).single();
@@ -243,7 +245,8 @@ export async function createLeaveRequest(
             periods: periods || [],
             status: initialStatus,
             justification,
-            pecuniary_allowance: pecuniaryAllowance || false
+            pecuniary_allowance: pecuniaryAllowance || false,
+            advance_13th_salary: advance13thSalary || false
         }])
         .select()
         .single();

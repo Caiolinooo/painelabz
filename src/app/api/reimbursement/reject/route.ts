@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { buildAppUrl } from '@/lib/app-url';
 import { sendEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
             <p>Se você acredita que houve um erro na avaliação, entre em contato com o departamento financeiro.</p>
           </div>
 
-          <p>Para mais detalhes ou para criar uma nova solicitação, acesse o <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://painel.groupabz.com'}/reembolso" style="color: #0066cc; text-decoration: none; font-weight: bold;">Painel de Reembolsos</a>.</p>
+          <p>Para mais detalhes ou para criar uma nova solicitação, acesse o <a href="${buildAppUrl('/reembolso', request.headers)}" style="color: #0066cc; text-decoration: none; font-weight: bold;">Painel de Reembolsos</a>.</p>
 
           <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
             <p style="color: #666; font-size: 12px;">

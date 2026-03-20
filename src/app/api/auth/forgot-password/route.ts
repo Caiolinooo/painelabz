@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sendPasswordResetSMS } from '@/lib/auth';
+import { buildAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
+        redirectTo: buildAppUrl('/reset-password', request.headers),
       }
     );
 

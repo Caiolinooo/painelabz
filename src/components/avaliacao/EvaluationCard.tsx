@@ -29,6 +29,7 @@ interface EvaluationCardProps {
   cycleName?: string;
   index?: number;
   isManagerView?: boolean;
+  isAuditView?: boolean;
   currentUserRole?: string; // Role do usuário atual
   onDelete?: () => void; // Callback após exclusão
 }
@@ -41,6 +42,7 @@ export default function EvaluationCard({
   cycleName,
   index = 0,
   isManagerView = false,
+  isAuditView = false,
   currentUserRole,
   onDelete
 }: EvaluationCardProps) {
@@ -51,7 +53,7 @@ export default function EvaluationCard({
   const isCompleted = evaluation.status === 'concluida';
 
   // Nome a ser exibido depende da visão
-  const displayName = isManagerView ? employeeName : (managerName || 'Gestor não atribuído');
+  const displayName = (isManagerView || isAuditView) ? employeeName : (managerName || 'Gestor não atribuído');
 
   const isAdmin = currentUserRole === 'ADMIN';
 
@@ -146,8 +148,9 @@ export default function EvaluationCard({
                   )}
                   <p className="text-sm text-gray-600">
                     {periodName}
+                    {isAuditView && <span className="ml-2 text-xs text-blue-600 font-medium">• Auditoria</span>}
                     {isManagerView && <span className="ml-2 text-xs text-gray-500">• Colaborador</span>}
-                    {!isManagerView && <span className="ml-2 text-xs text-gray-500">• Seu Gestor</span>}
+                    {!isManagerView && !isAuditView && <span className="ml-2 text-xs text-gray-500">• Seu Gestor</span>}
                   </p>
                 </div>
               </div>

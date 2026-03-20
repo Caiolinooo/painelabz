@@ -2107,10 +2107,10 @@ export default {
     markAllAsRead: 'Marcar todas como lidas',
     noNotifications: 'Nenhuma notificação',
     unreadCount: '{{count}} não lidas',
-    po_created: 'Nova Ordem de Compra {{number}} criada para {{provider}}. Valor: {{value}}.',
-    po_approval_request: 'Solicitação de aprovação para Ordem de Compra {{number}} ({{provider}}). Valor: {{value}}.',
-    po_approved: 'Ordem de Compra {{number}} ({{provider}}) foi aprovada. Valor: {{value}}.',
-    po_rejected: 'Ordem de Compra {{number}} ({{provider}}) foi rejeitada. Valor: {{value}}.',
+    po_created: 'Nova Requisição de Compra {{number}} criada para {{provider}}. Valor: {{value}}.',
+    po_approval_request: 'Solicitação de aprovação para Requisição de Compra {{number}} ({{provider}}). Valor: {{value}}.',
+    po_approved: 'Requisição de Compra {{number}} ({{provider}}) foi aprovada. Valor: {{value}}.',
+    po_rejected: 'Requisição de Compra {{number}} ({{provider}}) foi rejeitada. Valor: {{value}}.',
     types: {
       info: 'Informação',
       warning: 'Aviso',
@@ -2173,19 +2173,19 @@ export default {
     },
     purchaseOrder: {
       created: {
-        title: '🛒 Ordem de Compra Criada',
+        title: '🛒 Requisição de Compra Criada',
         message: 'Sua OC {poNumber} para {provider} foi criada e aguarda aprovação.'
       },
       approvalRequest: {
-        title: '📋 Nova Ordem de Compra para Aprovação',
+        title: '📋 Nova Requisição de Compra para Aprovação',
         message: '{userName} criou uma OC de R$ {value} que aguarda sua aprovação.'
       },
       approved: {
-        title: '✅ Ordem de Compra Aprovada',
+        title: '✅ Requisição de Compra Aprovada',
         message: 'Sua OC {poNumber} foi aprovada por {approverName}.'
       },
       rejected: {
-        title: '❌ Ordem de Compra Rejeitada',
+        title: '❌ Requisição de Compra Rejeitada',
         message: 'Sua OC {poNumber} foi rejeitada por {approverName}.'
       }
     },
@@ -3691,23 +3691,23 @@ export default {
     },
     purchaseOrder: {
       subject: {
-        created: 'Ordem de Compra Criada - {{number}}',
+        created: 'Requisição de Compra Criada - {{number}}',
         approval: 'Solicitação de Aprovação - {{number}}',
         approved: 'Solicitação Aprovada - {{number}}',
         rejected: 'Solicitação Rejeitada - {{number}}',
         approvalCopy: 'Solicitação de Aprovação (Cópia) - {{number}}'
       },
       statusUpdateSubject: 'Atualização de Status - {{poNumber}}',
-      titleCreated: 'Nova Ordem de Compra',
+      titleCreated: 'Nova Requisição de Compra',
       titleApproval: 'Solicitação de Aprovação',
       titleApproved: 'Solicitação Aprovada',
       titleRejected: 'Solicitação Rejeitada',
       viewOrder: 'Visualizar Pedido',
       downloadAttachment: 'Baixar Anexo',
-      createdMessage: 'Sua ordem de compra foi criada com sucesso e está aguardando aprovação.',
+      createdMessage: 'Sua requisição de compra foi criada com sucesso e está aguardando aprovação.',
       approvalMessage: 'Nova solicitação de compra de {{name}} aguardando sua aprovação.',
-      approvedMessage: 'Sua Ordem de Compra {{number}} para {{provider}} foi aprovada por {{approver}}.',
-      rejectedMessage: 'Sua Ordem de Compra {{number}} para {{provider}} foi rejeitada por {{approver}}.',
+      approvedMessage: 'Sua Requisição de Compra {{number}} para {{provider}} foi aprovada por {{approver}}.',
+      rejectedMessage: 'Sua Requisição de Compra {{number}} para {{provider}} foi rejeitada por {{approver}}.',
       summary: 'Resumo do Pedido',
       poNumber: 'Número do Pedido',
       provider: 'Fornecedor',

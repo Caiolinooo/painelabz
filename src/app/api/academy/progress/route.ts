@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withAcademyAuth } from '@/lib/middleware/academy-auth';
 import { generateAndStoreCertificate } from '@/lib/certificates';
+import { baseTemplate, academyCertificateTemplate } from '@/lib/emailTemplates';
 
 export const dynamic = 'force-dynamic';
 
@@ -399,17 +400,13 @@ export async function POST(request: NextRequest) {
             // E-mail com link e anexo do PDF
             try {
               const { sendEmail } = await import('@/lib/email-sendgrid');
-              const subject = `Certificado disponível - ${(enr.course as any)?.title || 'Curso'}`;
-              const html = `
-                <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111">
-                  <h2 style="margin:0 0 12px 0">Parabéns pela conclusão!</h2>
-                  <p style="margin:0 0 12px 0">Seu certificado do curso <strong>${(enr.course as any)?.title || ''}</strong> está disponível.</p>
-                  <p style="margin:16px 0">
-                    <a href="${downloadUrl}" style="display:inline-block;background:#005dff;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none">Baixar certificado (PDF)</a>
-                  </p>
-                  <p style="color:#666;font-size:12px">Você pode salvar como PDF ou imprimir.</p>
-                </div>
-              `;
+              const subject = `🎓 Certificado disponível - ${(enr.course as any)?.title || 'Curso'}`;
+              const html = academyCertificateTemplate(
+                enr.user?.first_name || '',
+                (enr.course as any)?.title || '',
+                downloadUrl
+              );
+
               if ((enr.user as any)?.email) {
                 await sendEmail((enr.user as any).email, subject, subject, html, {
                   attachments: [

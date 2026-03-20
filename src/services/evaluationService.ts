@@ -2,6 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import { Evaluation, EvaluationPeriod, EvaluationCriterion, User } from '@/types';
 import { sendNewEvaluationNotification, sendSelfEvaluationCompleteNotification, sendEvaluationApprovedNotification } from '@/lib/notificationService';
+import { EvaluationSettingsService } from '@/lib/services/evaluation-settings';
 
 // Funções relacionadas ao módulo de avaliação
 
@@ -44,24 +45,72 @@ export const getEvaluations = async (filters: any): Promise<Evaluation[]> => {
     queryAsAvaliador = queryAsAvaliador.eq('status', status);
   }
 
-  const [resultFuncionario, resultAvaliador] = await Promise.all([
+  const [resultFuncionario, resultAvaliador, activeSettings] = await Promise.all([
     queryAsFuncionario,
-    queryAsAvaliador
+    queryAsAvaliador,
+    EvaluationSettingsService.getActiveSettings()
   ]);
 
   if (resultFuncionario.error) throw resultFuncionario.error;
   if (resultAvaliador.error) throw resultAvaliador.error;
 
+  const auditLeaderIds = EvaluationSettingsService.getAllAuditableLeaderIds(activeSettings, userId);
+
+  let auditEvaluations: Evaluation[] = [];
+
+  if (auditLeaderIds.length > 0) {
+    let queryAsAuditor = supabase
+      .from('avaliacoes_desempenho')
+      .select('*')
+      .in('avaliador_id', auditLeaderIds);
+
+    if (status) {
+      queryAsAuditor = queryAsAuditor.eq('status', status);
+    }
+
+    const { data, error } = await queryAsAuditor;
+    if (error) throw error;
+
+    auditEvaluations = (data || [])
+      .filter((evaluation) => (
+        evaluation.funcionario_id !== userId &&
+        evaluation.avaliador_id !== userId &&
+        EvaluationSettingsService.canUserAuditEvaluatorForPeriod(
+          activeSettings,
+          userId,
+          evaluation.avaliador_id,
+          evaluation.periodo_id
+        )
+      ))
+      .map((evaluation) => ({
+        ...(evaluation as Evaluation),
+        isAuditViewer: true
+      }));
+  }
+
   // Combinar resultados e remover duplicatas (caso existam)
   const allEvaluations = [
-    ...(resultFuncionario.data || []),
-    ...(resultAvaliador.data || [])
+    ...((resultFuncionario.data || []).map((evaluation) => ({ ...(evaluation as Evaluation), isAuditViewer: false }))),
+    ...((resultAvaliador.data || []).map((evaluation) => ({ ...(evaluation as Evaluation), isAuditViewer: false }))),
+    ...auditEvaluations
   ];
 
   // Remover duplicatas baseado no ID
-  const uniqueEvaluations = Array.from(
-    new Map(allEvaluations.map(ev => [ev.id, ev])).values()
-  );
+  const uniqueEvaluations = Array.from(allEvaluations.reduce((map, evaluation) => {
+    const existing = map.get(evaluation.id);
+    if (!existing) {
+      map.set(evaluation.id, evaluation);
+      return map;
+    }
+
+    map.set(evaluation.id, {
+      ...existing,
+      ...evaluation,
+      isAuditViewer: Boolean(existing.isAuditViewer || evaluation.isAuditViewer)
+    });
+
+    return map;
+  }, new Map<string, Evaluation>()).values());
 
   return uniqueEvaluations as Evaluation[];
 };

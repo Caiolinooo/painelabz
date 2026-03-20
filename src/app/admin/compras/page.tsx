@@ -15,6 +15,7 @@ export default function SuppliersAdminPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
     const [saving, setSaving] = useState(false);
+    const [useSameEmail, setUseSameEmail] = useState(true);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -29,7 +30,9 @@ export default function SuppliersAdminPage() {
         zip_code: '',
         bank_details: '',
         payment_terms: '',
-        status: 'active'
+        status: 'active',
+        po_email: '',
+        auto_send_po: true
     });
 
     const fetchSuppliers = async () => {
@@ -76,8 +79,11 @@ export default function SuppliersAdminPage() {
                 zip_code: supplier.zip_code || '',
                 bank_details: supplier.bank_details || '',
                 payment_terms: supplier.payment_terms || '',
-                status: supplier.status || 'active'
+                status: supplier.status || 'active',
+                po_email: supplier.po_email || '',
+                auto_send_po: supplier.auto_send_po !== false
             });
+            setUseSameEmail(!supplier.po_email);
         } else {
             setEditingSupplier(null);
             setFormData({
@@ -92,8 +98,11 @@ export default function SuppliersAdminPage() {
                 zip_code: '',
                 bank_details: '',
                 payment_terms: '',
-                status: 'active'
+                status: 'active',
+                po_email: '',
+                auto_send_po: true
             });
+            setUseSameEmail(true);
         }
         setIsModalOpen(true);
     };
@@ -103,8 +112,9 @@ export default function SuppliersAdminPage() {
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target as HTMLInputElement;
+        const checked = (e.target as HTMLInputElement).checked;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -446,6 +456,59 @@ export default function SuppliersAdminPage() {
                                                 className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white resize-none"
                                             />
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Envio de OC */}
+                                <div className="space-y-4 md:col-span-2">
+                                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mt-2 mb-2">Envio de Ordem de Compra</h3>
+
+                                    {/* Toggle auto-send */}
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">Envio automático de OC por e-mail</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">A OC será enviada automaticamente ao fornecedor após aprovação</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer ml-4 flex-shrink-0">
+                                            <input
+                                                type="checkbox"
+                                                name="auto_send_po"
+                                                checked={(formData as any).auto_send_po}
+                                                onChange={handleChange}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-300 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:bg-blue-600 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                                        </label>
+                                    </div>
+
+                                    {/* po_email */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">E-mail para recebimento de OC</label>
+                                        <label className="flex items-center gap-2 text-sm text-gray-600 mb-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={useSameEmail}
+                                                onChange={(e) => {
+                                                    setUseSameEmail(e.target.checked);
+                                                    if (e.target.checked) setFormData(prev => ({ ...prev, po_email: '' }));
+                                                }}
+                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            Usar o mesmo e-mail de contato
+                                        </label>
+                                        {!useSameEmail && (
+                                            <input
+                                                type="email"
+                                                name="po_email"
+                                                value={(formData as any).po_email || ''}
+                                                onChange={handleChange}
+                                                placeholder="compras@fornecedor.com"
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                                            />
+                                        )}
+                                        {useSameEmail && formData.contact_email && (
+                                            <p className="text-xs text-gray-500">OC será enviada para: <span className="font-medium text-gray-700">{formData.contact_email}</span></p>
+                                        )}
                                     </div>
                                 </div>
                             </div>

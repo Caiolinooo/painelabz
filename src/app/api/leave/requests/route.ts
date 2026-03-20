@@ -25,13 +25,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { user_id, start_date, end_date, justification, periods, pecuniary_allowance } = body;
+        const { user_id, start_date, end_date, justification, periods, pecuniary_allowance, advance_13th_salary } = body;
 
         if (!user_id || !start_date || !end_date) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const res = await createLeaveRequest(user_id, start_date, end_date, justification, periods, pecuniary_allowance);
+        const res = await createLeaveRequest(user_id, start_date, end_date, justification, periods, pecuniary_allowance, advance_13th_salary);
 
         if (res.success && res.data) {
             // Trigger generic notification service

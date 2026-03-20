@@ -401,7 +401,7 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
             message: resolvedMessage,
             actor_id: author_id, // <-- who published the post
             data: { post_id: newPost.id, category_id: category_id || null, featured: !!featured },
-            action_url: `/news-feed?post_id=${newPost.id}`,
+            action_url: `/noticias?post_id=${newPost.id}`,
             priority: (notifSettings.defaultPriority as any) || 'normal',
             created_at: new Date().toISOString()
           }));
@@ -421,9 +421,18 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
           if (emailsToSend.length > 0) {
             console.log('📧 Preparando envio de emails para:', emailsToSend.map((u: any) => u.email).join(', '));
             const baseUrl = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || '';
-            const postUrl = `${baseUrl}/news-feed?post_id=${newPost.id}`;
+            const postUrl = `${baseUrl}/noticias?post_id=${newPost.id}`;
             const subject = resolvedTitle;
-            const html = newsPostTemplate(author?.first_name || 'Alguém', title, excerpt || '', postUrl);
+            const previewText = (excerpt || content || '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .slice(0, 240);
+            const html = newsPostTemplate(author?.first_name || 'Alguém', title, previewText, postUrl, {
+              categoryName: category?.name,
+              featured: !!featured,
+              publishedAt: newPost.published_at || new Date().toISOString()
+            });
             const results = await Promise.allSettled(emailsToSend.map((u: any) => sendCustomEmail(u.email, subject, html)));
             console.log('📧 Resultados do envio:', results.map(r => r.status));
           } else {
@@ -444,7 +453,7 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
             await sendPushToUserIds(pushUsers, {
               title: resolvedTitle,
               body: resolvedMessage,
-              url: `/news-feed?post_id=${newPost.id}`
+              url: `/noticias?post_id=${newPost.id}`
             });
           }
 

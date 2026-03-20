@@ -30,8 +30,9 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
             const { startAuthentication } = await import('@simplewebauthn/browser');
 
             const optionsRes = await fetch('/api/auth/webauthn/sign/options', { method: 'POST' });
-            if (!optionsRes.ok) throw new Error('Erro ao iniciar assinatura biométrica');
-            const options = await optionsRes.json();
+            const optionsPayload = await optionsRes.json().catch(() => null);
+            if (!optionsRes.ok) throw new Error(optionsPayload?.error || 'Erro ao iniciar assinatura biométrica');
+            const options = optionsPayload;
 
             let asseResp;
             try {
@@ -42,7 +43,7 @@ export default function SignaturePad({ isOpen, onClose, onConfirm, isSubmitting 
                     // Ignora silentemente se o usuário apenas fechou o prompt
                     return;
                 }
-                throw new Error('Falha ao usar biometria. Verifique se há uma Passkey cadastrada neste dispositivo.');
+                throw new Error('Falha ao usar biometria. Verifique se existe uma Passkey/biometria cadastrada para este usuário neste dispositivo.');
             }
 
             const verifyRes = await fetch('/api/auth/webauthn/sign/verify', {

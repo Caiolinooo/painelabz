@@ -1,6 +1,7 @@
 // Não importamos o Twilio diretamente para evitar problemas com o Edge Runtime
 // O Twilio será carregado dinamicamente apenas quando necessário
 import nodemailer from 'nodemailer';
+import { buildAppUrl } from './app-url';
 
 // Configuração do Twilio
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -213,7 +214,7 @@ export async function sendInviteSMS(phoneNumber: string, inviteCode: string, nam
     const client = twilio.default(accountSid, authToken);
 
     // Obter a URL de registro do sistema
-    const registerUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/register?code=${inviteCode}` : `http://localhost:3000/register?code=${inviteCode}`;
+    const registerUrl = buildAppUrl(`/register?code=${inviteCode}`);
 
     // Preparar a mensagem de convite
     const greeting = name ? `Olá ${name}! ` : 'Olá! ';

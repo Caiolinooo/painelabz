@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
+import QRCode from 'qrcode';
 
 export type CertificateConfig = {
   page?: number;
@@ -169,6 +170,24 @@ export async function generateAndStoreCertificate(enrollmentId: string): Promise
   page.drawText(certificate_id, {
     x: page.getWidth() - startX - wCert, y: 30, size: 10, font: customFontBlack, color: parseColor('#999999')
   });
+
+  // 7. QR Code de Validação
+  try {
+    const qrUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://painel.abz.com.br'}/academy/certificates/validate/${enrollmentId}`;
+    const qrImageBuffer = await QRCode.toBuffer(qrUrl, { margin: 0, width: 200 });
+    const qrImage = await pdfDoc.embedPng(qrImageBuffer);
+    
+    // Tamanho do QR Code no PDF
+    const qrSize = 75; 
+    page.drawImage(qrImage, {
+      x: page.getWidth() - startX - qrSize,
+      y: 45, // Acima do ID do certificado
+      width: qrSize,
+      height: qrSize,
+    });
+  } catch (err) {
+    console.error('Failed to generate QR Code', err);
+  }
 
   const pdfBytes = await pdfDoc.save();
   const outPath = `generated/${enrollmentId}.pdf`;

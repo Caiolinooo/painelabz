@@ -51,6 +51,29 @@ export default function PurchaseOrderDetailsPage() {
         }
     };
 
+    const handleDownloadPDF = async () => {
+        try {
+            const token = localStorage.getItem('abzToken') || localStorage.getItem('token');
+            const res = await fetch(`/api/purchase-orders/${id}/pdf`, {
+                headers: token ? {
+                    'Authorization': `Bearer ${token}`
+                } : {}
+            });
+
+            if (!res.ok) throw new Error('Erro ao gerar PDF');
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `RQF-${order?.po_number || id}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (error: any) {
+            toast.error(t('purchaseOrders.details.processError', 'Erro ao baixar o PDF'));
+        }
+    };
+
     const handleAction = async (action: 'approved' | 'rejected') => {
         const confirmMsg = action === 'approved'
             ? t('purchaseOrders.details.confirmApprove')
@@ -123,6 +146,13 @@ export default function PurchaseOrderDetailsPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    <button
+                        onClick={handleDownloadPDF}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold transition-colors flex items-center gap-2"
+                        title="Download PDF"
+                    >
+                        <FiDownload /> PDF
+                    </button>
                     <StatusBadge status={order.status} t={t} />
                 </div>
             </div>

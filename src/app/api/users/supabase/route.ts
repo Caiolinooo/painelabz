@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { buildAppUrl } from '@/lib/app-url';
 
 // Force this route to be dynamic
 export const dynamic = 'force-dynamic';
@@ -149,7 +150,7 @@ export async function GET(request: NextRequest) {
 
         // Renovar o token com o papel correto
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/token-refresh`, {
+          const response = await fetch(buildAppUrl('/api/auth/token-refresh', request.headers), {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`

@@ -139,12 +139,10 @@ export const PurchaseOrderPdf = ({ data }: { data: any }) => {
                 {/* Header */}
                 <View style={styles.header}>
                     <View>
-                        {/* Use a public URL or base64 for logo if needed. Assuming generic text if image fails */}
-                        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Logo Empresa</Text>
-                        {/* <Image src="/images/logo.png" style={styles.logo} /> */}
+                        <Image src={`${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.groupabz.com'}/images/logo.png`} style={styles.logo} />
                     </View>
                     <View style={styles.titleContainer}>
-                        <Text style={styles.title}>ORDEM DE COMPRA</Text>
+                        <Text style={styles.title}>REQUISIÇÃO DE COMPRA</Text>
                         <Text style={styles.subtitle}>#{data.po_number || 'PENDENTE'}</Text>
                         <Text style={styles.subtitle}>Data: {formatDate(data.requisition_date || data.created_at)}</Text>
                     </View>
@@ -189,7 +187,7 @@ export const PurchaseOrderPdf = ({ data }: { data: any }) => {
                     <View style={{ flex: 1, ...styles.section }}>
                         <Text style={styles.sectionTitle}>Entrega / Cobrança</Text>
                         <View style={styles.row}>
-                            <Text style={styles.label}>Comprador:</Text>
+                            <Text style={styles.label}>Requisitante:</Text>
                             <Text style={styles.value}>{data.buyer_name}</Text>
                         </View>
                         <View style={styles.row}>
@@ -209,25 +207,28 @@ export const PurchaseOrderPdf = ({ data }: { data: any }) => {
                         <Text style={styles.colDesc}>DESCRIÇÃO</Text>
                         <Text style={styles.colQty}>QTD</Text>
                         <Text style={styles.colUnit}>VALOR UNIT.</Text>
-                        <Text style={styles.colUnit}>C. CUSTO</Text>
                         <Text style={styles.colTotal}>TOTAL</Text>
+                        <Text style={styles.colUnit}>C. CUSTO</Text>
                     </View>
-                    {data.items?.map((item: any, i: number) => (
-                        <View key={i} style={styles.tableRow}>
-                            <Text style={styles.colDesc}>{item.description}</Text>
-                            <Text style={styles.colQty}>{item.quantity}</Text>
-                            <Text style={styles.colUnit}>{formatCurrency(item.unit_value)}</Text>
-                            <Text style={styles.colUnit}>{item.cost_center || '-'}</Text>
-                            <Text style={styles.colTotal}>{formatCurrency(item.total_value)}</Text>
-                        </View>
-                    ))}
+                    {data.items?.map((item: any, i: number) => {
+                        const itemTotal = (item.quantity ?? 0) * (item.unit_value ?? 0);
+                        return (
+                            <View key={i} style={styles.tableRow}>
+                                <Text style={styles.colDesc}>{item.description}</Text>
+                                <Text style={styles.colQty}>{item.quantity}</Text>
+                                <Text style={styles.colUnit}>{formatCurrency(item.unit_value)}</Text>
+                                <Text style={styles.colTotal}>{formatCurrency(itemTotal)}</Text>
+                                <Text style={styles.colUnit}>{item.cost_center || '-'}</Text>
+                            </View>
+                        );
+                    })}
                 </View>
 
                 {/* Totals */}
                 <View style={styles.totals}>
                     <View style={styles.totalRow}>
                         <Text>Subtotal:</Text>
-                        <Text>{formatCurrency(data.items?.reduce((acc: number, item: any) => acc + item.total_value, 0) || 0)}</Text>
+                        <Text>{formatCurrency(data.items?.reduce((acc: number, item: any) => acc + (item.quantity ?? 0) * (item.unit_value ?? 0), 0) || 0)}</Text>
                     </View>
                     <View style={styles.totalRow}>
                         <Text>Frete:</Text>

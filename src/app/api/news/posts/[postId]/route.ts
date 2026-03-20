@@ -4,6 +4,29 @@ import { withPermission } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
+function safeParseArray(value: any): any[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function normalizePost(post: any) {
+  if (!post) return post;
+  return {
+    ...post,
+    media_urls: safeParseArray(post?.media_urls),
+    external_links: safeParseArray(post?.external_links),
+    tags: safeParseArray(post?.tags),
+  };
+}
+
 // GET - Obter post específico
 export async function GET(
   request: NextRequest,
@@ -22,7 +45,9 @@ export async function GET(
           first_name,
           last_name,
           email,
-          role
+          role,
+          avatar,
+          drive_photo_url
         ),
         category:news_categories!category_id (
           id,
@@ -57,7 +82,7 @@ export async function GET(
     });
 
     console.log(`✅ Post carregado: ${post.title}`);
-    return NextResponse.json(post);
+    return NextResponse.json(normalizePost(post));
 
   } catch (error) {
     console.error('Erro ao buscar post:', error);

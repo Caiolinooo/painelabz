@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-service';
+import { baseTemplate } from '@/lib/emailTemplates';
 import { sendPushToUserIds } from '@/lib/push';
+import { buildAppUrl } from '@/lib/app-url';
 
 export type NotificationChannel = 'in-app' | 'email' | 'push';
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -102,21 +104,21 @@ export async function sendGlobalNotification(payload: NotificationPayload): Prom
                 .single();
 
             if (user && user.email) {
-                const htmlContent = emailHtml || `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #0056b3;">${title}</h2>
+                const emailActionUrl = actionUrl ? buildAppUrl(actionUrl) : '';
+                const htmlContent = emailHtml || baseTemplate(`
+          <div style="color: #333;">
+            <h2 style="color: #0066cc;">${title}</h2>
             <p style="font-size: 16px;">${message}</p>
             ${actionUrl ? `
               <div style="margin-top: 20px;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}${actionUrl}" style="***REMOVED*** #0056b3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                <a href="${emailActionUrl}" style="***REMOVED*** #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
                   Ver Detalhes
                 </a>
               </div>
             ` : ''}
-            <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-            <p style="font-size: 12px; color: #888;">Portal ABZ - Notificação Automática</p>
           </div>
-        `;
+        `);
+
 
                 await sendEmail(user.email, title, message, htmlContent);
                 results['email'] = true;

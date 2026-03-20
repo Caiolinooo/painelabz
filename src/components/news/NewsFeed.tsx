@@ -69,6 +69,29 @@ interface NewsFeedProps {
   featured?: boolean;
   limit?: number;
   searchQuery?: string;
+  selectedPostId?: string;
+}
+
+function parseArrayValue<T = any>(value: any): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed as T[] : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function normalizeFetchedPost(post: any): NewsPost {
+  return {
+    ...post,
+    media_urls: parseArrayValue<string>(post?.media_urls),
+    external_links: parseArrayValue<{ url: string; title: string }>(post?.external_links),
+    tags: parseArrayValue<string>(post?.tags),
+  };
 }
 
 const NewsFeed: React.FC<NewsFeedProps> = ({
@@ -76,7 +99,8 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
   category,
   featured,
   limit = 10,
-  searchQuery = ''
+  searchQuery = '',
+  selectedPostId
 }) => {
   const { t } = useI18n();
   const [posts, setPosts] = useState<NewsPost[]>([]);
@@ -107,6 +131,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
   const [editingTitle, setEditingTitle] = useState('');
   const [editingExcerpt, setEditingExcerpt] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [hasFocusedSelectedPost, setHasFocusedSelectedPost] = useState(false);
 
   const handlePostTypeSelect = (type: 'media' | 'event' | 'highlight' | 'text') => {
     switch (type) {
@@ -241,6 +266,10 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
     }
   }, [posts, userId]);
 
+  useEffect(() => {
+    setHasFocusedSelectedPost(false);
+  }, [selectedPostId]);
+
   // Carregar posts
   const loadPosts = async (pageNum: number = 1, reset: boolean = false) => {
     try {
@@ -264,10 +293,33 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
         throw new Error(data.error || 'Erro ao carregar posts');
       }
 
+      const fetchedPosts = (data.posts || []).map(normalizeFetchedPost);
+      let postsToStore = fetchedPosts;
+
+      if (reset && selectedPostId && !fetchedPosts.some((post: NewsPost) => post.id === selectedPostId)) {
+        try {
+          const selectedPostResponse = await fetchWithToken(`/api/news/posts/${selectedPostId}`);
+          if (selectedPostResponse.ok) {
+            const selectedPost = normalizeFetchedPost(await selectedPostResponse.json());
+            postsToStore = [selectedPost, ...fetchedPosts.filter((post: NewsPost) => post.id !== selectedPost.id)];
+          }
+        } catch (selectedPostError) {
+          console.warn('Não foi possível carregar o post destacado pelo link:', selectedPostError);
+        }
+      }
+
       if (reset) {
-        setPosts(data.posts);
+        setPosts(postsToStore);
       } else {
-        setPosts(prev => [...prev, ...data.posts]);
+        setPosts(prev => {
+          const nextPosts = [...prev];
+          postsToStore.forEach((post: NewsPost) => {
+            if (!nextPosts.some(existingPost => existingPost.id === post.id)) {
+              nextPosts.push(post);
+            }
+          });
+          return nextPosts;
+        });
       }
 
       setHasMore(data.pagination.hasNext);
@@ -283,7 +335,23 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
   // Carregar posts iniciais
   useEffect(() => {
     loadPosts(1, true);
-  }, [category, featured, limit, searchQuery]);
+  }, [category, featured, limit, searchQuery, selectedPostId]);
+
+  useEffect(() => {
+    if (!selectedPostId || hasFocusedSelectedPost || !posts.some(post => post.id === selectedPostId)) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const selectedElement = ***REMOVED***`news-post-${selectedPostId}`);
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHasFocusedSelectedPost(true);
+      }
+    }, 200);
+
+    return () => window.clearTimeout(timeout);
+  }, [posts, selectedPostId, hasFocusedSelectedPost]);
 
   // Realtime: likes/comentrios atualizados em tempo real
   useNewsRealtime(
@@ -469,9 +537,17 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
 
   // Renderizar post individual
   const renderPost = (post: NewsPost) => {
+    const isSelectedPost = selectedPostId === post.id;
+
     return (
       <ViewTracker key={post.id} postId={post.id} userId={userId}>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div
+          id={`news-post-${post.id}`}
+          className={`bg-white rounded-lg shadow-sm border mb-6 scroll-mt-24 transition-all ${isSelectedPost
+            ? 'border-blue-400 ring-2 ring-blue-100 shadow-lg shadow-blue-100/70'
+            : 'border-gray-200'
+            }`}
+        >
 
           {/* Header do Post */}
           <div className="flex items-center justify-between p-4">
@@ -555,6 +631,11 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
           {/* Conteúdo do Post */}
           <div className="px-4 pb-3">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h2>
+            {isSelectedPost && (
+              <div className="mb-3 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                Publicação aberta a partir da notificação
+              </div>
+            )}
             <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{post.excerpt}</p>
 
             {/* Componente visual de evento */}

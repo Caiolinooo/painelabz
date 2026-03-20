@@ -7,6 +7,7 @@
  */
 
 import nodemailer from 'nodemailer';
+import { buildAppUrl } from './app-url';
 
 // Validate required environment variables
 function validateEmailConfig() {
@@ -338,9 +339,7 @@ export async function sendInvitationEmail(
   inviteCode: string,
   name?: string
 ) {
-  // Obter a URL do portal a partir das variáveis de ambiente
-  const portalUrl = process.env.PORTAL_URL || 'http://localhost:3000';
-  const inviteUrl = `${portalUrl}/set-password?invite=${inviteCode}`;
+  const inviteUrl = buildAppUrl(`/set-password?invite=${inviteCode}`);
 
   const text = `Olá ${name || ''},\n\nVocê foi convidado para acessar o Painel ABZ Group.\n\nSeu código de convite é: ${inviteCode}\n\nAcesse o portal em: ${inviteUrl}\n\nEste convite não expira, mas pode ser revogado pelo administrador.\n\nAtenciosamente,\nEquipe ABZ Group`;
 

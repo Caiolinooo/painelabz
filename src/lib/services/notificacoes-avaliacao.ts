@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email';
+import { buildAppUrl } from '@/lib/app-url';
 
 /**
  * Tipos de notificação para avaliação
@@ -90,8 +91,7 @@ export class NotificacoesAvaliacaoService {
       }
 
       const nomeUsuario = `${usuario.first_name} ${usuario.last_name}`;
-      const portalUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const avaliacaoUrl = `${portalUrl}/avaliacao`;
+      const avaliacaoUrl = buildAppUrl('/avaliacao');
 
       // Template de email
       const text = `

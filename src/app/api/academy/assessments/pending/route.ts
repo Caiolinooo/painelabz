@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-export function extractTokenFromHeader(authHeader?: string | null): string | null {
+import { generateAndStoreCertificate } from '@/lib/certificates';
+
+function extractTokenFromHeader(authHeader?: string | null): string | null {
     if (!authHeader) return null;
     if (authHeader.startsWith('Bearer ')) {
         return authHeader.substring(7);
@@ -8,7 +10,7 @@ export function extractTokenFromHeader(authHeader?: string | null): string | nul
     return authHeader;
 }
 
-export function verifyToken(token: string): any {
+function verifyToken(token: string): any {
     try {
         const defaultSecret = new TextEncoder().encode(
             process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET || 'fallback-secret-key-1234567890'
@@ -23,7 +25,6 @@ export function verifyToken(token: string): any {
         return null;
     }
 }
-import { generateAndStoreCertificate } from '@/lib/certificates';
 
 export const dynamic = 'force-dynamic';
 

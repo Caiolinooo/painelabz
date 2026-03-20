@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { buildAppUrl } from '@/lib/app-url';
 import { sendEmail } from '@/lib/email';
 import { generateReimbursementPDF } from '@/lib/pdf-generator';
+import { reimbursementApprovalTemplate, reimbursementRejectionTemplate } from '@/lib/emailTemplates';
 
 export const dynamic = 'force-dynamic';
 
@@ -144,55 +146,27 @@ export async function POST(request: NextRequest) {
       const statusText = status === 'APPROVED' ? 'aprovado' : 'rejeitado';
       const subject = `Solicitação de reembolso ${statusText} - ${reimbursement.protocolo}`;
 
-      // Prepare a more detailed email body with reimbursement information
-      let emailBody = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <h2 style="color: #0066cc;">Atualização de Solicitação de Reembolso</h2>
-          </div>
-
-          <p>Olá ${reimbursement.nome || ''},</p>
-
-          <p>Sua solicitação de reembolso com protocolo <strong>${reimbursement.protocolo}</strong> foi <strong style="color: ${status === 'APPROVED' ? '#28a745' : '#dc3545'};">${statusText}</strong>.</p>
-
-          <div style="***REMOVED*** #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
-            <h3 style="margin-top: 0; color: #0066cc;">Detalhes da Solicitação</h3>
-            <p><strong>Protocolo:</strong> ${reimbursement.protocolo}</p>
-            <p><strong>Data da Solicitação:</strong> ${new Date(reimbursement.created_at).toLocaleDateString('pt-BR')}</p>
-            <p><strong>Valor:</strong> R$ ${parseFloat(reimbursement.valor_total || reimbursement.valorTotal || 0).toFixed(2)}</p>
-            <p><strong>Tipo:</strong> ${reimbursement.tipo_reembolso || reimbursement.tipoReembolso || 'Não especificado'}</p>
-            <p><strong>Status:</strong> <span style="color: ${status === 'APPROVED' ? '#28a745' : '#dc3545'};">${statusText.toUpperCase()}</span></p>
-          </div>`;
-
-      if (comments) {
-        emailBody += `
-          <div style="***REMOVED*** #fff3cd; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #ffc107;">
-            <h3 style="margin-top: 0; color: #856404;">Observações</h3>
-            <p>${comments}</p>
-          </div>`;
-      }
+      // Use consistent email templates
+      let emailBody = '';
+      const valorNumerico = parseFloat(reimbursement.valor_total || reimbursement.valorTotal || 0);
+      const valorFormatado = `R$ ${valorNumerico.toFixed(2)}`;
 
       if (status === 'APPROVED') {
-        emailBody += `
-          <div style="***REMOVED*** #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #28a745;">
-            <h3 style="margin-top: 0; color: #155724;">Próximos Passos</h3>
-            <p>Sua solicitação foi aprovada e será processada para pagamento conforme o método de pagamento informado.</p>
-            <p>O comprovante de aprovação está anexado a este email.</p>
-          </div>`;
+        emailBody = reimbursementApprovalTemplate(
+          reimbursement.nome || '',
+          reimbursement.protocolo,
+          valorFormatado,
+          reimbursement.metodo_pagamento || reimbursement.metodoPagamento || 'Não especificado',
+          comments || ''
+        );
+      } else {
+        emailBody = reimbursementRejectionTemplate(
+          reimbursement.nome || '',
+          reimbursement.protocolo,
+          comments || 'Não especificado'
+        );
       }
 
-      emailBody += `
-          <p>Para mais detalhes, acesse o <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://painel.groupabz.com'}/reembolso" style="color: #0066cc; text-decoration: none; font-weight: bold;">Painel de Reembolsos</a>.</p>
-
-          <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
-            <p style="color: #666; font-size: 12px;">
-              Este é um email automático. Por favor, não responda a este email.<br>
-              Em caso de dúvidas, entre em contato com o departamento financeiro.
-            </p>
-            <p style="color: #666;">Atenciosamente,<br>Equipe ABZ Group</p>
-          </div>
-        </div>
-      `;
 
       // Generate PDF if approved
       const attachments: any[] = [];
