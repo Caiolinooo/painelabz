@@ -1,6 +1,23 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { FiSearch, FiFilter, FiPlus, FiDownload, FiEdit, FiTrash2, FiCheckCircle, FiXCircle, FiClock, FiFileText } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
+import {
+  Plus,
+  Search,
+  Filter,
+  FileText,
+  MoreVertical,
+  ChevronRight,
+  Eye,
+  Edit2,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  FileCheck
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 import Link from 'next/link';

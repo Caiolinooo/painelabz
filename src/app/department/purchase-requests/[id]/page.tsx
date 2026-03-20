@@ -1,16 +1,19 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { FiArrowLeft, FiEdit, FiTrash2, FiCheckCircle, FiXCircle, FiClock, FiFileText, FiDownload, FiMail, FiPrinter } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit, FiTrash2, FiCheckCircle, FiXCircle, FiClock, FiFileText, FiDownload, FiMail, FiPrinter, FiDollarSign } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter, useParams } from 'next/navigation';
 
 export default function PurchaseRequestDetailsPage() {
     const { user, profile } = useSupabaseAuth();
     const { t } = useI18n();
     const router = useRouter();
-    const { id } = router.query;
+    const params = useParams();
+    const id = params?.id;
     const [loading, setLoading] = useState(true);
     const [request, setRequest] = useState<any>(null);
     const [items, setItems] = useState<any[]>([]);

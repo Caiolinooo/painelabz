@@ -1,5 +1,14 @@
 # Changelog
-<br>
+
+## [5.1.1] - 2026-03-20
+
+### Fixed
+- Correção de erro de build no Vercel no módulo de Requisição de Compra (diretiva "use client" e roteamento do Next.js 14).
+- Correção de erro 401 Unauthorized no login ao atualizar a URL base da API para `portal.groupabz.com`.
+- Ajuste de parâmetros de URL para usar `useParams` em vez de `router.query`.
+
+### Added
+- Novo script de validação de build local (`scripts/validate-build.ps1`) para prevenir erros de deploy.
 
 ## [5.1.0] - 2026-03-20
 
