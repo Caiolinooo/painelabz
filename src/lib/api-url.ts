@@ -74,7 +74,7 @@ export function getAppBaseUrl(): string {
   
   // Default fallback: ensure production uses the Netlify domain
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
-    return 'https://painelabzgroup.netlify.app';
+    return 'https://portal.groupabz.com';
   }
   return '';
 }

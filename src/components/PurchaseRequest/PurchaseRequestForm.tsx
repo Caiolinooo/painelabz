@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { FiPlus, FiTrash2, FiEdit, FiSave, FiX, FiPlusCircle, FiFileText } from 'react-icons/fi';
 import toast from 'react-hot-toast';

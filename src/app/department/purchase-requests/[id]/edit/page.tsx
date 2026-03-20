@@ -2,14 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import PurchaseRequestForm from '@/components/PurchaseRequest/PurchaseRequestForm';
-import { useRouter } from 'next/router';
+import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 export default function EditPurchaseRequestPage() {
     const router = useRouter();
-    const { id } = router.query;
+    const params = useParams();
+    const id = params?.id;
     const [initialData, setInitialData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
