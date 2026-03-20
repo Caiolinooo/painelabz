@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.1.2] - 2026-03-20
+
+### Fixed
+- Melhoria no fluxo de verificação de e-mail para evitar o erro "já foi usado" em casos de cliques duplos ou scanners automáticos de e-mail (Outlook/Firewall).
+
 ## [5.1.1] - 2026-03-20
 
 ### Fixed

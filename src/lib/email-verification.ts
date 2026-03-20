@@ -182,10 +182,16 @@ export async function verifyEmailToken(token: string): Promise<{
 
     // Verificar se o email já foi verificado
     if (user.email_verified) {
-      console.log('✅ Email já verificado anteriormente');
+      console.log('✅ Email já verificado anteriormente, mas token ainda é válido. Continuando para definição de senha...');
       return {
-        success: false,
-        message: 'Este email já foi verificado. Você pode fazer login normalmente.'
+        success: true,
+        user: {
+          ...user,
+          email_verified: true,
+          active: true,
+          authorization_status: 'active'
+        },
+        message: 'Email já verificado. Prossiga para definir sua senha.'
       };
     }
 
