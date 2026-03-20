@@ -12,6 +12,7 @@ import {
   newUserWelcomeTemplate,
   inviteTemplate
 } from './emailTemplates';
+import { buildAppUrl } from './app-url';
 
 // Tipo para dados do usuário
 interface UserData {
@@ -472,7 +473,14 @@ export async function sendReimbursementConfirmationEmail(
           recipients.push(recipient);
         }
       });
-    } else if (!isGroupAbzDomain) {
+    } else if (isGroupAbzDomain) {
+      // Se é domínio ABZ e não veio destinatário adicional, garantir os padrões
+      console.log('Email do domínio @groupabz.com sem destinatários adicionais, usando padrões');
+      const defaultRecipients = ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
+      defaultRecipients.forEach(r => {
+        if (!recipients.includes(r)) recipients.push(r);
+      });
+    } else {
       // Se não há destinatários configurados e o usuário NÃO é do domínio @groupabz.com,
       // enviar para logística como fallback padrão
       console.log('Usuário não é do domínio @groupabz.com, adicionando logistica@groupabz.com como destinatário padrão');
@@ -772,7 +780,7 @@ export async function sendReimbursementApprovalToFinanceEmail(
               <strong>⚠️ Ação necessária:</strong> Acesse o painel de reembolsos para visualizar os comprovantes e marcar como pago após efetuar o pagamento.
             </p>
           </div>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.groupabz.com'}/reembolso?tab=approval" 
+          <a href="${buildAppUrl('/reembolso?tab=approval')}" 
              style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px;">
             Acessar Painel de Reembolsos
           </a>
@@ -818,7 +826,7 @@ export async function sendNewUserWelcomeEmail(
     console.log(`Enviando email de boas-vindas para: ${email}`);
 
     // Obter a URL de login do sistema
-    const loginUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : 'http://localhost:3000/login';
+    const loginUrl = buildAppUrl('/login');
 
     // Gerar conteúdo do email usando o template
     const emailContent = newUserWelcomeTemplate(nome, loginUrl, password);
@@ -867,7 +875,7 @@ export async function sendInviteWithRegisterLinkEmail(
     console.log(`Enviando email de convite para: ${email}`);
 
     // Obter a URL de registro do sistema
-    const registerUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/register?code=${inviteCode}` : `http://localhost:3000/register?code=${inviteCode}`;
+    const registerUrl = buildAppUrl(`/register?code=${inviteCode}`);
 
     // Formatar data de expiração
     let expiryText = '';

@@ -3,6 +3,7 @@
  */
 
 import { sendEmail } from '@/lib/email-service';
+import { buildAppUrl } from '@/lib/app-url';
 
 /**
  * Envia um email com link de verificação
@@ -20,50 +21,7 @@ export async function sendEmailVerificationLink(
   try {
     console.log(`📧 Enviando email de verificação para: ${email} com token: ${token.substring(0, 8)}...`);
 
-    // Obter URL base dinamicamente baseada no request ou variáveis de ambiente
-    let baseUrl = '';
-
-    // 1. Tentar obter do header do request (mais confiável)
-    if (requestHeaders) {
-      const host = requestHeaders.get('host');
-      const protocol = requestHeaders.get('x-forwarded-proto') ||
-                      (host?.includes('localhost') ? 'http' : 'https');
-      if (host) {
-        baseUrl = `${protocol}://${host}`;
-        console.log(`🌐 URL base obtida do request: ${baseUrl}`);
-      }
-    }
-
-    // 2. Fallback para variáveis de ambiente (ordem de prioridade)
-    if (!baseUrl) {
-      baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ||
-        process.env.APP_URL ||
-        process.env.URL ||
-        process.env.DEPLOY_URL ||
-        process.env.SITE_URL ||
-        process.env.NETLIFY_SITE_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-        process.env.RENDER_EXTERNAL_URL ||
-        '';
-
-      if (baseUrl) {
-        console.log(`🌐 URL base obtida das variáveis de ambiente: ${baseUrl}`);
-      }
-    }
-
-    // 3. Fallback final baseado no ambiente
-    if (!baseUrl) {
-      if (process.env.NODE_ENV === 'production') {
-        baseUrl = 'https://painelabzgroup.netlify.app';
-        console.warn(`⚠️ URL base não definida em produção. Usando fallback: ${baseUrl}`);
-      } else {
-        baseUrl = 'http://localhost:3000';
-        console.log(`🔧 Ambiente de desenvolvimento, usando: ${baseUrl}`);
-      }
-    }
-
-    const verificationUrl = `${baseUrl.replace(/\/$/, '')}/verify-email?token=${encodeURIComponent(token)}`;
+    const verificationUrl = buildAppUrl(`/verify-email?token=${encodeURIComponent(token)}`, requestHeaders);
     console.log(`🔗 URL de verificação gerada: ${verificationUrl}`);
 
     // Texto simples para clientes que não suportam HTML

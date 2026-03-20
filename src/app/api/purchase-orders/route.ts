@@ -1,8 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
+import { buildAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
+
+const SECTOR_CODE_STOPWORDS = new Set(['DE', 'DA', 'DO', 'DAS', 'DOS', 'E']);
+
+function getCurrentDateCode(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+}
+
+function buildSectorCode(sectorName?: string | null) {
+    const normalized = (sectorName || 'PO')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase();
+
+    const parts = normalized
+        .split(/[^A-Z0-9]+/)
+        .filter(Boolean)
+        .filter(part => !SECTOR_CODE_STOPWORDS.has(part));
+
+    if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`;
+    }
+
+    const compact = (parts[0] || normalized.replace(/[^A-Z0-9]/g, '') || 'PO').slice(0, 2);
+    return compact.padEnd(2, 'X');
+}
+
+async function generatePurchaseOrderNumber(sectorId: string) {
+    const { data: sector } = await supabaseAdmin
+        .from('sectors')
+        .select('name')
+        .eq('id', sectorId)
+        .maybeSingle();
+
+    const basePoNumber = `${getCurrentDateCode()}-${buildSectorCode(sector?.name)}`;
+
+    const { data: existingNumbers } = await supabaseAdmin
+        .from('purchase_orders')
+        .select('po_number')
+        .ilike('po_number', `${basePoNumber}%`);
+
+    const highestSequence = (existingNumbers || []).reduce((max, row) => {
+        const currentNumber = row.po_number;
+        if (!currentNumber) return max;
+        if (currentNumber === basePoNumber) return Math.max(max, 1);
+        if (!currentNumber.startsWith(`${basePoNumber}-`)) return max;
+
+        const suffix = Number(currentNumber.replace(`${basePoNumber}-`, ''));
+        return Number.isFinite(suffix) ? Math.max(max, suffix) : max;
+    }, 0);
+
+    if (highestSequence === 0) {
+        return basePoNumber;
+    }
+
+    return `${basePoNumber}-${String(highestSequence + 1).padStart(2, '0')}`;
+}
 
 export async function GET(request: NextRequest) {
     try {
@@ -74,14 +134,17 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
 
         // Validate required fields (basic validation)
-        if (!body.provider_name || !body.total_value) {
+        if (!body.provider_name || !body.total_value || !body.sector_id) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+
+        const poNumber = await generatePurchaseOrderNumber(body.sector_id);
 
         const { data, error } = await supabaseAdmin
             .from('purchase_orders')
             .insert({
                 ...body,
+                po_number: poNumber,
                 user_id: payload.userId, // Force user_id to current user
                 status: 'submitted', // Default status
                 history: [{
@@ -128,8 +191,7 @@ export async function POST(request: NextRequest) {
                 const t = (key: string, locale: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
                 const poNumber = data.po_number || '#' + data.id.slice(0, 8);
-                const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://painel.abzgroup.com.br';
-                const viewUrl = `${appUrl}/department/purchase-orders/${data.id}`;
+                const viewUrl = buildAppUrl(`/department/purchase-orders/${data.id}`, request.headers);
 
                 // 2. Email the Requester (Confirmation)
                 if (user.email) {
@@ -188,7 +250,7 @@ export async function POST(request: NextRequest) {
 
                         // Find the first rule that covers this value (Lowest Sufficient Authority)
                         const targetRule = rules.find(r => r.limit >= poValue);
-                        let targetLimit = targetRule ? targetRule.limit : -1;
+                        const targetLimit = targetRule ? targetRule.limit : -1;
 
                         if (targetRule) {
                             // Add EVERYONE who has this specific limit (in case of multiple peers at same level)
@@ -310,7 +372,7 @@ export async function POST(request: NextRequest) {
                         .insert({
                             user_id: payload.userId,
                             type: 'purchase_order',
-                            title: 'Ordem de Compra Criada',
+                            title: 'Requisição de Compra Criada',
                             message: `Sua OC ${poNumber} para ${body.provider_name} foi criada e aguarda aprovação.`,
                             link: viewUrl,
                             resource_id: data.id,
@@ -337,7 +399,7 @@ export async function POST(request: NextRequest) {
                                 .insert({
                                     user_id: approverData.id,
                                     type: 'purchase_order',
-                                    title: 'Nova Ordem de Compra',
+                                    title: 'Nova Requisição de Compra',
                                     message: `${user.name || 'Colaborador'} criou uma OC de R$ ${Number(body.total_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} que aguarda sua aprovação.`,
                                     link: viewUrl,
                                     resource_id: data.id,

@@ -129,16 +129,6 @@ export async function generateFichaEPI(data: FichaData) {
 
     // ==================== LEGAL TERMS ====================
     const legalY = empDataY + 10;
-    doc.setFillColor(245, 245, 245);
-    doc.rect(margin, legalY, contentWidth, 40, 'FD');
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TERMO DE RESPONSABILIDADE E CIÊNCIA', margin + 2, legalY + 4);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-
     const legalText = [
         'Pelo presente declaro que recebi da empresa ABZ Group, o material especificado abaixo, em conformidade com o estabelecido Ordem de Serviço (NR-1) e assumindo o',
         'compromisso, definido no item 6.7.1, da NR-6 de:',
@@ -151,10 +141,28 @@ export async function generateFichaEPI(data: FichaData) {
         'salário/rescisão de contrato, a importância correspondente ao valor do material.',
     ];
 
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+
+    const legalTextWidth = contentWidth - 4;
+    const totalLegalLines = legalText.reduce((count, line) => count + doc.splitTextToSize(line, legalTextWidth).length, 0);
+    const legalHeight = Math.max(34, 12 + (totalLegalLines * 3) + 10);
+
+    doc.setFillColor(245, 245, 245);
+    doc.rect(margin, legalY, contentWidth, legalHeight, 'FD');
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TERMO DE RESPONSABILIDADE E CIÊNCIA', margin + 2, legalY + 4);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+
     let legalLineY = legalY + 8;
     for (const line of legalText) {
-        doc.text(line, margin + 2, legalLineY);
-        legalLineY += 3;
+        const wrappedLines = doc.splitTextToSize(line, legalTextWidth);
+        doc.text(wrappedLines, margin + 2, legalLineY);
+        legalLineY += wrappedLines.length * 3;
     }
 
     // "De acordo:" and date line
@@ -166,9 +174,9 @@ export async function generateFichaEPI(data: FichaData) {
     doc.text(`Data: ${signatureDate || '____/____/______'}`, margin + contentWidth * 0.2 + 5, dateLineY - 1);
 
     // ==================== DELIVERY TABLE ====================
-    const tableStartY = legalY + 44;
+    const tableStartY = dateLineY + 4;
 
-    const tableData = registrations.map(reg => {
+    const tableData = registrations.length > 0 ? registrations.map(reg => {
         const caLevel = getCAValidityLevel(reg.ca_validity_date || reg.validity_date, reg.ca_status);
         const deliveryDate = reg.delivered_at
             ? formatDateBR(new Date(reg.delivered_at))
@@ -184,12 +192,7 @@ export async function generateFichaEPI(data: FichaData) {
                 ? formatDateBR(new Date(reg.ca_validity_date))
                 : (reg.validity_date ? formatDateBR(new Date(reg.validity_date)) : 'NA'),
         ];
-    });
-
-    // Add empty rows to reach at least 15 rows (for the ficha look)
-    while (tableData.length < 15) {
-        tableData.push(['', '', '', '', '', '']);
-    }
+    }) : [['', '', '', '', '', '']];
 
     autoTable(doc, {
         startY: tableStartY,

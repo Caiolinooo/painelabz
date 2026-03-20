@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { sendPasswordResetEmail } from '@/lib/auth';
+import { buildAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,24 +84,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Gerar URL dinâmica baseada no request
-    const host = request.headers.get('host');
-    const protocol = request.headers.get('x-forwarded-proto') ||
-      (host?.includes('localhost') ? 'http' : 'https');
-
-    let baseUrl = '';
-    if (host) {
-      baseUrl = `${protocol}://${host}`;
-    } else {
-      // Fallback para variáveis de ambiente
-      baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-        process.env.APP_URL ||
-        (process.env.NODE_ENV === 'production'
-          ? 'https://painelabzgroup.netlify.app'
-          : 'http://localhost:3000');
-    }
-
-    const resetUrl = `${baseUrl}/reset-password?token=${tokenData.token}`;
+    const resetUrl = buildAppUrl(`/reset-password?token=${tokenData.token}`, request.headers);
 
     console.log(`🔗 URL de reset gerada: ${resetUrl}`);
 

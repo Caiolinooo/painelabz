@@ -445,11 +445,8 @@ export default function PurchaseOrderForm() {
 
             {/* 3. Items */}
             <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                <div className="flex justify-between items-center mb-4 pb-2 border-b">
+                <div className="mb-4 pb-2 border-b">
                     <h2 className="text-lg font-semibold text-gray-800">{t('purchaseOrders.form.items.title')}</h2>
-                    <button type="button" onClick={() => append({ description: '', quantity: 1, unit_value: 0, cost_center: '' })} className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium">
-                        <FiPlus /> {t('purchaseOrders.form.items.add')}
-                    </button>
                 </div>
 
                 <div className="space-y-4">
@@ -489,13 +486,18 @@ export default function PurchaseOrderForm() {
                     ))}
                 </div>
 
-                <div className="mt-4 flex flex-col sm:flex-row justify-end gap-4 sm:gap-6 items-end sm:items-center pt-4 border-t">
-                    <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium">{t('purchaseOrders.form.items.freight')}:</label>
-                        <input {...register('freight_cost', { valueAsNumber: true })} type="number" className="w-24 p-2 border rounded text-right" />
-                    </div>
-                    <div className="text-xl font-bold text-gray-900">
-                        {t('purchaseOrders.form.items.total')}: {new Intl.NumberFormat(locale === 'en-US' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue)}
+                <div className="mt-4 flex flex-col sm:flex-row justify-between gap-4 sm:gap-6 items-end sm:items-center pt-4 border-t">
+                    <button type="button" onClick={() => append({ description: '', quantity: 1, unit_value: 0, cost_center: '' })} className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm self-start sm:self-auto">
+                        <FiPlus className="mr-2" /> {t('purchaseOrders.form.items.add')}
+                    </button>
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 sm:gap-6">
+                        <div className="flex items-center gap-3">
+                            <label className="text-sm font-medium">{t('purchaseOrders.form.items.freight')}:</label>
+                            <input {...register('freight_cost', { valueAsNumber: true })} type="number" className="w-24 p-2 border rounded text-right" />
+                        </div>
+                        <div className="text-xl font-bold text-gray-900">
+                            {t('purchaseOrders.form.items.total')}: {new Intl.NumberFormat(locale === 'en-US' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue)}
+                        </div>
                     </div>
                 </div>
 

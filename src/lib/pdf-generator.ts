@@ -383,3 +383,108 @@ export async function generateReimbursementPDF(data: ReimbursementData): Promise
 
   return Buffer.from(doc.output('arraybuffer'));
 }
+
+export async function generatePurchaseRequestPDF(data: any): Promise<Buffer> {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const logoBase64 = getLogoBase64();
+  let currentY = 10;
+
+  autoTable(doc, {
+    startY: currentY,
+    theme: 'grid',
+    head: [],
+    body: [
+      [
+        { content: '', rowSpan: 4, styles: { minCellHeight: 25, valign: 'middle', halign: 'center' } },
+        { content: 'REQUISIÇÃO DE COMPRA', rowSpan: 4, styles: { fillColor: COLORS.BLUE_HEADER, textColor: COLORS.WHITE, valign: 'middle', halign: 'center', fontSize: 14, fontStyle: 'bold' } },
+      ]
+    ],
+    columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' } },
+    didDrawCell: (drawData) => {
+      if (drawData.section === 'body' && drawData.column.index === 0 && drawData.row.index === 0 && logoBase64) {
+        doc.addImage(logoBase64, 'PNG', drawData.cell.x + 5, drawData.cell.y + 5, 40, 12);
+      }
+    }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 5;
+
+  autoTable(doc, {
+    startY: currentY,
+    theme: 'grid',
+    head: [[{ content: 'DADOS DA REQUISIÇÃO', colSpan: 4, styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', halign: 'center' } }]],
+    body: [
+      ['Nº Requisição:', data.rqf_number || data.id.slice(0, 8), 'Data:', formatDate(data.created_at)],
+      ['Solicitante:', data.buyer_name || 'N/A', 'Departamento:', data.sector_name || 'N/A'],
+      ['Status:', (data.status || '').toUpperCase(), 'Condição de Pagto:', data.payment_terms || 'N/A'],
+      ['Previsão de Entrega:', formatDate(data.delivery_date) || 'N/A', 'Endereço de Entrega:', data.delivery_address || 'N/A']
+    ],
+    styles: { fontSize: 9 }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 5;
+
+  autoTable(doc, {
+    startY: currentY,
+    theme: 'grid',
+    head: [[{ content: 'DADOS DO FORNECEDOR', colSpan: 4, styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', halign: 'center' } }]],
+    body: [
+      ['Nome/Razão Social:', data.provider_name || 'N/A', 'CNPJ:', data.provider_cnpj || 'N/A'],
+      ['Email:', data.provider_email || 'N/A', '', '']
+    ],
+    styles: { fontSize: 9 }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 5;
+
+  const itemsBody = (data.items || []).map((item: any, index: number) => [
+    index + 1,
+    item.description,
+    item.quantity,
+    FORMAT_CURRENCY.format(item.unit_value || 0),
+    FORMAT_CURRENCY.format((item.quantity || 0) * (item.unit_value || 0))
+  ]);
+
+  autoTable(doc, {
+    startY: currentY,
+    theme: 'grid',
+    head: [[{ content: 'ITENS DA REQUISIÇÃO', colSpan: 5, styles: { fillColor: COLORS.BLUE_HEADER, textColor: COLORS.WHITE, fontStyle: 'bold', halign: 'center' } }],
+           ['Item', 'Descrição', 'Qtd', 'Vlr. Unitário', 'Total']],
+    body: itemsBody,
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 15, halign: 'center' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 35, halign: 'right' },
+      4: { cellWidth: 35, halign: 'right' }
+    }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY;
+
+  autoTable(doc, {
+    startY: currentY,
+    theme: 'grid',
+    body: [
+      [{ content: 'VALOR TOTAL:', styles: { fontStyle: 'bold', halign: 'right' } },
+       { content: FORMAT_CURRENCY.format(data.total_value || 0), styles: { fontStyle: 'bold', halign: 'right', fillColor: COLORS.GREY_BG } }]
+    ],
+    columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 35 } },
+    styles: { fontSize: 10 }
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 5;
+
+  if (data.observation) {
+    autoTable(doc, {
+      startY: currentY,
+      theme: 'grid',
+      head: [[{ content: 'OBSERVAÇÕES', styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold' } }]],
+      body: [[data.observation]],
+      styles: { fontSize: 9 }
+    });
+  }
+
+  return Buffer.from(doc.output('arraybuffer'));
+}

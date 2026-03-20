@@ -29,10 +29,12 @@ export default function FeriasPage() {
         periods: { startDate: string; endDate: string }[];
         justification: string;
         pecuniaryAllowance: boolean;
+        advance13thSalary: boolean;
     }>({
         periods: [{ startDate: '', endDate: '' }],
         justification: '',
-        pecuniaryAllowance: false
+        pecuniaryAllowance: false,
+        advance13thSalary: false
     });
 
     // ==========================================
@@ -158,7 +160,8 @@ export default function FeriasPage() {
                     end_date: formData.periods[formData.periods.length - 1].endDate,
                     periods: preparedPeriods,
                     justification: formData.justification,
-                    pecuniary_allowance: formData.pecuniaryAllowance
+                    pecuniary_allowance: formData.pecuniaryAllowance,
+                    advance_13th_salary: formData.advance13thSalary
                 })
             });
 
@@ -166,7 +169,7 @@ export default function FeriasPage() {
 
             toast.success('Solicitação de férias enviada com sucesso!');
             setShowModal(false);
-            setFormData({ periods: [{ startDate: '', endDate: '' }], justification: '', pecuniaryAllowance: false });
+            setFormData({ periods: [{ startDate: '', endDate: '' }], justification: '', pecuniaryAllowance: false, advance13thSalary: false });
             loadRequests();
         } catch (error) {
             console.error('Error submitting leave request:', error);
@@ -661,6 +664,37 @@ export default function FeriasPage() {
                                                 className={`${formData.pecuniaryAllowance ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
                                             />
                                         </button>
+                                    </div>
+
+                                    <div className="p-4 border border-gray-200 rounded-xl bg-white shrink-0">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-gray-800">1ª parcela do 13º salário</h4>
+                                            <p className="text-xs text-gray-500 mt-1">Deseja receber a 1ª parcela do 13º salário junto com as férias?</p>
+                                        </div>
+
+                                        <div className="mt-4 flex flex-wrap gap-6">
+                                            <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="advance13thSalary"
+                                                    checked={formData.advance13thSalary}
+                                                    onChange={() => setFormData(prev => ({ ...prev, advance13thSalary: true }))}
+                                                    className="text-blue-600 focus:ring-blue-500"
+                                                />
+                                                Sim
+                                            </label>
+
+                                            <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="advance13thSalary"
+                                                    checked={!formData.advance13thSalary}
+                                                    onChange={() => setFormData(prev => ({ ...prev, advance13thSalary: false }))}
+                                                    className="text-blue-600 focus:ring-blue-500"
+                                                />
+                                                Não
+                                            </label>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-1.5 shrink-0 mb-4">

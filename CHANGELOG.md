@@ -1,6 +1,25 @@
 # Changelog
 <br>
 
+## [5.1.0] - 2026-03-20
+
+### Added
+- **Auditoria de Notificações por E-mail**: Revisão completa e funcional de todos os fluxos de notificação (News, Reembolso, Purchase Order, Férias, Academy).
+- **Sistema de Envio Automático de OC**: As Ordens de Compra aprovadas agora podem ser enviadas automaticamente para o e-mail do fornecedor.
+  - Novos campos `po_email` e `auto_send_po` no cadastro de fornecedores para controle individual.
+- **Templates de E-mail Padronizados**: Criação e unificação de templates com a marca ABZ (`baseTemplate`).
+  - `newsNotificationTemplate`: Notificações globais de novas notícias.
+  - `eventInviteTemplate`: Convites de eventos com layout profissional.
+  - `academyCertificateTemplate`: E-mail de conclusão de curso com anexo de certificado.
+- **Refinamentos no PDF de Purchase Order**: 
+  - Trocado rótulo "Comprador" por "Requisitante".
+  - Invertidas colunas "Centro de Custo" e "Valor Total" para melhor leitura.
+
+### Fixed
+- **Notificação de Reembolso**: Corrigido bug onde solicitações de domínios internos (`@groupabz.com`) não notificavam o setor fiscal/RH.
+- **Branding ABZ**: Atualizado logotipo e URL base (`portal.groupabz.com`) em todos os disparos de e-mail e geração de PDFs.
+- **SendGrid Service**: Removido HTML hardcoded e logotipos desatualizados do serviço de e-mail.
+
 ## [5.0.0] - 2026-03-05
 
 ### Added

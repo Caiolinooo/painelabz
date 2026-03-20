@@ -21,7 +21,8 @@ import {
     FiPhone,
     FiAlertTriangle,
     FiDatabase,
-    FiActivity
+    FiActivity,
+    FiClipboard
 } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 
@@ -54,6 +55,7 @@ export const MODULE_ICONS: Record<string, IconType> = {
 
     // Department
     'compras': FiShoppingCart,
+    'poliweb': FiClipboard,
 };
 
 // Default Icon

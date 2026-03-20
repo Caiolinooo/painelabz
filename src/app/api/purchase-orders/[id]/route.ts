@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
+import { buildAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -163,8 +164,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                         .single();
 
                     const poNumber = currentOrder.po_number || currentOrder.id;
-                    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://painel.abzgroup.com.br';
-                    const viewUrl = `${baseUrl}/department/purchase-orders/${currentOrder.id}`;
+                    const viewUrl = buildAppUrl(`/department/purchase-orders/${currentOrder.id}`, request.headers);
 
                     const { sendEmail } = await import('@/lib/email-exchange');
                     const { orderStatusUpdateTemplate, poApprovedFiscalTemplate } = await import('@/lib/emailTemplates');
@@ -205,7 +205,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                         // Actually in pt-BR.ts we have 'statusUpdateSubject'.
                         // Let's use more specific subjects if available or construct it.
                         // statusUpdateSubject: 'Atualização de Status - {{poNumber}}'
-                        // Wait, previous code hardcoded "Ordem de Compra Aprovada/Rejeitada".
+                        // Wait, previous code hardcoded "Requisição de Compra Aprovada/Rejeitada".
                         // I should use t() for subject.
 
                         const subject = t('emails.purchaseOrder.statusUpdateSubject', userLocale, { poNumber });
@@ -242,7 +242,82 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                         );
                     }
 
-                    // 3. Create IN-APP Notification for PO Owner
+                    // 3. AUTO-SEND OC PDF to Supplier
+                    try {
+                        // Determine supplier email
+                        let supplierEmail: string | null = null;
+                        let autoSend = true;
+
+                        if (currentOrder.supplier_id) {
+                            const { data: supplier } = await supabaseAdmin
+                                .from('suppliers')
+                                .select('contact_email, po_email, auto_send_po')
+                                .eq('id', currentOrder.supplier_id)
+                                .maybeSingle();
+
+                            if (supplier) {
+                                autoSend = supplier.auto_send_po !== false; // default true
+                                supplierEmail = supplier.po_email || supplier.contact_email || null;
+                            }
+                        }
+
+                        // Fallback to provider_email on the PO itself
+                        if (!supplierEmail) {
+                            supplierEmail = currentOrder.provider_email || null;
+                        }
+
+                        if (autoSend && supplierEmail) {
+                            console.log(`[PO AUTO-SEND] Gerando PDF da OC ${poNumber} para ${supplierEmail}`);
+
+                            const React = (await import('react')).default;
+                            const { renderToBuffer } = await import('@react-pdf/renderer');
+                            const { PurchaseOrderPdf } = await import('@/components/PurchaseOrder/PurchaseOrderPdf');
+                            const { purchaseOrderToSupplierTemplate } = await import('@/lib/emailTemplates');
+
+                            // @ts-ignore
+                            const pdfBuffer = await renderToBuffer(
+                                React.createElement(PurchaseOrderPdf, { data: currentOrder })
+                            );
+
+                            const rqfNumber = currentOrder.rqf_number || currentOrder.purchase_request_number || null;
+                            const htmlSupplier = purchaseOrderToSupplierTemplate(
+                                poNumber,
+                                rqfNumber,
+                                owner?.name || 'Requisitante',
+                                currentOrder.total_value,
+                                currentOrder.delivery_date || null,
+                                currentOrder.payment_terms || null
+                            );
+
+                            const sendResult = await sendEmail(
+                                supplierEmail,
+                                `Ordem de Compra ${poNumber} — ABZ Group`,
+                                `Prezado(a) Fornecedor(a), segue em anexo a Ordem de Compra ${poNumber}. Por favor, confirme o recebimento respondendo este e-mail.`,
+                                htmlSupplier,
+                                {
+                                    attachments: [{
+                                        filename: `OC-${poNumber}.pdf`,
+                                        content: pdfBuffer,
+                                        contentType: 'application/pdf'
+                                    }]
+                                }
+                            );
+
+                            if (sendResult.success) {
+                                console.log(`[PO AUTO-SEND] ✅ OC enviada para fornecedor ${supplierEmail}. ID: ${sendResult.messageId}`);
+                            } else {
+                                console.error(`[PO AUTO-SEND] ❌ Falha ao enviar para fornecedor: ${sendResult.message}`);
+                            }
+                        } else if (!autoSend) {
+                            console.log(`[PO AUTO-SEND] Envio automático desativado para este fornecedor.`);
+                        } else {
+                            console.warn(`[PO AUTO-SEND] Nenhum e-mail de fornecedor disponível para OC ${poNumber}.`);
+                        }
+                    } catch (supplierEmailError) {
+                        console.error('[PO AUTO-SEND] Erro ao enviar OC para fornecedor:', supplierEmailError);
+                    }
+
+
                     try {
                         const statusLabel = body.status === 'approved' ? 'Aprovada' : 'Rejeitada';
                         // Ideally translate in-app notification too based on recipient's preference, 
@@ -255,7 +330,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                             .insert({
                                 user_id: currentOrder.user_id,
                                 type: 'purchase_order',
-                                title: `Ordem de Compra ${statusLabel}`,
+                                title: `Requisição de Compra ${statusLabel}`,
                                 message: `Sua OC ${poNumber} foi ${statusLabel.toLowerCase()} por ${updater?.name || 'Administrador'}.${body.note ? ` Nota: ${body.note}` : ''}`,
                                 link: viewUrl,
                                 resource_id: currentOrder.id,

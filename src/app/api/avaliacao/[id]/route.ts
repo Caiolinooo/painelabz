@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
+import { EvaluationSettingsService } from '@/lib/services/evaluation-settings';
 import {
   notifyEmployeeEvaluationCompleted,
   notifyManagerSelfEvaluationCompleted,
@@ -66,8 +67,14 @@ export async function GET(
     const userId = decoded.userId;
     const isCollaborator = avaliacao.funcionario_id === userId;
     const isManager = avaliacao.avaliador_id === userId;
+    const effectiveSettings = await EvaluationSettingsService.getEffectiveSettings(avaliacao.periodo_id);
+    const isAuditViewer = !isCollaborator && !isManager && EvaluationSettingsService.canUserAuditEvaluator(
+      effectiveSettings,
+      userId,
+      avaliacao.avaliador_id
+    );
 
-    if (!isCollaborator && !isManager) {
+    if (!isCollaborator && !isManager && !isAuditViewer) {
       return NextResponse.json(
         { success: false, error: 'Você não tem permissão para acessar esta avaliação' },
         { status: 403 }
@@ -121,10 +128,14 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: avaliacao,
+      data: {
+        ...avaliacao,
+        isAuditViewer
+      },
 
       userId: userId, // Adicionar userId na resposta
-      isEmployeeLeader // Adicionar status de liderança na resposta
+      isEmployeeLeader, // Adicionar status de liderança na resposta
+      isAuditViewer
     });
 
   } catch (error: any) {

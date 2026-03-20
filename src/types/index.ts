@@ -40,6 +40,7 @@ export interface Evaluation {
   updated_at: string;
   dados_colaborador?: any;
   dados_gerente?: any;
+  isAuditViewer?: boolean;
   // Relações (quando usando select com joins)
   funcionario?: {
     id: string;

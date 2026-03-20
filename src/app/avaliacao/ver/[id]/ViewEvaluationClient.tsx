@@ -35,7 +35,7 @@ export default function ViewEvaluationClient({
   const { user } = useSupabaseAuth();
   const { t, locale } = useI18n();
   const [isExporting, setIsExporting] = useState(false);
-  const [isManagerView, setIsManagerView] = useState(false);
+  const [isDirectManagerView, setIsDirectManagerView] = useState(false);
   const [respostas, setRespostas] = useState<Record<string, any>>(evaluation.respostas || {});
   const [activeTab, setActiveTab] = useState<'questionnaire' | 'charts'>('questionnaire');
   const [comentarioGerente, setComentarioGerente] = useState(evaluation.comentario_avaliador || evaluation.comentario_gerente || '');
@@ -46,7 +46,7 @@ export default function ViewEvaluationClient({
 
   useEffect(() => {
     if (user && evaluation) {
-      setIsManagerView(user.id === evaluation.avaliador_id || user.role === 'ADMIN');
+      setIsDirectManagerView(user.id === evaluation.avaliador_id);
 
       // Initialize manager notes from existing responses (Q15-Q24)
       const notasIniciais: Record<string, number> = {};
@@ -67,21 +67,21 @@ export default function ViewEvaluationClient({
 
   // Auto-save effect
   useEffect(() => {
-    if (!isManagerView || !hasChanges) return;
+    if (!isDirectManagerView || !hasChanges) return;
 
     const timeoutId = setTimeout(async () => {
       await handleSave(true); // true = silent/auto-save
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [notasGerente, comentarioGerente, isManagerView, hasChanges]);
+  }, [notasGerente, comentarioGerente, isDirectManagerView, hasChanges]);
 
   // Mark as changed when inputs change
   useEffect(() => {
-    if (isManagerView) {
+    if (isDirectManagerView) {
       setHasChanges(true);
     }
-  }, [notasGerente, comentarioGerente, isManagerView]);
+  }, [notasGerente, comentarioGerente, isDirectManagerView]);
 
   const handleNotaGerenteChange = (questionId: string, nota: number) => {
     setNotasGerente(prev => ({
@@ -107,6 +107,8 @@ export default function ViewEvaluationClient({
   };
 
   const handleSave = async (silent = false) => {
+    if (!isDirectManagerView) return;
+
     try {
       if (!silent) setIsSaving(true);
 
@@ -177,6 +179,8 @@ export default function ViewEvaluationClient({
   };
 
   const handleManagerAction = async (action: 'approve' | 'return' | 'finalize') => {
+    if (!isDirectManagerView) return;
+
     try {
       // Helper para obter o token de forma robusta
       const getToken = () => {
@@ -446,15 +450,17 @@ export default function ViewEvaluationClient({
     );
   }
 
-  const readOnly = evaluation.status === 'concluida';
+  const isAuditViewer = evaluation.isAuditViewer === true;
+  const showManagerSection = isDirectManagerView || isAuditViewer;
+  const readOnly = evaluation.status === 'concluida' || isAuditViewer;
   const isDevolvida = evaluation.status === 'devolvida';
   const isPendingManagerReview = evaluation.status === 'aguardando_aprovacao';
   const isAwaitingFinalComment = evaluation.status === 'aprovada_aguardando_comentario';
   const isAwaitingFinalization = evaluation.status === 'aguardando_finalizacao';
   const canEmployeeEdit = ['pendente', 'em_andamento', 'devolvida'].includes(evaluation.status) && evaluation.status !== 'concluida';
   const canEmployeeComment = isAwaitingFinalComment;
-  const canManagerReview = isManagerView && isPendingManagerReview && evaluation.status !== 'concluida';
-  const canManagerFinalize = isManagerView && isAwaitingFinalization;
+  const canManagerReview = isDirectManagerView && isPendingManagerReview && evaluation.status !== 'concluida';
+  const canManagerFinalize = isDirectManagerView && isAwaitingFinalization;
   const isEmployee = user?.id === evaluation.funcionario_id;
 
   return (
@@ -476,7 +482,7 @@ export default function ViewEvaluationClient({
             </Link>
 
             {/* Auto-save Status Indicator */}
-            {isManagerView && (
+            {isDirectManagerView && (
               <div className="flex items-center gap-2 text-sm">
                 {isSaving ? (
                   <span className="text-blue-600 flex items-center gap-1">
@@ -584,6 +590,12 @@ export default function ViewEvaluationClient({
                 </div>
               </div>
             </div>
+
+            {isAuditViewer && (
+              <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Você está visualizando esta avaliação em <strong>modo auditoria</strong>. Todas as informações são somente leitura.
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -625,7 +637,7 @@ export default function ViewEvaluationClient({
             <QuestionarioAvaliacaoCardBased
               respostas={respostas}
               onChange={handleRespostaChange}
-              isManager={isManagerView}
+              isManager={showManagerSection}
               readOnly={readOnly}
               isEmployeeLeader={isEmployeeLeader}
               {...({ notasGerente, onNotaGerenteChange: handleNotaGerenteChange } as any)}
@@ -863,7 +875,14 @@ export default function ViewEvaluationClient({
                 </p>
               )}
 
-              {readOnly && (
+              {isAuditViewer && (
+                <p className="text-blue-700 font-semibold flex items-center gap-2">
+                  <FiCheckCircle className="w-5 h-5" />
+                  Modo auditoria: visualização somente leitura
+                </p>
+              )}
+
+              {!isAuditViewer && readOnly && (
                 <p className="text-green-600 font-semibold flex items-center gap-2">
                   <FiCheckCircle className="w-5 h-5" />
                   Avaliação Concluída
@@ -875,6 +894,7 @@ export default function ViewEvaluationClient({
           <p className="text-xs text-gray-500 text-right mt-4">
             {isEmployee && canEmployeeEdit && 'Clique em "Preencher Avaliação" para responder o questionário'}
             {canManagerReview && 'Revise as respostas e aprove ou devolva para ajustes'}
+            {isAuditViewer && 'Acompanhamento liberado para auditoria, sem permissão de edição'}
           </p>
         </motion.div>
       </div>

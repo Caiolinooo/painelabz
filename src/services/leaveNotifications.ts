@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendGlobalNotification } from '@/lib/global-notifications';
 import { sendEmail } from '@/lib/email-service';
+import { baseTemplate } from '@/lib/emailTemplates';
 
 import { getCredential } from '@/lib/secure-credentials';
 
@@ -65,8 +66,8 @@ export async function notifyLeaveRequestCreated(requestId: string) {
             channels: ['in-app', 'email', 'push']
         });
 
-        const approverHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        const approverHtml = baseTemplate(`
+            <div style="color: #333;">
                 <h2 style="color: #0056b3;">Aprovação Pendente: Férias de ${user.name}</h2>
                 <p>Olá <strong>${nextApprover.name}</strong>,</p>
                 <p>O(a) colaborador(a) <strong>${user.name}</strong> solicitou férias e aguarda sua aprovação.</p>
@@ -74,42 +75,39 @@ export async function notifyLeaveRequestCreated(requestId: string) {
                 ${periodsHtml}
                 ${justification ? `<p><strong>Observações:</strong> ${justification}</p>` : ''}
                 <p>Por favor, acesse o portal para aprovar ou reprovar esta solicitação.</p>
-                <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
             </div>
-        `;
+        `);
+
         await sendEmail(nextApprover.email, `Aprovação Pendente - Férias de ${user.name}`, `Aprovação de Férias`, approverHtml).catch(console.error);
     }
 
     // 2. Notify HR
-    const hrHtml = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+    const hrHtml = baseTemplate(`
+        <div style="color: #333;">
             <h2 style="color: #0056b3;">Nova Solicitação de Férias Registrada</h2>
             <p>O(a) colaborador(a) <strong>${user.name}</strong> registrou uma solicitação de férias.</p>
             <p><strong>Status Atual:</strong> ${status}</p>
             <h3>Detalhes do Período:</h3>
             ${periodsHtml}
             ${justification ? `<p><strong>Observações:</strong> ${justification}</p>` : ''}
-            <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-            <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
         </div>
-    `;
+    `);
+
     const hrEmail = await getHrEmail();
     await sendEmail(hrEmail, `Nova Solicitação de Férias - ${user.name}`, `Férias de ${user.name}`, hrHtml).catch(console.error);
 
     // 3. Notify Requester
     if (user.email) {
-        const requesterHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        const requesterHtml = baseTemplate(`
+            <div style="color: #333;">
                 <h2 style="color: #0056b3;">Solicitação de Férias Recebida</h2>
                 <p>Sua solicitação de férias foi registrada no sistema com sucesso.</p>
                 <h3>Detalhes do Período:</h3>
                 ${periodsHtml}
                 <p>Sua solicitação será analisada pelos seus gestores. Você será notificado sobre a aprovação.</p>
-                <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
             </div>
-        `;
+        `);
+
         await sendEmail(user.email, `Confirmação de Solicitação de Férias`, `Férias Solicitadas`, requesterHtml).catch(console.error);
     }
 }
@@ -140,34 +138,32 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
         });
 
         if (user.email) {
-            const requesterHtml = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            const requesterHtml = baseTemplate(`
+                <div style="color: #333;">
                     <h2 style="color: #28a745;">Férias Aprovadas! 🎉</h2>
                     <p>Olá <strong>${user.name}</strong>,</p>
                     <p>Sua solicitação de férias foi aprovada com sucesso! Aproveite seu descanso!</p>
                     <h3>Período Aprovado:</h3>
                     ${periodsHtml}
-                    <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                    <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
                 </div>
-            `;
+            `);
             await sendEmail(user.email, `Férias Aprovadas!`, `Férias Aprovadas`, requesterHtml).catch(console.error);
         }
 
+
         // Notify HR
-        const hrHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        const hrHtml = baseTemplate(`
+            <div style="color: #333;">
                 <h2 style="color: #28a745;">Férias Aprovadas: ${user.name}</h2>
                 <p>A solicitação de férias de <strong>${user.name}</strong> foi totalmente aprovada pelos gestores.</p>
                 <h3>Detalhes do Período:</h3>
                 ${periodsHtml}
                 <p>Por favor, providencie os trâmites legais e no sistema de RH.</p>
-                <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
             </div>
-        `;
+        `);
         const hrEmail = await getHrEmail();
         await sendEmail(hrEmail, `Férias Aprovadas - ${user.name}`, `Férias Aprovadas`, hrHtml).catch(console.error);
+
 
     } else if (newStatus === 'REJECTED') {
         // Notify Requester
@@ -183,8 +179,8 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
         });
 
         if (user.email) {
-            const requesterHtml = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            const requesterHtml = baseTemplate(`
+                <div style="color: #333;">
                     <h2 style="color: #dc3545;">Solicitação de Férias Rejeitada</h2>
                     <p>Olá <strong>${user.name}</strong>,</p>
                     <p>Informamos que sua solicitação de férias foi rejeitada.</p>
@@ -192,27 +188,25 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
                     ${periodsHtml}
                     <p><strong>Motivo da Rejeição:</strong> ${reason || 'Não informado'}</p>
                     <p>Em caso de dúvidas, converse com seu gestor.</p>
-                    <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                    <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
                 </div>
-            `;
+            `);
             await sendEmail(user.email, `Solicitação de Férias Rejeitada`, `Férias Rejeitada`, requesterHtml).catch(console.error);
         }
 
+
         // Notify HR
-        const hrHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        const hrHtml = baseTemplate(`
+            <div style="color: #333;">
                 <h2 style="color: #dc3545;">Solicitação de Férias Rejeitada: ${user.name}</h2>
                 <p>A solicitação de férias de <strong>${user.name}</strong> foi rejeitada por um de seus gestores.</p>
                 <h3>Detalhes do Período:</h3>
                 ${periodsHtml}
                 <p><strong>Motivo:</strong> ${reason || 'Não informado'}</p>
-                <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
             </div>
-        `;
+        `);
         const hrEmail = await getHrEmail();
         await sendEmail(hrEmail, `Férias Rejeitada - ${user.name}`, `Férias Rejeitada`, hrHtml).catch(console.error);
+
 
     } else if (newStatus === 'PENDING_MANAGER') {
         // Leader approved, now manager needs to approve
@@ -239,36 +233,34 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
             });
 
             if (mgr.email) {
-                const managerHtml = `
-                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                const managerHtml = baseTemplate(`
+                    <div style="color: #333;">
                         <h2 style="color: #0056b3;">Aprovação Final Pendente: Férias de ${user.name}</h2>
                         <p>Olá <strong>${mgr.name}</strong>,</p>
                         <p>A solicitação de férias de <strong>${user.name}</strong> foi aprovada pelo líder do setor e agora requer sua aprovação final (Gerente).</p>
                         <h3>Detalhes do Período:</h3>
                         ${periodsHtml}
                         <p>Por favor, acesse o portal para aprovar ou reprovar a solicitação.</p>
-                        <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                        <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
                     </div>
-                `;
+                `);
                 await sendEmail(mgr.email, `Aprovação Pendente (Gerente) - Férias de ${user.name}`, `Aprovação de Férias`, managerHtml).catch(console.error);
             }
+
         }
 
         // Notify Requester
         if (user.email) {
-            const requesterHtml = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            const requesterHtml = baseTemplate(`
+                <div style="color: #333;">
                     <h2 style="color: #17a2b8;">Atualização: Solicitação de Férias</h2>
                     <p>Olá <strong>${user.name}</strong>,</p>
                     <p>Sua solicitação de férias avançou no fluxo. Ela foi aprovada pelo seu líder e agora está pendente de aprovação com o gerente da sua área.</p>
                     <h3>Detalhes do Período:</h3>
                     ${periodsHtml}
-                    <hr style="margin-top: 30px; border: 0; border-top: 1px solid #eee;" />
-                    <p style="font-size: 12px; color: #888;">Este é um alerta automático do Portal ABZ.</p>
                 </div>
-            `;
+            `);
             await sendEmail(user.email, `Atualização da sua Solicitação de Férias`, `Atualização de Férias`, requesterHtml).catch(console.error);
         }
+
     }
 }

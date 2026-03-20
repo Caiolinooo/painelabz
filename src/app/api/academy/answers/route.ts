@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { generateAndStoreCertificate } from '@/lib/certificates';
 
 export const dynamic = 'force-dynamic';
-export function extractTokenFromHeader(authHeader?: string | null): string | null {
+function extractTokenFromHeader(authHeader?: string | null): string | null {
     if (!authHeader) return null;
     if (authHeader.startsWith('Bearer ')) {
         return authHeader.substring(7);
@@ -11,7 +11,7 @@ export function extractTokenFromHeader(authHeader?: string | null): string | nul
     return authHeader;
 }
 
-export function verifyToken(token: string): any {
+function verifyToken(token: string): any {
     try {
         const defaultSecret = new TextEncoder().encode(
             process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET || 'fallback-secret-key-1234567890'

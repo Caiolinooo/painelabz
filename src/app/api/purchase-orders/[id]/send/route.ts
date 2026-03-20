@@ -4,6 +4,7 @@ import { isAdminFromRequest } from '@/lib/auth'; // Or just check user session
 import { renderToBuffer } from '@react-pdf/renderer';
 import { PurchaseOrderPdf } from '@/components/PurchaseOrder/PurchaseOrderPdf';
 import { sendEmail } from '@/lib/email/service';
+import { buildAppUrl } from '@/lib/app-url';
 import React from 'react';
 
 // Force dynamic to ensure we can read request/cookies
@@ -20,10 +21,7 @@ export async function POST(
         // 1. Fetch PO Data
         const { data: po, error } = await supabaseAdmin
             .from('purchase_orders')
-            .select(`
-        *,
-        items:purchase_order_items(*)
-      `)
+            .select(`*, suppliers(*)`)
             .eq('id', poId)
             .single();
 
@@ -102,7 +100,7 @@ export async function POST(
                         user_id: approver.id,
                         type: 'action', // Action required
                         title: 'Nova Aprovação Pendente',
-                        message: `Nova Ordem de Compra #${po.po_number || 'N/A'} de ${po.buyer_name} aguardando sua aprovação. Valor: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(po.total_value)}`,
+                        message: `Nova Requisição de Compra #${po.po_number || 'N/A'} de ${po.buyer_name} aguardando sua aprovação. Valor: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(po.total_value)}`,
                         link: `/admin/purchase-orders/${po.id}`, // Link to approval page
                         actor_id: po.user_id, // The requester is the actor
                         created_at: new Date().toISOString()
@@ -167,8 +165,7 @@ export async function POST(
         userLocale = userLocale || 'pt-BR';
         const t = (key: string, locale: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://painel.abzgroup.com.br';
-        const viewUrl = `${baseUrl}/department/purchase-orders/${po.id}`;
+        const viewUrl = buildAppUrl(`/department/purchase-orders/${po.id}`, request.headers);
         const poNumber = po.po_number || poId;
 
         // Only send if we have recipients

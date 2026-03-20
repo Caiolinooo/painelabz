@@ -96,6 +96,11 @@ export default function EvaluationListClient({
     return period?.nome;
   };
 
+  const getCardViewProps = (evaluation: Evaluation) => ({
+    isManagerView: evaluation.avaliador_id === currentUser.id,
+    isAuditView: evaluation.isAuditViewer === true && evaluation.avaliador_id !== currentUser.id
+  });
+
   // Filtrar avaliações
   const filteredEvaluations = initialEvaluations.filter(ev => {
     const matchesSearch = !searchTerm ||
@@ -339,7 +344,7 @@ export default function EvaluationListClient({
                   periodName={getPeriodName(ev.periodo_id || '')}
                   cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
-                  isManagerView={isEvaluationManager}
+                  {...getCardViewProps(ev)}
                   currentUserRole={currentUser.role}
                 />
               ))}
@@ -369,7 +374,7 @@ export default function EvaluationListClient({
                   periodName={getPeriodName(ev.periodo_id || '')}
                   cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
-                  isManagerView={isEvaluationManager}
+                  {...getCardViewProps(ev)}
                   currentUserRole={currentUser.role}
                 />
               ))}
@@ -399,7 +404,7 @@ export default function EvaluationListClient({
                   periodName={getPeriodName(ev.periodo_id || '')}
                   cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
-                  isManagerView={isEvaluationManager}
+                  {...getCardViewProps(ev)}
                   currentUserRole={currentUser.role}
                 />
               ))}
@@ -429,7 +434,7 @@ export default function EvaluationListClient({
                   periodName={getPeriodName(ev.periodo_id || '')}
                   cycleName={getCycleName(ev.periodo_id || '')}
                   index={index}
-                  isManagerView={isEvaluationManager}
+                  {...getCardViewProps(ev)}
                   currentUserRole={currentUser.role}
                 />
               ))}

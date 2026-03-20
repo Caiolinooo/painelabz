@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { buildAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest) {
             
             <!-- Footer -->
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.groupabz.com'}/admin/feedback" 
+                <a href="${buildAppUrl('/admin/feedback', request.headers)}" 
                    style="display: inline-block; background: ${config.color}; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; font-size: 14px;">
                     📋 Ver no Painel de Feedback
                 </a>

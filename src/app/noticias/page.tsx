@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import MainLayout from '@/components/Layout/MainLayout';
 import NewsFeed from '@/components/news/NewsFeed';
 import { FiSearch, FiX } from 'react-icons/fi';
@@ -10,6 +11,8 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 export default function NoticiasPage() {
   const { user, profile } = useSupabaseAuth();
   const userId = user?.id || profile?.id || '';
+  const searchParams = useSearchParams();
+  const selectedPostId = searchParams.get('post_id') || undefined;
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -93,6 +96,7 @@ export default function NoticiasPage() {
           limit={10}
           searchQuery={searchQuery}
           featured={showFeaturedOnly}
+          selectedPostId={selectedPostId}
         />
       </div>
     </MainLayout>

@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { Tables } from '@/types/supabase';
+import { sendGlobalNotification } from '@/lib/global-notifications';
+import { newsNotificationTemplate } from '@/lib/emailTemplates';
+import { buildAppUrl } from '@/lib/app-url';
 
 // Tipo para criação de notícia
 export interface CreateNewsData {
@@ -95,6 +98,32 @@ export async function createNews(newsData: CreateNewsData) {
       throw error;
     }
     
+    if (data && newsData.published) {
+      // Notificar todos os usuários sobre a nova notícia
+      try {
+        const { data: users } = await supabase.from('users_unified').select('id');
+        if (users && users.length > 0) {
+          const newsUrl = buildAppUrl(`/noticias/${data.id}`);
+          const emailHtml = newsNotificationTemplate(data.title, data.summary || '', newsUrl);
+          
+          for (const user of users) {
+             sendGlobalNotification({
+              userId: user.id,
+              submodule: 'news',
+              type: 'new_post',
+              title: `📰 Nova Notícia: ${data.title}`,
+              message: data.summary || 'Uma nova notícia foi publicada no portal.',
+              actionUrl: `/noticias/${data.id}`,
+              emailHtml: emailHtml,
+              channels: ['in-app', 'email']
+            }).catch(e => console.error(`Erro ao notificar usuário ${user.id} sobre news:`, e));
+          }
+        }
+      } catch (notifError) {
+        console.error('Erro ao disparar notificações de news:', notifError);
+      }
+    }
+
     return data as Tables<'news'>;
   } catch (error) {
     console.error('Erro ao criar notícia:', error);
