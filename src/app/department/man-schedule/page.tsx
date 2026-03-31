@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { FiDownload, FiSearch } from 'react-icons/fi';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { FiDownload, FiSearch, FiNavigation } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx-js-style';
 import { useI18n } from '@/contexts/I18nContext';
@@ -60,6 +60,9 @@ export default function ManSchedulePage() {
     const [filterVessel, setFilterVessel] = useState('');
     const [filterCompany, setFilterCompany] = useState('');
     const [filterPosition, setFilterPosition] = useState('');
+
+    // Timeline navigation
+    const tableContainerRef = useRef<HTMLDivElement>(null);
 
     const fetchSchedules = useCallback(async () => {
         try {
@@ -208,6 +211,74 @@ export default function ManSchedulePage() {
         return { weeks: generatedWeeks, timelineStart: start };
     }, [positionGroups]);
 
+    // ─── Current week calculation ───
+    const currentWeekIndex = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        let idx = -1;
+        for (let i = 0; i < weeks.length; i++) {
+            const weekStart = new Date(weeks[i].date);
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            
+            if (today >= weekStart && today <= weekEnd) {
+                idx = i;
+                break;
+            }
+        }
+        
+        // If today not found, find closest week
+        if (idx === -1 && weeks.length > 0) {
+            let minDiff = Infinity;
+            weeks.forEach((week, i) => {
+                const diff = Math.abs(today.getTime() - new Date(week.date).getTime());
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    idx = i;
+                }
+            });
+        }
+        
+        return idx >= 0 ? idx : 0;
+    }, [weeks]);
+
+    const scrollToWeek = useCallback((weekIdx: number) => {
+        if (!tableContainerRef.current || weekIdx < 0) return;
+        
+        const container = tableContainerRef.current;
+        // Each week column is ~24px + borders, 3 fixed columns = 530px
+        const fixedColsWidth = 530;
+        const targetScroll = fixedColsWidth + (weekIdx * 26);
+        
+        container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+    }, []);
+
+    const scrollToCurrentWeek = useCallback(() => {
+        scrollToWeek(currentWeekIndex);
+    }, [scrollToWeek, currentWeekIndex]);
+
+    const scrollToMonth = useCallback((monthsAhead: number) => {
+        if (!tableContainerRef.current || weeks.length === 0) return;
+        
+        const today = new Date();
+        const targetDate = new Date(today.getFullYear(), today.getMonth() + monthsAhead, 1);
+        
+        let closestIdx = 0;
+        let minDiff = Infinity;
+        
+        weeks.forEach((week, i) => {
+            const diff = Math.abs(targetDate.getTime() - new Date(week.date).getTime());
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIdx = i;
+            }
+        });
+        
+        scrollToWeek(closestIdx);
+    }, [weeks, scrollToWeek]);
+
     // ─── Format helpers ───
     const formatHeaderDate = (d: Date) => {
         const dayStr = d.getDate().toString().padStart(2, '0');
@@ -337,9 +408,9 @@ export default function ManSchedulePage() {
     const groupColors = ['bg-[#d9e1f2]', 'bg-[#b4c6e7]'];
 
     return (
-        <div className="p-4 w-full h-full min-h-screen flex flex-col bg-white">
+        <div className="flex flex-col -mx-8 -my-8 h-[calc(100vh-5rem)] overflow-hidden bg-white">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 shrink-0 px-2 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-4 py-3 shrink-0 border-b border-gray-200 gap-3">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800">{t('manSchedule.title', 'Visualização de Matriz - Man Schedule')}</h1>
                     <p className="text-gray-500 text-sm">{t('manSchedule.subtitle', 'Representação exata da planilha matricial de escalas.')}</p>
@@ -353,71 +424,102 @@ export default function ManSchedulePage() {
                 </button>
             </div>
 
-            {/* Filters */}
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4 mx-2 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 w-full max-w-[calc(100vw-2rem)]">
-                <div className="w-full md:w-[300px] shrink-0">
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.searchLabel', 'Buscar')}</label>
-                    <div className="relative">
-                        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder={t('manSchedule.search', 'Buscar tripulante...')}
-                            className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            value={searchName}
-                            onChange={(e) => setSearchName(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <div className="flex flex-wrap gap-4 w-full md:w-auto justify-start md:justify-end">
-                    <div className="w-full md:w-[180px]">
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.companyLabel', 'Empresa')}</label>
-                        <select
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            value={filterCompany}
-                            onChange={(e) => setFilterCompany(e.target.value)}
-                        >
-                            <option value="">{t('manSchedule.allCompanies', 'Todas as Empresas')}</option>
-                            {availableCompanies.map((comp, idx) => (
-                                <option key={idx} value={comp}>{comp}</option>
-                            ))}
-                        </select>
+            {/* Filters - Always visible */}
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 shrink-0">
+                <div className="flex items-end gap-3 w-full flex-nowrap">
+                    <div className="min-w-[200px] flex-shrink-0">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.searchLabel', 'Buscar')}</label>
+                        <div className="relative">
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder={t('manSchedule.search', 'Buscar tripulante...')}
+                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                                value={searchName}
+                                onChange={(e) => setSearchName(e.target.value)}
+                            />
+                        </div>
                     </div>
 
-                    <div className="w-full md:w-[180px]">
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.vesselLabel', 'Embarcação')}</label>
-                        <select
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            value={filterVessel}
-                            onChange={(e) => setFilterVessel(e.target.value)}
-                        >
-                            <option value="">{t('manSchedule.allVessels', 'Todas as Embarcações')}</option>
-                            {availableVessels.map((v, idx) => (
-                                <option key={idx} value={v}>{v}</option>
-                            ))}
-                        </select>
-                    </div>
+                    <div className="flex items-end gap-3 flex-nowrap flex-1 min-w-0">
+                        <div className="min-w-[130px] flex-shrink-0">
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.companyLabel', 'Empresa')}</label>
+                            <select
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                                value={filterCompany}
+                                onChange={(e) => setFilterCompany(e.target.value)}
+                            >
+                                <option value="">{t('manSchedule.allCompanies', 'Todas')}</option>
+                                {availableCompanies.map((comp, idx) => (
+                                    <option key={idx} value={comp}>{comp}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                    <div className="w-full md:w-[180px]">
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.positionLabel', 'Cargo')}</label>
-                        <select
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            value={filterPosition}
-                            onChange={(e) => setFilterPosition(e.target.value)}
-                        >
-                            <option value="">{t('manSchedule.allPositions', 'Todas as Posições')}</option>
-                            {availablePositions.map((p, idx) => (
-                                <option key={idx} value={p}>{p}</option>
-                            ))}
-                        </select>
+                        <div className="min-w-[130px] flex-shrink-0">
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.vesselLabel', 'Embarcação')}</label>
+                            <select
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                                value={filterVessel}
+                                onChange={(e) => setFilterVessel(e.target.value)}
+                            >
+                                <option value="">{t('manSchedule.allVessels', 'Todas')}</option>
+                                {availableVessels.map((v, idx) => (
+                                    <option key={idx} value={v}>{v}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="min-w-[130px] flex-shrink-0">
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.positionLabel', 'Cargo')}</label>
+                            <select
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                                value={filterPosition}
+                                onChange={(e) => setFilterPosition(e.target.value)}
+                            >
+                                <option value="">{t('manSchedule.allPositions', 'Todos')}</option>
+                                {availablePositions.map((p, idx) => (
+                                    <option key={idx} value={p}>{p}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Matrix Table */}
-            <div className="overflow-x-auto border border-black shadow-sm mx-2 scrollbar-thin scrollbar-thumb-gray-400 w-full max-w-[calc(100vw-2rem)]" style={{ height: 'calc(100vh - 180px)' }}>
+            {/* Timeline Navigation Bar */}
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-200 shrink-0">
+                <FiNavigation className="text-blue-600" />
+                <span className="text-xs font-semibold text-blue-700 mr-2">
+                    {t('manSchedule.quickNav', 'Navegação Rápida:')}
+                </span>
+                <button
+                    onClick={() => scrollToCurrentWeek()}
+                    className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-black text-xs font-bold rounded shadow-sm transition border border-yellow-600 flex items-center gap-1"
+                >
+                    📍 {t('manSchedule.today', 'Hoje')}
+                </button>
+                <button
+                    onClick={() => scrollToMonth(0)}
+                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded shadow-sm transition"
+                >
+                    {t('manSchedule.currentMonth', 'Mês Atual')}
+                </button>
+                <button
+                    onClick={() => scrollToMonth(1)}
+                    className="px-3 py-1 bg-blue-400 hover:bg-blue-500 text-white text-xs font-medium rounded shadow-sm transition"
+                >
+                    {t('manSchedule.nextMonth', 'Próximo Mês')}
+                </button>
+                <span className="text-xs text-blue-600 ml-auto font-medium">
+                    📍 Semana de {weeks[currentWeekIndex] ? formatHeaderDate(weeks[currentWeekIndex].date) : '--'}
+                </span>
+            </div>
+
+            {/* Matrix Table - Scrollable area */}
+            <div ref={tableContainerRef} className="flex-1 overflow-auto min-h-0 relative">
                 <table id="man-schedule-table" className="w-max border-collapse font-sans text-xs bg-white">
-                    <thead>
+                    <thead className="sticky top-0 z-40 bg-white">
                         {/* Row 1: Vessel name */}
                         <tr>
                             <th
@@ -451,17 +553,24 @@ export default function ManSchedulePage() {
                             <th className="bg-white text-black font-bold text-center border-r border-b border-black sticky left-[380px] z-30 px-4 py-2 min-w-[150px] w-[150px]">
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
-                            {weeks.map((week, idx) => (
+                            {weeks.map((week, idx) => {
+                                const isCurrentWeek = idx === currentWeekIndex;
+                                return (
                                 <th
                                     key={`date-${idx}`}
-                                    className="bg-[#e2efda] text-[#00b050] font-bold text-center border-r border-b border-black align-bottom pt-2 pb-1"
+                                    className={`text-center border-r border-b align-bottom pt-2 pb-1 ${
+                                        isCurrentWeek 
+                                            ? 'bg-yellow-100 text-yellow-800 font-bold border-yellow-500 border-2' 
+                                            : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
+                                    }`}
                                     style={{ height: '90px' }}
                                 >
                                     <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', letterSpacing: '0.5px', fontSize: '11px' }}>
                                         {formatHeaderDate(week.date)}
                                     </div>
                                 </th>
-                            ))}
+                                );
+                            })}
                         </tr>
 
                         {/* Row 3: Day of week */}
@@ -469,15 +578,22 @@ export default function ManSchedulePage() {
                             <th className="bg-white border-r border-b border-black sticky left-0 z-30"></th>
                             <th className="bg-white border-r border-b border-black sticky left-[300px] z-30"></th>
                             <th className="bg-white border-r border-b border-black sticky left-[380px] z-30"></th>
-                            {weeks.map((week, idx) => (
+                            {weeks.map((week, idx) => {
+                                const isCurrentWeek = idx === currentWeekIndex;
+                                return (
                                 <th
                                     key={`day-${idx}`}
-                                    className="bg-[#e2efda] text-[#00b050] font-bold text-center border-r border-b border-black py-0.5"
+                                    className={`text-center border-r border-b py-0.5 ${
+                                        isCurrentWeek 
+                                            ? 'bg-yellow-100 text-yellow-800 font-bold border-yellow-500 border-2' 
+                                            : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
+                                    }`}
                                     style={{ fontSize: '11px' }}
                                 >
                                     {getDayAbbr(week.date)}
                                 </th>
-                            ))}
+                                );
+                            })}
                         </tr>
                     </thead>
                     <tbody>
@@ -514,11 +630,16 @@ export default function ManSchedulePage() {
                                                     {group.position}
                                                 </td>
                                                 {/* Timeline cells */}
-                                                {weeks.map((week, wIdx) => {
+                                                 {weeks.map((week, wIdx) => {
                                                     const status = getWeekStatus(week.date, member.rotations);
+                                                    const isCurrentWeek = wIdx === currentWeekIndex;
                                                     let cellClass = 'bg-white border-[#d1d5db]';
                                                     if (status === 'ON') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';
                                                     else if (status === 'OFF-C') cellClass = 'bg-[#f4cccc] text-[#cc0000] font-bold border-black';
+                                                    
+                                                    if (isCurrentWeek) {
+                                                        cellClass = `${cellClass} !bg-yellow-100 !border-yellow-500 !border-2`;
+                                                    }
 
                                                     return (
                                                         <td
@@ -545,15 +666,17 @@ export default function ManSchedulePage() {
                         )}
                     </tbody>
                 </table>
-                <div className="mt-4 flex flex-col gap-1 text-xs px-2 pb-4">
-                    <div className="flex items-center gap-2">
-                        <span className="w-16 bg-[#e2efda] text-[#00b050] border border-black text-center font-bold px-1 py-0.5">ON</span>
-                        <span className="text-gray-700 font-semibold">On This Site (Embarcado)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-16 bg-[#f4cccc] text-[#cc0000] border border-black text-center font-bold px-1 py-0.5">OFF-C</span>
-                        <span className="text-gray-700 font-semibold">Crew Change (Semana de troca de turma / Desembarque)</span>
-                    </div>
+            </div>
+
+            {/* Legend - Always visible at bottom */}
+            <div className="flex flex-col gap-1 text-xs px-4 py-2 border-t border-gray-200 shrink-0 bg-white">
+                <div className="flex items-center gap-2">
+                    <span className="w-16 bg-[#e2efda] text-[#00b050] border border-black text-center font-bold px-1 py-0.5">ON</span>
+                    <span className="text-gray-700 font-semibold">On This Site (Embarcado)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="w-16 bg-[#f4cccc] text-[#cc0000] border border-black text-center font-bold px-1 py-0.5">OFF-C</span>
+                    <span className="text-gray-700 font-semibold">Crew Change (Semana de troca de turma / Desembarque)</span>
                 </div>
             </div>
         </div>
