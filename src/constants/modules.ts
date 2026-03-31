@@ -33,6 +33,7 @@ export const SYSTEM_MODULES: SystemModule[] = [
     // Department Specific
     { id: 'compras', label: 'Ordens de Compra', description: 'Gestão de compras e aprovações', category: 'department', href: '/department/purchase-orders', visible: true },
     { id: 'poliweb', label: 'Poliweb', description: 'Clínica ocupacional e gestão de ASO', category: 'department', href: '/poliweb', visible: true },
+    { id: 'man-schedule', label: 'Man Schedule', description: 'Gestão de tripulantes e escalas offshore', category: 'department', href: '/department/man-schedule', visible: true },
 
     // Tools & Communication
     { id: 'chat', label: 'Chat', description: 'Comunicação interna', category: 'department', href: '/chat' },

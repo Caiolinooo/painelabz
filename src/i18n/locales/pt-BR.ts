@@ -3717,5 +3717,39 @@ export default {
       autoMessage: 'Este é um email automático. Por favor, não responda.'
     }
   },
+  manSchedule: {
+    title: 'Visualização de Matriz - Man Schedule',
+    subtitle: 'Representação exata da planilha matricial de escalas.',
+    exportXLSX: 'Exportar Planilha (XLSX)',
+    search: 'Buscar tripulante...',
+    filters: 'Filtros',
+    allCompanies: 'Todas as Empresas',
+    allVessels: 'Todas as Embarcações',
+    allPositions: 'Todas as Posições',
+    searchLabel: 'Buscar',
+    companyLabel: 'Empresa',
+    vesselLabel: 'Embarcação',
+    positionLabel: 'Cargo',
+    timeline: 'CRONOGRAMA DE ESCALAS',
+    tableHeaders: {
+      name: 'NOME',
+      reqOnboard: 'QTD.\nEMBARC.',
+      rank: 'CARGO'
+    },
+    days: {
+      sat: 'sáb'
+    },
+    ranks: {
+      chefManager: 'CHEF MANAGER',
+      dayNightChef: 'DAY / NIGHT CHEF',
+      asstCook: 'ASST. COOK',
+      baker: 'BAKER',
+      leadSteward: 'LEAD STEWARD',
+      steward: 'STEWARD'
+    },
+    emptySearch: 'Nenhum registro encontrado com estes filtros.',
+    loading: 'Carregando linhas da planilha...',
+    exportedSuccess: 'Planilha exportada com sucesso!'
+  }
 };
 

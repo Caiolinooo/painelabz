@@ -178,6 +178,18 @@ export function getTranslatedMenu(t: (key: string, defaultValue?: string) => str
       moduleKey: 'academy'
     },
     {
+      id: 'man-schedule',
+      title: t('menu.manSchedule') || 'Man Schedule',
+      href: '/department/man-schedule',
+      icon: FiUsers,
+      external: false,
+      enabled: true,
+      order: 14,
+      adminOnly: false,
+      managerOnly: false,
+      moduleKey: 'man-schedule'
+    },
+    {
       id: 'admin',
       title: t('menu.administracao') || 'Administração',
       href: '/admin',
@@ -330,6 +342,18 @@ const menuItems: MenuItem[] = [
     adminOnly: false,
     managerOnly: false,
     moduleKey: 'academy'
+  },
+  {
+    id: 'man-schedule',
+    href: '/department/man-schedule',
+    label: 'Man Schedule',
+    icon: FiUsers,
+    external: false,
+    enabled: true,
+    order: 14,
+    adminOnly: false,
+    managerOnly: false,
+    moduleKey: 'man-schedule'
   },
   {
     id: 'admin',
