@@ -1,5 +1,35 @@
 # Changelog
 
+## [5.3.0] - 2026-03-31
+
+### Added
+- **Aba "Todas as Solicitações" no Módulo de Férias**: Nova sub-aba dentro do módulo de férias (`/ferias`) que permite visualizar e gerenciar todas as solicitações de férias da empresa.
+  - Tabela completa com filtros por status (Todas, Pendentes Líder, Pendentes Gerente, Aprovadas, Rejeitadas).
+  - Busca por nome do colaborador ou setor.
+  - Modal de detalhes com informações completas da solicitação (períodos, observações, status).
+  - Ações administrativas: aprovar, rejeitar e excluir solicitações diretamente do módulo.
+  - Acesso controlado por permissões hierárquicas (setor → role → usuário individual).
+- **Gerenciamento de Acesso por Setor e Usuário**: Nova página `/admin/ferias-access` para configurar quem pode acessar a aba "Todas as Solicitações".
+  - Seção **Por Setor**: Habilitar/restringir acesso para todos os usuários de um setor.
+  - Seção **Por Usuário**: Override individual que prevalece sobre a configuração do setor.
+  - Visualização clara da hierarquia de permissões (Setor → Role → Usuário).
+  - Botão "Remover override" para restaurar herança do setor.
+- **API `/api/ferias/admin-access`**: Novos endpoints para gerenciar permissões de acesso.
+  - `GET`: Retorna configuração atual de todos os setores e usuários.
+  - `POST`: Configurar acesso por setor (`type: 'sector'`) ou usuário (`type: 'user'`), com suporte a `enabled: null` para remover overrides.
+- **Módulo `ferias_admin` no sistema de permissões**: Integrado ao sistema existente de permissões efetivas.
+  - ADMIN e MANAGER têm acesso por padrão.
+  - USER precisa de permissão explícita via setor ou override individual.
+  - Mapeamentos de normalização para variações de nome ("todas as solicitações", "gerenciar férias", etc.).
+
+### Fixed
+- **Correção no JOIN da API de Leave Requests**: Corrigido erro 500 na página `/admin/leave-requests` causado por JOIN inválido com tabela `sectors`.
+  - Alterado de `sector:sectors(name)` direto para `user:users_unified(..., sector:sectors(name))` aninhado.
+  - Corrigido filtro de busca para acessar `req.user?.sector?.name`.
+- **Endpoint DELETE para Leave Requests**: Adicionado `DELETE /api/admin/leave-requests?id=` para permitir exclusão de solicitações.
+- **Botão de exclusão na interface admin**: Adicionado botão "Excluir" no modal de detalhes da página `/admin/leave-requests`.
+- **Link "Gerenciar Acesso" no Admin**: Adicionado botão na página de solicitações de férias do admin para navegar à página de configuração de acesso.
+
 ## [5.2.1] - 2026-03-31
 
 ### Added
