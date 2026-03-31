@@ -177,8 +177,8 @@ export default function CalendarioPage() {
   useEffect(() => {
     const loadCompanyEvents = async () => {
       try {
-        // Fetch 90 days to cover current view and a bit beyond
-        const res = await fetchWithToken('/api/calendar/company/events?rangeDays=90');
+        // Fetch 365 days to cover the whole year!
+        const res = await fetchWithToken('/api/calendar/company/events?rangeDays=365');
         const data = await res.json();
         if (data.events) {
           setCompanyEvents(data.events);
@@ -325,7 +325,13 @@ export default function CalendarioPage() {
       color: companyConfig.marker_color
     }));
 
-    return [...hList, ...mList, ...cList].sort((a, b) => a.date.localeCompare(b.date));
+    const combined = [...hList, ...mList, ...cList];
+    const uniqueEventsMap = new Map();
+    combined.forEach(ev => {
+      uniqueEventsMap.set(`${ev.date}-${ev.name}-${ev.type}`, ev);
+    });
+
+    return Array.from(uniqueEventsMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [allHolidays, mioEvents, companyEvents, viewDate, companyConfig.marker_color]);
 
   return (

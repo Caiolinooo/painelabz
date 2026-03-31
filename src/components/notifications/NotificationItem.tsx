@@ -25,9 +25,10 @@ interface NotificationItemProps {
 // Known logo URL patterns to filter out — these are company assets, not user photos
 const LOGO_PATTERNS = ['logo.png', 'lc1_azul.png', 'logo_azul', '/icons/icon-192', '/images/logo'];
 
-function ActorAvatar({ actor, typeIcon }: {
+function ActorAvatar({ actor, typeIcon, isSystem }: {
     actor?: AppNotification['actor'];
     typeIcon: React.ReactNode;
+    isSystem: boolean;
 }) {
     const [imgError, setImgError] = useState(false);
 
@@ -43,8 +44,8 @@ function ActorAvatar({ actor, typeIcon }: {
     const firstInitial = actor?.first_name?.charAt(0)?.toUpperCase() || null;
     const lastInitial = actor?.last_name?.charAt(0)?.toUpperCase() || '';
 
-    // No actor at all → show big type icon as the avatar
-    if (!actor) {
+    // System notifications or no actor at all → show big type icon as the avatar
+    if (isSystem || !actor) {
         return (
             <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shadow-sm">
                 {typeIcon}
@@ -132,13 +133,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRea
             className={`relative flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${!isRead ? 'bg-blue-50/50' : ''}`}
         >
             <div className="relative flex-shrink-0">
-                <ActorAvatar actor={notification.actor} typeIcon={getIcon(true)} />
-                {/* Type badge overlaid — only when there is a real actor */}
-                {actorName && (
-                    <div className="absolute -bottom-1 -right-1 shadow-sm">
-                        {getIcon(false)}
-                    </div>
-                )}
+                <ActorAvatar actor={notification.actor} typeIcon={getIcon(true)} isSystem={notification.type === 'system'} />
             </div>
 
             <div className="flex-1 min-w-0">

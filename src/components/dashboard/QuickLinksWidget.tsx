@@ -90,13 +90,19 @@ export default function QuickLinksWidget() {
     // Filter links based on permission
     const filteredLinks = links.filter(link => hasPermission(link.id));
 
-    if (filteredLinks.length === 0) return null;
-
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-bold text-gray-900 text-lg">{t('dashboard.quickLinks')}</h3>
-                <FiEdit2 className="text-gray-300 w-4 h-4 cursor-pointer hover:text-gray-500" title={t('common.edit')} />
+                <FiEdit2
+                    className="text-gray-300 w-4 h-4 cursor-pointer hover:text-gray-500"
+                    title={t('common.edit', 'Editar')}
+                    onClick={() => {
+                        import('react-hot-toast').then(({ default: toast }) => {
+                            toast('Em breve...', { icon: '🚧' });
+                        });
+                    }}
+                />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 flex-1">

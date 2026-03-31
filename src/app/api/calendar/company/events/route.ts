@@ -26,7 +26,7 @@ const DEFAULT_GCAL_URL = "https://calendar.google.com/calendar/u/0?cid=YWJ6Lm1pZ
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const rangeDays = parseInt(searchParams.get('rangeDays') || '60');
+    const rangeDays = parseInt(searchParams.get('rangeDays') || '365');
     const force = searchParams.get('force') === '1';
     const directUrl = searchParams.get('url');
     const directGcal = searchParams.get('gcal');
