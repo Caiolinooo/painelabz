@@ -2,16 +2,32 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox, FiSearch, FiEye, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { LeaveRequest } from '@/services/leaveService';
 import MainLayout from '@/components/Layout/MainLayout';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+interface UnifiedUser {
+    id: string;
+    name: string;
+    email: string;
+    sector_id: string;
+    sector?: { name: string };
+}
+
+interface RequestWithUser extends LeaveRequest {
+    user: UnifiedUser;
+    sector?: { name: string };
+}
 
 export default function FeriasPage() {
     const { user } = useSupabaseAuth();
-    const [activeTab, setActiveTab] = useState<'my_leaves' | 'approvals'>('my_leaves');
+    const [activeTab, setActiveTab] = useState<'my_leaves' | 'approvals' | 'all_requests'>('my_leaves');
     const [isApprover, setIsApprover] = useState(false);
+    const [hasFeriasAdmin, setHasFeriasAdmin] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -47,12 +63,43 @@ export default function FeriasPage() {
     const [rejectingRequest, setRejectingRequest] = useState<LeaveRequest | null>(null);
     const [rejectReason, setRejectReason] = useState('');
 
+    // ==========================================
+    // ALL REQUESTS (Admin) STATES
+    // ==========================================
+    const [allRequests, setAllRequests] = useState<RequestWithUser[]>([]);
+    const [loadingAllRequests, setLoadingAllRequests] = useState(false);
+    const [allRequestsFilter, setAllRequestsFilter] = useState<string>('ALL');
+    const [allRequestsSearch, setAllRequestsSearch] = useState('');
+    const [selectedAllReq, setSelectedAllReq] = useState<RequestWithUser | null>(null);
+    const [isAllReqModalOpen, setIsAllReqModalOpen] = useState(false);
+    const [allReqActionReason, setAllReqActionReason] = useState('');
+    const [allReqModalProcessing, setAllReqModalProcessing] = useState(false);
+
     useEffect(() => {
         if (user?.id) {
             loadRequests();
             loadApprovals();
+            loadPermissions();
         }
     }, [user]);
+
+    useEffect(() => {
+        if (hasFeriasAdmin && user?.id) {
+            loadAllRequests();
+        }
+    }, [hasFeriasAdmin, allRequestsFilter]);
+
+    const loadPermissions = async () => {
+        try {
+            const res = await fetch('/api/user/effective-permissions');
+            if (res.ok) {
+                const data = await res.json();
+                setHasFeriasAdmin(!!data.effective_modules?.ferias_admin);
+            }
+        } catch (error) {
+            console.error('Error loading permissions:', error);
+        }
+    };
 
     // ==========================================
     // DATA FETCHING
@@ -84,6 +131,23 @@ export default function FeriasPage() {
             console.error('Error loading approvals:', error);
         } finally {
             setLoadingApprovals(false);
+        }
+    };
+
+    const loadAllRequests = async () => {
+        try {
+            setLoadingAllRequests(true);
+            const queryParams = new URLSearchParams();
+            if (allRequestsFilter !== 'ALL') queryParams.append('status', allRequestsFilter);
+            const res = await fetch(`/api/admin/leave-requests?${queryParams.toString()}`);
+            if (!res.ok) throw new Error('Failed to fetch requests');
+            const data = await res.json();
+            setAllRequests(data.requests || []);
+        } catch (error) {
+            console.error('Error fetching all requests:', error);
+            toast.error('Erro ao carregar solicitações.');
+        } finally {
+            setLoadingAllRequests(false);
         }
     };
 
@@ -252,6 +316,95 @@ export default function FeriasPage() {
     };
 
     // ==========================================
+    // ALL REQUESTS HANDLERS
+    // ==========================================
+    const handleAllReqAction = async (requestId: string, action: 'APPROVE' | 'REJECT') => {
+        if (action === 'REJECT' && !allReqActionReason.trim()) {
+            toast.error('Por favor, informe um motivo para a rejeição.');
+            return;
+        }
+        try {
+            setAllReqModalProcessing(true);
+            const response = await fetch('/api/admin/leave-approvals', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    request_id: requestId,
+                    action,
+                    reason: allReqActionReason,
+                    force_admin: true
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Falha ao processar');
+            toast.success(action === 'APPROVE' ? 'Férias aprovadas!' : 'Férias rejeitadas.');
+            setIsAllReqModalOpen(false);
+            setAllReqActionReason('');
+            loadAllRequests();
+            loadRequests();
+        } catch (error: any) {
+            toast.error(error.message || 'Erro ao processar.');
+        } finally {
+            setAllReqModalProcessing(false);
+        }
+    };
+
+    const handleAllReqDelete = async (requestId: string) => {
+        if (!confirm('Tem certeza que deseja excluir esta solicitação?')) return;
+        try {
+            setAllReqModalProcessing(true);
+            const response = await fetch(`/api/admin/leave-requests?id=${requestId}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Falha ao excluir');
+            }
+            toast.success('Solicitação excluída!');
+            setIsAllReqModalOpen(false);
+            loadAllRequests();
+        } catch (error: any) {
+            toast.error(error.message || 'Erro ao excluir.');
+        } finally {
+            setAllReqModalProcessing(false);
+        }
+    };
+
+    const getAllReqStatusBadge = (status: string) => {
+        switch (status) {
+            case 'APPROVED':
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><FiCheckCircle className="mr-1" /> Aprovado</span>;
+            case 'REJECTED':
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><FiXCircle className="mr-1" /> Rejeitado</span>;
+            case 'PENDING_LEADER':
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><FiClock className="mr-1" /> Análise do Líder</span>;
+            case 'PENDING_MANAGER':
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"><FiClock className="mr-1" /> Análise do Gerente</span>;
+            case 'CANCELLED':
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"><FiXCircle className="mr-1" /> Cancelado</span>;
+            default:
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{status}</span>;
+        }
+    };
+
+    const formatAllReqDate = (dateString: string) => {
+        if (!dateString) return '-';
+        try {
+            return format(parseISO(dateString), "dd 'de' MMMM, yyyy", { locale: ptBR });
+        } catch {
+            return dateString;
+        }
+    };
+
+    const filteredAllRequests = allRequests.filter(req => {
+        if (!allRequestsSearch) return true;
+        const lowSearch = allRequestsSearch.toLowerCase();
+        return (
+            req.user?.name?.toLowerCase().includes(lowSearch) ||
+            req.user?.sector?.name?.toLowerCase().includes(lowSearch) ||
+            req.status.toLowerCase().includes(lowSearch)
+        );
+    });
+
+    // ==========================================
     // HELPERS
     // ==========================================
     const getStatusBadgeOptions = (status: string) => {
@@ -331,6 +484,16 @@ export default function FeriasPage() {
                                             {approvals.length}
                                         </span>
                                     )}
+                                </button>
+                            )}
+
+                            {hasFeriasAdmin && (
+                                <button
+                                    onClick={() => setActiveTab('all_requests')}
+                                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'all_requests' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                                >
+                                    <FiEye />
+                                    Todas as Solicitações
                                 </button>
                             )}
                         </div>
@@ -543,6 +706,115 @@ export default function FeriasPage() {
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* TAB CONTENT: ALL REQUESTS (Admin) */}
+                {activeTab === 'all_requests' && hasFeriasAdmin && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        {/* Filters */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
+                            <div className="flex gap-2 bg-gray-100 p-1 rounded-lg self-start md:self-auto overflow-x-auto w-full md:w-auto">
+                                {[
+                                    { id: 'ALL', label: 'Todas' },
+                                    { id: 'PENDING_LEADER', label: 'Pendentes Líder' },
+                                    { id: 'PENDING_MANAGER', label: 'Pendentes Gerente' },
+                                    { id: 'APPROVED', label: 'Aprovadas' },
+                                    { id: 'REJECTED', label: 'Rejeitadas' }
+                                ].map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setAllRequestsFilter(tab.id)}
+                                        className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${allRequestsFilter === tab.id
+                                                ? 'bg-white text-blue-600 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="relative w-full md:w-64">
+                                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nome..."
+                                    value={allRequestsSearch}
+                                    onChange={(e) => setAllRequestsSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Data Table */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[800px]">
+                                    <thead className="bg-gray-50 border-b">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Colaborador / Setor</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Período Principal</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status Atual</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Data da Solicitação</th>
+                                            <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {loadingAllRequests ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-12 text-center">
+                                                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                                                </td>
+                                            </tr>
+                                        ) : filteredAllRequests.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                                    <FiAlertCircle className="mx-auto h-8 w-8 mb-3 text-gray-400" />
+                                                    Nenhuma solicitação encontrada.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredAllRequests.map(req => (
+                                                <tr key={req.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-medium text-gray-900">{req.user?.name || 'Não identificado'}</div>
+                                                        <div className="text-sm text-gray-500">{req.user?.sector?.name || 'Sem setor'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-sm text-gray-900 border border-gray-200 rounded-md px-2 py-1 bg-gray-50 inline-block font-mono">
+                                                            {req.start_date} até {req.end_date}
+                                                        </div>
+                                                        {req.periods && req.periods.length > 1 && (
+                                                            <div className="text-xs text-blue-600 mt-1 font-medium italic">
+                                                                (+ Férias Fracionadas)
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {getAllReqStatusBadge(req.status)}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {formatAllReqDate(req.created_at)}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedAllReq(req);
+                                                                setAllReqActionReason('');
+                                                                setIsAllReqModalOpen(true);
+                                                            }}
+                                                            className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md text-sm font-medium transition-colors border border-blue-100"
+                                                        >
+                                                            <FiEye className="mr-1.5" /> Detalhes
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -765,6 +1037,127 @@ export default function FeriasPage() {
                         document.body
                     )
                 }
+
+                {/* 3. Modal Detalhes / Ações - Todas as Solicitações */}
+                {isAllReqModalOpen && selectedAllReq && mounted && createPortal(
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95">
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                    <FiCalendar className="text-blue-600" />
+                                    Detalhes da Solicitação
+                                </h3>
+                                <button onClick={() => !allReqModalProcessing && setIsAllReqModalOpen(false)} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto max-h-[70vh]">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
+                                            <FiUser className="text-gray-400 w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-800">{selectedAllReq.user?.name || 'Não identificado'}</h4>
+                                            <p className="text-sm text-gray-500">{selectedAllReq.user?.sector?.name || 'Sem setor'}</p>
+                                        </div>
+                                    </div>
+                                    {getAllReqStatusBadge(selectedAllReq.status)}
+                                </div>
+
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 mb-4">
+                                    <h5 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Períodos de Gozo</h5>
+                                    {selectedAllReq.periods && selectedAllReq.periods.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {selectedAllReq.periods.map((p, idx) => (
+                                                <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-3 rounded-md shadow-sm">
+                                                    <span className="font-medium text-gray-700 text-sm">Período {idx + 1}</span>
+                                                    <span className="text-gray-600 font-mono text-sm">{p.start_date} até {p.end_date} • <span className="text-blue-600 font-bold">{p.duration} dias</span></span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-between items-center bg-white border border-gray-200 p-3 rounded-md shadow-sm">
+                                            <span className="font-medium text-gray-700 text-sm">Período Único</span>
+                                            <span className="text-gray-600 font-mono text-sm">{selectedAllReq.start_date} até {selectedAllReq.end_date}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {selectedAllReq.justification && (
+                                    <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 mb-4">
+                                        <h5 className="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-2">Observações</h5>
+                                        <p className="text-sm text-gray-700 italic border-l-2 border-blue-300 pl-3">"{selectedAllReq.justification}"</p>
+                                    </div>
+                                )}
+
+                                {(selectedAllReq.status === 'PENDING_LEADER' || selectedAllReq.status === 'PENDING_MANAGER') && (
+                                    <div className="border-t border-gray-200 pt-4 mt-4">
+                                        <h5 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                            <FiAlertCircle className="text-orange-500" />
+                                            Ações Administrativas
+                                        </h5>
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Motivo da Rejeição <span className="text-red-500">*</span>
+                                            </label>
+                                            <textarea
+                                                rows={2}
+                                                className="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-2"
+                                                placeholder="Insira o motivo se for reprovar..."
+                                                value={allReqActionReason}
+                                                onChange={(e) => setAllReqActionReason(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-gray-50 px-6 py-4 flex flex-wrap gap-3 justify-end border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => !allReqModalProcessing && setIsAllReqModalOpen(false)}
+                                    disabled={allReqModalProcessing}
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                >
+                                    Fechar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleAllReqDelete(selectedAllReq.id)}
+                                    disabled={allReqModalProcessing}
+                                    className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    <FiTrash2 className="inline mr-1" /> Excluir
+                                </button>
+
+                                {(selectedAllReq.status === 'PENDING_LEADER' || selectedAllReq.status === 'PENDING_MANAGER') && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAllReqAction(selectedAllReq.id, 'REJECT')}
+                                            disabled={allReqModalProcessing}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            <FiXCircle className="inline mr-1" /> Rejeitar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAllReqAction(selectedAllReq.id, 'APPROVE')}
+                                            disabled={allReqModalProcessing}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            <FiCheckCircle className="inline mr-1" /> Aprovar
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
 
             </div >
         </MainLayout >

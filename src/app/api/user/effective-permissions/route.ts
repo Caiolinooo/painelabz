@@ -22,7 +22,8 @@ const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
             'chat': true,
             'wkradar': true,
             'guia_offshore': true,
-            'epi': true
+            'epi': true,
+            'ferias_admin': true
         }
     },
     MANAGER: {
@@ -41,7 +42,8 @@ const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
             'chat': true,
             'wkradar': true,
             'guia_offshore': true,
-            'epi': true
+            'epi': true,
+            'ferias_admin': true
         }
     },
     USER: {
@@ -168,7 +170,11 @@ export async function GET(request: NextRequest) {
                 'emergencia': 'emergencia',
                 'guia offshore': 'guia_offshore',
                 'integração erp': 'integracao-erp',
-                'integracao erp': 'integracao-erp'
+                'integracao erp': 'integracao-erp',
+                'todas as solicitações': 'ferias_admin',
+                'todas ferias': 'ferias_admin',
+                'todas as férias': 'ferias_admin',
+                'gerenciar férias': 'ferias_admin'
             };
             return map[lower] || lower; // default to lowercase if not mapped
         };
