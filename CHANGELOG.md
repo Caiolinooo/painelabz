@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.2.1] - 2026-03-31
+
+### Added
+- **Navegação Rápida na Timeline (Man Schedule)**: Nova barra de navegação com botões para saltar diretamente para períodos específicos.
+  - Botão **Hoje** com scroll suave até a semana atual.
+  - Botão **Mês Atual** para navegar ao início do mês corrente.
+  - Botão **Próximo Mês** para visualizar o mês seguinte.
+  - Indicador visual mostrando a semana atual ("Semana de dd/mmm-aa").
+- **Destaque Visual da Semana Atual**: Coluna da semana atual agora possui fundo amarelo (`bg-yellow-100`) e borda dourada (`border-yellow-500`) em todas as células, headers e dados.
+- **Layout Otimizado para Viewport**: Container agora usa `h-[calc(100vh-5rem)]` com margens negativas para compensar padding do layout pai, garantindo que todos os elementos fiquem sempre visíveis.
+- **Filtros Compactos em Linha Única**: Layout dos filtros (Buscar, Empresa, Embarcação, Cargo) reorganizado em `flex-nowrap` com larguras mínimas otimizadas, garantindo visibilidade permanente sem quebra de linha.
+- **Legenda Fixa no Rodapé**: Legenda ON/OFF-C movida para posição fixa no rodapé, sempre visível durante o scroll da tabela.
+- **Header Sticky da Tabela**: Cabeçalhos das colunas da timeline agora ficam fixos ao rolar verticalmente (`sticky top-0`).
+
+### Changed
+- **Filtros mais compactos**: Largura mínima reduzida de 180px para 130px nos selects, com labels encurtados ("Todas as Empresas" → "Todas").
+- **Container de scroll com ref**: Adicionado `useRef` para controle programático de scroll horizontal na timeline.
+- **Cálculo automático da semana atual**: Lógica `useMemo` que identifica a semana corrente baseada na data de hoje, com fallback para semana mais próxima.
+
 ## [5.2.0] - 2026-03-31
 
 ### Added
