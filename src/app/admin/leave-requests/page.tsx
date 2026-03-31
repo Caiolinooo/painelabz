@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiCalendar, FiSearch, FiCheckCircle, FiXCircle, FiClock, FiAlertCircle, FiEye } from 'react-icons/fi';
+import { FiCalendar, FiSearch, FiCheckCircle, FiXCircle, FiClock, FiAlertCircle, FiEye, FiTrash2, FiShield } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { LeaveRequest } from '@/services/leaveService';
 import { format, parseISO } from 'date-fns';
@@ -73,11 +73,6 @@ export default function AdminLeaveRequestsPage() {
 
         try {
             setIsProcessing(true);
-            // We use the existing leave-approvals API which handles workflow,
-            // but we add a force=true parameter flag if it requires overriding normal hierarchy (as admin).
-            // Actually, because we are the Admin, we will just use the same API and bypass rules on the server, 
-            // OR create an admin specific override endpoint. 
-            // The cleanest way is sending to leave-approvals with forced admin role.
             const response = await fetch('/api/admin/leave-approvals', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -97,10 +92,37 @@ export default function AdminLeaveRequestsPage() {
 
             toast.success(action === 'APPROVE' ? 'Férias aprovadas com sucesso!' : 'Férias rejeitadas.');
             setIsModalOpen(false);
-            fetchRequests(); // reload
+            fetchRequests();
         } catch (error: any) {
             console.error('Approval/Rejection error:', error);
             toast.error(error.message || 'Erro ao processar solicitação.');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleDelete = async (requestId: string) => {
+        if (!confirm('Tem certeza que deseja excluir esta solicitação? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+
+        try {
+            setIsProcessing(true);
+            const response = await fetch(`/api/admin/leave-requests?id=${requestId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Falha ao excluir solicitação');
+            }
+
+            toast.success('Solicitação excluída com sucesso!');
+            setIsModalOpen(false);
+            fetchRequests();
+        } catch (error: any) {
+            console.error('Delete error:', error);
+            toast.error(error.message || 'Erro ao excluir solicitação.');
         } finally {
             setIsProcessing(false);
         }
@@ -142,6 +164,13 @@ export default function AdminLeaveRequestsPage() {
                         <p className="text-gray-500">Visão global de todos os pedidos de férias do sistema.</p>
                     </div>
                 </div>
+                <a
+                    href="/admin/ferias-access"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors border border-indigo-200"
+                >
+                    <FiShield className="w-4 h-4" />
+                    Gerenciar Acesso
+                </a>
             </div>
 
             {/* Filters */}
@@ -346,6 +375,15 @@ export default function AdminLeaveRequestsPage() {
                                     className="w-full sm:w-auto inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm"
                                 >
                                     Fechar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleDelete(selectedReq.id)}
+                                    disabled={isProcessing}
+                                    className="w-full sm:w-auto inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-100 text-base font-medium text-red-700 hover:bg-red-200 focus:outline-none sm:text-sm disabled:opacity-50"
+                                >
+                                    {isProcessing ? 'Excluindo...' : <><FiTrash2 className="mr-2" /> Excluir</>}
                                 </button>
 
                                 {(selectedReq.status === 'PENDING_LEADER' || selectedReq.status === 'PENDING_MANAGER') && (
