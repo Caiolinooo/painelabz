@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.2.0] - 2026-03-31
+
+### Added
+- **Módulo Man Schedule (Integração MIO)**: Novo sistema de visualização matricial de escalas offshores em tempo real, eliminando a dependência do banco local.
+  - Sincronização direta com a API MIO (auth, integrantes e lista de embarques).
+  - Capacidade de compilar o `history` dos embarques e extrair datas Reais e Previstas em formato cronológico de semanas.
+  - Filtros em cascata (drop-downs interdependentes): Empresa > Embarcação > Cargo.
+  - Layout fluído que mantém filtros sempre disponíveis enquanto a matriz faz scroll estritamente (`max-w-[calc(100vw-2rem)]`).
+  - Identificação robusta de empresas e clientes offshore pivotando a prioridade para o campo `centro_custo` da integração.
+  - Exportação fidedigna em Excel (cores, dimensões amigáveis, bordas dinâmicas) implementada via pacote `xlsx-js-style`.
+- **Suporte 100% Internacionalizado (i18n) - Man Schedule**: Matriz, botões e labels completamente mapeados nas opções de inglês e português.
+
+## [5.1.3] - 2026-03-24
+
+### Fixed
+- **Bugs Menores de UI/Perfil**:
+  - Correção do modal de edição da biografia e links rápidos do perfil (`QuickLinksWidget`).
+  - Correção na exibição em loop/duplicidade de eventos de agosto do calendário da empresa.
+  - Refinamentos na UI do componente de Notificações, priorizando fotos de perfis atualizados (`NotificationItem` e `UserAvatar`).
+
 ## [5.1.2] - 2026-03-20
 
 ### Fixed
