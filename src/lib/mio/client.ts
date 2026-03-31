@@ -156,7 +156,15 @@ class MioClient {
             url: '/int-integrante-get',
             data: {}
         });
-        return this.normalizeResponse<MIOIntegrante>(result, 'integrantes');
+        const list = this.normalizeResponse<any>(result, 'integrante');
+        return list.map(item => ({
+            ...item,
+            cpf: item.cpf || item.cpf_numero || '',
+            nome: item.nome || item.nome_completo || '',
+            cargo: item.cargo || item.cargo_funcao || item.funcao || '',
+            base: item.base || item.embarcacao || '',
+            departamento: item.departamento || item.centro_custo || item.empresa || ''
+        }));
     }
 
     // 2. Calendário Unificado
@@ -179,7 +187,7 @@ class MioClient {
                 type: 'embarque',
                 title: `Embarque ${e.plataforma_unidade || ''}`,
                 start: e.data_embarque,
-                end: e.data_desembarque_prevista,
+                end: e.data_desembarque_prevista || e.data_desembarque_real,
                 allDay: true,
                 description: `${e.local_embarque || ''} -> ${e.plataforma_unidade || ''} (${e.status})`,
                 color
@@ -245,16 +253,44 @@ class MioClient {
 
     // 5. Embarques (LGP)
     async getEmbarques(cpf?: string): Promise<MIOEmbarque[]> {
+        const agora = new Date();
+        const inicio = new Date(agora.getFullYear() - 1, 0, 1).toISOString().split('T')[0]; // Ano passado
+        const fim = new Date(agora.getFullYear() + 1, 11, 31).toISOString().split('T')[0]; // Ano que vem
+
+        const requestData: any = {
+            tipo: 'embarques',
+            periodo_inicio: inicio,
+            periodo_fim: fim
+        };
+        if (cpf) requestData.cpf = cpf;
+
         const result = await this.request<any>({
             method: 'POST',
             url: '/lgp-reports',
-            data: {
-                // Payload provável para relatórios
-                tipo: 'embarques',
-                cpf: cpf
-            }
+            data: requestData
         });
-        return this.normalizeResponse<MIOEmbarque>(result);
+
+        // lgp-reports uses a 'history' key and Portuguese capitalized keys
+        const historyData = result?.history || [];
+        
+        return historyData.map((raw: any, index: number) => {
+            // Determine status based on dates
+            let status: 'programado' | 'embarcado' | 'desembarcado' | 'cancelado' = 'programado';
+            if (raw['Desembarque Real']) status = 'desembarcado';
+            else if (raw['Embarque Real']) status = 'embarcado';
+
+            const embarque: MIOEmbarque = {
+                id: raw['Matrícula'] || index.toString(),
+                cpf: raw['CPF'] || '',
+                data_embarque: raw['Embarque Real'] || raw['Prev. de Emb.'] || '',
+                data_desembarque_prevista: raw['Prev. Desemb.'] || raw['Prev. Desemb. RTPD'] || '',
+                data_desembarque_real: raw['Desembarque Real'] || '',
+                local_embarque: raw['Origem'] || '',
+                plataforma_unidade: raw['Destino'] || '',
+                status: status
+            };
+            return embarque;
+        });
     }
 
     // Testar conexão (para o Admin Panel)

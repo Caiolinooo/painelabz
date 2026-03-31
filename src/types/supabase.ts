@@ -516,6 +516,7 @@ export interface Database {
           access_history: Json | null
           profile_data: Json | null
           tax_id: string | null
+          bio: string | null
           password: string | null
           authorization_status: string | null
           failed_login_attempts: number | null
@@ -544,6 +545,7 @@ export interface Database {
           access_history?: Json | null
           profile_data?: Json | null
           tax_id?: string | null
+          bio?: string | null
           password?: string | null
           authorization_status?: string | null
           failed_login_attempts?: number | null
@@ -572,6 +574,7 @@ export interface Database {
           access_history?: Json | null
           profile_data?: Json | null
           tax_id?: string | null
+          bio?: string | null
           created_at?: string
           updated_at?: string
         }

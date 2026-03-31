@@ -3393,5 +3393,39 @@ export default {
       note: 'Approver Note',
       autoMessage: 'This is an automated email. Please do not reply.'
     }
+  },
+  manSchedule: {
+    title: 'Matrix View - Man Schedule',
+    subtitle: 'Exact representation of the matrix schedule spreadsheet.',
+    exportXLSX: 'Export Spreadsheet (XLSX)',
+    search: 'Search crew member...',
+    filters: 'Filters',
+    allCompanies: 'All Companies',
+    allVessels: 'All Vessels',
+    allPositions: 'All Positions',
+    searchLabel: 'Search',
+    companyLabel: 'Company',
+    vesselLabel: 'Vessel',
+    positionLabel: 'Rank',
+    timeline: 'ROTATION SCHEDULE',
+    tableHeaders: {
+      name: 'NAME',
+      reqOnboard: 'REQ\'D\nONBOARD',
+      rank: 'RANK'
+    },
+    days: {
+      sat: 'sat'
+    },
+    ranks: {
+      chefManager: 'CHEF MANAGER',
+      dayNightChef: 'DAY / NIGHT CHEF',
+      asstCook: 'ASST. COOK',
+      baker: 'BAKER',
+      leadSteward: 'LEAD STEWARD',
+      steward: 'STEWARD'
+    },
+    emptySearch: 'No records found with these filters.',
+    loading: 'Loading spreadsheet rows...',
+    exportedSuccess: 'Spreadsheet exported successfully!'
   }
 };
