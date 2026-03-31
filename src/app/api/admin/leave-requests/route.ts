@@ -15,8 +15,7 @@ export async function GET(request: Request) {
             .from('leave_requests')
             .select(`
                 *,
-                user:users_unified(name, email, sector_id),
-                sector:sectors(name)
+                user:users_unified(name, email, sector_id, sector:sectors(name))
             `, { count: 'exact' });
 
         if (status && status !== 'ALL') {
@@ -33,13 +32,13 @@ export async function GET(request: Request) {
             throw error;
         }
 
-        // Apply in-memory search filter if passed (since we are using relations, standard ILIKE is tricky in supabase sometimes across tables)
+        // Apply in-memory search filter if passed
         let processedData = data || [];
         if (search) {
             const lowerSearch = search.toLowerCase();
             processedData = processedData.filter((req: any) =>
                 (req.user?.name && req.user.name.toLowerCase().includes(lowerSearch)) ||
-                (req.sector?.name && req.sector.name.toLowerCase().includes(lowerSearch))
+                (req.user?.sector?.name && req.user.sector.name.toLowerCase().includes(lowerSearch))
             );
         }
 
@@ -51,5 +50,32 @@ export async function GET(request: Request) {
     } catch (error) {
         console.error('Error in GET /api/admin/leave-requests:', error);
         return NextResponse.json({ error: 'Failed to fetch leave requests' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+            return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+        }
+
+        const { error } = await supabaseAdmin
+            .from('leave_requests')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error deleting leave request:', error);
+            return NextResponse.json({ error: 'Failed to delete leave request' }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+
+    } catch (error) {
+        console.error('Error in DELETE /api/admin/leave-requests:', error);
+        return NextResponse.json({ error: 'Failed to delete leave request' }, { status: 500 });
     }
 }
