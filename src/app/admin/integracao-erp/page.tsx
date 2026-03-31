@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -391,7 +391,7 @@ export default function IntegracaoERPPage() {
         setSyncStatuses(prev => prev.map(s => s.module === module ? { ...s, status: 'running' } : s));
         toast.loading('Sincronizando MIO...', { id: 'mio-sync' });
 
-        const res = await fetchWithToken('/api/mio/sync-employees', {
+        const res = await fetchWithToken('/api/mio/sync', {
           method: 'POST'
         });
         const data = await res.json();
