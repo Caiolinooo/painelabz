@@ -3480,6 +3480,33 @@ export default {
     createCard: 'Criar Card',
   },
 
+  // Poliweb Integration
+  poliweb: {
+    title: 'Poliweb',
+    description: 'Clínica ocupacional e gestão de ASO',
+    autoLoginTitle: 'Login Automático',
+    autoLoginDesc: 'Conectando automaticamente ao sistema Poliweb.',
+    accessSystem: 'Acessar Sistema',
+    clickToAccess: 'Carregando Poliweb...',
+    connectionIssue: 'Problemas de conexão?',
+    openNewWindow: 'Abrir em nova janela',
+    enterFullscreen: 'Tela Cheia',
+    exitFullscreen: 'Sair da Tela Cheia',
+    adminTitle: 'Configuração Poliweb',
+    adminDesc: 'Gerencie as credenciais de acesso ao Poliweb para cada usuário',
+    credentialsInfo: 'Credenciais de Acesso',
+    credentialsInfoDesc: 'Configure o email e senha de cada usuário para o sistema Poliweb. O login será realizado automaticamente quando o usuário acessar o módulo.',
+    poliwebEmail: 'Email Poliweb',
+    poliwebPassword: 'Senha Poliweb',
+    configured: 'Configurado',
+    pending: 'Pendente',
+    confirmRemove: 'Tem certeza que deseja remover as credenciais Poliweb deste usuário?',
+    connecting: 'Conectando ao Poliweb...',
+    loginSuccess: 'Login realizado com sucesso!',
+    loginFailed: 'Falha no login automático',
+    credentialsNotConfigured: 'Credenciais não configuradas',
+  },
+
 
   categories: {
     core: 'Geral',
@@ -3506,6 +3533,7 @@ export default {
     compras: 'Ordens de Compra',
     chat: 'Chat',
     wkradar: 'WK Radar',
+    poliweb: 'Poliweb',
     contatos: 'Lista de Ramais',
     emergencia: 'Emergência',
     guia_offshore: 'Guia Offshore',
@@ -3749,7 +3777,14 @@ export default {
     },
     emptySearch: 'Nenhum registro encontrado com estes filtros.',
     loading: 'Carregando linhas da planilha...',
-    exportedSuccess: 'Planilha exportada com sucesso!'
+    exportedSuccess: 'Planilha exportada com sucesso!',
+    dateStart: 'Data Inicio',
+    dateEnd: 'Data Fim',
+    legendOn: 'Embarcado',
+    legendOffC: 'Troca de Turma',
+    legendFi: 'Folga Indenizada',
+    legendDba: 'Dobra',
+    legendStb: 'StandBy'
   }
 };
 

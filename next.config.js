@@ -71,6 +71,10 @@ const nextConfig = {
         source: '/guacamole/:path*',
         destination: 'https://vm.groupabz.com/guacamole/:path*',
       },
+      {
+        source: '/poliweb-external/:path*',
+        destination: 'https://poliweb.policlinicamacae.com.br/:path*',
+      },
     ];
   },
 };
