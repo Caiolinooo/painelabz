@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { fetchWithAuth } from '@/lib/authUtils';
-import { supabaseAdmin } from '@/lib/db';
 import { fetchUserReimbursements } from '@/services/reimbursementService';
 import ReimbursementDetailModal from '@/components/admin/ReimbursementDetailModal';
 
@@ -162,50 +161,9 @@ export default function ReimbursementDashboard() {
         setTotalCount(totalCount);
         console.log('Reembolsos carregados com sucesso:', normalizedData);
       } else {
-        // Se não houver dados, tentar buscar diretamente do Supabase como fallback
-        try {
-          console.log('Tentando buscar reembolsos diretamente do Supabase...');
-          const { data: supabaseData, error: supabaseError } = await supabaseAdmin
-            .from('Reimbursement')
-            .select('*')
-            .ilike('email', `%${normalizedEmail}%`)
-            .order('created_at', { ascending: false });
-
-          if (supabaseError) {
-            throw supabaseError;
-          }
-
-          if (supabaseData && supabaseData.length > 0) {
-            console.log(`Reembolsos encontrados no Supabase: ${supabaseData.length}`);
-
-            // Normalizar os dados
-            const normalizedData = supabaseData.map(item => ({
-              id: item.id,
-              protocolo: item.protocolo,
-              nome: item.nome,
-              email: item.email,
-              data: item.data,
-              valorTotal: parseFloat(item.valor_total || item.valorTotal || 0),
-              valor_total: parseFloat(item.valor_total || item.valorTotal || 0),
-              tipoReembolso: item.tipo_reembolso || item.tipoReembolso || '',
-              tipo_reembolso: item.tipo_reembolso || item.tipoReembolso || '',
-              status: item.status || 'pendente',
-              created_at: item.created_at || new Date().toISOString()
-            }));
-
-            setReimbursements(normalizedData);
-            setTotalCount(normalizedData.length);
-            setError(null);
-          } else {
-            console.log('Nenhum reembolso encontrado no Supabase');
-            setReimbursements([]);
-            setTotalCount(0);
-          }
-        } catch (supabaseErr) {
-          console.error('Erro ao buscar reembolsos do Supabase:', supabaseErr);
-          setReimbursements([]);
-          setTotalCount(0);
-        }
+        // Sem dados da API, manter lista vazia
+        setReimbursements([]);
+        setTotalCount(0);
       }
     } catch (err) {
       console.error(t('components.erroAoCarregarSolicitacoesDeReembolso'), err);
@@ -236,43 +194,25 @@ export default function ReimbursementDashboard() {
     }
   }, [user?.email, profile, statusFilter, page, limit, searchTerm]);
 
-  // Function to check if the Reimbursement table exists
+  // Function to check if the Reimbursement table exists - uses API route
   const checkReimbursementTable = async () => {
     try {
-      console.log('Checking if Reimbursement table exists...');
+      console.log('Checking if Reimbursement table exists via API...');
 
-      // Verificar se a tabela Reimbursement existe usando metadados do Supabase
-      const { data: tableExists, error } = await supabaseAdmin
-        .from('Reimbursement')
-        .select('id')
-        .limit(1);
+      const response = await fetch('/api/reembolso/test-access');
+      const result = await response.json();
 
-      if (error) {
-        console.error(t('components.tabelaReimbursementNaoEncontrada'), error);
-
-        // Tentar com o nome alternativo
-        const { data: altTableExists, error: altError } = await supabaseAdmin
-          .from('reimbursements')
-          .select('id')
-          .limit(1);
-
-        if (altError) {
-          console.error(t('components.tabelaReimbursementsTambemNaoEncontrada'), altError);
-          setTableExists(false);
-          setTableName(null);
-          return false;
-        }
-
-        console.log('Tabela reimbursements encontrada');
+      if (result.success && result.tableAccessible) {
+        console.log('Reimbursement table exists and is accessible');
         setTableExists(true);
-        setTableName('reimbursements');
+        setTableName('Reimbursement');
         return true;
       }
 
-      console.log('Tabela Reimbursement encontrada');
-      setTableExists(true);
-      setTableName('Reimbursement');
-      return true;
+      console.log('Reimbursement table not found or not accessible');
+      setTableExists(false);
+      setTableName(null);
+      return false;
     } catch (err) {
       console.error('Exception checking Reimbursement table:', err);
       setTableExists(false);
@@ -318,62 +258,7 @@ export default function ReimbursementDashboard() {
       console.error('Exception creating Reimbursement table:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar tabela');
       toast.error('Erro ao criar tabela de reembolsos');
-
-      // Tentar criar a tabela diretamente via Supabase
-      try {
-        console.log('Tentando criar tabela diretamente via Supabase...');
-
-        // SQL para criar a tabela
-        const createTableSQL = `
-          CREATE TABLE IF NOT EXISTS "Reimbursement" (
-            "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            "nome" TEXT NOT NULL,
-            "email" TEXT NOT NULL,
-            "telefone" TEXT NOT NULL,
-            "cpf" TEXT NOT NULL,
-            "cargo" TEXT NOT NULL,
-            "centro_custo" TEXT NOT NULL,
-            "data" TIMESTAMP NOT NULL,
-            "tipo_reembolso" TEXT NOT NULL,
-            "icone_reembolso" TEXT,
-            "descricao" TEXT NOT NULL,
-            "valor_total" NUMERIC NOT NULL,
-            "moeda" TEXT NOT NULL DEFAULT 'BRL',
-            "metodo_pagamento" TEXT NOT NULL,
-            "banco" TEXT,
-            "agencia" TEXT,
-            "conta" TEXT,
-            "pix_tipo" TEXT,
-            "pix_chave" TEXT,
-            "comprovantes" JSONB NOT NULL,
-            "observacoes" TEXT,
-            "protocolo" TEXT NOT NULL,
-            "status" TEXT NOT NULL DEFAULT 'pendente',
-            "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-            "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-            "historico" JSONB NOT NULL DEFAULT '[]',
-            CONSTRAINT "Reimbursement_protocolo_key" UNIQUE ("protocolo")
-          );
-        `;
-
-        // Executar SQL via Supabase
-        const { error } = await supabaseAdmin.rpc('execute_sql', { sql: createTableSQL });
-
-        if (error) {
-          console.error('Erro ao criar tabela via Supabase RPC:', error);
-          throw error;
-        }
-
-        console.log('Tabela criada com sucesso via Supabase RPC');
-        setTableExists(true);
-        setTableName('Reimbursement');
-        toast.success('Tabela de reembolsos criada com sucesso!');
-        return true;
-      } catch (supabaseErr) {
-        console.error('Erro ao criar tabela via Supabase:', supabaseErr);
-        toast.error(t('components.naoFoiPossivelCriarATabelaDeReembolsosEntreEmConta'));
-        return false;
-      }
+      return false;
     } finally {
       setCreatingTable(false);
     }
@@ -440,92 +325,24 @@ export default function ReimbursementDashboard() {
     }
   };
 
-  // Function to update RLS policies
+  // Function to update RLS policies - simplified to use API routes instead of direct Supabase access
   const updateRLSPolicies = async () => {
     try {
-      console.log('Checking Reimbursement table access...');
+      console.log('Checking Reimbursement table access via API...');
 
-      // First, check if the table exists and is accessible
-      const { data: tableData, error: tableError } = await supabaseAdmin
-        .from('Reimbursement')
-        .select('id')
-        .limit(1);
-
-      if (tableError) {
-        console.error('Error accessing Reimbursement table:', tableError);
-        console.log('This might indicate that RLS policies are already restricting access');
-
-        // Show a toast with instructions for the admin
-        if (profile?.role === 'ADMIN') {
-          toast(
-            t('components.paraGarantirOFuncionamentoCorretoDoSistemaDeReembo'),
-            { duration: 8000 }
-          );
-        }
+      // Use API route instead of direct Supabase client to avoid RLS issues
+      const response = await fetch('/api/reembolso/test-access');
+      
+      if (!response.ok) {
+        console.warn('Reimbursement API test access returned non-OK status:', response.status);
       } else {
-        console.log('Successfully accessed Reimbursement table');
-
-        // If we can access the table, check if we can insert a record
-        try {
-          // Only try to insert a test record if we're an admin
-          // This avoids creating unnecessary test records
-          if (profile?.role === 'ADMIN') {
-            const testId = 'test-' + Date.now();
-            const { error: insertError } = await supabaseAdmin
-              .from('Reimbursement')
-              .insert({
-                id: testId,
-                nome: 'Test User',
-                email: 'test@example.com',
-                telefone: '123456789',
-                cpf: '12345678901',
-                cargo: 'Test',
-                centro_custo: 'Test',
-                data: new Date().toISOString(),
-                tipo_reembolso: 'Test',
-                descricao: 'Test',
-                valor_total: 0,
-                moeda: 'BRL',
-                metodo_pagamento: 'Test',
-                comprovantes: [],
-                protocolo: 'TEST-' + Date.now(),
-                historico: []
-              });
-
-            if (insertError) {
-              console.log('Test insert failed, which might indicate RLS policies are already restricting access:', insertError);
-
-              // Show a toast with instructions for the admin
-              toast(
-                t('components.atencaoParaGarantirOFuncionamentoCorretoDoSistemaD'),
-                { duration: 8000 }
-              );
-            } else {
-              console.log('Test insert successful, cleaning up...');
-
-              // Clean up the test record
-              await supabaseAdmin
-                .from('Reimbursement')
-                .delete()
-                .eq('id', testId);
-
-              console.log('Test record cleaned up successfully');
-            }
-          }
-        } catch (testError) {
-          console.error('Error during test insert:', testError);
-        }
+        const result = await response.json();
+        console.log('Reimbursement API test access result:', result);
       }
-
-      // We won't try to update RLS policies directly anymore
-      // Instead, we'll just log a message and return true
-      console.log('RLS policy check completed');
 
       return true;
     } catch (err) {
       console.error('Exception checking Reimbursement table access:', err);
-      // Don't show a toast here as this is a non-critical operation
-      // and we don't want to alarm users unnecessarily
       return true; // Return true anyway to avoid blocking the application
     }
   };
