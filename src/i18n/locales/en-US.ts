@@ -3157,6 +3157,33 @@ export default {
     createCard: 'Create Card',
   },
 
+  // Poliweb Integration
+  poliweb: {
+    title: 'Poliweb',
+    description: 'Occupational clinic and ASO management',
+    autoLoginTitle: 'Automatic Login',
+    autoLoginDesc: 'Automatically connecting to Poliweb system.',
+    accessSystem: 'Access System',
+    clickToAccess: 'Loading Poliweb...',
+    connectionIssue: 'Connection issues?',
+    openNewWindow: 'Open in new window',
+    enterFullscreen: 'Fullscreen',
+    exitFullscreen: 'Exit Fullscreen',
+    adminTitle: 'Poliweb Configuration',
+    adminDesc: 'Manage Poliweb access credentials for each user',
+    credentialsInfo: 'Access Credentials',
+    credentialsInfoDesc: 'Configure each user\'s email and password for the Poliweb system. Login will be performed automatically when the user accesses the module.',
+    poliwebEmail: 'Poliweb Email',
+    poliwebPassword: 'Poliweb Password',
+    configured: 'Configured',
+    pending: 'Pending',
+    confirmRemove: 'Are you sure you want to remove this user\'s Poliweb credentials?',
+    connecting: 'Connecting to Poliweb...',
+    loginSuccess: 'Login successful!',
+    loginFailed: 'Automatic login failed',
+    credentialsNotConfigured: 'Credentials not configured',
+  },
+
   categories: {
     core: 'General',
     hr: 'My HR',
@@ -3182,6 +3209,7 @@ export default {
     compras: 'Purchase Orders',
     chat: 'Chat',
     wkradar: 'WK Radar',
+    poliweb: 'Poliweb',
     contatos: 'Contact List',
     emergencia: 'Emergency',
     guia_offshore: 'Offshore Guide',
@@ -3426,6 +3454,13 @@ export default {
     },
     emptySearch: 'No records found with these filters.',
     loading: 'Loading spreadsheet rows...',
-    exportedSuccess: 'Spreadsheet exported successfully!'
+    exportedSuccess: 'Spreadsheet exported successfully!',
+    dateStart: 'Start Date',
+    dateEnd: 'End Date',
+    legendOn: 'On Board',
+    legendOffC: 'Crew Change',
+    legendFi: 'Indemnified Leave',
+    legendDba: 'Double Rotation',
+    legendStb: 'StandBy'
   }
 };

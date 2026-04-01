@@ -1,5 +1,31 @@
 # Changelog
 
+## [5.4.0] - 2026-04-01
+
+### Added
+- **Módulo Poliweb (Integração com Clínica Ocupacional)**: Novo módulo completo de integração com o sistema Poliweb da Policlínica Macaé, com auto-login e proxy de sessão.
+  - **Auto-login com CSRF**: Captura automática do token CSRF, autenticação via ASP.NET Identity e armazenamento de cookies de sessão.
+  - **Proxy de Sessão (`/api/poliweb-proxy/[...path]`)**: Todas as requisições ao Poliweb passam pelo proxy que injeta os cookies de sessão automaticamente, permitindo navegação completa sem re-login.
+  - **Session Store em Memória**: Gerenciamento centralizado de sessões com TTL de 30 minutos, compartilhado entre login e proxy.
+  - **Gerenciamento de Credenciais por Usuário**: Cada usuário tem suas próprias credenciais Poliweb configuráveis via painel admin.
+  - **Painel Admin (`/admin/poliweb`)**: Interface completa para gerenciar credenciais de todos os usuários, com busca, edição inline e remoção.
+  - **Tabela `poliweb_credentials`**: Nova tabela no Supabase com RLS policies (admin full access, user read own).
+  - **Permissões por Setor**: Módulo integrado ao sistema de permissões existente, acesso controlado por `hasAccess('poliweb')`.
+  - **i18n Completo**: Traduções em pt-BR e en-US para todo o módulo.
+  - **Iframe via Proxy**: Conteúdo do Poliweb renderizado dentro do portal via iframe apontando para o proxy, com suporte a fullscreen, recarregar e abrir em nova janela.
+  - **Credenciais de Teste Configuradas**: Hudna Mendonça já configurada com credenciais verificadas.
+- **Novo Endpoint LGP Reports Raw (`MioClient.getLGPReportsRaw`)**: Retorna dados brutos completos do histórico de embarques incluindo Folga Inicio/Fim e todos os campos adicionais da API MIO.
+- **Documentação Man Schedule**: Adicionado arquivo de referência `docs/ManSchedule/Deep Star - Rota.xlsx`.
+
+### Changed
+- **Man Schedule Realtime API**: Melhorias significativas no endpoint de sincronização em tempo real, com melhor tratamento de erros e dados.
+- **Man Schedule UI**: Refatoração visual da página com layout otimizado, filtros melhorados e experiência de navegação aprimorada.
+- **Token Storage**: Validação de token JWT relaxada para aceitar formatos não-padrão sem remover o token automaticamente (apenas loga como debug). Tokens expirados ainda são removidos.
+- **ReimbursementDashboard**: Simplificação do componente, removendo código redundante e melhorando performance.
+
+### Database
+- **Migration `20260401_create_poliweb_credentials.sql`**: Cria tabela `poliweb_credentials` com FK para `users_unified`, RLS policies e índice por user_id.
+
 ## [5.3.0] - 2026-03-31
 
 ### Added
