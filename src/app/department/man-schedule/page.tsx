@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { FiDownload, FiSearch, FiNavigation } from 'react-icons/fi';
+import { FiDownload, FiSearch } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx-js-style';
 import { useI18n } from '@/contexts/I18nContext';
@@ -17,6 +17,7 @@ interface CrewSchedule {
     rotation_end: string | null;
     embarque_status: string | null;
     local_embarque: string;
+    rotation_type: 'normal' | 'fi' | 'dba' | 'stb' | 'offc';
 }
 
 interface ApiMeta {
@@ -60,6 +61,8 @@ export default function ManSchedulePage() {
     const [filterVessel, setFilterVessel] = useState('');
     const [filterCompany, setFilterCompany] = useState('');
     const [filterPosition, setFilterPosition] = useState('');
+    const [filterDateStart, setFilterDateStart] = useState('');
+    const [filterDateEnd, setFilterDateEnd] = useState('');
 
     // Timeline navigation
     const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -129,8 +132,7 @@ export default function ManSchedulePage() {
 
     // ─── Build dynamic rows grouped by position ───
     const positionGroups = useMemo(() => {
-        // Deduplicate crew per position (a person may have multiple embarque entries)
-        const byPosition: Record<string, { name: string; cpf: string; rotations: { start: string | null; end: string | null }[] }[]> = {};
+        const byPosition: Record<string, { name: string; cpf: string; rotations: { start: string | null; end: string | null; type: string }[] }[]> = {};
 
         for (const s of filteredSchedules) {
             const pos = normalizePosition(s.position) || 'SEM CARGO';
@@ -138,22 +140,20 @@ export default function ManSchedulePage() {
 
             const existing = byPosition[pos].find(c => c.cpf === s.cpf);
             if (existing) {
-                // Same crew member, different rotation — add rotation
                 if (s.rotation_start || s.rotation_end) {
-                    existing.rotations.push({ start: s.rotation_start, end: s.rotation_end });
+                    existing.rotations.push({ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal' });
                 }
             } else {
                 byPosition[pos].push({
                     name: s.full_name,
                     cpf: s.cpf,
                     rotations: (s.rotation_start || s.rotation_end)
-                        ? [{ start: s.rotation_start, end: s.rotation_end }]
+                        ? [{ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal' }]
                         : []
                 });
             }
         }
 
-        // Convert to sorted array
         return Object.entries(byPosition)
             .sort(([a], [b]) => getPositionSortKey(a) - getPositionSortKey(b) || a.localeCompare(b))
             .map(([position, members]) => ({ position, members, count: members.length }));
@@ -211,14 +211,37 @@ export default function ManSchedulePage() {
         return { weeks: generatedWeeks, timelineStart: start };
     }, [positionGroups]);
 
+    // ─── Filtered weeks based on date range selector ───
+    const filteredWeeks = useMemo(() => {
+        if (!filterDateStart && !filterDateEnd) return weeks;
+        const startDate = filterDateStart ? new Date(filterDateStart) : null;
+        const endDate = filterDateEnd ? new Date(filterDateEnd) : null;
+
+        return weeks.filter(w => {
+            const weekDate = new Date(w.date);
+            const weekEnd = new Date(weekDate);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            if (startDate && endDate) {
+                return weekEnd >= startDate && weekDate <= endDate;
+            }
+            if (startDate) {
+                return weekEnd >= startDate;
+            }
+            if (endDate) {
+                return weekDate <= endDate;
+            }
+            return true;
+        });
+    }, [weeks, filterDateStart, filterDateEnd]);
+
     // ─── Current week calculation ───
     const currentWeekIndex = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
         let idx = -1;
-        for (let i = 0; i < weeks.length; i++) {
-            const weekStart = new Date(weeks[i].date);
+        for (let i = 0; i < filteredWeeks.length; i++) {
+            const weekStart = new Date(filteredWeeks[i].date);
             weekStart.setHours(0, 0, 0, 0);
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekEnd.getDate() + 6);
@@ -229,10 +252,9 @@ export default function ManSchedulePage() {
             }
         }
         
-        // If today not found, find closest week
-        if (idx === -1 && weeks.length > 0) {
+        if (idx === -1 && filteredWeeks.length > 0) {
             let minDiff = Infinity;
-            weeks.forEach((week, i) => {
+            filteredWeeks.forEach((week, i) => {
                 const diff = Math.abs(today.getTime() - new Date(week.date).getTime());
                 if (diff < minDiff) {
                     minDiff = diff;
@@ -242,42 +264,7 @@ export default function ManSchedulePage() {
         }
         
         return idx >= 0 ? idx : 0;
-    }, [weeks]);
-
-    const scrollToWeek = useCallback((weekIdx: number) => {
-        if (!tableContainerRef.current || weekIdx < 0) return;
-        
-        const container = tableContainerRef.current;
-        // Each week column is ~24px + borders, 3 fixed columns = 530px
-        const fixedColsWidth = 530;
-        const targetScroll = fixedColsWidth + (weekIdx * 26);
-        
-        container.scrollTo({ left: targetScroll, behavior: 'smooth' });
-    }, []);
-
-    const scrollToCurrentWeek = useCallback(() => {
-        scrollToWeek(currentWeekIndex);
-    }, [scrollToWeek, currentWeekIndex]);
-
-    const scrollToMonth = useCallback((monthsAhead: number) => {
-        if (!tableContainerRef.current || weeks.length === 0) return;
-        
-        const today = new Date();
-        const targetDate = new Date(today.getFullYear(), today.getMonth() + monthsAhead, 1);
-        
-        let closestIdx = 0;
-        let minDiff = Infinity;
-        
-        weeks.forEach((week, i) => {
-            const diff = Math.abs(targetDate.getTime() - new Date(week.date).getTime());
-            if (diff < minDiff) {
-                minDiff = diff;
-                closestIdx = i;
-            }
-        });
-        
-        scrollToWeek(closestIdx);
-    }, [weeks, scrollToWeek]);
+    }, [filteredWeeks]);
 
     // ─── Format helpers ───
     const formatHeaderDate = (d: Date) => {
@@ -293,29 +280,29 @@ export default function ManSchedulePage() {
     };
 
     // ─── Check exact rotation status for the week ───
-    const getWeekStatus = (weekDate: Date, rotations: { start: string | null; end: string | null }[]): '' | 'ON' | 'OFF-C' => {
+    const getWeekStatus = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string }[]): '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' => {
         const wStart = new Date(weekDate);
         wStart.setHours(0, 0, 0, 0);
         const wEnd = new Date(wStart);
         wEnd.setDate(wEnd.getDate() + 6);
+        wEnd.setHours(23, 59, 59, 999);
 
         for (const r of rotations) {
             if (!r.start) continue;
             const rStart = new Date(r.start);
-            rStart.setMinutes(rStart.getMinutes() + rStart.getTimezoneOffset());
             rStart.setHours(0, 0, 0, 0);
 
-            const rEnd = r.end ? new Date(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000); 
-            rEnd.setMinutes(rEnd.getMinutes() + rEnd.getTimezoneOffset());
+            const rEnd = r.end ? new Date(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
             rEnd.setHours(23, 59, 59, 999);
 
-            if (wStart <= rEnd && wEnd >= rStart) {
-                // If the rotation starts or ends in this specific week, it's a Crew Change week
-                if ((rStart >= wStart && rStart <= wEnd) || (rEnd >= wStart && rEnd <= wEnd)) {
-                    return 'OFF-C';
-                }
-                return 'ON';
-            }
+            const overlaps = wStart <= rEnd && wEnd >= rStart;
+            if (!overlaps) continue;
+
+            if (r.type === 'fi') return 'FI';
+            if (r.type === 'dba') return 'DBA';
+            if (r.type === 'stb') return 'STB';
+            if (r.type === 'offc') return 'OFF-C';
+            return 'ON';
         }
         return '';
     };
@@ -336,17 +323,14 @@ export default function ManSchedulePage() {
         const wb = XLSX.utils.table_to_book(table, { sheet: 'Schedule' });
         const ws = wb.Sheets['Schedule'];
         
-        // Define column widths so dates don't collapse to '#####'
-        // Col 0: Nome (w: 35), Col 1: Qtd (w: 8), Col 2: Cargo (w: 25), Cols 3+: Dates (w: 12)
         const colWidths = [
             { wch: 35 }, 
             { wch: 8 },  
             { wch: 25 }, 
-            ...weeks.map(() => ({ wch: 12 }))
+            ...filteredWeeks.map(() => ({ wch: 12 }))
         ];
         ws['!cols'] = colWidths;
 
-        // Apply precise styles to 'ON', 'OFF-C', and headers
         const range = XLSX.utils.decode_range(ws['!ref'] || "A1:Z100");
         for (let R = range.s.r; R <= range.e.r; ++R) {
             for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -371,23 +355,23 @@ export default function ManSchedulePage() {
                     cell.v = cell.v.replace(/\n|&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
                 }
 
-                if (R === 0) { // Top Titles
+                if (R === 0) {
                     cellStyle.font = { bold: true, color: { rgb: C < 3 ? "FFFFFF" : "002060" }, sz: 12 };
                     cellStyle.fill = { fgColor: { rgb: C < 3 ? "002060" : "E2EFDA" } };
                     cellStyle.border = defaultBorder;
-                } else if (R === 1 || R === 2) { // Date Headers
+                } else if (R === 1 || R === 2) {
                     cellStyle.font = { bold: true, color: { rgb: "000000" }, sz: 10 };
                     cellStyle.border = defaultBorder;
-                } else { // Data Rows
-                    if (cell.v === 'ON') {
+                } else {
+                    if (cell.v === 'ON' || cell.v === 'FI' || cell.v === 'DBA') {
                         cellStyle.fill = { fgColor: { rgb: "E2EFDA" } };
                         cellStyle.font = { color: { rgb: "00B050" }, bold: true, sz: 10 };
                         cellStyle.border = defaultBorder;
-                    } else if (cell.v === 'OFF-C') {
+                    } else if (cell.v === 'OFF-C' || cell.v === 'STB') {
                         cellStyle.fill = { fgColor: { rgb: "F4CCCC" } };
                         cellStyle.font = { color: { rgb: "CC0000" }, bold: true, sz: 10 };
                         cellStyle.border = defaultBorder;
-                    } else if (cell.v) { // Crew Info
+                    } else if (cell.v) {
                         cellStyle.font = { color: { rgb: C === 0 ? "002060" : "000000" }, bold: C < 3, sz: 10 };
                         if (C === 1 || C === 2) cellStyle.fill = { fgColor: { rgb: "E7E6E6" } };
                         cellStyle.alignment.horizontal = C === 0 ? "left" : "center";
@@ -399,6 +383,53 @@ export default function ManSchedulePage() {
             }
         }
 
+        // Add legend rows after the table data
+        const lastRow = range.e.r + 3;
+        const legendLabels: Record<string, string> = {
+            'ON': t('manSchedule.legendOn', 'Embarcado'),
+            'OFF-C': t('manSchedule.legendOffC', 'Troca de Turma'),
+            'FI': t('manSchedule.legendFi', 'Folga Indenizada'),
+            'DBA': t('manSchedule.legendDba', 'Dobra'),
+            'STB': t('manSchedule.legendStb', 'StandBy'),
+        };
+        const legendColors: Record<string, string> = {
+            'ON': 'E2EFDA', 'OFF-C': 'F4CCCC', 'FI': 'E2EFDA', 'DBA': 'E2EFDA', 'STB': 'F4CCCC'
+        };
+        const legendTextColors: Record<string, string> = {
+            'ON': '00B050', 'OFF-C': 'CC0000', 'FI': '00B050', 'DBA': '00B050', 'STB': 'CC0000'
+        };
+
+        let legendCol = 0;
+        for (const item of legendItems) {
+            const codeCellRef = XLSX.utils.encode_cell({ c: legendCol, r: lastRow });
+            const labelCellRef = XLSX.utils.encode_cell({ c: legendCol + 1, r: lastRow });
+            
+            ws[codeCellRef] = {
+                v: item.code,
+                s: {
+                    fill: { fgColor: { rgb: legendColors[item.code] } },
+                    font: { bold: true, color: { rgb: legendTextColors[item.code] }, sz: 10 },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: {
+                        top: { style: "thin", color: { rgb: "000000" } },
+                        bottom: { style: "thin", color: { rgb: "000000" } },
+                        left: { style: "thin", color: { rgb: "000000" } },
+                        right: { style: "thin", color: { rgb: "000000" } }
+                    }
+                }
+            };
+            ws[labelCellRef] = {
+                v: item.label,
+                s: {
+                    font: { bold: true, sz: 10 },
+                    alignment: { horizontal: "left", vertical: "center" }
+                }
+            };
+            legendCol += 3;
+        }
+
+        ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: lastRow, c: Math.max(range.e.c, legendCol) } });
+
         const safeName = (filterVessel || 'All_Vessels').replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_');
         XLSX.writeFile(wb, `Man_Schedule_${safeName}.xlsx`);
         toast.success(t('manSchedule.exportedSuccess', 'Planilha exportada com sucesso!'));
@@ -406,6 +437,32 @@ export default function ManSchedulePage() {
 
     // ─── Alternating group background colors ───
     const groupColors = ['bg-[#d9e1f2]', 'bg-[#b4c6e7]'];
+
+    // ─── Compute which statuses are present in the current view ───
+    const presentStatuses = useMemo(() => {
+        const statuses = new Set<string>();
+        for (const group of positionGroups) {
+            for (const member of group.members) {
+                for (const week of filteredWeeks) {
+                    const s = getWeekStatus(week.date, member.rotations);
+                    if (s) statuses.add(s);
+                }
+            }
+        }
+        return statuses;
+    }, [positionGroups, filteredWeeks]);
+
+    // ─── Legend definitions with i18n ───
+    const legendItems = useMemo(() => {
+        const allItems = [
+            { code: 'ON', color: '#e2efda', textColor: '#00b050', label: t('manSchedule.legendOn', 'Embarcado') },
+            { code: 'OFF-C', color: '#f4cccc', textColor: '#cc0000', label: t('manSchedule.legendOffC', 'Troca de Turma') },
+            { code: 'FI', color: '#e2efda', textColor: '#00b050', label: t('manSchedule.legendFi', 'Folga Indenizada') },
+            { code: 'DBA', color: '#e2efda', textColor: '#00b050', label: t('manSchedule.legendDba', 'Dobra') },
+            { code: 'STB', color: '#f4cccc', textColor: '#cc0000', label: t('manSchedule.legendStb', 'StandBy') },
+        ];
+        return allItems.filter(item => presentStatuses.has(item.code));
+    }, [presentStatuses, t]);
 
     return (
         <div className="flex flex-col -mx-8 -my-8 h-[calc(100vh-5rem)] overflow-hidden bg-white">
@@ -415,19 +472,12 @@ export default function ManSchedulePage() {
                     <h1 className="text-xl font-bold text-gray-800">{t('manSchedule.title', 'Visualização de Matriz - Man Schedule')}</h1>
                     <p className="text-gray-500 text-sm">{t('manSchedule.subtitle', 'Representação exata da planilha matricial de escalas.')}</p>
                 </div>
-                <button
-                    onClick={exportToExcel}
-                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition font-medium text-sm flex-shrink-0"
-                >
-                    <FiDownload />
-                    {t('manSchedule.exportXLSX', 'Exportar Planilha (XLSX)')}
-                </button>
             </div>
 
             {/* Filters - Always visible */}
             <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 shrink-0">
-                <div className="flex items-end gap-3 w-full flex-nowrap">
-                    <div className="min-w-[200px] flex-shrink-0">
+                <div className="flex items-end gap-3 w-full flex-wrap">
+                    <div className="min-w-[180px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.searchLabel', 'Buscar')}</label>
                         <div className="relative">
                             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -441,79 +491,76 @@ export default function ManSchedulePage() {
                         </div>
                     </div>
 
-                    <div className="flex items-end gap-3 flex-nowrap flex-1 min-w-0">
-                        <div className="min-w-[130px] flex-shrink-0">
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.companyLabel', 'Empresa')}</label>
-                            <select
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
-                                value={filterCompany}
-                                onChange={(e) => setFilterCompany(e.target.value)}
-                            >
-                                <option value="">{t('manSchedule.allCompanies', 'Todas')}</option>
-                                {availableCompanies.map((comp, idx) => (
-                                    <option key={idx} value={comp}>{comp}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="min-w-[130px] flex-shrink-0">
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.vesselLabel', 'Embarcação')}</label>
-                            <select
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
-                                value={filterVessel}
-                                onChange={(e) => setFilterVessel(e.target.value)}
-                            >
-                                <option value="">{t('manSchedule.allVessels', 'Todas')}</option>
-                                {availableVessels.map((v, idx) => (
-                                    <option key={idx} value={v}>{v}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="min-w-[130px] flex-shrink-0">
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.positionLabel', 'Cargo')}</label>
-                            <select
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
-                                value={filterPosition}
-                                onChange={(e) => setFilterPosition(e.target.value)}
-                            >
-                                <option value="">{t('manSchedule.allPositions', 'Todos')}</option>
-                                {availablePositions.map((p, idx) => (
-                                    <option key={idx} value={p}>{p}</option>
-                                ))}
-                            </select>
-                        </div>
+                    <div className="min-w-[130px] flex-shrink-0">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.companyLabel', 'Empresa')}</label>
+                        <select
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                            value={filterCompany}
+                            onChange={(e) => setFilterCompany(e.target.value)}
+                        >
+                            <option value="">{t('manSchedule.allCompanies', 'Todas')}</option>
+                            {availableCompanies.map((comp, idx) => (
+                                <option key={idx} value={comp}>{comp}</option>
+                            ))}
+                        </select>
                     </div>
-                </div>
-            </div>
 
-            {/* Timeline Navigation Bar */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-200 shrink-0">
-                <FiNavigation className="text-blue-600" />
-                <span className="text-xs font-semibold text-blue-700 mr-2">
-                    {t('manSchedule.quickNav', 'Navegação Rápida:')}
-                </span>
-                <button
-                    onClick={() => scrollToCurrentWeek()}
-                    className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-black text-xs font-bold rounded shadow-sm transition border border-yellow-600 flex items-center gap-1"
-                >
-                    📍 {t('manSchedule.today', 'Hoje')}
-                </button>
-                <button
-                    onClick={() => scrollToMonth(0)}
-                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded shadow-sm transition"
-                >
-                    {t('manSchedule.currentMonth', 'Mês Atual')}
-                </button>
-                <button
-                    onClick={() => scrollToMonth(1)}
-                    className="px-3 py-1 bg-blue-400 hover:bg-blue-500 text-white text-xs font-medium rounded shadow-sm transition"
-                >
-                    {t('manSchedule.nextMonth', 'Próximo Mês')}
-                </button>
-                <span className="text-xs text-blue-600 ml-auto font-medium">
-                    📍 Semana de {weeks[currentWeekIndex] ? formatHeaderDate(weeks[currentWeekIndex].date) : '--'}
-                </span>
+                    <div className="min-w-[130px] flex-shrink-0">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.vesselLabel', 'Embarcação')}</label>
+                        <select
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                            value={filterVessel}
+                            onChange={(e) => setFilterVessel(e.target.value)}
+                        >
+                            <option value="">{t('manSchedule.allVessels', 'Todas')}</option>
+                            {availableVessels.map((v, idx) => (
+                                <option key={idx} value={v}>{v}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="min-w-[130px] flex-shrink-0">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.positionLabel', 'Cargo')}</label>
+                        <select
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                            value={filterPosition}
+                            onChange={(e) => setFilterPosition(e.target.value)}
+                        >
+                            <option value="">{t('manSchedule.allPositions', 'Todos')}</option>
+                            {availablePositions.map((p, idx) => (
+                                <option key={idx} value={p}>{p}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="min-w-[140px] flex-shrink-0">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateStart', 'Data Inicio')}</label>
+                        <input
+                            type="date"
+                            value={filterDateStart}
+                            onChange={(e) => setFilterDateStart(e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        />
+                    </div>
+
+                    <div className="min-w-[140px] flex-shrink-0">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateEnd', 'Data Fim')}</label>
+                        <input
+                            type="date"
+                            value={filterDateEnd}
+                            onChange={(e) => setFilterDateEnd(e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        />
+                    </div>
+
+                    <button
+                        onClick={exportToExcel}
+                        className="flex items-center gap-2 bg-green-600 text-white px-4 py-1.5 rounded shadow hover:bg-green-700 transition font-medium text-sm flex-shrink-0 self-end"
+                    >
+                        <FiDownload />
+                        {t('manSchedule.exportXLSX', 'Exportar XLSX')}
+                    </button>
+                </div>
             </div>
 
             {/* Matrix Table - Scrollable area */}
@@ -530,7 +577,7 @@ export default function ManSchedulePage() {
                                 {vesselDisplayName}
                             </th>
                             <th
-                                colSpan={weeks.length}
+                                colSpan={filteredWeeks.length}
                                 className="bg-[#e2efda] text-center border-b border-black p-2 font-bold uppercase text-[#002060]"
                                 style={{ fontSize: '11px' }}
                             >
@@ -553,7 +600,7 @@ export default function ManSchedulePage() {
                             <th className="bg-white text-black font-bold text-center border-r border-b border-black sticky left-[380px] z-30 px-4 py-2 min-w-[150px] w-[150px]">
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
-                            {weeks.map((week, idx) => {
+                            {filteredWeeks.map((week, idx) => {
                                 const isCurrentWeek = idx === currentWeekIndex;
                                 return (
                                 <th
@@ -578,7 +625,7 @@ export default function ManSchedulePage() {
                             <th className="bg-white border-r border-b border-black sticky left-0 z-30"></th>
                             <th className="bg-white border-r border-b border-black sticky left-[300px] z-30"></th>
                             <th className="bg-white border-r border-b border-black sticky left-[380px] z-30"></th>
-                            {weeks.map((week, idx) => {
+                            {filteredWeeks.map((week, idx) => {
                                 const isCurrentWeek = idx === currentWeekIndex;
                                 return (
                                 <th
@@ -599,13 +646,13 @@ export default function ManSchedulePage() {
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan={3 + weeks.length} className="px-4 py-8 text-center text-gray-500 bg-white">
+                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-500 bg-white">
                                     {t('manSchedule.loading', 'Carregando dados do MIO...')}
                                 </td>
                             </tr>
                         ) : positionGroups.length === 0 ? (
                             <tr>
-                                <td colSpan={3 + weeks.length} className="px-4 py-8 text-center text-gray-400 bg-white">
+                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-400 bg-white">
                                     {t('manSchedule.empty', 'Nenhum tripulante encontrado para os filtros selecionados.')}
                                 </td>
                             </tr>
@@ -630,12 +677,12 @@ export default function ManSchedulePage() {
                                                     {group.position}
                                                 </td>
                                                 {/* Timeline cells */}
-                                                 {weeks.map((week, wIdx) => {
+                                                 {filteredWeeks.map((week, wIdx) => {
                                                     const status = getWeekStatus(week.date, member.rotations);
                                                     const isCurrentWeek = wIdx === currentWeekIndex;
                                                     let cellClass = 'bg-white border-[#d1d5db]';
-                                                    if (status === 'ON') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';
-                                                    else if (status === 'OFF-C') cellClass = 'bg-[#f4cccc] text-[#cc0000] font-bold border-black';
+                                                    if (status === 'ON' || status === 'FI' || status === 'DBA') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';
+                                                    else if (status === 'OFF-C' || status === 'STB') cellClass = 'bg-[#f4cccc] text-[#cc0000] font-bold border-black';
                                                     
                                                     if (isCurrentWeek) {
                                                         cellClass = `${cellClass} !bg-yellow-100 !border-yellow-500 !border-2`;
@@ -647,7 +694,7 @@ export default function ManSchedulePage() {
                                                             className={`${cellClass} border-r border-b text-center`}
                                                             style={{ width: '24px', minWidth: '24px', fontSize: '9px' }}
                                                         >
-                                                            {status}
+                                                             {status === 'FI' ? 'FI' : status === 'DBA' ? 'DBA' : status === 'STB' ? 'STB' : status === 'OFF-C' ? 'OFF-C' : status || '-'}
                                                         </td>
                                                     );
                                                 })}
@@ -657,7 +704,7 @@ export default function ManSchedulePage() {
                                         {/* Divider between groups */}
                                         {gIdx < positionGroups.length - 1 && (
                                             <tr key={`div-${gIdx}`}>
-                                                <td colSpan={3 + weeks.length} className="bg-white h-2 border-b border-black"></td>
+                                                <td colSpan={3 + filteredWeeks.length} className="bg-white h-2 border-b border-black"></td>
                                             </tr>
                                         )}
                                     </React.Fragment>
@@ -669,15 +716,18 @@ export default function ManSchedulePage() {
             </div>
 
             {/* Legend - Always visible at bottom */}
-            <div className="flex flex-col gap-1 text-xs px-4 py-2 border-t border-gray-200 shrink-0 bg-white">
-                <div className="flex items-center gap-2">
-                    <span className="w-16 bg-[#e2efda] text-[#00b050] border border-black text-center font-bold px-1 py-0.5">ON</span>
-                    <span className="text-gray-700 font-semibold">On This Site (Embarcado)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-16 bg-[#f4cccc] text-[#cc0000] border border-black text-center font-bold px-1 py-0.5">OFF-C</span>
-                    <span className="text-gray-700 font-semibold">Crew Change (Semana de troca de turma / Desembarque)</span>
-                </div>
+            <div className="flex items-center gap-4 text-xs px-4 py-1.5 border-t border-gray-200 shrink-0 bg-white overflow-x-auto">
+                {legendItems.map(item => (
+                    <div key={item.code} className="flex items-center gap-1.5 flex-shrink-0">
+                        <span
+                            className="inline-block text-center font-bold px-1.5 py-0.5 border border-black text-xs"
+                            style={{ backgroundColor: item.color, color: item.textColor, minWidth: '40px' }}
+                        >
+                            {item.code}
+                        </span>
+                        <span className="text-gray-700 font-semibold whitespace-nowrap">{item.label}</span>
+                    </div>
+                ))}
             </div>
         </div>
     );

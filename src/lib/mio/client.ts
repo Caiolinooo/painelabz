@@ -274,7 +274,6 @@ class MioClient {
         const historyData = result?.history || [];
         
         return historyData.map((raw: any, index: number) => {
-            // Determine status based on dates
             let status: 'programado' | 'embarcado' | 'desembarcado' | 'cancelado' = 'programado';
             if (raw['Desembarque Real']) status = 'desembarcado';
             else if (raw['Embarque Real']) status = 'embarcado';
@@ -291,6 +290,28 @@ class MioClient {
             };
             return embarque;
         });
+    }
+
+    // 5b. LGP Reports Raw - retorna dados completos com Folga Inicio/Fim, etc
+    async getLGPReportsRaw(cnpj?: string, periodoInicio?: string, periodoFim?: string): Promise<any[]> {
+        const agora = new Date();
+        const inicio = periodoInicio || new Date(agora.getFullYear() - 1, 0, 1).toISOString().split('T')[0];
+        const fim = periodoFim || new Date(agora.getFullYear() + 1, 11, 31).toISOString().split('T')[0];
+
+        const requestData: any = {
+            tipo: 'embarques',
+            periodo_inicio: inicio,
+            periodo_fim: fim
+        };
+        if (cnpj || process.env.MIO_CNPJ) requestData.cnpj = cnpj || process.env.MIO_CNPJ;
+
+        const result = await this.request<any>({
+            method: 'POST',
+            url: '/lgp-reports',
+            data: requestData
+        });
+
+        return result?.history || [];
     }
 
     // Testar conexão (para o Admin Panel)
