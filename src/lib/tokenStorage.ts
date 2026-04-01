@@ -140,45 +140,34 @@ export const getToken = (): string | null => {
         }
       }
 
-      // Verificar se o token tem o formato correto de um JWT
+      // Verificar se o token tem o formato correto de um JWT (apenas log, não remove)
       try {
         const parts = token.split('.');
         if (parts.length !== 3) {
-          console.warn('Token não tem formato JWT válido, removendo...');
-          removeToken();
-          return null;
-        }
+          console.debug('Token não tem formato JWT padrão de 3 partes, mas será mantido');
+        } else {
+          // Verificar se o payload pode ser decodificado
+          try {
+            const payload = JSON.parse(atob(parts[1]));
 
-        // Verificar se o payload pode ser decodificado
-        try {
-          const payload = JSON.parse(atob(parts[1]));
+            // Verificar se o token está expirado
+            if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+              console.warn('Token expirado segundo o payload, removendo...');
+              removeToken();
+              return null;
+            }
 
-          // Verificar se o token tem os campos necessários
-          if (!payload.userId && !payload.sub) {
-            console.warn('Token não contém ID do usuário, removendo...');
-            removeToken();
-            return null;
+            console.log('Token JWT válido com payload:', {
+              userId: payload.userId || payload.sub || 'não identificado',
+              role: payload.role,
+              exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'não definido'
+            });
+          } catch (decodeError) {
+            console.debug('Não foi possível decodificar payload do token, mantendo token mesmo assim');
           }
-
-          // Verificar se o token está expirado
-          if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-            console.warn('Token expirado segundo o payload, removendo...');
-            removeToken();
-            return null;
-          }
-
-          console.log('Token JWT válido com payload:', {
-            userId: payload.userId || payload.sub,
-            role: payload.role,
-            exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'não definido'
-          });
-        } catch (decodeError) {
-          console.warn('Erro ao decodificar payload do token:', decodeError);
-          // Não remover o token aqui, pode ser um formato diferente mas ainda válido
         }
       } catch (formatError) {
-        console.warn('Erro ao verificar formato do token:', formatError);
-        // Não remover o token aqui, pode ser um formato diferente mas ainda válido
+        console.debug('Erro ao verificar formato do token, mantendo token mesmo assim');
       }
     } else {
       // Verificar se existem cookies relevantes antes de reclamar
