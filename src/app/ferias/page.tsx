@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox, FiSearch, FiEye, FiTrash2 } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox, FiSearch, FiEye, FiTrash2, FiDownload } from 'react-icons/fi';
+import * as XLSX from 'xlsx-js-style';
 import toast from 'react-hot-toast';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { LeaveRequest } from '@/services/leaveService';
@@ -404,6 +405,40 @@ export default function FeriasPage() {
         );
     });
 
+    const allRequestsTableRef = useRef<HTMLTableElement>(null);
+
+    const exportAllRequestsToExcel = () => {
+        if (!allRequestsTableRef.current) return;
+        const wb = XLSX.utils.table_to_book(allRequestsTableRef.current, { sheet: 'Férias' });
+        const ws = wb.Sheets['Férias'];
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:Z100');
+        for (let R = range.s.r; R <= range.e.r; R++) {
+            for (let C = range.s.c; C <= range.e.c; C++) {
+                const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[addr]) continue;
+                ws[addr].s = {
+                    font: { name: 'Calibri', sz: 11 },
+                    alignment: { vertical: 'center', wrapText: true },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                        bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                        left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                        right: { style: 'thin', color: { rgb: 'CCCCCC' } }
+                    }
+                };
+                if (R === 0) {
+                    ws[addr].s.font = { name: 'Calibri', sz: 11, bold: true };
+                    ws[addr].s.fill = { fgColor: { rgb: 'E8EDF5' } };
+                }
+            }
+        }
+        ws['!cols'] = [
+            { wch: 30 }, { wch: 20 }, { wch: 25 }, { wch: 18 }, { wch: 22 }
+        ];
+        XLSX.writeFile(wb, `Ferias_Solicitacoes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        toast.success('Planilha exportada com sucesso!');
+    };
+
     // ==========================================
     // HELPERS
     // ==========================================
@@ -734,22 +769,32 @@ export default function FeriasPage() {
                                     </button>
                                 ))}
                             </div>
-                            <div className="relative w-full md:w-64">
-                                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Buscar por nome..."
-                                    value={allRequestsSearch}
-                                    onChange={(e) => setAllRequestsSearch(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                                />
+                            <div className="flex gap-3 items-center w-full md:w-auto">
+                                <div className="relative flex-1 md:w-64">
+                                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar por nome..."
+                                        value={allRequestsSearch}
+                                        onChange={(e) => setAllRequestsSearch(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <button
+                                    onClick={exportAllRequestsToExcel}
+                                    disabled={filteredAllRequests.length === 0}
+                                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition font-medium text-sm flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <FiDownload />
+                                    Exportar XLSX
+                                </button>
                             </div>
                         </div>
 
                         {/* Data Table */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[800px]">
+                                <table ref={allRequestsTableRef} className="w-full min-w-[800px]">
                                     <thead className="bg-gray-50 border-b">
                                         <tr>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Colaborador / Setor</th>
