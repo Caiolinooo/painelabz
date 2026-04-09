@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.4.3] - 2026-04-05
+
+### Changed
+- **Man Schedule**: 
+  - Improved realtime sync with better error handling
+  - UI refinements for filters and layout
+  - Added LGP Reports Raw endpoint for complete history data
+
 ## [5.4.2] - 2026-04-04
 
 ### Changed
