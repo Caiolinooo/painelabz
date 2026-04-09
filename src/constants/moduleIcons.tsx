@@ -38,10 +38,13 @@ export const MODULE_ICONS: Record<string, IconType> = {
 
     // HR
     'ponto': FiClock,
-    'contracheque': FiFileText, // Changed from DollarSign to match likely preference or use DollarSign
+    'contracheque': FiFileText,
     'reembolso': FiDollarSign,
     'kpi': FiTrendingUp,
     'avaliacao': FiBarChart2,
+    'epi': FiShield,
+    'ferias': FiCalendar,
+    'lista-presenca': FiCheckCircle,
 
     // Content
     'manual': FiBook,

@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.4.2] - 2026-04-04
+
+### Changed
+- **Poliweb Improvements**: 
+  - Improved reload functionality with automatic re-authentication
+  - Added comprehensive debug logging for troubleshooting
+  - Better error handling and user feedback
+
 ## [5.4.1] - 2026-04-03
 
 ### Fixed
