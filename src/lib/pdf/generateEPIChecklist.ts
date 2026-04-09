@@ -247,19 +247,19 @@ export async function generateFichaEPI(data: FichaData) {
     }
 
     if (signatureUrl) {
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Assinatura do Colaborador:', margin, finalY);
+        doc.setFont('helvetica', 'normal');
+
         if (signatureUrl === 'PASSKEY_SIGNED') {
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Assinatura Digital do Colaborador:', margin, finalY);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(0, 100, 0); // Dark Green
-            doc.text('Assinado digitalmente via Biometria/Passkey', margin, finalY + 6);
+            // Legacy: no real image available — show note
+            doc.setTextColor(0, 100, 0);
+            doc.text('(Assinatura registrada via biometria — sistema legado)', margin, finalY + 6);
             doc.setTextColor(0, 0, 0);
         } else {
+            // Always render the real signature image
             try {
-                doc.setFontSize(7);
-                doc.text('Assinatura Digital do Colaborador:', margin, finalY);
-                // Convert remote URL to Base64
                 const response = await fetch(signatureUrl);
                 const blob = await response.blob();
                 const base64Data = await new Promise<string>((resolve, reject) => {
@@ -272,7 +272,7 @@ export async function generateFichaEPI(data: FichaData) {
                 doc.addImage(base64Data, 'PNG', margin, finalY + 2, 50, 20);
             } catch (e) {
                 console.error('Error loading signature image:', e);
-                doc.text('(Assinatura digital registrada no sistema)', margin, finalY + 8);
+                doc.text('(Erro ao carregar imagem da assinatura)', margin, finalY + 8);
             }
         }
     }

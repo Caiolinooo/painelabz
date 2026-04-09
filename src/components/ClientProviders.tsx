@@ -11,6 +11,7 @@ import { I18nProvider } from '@/contexts/I18nContext';
 import { SupabaseAuthProvider } from '@/contexts/SupabaseAuthContext';
 import { SiteConfigProvider } from '@/contexts/SiteConfigContext';
 import { AlertProvider } from '@/contexts/AlertContext';
+import { SignatureProvider } from '@/contexts/SignatureContext';
 // Using our new safer approach for Material Design icons
 import MaterialDesignIcon from '@/components/MaterialDesignIcon';
 import LanguageDialog from '@/components/LanguageDialog';
@@ -76,14 +77,16 @@ export default function ClientProviders({ children }: { children: React.ReactNod
         <I18nProvider>
           <SiteConfigProvider>
             <AlertProvider>
-              <GlobalTimeTracker />
-              <SiteHead />
-              {isMounted && <LanguageDialog />}
-              {isMounted && <ToastContainer position="top-right" theme="colored" />}
-              {isMounted && <Toaster position="top-right" />}
-              {isMounted && <ChangelogModal />}
-              <ProfilePromptGate isMounted={isMounted} pathname={pathname} />
-              {children}
+              <SignatureProvider>
+                <GlobalTimeTracker />
+                <SiteHead />
+                {isMounted && <LanguageDialog />}
+                {isMounted && <ToastContainer position="top-right" theme="colored" />}
+                {isMounted && <Toaster position="top-right" />}
+                {isMounted && <ChangelogModal />}
+                <ProfilePromptGate isMounted={isMounted} pathname={pathname} />
+                {children}
+              </SignatureProvider>
             </AlertProvider>
           </SiteConfigProvider>
         </I18nProvider>

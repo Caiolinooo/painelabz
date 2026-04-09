@@ -5,9 +5,10 @@ import { authenticateUser } from '@/lib/api-auth';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST - Upload facilitator signature (canvas drawing) for certificate usage.
- * Accepts base64 PNG and stores in Supabase `academy_signatures` bucket.
- * Returns the public URL.
+ * POST - Get or verify the instructor's profile signature.
+ * 
+ * New behavior: returns the signature from the user's profile (users_unified.signature_url).
+ * Legacy behavior: if signatureBase64 is provided, uploads it and also saves to the user's profile.
  */
 export async function POST(request: NextRequest) {
     try {
@@ -16,34 +17,56 @@ export async function POST(request: NextRequest) {
         if (!authUser) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
         const user = authUser as any;
-        const { signatureBase64 } = await request.json();
+        const body = await request.json().catch(() => ({}));
+        const { signatureBase64 } = body;
 
+        // If no base64 provided, just return the user's profile signature
         if (!signatureBase64) {
-            return NextResponse.json({ error: 'signatureBase64 é obrigatório' }, { status: 400 });
+            const { data: userData } = await supabaseAdmin
+                .from('users_unified')
+                .select('signature_url')
+                .eq('id', user.id)
+                .single();
+
+            if (!userData?.signature_url) {
+                return NextResponse.json({ error: 'Assinatura não cadastrada no perfil' }, { status: 400 });
+            }
+
+            return NextResponse.json({ success: true, signatureUrl: userData.signature_url });
         }
 
-        // Biometric-only: no image to upload
+        // Biometric-only (legacy): return profile signature instead
         if (signatureBase64 === 'PASSKEY_SIGNED') {
+            const { data: userData } = await supabaseAdmin
+                .from('users_unified')
+                .select('signature_url')
+                .eq('id', user.id)
+                .single();
+
+            if (userData?.signature_url) {
+                return NextResponse.json({ success: true, signatureUrl: userData.signature_url });
+            }
+            // Fallback for legacy — still return PASSKEY_SIGNED
             return NextResponse.json({ success: true, signatureUrl: 'PASSKEY_SIGNED' });
         }
 
-        // Ensure bucket exists
+        // Legacy: Upload base64 and save to BOTH academy-signatures AND user profile
         try {
             const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-            const exists = (buckets || []).some(b => b.name === 'academy-signatures');
+            const exists = (buckets || []).some(b => b.name === 'user-signatures');
             if (!exists) {
-                await (supabaseAdmin.storage as any).createBucket('academy-signatures', { public: true });
+                await (supabaseAdmin.storage as any).createBucket('user-signatures', { public: true });
             }
         } catch { /* bucket may already exist */ }
 
-        // Upload PNG
         const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
-        const fileName = `instructor-${user.id}-${Date.now()}.png`;
+        const fileName = `${user.id}.png`;
 
+        // Upload to user-signatures (profile)
         const { error: uploadError } = await supabaseAdmin.storage
-            .from('academy-signatures')
-            .upload(fileName, buffer, { contentType: 'image/png', upsert: false });
+            .from('user-signatures')
+            .upload(fileName, buffer, { contentType: 'image/png', upsert: true });
 
         if (uploadError) {
             console.error('Erro ao salvar assinatura:', uploadError);
@@ -51,10 +74,21 @@ export async function POST(request: NextRequest) {
         }
 
         const { data: publicUrlData } = supabaseAdmin.storage
-            .from('academy-signatures')
+            .from('user-signatures')
             .getPublicUrl(fileName);
 
-        return NextResponse.json({ success: true, signatureUrl: publicUrlData.publicUrl });
+        const signatureUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+        // Also update user profile
+        await supabaseAdmin
+            .from('users_unified')
+            .update({
+                signature_url: signatureUrl,
+                signature_registered_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+
+        return NextResponse.json({ success: true, signatureUrl });
     } catch (error) {
         console.error('Erro em POST signatures:', error);
         return NextResponse.json({ error: 'Erro interno' }, { status: 500 });

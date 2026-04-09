@@ -349,7 +349,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: currentUser.id })
-          }).catch(err => console.error('Erro silent tracking activity:', err));
+          }).catch(() => { /* Silent fail to avoid polling errors */ });
         }
 
         // Primeiro tentar renovar o token Supabase

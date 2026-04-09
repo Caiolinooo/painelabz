@@ -12,6 +12,7 @@ import EPIForm from '@/components/epi/EPIForm';
 import EPIStatusBadge from '@/components/epi/EPIStatusBadge';
 import { EPIRegistration, EPIType } from '@/types/epi';
 import SignaturePad from '@/components/epi/SignaturePad';
+import { useSignature } from '@/contexts/SignatureContext';
 import { toast } from 'react-hot-toast';
 import { generateEPIReport } from '@/lib/pdf/generateEPIReport';
 
@@ -28,10 +29,9 @@ export default function EPIPage() {
     const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
 
-    // Signature states
-    const [showSignaturePad, setShowSignaturePad] = useState(false);
+    // Signature - global system
+    const { requestSignature } = useSignature();
     const [isSubmittingSignature, setIsSubmittingSignature] = useState(false);
-    const [itemsToSign, setItemsToSign] = useState<string[]>([]);
 
     const isManager = profile?.role === 'MANAGER' || profile?.role === 'ADMIN' || hasAccess('epi');
 
@@ -107,7 +107,7 @@ export default function EPIPage() {
         }
     };
 
-    const handleOpenSignature = () => {
+    const handleOpenSignature = async () => {
         const approvedItems = registrations
             .filter(r => r.status === 'approved')
             .map(r => r.id);
@@ -117,17 +117,17 @@ export default function EPIPage() {
             return;
         }
 
-        setItemsToSign(approvedItems);
-        setShowSignaturePad(true);
-    };
+        // Use the global signature system
+        const result = await requestSignature({
+            title: 'Assinar Recebimento de EPI',
+            description: 'Confirme sua identidade para registrar o recebimento dos EPIs aprovados.',
+        });
 
-    const handleSignatureConfirm = async (signatureBase64: string) => {
+        if (!result) return; // User cancelled
+
         try {
             setIsSubmittingSignature(true);
-
-            // Use user ID from context instead of calling getUser() which may fail if session is not synced
             const userId = user?.id || profile?.id;
-
             if (!userId) throw new Error('Usuário não identificado');
 
             const res = await fetch('/api/epi/delivery', {
@@ -135,9 +135,10 @@ export default function EPIPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId,
-                    registrationIds: itemsToSign,
-                    signatureBase64
-                })
+                    registrationIds: approvedItems,
+                    signatureUrl: result.signatureUrl,
+                    authMethod: result.authMethod,
+                }),
             });
 
             if (!res.ok) {
@@ -146,7 +147,6 @@ export default function EPIPage() {
             }
 
             toast.success('Recebimento confirmado com sucesso!');
-            setShowSignaturePad(false);
             await fetchData();
         } catch (err: any) {
             console.error('Signature error:', err);
@@ -334,12 +334,7 @@ export default function EPIPage() {
                     </div>
                 </div>
 
-                <SignaturePad
-                    isOpen={showSignaturePad}
-                    onClose={() => setShowSignaturePad(false)}
-                    onConfirm={handleSignatureConfirm}
-                    isSubmitting={isSubmittingSignature}
-                />
+
             </ErrorBoundary>
         </MainLayout>
     );

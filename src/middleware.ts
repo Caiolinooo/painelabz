@@ -14,6 +14,8 @@ const publicRoutes = [
   '/api/auth/token-refresh',
   '/api/auth/fix-token',
   '/api/auth/ensure-admin',
+  '/api/lista-presenca/public',
+  '/api/lista-presenca/registros',
 ];
 
 // Rotas de arquivos estáticos
@@ -66,7 +68,8 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/_next/') ||
-    pathname.startsWith('/api/_next/')
+    pathname.startsWith('/api/_next/') ||
+    pathname.startsWith('/lista-presenca/public/')
   ) {
     return NextResponse.next();
   }

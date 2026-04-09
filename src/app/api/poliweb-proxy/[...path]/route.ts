@@ -7,6 +7,34 @@ export const runtime = 'nodejs';
 const POLIWEB_BASE = 'https://poliweb.policlinicamacae.com.br';
 
 /**
+ * Extract JWT token from request cookies or Authorization header
+ * Priority: Authorization header > Cookie header
+ */
+function extractToken(request: NextRequest): string | null {
+    // Try Authorization header first
+    const authHeader = request.headers.get('authorization');
+    const headerToken = authHeader?.replace('Bearer ', '');
+    if (headerToken) {
+        return headerToken;
+    }
+
+    // Fallback to cookies (used by iframe requests)
+    const cookieHeader = request.headers.get('cookie') || '';
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    
+    for (const cookie of cookies) {
+        if (cookie.startsWith('abzToken=')) {
+            return cookie.split('=')[1]?.split(';')[0] || null;
+        }
+        if (cookie.startsWith('token=')) {
+            return cookie.split('=')[1]?.split(';')[0] || null;
+        }
+    }
+
+    return null;
+}
+
+/**
  * GET /api/poliweb-proxy/[...path]
  * Serves Poliweb content through proxy with session cookies injected
  */
@@ -15,9 +43,8 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
         const pathSegments = await Promise.resolve(params.path);
         const targetPath = '/' + pathSegments.join('/');
 
-        // Get user ID from authorization header
-        const authHeader = request.headers.get('authorization');
-        const token = authHeader?.replace('Bearer ', '');
+        // Get user ID from token (Authorization header OR cookies)
+        const token = extractToken(request);
         let userId: string | null = null;
 
         if (token) {
@@ -35,6 +62,14 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
         // Get stored session
         const session = userId ? getStoredSession(userId) : null;
         const cookieHeader = session ? buildCookieHeader(session.cookies) : '';
+
+        // If no session found, redirect to /poliweb to trigger re-login
+        if (!session && userId) {
+            return new NextResponse(
+                `<html><head><script>if(window.top!==window){window.top.location.href='/poliweb'}else{window.location.href='/poliweb'}</script></head><body>Redirecionando para login...</body></html>`,
+                { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+            );
+        }
 
         const url = new URL(request.url);
         const searchParams = url.searchParams.toString();
@@ -112,9 +147,8 @@ export async function POST(request: NextRequest, { params }: { params: { path: s
         const pathSegments = await Promise.resolve(params.path);
         const targetPath = '/' + pathSegments.join('/');
 
-        // Get user session
-        const authHeader = request.headers.get('authorization');
-        const token = authHeader?.replace('Bearer ', '');
+        // Get user session from token (Authorization header OR cookies)
+        const token = extractToken(request);
         let userId: string | null = null;
 
         if (token) {
