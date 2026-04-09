@@ -60,7 +60,7 @@ export async function generateAndStoreCertificate(enrollmentId: string): Promise
   // Load enrollment + course + user
   const { data: enr, error: enrErr } = await supabaseAdmin
     .from('academy_enrollments')
-    .select('id, user_id, completed_at, enrolled_at, course:academy_courses(id,title,duration,difficulty_level,instructor:users_unified(first_name,last_name)) , user:users_unified(first_name,last_name,email)')
+    .select('id, user_id, completed_at, enrolled_at, course:academy_courses(id,title,duration,difficulty_level,instructor_id,instructor:users_unified(first_name,last_name,signature_url)) , user:users_unified(first_name,last_name,email)')
     .eq('id', enrollmentId)
     .single();
   if (enrErr || !enr) { console.error('enrollment not found', enrErr); return null; }
@@ -146,7 +146,28 @@ export async function generateAndStoreCertificate(enrollmentId: string): Promise
     x: startX, y: 245, size: 14, font: customFontPjsRegular, color: parseColor('#333333'), maxWidth: 600, lineHeight: 22 // Plus Jakarta Sans 14px
   });
 
-  // 4. Facilitador
+  // 4. Facilitador — Assinatura real + Nome
+  // Render instructor handwritten signature above the name line
+  const instructorSigUrl = (instructor as any)?.signature_url || null;
+  if (instructorSigUrl && instructorSigUrl !== 'PASSKEY_SIGNED') {
+    try {
+      const sigResponse = await fetch(instructorSigUrl);
+      const sigArrayBuf = await sigResponse.arrayBuffer();
+      const sigUint8 = new Uint8Array(sigArrayBuf);
+      const sigImage = await pdfDoc.embedPng(sigUint8);
+      const sigWidth = 100;
+      const sigHeight = 40;
+      page.drawImage(sigImage, {
+        x: 210 - (sigWidth / 2), // Centered above the name label
+        y: 162,
+        width: sigWidth,
+        height: sigHeight,
+      });
+    } catch (sigErr) {
+      console.warn('Failed to embed instructor signature on certificate:', sigErr);
+    }
+  }
+
   const textFacil = `${instructor_name} | Facilitador`;
   const wFacil = customFontRegular.widthOfTextAtSize(textFacil, 7);
   // Centered underneath the left-side signature line

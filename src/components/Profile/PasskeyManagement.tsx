@@ -88,7 +88,11 @@ export default function PasskeyManagement() {
             }
         } catch (error: any) {
             console.error('Passkey registration error:', error);
-            toast.error(error.message || 'Houve um erro indesejado');
+            if (error.message === 'Failed to fetch') {
+                toast.error('Erro de conexão. Verifique se seu AdBlocker/Antivírus está bloqueando a biometria ou se o servidor caiu.', { duration: 6000 });
+            } else {
+                toast.error(error.message || 'Houve um erro indesejado');
+            }
         } finally {
             setIsRegistering(false);
         }

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,7 @@ import NotificationPreferencesPanel from '@/components/Profile/NotificationPrefe
 import UserProfileView from '@/components/Profile/UserProfileView';
 import UserAvatar from '@/components/UserAvatar';
 import PasskeyManagement from '@/components/Profile/PasskeyManagement';
+import SignatureTab from '@/components/Profile/SignatureTab';
 
 export default function ProfilePage() {
   const { user, profile, isLoading, refreshProfile } = useSupabaseAuth();
@@ -359,6 +360,15 @@ export default function ProfilePage() {
                     </div>
                   </button>
                   <button
+                    onClick={() => setActiveTab('signature')}
+                    className={`px-4 md:px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'signature' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FiEdit className="w-4 h-4" />
+                      {t('profile.signature', 'Assinatura')}
+                    </div>
+                  </button>
+                  <button
                     onClick={() => setActiveTab('passkeys')}
                     className={`px-4 md:px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap focus:outline-none ${activeTab === 'passkeys' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                   >
@@ -383,6 +393,7 @@ export default function ProfilePage() {
                 <div className="p-4 md:p-6 pb-6 md:pb-6 overflow-x-hidden">
                   {activeTab === 'password' && <ChangePasswordTab />}
                   {activeTab === 'notifications' && <NotificationPreferencesPanel />}
+                  {activeTab === 'signature' && <SignatureTab />}
                   {activeTab === 'passkeys' && <PasskeyManagement />}
                   {activeTab === 'admin_reimbursement' && <ServerUserReimbursementSettings userId={user?.id || ''} />}
                 </div>

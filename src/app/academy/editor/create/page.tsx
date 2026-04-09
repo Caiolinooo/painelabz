@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
-import SignaturePad from '@/components/epi/SignaturePad';
+import { useSignature } from '@/contexts/SignatureContext';
 
 interface Category {
   id: string;
@@ -52,9 +52,8 @@ const CreateCoursePage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const { requestSignature, userSignatureUrl } = useSignature();
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
-  const [signatureUploading, setSignatureUploading] = useState(false);
 
   const [formData, setFormData] = useState<CourseFormData>({
     title: '',
@@ -605,31 +604,28 @@ const CreateCoursePage: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Assinatura do Facilitador</h3>
             <p className="text-sm text-gray-500 mb-4">
-              A assinatura será incluída no certificado de conclusão dos alunos. Você pode assinar manualmente ou utilizar biometria.
+              A assinatura será incluída no certificado de conclusão dos alunos.
             </p>
 
             {signatureUrl ? (
               <div className="space-y-3">
-                {signatureUrl === 'PASSKEY_SIGNED' ? (
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <FingerPrintIcon className="w-8 h-8 text-blue-600 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-blue-900">Assinatura biométrica registrada</p>
-                      <p className="text-xs text-blue-700">Confirmada via Passkey/Biometria</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                    <img
-                      src={signatureUrl}
-                      alt="Assinatura do facilitador"
-                      className="max-h-24 mx-auto"
-                    />
-                  </div>
-                )}
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <img
+                    src={signatureUrl}
+                    alt="Assinatura do facilitador"
+                    className="max-h-24 mx-auto"
+                    crossOrigin="anonymous"
+                  />
+                </div>
                 <button
                   type="button"
-                  onClick={() => { setSignatureUrl(null); setShowSignaturePad(true); }}
+                  onClick={async () => {
+                    const result = await requestSignature({
+                      title: 'Atualizar Assinatura do Facilitador',
+                      description: 'Atualize sua assinatura para uso nos certificados.',
+                    });
+                    if (result) setSignatureUrl(result.signatureUrl);
+                  }}
                   className="text-sm text-red-600 hover:text-red-800 font-medium"
                 >
                   Refazer assinatura
@@ -638,7 +634,13 @@ const CreateCoursePage: React.FC = () => {
             ) : (
               <button
                 type="button"
-                onClick={() => setShowSignaturePad(true)}
+                onClick={async () => {
+                  const result = await requestSignature({
+                    title: 'Assinatura do Facilitador',
+                    description: 'Sua assinatura será incluída nos certificados de conclusão.',
+                  });
+                  if (result) setSignatureUrl(result.signatureUrl);
+                }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
               >
                 <FingerPrintIcon className="w-5 h-5" />
@@ -646,32 +648,6 @@ const CreateCoursePage: React.FC = () => {
               </button>
             )}
           </div>
-
-          <SignaturePad
-            isOpen={showSignaturePad}
-            onClose={() => setShowSignaturePad(false)}
-            isSubmitting={signatureUploading}
-            onConfirm={async (signatureBase64: string) => {
-              try {
-                setSignatureUploading(true);
-                const res = await fetchWithAuth('/api/academy/signatures', {
-                  method: 'POST',
-                  body: ***REMOVED*** signatureBase64 })
-                });
-                const data = await res.json();
-                if (data.success) {
-                  setSignatureUrl(data.signatureUrl);
-                  setShowSignaturePad(false);
-                } else {
-                  setError(data.error || 'Erro ao salvar assinatura');
-                }
-              } catch {
-                setError('Erro ao salvar assinatura');
-              } finally {
-                setSignatureUploading(false);
-              }
-            }}
-          />
 
           {/* Configurações de publicação */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

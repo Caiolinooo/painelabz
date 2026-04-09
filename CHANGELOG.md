@@ -1,5 +1,33 @@
 # Changelog
 
+## [5.5.0] - 2026-04-09
+
+### Added
+- **Módulo Lista de Presença**: Novo módulo completo para controle de presença e assinaturas digitais.
+  - Criação de listas de presença com link público único
+  - Sistema de assinatura via passkey/biometria ou canvas
+  - Geração de PDF com lista de presentes
+  - Link público para acesso externo (`/lista-presenca/public/[linkUnico]`)
+  - Página de gerenciamento (`/lista-presenca`)
+  - API completa em `/api/lista-presenca/`
+- **Sistema Global de Assinaturas**: Novo sistema unificado de assinaturas em todo o portal.
+  - `SignatureContext`: Context API global para gerenciamento de assinaturas
+  - `SignatureModal`: Modal unificado para captura de assinaturas (passkey ou canvas)
+  - `SignatureTab`: Aba no perfil do usuário para cadastrar/atualizar assinatura
+  - Integração com `users_unified.signature_url` e `signature_registered_at`
+  - Substitui assinatura local em EPI, Academy e outros módulos
+- **Assinatura Real em Certificados Academy**: Certificados agora incluem a assinatura manuscrita real do facilitador (não apenas o nome).
+
+### Changed
+- **EPI Module**: Atualizado para usar o sistema global de assinaturas em vez do SignaturePad local.
+- **Academy Editor**: Facilitador agora usa assinatura do perfil em vez de upload local.
+- **Academy Signatures API**: Retorna assinatura do perfil do usuário ou faz upload para `user-signatures` bucket.
+- **PasskeyManagement**: Mensagem de erro melhorada para falhas de conexão (AdBlocker/antivírus).
+- **MIO API**: Credenciais atualizadas para ambiente de produção (`abz_prd`).
+
+### Database
+- **Assinaturas**: Campo `signature_url` e `signature_registered_at` em `users_unified`.
+
 ## [5.4.3] - 2026-04-05
 
 ### Changed
