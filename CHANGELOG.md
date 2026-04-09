@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.4.1] - 2026-04-03
+
+### Fixed
+- **Férias XLSX Export**: Adicionado botão de exportação XLSX na tabela de solicitações de férias.
+- **Token Storage**: Validação de token JWT relaxada para aceitar formatos não-padrão sem remover automaticamente (apenas loga como debug). Tokens expirados ainda são removidos.
+- **ReimbursementDashboard**: Simplificação do componente, removendo código redundante e melhorando performance.
+- **Test Endpoint**: Adicionado endpoint `/api/reembolso/test-access` para verificar acesso à tabela Reimbursement.
+
 ## [5.4.0] - 2026-04-01
 
 ### Added
