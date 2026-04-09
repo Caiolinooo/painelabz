@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (credError || !credentials) {
+            console.error('[Poliweb Login] Credenciais não encontradas para userId:', authResult.userId, 'Error:', credError);
             return NextResponse.json(
                 { success: false, error: 'Credenciais Poliweb não configuradas. Contate o administrador.' },
                 { status: 404 }
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest) {
 
         const email = credentials.username;
         const password = credentials.password;
+
+        console.log('[Poliweb Login] Iniciando auto-login para userId:', authResult.userId, 'com email:', email);
 
         // Step 1: GET login page to get CSRF token and initial cookies
         const loginPageResponse = await fetch(`${POLIWEB_BASE}/Identity/Account/Login`, {
@@ -61,13 +64,17 @@ export async function POST(request: NextRequest) {
             redirect: 'manual',
         });
 
+        console.log('[Poliweb Login] Login page status:', loginPageResponse.status);
+
         const loginPageHtml = await loginPageResponse.text();
         const initialCookies = loginPageResponse.headers.getSetCookie?.() || [];
+
+        console.log('[Poliweb Login] Initial cookies received:', initialCookies.length);
 
         // Extract CSRF token from the HTML
         const csrfMatch = loginPageHtml.match(/name="__RequestVerificationToken"\s+type="hidden"\s+value="([^"]+)"/);
         if (!csrfMatch) {
-            console.error('Não foi possível encontrar CSRF token na página de login');
+            console.error('[Poliweb Login] Não foi possível encontrar CSRF token na página de login');
             return NextResponse.json(
                 { success: false, error: 'Erro ao obter token de segurança do Poliweb' },
                 { status: 500 }
@@ -82,6 +89,8 @@ export async function POST(request: NextRequest) {
         formBody.append('Input.Password', password);
         formBody.append('Input.RememberMe', 'true');
         formBody.append('__RequestVerificationToken', csrfToken);
+
+        console.log('[Poliweb Login] Enviando formulário de login...');
 
         const loginResponse = await fetch(`${POLIWEB_BASE}/Identity/Account/Login`, {
             method: 'POST',
@@ -99,6 +108,9 @@ export async function POST(request: NextRequest) {
         const sessionCookies = loginResponse.headers.getSetCookie?.() || [];
         const location = loginResponse.headers.get('location');
 
+        console.log('[Poliweb Login] Login response status:', loginResponse.status, 'Location:', location);
+        console.log('[Poliweb Login] Session cookies received:', sessionCookies.length);
+
         // Check if login succeeded
         const isLoggedIn = loginResponse.status === 302 && location &&
             !location.includes('Login') &&
@@ -112,6 +124,7 @@ export async function POST(request: NextRequest) {
             if (loginResponse.status === 200) {
                 const bodyText = await loginResponse.text();
                 if (bodyText.includes('Input_Password') && bodyText.includes('Input_Email')) {
+                    console.error('[Poliweb Login] Credenciais inválidas - página de login retornada');
                     return NextResponse.json({
                         success: false,
                         error: 'Credenciais inválidas. Verifique seu email e senha no Poliweb.'
@@ -122,6 +135,8 @@ export async function POST(request: NextRequest) {
             // Get the dashboard page to extract a fresh CSRF token
             const dashboardPath = isLoggedIn && location ? location : '/PainelEmpresa';
             const dashboardUrl = `${POLIWEB_BASE}${dashboardPath}`;
+
+            console.log('[Poliweb Login] Buscando dashboard:', dashboardUrl);
 
             const dashboardResponse = await fetch(dashboardUrl, {
                 headers: {
@@ -136,6 +151,8 @@ export async function POST(request: NextRequest) {
             const dashboardHtml = await dashboardResponse.text();
             const dashboardCookies = dashboardResponse.headers.getSetCookie?.() || [];
 
+            console.log('[Poliweb Login] Dashboard status:', dashboardResponse.status, 'Cookies:', dashboardCookies.length);
+
             // Extract fresh CSRF token from dashboard
             const dashboardCsrfMatch = dashboardHtml.match(/name="__RequestVerificationToken"\s+type="hidden"\s+value="([^"]+)"/);
             const freshCsrfToken = dashboardCsrfMatch ? dashboardCsrfMatch[1] : csrfToken;
@@ -146,6 +163,8 @@ export async function POST(request: NextRequest) {
             // Store session in memory for the proxy to use
             storeSession(authResult.userId, finalCookies, freshCsrfToken);
 
+            console.log('[Poliweb Login] Sessão armazenada com sucesso para userId:', authResult.userId, 'Cookies totais:', finalCookies.length);
+
             return NextResponse.json({
                 success: true,
                 cookies: finalCookies,
@@ -154,6 +173,7 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        console.error('[Poliweb Login] Falha no login - status:', loginResponse.status);
         return NextResponse.json({
             success: false,
             error: 'Falha no login. Verifique suas credenciais do Poliweb.'

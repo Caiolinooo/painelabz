@@ -78,16 +78,49 @@ export default function PoliwebPage() {
         autoLogin();
     }, [hasPoliwebAccess, user]);
 
-    const handleReload = () => {
+    const handleReload = async () => {
         setProxyReady(false);
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
-            setProxyReady(true);
-            if (iframeRef.current) {
-                iframeRef.current.src = '/api/poliweb-proxy/PainelEmpresa';
+        setError(null);
+
+        // Re-run auto-login to refresh session
+        try {
+            const getToken = () => {
+                const cookies = document.cookie.split('; ');
+                const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
+                const token = cookies.find(row => row.startsWith('token='))?.split('=')[1];
+                return abzToken || token;
+            };
+
+            const token = getToken();
+            if (!token) {
+                setError('Sessão expirada. Faça login novamente no portal.');
+                setLoading(false);
+                return;
             }
-        }, 100);
+
+            const response = await fetch('/api/poliweb/login', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setProxyReady(true);
+            } else {
+                setError(data.error || 'Falha ao realizar login automático.');
+            }
+        } catch (err) {
+            console.error('Erro no auto-login Poliweb:', err);
+            setError('Erro de conexão com o Poliweb.');
+        } finally {
+            setLoggingIn(false);
+            setLoading(false);
+        }
     };
 
     const toggleFullscreen = () => {
