@@ -1,7 +1,7 @@
 /**
- * Shared session store for Poliweb proxy
+ * Shared session store for Poliweb proxy (both new and old versions)
  * Stores authenticated session cookies per user
- * Used by both /api/poliweb/login and /api/poliweb-proxy/[...path]
+ * Used by login APIs and proxies for both Poliweb systems
  */
 
 interface PoliwebSession {
@@ -10,31 +10,63 @@ interface PoliwebSession {
     timestamp: number;
 }
 
-const sessionStore = new Map<string, PoliwebSession>();
+// Separate session stores for each Poliweb version
+const sessionStoreNovo = new Map<string, PoliwebSession>();
+const sessionStoreAntigo = new Map<string, PoliwebSession>();
+
 const SESSION_TTL = 30 * 60 * 1000; // 30 minutes
 
-export function getStoredSession(userId: string): PoliwebSession | null {
-    const session = sessionStore.get(userId);
+export type PoliwebVersion = 'novo' | 'antigo';
+
+/**
+ * Get session for a specific user and Poliweb version
+ */
+export function getStoredSession(userId: string, version: PoliwebVersion = 'novo'): PoliwebSession | null {
+    const store = version === 'novo' ? sessionStoreNovo : sessionStoreAntigo;
+    const session = store.get(userId);
     if (!session) return null;
     if (Date.now() - session.timestamp > SESSION_TTL) {
-        sessionStore.delete(userId);
+        store.delete(userId);
         return null;
     }
     return session;
 }
 
-export function storeSession(userId: string, cookies: string[], csrfToken: string): void {
-    sessionStore.set(userId, {
+/**
+ * Store session for a specific user and Poliweb version
+ */
+export function storeSession(userId: string, cookies: string[], csrfToken: string, version: PoliwebVersion = 'novo'): void {
+    const store = version === 'novo' ? sessionStoreNovo : sessionStoreAntigo;
+    store.set(userId, {
         cookies,
         csrfToken,
         timestamp: Date.now(),
     });
 }
 
-export function clearSession(userId: string): void {
-    sessionStore.delete(userId);
+/**
+ * Clear session for a specific user and version
+ */
+export function clearSession(userId: string, version?: PoliwebVersion): void {
+    if (!version || version === 'novo') {
+        sessionStoreNovo.delete(userId);
+    }
+    if (!version || version === 'antigo') {
+        sessionStoreAntigo.delete(userId);
+    }
 }
 
+/**
+ * Clear ALL sessions for a user (both versions)
+ */
+export function clearAllSessions(userId: string): void {
+    sessionStoreNovo.delete(userId);
+    sessionStoreAntigo.delete(userId);
+}
+
+/**
+ * Merge cookies, keeping the most recent version of each cookie
+ */
 export function mergeCookies(existing: string[], newCookies: string[]): string[] {
     const cookieMap = new Map<string, string>();
     existing.forEach(c => {
@@ -48,6 +80,9 @@ export function mergeCookies(existing: string[], newCookies: string[]): string[]
     return Array.from(cookieMap.values());
 }
 
+/**
+ * Build Cookie header string from cookie array
+ */
 export function buildCookieHeader(cookies: string[]): string {
     if (!cookies || cookies.length === 0) return '';
     return cookies
@@ -58,6 +93,9 @@ export function buildCookieHeader(cookies: string[]): string {
         .join('; ');
 }
 
+/**
+ * Extract CSRF/antiforgery token from cookies
+ */
 export function extractCsrfTokenFromCookies(cookies: string[]): string | null {
     for (const cookie of cookies) {
         if (cookie.includes('Antiforgery')) {

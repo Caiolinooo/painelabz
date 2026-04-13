@@ -14,10 +14,13 @@ import {
     FiExternalLink,
 } from 'react-icons/fi';
 
+type TabType = 'novo' | 'antigo';
+
 export default function PoliwebPage() {
     const { user, isAdmin, hasAccess } = useSupabaseAuth();
     const hasPoliwebAccess = hasAccess('poliweb');
 
+    const [activeTab, setActiveTab] = useState<TabType>('novo');
     const [loading, setLoading] = useState(true);
     const [loggingIn, setLoggingIn] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -49,8 +52,9 @@ export default function PoliwebPage() {
                     return;
                 }
 
-                // Call our login API to authenticate and store session
-                const response = await fetch('/api/poliweb/login', {
+                const loginApi = activeTab === 'novo' ? '/api/poliweb/login' : '/api/poliweb-antigo/login';
+                
+                const response = await fetch(loginApi, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -61,10 +65,9 @@ export default function PoliwebPage() {
                 const data = await response.json();
 
                 if (data.success) {
-                    // Session stored server-side, proxy will inject cookies
                     setProxyReady(true);
                 } else {
-                    setError(data.error || 'Falha ao realizar login automático.');
+                    setError(data.error || `Falha ao realizar login no Poliweb ${activeTab === 'novo' ? 'Novo' : 'Antigo'}.`);
                 }
             } catch (err) {
                 console.error('Erro no auto-login Poliweb:', err);
@@ -76,51 +79,28 @@ export default function PoliwebPage() {
         };
 
         autoLogin();
-    }, [hasPoliwebAccess, user]);
+    }, [hasPoliwebAccess, user, activeTab]);
 
-    const handleReload = async () => {
+    const handleTabChange = (tab: TabType) => {
+        setActiveTab(tab);
         setProxyReady(false);
         setLoading(true);
         setError(null);
+    };
 
-        // Re-run auto-login to refresh session
-        try {
-            const getToken = () => {
-                const cookies = document.cookie.split('; ');
-                const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
-                const token = cookies.find(row => row.startsWith('token='))?.split('=')[1];
-                return abzToken || token;
-            };
-
-            const token = getToken();
-            if (!token) {
-                setError('Sessão expirada. Faça login novamente no portal.');
-                setLoading(false);
-                return;
-            }
-
-            const response = await fetch('/api/poliweb/login', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                setProxyReady(true);
-            } else {
-                setError(data.error || 'Falha ao realizar login automático.');
-            }
-        } catch (err) {
-            console.error('Erro no auto-login Poliweb:', err);
-            setError('Erro de conexão com o Poliweb.');
-        } finally {
-            setLoggingIn(false);
+    const handleReload = () => {
+        setProxyReady(false);
+        setLoading(true);
+        setTimeout(() => {
             setLoading(false);
-        }
+            setProxyReady(true);
+            if (iframeRef.current) {
+                const src = activeTab === 'novo' 
+                    ? '/api/poliweb-proxy/PainelEmpresa' 
+                    : '/api/poliweb-antigo-proxy/';
+                iframeRef.current.src = src;
+            }
+        }, 100);
     };
 
     const toggleFullscreen = () => {
@@ -139,7 +119,20 @@ export default function PoliwebPage() {
     }, []);
 
     const handleOpenNewWindow = () => {
-        window.open('https://poliweb.policlinicamacae.com.br/PainelEmpresa', '_blank');
+        const url = activeTab === 'novo'
+            ? 'https://poliweb.policlinicamacae.com.br/PainelEmpresa'
+            : 'https://www.policlinicaweb.com.br/';
+        window.open(url, '_blank');
+    };
+
+    const getIframeSrc = () => {
+        return activeTab === 'novo'
+            ? '/api/poliweb-proxy/PainelEmpresa'
+            : '/api/poliweb-antigo-proxy/';
+    };
+
+    const getTabLabel = () => {
+        return activeTab === 'novo' ? 'Novo Poliweb' : 'Poliweb Antigo';
     };
 
     if (!hasPoliwebAccess) {
@@ -182,7 +175,7 @@ export default function PoliwebPage() {
                     <div className="flex-1 bg-gray-50 flex flex-col items-center justify-center p-8 text-center">
                         <FiLoader className="animate-spin h-12 w-12 text-blue-600 mb-4" />
                         <p className="text-gray-600 text-lg mb-2">
-                            {loggingIn ? 'Realizando login automático...' : 'Carregando Poliweb...'}
+                            {loggingIn ? `Realizando login no ${getTabLabel()}...` : 'Carregando Poliweb...'}
                         </p>
                         <p className="text-gray-400 text-sm">
                             Aguarde enquanto conectamos ao sistema da clínica ocupacional.
@@ -264,6 +257,30 @@ export default function PoliwebPage() {
                         <h1 className="text-lg font-bold text-gray-800">Poliweb</h1>
                     </div>
 
+                    {/* Tab Switcher */}
+                    <div className="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => handleTabChange('novo')}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                                activeTab === 'novo'
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            Novo
+                        </button>
+                        <button
+                            onClick={() => handleTabChange('antigo')}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                                activeTab === 'antigo'
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            Antigo
+                        </button>
+                    </div>
+
                     <div className="flex items-center space-x-2">
                         <button
                             onClick={handleReload}
@@ -301,7 +318,7 @@ export default function PoliwebPage() {
                     </div>
                 </div>
 
-                {/* Content - iframe through proxy */}
+                {/* Content */}
                 <div
                     ref={containerRef}
                     className={`flex-1 bg-gray-100 relative ${isFullscreen ? 'fixed inset-0 z-50' : ''} overflow-hidden`}
@@ -309,9 +326,9 @@ export default function PoliwebPage() {
                     {proxyReady ? (
                         <iframe
                             ref={iframeRef}
-                            src="/api/poliweb-proxy/PainelEmpresa"
+                            src={getIframeSrc()}
                             className="w-full h-full border-0"
-                            title="Poliweb - Clínica Ocupacional"
+                            title={`Poliweb - ${getTabLabel()}`}
                             allow="clipboard-read; clipboard-write; fullscreen"
                         />
                     ) : (

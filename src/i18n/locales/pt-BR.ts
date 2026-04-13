@@ -3480,7 +3480,7 @@ export default {
     createCard: 'Criar Card',
   },
 
-  // Poliweb Integration
+  // Poliweb Integration (Novo + Antigo)
   poliweb: {
     title: 'Poliweb',
     description: 'Clínica ocupacional e gestão de ASO',
@@ -3505,6 +3505,14 @@ export default {
     loginSuccess: 'Login realizado com sucesso!',
     loginFailed: 'Falha no login automático',
     credentialsNotConfigured: 'Credenciais não configuradas',
+    tabs: {
+      novo: 'Novo',
+      antigo: 'Antigo',
+    },
+    loadingNovo: 'Realizando login no Novo Poliweb...',
+    loadingAntigo: 'Realizando login no Poliweb Antigo...',
+    erroNovo: 'Falha ao realizar login no Novo Poliweb.',
+    erroAntigo: 'Falha ao realizar login no Poliweb Antigo.',
   },
 
 
