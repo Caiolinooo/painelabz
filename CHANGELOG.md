@@ -1,56 +1,29 @@
 # Changelog
 
+## [5.5.1] - 2026-04-13
+
+### Added
+- **Poliweb Antigo (Versão Legada)**: Integração com a versão antiga do Poliweb (https://www.policlinicaweb.com.br/Login.aspx)
+  - API `/api/poliweb-antigo/login`: Auto-login para versão antiga usando ASP.NET Web Forms (ViewState, EventValidation)
+  - Proxy `/api/poliweb-antigo-proxy/[...path]`: Proxy completo para versão antiga com injeção de sessão
+  - Session Store Compartilhado: Sistema de sessão agora suporta ambas as versões (novo e antigo)
+  - Interface com Abas: Página `/poliweb` agora possui abas para alternar entre "Novo" e "Antigo"
+  - Same Credentials: Ambas as versões usam as mesmas credenciais em `poliweb_credentials`
+- Novas Traduções i18n para abas (pt-BR, en-US)
+
 ## [5.5.0] - 2026-04-09
 
 ### Added
-- **Módulo Lista de Presença**: Novo módulo completo para controle de presença e assinaturas digitais.
-  - Criação de listas de presença com link público único
-  - Sistema de assinatura via passkey/biometria ou canvas
-  - Geração de PDF com lista de presentes
-  - Link público para acesso externo (`/lista-presenca/public/[linkUnico]`)
-  - Página de gerenciamento (`/lista-presenca`)
-  - API completa em `/api/lista-presenca/`
-- **Sistema Global de Assinaturas**: Novo sistema unificado de assinaturas em todo o portal.
-  - `SignatureContext`: Context API global para gerenciamento de assinaturas
-  - `SignatureModal`: Modal unificado para captura de assinaturas (passkey ou canvas)
-  - `SignatureTab`: Aba no perfil do usuário para cadastrar/atualizar assinatura
-  - Integração com `users_unified.signature_url` e `signature_registered_at`
-  - Substitui assinatura local em EPI, Academy e outros módulos
-- **Assinatura Real em Certificados Academy**: Certificados agora incluem a assinatura manuscrita real do facilitador (não apenas o nome).
+- **Poliweb Antigo (Versão Legada)**: Integração com a versão antiga do Poliweb (https://www.policlinicaweb.com.br/Login.aspx)
+  - **API `/api/poliweb-antigo/login`**: Auto-login para versão antiga usando ASP.NET Web Forms (ViewState, EventValidation)
+  - **Proxy `/api/poliweb-antigo-proxy/[...path]`**: Proxy completo para versão antiga com injeção de sessão
+  - **Session Store Compartilhado**: Sistema de sessão agora suporta ambas as versões (novo e antigo) com session stores separados
+  - **Interface com Abas**: Página `/poliweb` agora possui abas para alternar entre "Novo" e "Antigo"
+  - **Same Credentials**: Ambas as versões usam as mesmas credenciais cadastradas em `poliweb_credentials`
+- **Novas Traduções i18n**: Suporte para abas "Novo" e "Antigo" em pt-BR e en-US
 
 ### Changed
-- **EPI Module**: Atualizado para usar o sistema global de assinaturas em vez do SignaturePad local.
-- **Academy Editor**: Facilitador agora usa assinatura do perfil em vez de upload local.
-- **Academy Signatures API**: Retorna assinatura do perfil do usuário ou faz upload para `user-signatures` bucket.
-- **PasskeyManagement**: Mensagem de erro melhorada para falhas de conexão (AdBlocker/antivírus).
-- **MIO API**: Credenciais atualizadas para ambiente de produção (`abz_prd`).
-
-### Database
-- **Assinaturas**: Campo `signature_url` e `signature_registered_at` em `users_unified`.
-
-## [5.4.3] - 2026-04-05
-
-### Changed
-- **Man Schedule**: 
-  - Improved realtime sync with better error handling
-  - UI refinements for filters and layout
-  - Added LGP Reports Raw endpoint for complete history data
-
-## [5.4.2] - 2026-04-04
-
-### Changed
-- **Poliweb Improvements**: 
-  - Improved reload functionality with automatic re-authentication
-  - Added comprehensive debug logging for troubleshooting
-  - Better error handling and user feedback
-
-## [5.4.1] - 2026-04-03
-
-### Fixed
-- **Férias XLSX Export**: Adicionado botão de exportação XLSX na tabela de solicitações de férias.
-- **Token Storage**: Validação de token JWT relaxada para aceitar formatos não-padrão sem remover automaticamente (apenas loga como debug). Tokens expirados ainda são removidos.
-- **ReimbursementDashboard**: Simplificação do componente, removendo código redundante e melhorando performance.
-- **Test Endpoint**: Adicionado endpoint `/api/reembolso/test-access` para verificar acesso à tabela Reimbursement.
+- **Session Store Refactored**: `poliweb-session.ts` agora suporta múltiplas versões do Poliweb com session stores separados
 
 ## [5.4.0] - 2026-04-01
 

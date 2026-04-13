@@ -3157,7 +3157,7 @@ export default {
     createCard: 'Create Card',
   },
 
-  // Poliweb Integration
+  // Poliweb Integration (New + Old)
   poliweb: {
     title: 'Poliweb',
     description: 'Occupational clinic and ASO management',
@@ -3182,6 +3182,14 @@ export default {
     loginSuccess: 'Login successful!',
     loginFailed: 'Automatic login failed',
     credentialsNotConfigured: 'Credentials not configured',
+    tabs: {
+      novo: 'New',
+      antigo: 'Old',
+    },
+    loadingNovo: 'Logging in to New Poliweb...',
+    loadingAntigo: 'Logging in to Old Poliweb...',
+    erroNovo: 'Failed to login to New Poliweb.',
+    erroAntigo: 'Failed to login to Old Poliweb.',
   },
 
   categories: {
