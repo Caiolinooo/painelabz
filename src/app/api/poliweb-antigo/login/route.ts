@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get credentials for this user
+        // Get credentials for this user (both novo and antigo)
         const client = await supabaseAdmin;
         const { data: credentials, error: credError } = await client
             .from('poliweb_credentials')
-            .select('username, password')
+            .select('username, password, username_antigo, password_antigo')
             .eq('user_id', authResult.userId)
             .single();
 
@@ -47,8 +47,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const username = credentials.username;
-        const password = credentials.password;
+        // Use antigo credentials if available, otherwise fall back to novo credentials
+        const username = credentials.username_antigo || credentials.username;
+        const password = credentials.password_antigo || credentials.password;
+
+        if (!username || !password) {
+            return NextResponse.json(
+                { success: false, error: 'Credenciais Poliweb Antigo não configuradas. Contate o administrador.' },
+                { status: 404 }
+            );
+        }
 
         // Step 1: GET login page to get session cookie and hidden fields
         const loginPageResponse = await fetch(`${POLIWEB_ANTIGO_BASE}/Login.aspx`, {

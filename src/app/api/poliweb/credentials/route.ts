@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         const client = await supabaseAdmin;
         const { data: credentials, error } = await client
             .from('poliweb_credentials')
-            .select('username, password')
+            .select('username, password, username_antigo, password_antigo')
             .eq('user_id', userId)
             .single();
 
@@ -59,7 +59,10 @@ export async function GET(request: NextRequest) {
                 success: true,
                 credentials: {
                     username: credentials.username,
-                    password: credentials.password
+                    password: credentials.password,
+                    username_antigo: credentials.username_antigo,
+                    password_antigo: credentials.password_antigo,
+                    useSameCredentials: !credentials.username_antigo && !credentials.password_antigo
                 }
             });
         }
@@ -110,7 +113,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { userId, username, password } = body;
+        const { userId, username, password, username_antigo, password_antigo, useSameCredentials } = body;
 
         if (!userId || !username || !password) {
             return NextResponse.json(
@@ -120,6 +123,11 @@ export async function POST(request: NextRequest) {
         }
 
         const client = await supabaseAdmin;
+        
+        // If useSameCredentials is true, use novo credentials for antigo as well
+        const antigoUsername = useSameCredentials ? username : (username_antigo || username);
+        const antigoPassword = useSameCredentials ? password : (password_antigo || password);
+
         const { data, error } = await client
             .from('poliweb_credentials')
             .upsert(
@@ -127,6 +135,8 @@ export async function POST(request: NextRequest) {
                     user_id: userId,
                     username: username,
                     password: password,
+                    username_antigo: useSameCredentials ? username : (username_antigo || null),
+                    password_antigo: useSameCredentials ? password : (password_antigo || null),
                     updated_at: new Date().toISOString()
                 },
                 {

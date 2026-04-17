@@ -1,0 +1,95 @@
+=== INTEGRANTE STRUCTURE ===
+Top keys: [ 'success', 'message', 'integrante', 'datahora' ]
+Count: 241
+Fields: id, id_externo, cpf_numero, cpf_formatado, cadastrado_em, atualizado_em, nome_completo, apelido, nacionalidade, naturalidade, nascido_em, PIS_PASEP, CTPS, serie_uf, RG, orgao_emissor, CNH, nome_mae, nome_pai, peso, altura, sexo, genero, raca, estado_civil, escolaridade, deficiencia, banco_codigo, banco_agencia, banco_conta, banco_tipo, endereco_rua, endereco_numero, endereco_complemento, endereco_ponto_referencia, endereco_bairro, endereco_cep, endereco_cidade, endereco_uf, endereco_pais, telefone_01, telefone_01_tipo, telefone_02, telefone_02_tipo, telefone_03, telefone_03_tipo, email, numero_registro, admitido_em, demitido_em, motivo_demissao, matricula, cargo_funcao, cargo_funcao_tipo, cargo_funcao_disciplina, plat_origem, salario, sindicato, hora_mes, hora_semanal, forma_pgto, tipo_trabalho, tipo_salario, contrato_categoria, regime, departamento, contrato_tipo, contrato_prazo, centro_custo, tipo_maodeobra, cadastro_ativo, situacao
+
+[0] {
+  "id": "108027528",
+  "nome": "ADALBERTO OLIVEIRA VIEIRA",
+  "cpf": "09791522758",
+  "departamento": null,
+  "situacao": "Ativo"
+}
+
+[1] {
+  "id": "108027527",
+  "nome": "ADILSON NUNES DOS SANTOS",
+  "cpf": "07730183790",
+  "departamento": null,
+  "situacao": "Ativo"
+}
+
+[2] {
+  "id": "70018692",
+  "nome": "ADRIANA APARECIDA DOS SANTOS SILVA",
+  "cpf": "09938902707",
+  "departamento": "",
+  "situacao": "Desligado"
+}
+
+=== LGP-REPORTS with period ===
+Status lgp-reports: 200
+Top keys: [ 'success', 'message', 'history', 'datahora' ]
+Count: 553
+Fields[0]: Matrícula
+  Nome
+  Função/Cargo
+  Nascido Em
+  CPF
+  Regime
+  Telefone 01
+  Telefone 02
+  Origem
+  Centro de Custo do Integrante
+  Centro de Custo da RTPE
+  Nº RTPE
+  Nº do Projeto
+  Doc. Cliente RTPE
+  Destino
+  Qtd. Início
+  Qtd. Fim
+  Exame Em
+  Prev. de Emb.
+  Embarque Real
+  Prev. Desemb.
+  RTPE Status
+  Nº RTPD
+  Doc. Cliente RTPD
+  Prev. Desemb. RTPD
+  Desembarque Real
+  RTPD Status
+  Qtd. de Dias
+  Folga Início
+  Folga Fim
+Sample[0]: {
+  "Matrícula": "767",
+  "Nome": "JOSENILTON RAMOS DA SILVA",
+  "Função/Cargo": "PADEIRO",
+  "Nascido Em": "1981-11-14",
+  "CPF": "00048508586",
+  "Regime": "Offshore",
+  "Telefone 01": "21 971176505",
+  "Telefone 02": "21 981664034",
+  "Origem": "Aeroporto de Cabo Frio",
+  "Centro de Custo do Integrante": "CONNTRAK",
+  "Centro de Custo da RTPE": "CONNTRAK",
+  "Nº RTPE": "432",
+  "Nº do Projeto": null,
+  "Doc. Cliente RTPE": null,
+  "Destino": "CONNTRAK - DEEP STAR",
+  "Qtd. Início": null,
+  "Qtd. Fim": null,
+  "Exame Em": null,
+  "Prev. de Emb.": "2026-02-28",
+  "Embarque Real": "2026-02-28",
+  "Prev. Desemb.": "2026-03-14",
+  "RTPE Status": "Aprovado",
+  "Nº RTPD": "406",
+  "Doc. Cliente RTPD": "",
+  "Prev. Desemb. RTPD": "2026-03-14",
+  "Desembarque Real": "2026-03-14",
+  "RTPD Status": "Aprovado",
+  "Qtd. de Dias": "14",
+  "Folga Início": "2026-03-14",
+  "Folga Fim": "2026-03-28"
+}

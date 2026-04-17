@@ -12,7 +12,7 @@ const POLIWEB_ANTIGO_BASE = 'https://www.policlinicaweb.com.br';
  */
 export async function GET(request: NextRequest, { params }: { params: { path: string[] } }) {
     try {
-        const pathSegments = await Promise.resolve(params.path);
+        const pathSegments = (await Promise.resolve(params.path)) || [];
         const targetPath = '/' + pathSegments.join('/');
 
         // Get user ID from authorization header
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
  */
 export async function POST(request: NextRequest, { params }: { params: { path: string[] } }) {
     try {
-        const pathSegments = await Promise.resolve(params.path);
+        const pathSegments = (await Promise.resolve(params.path)) || [];
         const targetPath = '/' + pathSegments.join('/');
 
         // Get user session
