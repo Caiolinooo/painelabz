@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.5.2] - 2026-04-17
+
+### Fixed
+- **Poliweb Antigo Login**: Resolvido problema de autenticação na versão antiga do Poliweb (https://www.policlinicaweb.com.br/Login.aspx)
+  - Atualizado mecanismo de captura de ViewState e EventValidation
+  - Melhorado tratamento de cookies de sessão ASP.NET
+  - Corrigido parsing de campos de formulário para usuários com credenciais especiais
+  - Adicionado logging detalhado para diagnóstico de falhas de login
+
 ## [5.5.1] - 2026-04-13
 
 ### Added
