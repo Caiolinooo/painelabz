@@ -1,0 +1,42 @@
+wing: painel_abz
+rooms:
+- name: avaliacao_desempenho
+  description: Files from avaliacao-desempenho/
+- name: data
+  description: Files from data/
+- name: debug
+  description: Files from debug/
+- name: documentation
+  description: Files from docs/
+- name: image
+  description: Files from image/
+- name: migrations
+  description: Files from migrations/
+- name: netlify
+  description: Files from netlify/
+- name: frontend
+  description: Files from pages/
+- name: plans
+  description: Files from plans/
+- name: prisma
+  description: Files from prisma/
+- name: public
+  description: Files from public/
+- name: scripts
+  description: Files from scripts/
+- name: sql
+  description: Files from sql/
+- name: src
+  description: Files from src/
+- name: supabase
+  description: Files from supabase/
+- name: temp
+  description: Files from temp/
+- name: testing
+  description: Files from tests/
+- name: configuration
+  description: Files from deploy/
+- name: backend
+  description: Files from api/
+- name: general
+  description: Files that don't fit other rooms

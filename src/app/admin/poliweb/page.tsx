@@ -15,6 +15,7 @@ import {
     FiRefreshCw,
     FiKey,
     FiCheck,
+    FiAlertCircle,
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
 
@@ -30,7 +31,8 @@ interface PoliwebCredential {
     user_id: string;
     username: string;
     password: string;
-    user?: User;
+    username_antigo?: string;
+    password_antigo?: string;
 }
 
 export default function PoliwebAdminPage() {
@@ -43,7 +45,13 @@ export default function PoliwebAdminPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [editingUser, setEditingUser] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState({ username: '', password: '' });
+    const [editForm, setEditForm] = useState({
+        username: '',
+        password: '',
+        username_antigo: '',
+        password_antigo: '',
+        useSameCredentials: true
+    });
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -98,9 +106,16 @@ export default function PoliwebAdminPage() {
     const startEditing = (user: User) => {
         const existing = getUserCredentials(user.id);
         setEditingUser(user.id);
+        
+        // Check if using same credentials (no antigo credentials set)
+        const useSame = !existing?.username_antigo && !existing?.password_antigo;
+        
         setEditForm({
             username: existing?.username || '',
-            password: existing?.password || ''
+            password: existing?.password || '',
+            username_antigo: existing?.username_antigo || '',
+            password_antigo: existing?.password_antigo || '',
+            useSameCredentials: useSame
         });
     };
 
@@ -114,7 +129,10 @@ export default function PoliwebAdminPage() {
                 body: ***REMOVED***
                     userId,
                     username: editForm.username,
-                    password: editForm.password
+                    password: editForm.password,
+                    username_antigo: editForm.useSameCredentials ? null : editForm.username_antigo,
+                    password_antigo: editForm.useSameCredentials ? null : editForm.password_antigo,
+                    useSameCredentials: editForm.useSameCredentials
                 })
             });
 
@@ -192,7 +210,7 @@ export default function PoliwebAdminPage() {
                             Configuração Poliweb
                         </h1>
                         <p className="text-sm text-gray-500">
-                            Gerencie as credenciais de acesso ao Poliweb para cada usuário
+                            Gerencie as credenciais de acesso ao Poliweb (Novo e Antigo)
                         </p>
                     </div>
                 </div>
@@ -223,7 +241,8 @@ export default function PoliwebAdminPage() {
                             Credenciais de Acesso
                         </p>
                         <p className="text-sm text-blue-700 mt-1">
-                            Configure o email e senha de cada usuário para o sistema Poliweb. O login será realizado automaticamente quando o usuário acessar o módulo.
+                            Configure o email e senha para o Poliweb Novo e, opcionalmente, credenciais diferentes para o Poliweb Antigo. 
+                            Marque "Usar mesmas credenciais" para usar os mesmos dados de acesso em ambas as versões.
                         </p>
                     </div>
                 </div>
@@ -253,10 +272,10 @@ export default function PoliwebAdminPage() {
                                     Usuário
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Email Poliweb
+                                    Poliweb Novo (Email)
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Senha
+                                    Poliweb Antigo (Email)
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
@@ -270,6 +289,7 @@ export default function PoliwebAdminPage() {
                             {filteredUsers.map((user) => {
                                 const creds = getUserCredentials(user.id);
                                 const isEditing = editingUser === user.id;
+                                const hasAntigo = creds?.username_antigo || creds?.password_antigo;
 
                                 return (
                                     <tr key={user.id} className={isEditing ? 'bg-blue-50' : 'hover:bg-gray-50'}>
@@ -286,36 +306,92 @@ export default function PoliwebAdminPage() {
                                                 </div>
                                             </div>
                                         </td>
+                                        
+                                        {/* Poliweb Novo */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {isEditing ? (
-                                                <input
-                                                    type="email"
-                                                    value={editForm.username}
-                                                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                                                    placeholder="email@exemplo.com"
-                                                    className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                                />
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.username}
+                                                        onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                                                        placeholder="Email Poliweb Novo"
+                                                        className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.password}
+                                                        onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                                                        placeholder="Senha Poliweb Novo"
+                                                        className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
                                             ) : (
-                                                <span className="text-sm text-gray-900">
-                                                    {creds?.username || <span className="text-gray-400 italic">Não configurado</span>}
-                                                </span>
+                                                <div>
+                                                    <div className="text-sm text-gray-900">
+                                                        {creds?.username || <span className="text-gray-400 italic">Não configurado</span>}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {creds ? '••••••••' : <span className="text-gray-400 italic">—</span>}
+                                                    </div>
+                                                </div>
                                             )}
                                         </td>
+                                        
+                                        {/* Poliweb Antigo */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {isEditing ? (
-                                                <input
-                                                    type="text"
-                                                    value={editForm.password}
-                                                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                                                    placeholder="Senha"
-                                                    className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                                />
+                                                <div className="space-y-2">
+                                                    <label className="flex items-center text-sm text-gray-600 mb-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editForm.useSameCredentials}
+                                                            onChange={(e) => setEditForm({ ...editForm, useSameCredentials: e.target.checked })}
+                                                            className="mr-2"
+                                                        />
+                                                        Usar mesmas credenciais
+                                                    </label>
+                                                    {!editForm.useSameCredentials && (
+                                                        <>
+                                                            <input
+                                                                type="text"
+                                                                value={editForm.username_antigo}
+                                                                onChange={(e) => setEditForm({ ...editForm, username_antigo: e.target.value })}
+                                                                placeholder="Email Poliweb Antigo"
+                                                                className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                value={editForm.password_antigo}
+                                                                onChange={(e) => setEditForm({ ...editForm, password_antigo: e.target.value })}
+                                                                placeholder="Senha Poliweb Antigo"
+                                                                className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                            />
+                                                        </>
+                                                    )}
+                                                </div>
                                             ) : (
-                                                <span className="text-sm text-gray-500">
-                                                    {creds ? '••••••••' : <span className="text-gray-400 italic">—</span>}
-                                                </span>
+                                                <div>
+                                                    {hasAntigo ? (
+                                                        <>
+                                                            <div className="text-sm text-gray-900">
+                                                                {creds?.username_antigo || <span className="text-gray-400 italic">Não configurado</span>}
+                                                            </div>
+                                                            <div className="text-sm text-gray-500">••••••••</div>
+                                                        </>
+                                                    ) : creds ? (
+                                                        <span className="text-sm text-green-600 flex items-center gap-1">
+                                                            <FiCheck className="h-4 w-4" />
+                                                            Mesmo que Novo
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-400 italic">Não configurado</span>
+                                                    )}
+                                                </div>
                                             )}
                                         </td>
+                                        
+                                        {/* Status */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {creds ? (
                                                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-1 w-fit">
@@ -328,6 +404,8 @@ export default function PoliwebAdminPage() {
                                                 </span>
                                             )}
                                         </td>
+                                        
+                                        {/* Actions */}
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             {isEditing ? (
                                                 <div className="flex justify-end space-x-2">
