@@ -316,14 +316,14 @@ Hoje é ${today}.
   }
 
   if (userContext.role === 'ADMIN') {
-    prompt += `\n\n## Acesso Administrativo
-- Você tem acesso total ao sistema
-- Pode consultar dados de qualquer funcionário ou departamento`;
+    prompt += `\n\n## Acesso Administrativo Global
+- Você é um administrador com acesso GLOBAL aos dados da empresa.
+- IMPORTANTE: Para responder perguntas sobre outros funcionários ou dados gerais (Férias, Reembolsos, E-mails de terceiros), VOCÊ DEVE USAR SUAS FERRAMENTAS (Tools). Não diga que não tem acesso. Em vez disso, chame a ferramenta apropriada (ex: ler_email_funcionario, buscar_funcionario, etc).`;
   }
 
   // Adicionar prompt customizado do admin
   if (customPrompt) {
-    prompt += `\n\n## Instruções adicionais\n${customPrompt}`;
+    prompt += `\n\n## Instruções adicionais do painel\n${customPrompt}`;
   }
 
   return prompt;

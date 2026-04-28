@@ -28,8 +28,12 @@ interface User {
 
 interface PoliwebCredential {
     user_id: string;
-    username: string;
-    password: string;
+    username_novo: string;
+    password_novo: string;
+    username_antigo: string;
+    password_antigo: string;
+    has_novo: boolean;
+    has_antigo: boolean;
     user?: User;
 }
 
@@ -43,7 +47,12 @@ export default function PoliwebAdminPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [editingUser, setEditingUser] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState({ username: '', password: '' });
+    const [editForm, setEditForm] = useState({ 
+        username_novo: '', 
+        password_novo: '',
+        username_antigo: '',
+        password_antigo: ''
+    });
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -99,8 +108,10 @@ export default function PoliwebAdminPage() {
         const existing = getUserCredentials(user.id);
         setEditingUser(user.id);
         setEditForm({
-            username: existing?.username || '',
-            password: existing?.password || ''
+            username_novo: existing?.username_novo || '',
+            password_novo: existing?.password_novo || '',
+            username_antigo: existing?.username_antigo || '',
+            password_antigo: existing?.password_antigo || ''
         });
     };
 
@@ -113,8 +124,10 @@ export default function PoliwebAdminPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: ***REMOVED***
                     userId,
-                    username: editForm.username,
-                    password: editForm.password
+                    username_novo: editForm.username_novo,
+                    password_novo: editForm.password_novo,
+                    username_antigo: editForm.username_antigo,
+                    password_antigo: editForm.password_antigo
                 })
             });
 
@@ -244,24 +257,24 @@ export default function PoliwebAdminPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white rounded-lg shadow">
+                <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 320px)', overflowY: 'auto' }}>
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Usuário
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Email Poliweb
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Poliweb Novo
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Senha
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Poliweb Antigo
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
                                 </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Ações
                                 </th>
                             </tr>
@@ -286,54 +299,88 @@ export default function PoliwebAdminPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4">
                                             {isEditing ? (
-                                                <input
-                                                    type="email"
-                                                    value={editForm.username}
-                                                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                                                    placeholder="email@exemplo.com"
-                                                    className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                                />
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="email"
+                                                        value={editForm.username_novo}
+                                                        onChange={(e) => setEditForm({ ...editForm, username_novo: e.target.value })}
+                                                        placeholder="Email Poliweb Novo"
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                    <input
+                                                        type="password"
+                                                        value={editForm.password_novo}
+                                                        onChange={(e) => setEditForm({ ...editForm, password_novo: e.target.value })}
+                                                        placeholder="Senha"
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
                                             ) : (
-                                                <span className="text-sm text-gray-900">
-                                                    {creds?.username || <span className="text-gray-400 italic">Não configurado</span>}
-                                                </span>
+                                                <div className="text-sm">
+                                                    <div className="text-gray-900">
+                                                        {creds?.username_novo || <span className="text-gray-400 italic">—</span>}
+                                                    </div>
+                                                    {creds?.password_novo && <div className="text-gray-400 text-xs">••••••••</div>}
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4">
                                             {isEditing ? (
-                                                <input
-                                                    type="text"
-                                                    value={editForm.password}
-                                                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                                                    placeholder="Senha"
-                                                    className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                                />
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="email"
+                                                        value={editForm.username_antigo}
+                                                        onChange={(e) => setEditForm({ ...editForm, username_antigo: e.target.value })}
+                                                        placeholder="Email Poliweb Antigo"
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                    <input
+                                                        type="password"
+                                                        value={editForm.password_antigo}
+                                                        onChange={(e) => setEditForm({ ...editForm, password_antigo: e.target.value })}
+                                                        placeholder="Senha"
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
                                             ) : (
-                                                <span className="text-sm text-gray-500">
-                                                    {creds ? '••••••••' : <span className="text-gray-400 italic">—</span>}
-                                                </span>
+                                                <div className="text-sm">
+                                                    <div className="text-gray-900">
+                                                        {creds?.username_antigo || <span className="text-gray-400 italic">—</span>}
+                                                    </div>
+                                                    {creds?.password_antigo && <div className="text-gray-400 text-xs">••••••••</div>}
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {creds ? (
-                                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-1 w-fit">
-                                                    <FiCheck className="h-3 w-3" />
-                                                    Configurado
-                                                </span>
-                                            ) : (
-                                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-                                                    Pendente
-                                                </span>
-                                            )}
+                                        <td className="px-4 py-4 whitespace-nowrap">
+                                            <div className="flex gap-1">
+                                                {creds?.has_novo ? (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                                        Novo
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                                                       —
+                                                    </span>
+                                                )}
+                                                {creds?.has_antigo ? (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                                        Antigo
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                                                        —
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             {isEditing ? (
                                                 <div className="flex justify-end space-x-2">
                                                     <button
                                                         onClick={() => saveCredentials(user.id)}
-                                                        disabled={saving || !editForm.username || !editForm.password}
+                                                        disabled={saving}
                                                         className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <FiSave className="h-5 w-5" />

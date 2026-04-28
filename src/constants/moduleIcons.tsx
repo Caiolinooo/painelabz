@@ -22,7 +22,8 @@ import {
     FiAlertTriangle,
     FiDatabase,
     FiActivity,
-    FiClipboard
+    FiClipboard,
+    FiCpu
 } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 
@@ -35,6 +36,7 @@ export const MODULE_ICONS: Record<string, IconType> = {
     'wkradar': FiActivity,
     'contatos': FiPhone,
     'integracao-erp': FiDatabase,
+    'ia-assistant': FiCpu,
 
     // HR
     'ponto': FiClock,

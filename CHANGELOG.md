@@ -15,6 +15,7 @@
 
 ### Fixed
 - Correção no Parser de Stream SSE (`client.ts` e `route.ts`) para suportar corretamente payloads JSON não-standard do LM Studio/Ollama e campos isolados como `delta.reasoning_content`. O bug de "loading infinito sem texto" da IA foi completamente resolvido.
+- Redução de logs excessivos no console client-side pelo `tokenStorage.ts` adicionando modo de depuração ativado via `localStorage`.
 
 
 ## [5.5.2] - 2026-04-17
