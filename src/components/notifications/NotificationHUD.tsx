@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FiBell, FiX, FiCheck, FiCheckCircle, FiClock, FiHeart, FiMessageCircle, FiAlertCircle, FiInfo, FiClipboard } from 'react-icons/fi';
@@ -6,6 +6,20 @@ import { useI18n } from '@/contexts/I18nContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationBanner from './NotificationBanner';
 import NotificationItem from './NotificationItem';
+
+const isVerboseDebugEnabled = (): boolean => {
+  if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') return false;
+  try {
+    return localStorage.getItem('abz:debug') === '1';
+  } catch {
+    return false;
+  }
+};
+const debugLog = (...args: unknown[]) => {
+  if (isVerboseDebugEnabled()) {
+    console.log(...args);
+  }
+};
 
 interface NotificationHUDProps {
   userId: string;
@@ -48,7 +62,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
   const prevUnreadRef = useRef<number>(0);
 
   useEffect(() => {
-    console.log('🔍 NotificationHUD Render:', {
+    debugLog('🔍 NotificationHUD Render:', {
       userId,
       notificationsLength: notifications.length,
       unreadCount,
@@ -202,7 +216,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
   // FIX: Limitar a notificações criadas na última hora para evitar spam de banners antigos
   useEffect(() => {
     if (notifications.length === 0) {
-      console.log('🔔 [Banner] Nenhuma notificação disponível');
+      debugLog('🔔 [Banner] Nenhuma notificação disponível');
       return;
     }
 
@@ -221,7 +235,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
     const latestAge = now.getTime() - new Date(latest.created_at).getTime();
     const isRecent = latestAge < ONE_HOUR_MS;
 
-    console.log('🔔 [Banner] Avaliando notificação:', {
+    debugLog('🔔 [Banner] Avaliando notificação:', {
       id: latest.id,
       title: latest.title,
       created_at: latest.created_at,
@@ -243,7 +257,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
 
     if (latest && !latest.read_at && !shownNotifications.has(latest.id)) {
       if (isBrandNew) {
-        console.log('🔔 [Banner] ✅ Mostrando banner (LIVE):', latest.title);
+        debugLog('🔔 [Banner] ✅ Mostrando banner (LIVE):', latest.title);
         playABZChime();
 
         if (showBanner) {
@@ -251,7 +265,7 @@ const NotificationHUD: React.FC<NotificationHUDProps> = ({
           setIsBannerVisible(true);
         }
       } else {
-        console.log('🔔 [Banner] ⏭️ Silenciando banner (muito antigo):', latestAge / 1000, 's');
+        debugLog('🔔 [Banner] ⏭️ Silenciando banner (muito antigo):', latestAge / 1000, 's');
       }
 
       // Sempre marcar como "processada" para não cair no loop novamente

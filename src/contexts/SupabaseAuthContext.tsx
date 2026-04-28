@@ -127,6 +127,19 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const isVerboseDebugEnabled = (): boolean => {
+  if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') return false;
+  try {
+    return localStorage.getItem('abz:debug') === '1';
+  } catch {
+    return false;
+  }
+};
+const debugLog = (...args: unknown[]) => {
+  if (isVerboseDebugEnabled()) {
+    console.log(...args);
+  }
+};
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -1956,13 +1969,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         updatePassword,
         checkPasswordStatus,
         hasAccess: (module: string) => {
-          console.log(`🔍 Verificando acesso ao módulo: ${module}`);
+          debugLog(`🔍 Verificando acesso ao módulo: ${module}`);
 
           // Caso especial para o módulo de avaliação - ACESSO UNIVERSAL
           if (module === 'avaliacao') {
             // Se há um usuário autenticado (mesmo sem profile carregado), permitir acesso
             const hasUser = !!user;
-            console.log(`✅ Módulo avaliacao - Acesso ${hasUser ? 'PERMITIDO' : 'NEGADO'}:`, {
+            debugLog(`✅ Módulo avaliacao - Acesso ${hasUser ? 'PERMITIDO' : 'NEGADO'}:`, {
               user: !!user,
               userId: user?.id,
               profile: !!profile,
@@ -1976,7 +1989,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           if (module === 'academy') {
             // Se há um usuário autenticado (mesmo sem profile carregado), permitir acesso
             const hasUser = !!user;
-            console.log(`✅ Módulo academy - Acesso ${hasUser ? 'PERMITIDO' : 'NEGADO'}:`, {
+            debugLog(`✅ Módulo academy - Acesso ${hasUser ? 'PERMITIDO' : 'NEGADO'}:`, {
               user: !!user,
               userId: user?.id,
               profile: !!profile,
@@ -1986,7 +1999,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             return hasUser;
           }
 
-          console.log('Estado atual do usuário:', {
+          debugLog('Estado atual do usuário:', {
             isAdmin,
             isManager,
             role: profile?.role,
@@ -1999,13 +2012,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
           // Administradores têm acesso a tudo
           if (isAdmin) {
-            console.log(`Usuário é admin, concedendo acesso ao módulo: ${module}`);
+            debugLog(`Usuário é admin, concedendo acesso ao módulo: ${module}`);
             return true;
           }
 
           // Gerentes têm acesso a tudo, exceto à área de administração
           if (isManager && module !== 'admin') {
-            console.log(`Usuário é gerente, concedendo acesso ao módulo: ${module}`);
+            debugLog(`Usuário é gerente, concedendo acesso ao módulo: ${module}`);
             return true;
           }
 
@@ -2019,7 +2032,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           const individualPermissions = profile?.accessPermissions?.modules || profile?.access_permissions?.modules;
           if (individualPermissions && individualPermissions[module] !== undefined) {
             const hasIndividualAccess = individualPermissions[module];
-            console.log(`🔐 Acesso ao módulo ${module} determinado por permissão individual do usuário: ${hasIndividualAccess}`);
+            debugLog(`🔐 Acesso ao módulo ${module} determinado por permissão individual do usuário: ${hasIndividualAccess}`);
             return hasIndividualAccess;
           }
 
@@ -2035,7 +2048,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             const hasSectorAccess = profile.sector.allowed_modules.includes(module);
             const isCoreModule = coreModules.includes(module);
 
-            console.log(`🔐 Acesso ao módulo ${module} via Setor: ${hasSectorAccess} (Core: ${isCoreModule})`);
+            debugLog(`🔐 Acesso ao módulo ${module} via Setor: ${hasSectorAccess} (Core: ${isCoreModule})`);
 
             // No modo estrito, se tem setor, só acessa se for setorial OU core
             // NÃO caímos para o fallback de roleDefaults se o usuário tiver setor.

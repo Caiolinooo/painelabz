@@ -12,6 +12,7 @@ export const SYSTEM_MODULES: SystemModule[] = [
     { id: 'dashboard', label: 'Dashboard', description: 'Página inicial e visão geral', category: 'core', href: '/dashboard' },
     { id: 'noticias', label: 'Notícias', description: 'Portal de comunicação e novidades', category: 'core', href: '/noticias' },
     { id: 'calendario', label: 'Calendário', description: 'Eventos corporativos e datas importantes', category: 'core', href: '/calendario' },
+    { id: 'ia-assistant', label: 'ABZ Assistant', description: 'Assistente inteligente com IA', category: 'core', href: '/ia' },
 
     // HR (Meu RH)
     { id: 'ponto', label: 'Ponto', description: 'Registro e espelho de ponto', category: 'hr', href: '/ponto' },

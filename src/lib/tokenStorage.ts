@@ -80,6 +80,24 @@ export const saveToken = (token: string, expiryInSeconds?: number): void => {
  */
 // Verificar se estamos no navegador
 const isBrowser = typeof window !== 'undefined';
+const isVerboseDebugEnabled = (): boolean => {
+  if (!isBrowser || process.env.NODE_ENV === 'production') return false;
+  try {
+    return localStorage.getItem('abz:debug') === '1';
+  } catch {
+    return false;
+  }
+};
+const debugLog = (...args: unknown[]) => {
+  if (isVerboseDebugEnabled()) {
+    console.log(...args);
+  }
+};
+const debugWarn = (...args: unknown[]) => {
+  if (isVerboseDebugEnabled()) {
+    console.warn(...args);
+  }
+};
 
 export const getToken = (): string | null => {
   // Se não estamos no navegador (SSR), retornar null
@@ -258,7 +276,7 @@ export const addTokenToHeaders = (headers: HeadersInit = {}): HeadersInit => {
   newHeaders.set('Authorization', `Bearer ${token}`);
 
   // Log para depuração
-  console.log('addTokenToHeaders: Token adicionado ao cabeçalho. Comprimento:', token.length);
+    debugLog('addTokenToHeaders: Token adicionado ao cabeçalho. Comprimento:', token.length);
 
   return newHeaders;
 };
@@ -273,7 +291,7 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
   const token = getToken();
 
   if (!token) {
-    console.warn('Tentativa de fazer requisição autenticada sem token');
+    debugWarn('Tentativa de fazer requisição autenticada sem token');
 
     // Verificar se estamos em uma página que requer autenticação
     if (typeof window !== 'undefined' &&
@@ -296,9 +314,9 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
     headers.set('Authorization', `Bearer ${token}`);
 
     // Log para depuração
-    console.log(`fetchWithToken: Enviando requisição para ${url} com token (comprimento: ${token.length})`);
+    debugLog(`fetchWithToken: Enviando requisição para ${url} com token (comprimento: ${token.length})`);
   } else {
-    console.log(`fetchWithToken: Enviando requisição para ${url} sem token`);
+    debugLog(`fetchWithToken: Enviando requisição para ${url} sem token`);
   }
 
   // Adicionar cabeçalhos padrão se não existirem
@@ -332,7 +350,7 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
 
         // Se o ID não for vazio e não for uma rota especial e não for um UUID válido
         if (cleanId && !specialRoutes.includes(cleanId) && !uuidRegex.test(cleanId)) {
-          console.warn(`fetchWithToken: ID possivelmente inválido na URL: ${cleanId}`);
+          debugWarn(`fetchWithToken: ID possivelmente inválido na URL: ${cleanId}`);
 
           // Se a URL contém um ID inválido e não é uma rota de listagem ou uma rota especial
           if (!url.endsWith('/avaliacoes') && !url.endsWith('/avaliacoes/')) {
@@ -355,7 +373,7 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
       }
     }
 
-    console.log(`fetchWithToken: Enviando requisição para ${urlWithTimestamp}`);
+    debugLog(`fetchWithToken: Enviando requisição para ${urlWithTimestamp}`);
 
     const response = await fetch(urlWithTimestamp, {
       ...options,
@@ -365,7 +383,7 @@ export const fetchWithToken = async (url: string, options: RequestInit = {}): Pr
     });
 
     // Log detalhado para depuração
-    console.log(`fetchWithToken: Resposta de ${url} - Status: ${response.status}`);
+    debugLog(`fetchWithToken: Resposta de ${url} - Status: ${response.status}`);
 
     // Clonar a resposta para permitir múltiplas leituras se necessário
     const clonedResponse = response.clone();
