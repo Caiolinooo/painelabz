@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.6.0] - 2026-04-28
+
+### Added
+- **Módulo de IA (Assistente ABZ)**: Implementação do Agente de IA para suporte aos colaboradores.
+  - Chat interface (`ChatWindow`) integrada ao Painel ABZ com design coeso.
+  - Painel Admin (`IAConfigPanel`) para gerenciar as chaves, endpoints e permissões do modelo de IA (ex: LM Studio, Ollama, OpenAI).
+  - Capacidade de Streaming (SSE) em tempo real, capturando tokens de "reasoning" (Chain-of-Thought) para modelos como GLM-4 Flash e DeepSeek.
+- **Integração com Microsoft Exchange (Graph API)**: 
+  - Fluxo seguro via OAuth2 (Login direto no ambiente Microsoft).
+  - Tabela `ia_user_integrations` para armazenar tokens de forma segura e renovação automática (Refresh Tokens).
+  - IA consegue agora obter contexto instantâneo lendo os últimos 5 e-mails da caixa de entrada do colaborador no Microsoft 365, proporcionando respostas totalmente personalizadas.
+  - Componente `ExchangeIntegrationModal` elegante alertando colaboradores sem e-mail integrado.
+
+### Fixed
+- Correção no Parser de Stream SSE (`client.ts` e `route.ts`) para suportar corretamente payloads JSON não-standard do LM Studio/Ollama e campos isolados como `delta.reasoning_content`. O bug de "loading infinito sem texto" da IA foi completamente resolvido.
+- Redução de logs excessivos no console client-side pelo `tokenStorage.ts` adicionando modo de depuração ativado via `localStorage`.
+
+
 ## [5.5.2] - 2026-04-17
 
 ### Fixed

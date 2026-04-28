@@ -12,6 +12,7 @@ import {
     FiLock, FiUnlock, FiClock, FiUser, FiCheck, FiFileText,
     FiDownload, FiEdit3
 } from 'react-icons/fi';
+import { generateListaPresencaPDF } from '@/lib/pdf/generateListaPresenca';
 
 interface ListaDetail {
     id: string;
@@ -49,6 +50,7 @@ export default function ListaDetailPage() {
     const [registros, setRegistros] = useState<Registro[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSigningIn, setIsSigningIn] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const isManager = profile?.role === 'ADMIN' || profile?.role === 'MANAGER';
 
@@ -131,6 +133,22 @@ export default function ListaDetailPage() {
     const formatTime = (t: string | null) => t ? t.slice(0, 5) : '';
     const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+    const handleDownloadPDF = async () => {
+        if (!lista) return;
+        try {
+            setIsDownloading(true);
+            toast.loading('Gerando PDF...', { id: 'pdf-toast' });
+            const doc = await generateListaPresencaPDF(lista, registros);
+            doc.save(`lista_presenca_${lista.titulo.replace(/[^\w-]/g, '_')}_${lista.data_evento}.pdf`);
+            toast.success('Download concluído!', { id: 'pdf-toast' });
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            toast.error('Erro ao gerar documento PDF', { id: 'pdf-toast' });
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     // Check if current user already signed
     const alreadySigned = registros.some(r => r.user_id === user?.id);
 
@@ -185,6 +203,12 @@ export default function ListaDetailPage() {
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
+                                {isManager && (
+                                    <button onClick={handleDownloadPDF} disabled={isDownloading} className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
+                                        {isDownloading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" /> : <FiDownload className="w-4 h-4" />}
+                                        Baixar PDF
+                                    </button>
+                                )}
                                 <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors">
                                     <FiCopy className="w-4 h-4" />
                                     Copiar Link

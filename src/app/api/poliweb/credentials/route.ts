@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
         const client = await supabaseAdmin;
         const { data: credentials, error } = await client
             .from('poliweb_credentials')
-            .select('username, password, username_antigo, password_antigo')
+<<<<<<< HEAD
+            .select('username, username_novo, password, password_novo, username_antigo, password_antigo')
             .eq('user_id', userId)
             .single();
 
@@ -58,8 +59,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
                 success: true,
                 credentials: {
-                    username: credentials.username,
-                    password: credentials.password,
+                    username_novo: credentials.username_novo || credentials.username,
+                    password_novo: credentials.password_novo || credentials.password,
                     username_antigo: credentials.username_antigo,
                     password_antigo: credentials.password_antigo,
                     useSameCredentials: !credentials.username_antigo && !credentials.password_antigo
@@ -113,32 +114,57 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { userId, username, password, username_antigo, password_antigo, useSameCredentials } = body;
+        const { 
+            userId, 
+            username_novo, 
+            password_novo, 
+            username_antigo, 
+            password_antigo, 
+            username, 
+            password,
+            useSameCredentials 
+        } = body;
 
-        if (!userId || !username || !password) {
+        if (!userId) {
             return NextResponse.json(
-                { success: false, error: 'userId, username e password são obrigatórios' },
+                { success: false, error: 'userId é obrigatório' },
                 { status: 400 }
             );
         }
 
         const client = await supabaseAdmin;
         
-        // If useSameCredentials is true, use novo credentials for antigo as well
-        const antigoUsername = useSameCredentials ? username : (username_antigo || username);
-        const antigoPassword = useSameCredentials ? password : (password_antigo || password);
+        const updateData: Record<string, any> = {
+            user_id: userId,
+            updated_at: new Date().toISOString()
+        };
+
+        // Determine novo credentials
+        const finalUsernameNovo = (username_novo || username || '').trim();
+        const finalPasswordNovo = (password_novo || password || '').trim();
+
+        if (finalUsernameNovo) {
+            updateData.username_novo = finalUsernameNovo;
+            updateData.username = finalUsernameNovo; // Legacy field
+        }
+        if (finalPasswordNovo) {
+            updateData.password_novo = finalPasswordNovo;
+            updateData.password = finalPasswordNovo; // Legacy field
+        }
+
+        // Determine antigo credentials
+        if (useSameCredentials) {
+            updateData.username_antigo = null;
+            updateData.password_antigo = null;
+        } else {
+            if (username_antigo && username_antigo.trim()) updateData.username_antigo = username_antigo.trim();
+            if (password_antigo && password_antigo.trim()) updateData.password_antigo = password_antigo.trim();
+        }
 
         const { data, error } = await client
             .from('poliweb_credentials')
             .upsert(
-                {
-                    user_id: userId,
-                    username: username,
-                    password: password,
-                    username_antigo: useSameCredentials ? username : (username_antigo || null),
-                    password_antigo: useSameCredentials ? password : (password_antigo || null),
-                    updated_at: new Date().toISOString()
-                },
+                updateData,
                 {
                     onConflict: 'user_id'
                 }
@@ -159,7 +185,8 @@ export async function POST(request: NextRequest) {
             message: 'Credenciais salvas com sucesso',
             credentials: {
                 userId: data.user_id,
-                username: data.username
+                username_novo: data.username_novo,
+                username_antigo: data.username_antigo
             }
         });
 

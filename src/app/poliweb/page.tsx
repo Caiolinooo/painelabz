@@ -5,6 +5,7 @@ import MainLayout from '@/components/Layout/MainLayout';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import {
     FiAlertCircle,
+    FiAlertTriangle,
     FiClipboard,
     FiLoader,
     FiMaximize,
@@ -12,6 +13,8 @@ import {
     FiRefreshCw,
     FiSettings,
     FiExternalLink,
+    FiSave,
+    FiX,
 } from 'react-icons/fi';
 
 type TabType = 'novo' | 'antigo';
@@ -40,6 +43,15 @@ export default function PoliwebPage() {
         antigo: initialTabState,
     });
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showCredentialModal, setShowCredentialModal] = useState(false);
+    const [missingCredentialType, setMissingCredentialType] = useState<'novo' | 'antigo' | null>(null);
+    const [credentialForm, setCredentialForm] = useState({
+        username_novo: '',
+        password_novo: '',
+        username_antigo: '',
+        password_antigo: '',
+    });
+    const [savingCredentials, setSavingCredentials] = useState(false);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -104,6 +116,18 @@ export default function PoliwebPage() {
                             loading: false,
                             loggingIn: false,
                             proxyReady: true,
+                            error: null,
+                        }
+                    }));
+                } else if (data.needsCredentialUpdate) {
+                    setMissingCredentialType(data.missingType || activeTab);
+                    setShowCredentialModal(true);
+                    setTabStates(prev => ({
+                        ...prev,
+                        [activeTab]: {
+                            ...prev[activeTab],
+                            loading: false,
+                            loggingIn: false,
                             error: null,
                         }
                     }));
@@ -180,15 +204,185 @@ export default function PoliwebPage() {
         window.open(url, '_blank');
     };
 
+    const handleSaveCredentials = async () => {
+        setSavingCredentials(true);
+        try {
+            const getToken = () => {
+                const cookies = document.cookie.split('; ');
+                const abzToken = cookies.find(row => row.startsWith('abzToken='))?.split('=')[1];
+                const token = cookies.find(row => row.startsWith('token='))?.split('=')[1];
+                return abzToken || token;
+            };
+            const token = getToken();
+            if (!token) {
+                setError('Sessão expirada. Faça login novamente.');
+                return;
+            }
+
+            const response = await fetch('/api/poliweb/credentials', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: user?.id,
+                    username_novo: credentialForm.username_novo,
+                    password_novo: credentialForm.password_novo,
+                    username_antigo: credentialForm.username_antigo,
+                    password_antigo: credentialForm.password_antigo,
+                }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setShowCredentialModal(false);
+                setLoading(true);
+                setError(null);
+                setActiveTab(activeTab);
+                const loginApi = activeTab === 'novo' ? '/api/poliweb/login' : '/api/poliweb-antigo/login';
+                const loginResponse = await fetch(loginApi, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                const loginData = await loginResponse.json();
+                if (loginData.success) {
+                    setProxyReady(true);
+                } else {
+                    setError(loginData.error || 'Falha ao conectar após atualização.');
+                }
+            } else {
+                setError(data.error || 'Erro ao salvar credenciais.');
+            }
+        } catch (err) {
+            console.error('Erro ao salvar credenciais:', err);
+            setError('Erro ao salvar credenciais.');
+        } finally {
+            setSavingCredentials(false);
+            setLoading(false);
+        }
+    };
+
     const getIframeSrc = () => {
         return activeTab === 'novo'
             ? '/api/poliweb-proxy/PainelEmpresa'
-            : '/api/poliweb-antigo-proxy/';
+            : '/api/poliweb-antigo-proxy/Login.aspx';
     };
 
     const getTabLabel = () => {
         return activeTab === 'novo' ? 'Novo Poliweb' : 'Poliweb Antigo';
     };
+
+    const renderCredentialModal = () => (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-amber-100 p-2 rounded-lg">
+                                <FiAlertTriangle className="h-6 w-6 text-amber-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Credenciais Não Configuradas</h2>
+                                <p className="text-sm text-gray-500">Atualize seu cadastro para continuar</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                        <p className="text-sm text-amber-800">
+                            Para acessar o <strong>{missingCredentialType === 'novo' ? 'Poliweb Novo' : 'Poliweb Antigo'}</strong>, 
+                            você precisa cadastrar suas credenciais. Caso tenha credenciais de ambos os sistemas, 
+                            preencha os dois campos para facilitar a alternância.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="border border-gray-200 rounded-lg p-4">
+                            <h3 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
+                                <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">Novo</span>
+                                Poliweb Novo
+                            </h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={credentialForm.username_novo}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, username_novo: e.target.value })}
+                                        placeholder="seu.email@empresa.com"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                                    <input
+                                        type="password"
+                                        value={credentialForm.password_novo}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, password_novo: e.target.value })}
+                                        placeholder="••••••••"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg p-4">
+                            <h3 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
+                                <span className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded">Antigo</span>
+                                Poliweb Antigo
+                            </h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={credentialForm.username_antigo}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, username_antigo: e.target.value })}
+                                        placeholder="seu.email@empresa.com"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                                    <input
+                                        type="password"
+                                        value={credentialForm.password_antigo}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, password_antigo: e.target.value })}
+                                        placeholder="••••••••"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-6">
+                        <button
+                            onClick={handleSaveCredentials}
+                            disabled={savingCredentials || (!credentialForm.username_novo && !credentialForm.password_novo && !credentialForm.username_antigo && !credentialForm.password_antigo)}
+                            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                        >
+                            {savingCredentials ? (
+                                <>
+                                    <FiLoader className="animate-spin h-4 w-4" />
+                                    Salvando...
+                                </>
+                            ) : (
+                                <>
+                                    <FiSave className="h-4 w-4" />
+                                    Salvar e Conectar
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
     if (!hasPoliwebAccess) {
         return (
@@ -217,6 +411,7 @@ export default function PoliwebPage() {
 
     return (
         <MainLayout>
+            {showCredentialModal && renderCredentialModal()}
             <div className="flex flex-col -m-4 md:-m-6 h-[calc(100vh-64px)] md:h-[calc(100vh-80px)]">
                 {/* Header */}
                 <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm z-10">

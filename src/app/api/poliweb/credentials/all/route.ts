@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         const client = await supabaseAdmin;
         const { data: credentials, error } = await client
             .from('poliweb_credentials')
-            .select('id, user_id, username, password, created_at, updated_at')
+            .select('id, user_id, username, username_novo, password, password_novo, username_antigo, password_antigo, created_at, updated_at')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -50,9 +50,21 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        const formattedCredentials = (credentials || []).map(cred => ({
+            user_id: cred.user_id,
+            username_novo: cred.username_novo || cred.username,
+            password_novo: cred.password_novo || cred.password,
+            username_antigo: cred.username_antigo || cred.username,
+            password_antigo: cred.password_antigo || cred.password,
+            has_novo: !!(cred.username_novo || cred.password_novo || cred.username),
+            has_antigo: !!(cred.username_antigo || cred.password_antigo || cred.password),
+            created_at: cred.created_at,
+            updated_at: cred.updated_at
+        }));
+
         return NextResponse.json({
             success: true,
-            credentials: credentials || []
+            credentials: formattedCredentials
         });
 
     } catch (error) {
