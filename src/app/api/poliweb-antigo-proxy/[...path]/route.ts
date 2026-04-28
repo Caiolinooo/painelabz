@@ -5,6 +5,54 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const POLIWEB_ANTIGO_BASE = 'https://www.policlinicaweb.com.br';
+const FORWARDED_RESPONSE_HEADERS = [
+    'content-type',
+    'content-length',
+    'content-encoding',
+    'cache-control',
+    'etag',
+    'last-modified',
+    'accept-ranges',
+    'expires',
+];
+
+function guessContentTypeFromPath(pathname: string): string | null {
+    const normalized = pathname.toLowerCase();
+    if (normalized.endsWith('.ttf')) return 'font/ttf';
+    if (normalized.endsWith('.otf')) return 'font/otf';
+    if (normalized.endsWith('.woff')) return 'font/woff';
+    if (normalized.endsWith('.woff2')) return 'font/woff2';
+    if (normalized.endsWith('.css')) return 'text/css; charset=utf-8';
+    if (normalized.endsWith('.js')) return 'application/javascript; charset=utf-8';
+    if (normalized.endsWith('.svg')) return 'image/svg+xml';
+    if (normalized.endsWith('.png')) return 'image/png';
+    if (normalized.endsWith('.jpg') || normalized.endsWith('.jpeg')) return 'image/jpeg';
+    if (normalized.endsWith('.gif')) return 'image/gif';
+    return null;
+}
+
+function copyAllowedHeaders(upstreamHeaders: Headers, fallbackPath: string): Headers {
+    const headers = new Headers();
+    for (const headerName of FORWARDED_RESPONSE_HEADERS) {
+        const value = upstreamHeaders.get(headerName);
+        if (value) {
+            headers.set(headerName, value);
+        }
+    }
+
+    if (!headers.get('content-type')) {
+        const guessed = guessContentTypeFromPath(fallbackPath);
+        if (guessed) {
+            headers.set('content-type', guessed);
+        }
+    }
+    return headers;
+}
+
+function isFontPath(pathname: string): boolean {
+    const normalized = pathname.toLowerCase();
+    return normalized.endsWith('.ttf') || normalized.endsWith('.otf') || normalized.endsWith('.woff') || normalized.endsWith('.woff2');
+}
 
 /**
  * GET /api/poliweb-antigo-proxy/[...path]
@@ -65,8 +113,10 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
                         { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
                     );
                 }
-                // Rewrite redirect URL to go through proxy
-                const rewrittenLocation = location.replace(POLIWEB_ANTIGO_BASE, '');
+                let rewrittenLocation = `${new URL(location, POLIWEB_ANTIGO_BASE).pathname}${new URL(location, POLIWEB_ANTIGO_BASE).search}`;
+                if (rewrittenLocation === '/' || rewrittenLocation === '') {
+                    rewrittenLocation = '/Login.aspx';
+                }
                 return NextResponse.redirect(new URL(`/api/poliweb-antigo-proxy${rewrittenLocation}`, request.url));
             }
         }
@@ -86,12 +136,21 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
 
         // For non-HTML content (CSS, JS, images, etc.), proxy directly
         const body = await response.arrayBuffer();
-        const headers = new Headers();
-        headers.set('Content-Type', contentType);
-        headers.set('Cache-Control', 'public, max-age=86400');
+        const headers = copyAllowedHeaders(response.headers, targetPath);
+        if (!headers.get('cache-control')) {
+            headers.set('cache-control', 'public, max-age=86400');
+        }
+
+        if (isFontPath(targetPath) && (headers.get('content-type') || '').includes('text/html')) {
+            console.warn('Poliweb antigo proxy returned HTML for font request', {
+                targetPath,
+                status: response.status,
+            });
+        }
 
         return new NextResponse(body, {
             status: response.status,
+            statusText: response.statusText,
             headers,
         });
     } catch (error) {
@@ -176,7 +235,8 @@ export async function POST(request: NextRequest, { params }: { params: { path: s
         if ((response.status === 302 || response.status === 301)) {
             const location = response.headers.get('location');
             if (location) {
-                const rewrittenLocation = location.replace(POLIWEB_ANTIGO_BASE, '');
+                const resolvedLocation = new URL(location, POLIWEB_ANTIGO_BASE);
+                const rewrittenLocation = `${resolvedLocation.pathname}${resolvedLocation.search}`;
                 return NextResponse.redirect(new URL(`/api/poliweb-antigo-proxy${rewrittenLocation}`, request.url));
             }
         }
@@ -194,11 +254,14 @@ export async function POST(request: NextRequest, { params }: { params: { path: s
         }
 
         const responseBody = await response.arrayBuffer();
-        const headers = new Headers();
-        headers.set('Content-Type', responseContentType);
+        const headers = copyAllowedHeaders(response.headers, targetPath);
+        if (!headers.get('content-type') && responseContentType) {
+            headers.set('content-type', responseContentType);
+        }
 
         return new NextResponse(responseBody, {
             status: response.status,
+            statusText: response.statusText,
             headers,
         });
     } catch (error) {
@@ -212,9 +275,16 @@ export async function POST(request: NextRequest, { params }: { params: { path: s
 
 function rewriteHtml(html: string, currentPath: string): string {
     let result = html;
+    const preservedBlocks: string[] = [];
+    const preserveRegex = /<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi;
+    result = result.replace(preserveRegex, (match) => {
+        const key = `__ABZ_PRESERVED_BLOCK_${preservedBlocks.length}__`;
+        preservedBlocks.push(match);
+        return key;
+    });
 
-    // Rewrite relative URLs to go through our proxy
-    result = result.replace(/(href|src|action)="(\/(?!\/)[^"]*)"/g, (match, attr, path) => {
+    // Rewrite relative URLs to go through our proxy (without touching script/style blocks)
+    result = result.replace(/\b(href|src|action)=["'](\/(?!\/)[^"']*)["']/gi, (match, attr, path) => {
         if (path.startsWith('data:') || path.startsWith('javascript:') || path.startsWith('mailto:') || path.startsWith('#')) {
             return match;
         }
@@ -222,7 +292,7 @@ function rewriteHtml(html: string, currentPath: string): string {
     });
 
     // Rewrite absolute URLs to old Poliweb
-    result = result.replace(/(href|src|action)="https:\/\/www\.policlinicaweb\.com\.br\//g, '$1="/api/poliweb-antigo-proxy/');
+    result = result.replace(/(href|src|action)=["']https:\/\/www\.policlinicaweb\.com\.br\//g, '$1="/api/poliweb-antigo-proxy/');
 
     // Rewrite CSS url() references
     result = result.replace(/url\(['"]?(\/(?!\/)[^'")]+)['"]?\)/g, (match, path) => {
@@ -231,6 +301,21 @@ function rewriteHtml(html: string, currentPath: string): string {
 
     // Fix form actions to go through proxy
     result = result.replace(/action="\/Login\.aspx"/g, 'action="/api/poliweb-antigo-proxy/Login.aspx"');
+
+    // Force runtime XHR/fetch root-relative requests through proxy too
+    // (legacy scripts call endpoints like /_recursos/... directly at localhost root)
+    const proxyRuntimePatch = `<script>(function(){try{if(window.__abzPoliwebProxyPatchApplied){return;}window.__abzPoliwebProxyPatchApplied=true;var p='/api/poliweb-antigo-proxy';var rw=function(u){return(typeof u==='string'&&u.charAt(0)==='/'&&!u.startsWith(p))?p+u:u;};var of=window.fetch;if(typeof of==='function'){window.fetch=function(input,init){try{if(typeof input==='string'){input=rw(input);}else if(input&&typeof input.url==='string'){input=rw(input.url);} }catch(e){}return of.call(this,input,init);};}var oo=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){try{u=rw(u);}catch(e){}return oo.apply(this,[m,u].concat([].slice.call(arguments,2)));};}catch(e){}})();</script>`;
+    if (result.includes('</head>')) {
+        result = result.replace('</head>', `${proxyRuntimePatch}</head>`);
+    } else if (result.includes('</body>')) {
+        result = result.replace('</body>', `${proxyRuntimePatch}</body>`);
+    } else {
+        result = `${proxyRuntimePatch}${result}`;
+    }
+
+    result = result.replace(/__ABZ_PRESERVED_BLOCK_(\d+)__/g, (match, index) => {
+        return preservedBlocks[Number(index)] ?? match;
+    });
 
     return result;
 }

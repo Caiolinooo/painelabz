@@ -33,24 +33,37 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get credentials for this user
+        // Get credentials for this user (prefer new fields, fallback to old)
         const client = await supabaseAdmin;
         const { data: credentials, error: credError } = await client
             .from('poliweb_credentials')
-            .select('username, password')
+            .select('username, username_novo, password, password_novo')
             .eq('user_id', authResult.userId)
             .single();
 
-        if (credError || !credentials) {
-            console.error('[Poliweb Login] Credenciais não encontradas para userId:', authResult.userId, 'Error:', credError);
+        if (credError && credError.code !== 'PGRST116') {
+            console.error('[Poliweb Login] Erro ao buscar credenciais para userId:', authResult.userId, 'Error:', credError);
             return NextResponse.json(
-                { success: false, error: 'Credenciais Poliweb não configuradas. Contate o administrador.' },
-                { status: 404 }
+                { success: false, error: 'Erro ao buscar credenciais do Poliweb.' },
+                { status: 500 }
             );
         }
 
-        const email = credentials.username;
-        const password = credentials.password;
+        let email = credentials?.username_novo || credentials?.username;
+        let password = credentials?.password_novo || credentials?.password;
+
+        if (!email || !password) {
+            console.log('[Poliweb Login] Credenciais do Novo Poliweb não configuradas para userId:', authResult.userId);
+            return NextResponse.json(
+                { 
+                    success: false, 
+                    error: 'Credenciais do Poliweb Novo não configuradas.', 
+                    needsCredentialUpdate: true,
+                    missingType: 'novo'
+                },
+                { status: 404 }
+            );
+        }
 
         console.log('[Poliweb Login] Iniciando auto-login para userId:', authResult.userId, 'com email:', email);
 

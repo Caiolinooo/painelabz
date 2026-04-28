@@ -72,12 +72,16 @@ export async function POST(request: NextRequest) {
     // Montar mensagens para o LLM
     const llmMessages = await buildChatMessages(userId, sessionId, message.trim());
 
+    // Buscar profile para obter role
+    const { data: profile } = await supabaseAdmin.from('users_unified').select('role').eq('id', userId).single();
+    const userRole = profile?.role || 'USER';
+
     // =====================================================
     // Streaming mode
     // =====================================================
     if (useStream) {
       try {
-        const stream = await chatCompletionStream(llmMessages);
+        const stream = await chatCompletionStream(llmMessages, undefined, { role: userRole, userId });
         const startTime = Date.now();
 
         // Criar TransformStream para capturar conteúdo completo e salvar ao final
@@ -163,7 +167,7 @@ export async function POST(request: NextRequest) {
     // Sync mode (fallback ou explícito)
     // =====================================================
     const startTime = Date.now();
-    const llmResponse = await chatCompletion(llmMessages);
+    const llmResponse = await chatCompletion(llmMessages, undefined, { role: userRole, userId });
     const responseTime = Date.now() - startTime;
 
     const assistantContent = llmResponse.choices?.[0]?.message?.content || 'Desculpe, não consegui gerar uma resposta.';

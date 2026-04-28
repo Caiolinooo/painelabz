@@ -9,6 +9,7 @@ import type {
   LLMCompletionResponse,
 } from '@/types/ia';
 import { supabaseAdmin } from '@/lib/supabase';
+import { IA_TOOLS_DEFINITION, executeToolCall } from './tools';
 
 // Cache da config para evitar queries repetidas
 let configCache: IAConfig | null = null;
@@ -64,19 +65,22 @@ export async function chatCompletion(
     model?: string;
     maxTokens?: number;
     temperature?: number;
-  }
+  },
+  userContext?: { role: string; userId: string }
 ): Promise<LLMCompletionResponse> {
   const config = await getIAConfig();
   if (!config) {
     throw new Error('IA não está configurada. Configure o endpoint e token no painel admin.');
   }
 
-  const body: LLMCompletionRequest = {
+  const body: any = {
     model: options?.model || config.model_default,
     messages,
     max_tokens: options?.maxTokens || config.max_tokens,
     temperature: options?.temperature ?? config.temperatura,
     stream: false,
+    tools: IA_TOOLS_DEFINITION,
+    tool_choice: 'auto',
   };
 
   const controller = new AbortController();
@@ -98,7 +102,29 @@ export async function chatCompletion(
       throw new Error(`LLM retornou ${response.status}: ${errorText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    
+    // Processar chamadas de ferramenta recursivamente no modo sync
+    if (data.choices?.[0]?.message?.tool_calls && userContext) {
+      const toolCalls = data.choices[0].message.tool_calls;
+      const newMessages = [...messages, data.choices[0].message];
+      
+      for (const tc of toolCalls) {
+        if (tc.type === 'function') {
+          const args = JSON.parse(tc.function.arguments || '{}');
+          const result = await executeToolCall(tc.function.name, args, userContext.role, userContext.userId);
+          newMessages.push({
+            role: 'tool',
+            content: result,
+            tool_call_id: tc.id,
+            name: tc.function.name
+          } as any);
+        }
+      }
+      return chatCompletion(newMessages, options, userContext);
+    }
+    
+    return data;
   } finally {
     clearTimeout(timeout);
   }
@@ -114,19 +140,23 @@ export async function chatCompletionStream(
     model?: string;
     maxTokens?: number;
     temperature?: number;
-  }
+  },
+  userContext?: { role: string; userId: string }
 ): Promise<ReadableStream<Uint8Array>> {
   const config = await getIAConfig();
   if (!config) {
     throw new Error('IA não está configurada. Configure o endpoint e token no painel admin.');
   }
 
-  const body: LLMCompletionRequest = {
+  const body: any = {
     model: options?.model || config.model_default,
     messages,
     max_tokens: options?.maxTokens || config.max_tokens,
     temperature: options?.temperature ?? config.temperatura,
     stream: true,
+    // Removendo ferramentas temporariamente para testar se é isso que está quebrando o LM Studio
+    // tools: IA_TOOLS_DEFINITION,
+    // tool_choice: 'auto',
   };
 
   const controller = new AbortController();
@@ -155,6 +185,11 @@ export async function chatCompletionStream(
 
   let fullContent = '';
   let buffer = '';
+  let isToolCallMode = false;
+  let toolCallId = '';
+  let toolCallName = '';
+  let toolCallArgsStr = '';
+  let fullReasoning = '';
 
   return new ReadableStream<Uint8Array>({
     async pull(streamController) {
@@ -162,7 +197,44 @@ export async function chatCompletionStream(
         const { done, value } = await reader.read();
 
         if (done) {
-          // Enviar evento final com conteúdo completo
+          if (isToolCallMode && userContext) {
+            // Executa a ferramenta e reinicia o stream
+            const args = JSON.parse(toolCallArgsStr || '{}');
+            const result = await executeToolCall(toolCallName, args, userContext.role, userContext.userId);
+            
+            const newMessages = [...messages, {
+              role: 'assistant',
+              tool_calls: [{ id: toolCallId, type: 'function', function: { name: toolCallName, arguments: toolCallArgsStr } }]
+            } as any, {
+              role: 'tool',
+              content: result,
+              tool_call_id: toolCallId,
+              name: toolCallName
+            } as any];
+
+            const nextStream = await chatCompletionStream(newMessages, options, userContext);
+            const nextReader = nextStream.getReader();
+            
+            while (true) {
+              const nextVal = await nextReader.read();
+              if (nextVal.done) {
+                // Apenas fecha, o finish_reason de lá será propagado
+                streamController.close();
+                clearTimeout(timeout);
+                return;
+              }
+              streamController.enqueue(nextVal.value);
+            }
+          }
+
+          // Enviar evento final com conteúdo completo (se não for tool call)
+          console.log('[DEBUG LM STUDIO STREAM END] Final fullContent length:', fullContent.length);
+          if (!fullContent && !isToolCallMode) {
+             console.log('[DEBUG LM STUDIO STREAM END] WARNING: fullContent is empty! Fallback to reasoning.');
+             if (fullReasoning) {
+               fullContent = fullReasoning; // Fallback se o modelo colocou tudo no raciocínio
+             }
+          }
           const finalEvent = `data: ${JSON.stringify({ done: true, fullContent })}\n\n`;
           streamController.enqueue(encoder.encode(finalEvent));
           streamController.close();
@@ -183,13 +255,27 @@ export async function chatCompletionStream(
           try {
             console.log('[DEBUG LM STUDIO CHUNK]:', dataStr);
             const parsed = JSON.parse(dataStr);
+            
+            // Detectar inicio/acúmulo de chamadas de ferramenta (Tool Calling)
+            if (parsed.choices?.[0]?.delta?.tool_calls && parsed.choices[0].delta.tool_calls.length > 0) {
+              isToolCallMode = true;
+              const tc = parsed.choices[0].delta.tool_calls[0];
+              if (tc.id) toolCallId = tc.id;
+              if (tc.function?.name) toolCallName = tc.function.name;
+              if (tc.function?.arguments) toolCallArgsStr += tc.function.arguments;
+              continue; // Pular enqueue de texto
+            }
+
             let content = '';
             
-            if (parsed.choices?.[0]?.delta?.content !== undefined) {
+            if (parsed.choices?.[0]?.delta?.content !== undefined && parsed.choices[0].delta.content !== null) {
               content = parsed.choices[0].delta.content;
             } else if (parsed.choices?.[0]?.delta?.reasoning_content !== undefined) { // Thinking models
-              // Optional: You could format reasoning inside a blockquote or just append it as normal text.
-              content = parsed.choices[0].delta.reasoning_content;
+              // Ocultando o pensamento do modelo conforme solicitado
+              // Logando para sabermos que ele está pensando
+              const rc = parsed.choices[0].delta.reasoning_content;
+              if (rc) fullReasoning += rc;
+              content = ''; 
             } else if (parsed.choices?.[0]?.message?.content !== undefined) {
               content = parsed.choices[0].message.content;
             } else if (parsed.response !== undefined) { // Ollama generate
