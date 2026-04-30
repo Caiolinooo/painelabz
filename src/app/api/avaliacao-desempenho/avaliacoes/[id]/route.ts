@@ -547,7 +547,7 @@ export async function DELETE(
       // Tentar excluir da tabela avaliacoes como fallback
       console.log('Tentando excluir da tabela avaliacoes como fallback');
       const { error: fallbackDeleteError } = await supabaseAdmin
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .delete()
         .eq('id', id);
 

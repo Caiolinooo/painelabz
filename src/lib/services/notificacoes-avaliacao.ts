@@ -400,7 +400,7 @@ Equipe ABZ Group
 
       // Buscar avaliações com prazo próximo
       const { data: avaliacoesPendentes } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .select(`
           id,
           funcionario_id,

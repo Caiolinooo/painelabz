@@ -203,7 +203,7 @@ export default function DiagnosticoSistemaAvaliacao() {
     try {
       // Verificar se há avaliações no sistema
       const { data: avaliacoes, error: avaliacoesError } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .select('id, etapa_atual, status')
         .limit(10);
 

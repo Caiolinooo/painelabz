@@ -10,6 +10,8 @@ import { chatCompletion, chatCompletionStream } from '@/lib/ia/client';
 import { buildChatMessages } from '@/lib/ia/context-builder';
 import type { IAChatMessage } from '@/types/ia';
 
+export const maxDuration = 300; // 5 minutos para permitir execução de tools
+
 export async function POST(request: NextRequest) {
   try {
     const tokenResult = verifyRequestToken(request);
@@ -77,79 +79,54 @@ export async function POST(request: NextRequest) {
     const userRole = profile?.role || 'USER';
 
     // =====================================================
-    // Streaming mode
+    // Streaming Simplificado: chatCompletion (que já processa tools) + fake streaming
     // =====================================================
     if (useStream) {
       try {
-        const stream = await chatCompletionStream(llmMessages, undefined, { role: userRole, userId });
         const startTime = Date.now();
-
-        // Criar TransformStream para capturar conteúdo completo e salvar ao final
-        const { readable, writable } = new TransformStream();
-        const writer = writable.getWriter();
-        const reader = stream.getReader();
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder();
-
-        (async () => {
-          let fullContent = '';
-          let buffer = '';
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              buffer += decoder.decode(value, { stream: true });
-              await writer.write(value);
-
-              // Extrair conteúdo das linhas SSE
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-              
-              for (const line of lines) {
-                if (!line.startsWith('data: ')) continue;
-                try {
-                  const parsed = JSON.parse(line.slice(6));
-                  if (parsed.content) fullContent += parsed.content;
-                  if (parsed.done && parsed.fullContent) fullContent = parsed.fullContent;
-                } catch { /* ignorar */ }
+        
+        // Usar chatCompletion (não-streaming) - que já processa tools automaticamente
+        console.log('[IA Stream] Fazendo chamada não-streaming...');
+        const result = await chatCompletion(llmMessages, undefined, { role: userRole, userId });
+        const content = result?.choices?.[0]?.message?.content || 'Erro ao processar resposta.';
+        console.log('[IA Stream] Resposta recebida, content length:', content.length);
+        
+        // Criar stream fake com chunking para simular streaming
+        const stream = new ReadableStream({
+          start(controller) {
+            const encoder = new TextEncoder();
+            const chunkSize = 15;
+            let i = 0;
+            
+            const sendChunk = () => {
+              if (i < content.length) {
+                const chunk = content.slice(i, i + chunkSize);
+                i += chunkSize;
+                controller.enqueue(encoder.encode(`data: ${***REMOVED*** content: chunk })}\n\n`));
+                setTimeout(sendChunk, 30); // Simular delay de streaming
+              } else {
+                // Evento final
+                const finalEvent = `data: ${***REMOVED*** done: true, fullContent: content })}\n\n`;
+                controller.enqueue(encoder.encode(finalEvent));
+                controller.close();
               }
-            }
-          } catch (err) {
-            console.error('[IA Chat Stream] Erro no stream:', err);
-          } finally {
-            // Salvar resposta completa no banco
-            if (fullContent) {
-              const responseTime = Date.now() - startTime;
-              await supabaseAdmin
-                .from('ia_chat_messages')
-                .insert({
-                  session_id: sessionId,
-                  role: 'assistant',
-                  content: fullContent,
-                  response_time_ms: responseTime,
-                  metadata: { streamed: true },
-                });
-            }
-
-            // Enviar metadata da sessão como último evento
-            const { data: updatedSession } = await supabaseAdmin
-              .from('ia_chat_sessions')
-              .select('*')
-              .eq('id', sessionId)
-              .single();
-
-            const metaEvent = `data: ${***REMOVED*** 
-              meta: true, 
-              session: updatedSession,
-              session_id: sessionId 
-            })}\n\n`;
-            await writer.write(encoder.encode(metaEvent));
-            await writer.close();
+            };
+            
+            sendChunk();
           }
-        })();
-
-        return new Response(readable, {
+        });
+        
+        // Salvar no banco
+        const responseTime = Date.now() - startTime;
+        await supabaseAdmin.from('ia_chat_messages').insert({
+          session_id: sessionId,
+          role: 'assistant',
+          content,
+          response_time_ms: responseTime,
+          metadata: { streamed: true },
+        });
+        
+        return new Response(stream, {
           headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
@@ -158,10 +135,14 @@ export async function POST(request: NextRequest) {
           },
         });
       } catch (streamError) {
-        console.error('[IA Chat Stream] Fallback para modo sync:', streamError);
-        // Fallback para modo não-streaming
+        console.error('[IA Chat Stream] Erro:', streamError);
+        // Continuar para o modo sync abaixo
       }
     }
+
+    // =====================================================
+    // Sync mode (fallback ou explícito)
+    // =====================================================
 
     // =====================================================
     // Sync mode (fallback ou explícito)
