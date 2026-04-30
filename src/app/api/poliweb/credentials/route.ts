@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
         const client = await supabaseAdmin;
         const { data: credentials, error } = await client
             .from('poliweb_credentials')
-<<<<<<< HEAD
             .select('username, username_novo, password, password_novo, username_antigo, password_antigo')
             .eq('user_id', userId)
             .single();

@@ -70,7 +70,7 @@ export class WorkflowAvaliacaoService {
   ): Promise<string | null> {
     try {
       const { data, error } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .insert({
           funcionario_id: funcionarioId,
           avaliador_id: avaliadorId,
@@ -130,7 +130,7 @@ export class WorkflowAvaliacaoService {
 
       // Atualizar etapa da avaliação
       const { error: avaliacaoError } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .update({
           etapa_atual: 'aguardando_gerente',
           data_autoavaliacao: new Date().toISOString(),
@@ -173,7 +173,7 @@ export class WorkflowAvaliacaoService {
       const novaEtapa = aprovada ? 'finalizada' : 'em_aprovacao';
       
       const { error } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .update({
           etapa_atual: novaEtapa,
           data_aprovacao: new Date().toISOString(),
@@ -218,7 +218,7 @@ export class WorkflowAvaliacaoService {
   ): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .update({
           etapa_atual: 'finalizada',
           status: 'concluida',

@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
       console.log('Verificando tabela avaliacoes...');
       
       const { data: existingAvaliacoes, error: checkError } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .select('id')
         .limit(1);
 

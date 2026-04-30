@@ -54,7 +54,7 @@ async function runDatabaseFix() {
       console.log('Tentando método alternativo...');
       
       // Método alternativo: executar SQL diretamente
-      const { error: directError } = await supabase.from('avaliacoes').select('id').limit(1);
+      const { error: directError } = await supabase.from('avaliacoes_desempenho').select('id').limit(1);
       
       if (directError) {
         console.error('Erro ao acessar tabela avaliacoes:', directError);

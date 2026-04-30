@@ -85,7 +85,7 @@ async function fetchEvaluationKPIs(
 
   try {
     let query = supabaseAdmin
-      .from('avaliacoes')
+      .from('avaliacoes_desempenho')
       .select('nota_final, status, created_at, colaborador_id');
 
     if (accessibleIds) {
@@ -185,22 +185,22 @@ async function fetchReimbursementKPIs(
   const kpis: IADashboardKPI[] = [];
 
   try {
-    let query = supabaseAdmin
-      .from('reimbursement_requests')
-      .select('status, total_amount, user_id');
+let query = supabaseAdmin
+      .from('Reimbursement')
+      .select('status, valor_total, user_id');
 
     if (accessibleIds) {
       query = query.in('user_id', accessibleIds);
     }
 
     const { data } = await query
-      .order('created_at', { ascending: false })
+      .order('data', { ascending: false })
       .limit(30);
 
     if (data && data.length > 0) {
-      const pending = data.filter((d: any) => d.status === 'pending');
+      const pending = data.filter((d: any) => d.status === 'PENDING');
       if (pending.length > 0) {
-        const total = pending.reduce((s: number, d: any) => s + (d.total_amount || 0), 0);
+        const total = pending.reduce((s: number, d: any) => s + (d.valor_total || 0), 0);
         kpis.push({
           label: 'Reembolsos Pendentes',
           value: `${pending.length} (R$ ${Math.round(total).toLocaleString('pt-BR')})`,
@@ -229,7 +229,7 @@ async function fetchPendencies(
   // Avaliações pendentes
   try {
     let query = supabaseAdmin
-      .from('avaliacoes')
+      .from('avaliacoes_desempenho')
       .select('id, colaborador_id, status, created_at')
       .in('status', ['pending', 'em_andamento']);
 
@@ -280,10 +280,10 @@ async function fetchPendencies(
   if (role !== 'USER') {
     try {
       const { data } = await supabaseAdmin
-        .from('reimbursement_requests')
-        .select('id, status, total_amount, created_at')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true })
+        .from('Reimbursement')
+        .select('id, status, valor_total, data')
+        .eq('status', 'PENDING')
+        .order('data', { ascending: true })
         .limit(5);
 
       if (data) {
@@ -291,7 +291,7 @@ async function fetchPendencies(
           pendencies.push({
             id: item.id,
             title: 'Reembolso Pendente',
-            description: `R$ ${(item.total_amount || 0).toLocaleString('pt-BR')} aguardando aprovação`,
+            description: `R$ ${(item.valor_total || 0).toLocaleString('pt-BR')} aguardando aprovação`,
             priority: 'medium',
             module: 'Reembolso',
           });

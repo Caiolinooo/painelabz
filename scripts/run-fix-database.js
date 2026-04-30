@@ -207,7 +207,7 @@ async function runFixDatabase() {
     // Verificar se há dados na tabela avaliacoes
     console.log('Verificando se há dados na tabela avaliacoes...');
     const { data: avaliacoes, error: avaliacoesError } = await supabase
-      .from('avaliacoes')
+      .from('avaliacoes_desempenho')
       .select('id, funcionario_id, avaliador_id, periodo')
       .limit(5);
     
@@ -234,7 +234,7 @@ async function runFixDatabase() {
       
       // Inserir dados de exemplo
       const { error: insertAvalError } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .insert([
           { 
             funcionario_id: newFuncionarios[0].id, 

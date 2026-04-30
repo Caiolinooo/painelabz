@@ -124,7 +124,7 @@ async function checkDatabase() {
     // Verificar se há dados na tabela avaliacoes
     console.log('Verificando se há dados na tabela avaliacoes...');
     const { data: avaliacoes, error: avaliacoesError } = await supabase
-      .from('avaliacoes')
+      .from('avaliacoes_desempenho')
       .select('*')
       .limit(5);
     
@@ -159,7 +159,7 @@ async function checkDatabase() {
       
       // Criar avaliação de teste
       const { data: novaAvaliacao, error: novaAvaliacaoError } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .insert({
           funcionario_id: funcionarios[0].id,
           avaliador_id: funcionarios[1].id,

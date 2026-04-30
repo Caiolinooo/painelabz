@@ -51,7 +51,7 @@ async function testAvaliacaoApi() {
     // Testar busca de avaliações
     console.log('Testando busca de avaliações...');
     const { data: avaliacoes, error: avaliacoesError } = await supabase
-      .from('avaliacoes')
+      .from('avaliacoes_desempenho')
       .select(`
         *,
         avaliador:avaliador_id(id, nome, email),
@@ -94,7 +94,7 @@ async function testAvaliacaoApi() {
       const funcionario = funcionarios[1];
       
       const { data: novaAvaliacao, error: novaAvaliacaoError } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .insert({
           avaliador_id: avaliador.id,
           funcionario_id: funcionario.id,
@@ -113,7 +113,7 @@ async function testAvaliacaoApi() {
         // Limpar a avaliação de teste
         console.log('Removendo avaliação de teste...');
         const { error: deleteError } = await supabase
-          .from('avaliacoes')
+          .from('avaliacoes_desempenho')
           .delete()
           .eq('id', novaAvaliacao[0].id);
         

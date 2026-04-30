@@ -261,7 +261,7 @@ export async function GET(request: NextRequest) {
     // Check avaliacoes table
     try {
       const { data: avaliacoes, error: avaliacoesError } = await supabaseAdmin
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .select('id')
         .limit(1);
 
@@ -272,7 +272,7 @@ export async function GET(request: NextRequest) {
         };
       } else {
         const { count, error: countError } = await supabaseAdmin
-          .from('avaliacoes')
+          .from('avaliacoes_desempenho')
           .select('id', { count: 'exact', head: true })
           .is('deleted_at', null);
 

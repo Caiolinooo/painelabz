@@ -62,7 +62,7 @@ async function insertSampleData() {
     // Verificar se já existem avaliações
     console.log('Verificando se já existem avaliações...');
     const { data: avaliacoes, error: avaliacoesError } = await supabase
-      .from('avaliacoes')
+      .from('avaliacoes_desempenho')
       .select('id, funcionario_id, avaliador_id')
       .limit(5);
     
@@ -112,7 +112,7 @@ async function insertSampleData() {
       ];
       
       const { data: novasAvaliacoes, error: novasAvaliacoesError } = await supabase
-        .from('avaliacoes')
+        .from('avaliacoes_desempenho')
         .insert(avaliacoesExemplo)
         .select();
       
