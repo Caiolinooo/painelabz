@@ -1,17 +1,18 @@
 /**
  * Context Builder para o sistema de IA
- * Monta o system prompt e contexto do usuário para enviar ao LLM
+ * Monta o system prompt e contexto do usuario para enviar ao LLM
  */
 import { supabaseAdmin } from '@/lib/supabase';
 import { getEffectiveRole, getTeamMemberIds } from './permissions';
 import { getIAConfig } from './client';
+import { getAvailableTools } from './tools';
 import type { IAUserContext, IAUserRole, LLMMessage, IAChatMessage } from '@/types/ia';
 
-const MAX_HISTORY_MESSAGES = 16; // últimas 16 mensagens (~8 pares user/assistant)
-const MAX_CONTEXT_TOKENS_ESTIMATE = 6000; // chars como proxy de tokens
+const MAX_HISTORY_MESSAGES = 30; // ate 30 mensagens para manter contexto
+const MAX_CONTEXT_TOKENS_ESTIMATE = 25000; // ~20k chars para permitir historico adequado
 
 /**
- * Buscar dados do perfil do usuário
+ * Buscar dados do perfil do usuario
  */
 async function getUserProfile(userId: string): Promise<{
   first_name: string;
@@ -33,7 +34,7 @@ async function getUserProfile(userId: string): Promise<{
 }
 
 /**
- * Buscar dados de avaliações do usuário
+ * Buscar dados de avaliacoes do usuario
  */
 async function getUserEvaluations(userId: string): Promise<{
   count: number;
@@ -42,7 +43,7 @@ async function getUserEvaluations(userId: string): Promise<{
 }> {
   try {
     const { data, error } = await supabaseAdmin
-      .from('avaliacoes')
+      .from('avaliacoes_desempenho')
       .select('nota_final, periodo_id')
       .eq('colaborador_id', userId)
       .order('created_at', { ascending: false })
@@ -66,7 +67,7 @@ async function getUserEvaluations(userId: string): Promise<{
 }
 
 /**
- * Buscar dados de férias do usuário
+ * Buscar dados de ferias do usuario
  */
 async function getUserVacations(userId: string): Promise<{
   pending: number;
@@ -98,7 +99,7 @@ async function getUserVacations(userId: string): Promise<{
 }
 
 /**
- * Buscar dados de reembolsos do usuário
+ * Buscar dados de reembolsos do usuario
  */
 async function getUserReimbursements(userId: string): Promise<{
   pending: number;
@@ -106,18 +107,18 @@ async function getUserReimbursements(userId: string): Promise<{
 }> {
   try {
     const { data, error } = await supabaseAdmin
-      .from('reimbursement_requests')
-      .select('status, total_amount')
+      .from('Reimbursement')
+      .select('status, valor_total')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .order('data', { ascending: false })
       .limit(20);
 
     if (error || !data) return { pending: 0, totalApproved: 0 };
 
-    const pending = data.filter((d: any) => d.status === 'pending').length;
+    const pending = data.filter((d: any) => d.status === 'PENDING').length;
     const totalApproved = data
-      .filter((d: any) => d.status === 'approved')
-      .reduce((sum: number, d: any) => sum + (d.total_amount || 0), 0);
+      .filter((d: any) => d.status === 'APPROVED')
+      .reduce((sum: number, d: any) => sum + (d.valor_total || 0), 0);
 
     return { pending, totalApproved: Math.round(totalApproved * 100) / 100 };
   } catch {
@@ -141,9 +142,8 @@ async function getUserEmails(userId: string): Promise<Array<{subject: string; fr
 
     let accessToken = integration.access_token;
     
-    // Simples verificação de expiração (se existir expires_at e for no passado)
+    // Verificacao de expiracao
     if (integration.expires_at && new Date(integration.expires_at) < new Date()) {
-      // Renovar token
       const MS_CLIENT_ID = process.env.MS_GRAPH_CLIENT_ID || '';
       const MS_CLIENT_SECRET = process.env.MS_GRAPH_CLIENT_SECRET || '';
       const MS_TENANT_ID = process.env.MS_GRAPH_TENANT_ID || 'common';
@@ -176,7 +176,6 @@ async function getUserEmails(userId: string): Promise<Array<{subject: string; fr
       }
     }
 
-    // Buscar e-mails
     const res = await fetch('https://graph.microsoft.com/v1.0/me/messages?$top=5&$select=subject,from,receivedDateTime', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
@@ -196,7 +195,7 @@ async function getUserEmails(userId: string): Promise<Array<{subject: string; fr
 }
 
 /**
- * Construir contexto completo do usuário
+ * Construir contexto completo do usuario
  */
 export async function buildUserContext(userId: string): Promise<IAUserContext | null> {
   const profile = await getUserProfile(userId);
@@ -204,19 +203,25 @@ export async function buildUserContext(userId: string): Promise<IAUserContext | 
 
   const effectiveRole = await getEffectiveRole(userId, profile.role);
 
-  const [evaluations, vacations, reimbursements, recentEmails] = await Promise.all([
+  const [evaluations, vacations, reimbursements, recentEmails, availableToolsData] = await Promise.all([
     getUserEvaluations(userId),
     getUserVacations(userId),
     getUserReimbursements(userId),
     getUserEmails(userId),
+    getAvailableTools(userId, effectiveRole),
   ]);
+
+  const availableTools = availableToolsData.map(t => ({
+    name: t.function.name,
+    description: t.function.description || 'Sem descricao'
+  }));
 
   const context: IAUserContext = {
     userId,
     userName: `${profile.first_name} ${profile.last_name}`.trim(),
     role: effectiveRole,
-    department: profile.department || 'Não definido',
-    position: profile.position || 'Não definido',
+    department: profile.department || 'Nao definido',
+    position: profile.position || 'Nao definido',
     profile: {
       email: profile.email,
       phone: profile.phone_number,
@@ -225,9 +230,9 @@ export async function buildUserContext(userId: string): Promise<IAUserContext | 
     vacations,
     reimbursements,
     recentEmails,
+    availableTools,
   };
 
-  // Se gerente, buscar IDs da equipe
   if (effectiveRole === 'GERENTE') {
     context.teamMemberIds = await getTeamMemberIds(userId);
   }
@@ -236,7 +241,7 @@ export async function buildUserContext(userId: string): Promise<IAUserContext | 
 }
 
 /**
- * Gerar system prompt baseado no contexto do usuário
+ * Gerar system prompt baseado no contexto do usuario
  */
 export function buildSystemPrompt(userContext: IAUserContext, customPrompt?: string): string {
   const today = new Date().toLocaleDateString('pt-BR', {
@@ -246,43 +251,72 @@ export function buildSystemPrompt(userContext: IAUserContext, customPrompt?: str
     day: 'numeric',
   });
 
-  let prompt = `Você é o Assistente IA do Portal ABZ Group, um sistema corporativo de gestão de RH.
-Hoje é ${today}.
+  let prompt = `Voce e o Assistente IA do Portal ABZ Group, um sistema corporativo de gestao de RH.
+Hoje e ${today}.
 
-## Sobre você
-- Seu nome é **ABZ Assistant**
-- Você ajuda funcionários da ABZ Group com informações sobre seu trabalho
-- Responda sempre em Português Brasileiro
-- Seja profissional, objetivo e amigável
-- Use markdown para formatar respostas quando útil (listas, negrito, tabelas)
-- Nunca invente dados — use apenas as informações fornecidas no contexto
+## FLUXO DE TRABALHO (IMPORTANTE)
+Quando voce recebe uma pergunta que precisa de dados em tempo real:
+1. Se precisa de dados -> use APENAS UMA ferramenta por pergunta
+2. Execute a ferramenta e receba o resultado
+3. Apos receber o resultado, RESPONDA O USUARIO diretamente com os dados
+4. NAO repita a chamada de ferramenta - ja recebeu os dados!
 
-## Usuário atual
+Exemplo CORRETO:
+Usuario: "Quais sao minhas pendencias?"
+Voce: (executa ferramenta buscar_ferias)
+Resultado: "Voce tem 2 solicitacoes pendentes"
+Voce: "Voce tem 2 solicitacoes de ferias pendentes de aprovacao."
+
+Exemplo INCORRETO (NAO FACA ISSO):
+Usuario: "Quais sao minhas pendencias?"
+Voce: (executa ferramenta) -> resultado -> (executa mesma ferramenta novamente) -> loop infinito!
+
+## Sobre voce
+- Seu nome e **ABZ Assistant**
+- Voce ajuda funcionarios da ABZ Group com informacoes sobre seu trabalho
+- Responda sempre em Portugues Brasileiro
+- Seja profissional, objetivo e amigavel
+- Use markdown para formatar respostas quando util (listas, negrito, tabelas)
+- Nunca invente dados — use apenas as informacoes fornecidas no contexto
+
+## Usuario atual (IMPORTANTE - VOCE CONHECE ESTE USUARIO!)
 - **Nome:** ${userContext.userName}
+- **Email:** ${userContext.profile?.email || 'N/A'}
 - **Cargo:** ${userContext.position}
 - **Departamento:** ${userContext.department}
-- **Nível de acesso:** ${userContext.role}`;
+- **Nivel de acesso:** ${userContext.role}
+- **Seu ID:** ${userContext.userId}
 
-  // Adicionar dados de avaliações
+QUANDO O USUARIO PERGUNTAR:
+- "minhas ferias", "meus reembolsos", "meus eventos", "meus EPIs", "minhas avaliacoes" → use a ferramenta buscar_dados_usuario com usuario: "meu"
+- "resumo", "minhas pendencias", "meu resumo" → use tipo: "resumo" com usuario: "meu"
+- Para ver dados de OUTRA pessoa → use o email ou nome dessa pessoa
+
+O sistema ja verifica permissões automaticamente:
+- USER: só vê próprios dados
+- GERENTE: vê próprios + dados da equipe
+- ADMIN: vê todos os dados
+
+IMPORTANTE: Voce ja sabe o email e ID do usuario logado! NAO peca essas informacoes. Use a ferramenta buscar_dados_usuario para buscar dados.`;
+
   if (userContext.evaluations && userContext.evaluations.count > 0) {
-    prompt += `\n\n## Avaliações de Desempenho
-- Total de avaliações: ${userContext.evaluations.count}`;
+    prompt += `\n\n## Avaliacoes de Desempenho
+- Total de avaliacoes: ${userContext.evaluations.count}`;
     if (userContext.evaluations.avgScore) {
-      prompt += `\n- Nota média: ${userContext.evaluations.avgScore}`;
+      prompt += `\n- Nota media: ${userContext.evaluations.avgScore}`;
     }
     if (userContext.evaluations.lastPeriod) {
-      prompt += `\n- Último período avaliado: ${userContext.evaluations.lastPeriod}`;
+      prompt += `\n- Ultimo periodo avaliado: ${userContext.evaluations.lastPeriod}`;
     }
   }
 
-  // Adicionar dados de férias
   if (userContext.vacations) {
     const { pending, upcoming } = userContext.vacations;
     if (pending > 0 || upcoming.length > 0) {
-      prompt += `\n\n## Férias`;
-      if (pending > 0) prompt += `\n- Solicitações pendentes: ${pending}`;
+      prompt += `\n\n## Ferias`;
+      if (pending > 0) prompt += `\n- Solicitacoes pendentes: ${pending}`;
       if (upcoming.length > 0) {
-        prompt += `\n- Próximas férias:`;
+        prompt += `\n- Proximas ferias:`;
         for (const v of upcoming) {
           prompt += `\n  - ${v.start} a ${v.end} (${v.status === 'approved' ? 'aprovada' : 'pendente'})`;
         }
@@ -290,7 +324,6 @@ Hoje é ${today}.
     }
   }
 
-  // Adicionar dados de reembolsos
   if (userContext.reimbursements) {
     const { pending, totalApproved } = userContext.reimbursements;
     if (pending > 0 || totalApproved > 0) {
@@ -300,37 +333,48 @@ Hoje é ${today}.
     }
   }
 
-  // Adicionar dados de e-mails
   if (userContext.recentEmails && userContext.recentEmails.length > 0) {
-    prompt += `\n\n## E-mails Recentes (Microsoft 365)\nO usuário conectou sua caixa de entrada. Aqui estão os 5 e-mails mais recentes recebidos:`;
+    prompt += `\n\n## E-mails Recentes (Microsoft 365)
+O usuario conectou sua caixa de entrada. Aqui estao os 5 e-mails mais recentes recebidos:`;
     userContext.recentEmails.forEach(email => {
       prompt += `\n- De: ${email.from} | Assunto: "${email.subject}" | Data: ${email.date}`;
     });
   }
 
-  // Adicionar informação sobre equipe (gerente)
   if (userContext.role === 'GERENTE' && userContext.teamMemberIds) {
     prompt += `\n\n## Equipe
-- Você gerencia ${userContext.teamMemberIds.length} colaborador(es)
-- Você pode perguntar sobre dados da sua equipe`;
+- Voce gerencia ${userContext.teamMemberIds.length} colaborador(es)
+- Voce pode perguntar sobre dados da sua equipe`;
   }
 
   if (userContext.role === 'ADMIN') {
     prompt += `\n\n## Acesso Administrativo Global
-- Você é um administrador com acesso GLOBAL aos dados da empresa.
-- IMPORTANTE: Para responder perguntas sobre outros funcionários ou dados gerais (Férias, Reembolsos, E-mails de terceiros), VOCÊ DEVE USAR SUAS FERRAMENTAS (Tools). Não diga que não tem acesso. Em vez disso, chame a ferramenta apropriada (ex: ler_email_funcionario, buscar_funcionario, etc).`;
+- Voce e um administrador com acesso GLOBAL aos dados da empresa.
+- IMPORTANTE: Para responder perguntas sobre outros funcionarios ou dados gerais (Ferias, Reembolsos, E-mails de terceiros), VOCE DEVE USAR SUAS FERRAMENTAS (Tools). Nao diga que nao tem acesso. Em vez disso, chame a ferramenta apropriada (ex: ler_email_funcionario, buscar_funcionario, etc).`;
   }
 
-  // Adicionar prompt customizado do admin
+  if (userContext.availableTools && userContext.availableTools.length > 0) {
+    prompt += `\n\n## Ferramentas Disponiveis
+Voce tem acesso as seguintes ferramentas para buscar dados em tempo real:
+${userContext.availableTools.map(t => `- **${t.name}**: ${t.description}`).join('\n')}
+
+## Como usar ferramentas
+- Use cada ferramenta APENAS uma vez por pergunta
+- Apos receber o resultado da ferramenta, RESPONDA O USUARIO diretamente com os dados recebidos
+- NAO repita a mesma ferramenta varias vezes
+- Se a ferramenta retornar dados vazios ou erro, INFORME isso ao usuario diretamente
+- NAO continue pedindo para executar mais ferramentas se ja recebeu os dados`;
+  }
+
   if (customPrompt) {
-    prompt += `\n\n## Instruções adicionais do painel\n${customPrompt}`;
+    prompt += `\n\n## Instrucoes adicionais do painel\n${customPrompt}`;
   }
 
   return prompt;
 }
 
 /**
- * Buscar histórico de mensagens da sessão para incluir no contexto
+ * Buscar historico de mensagens da sessao para incluir no contexto
  */
 export async function getSessionHistory(sessionId: string): Promise<LLMMessage[]> {
   const { data, error } = await supabaseAdmin
@@ -342,11 +386,9 @@ export async function getSessionHistory(sessionId: string): Promise<LLMMessage[]
 
   if (error || !data) return [];
 
-  // Limitar por tamanho estimado de contexto
   const messages: LLMMessage[] = [];
   let totalChars = 0;
 
-  // Processar do mais recente para o mais antigo para priorizar mensagens recentes
   const reversed = [...data].reverse();
   for (const msg of reversed) {
     totalChars += msg.content.length;
@@ -359,7 +401,7 @@ export async function getSessionHistory(sessionId: string): Promise<LLMMessage[]
 
 /**
  * Montar array completo de mensagens para enviar ao LLM
- * system prompt + histórico + mensagem nova
+ * system prompt + historico + mensagem nova
  */
 export async function buildChatMessages(
   userId: string,
@@ -373,7 +415,7 @@ export async function buildChatMessages(
   ]);
 
   if (!userContext) {
-    throw new Error('Usuário não encontrado');
+    throw new Error('Usuario nao encontrado');
   }
 
   const systemPrompt = buildSystemPrompt(userContext, config?.system_prompt || undefined);
@@ -383,6 +425,8 @@ export async function buildChatMessages(
     ...history,
     { role: 'user', content: newMessage },
   ];
+
+  console.log(`[IA Context] Session: ${sessionId}, History: ${history.length} msgs, Total msgs: ${messages.length}, System prompt chars: ${systemPrompt.length}`);
 
   return messages;
 }
