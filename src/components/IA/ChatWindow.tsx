@@ -13,6 +13,7 @@ interface Props {
 export default function ChatWindow({ token }: Props) {
   const [sessions, setSessions] = useState<IAChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const activeSessionIdRef = useRef<string | null>(null); // ref para acesso imediato
   const [messages, setMessages] = useState<IAChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +38,9 @@ export default function ChatWindow({ token }: Props) {
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [messages, streamingContent, scrollToBottom]);
+
+  // Sincronizar ref com estado
+  useEffect(() => { activeSessionIdRef.current = activeSessionId; }, [activeSessionId]);
 
   // Load sessions
   const loadSessions = useCallback(async () => {
@@ -106,8 +110,10 @@ export default function ChatWindow({ token }: Props) {
     setIsSending(true);
     setInput('');
 
+    const currentSessionId = activeSessionIdRef.current; // usar ref para evitar latência
+
     const tempMsg: IAChatMessage = {
-      id: `temp-${Date.now()}`, session_id: activeSessionId || '',
+      id: `temp-${Date.now()}`, session_id: currentSessionId || '',
       role: 'user', content: msg, tokens_used: null, response_time_ms: null,
       metadata: {}, created_at: new Date().toISOString(),
     };
@@ -116,7 +122,7 @@ export default function ChatWindow({ token }: Props) {
     try {
       const res = await fetch('/api/ia/chat', {
         method: 'POST', headers: hdrs(),
-        body: ***REMOVED*** session_id: activeSessionId, message: msg, stream: true }),
+        body: ***REMOVED*** session_id: currentSessionId, message: msg, stream: true }),
       });
 
       const newSid = res.headers.get('X-Session-Id');
@@ -139,16 +145,19 @@ export default function ChatWindow({ token }: Props) {
             if (!line.startsWith('data: ')) continue;
             try {
               const p = JSON.parse(line.slice(6));
-              if (p.meta) { if (p.session_id && !activeSessionId) setActiveSessionId(p.session_id); loadSessions(); continue; }
+              if (p.meta) { if (p.session_id && !currentSessionId) setActiveSessionId(p.session_id); loadSessions(); continue; }
               if (p.content) { content += p.content; setStreamingContent(content); }
-              if (p.done && p.fullContent) content = p.fullContent;
+              if (p.done && p.fullContent) {
+                content = p.fullContent;
+                if (!currentSessionId && newSid) setActiveSessionId(newSid);
+              }
             } catch { /* skip */ }
           }
         }
 
         if (content) {
           setMessages(prev => [...prev, {
-            id: `a-${Date.now()}`, session_id: activeSessionId || newSid || '',
+            id: `a-${Date.now()}`, session_id: currentSessionId || newSid || '',
             role: 'assistant', content, tokens_used: null, response_time_ms: null,
             metadata: {}, created_at: new Date().toISOString(),
           }]);
@@ -157,7 +166,7 @@ export default function ChatWindow({ token }: Props) {
       } else {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        if (data.session_id && !activeSessionId) setActiveSessionId(data.session_id);
+        if (data.session_id && !currentSessionId) setActiveSessionId(data.session_id);
         if (data.message) setMessages(prev => [...prev, data.message]);
         loadSessions();
       }
