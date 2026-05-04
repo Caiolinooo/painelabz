@@ -67,7 +67,12 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
       if (res.ok) {
         setMessage({ type: 'success', text: `Ferramenta ${key} ${enabled ? 'ativada' : 'desativada'}.` });
       } else {
-        const errMsg = data?.error || data?.message || 'Erro ao salvar alteração';
+        const errMsg = (data as any)?.error || (data as any)?.message || 'Erro ao salvar alteração';
+        // Debug adicional para entender a falha quando o backend retornar 4xx/5xx
+        try {
+          // @ts-ignore
+        } catch {}
+        console.error('Falha ao salvar toggle IA', { key, enabled, status: res.status, response: data });
         setMessage({ type: 'error', text: `Erro ao salvar: ${errMsg}` });
       }
     } catch (err) {
