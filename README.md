@@ -101,3 +101,8 @@ Para o histórico completo, consulte o [CHANGELOG.md](CHANGELOG.md).
 <p align="center">
 Desenvolvido com ❤️ pela equipe ABZ Group.
 </p>
+# IA Pendências e Orquestração
+- MVP para detecção e orquestração de pendências entre Teams, Emails, Calendar e Knowledge.
+- Endpoints adicionados para cada fonte e um endpoint consolidado de overview.
+- O sistema usa um orchestrator simples para decidir a fonte a ser consultada e as ações a serem executadas.
+- A UI permanece inalterada; a IA responde com justificativas e planos de ação via chat.
