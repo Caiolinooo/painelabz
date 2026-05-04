@@ -53,6 +53,8 @@ export {
 
 // Microsoft Graph
 export { msGraphClient } from './microsoft/client';
+export { MS_GRAPH_CATEGORIES, getCategoriesWithStatus, getCategory, getDefaultMicrosoftPermissions } from './microsoft/permissions-registry';
+export type { MSGraphCategory } from './microsoft/permissions-registry';
 
 // Types
 export * from '@/types/ia-global';

@@ -602,6 +602,332 @@ export const IA_TOOLS_DEFINITION = [
     },
     requireModule: 'academy',
   },
+  // =====================================================
+  // Microsoft Graph - Novas Ferramentas por Categoria
+  // =====================================================
+  {
+    type: 'function',
+    function: {
+      name: 'listar_contatos_outlook',
+      description: 'Lista contatos do Outlook de um usuário. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        email: { type: 'string', description: 'Email corporativo do usuário' },
+        limite: { type: 'number', description: 'Limite de resultados (padrão: 20)' },
+      }, required: ['email'] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_grupos_365',
+      description: 'Lista grupos do Microsoft 365 da organização. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        limite: { type: 'number', description: 'Limite de resultados (padrão: 50)' },
+      }, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_membros_grupo',
+      description: 'Lista membros de um grupo do Microsoft 365. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        grupo_id: { type: 'string', description: 'ID do grupo' },
+      }, required: ['grupo_id'] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_info_organizacao',
+      description: 'Busca informações da organização (domínios, país, etc). Apenas ADMIN.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_alertas_seguranca',
+      description: 'Lista alertas de segurança do Microsoft 365. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        limite: { type: 'number', description: 'Limite de alertas (padrão: 20)' },
+      }, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_incidentes_seguranca',
+      description: 'Lista incidentes de segurança. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        limite: { type: 'number', description: 'Limite (padrão: 10)' },
+      }, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_logs_auditoria',
+      description: 'Busca logs de auditoria e sign-ins do Azure AD. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        tipo: { type: 'string', enum: ['audit', 'signin'], description: 'Tipo: audit (auditoria) ou signin (logins)' },
+        limite: { type: 'number', description: 'Limite (padrão: 20)' },
+      }, required: ['tipo'] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_aplicacoes_azure',
+      description: 'Lista aplicações registradas no Azure AD. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        limite: { type: 'number', description: 'Limite (padrão: 50)' },
+      }, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_dispositivos',
+      description: 'Lista dispositivos gerenciados pelo Azure AD. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        limite: { type: 'number', description: 'Limite (padrão: 50)' },
+      }, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_sites_sharepoint',
+      description: 'Busca/lista sites do SharePoint. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        busca: { type: 'string', description: 'Termo de busca (opcional)' },
+      }, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_cadernos_onenote',
+      description: 'Lista cadernos do OneNote de um usuário. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        email: { type: 'string', description: 'Email do usuário' },
+      }, required: ['email'] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_tarefas_todo',
+      description: 'Lista listas de tarefas do Microsoft To Do de um usuário. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        email: { type: 'string', description: 'Email do usuário' },
+      }, required: ['email'] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_reunioes_online',
+      description: 'Lista reuniões online (Teams meetings) de um usuário. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        email: { type: 'string', description: 'Email do usuário' },
+      }, required: ['email'] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_canais_teams',
+      description: 'Lista canais de uma equipe do Teams. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {
+        team_id: { type: 'string', description: 'ID da equipe (team)' },
+      }, required: ['team_id'] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_status_servicos_365',
+      description: 'Verifica o status de saúde dos serviços Microsoft 365 e incidentes ativos. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_reviews_acesso',
+      description: 'Lista access reviews de governança de identidade. Apenas ADMIN.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+    adminOnly: true,
+  },
+  // =====================================================
+  // AGENTE PROATIVO — Novas ferramentas
+  // =====================================================
+  {
+    type: 'function',
+    function: {
+      name: 'pesquisar_emails_outlook',
+      description: 'Busca avançada de e-mails no Outlook via Microsoft Graph. Permite filtros por remetente, assunto, data, pasta e mais. Retorna até 50 resultados. Use para buscar e-mails específicos quando o usuário pedir.',
+      parameters: {
+        type: 'object',
+        properties: {
+          email_usuario: { type: 'string', description: 'E-mail do usuário cujos e-mails serão pesquisados' },
+          consulta: { type: 'string', description: 'Texto livre para busca nos e-mails (assunto e corpo)' },
+          de: { type: 'string', description: 'Filtrar por remetente (e-mail)' },
+          assunto: { type: 'string', description: 'Filtrar por assunto (contém)' },
+          data_inicio: { type: 'string', description: 'Data início (YYYY-MM-DD)' },
+          data_fim: { type: 'string', description: 'Data fim (YYYY-MM-DD)' },
+          pasta: { type: 'string', description: 'Pasta específica (inbox, sentitems, drafts)' },
+          limite: { type: 'number', description: 'Quantidade máxima de resultados (padrão: 20, máx: 50)' },
+        },
+        required: ['email_usuario'],
+      },
+    },
+    adminOnly: true,
+    featureToggle: 'email_search',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'enviar_email_outlook',
+      description: 'Envia um e-mail via conta corporativa do Microsoft 365 (Outlook). Permite enviar e-mails em nome do usuário usando a API Graph.',
+      parameters: {
+        type: 'object',
+        properties: {
+          email_remetente: { type: 'string', description: 'E-mail do remetente (quem envia)' },
+          destinatarios: { type: 'string', description: 'E-mails dos destinatários separados por vírgula' },
+          assunto: { type: 'string', description: 'Assunto do e-mail' },
+          corpo: { type: 'string', description: 'Corpo do e-mail em HTML' },
+          copia: { type: 'string', description: 'E-mails em cópia (CC) separados por vírgula' },
+        },
+        required: ['email_remetente', 'destinatarios', 'assunto', 'corpo'],
+      },
+    },
+    adminOnly: true,
+    featureToggle: 'email_send',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_nota_corporativa',
+      description: 'Cria uma nota no OneNote corporativo ou uma tarefa no Microsoft To Do do usuário.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: { type: 'string', enum: ['onenote', 'todo'], description: 'Tipo: onenote (criar página) ou todo (criar tarefa)' },
+          email_usuario: { type: 'string', description: 'E-mail do usuário no Microsoft 365' },
+          titulo: { type: 'string', description: 'Título da nota ou tarefa' },
+          conteudo: { type: 'string', description: 'Conteúdo da nota (HTML) ou descrição da tarefa' },
+          data_vencimento: { type: 'string', description: 'Data de vencimento para tarefas To Do (YYYY-MM-DD)' },
+          importancia: { type: 'string', enum: ['low', 'normal', 'high'], description: 'Importância da tarefa' },
+        },
+        required: ['tipo', 'email_usuario', 'titulo'],
+      },
+    },
+    adminOnly: false,
+    featureToggle: 'onenote_create',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'agendar_tarefa_agente',
+      description: 'Agenda uma tarefa de monitoramento periódico para o agente IA. Pode ser verificação de KPIs, lembretes ou prompts customizados. Use expressões cron para definir a frequência.',
+      parameters: {
+        type: 'object',
+        properties: {
+          nome: { type: 'string', description: 'Nome descritivo da tarefa' },
+          tipo: { type: 'string', enum: ['kpi_check', 'reminder', 'report', 'custom'], description: 'Tipo: kpi_check (monitorar KPIs), reminder (lembrete), report (gerar relatório), custom (prompt livre)' },
+          prompt: { type: 'string', description: 'Instrução/mensagem do que o agente deve fazer ou enviar' },
+          cron: { type: 'string', description: 'Expressão cron (ex: "50 7 * * 1-5" para 7:50 seg-sex, "0 14 * * 1-5" para 14:00 seg-sex)' },
+          usuarios_alvo: { type: 'string', description: 'IDs ou e-mails dos usuários alvo separados por vírgula (opcional)' },
+          roles_alvo: { type: 'string', description: 'Roles dos usuários alvo: ADMIN, GERENTE, USER (separados por vírgula)' },
+          canais: { type: 'string', description: 'Canais de notificação: push, email, portal (separados por vírgula). Padrão: push,email' },
+          max_execucoes: { type: 'number', description: 'Número máximo de execuções (opcional, sem limite se omitido)' },
+        },
+        required: ['nome', 'tipo', 'prompt', 'cron'],
+      },
+    },
+    adminOnly: true,
+    featureToggle: 'scheduled_tasks',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'analisar_kpis_negocio',
+      description: 'Analisa os KPIs de performance e soluções do portal, comparando valores atuais com metas definidas. Identifica anomalias e sugere ações. Dados incluem: avaliações, férias, reembolsos, EPIs.',
+      parameters: {
+        type: 'object',
+        properties: {
+          departamento: { type: 'string', description: 'Filtrar análise por departamento específico (opcional)' },
+          tipo_kpi: { type: 'string', enum: ['performance', 'solucoes', 'todos'], description: 'Tipo de KPI: performance (avaliações), solucoes (ações/entregas), todos' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+    featureToggle: 'kpi_analysis',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'enviar_notificacao_proativa',
+      description: 'Envia uma notificação proativa para um ou mais usuários via push, e-mail e/ou popup do portal. Use para lembretes, alertas e acompanhamento de tarefas.',
+      parameters: {
+        type: 'object',
+        properties: {
+          usuarios: { type: 'string', description: 'IDs dos usuários alvo separados por vírgula' },
+          titulo: { type: 'string', description: 'Título da notificação' },
+          mensagem: { type: 'string', description: 'Corpo da mensagem' },
+          canais: { type: 'string', description: 'Canais: push, email, portal (separados por vírgula). Padrão: push,portal' },
+          prioridade: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], description: 'Prioridade da notificação' },
+          url_acao: { type: 'string', description: 'URL para redirecionar o usuário ao clicar (opcional)' },
+        },
+        required: ['usuarios', 'titulo', 'mensagem'],
+      },
+    },
+    adminOnly: false,
+    featureToggle: 'proactive_notifications',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'gerenciar_base_conhecimento',
+      description: 'Gerencia a base de conhecimento persistente da IA. Permite adicionar, buscar, atualizar e remover informações que a IA deve lembrar sobre o usuário, a empresa ou os processos.',
+      parameters: {
+        type: 'object',
+        properties: {
+          acao: { type: 'string', enum: ['adicionar', 'buscar', 'listar', 'atualizar', 'remover'], description: 'Ação a executar na base de conhecimento' },
+          titulo: { type: 'string', description: 'Título da entrada (para adicionar/atualizar)' },
+          conteudo: { type: 'string', description: 'Conteúdo da informação (para adicionar/atualizar)' },
+          categoria: { type: 'string', description: 'Categoria: preferencias, processos, regras, notas, geral (para adicionar)' },
+          escopo: { type: 'string', enum: ['global', 'user', 'department'], description: 'Escopo: global (todos), user (só este usuário), department (departamento)' },
+          tags: { type: 'string', description: 'Tags separadas por vírgula (para adicionar/buscar)' },
+          busca: { type: 'string', description: 'Termo para buscar na base (para buscar)' },
+          id: { type: 'string', description: 'ID da entrada (para atualizar/remover)' },
+        },
+        required: ['acao'],
+      },
+    },
+    adminOnly: false,
+    featureToggle: 'knowledge_base',
+  },
 ];
 
 /**
@@ -610,6 +936,34 @@ export const IA_TOOLS_DEFINITION = [
 export async function getAvailableTools(userId: string, role: string) {
   const availableTools = [];
   const effectiveRole = role === 'ADMIN' ? 'ADMIN' : (role === 'GERENTE' ? 'GERENTE' : 'USER');
+
+  // Cache de feature toggles para esta chamada
+  let featureTogglesCache: Record<string, { is_enabled: boolean; allowed_roles: string[] }> | null = null;
+
+  async function checkFeatureToggle(featureKey: string): Promise<boolean> {
+    if (!featureTogglesCache) {
+      try {
+        const { data } = await supabaseAdmin
+          .from('ia_feature_toggles')
+          .select('feature_key, is_enabled, allowed_roles');
+        featureTogglesCache = {};
+        for (const toggle of (data || [])) {
+          featureTogglesCache[toggle.feature_key] = {
+            is_enabled: toggle.is_enabled,
+            allowed_roles: toggle.allowed_roles || [],
+          };
+        }
+      } catch {
+        featureTogglesCache = {};
+      }
+    }
+
+    const toggle = featureTogglesCache[featureKey];
+    if (!toggle) return true; // Se não existe toggle, liberar
+    if (!toggle.is_enabled) return false;
+    if (toggle.allowed_roles.length > 0 && !toggle.allowed_roles.includes(effectiveRole)) return false;
+    return true;
+  }
 
   for (const tool of IA_TOOLS_DEFINITION) {
     // Se ferramenta é adminOnly, só ADMIN pode usar
@@ -622,13 +976,19 @@ export async function getAvailableTools(userId: string, role: string) {
       continue;
     }
 
+    // Verificar feature toggle
+    if ((tool as any).featureToggle) {
+      const enabled = await checkFeatureToggle((tool as any).featureToggle);
+      if (!enabled) continue;
+    }
+
     if (tool.requireModule) {
       const hasAccess = await canAccessModule(userId, tool.requireModule);
       if (!hasAccess) continue;
     }
 
     // Remove propriedades customizadas antes de enviar para o modelo
-    const { requireModule, adminOnly, requireTeamAccess, ...cleanTool } = tool as any;
+    const { requireModule, adminOnly, requireTeamAccess, featureToggle, ...cleanTool } = tool as any;
     availableTools.push(cleanTool);
   }
 
@@ -1898,7 +2258,22 @@ const { data, error } = await supabaseAdmin
         }
         
         const { email_corporativo } = args;
-        return await getGlobalUserEmails(email_corporativo);
+        // Usar msGraphClient.searchEmails sem limite fixo de 5
+        try {
+          const emails = await msGraphClient.searchEmails(email_corporativo, undefined, { top: 25 });
+          if (emails.length === 0) return `A caixa de entrada de ${email_corporativo} está vazia ou inacessível.`;
+          return JSON.stringify(emails.map(e => ({
+            subject: e.subject,
+            from: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
+            date: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
+            preview: e.bodyPreview,
+            isRead: e.isRead,
+            hasAttachments: e.hasAttachments,
+          })));
+        } catch (err) {
+          // Fallback para método antigo
+          return await getGlobalUserEmails(email_corporativo);
+        }
       }
 
       case 'buscar_epis': {
@@ -1931,28 +2306,46 @@ const { data, error } = await supabaseAdmin
 
       case 'buscar_documento_corporativo': {
         const { termo_pesquisa, categoria } = args;
+        
+        // 1. Buscar no Portal ABZ
         let query = supabaseAdmin
           .from('documents')
           .select('id, title, description, category, subcategory, file_url, created_at')
           .or(`title.ilike.%${termo_pesquisa}%,description.ilike.%${termo_pesquisa}%`)
           .order('created_at', { ascending: false })
-          .limit(5);
+          .limit(10);
 
         if (categoria) {
           query = query.ilike('category', `%${categoria}%`);
         }
 
-        const { data, error } = await query;
-        if (error) return `Erro ao buscar documentos: ${error.message}`;
-        if (!data || data.length === 0) return `Nenhum documento encontrado com o termo "${termo_pesquisa}".`;
-        return JSON.stringify(data.map((d: any) => ({
+        const { data: portalDocs } = await query;
+        const portalResults = (portalDocs || []).map((d: any) => ({
+          fonte: 'Portal ABZ',
           título: d.title,
           descrição: d.description,
           categoria: d.category,
           subcategoria: d.subcategory,
           link: d.file_url,
           publicado_em: new Date(d.created_at).toLocaleDateString('pt-BR'),
-        })));
+        }));
+
+        // 2. Buscar no SharePoint via Graph (fallback)
+        let spResults: any[] = [];
+        try {
+          const spFiles = await msGraphClient.searchOneDriveFiles(termo_pesquisa);
+          spResults = spFiles.slice(0, 5).map((f: any) => ({
+            fonte: 'SharePoint / OneDrive',
+            título: f.name,
+            descrição: f.description || '',
+            link: f.webUrl,
+            tamanho: f.size ? `${(f.size / 1024).toFixed(1)} KB` : '',
+          }));
+        } catch { /* SharePoint indisponível, continuar com portal */ }
+
+        const allResults = [...portalResults, ...spResults];
+        if (allResults.length === 0) return `Nenhum documento encontrado com o termo "${termo_pesquisa}".`;
+        return JSON.stringify(allResults);
       }
 
       case 'buscar_noticias_recentes': {
@@ -1978,44 +2371,65 @@ const { data, error } = await supabaseAdmin
       case 'buscar_eventos_calendario': {
         const { email, dias_futuros } = args;
         
-        // Resolver email para user_id
-        let userId = null;
-        if (email) {
-          const { data: userData } = await supabaseAdmin
-            .from('users_unified')
-            .select('id')
-            .eq('email', email.toLowerCase())
-            .limit(1);
-          if (userData && userData.length > 0) {
-            userId = userData[0].id;
+        // ABORDAGEM HÍBRIDA: Tenta Graph primeiro, fallback para portal
+        const days = dias_futuros || 7;
+        let graphEvents: any[] = [];
+        let portalEvents: any[] = [];
+
+        // 1. Tentar Microsoft Graph (calendário corporativo)
+        try {
+          const graphData = await msGraphClient.listCalendarEvents(email, days);
+          graphEvents = graphData.map((e: any) => ({
+            fonte: 'Microsoft 365',
+            título: e.subject,
+            descrição: e.bodyPreview || '',
+            início: e.start?.dateTime ? new Date(e.start.dateTime).toLocaleString('pt-BR') : '',
+            fim: e.end?.dateTime ? new Date(e.end.dateTime).toLocaleString('pt-BR') : '',
+            local: e.location?.displayName || '',
+            organizador: e.organizer?.emailAddress?.name || '',
+            online: !!e.isOnlineMeeting,
+          }));
+        } catch { /* Graph indisponível */ }
+
+        // 2. Buscar no portal ABZ (calendário interno)
+        try {
+          let resolvedUserId = null;
+          if (email) {
+            const { data: userData } = await supabaseAdmin
+              .from('users_unified')
+              .select('id')
+              .eq('email', email.toLowerCase())
+              .limit(1);
+            if (userData && userData.length > 0) resolvedUserId = userData[0].id;
           }
-        }
-        
-        if (!userId) return `Usuário não encontrado para o email: ${email}`;
-        
-        const hoje = new Date().toISOString();
-        const futuro = new Date(
-          Date.now() + (dias_futuros || 7) * 24 * 60 * 60 * 1000
-        ).toISOString();
+          
+          if (resolvedUserId) {
+            const hoje = new Date().toISOString();
+            const futuro = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
-        const { data, error } = await supabaseAdmin
-          .from('calendar_events')
-          .select('id, summary, description, start_time, end_time, location')
-          .eq('user_id', userId)
-          .gte('start_time', hoje)
-          .lte('start_time', futuro)
-          .order('start_time', { ascending: true })
-          .limit(10);
+            const { data } = await supabaseAdmin
+              .from('calendar_events')
+              .select('id, summary, description, start_time, end_time, location')
+              .eq('user_id', resolvedUserId)
+              .gte('start_time', hoje)
+              .lte('start_time', futuro)
+              .order('start_time', { ascending: true })
+              .limit(15);
 
-        if (error) return `Erro ao buscar eventos: ${error.message}`;
-        if (!data || data.length === 0) return `Nenhum evento encontrado nos próximos ${dias_futuros || 7} dias.`;
-        return JSON.stringify(data.map((e: any) => ({
-          título: e.summary,
-          descrição: e.description,
-          início: new Date(e.start_time).toLocaleString('pt-BR'),
-          fim: e.end_time ? new Date(e.end_time).toLocaleString('pt-BR') : null,
-          local: e.location,
-        })));
+            portalEvents = (data || []).map((e: any) => ({
+              fonte: 'Portal ABZ',
+              título: e.summary,
+              descrição: e.description,
+              início: new Date(e.start_time).toLocaleString('pt-BR'),
+              fim: e.end_time ? new Date(e.end_time).toLocaleString('pt-BR') : null,
+              local: e.location,
+            }));
+          }
+        } catch { /* Portal indisponível */ }
+
+        const allEvents = [...graphEvents, ...portalEvents];
+        if (allEvents.length === 0) return `Nenhum evento encontrado nos próximos ${days} dias.`;
+        return JSON.stringify(allEvents);
       }
 
       case 'buscar_kpis_sistema': {
@@ -2164,6 +2578,149 @@ const { data, error } = await supabaseAdmin
         return JSON.stringify(data);
       }
 
+      // =====================================================
+      // Microsoft Graph - Handlers das novas ferramentas
+      // =====================================================
+
+      case 'listar_contatos_outlook': {
+        const { email, limite = 20 } = args;
+        const contacts = await msGraphClient.listContacts(email, limite);
+        if (!contacts.length) return `Nenhum contato encontrado para ${email}.`;
+        return JSON.stringify(contacts);
+      }
+
+      case 'buscar_grupos_365': {
+        const { limite = 50 } = args;
+        const groups = await msGraphClient.listGroups(limite);
+        if (!groups.length) return 'Nenhum grupo encontrado.';
+        return JSON.stringify(groups);
+      }
+
+      case 'buscar_membros_grupo': {
+        const { grupo_id } = args;
+        const members = await msGraphClient.getGroupMembers(grupo_id);
+        if (!members.length) return 'Nenhum membro encontrado neste grupo.';
+        return JSON.stringify(members);
+      }
+
+      case 'buscar_info_organizacao': {
+        const org = await msGraphClient.getOrganization();
+        const domains = await msGraphClient.listDomains();
+        return ***REMOVED*** organizacao: org, dominios: domains });
+      }
+
+      case 'buscar_alertas_seguranca': {
+        const { limite = 20 } = args;
+        const alerts = await msGraphClient.listSecurityAlerts(limite);
+        if (!alerts.length) return 'Nenhum alerta de segurança ativo.';
+        return JSON.stringify(alerts);
+      }
+
+      case 'buscar_incidentes_seguranca': {
+        const { limite = 10 } = args;
+        const incidents = await msGraphClient.getSecurityIncidents(limite);
+        if (!incidents.length) return 'Nenhum incidente de segurança encontrado.';
+        return JSON.stringify(incidents);
+      }
+
+      case 'buscar_logs_auditoria': {
+        const { tipo, limite = 20 } = args;
+        if (tipo === 'signin') {
+          const signins = await msGraphClient.getSignInLogs(limite);
+          if (!signins.length) return 'Nenhum log de sign-in encontrado.';
+          return JSON.stringify(signins);
+        }
+        const audits = await msGraphClient.getAuditLogs(limite);
+        if (!audits.length) return 'Nenhum log de auditoria encontrado.';
+        return JSON.stringify(audits);
+      }
+
+      case 'listar_aplicacoes_azure': {
+        const { limite = 50 } = args;
+        const apps = await msGraphClient.listApplications(limite);
+        if (!apps.length) return 'Nenhuma aplicação encontrada.';
+        return JSON.stringify(apps);
+      }
+
+      case 'listar_dispositivos': {
+        const { limite = 50 } = args;
+        const devices = await msGraphClient.listDevices(limite);
+        if (!devices.length) return 'Nenhum dispositivo encontrado.';
+        return JSON.stringify(devices);
+      }
+
+      case 'buscar_sites_sharepoint': {
+        const { busca } = args;
+        const sites = await msGraphClient.listSites(busca);
+        if (!sites.length) return 'Nenhum site do SharePoint encontrado.';
+        return JSON.stringify(sites);
+      }
+
+      case 'listar_cadernos_onenote': {
+        const { email } = args;
+        const notebooks = await msGraphClient.listNotebooks(email);
+        if (!notebooks.length) return `Nenhum caderno OneNote encontrado para ${email}.`;
+        return JSON.stringify(notebooks);
+      }
+
+      case 'buscar_tarefas_todo': {
+        const { email } = args;
+        const lists = await msGraphClient.listTaskLists(email);
+        if (!lists.length) return `Nenhuma lista de tarefas encontrada para ${email}.`;
+        return JSON.stringify(lists);
+      }
+
+      case 'buscar_reunioes_online': {
+        const { email } = args;
+        const meetings = await msGraphClient.listOnlineMeetings(email);
+        if (!meetings.length) return `Nenhuma reunião online encontrada para ${email}.`;
+        return JSON.stringify(meetings);
+      }
+
+      case 'buscar_canais_teams': {
+        const { team_id } = args;
+        const channels = await msGraphClient.listTeamChannels(team_id);
+        if (!channels.length) return 'Nenhum canal encontrado nesta equipe.';
+        return JSON.stringify(channels);
+      }
+
+      case 'buscar_status_servicos_365': {
+        const health = await msGraphClient.getServiceHealth();
+        const issues = await msGraphClient.getServiceIssues();
+        return ***REMOVED*** servicos: health, incidentes: issues });
+      }
+
+      case 'buscar_reviews_acesso': {
+        const reviews = await msGraphClient.listAccessReviews();
+        if (!reviews.length) return 'Nenhum access review encontrado.';
+        return JSON.stringify(reviews);
+      }
+
+      // =====================================================
+      // AGENTE PROATIVO — Novas ferramentas
+      // =====================================================
+
+      case 'pesquisar_emails_outlook':
+        return await executePesquisarEmailsOutlook(args);
+
+      case 'enviar_email_outlook':
+        return await executeEnviarEmailOutlook(args);
+
+      case 'criar_nota_corporativa':
+        return await executeCriarNotaCorporativa(args);
+
+      case 'agendar_tarefa_agente':
+        return await executeAgendarTarefaAgente(args, userId);
+
+      case 'analisar_kpis_negocio':
+        return await executeAnalisarKPIs(args);
+
+      case 'enviar_notificacao_proativa':
+        return await executeEnviarNotificacaoProativa(args, userId);
+
+      case 'gerenciar_base_conhecimento':
+        return await executeGerenciarBaseConhecimento(args, userId);
+
       default:
         return `Ferramenta desconhecida: ${name}`;
     }
@@ -2232,5 +2789,287 @@ async function getGlobalUserEmails(email: string): Promise<string> {
     return JSON.stringify(emails);
   } catch (err) {
     return `Erro de rede ao conectar com Microsoft Graph: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+// =====================================================
+// NOVAS FERRAMENTAS DO AGENTE PROATIVO
+// =====================================================
+
+async function executePesquisarEmailsOutlook(args: any): Promise<string> {
+  try {
+    const emails = await msGraphClient.searchEmails(
+      args.email_usuario,
+      args.consulta,
+      {
+        from: args.de,
+        subject: args.assunto,
+        dateFrom: args.data_inicio,
+        dateTo: args.data_fim,
+        folder: args.pasta,
+        top: Math.min(args.limite || 20, 50),
+      }
+    );
+
+    if (emails.length === 0) return 'Nenhum e-mail encontrado com os filtros informados.';
+
+    return JSON.stringify(emails.map(e => ({
+      assunto: e.subject,
+      de: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
+      data: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
+      preview: e.bodyPreview?.substring(0, 200),
+      lido: e.isRead,
+      anexos: e.hasAttachments,
+    })));
+  } catch (err) {
+    return `Erro ao pesquisar e-mails: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+async function executeEnviarEmailOutlook(args: any): Promise<string> {
+  try {
+    const to = args.destinatarios.split(',').map((e: string) => e.trim()).filter(Boolean);
+    const cc = args.copia ? args.copia.split(',').map((e: string) => e.trim()).filter(Boolean) : undefined;
+
+    const success = await msGraphClient.sendEmail(
+      args.email_remetente,
+      to,
+      args.assunto,
+      args.corpo,
+      cc
+    );
+
+    return success
+      ? `E-mail enviado com sucesso de ${args.email_remetente} para ${to.join(', ')}`
+      : 'Erro ao enviar e-mail via Microsoft Graph.';
+  } catch (err) {
+    return `Erro ao enviar e-mail: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+async function executeCriarNotaCorporativa(args: any): Promise<string> {
+  try {
+    if (args.tipo === 'onenote') {
+      // Primeiro, buscar notebooks e seções do usuário
+      const notebooks = await msGraphClient.listNotebooks(args.email_usuario);
+      if (notebooks.length === 0) return 'Nenhum notebook encontrado para este usuário.';
+
+      const sections = await msGraphClient.listNotebookSections(args.email_usuario, notebooks[0].id);
+      if (sections.length === 0) return 'Nenhuma seção encontrada no notebook.';
+
+      const result = await msGraphClient.createOneNotePage(
+        args.email_usuario,
+        sections[0].id,
+        args.titulo,
+        args.conteudo || '<p>Sem conteúdo adicional.</p>'
+      );
+
+      return result
+        ? `Nota "${args.titulo}" criada com sucesso no OneNote.${result.link ? ` Link: ${result.link}` : ''}`
+        : 'Erro ao criar nota no OneNote.';
+
+    } else if (args.tipo === 'todo') {
+      const lists = await msGraphClient.listTaskLists(args.email_usuario);
+      if (lists.length === 0) return 'Nenhuma lista de tarefas encontrada.';
+
+      const result = await msGraphClient.createToDoTask(
+        args.email_usuario,
+        lists[0].id,
+        {
+          title: args.titulo,
+          body: args.conteudo,
+          dueDate: args.data_vencimento,
+          importance: args.importancia || 'normal',
+        }
+      );
+
+      return result
+        ? `Tarefa "${args.titulo}" criada com sucesso no Microsoft To Do.`
+        : 'Erro ao criar tarefa no To Do.';
+    }
+
+    return 'Tipo inválido. Use "onenote" ou "todo".';
+  } catch (err) {
+    return `Erro ao criar nota/tarefa: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+async function executeAgendarTarefaAgente(args: any, userId: string): Promise<string> {
+  try {
+    const { createScheduledTask } = await import('@/lib/ia/agent-service');
+
+    const targetUsers = args.usuarios_alvo
+      ? args.usuarios_alvo.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+    const targetRoles = args.roles_alvo
+      ? args.roles_alvo.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+    const channels = args.canais
+      ? args.canais.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : ['push', 'email'];
+
+    const task = await createScheduledTask({
+      userId,
+      taskName: args.nome,
+      taskType: args.tipo,
+      prompt: args.prompt,
+      schedule: args.cron,
+      targetUsers,
+      targetRoles,
+      channels,
+      maxRuns: args.max_execucoes,
+    });
+
+    return task
+      ? `Tarefa "${args.nome}" agendada com sucesso! Cron: ${args.cron}. Próxima execução: ${task.next_run ? new Date(task.next_run).toLocaleString('pt-BR') : 'calculando...'}`
+      : 'Erro ao agendar tarefa.';
+  } catch (err) {
+    return `Erro ao agendar tarefa: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+async function executeAnalisarKPIs(args: any): Promise<string> {
+  try {
+    const { analyzeKPIs } = await import('@/lib/ia/agent-service');
+    const analyses = await analyzeKPIs(args.departamento);
+
+    if (analyses.length === 0) {
+      return 'Todos os KPIs estão dentro das metas! Nenhuma anomalia detectada.';
+    }
+
+    const report = analyses.map(a => ({
+      kpi: a.kpiLabel,
+      atual: `${a.currentValue}${a.unit === 'percent' ? '%' : ''}`,
+      meta: `${a.targetValue}${a.unit === 'percent' ? '%' : ''}`,
+      gap: `${a.gap.toFixed(1)}%`,
+      prioridade: a.priority,
+      acao: a.suggestedAction,
+      departamento: a.department || 'Global',
+    }));
+
+    return ***REMOVED***
+      resumo: `${analyses.length} KPI(s) abaixo da meta`,
+      criticos: analyses.filter(a => a.priority === 'critical').length,
+      altos: analyses.filter(a => a.priority === 'high').length,
+      detalhes: report,
+    });
+  } catch (err) {
+    return `Erro ao analisar KPIs: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+async function executeEnviarNotificacaoProativa(args: any, userId: string): Promise<string> {
+  try {
+    const { sendProactiveReminder, logAgentAction } = await import('@/lib/ia/agent-service');
+
+    const userIds = args.usuarios.split(',').map((s: string) => s.trim()).filter(Boolean);
+    const channels = args.canais
+      ? args.canais.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : ['push', 'portal'];
+
+    const results: any[] = [];
+
+    for (const targetUserId of userIds) {
+      const result = await sendProactiveReminder(
+        targetUserId,
+        args.titulo,
+        args.mensagem,
+        channels,
+        { priority: args.prioridade || 'medium', actionUrl: args.url_acao }
+      );
+      results.push({ userId: targetUserId, ...result });
+    }
+
+    const totalSent = results.filter(r => r.push || r.portal || r.email).length;
+    return `Notificação "${args.titulo}" enviada para ${totalSent}/${userIds.length} usuário(s). Canais: ${channels.join(', ')}.`;
+  } catch (err) {
+    return `Erro ao enviar notificação: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+async function executeGerenciarBaseConhecimento(args: any, userId: string): Promise<string> {
+  try {
+    const kb = await import('@/lib/ia/knowledge-base');
+
+    switch (args.acao) {
+      case 'adicionar': {
+        if (!args.titulo || !args.conteudo) return 'Título e conteúdo são obrigatórios para adicionar.';
+        const entry = await kb.addKnowledge({
+          title: args.titulo,
+          content: args.conteudo,
+          category: args.categoria || 'general',
+          scope: args.escopo || 'global',
+          scope_id: args.escopo === 'user' ? userId : undefined,
+          tags: args.tags ? args.tags.split(',').map((t: string) => t.trim()) : [],
+        }, userId);
+
+        return entry
+          ? `Informação "${args.titulo}" adicionada à base de conhecimento (escopo: ${args.escopo || 'global'}).`
+          : 'Erro ao adicionar informação.';
+      }
+
+      case 'buscar': {
+        if (!args.busca) return 'Informe um termo de busca.';
+        const results = await kb.searchKnowledge(args.busca, {
+          userId,
+          userRole: 'ADMIN', // A busca via IA usa o contexto do usuário
+          limit: 10,
+        });
+
+        if (results.length === 0) return 'Nenhuma informação encontrada na base de conhecimento.';
+
+        return JSON.stringify(results.map(r => ({
+          id: r.id,
+          titulo: r.title,
+          conteudo: r.content.substring(0, 300),
+          categoria: r.category,
+          escopo: r.scope,
+          tags: r.tags,
+        })));
+      }
+
+      case 'listar': {
+        const { entries, total } = await kb.listAllKnowledge({
+          category: args.categoria,
+          scope: args.escopo,
+          isActive: true,
+          limit: 20,
+        });
+
+        return ***REMOVED***
+          total,
+          entradas: entries.map(e => ({
+            id: e.id,
+            titulo: e.title,
+            categoria: e.category,
+            escopo: e.scope,
+            ativo: e.is_active,
+          })),
+        });
+      }
+
+      case 'atualizar': {
+        if (!args.id) return 'ID da entrada é obrigatório para atualizar.';
+        const updates: any = {};
+        if (args.titulo) updates.title = args.titulo;
+        if (args.conteudo) updates.content = args.conteudo;
+        if (args.categoria) updates.category = args.categoria;
+        if (args.tags) updates.tags = args.tags.split(',').map((t: string) => t.trim());
+
+        const success = await kb.updateKnowledge(args.id, updates, userId);
+        return success ? 'Informação atualizada com sucesso.' : 'Erro ao atualizar.';
+      }
+
+      case 'remover': {
+        if (!args.id) return 'ID da entrada é obrigatório para remover.';
+        const success = await kb.deactivateKnowledge(args.id);
+        return success ? 'Informação removida da base de conhecimento.' : 'Erro ao remover.';
+      }
+
+      default:
+        return 'Ação inválida. Use: adicionar, buscar, listar, atualizar ou remover.';
+    }
+  } catch (err) {
+    return `Erro ao gerenciar base de conhecimento: ${err instanceof Error ? err.message : String(err)}`;
   }
 }

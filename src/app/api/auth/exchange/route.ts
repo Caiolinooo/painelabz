@@ -6,9 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 const MS_CLIENT_ID = process.env.MS_GRAPH_CLIENT_ID || '';
 const MS_CLIENT_SECRET = process.env.MS_GRAPH_CLIENT_SECRET || '';
 const MS_TENANT_ID = process.env.MS_GRAPH_TENANT_ID || 'common';
-const MS_REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL 
-  ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/exchange` 
-  : 'http://localhost:3000/api/auth/exchange';
+const MS_REDIRECT_URI = 'https://portal.groupabz.com/api/auth/exchange';
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');

@@ -35,10 +35,31 @@ export interface IAWritePermissions {
   chat: boolean;
   calendario: boolean;
   microsoft: {
-    email: boolean;
+    mail: boolean;
     calendar: boolean;
+    contacts: boolean;
+    users: boolean;
+    groups: boolean;
+    directory: boolean;
     teams: boolean;
-    onedrive: boolean;
+    chat: boolean;
+    calls: boolean;
+    files: boolean;
+    notes: boolean;
+    tasks: boolean;
+    security: boolean;
+    audit: boolean;
+    identity: boolean;
+    applications: boolean;
+    devices: boolean;
+    compliance: boolean;
+    bookings: boolean;
+    notifications: boolean;
+    synchronization: boolean;
+    copilot: boolean;
+    backup: boolean;
+    network: boolean;
+    management_apis: boolean;
   };
 }
 
