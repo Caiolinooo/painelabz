@@ -294,6 +294,16 @@ export async function getMicrosoftWritePermissions(): Promise<IAWritePermissions
   const cached = configCache.get('microsoft_write');
   if (cached) return cached as IAWritePermissions['microsoft'];
 
+  const defaults: IAWritePermissions['microsoft'] = {
+    mail: false, calendar: false, contacts: false, users: false,
+    groups: false, directory: false, teams: false, chat: false,
+    calls: false, files: false, notes: false, tasks: false,
+    security: false, audit: false, identity: false, applications: false,
+    devices: false, compliance: false, bookings: false, notifications: false,
+    synchronization: false, copilot: false, backup: false, network: false,
+    management_apis: false,
+  };
+
   try {
     const { data, error } = await supabaseAdmin
       .from('ia_global_config')
@@ -301,26 +311,14 @@ export async function getMicrosoftWritePermissions(): Promise<IAWritePermissions
       .eq('config_key', 'microsoft_write')
       .single();
 
-    if (error || !data) {
-      // Retornar padrão
-      return {
-        email: false,
-        calendar: false,
-        teams: false,
-        onedrive: false,
-      };
-    }
+    if (error || !data) return defaults;
 
-    const permissions = data.config_value as IAWritePermissions['microsoft'];
+    const saved = data.config_value as Partial<IAWritePermissions['microsoft']>;
+    const permissions = { ...defaults, ...saved };
     configCache.set('microsoft_write', permissions);
     return permissions;
   } catch {
-    return {
-      email: false,
-      calendar: false,
-      teams: false,
-      onedrive: false,
-    };
+    return defaults;
   }
 }
 
