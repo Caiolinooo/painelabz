@@ -215,6 +215,69 @@ let query = supabaseAdmin
   return kpis;
 }
 
+/**
+ * Busca KPIs modulares definidos na tabela kpi_targets
+ */
+async function fetchModularKPIs(userId: string, role: string): Promise<IADashboardKPI[]> {
+  const kpis: IADashboardKPI[] = [];
+
+  try {
+    // 1. Buscar metas ativas
+    const { data: targets } = await supabaseAdmin
+      .from('kpi_targets')
+      .select('*')
+      .eq('active', true);
+
+    if (!targets || targets.length === 0) return [];
+
+    for (const target of targets) {
+      // Aqui o agente IA calcularia o valor atual baseado na query_sql ou lógica Js
+      // Por enquanto, simulamos o cálculo buscando o valor "atual" se existir um log recente
+      const { data: recentLog } = await supabaseAdmin
+        .from('agent_action_log')
+        .select('metadata')
+        .eq('action_type', 'kpi_analysis')
+        .contains('metadata', { kpi_label: target.label })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      const currentValue = recentLog?.metadata?.current_value || 0;
+      const progress = target.target_value > 0 ? (currentValue / target.target_value) * 100 : 0;
+
+      kpis.push({
+        label: target.label,
+        value: currentValue,
+        target: target.target_value,
+        unit: target.unit || '',
+        icon: target.category === 'solutions' ? '✅' : '📈',
+        trend: progress >= 100 ? 'up' : 'stable',
+        change: progress > 0 ? Math.round(progress) : undefined
+      });
+    }
+  } catch (err) {
+    console.error('[IA Dashboard] Error fetching modular KPIs:', err);
+  }
+
+  return kpis;
+}
+
+/**
+ * Exporta dados de KPI para XLSX (Buffer)
+ */
+export async function exportKPIsToXLSX(data: any): Promise<Buffer> {
+  // Implementação real usaria a lib 'xlsx'
+  return Buffer.from('XLSX_DATA_PLACEHOLDER');
+}
+
+/**
+ * Exporta relatório de KPI para PDF (Buffer)
+ */
+export async function exportKPIsToPDF(data: any): Promise<Buffer> {
+  // Implementação real usaria 'jspdf' ou 'pdfkit'
+  return Buffer.from('PDF_DATA_PLACEHOLDER');
+}
+
 // =====================================================
 // Pendências
 // =====================================================
@@ -378,14 +441,15 @@ export async function generateDashboard(
   const accessibleIds = await getAccessibleUserIds(userId, role);
 
   // Buscar dados em paralelo
-  const [evalKPIs, vacKPIs, reimbKPIs, pendencies] = await Promise.all([
+  const [evalKPIs, vacKPIs, reimbKPIs, modularKPIs, pendencies] = await Promise.all([
     fetchEvaluationKPIs(userId, role, accessibleIds),
     fetchVacationKPIs(userId, accessibleIds),
     fetchReimbursementKPIs(userId, accessibleIds),
+    fetchModularKPIs(userId, role),
     fetchPendencies(userId, role, accessibleIds),
   ]);
 
-  const allKPIs = [...evalKPIs, ...vacKPIs, ...reimbKPIs];
+  const allKPIs = [...evalKPIs, ...vacKPIs, ...reimbKPIs, ...modularKPIs];
   const summary = buildSummary(userName, role, allKPIs, pendencies);
 
   const dashboardData: IADashboardData = {

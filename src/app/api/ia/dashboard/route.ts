@@ -16,8 +16,25 @@ export async function GET(request: NextRequest) {
     const userId = tokenResult.payload.userId;
     const role = tokenResult.payload.role;
     const forceRefresh = request.nextUrl.searchParams.get('refresh') === 'true';
+    const type = request.nextUrl.searchParams.get('type');
+    const format = request.nextUrl.searchParams.get('format');
 
     const result = await generateDashboard(userId, role, forceRefresh);
+
+    // Se for exportação
+    if (format === 'pdf' || format === 'xlsx') {
+      const { exportKPIsToPDF, exportKPIsToXLSX } = await import('@/lib/ia/dashboard-service');
+      const buffer = format === 'pdf' 
+        ? await exportKPIsToPDF(result.data)
+        : await exportKPIsToXLSX(result.data);
+
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="dashboard-kpi.${format}"`,
+        },
+      });
+    }
 
     return NextResponse.json(result);
   } catch (err) {

@@ -529,28 +529,442 @@ export async function getPresences(userIds: string[]): Promise<Record<string, an
   }
 }
 
+// =====================================================
+// Contacts
+// =====================================================
+export async function listContacts(userId: string, top = 20): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/users/${userId}/contacts?$top=${top}&$select=id,displayName,emailAddresses,businessPhones,companyName,jobTitle`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Groups
+// =====================================================
+export async function listGroups(top = 50): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/groups?$top=${top}&$select=id,displayName,description,groupTypes,mail,membershipRule`);
+    return data.value || [];
+  } catch { return []; }
+}
+export async function getGroupMembers(groupId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/groups/${groupId}/members?$select=id,displayName,mail,userPrincipalName`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Directory / Organization
+// =====================================================
+export async function getOrganization(): Promise<any> {
+  try {
+    const data = await graphCall<any>('/organization?$select=id,displayName,verifiedDomains,country,city');
+    return data.value?.[0] || null;
+  } catch { return null; }
+}
+export async function listDomains(): Promise<any[]> {
+  try {
+    const data = await graphCall<any>('/domains');
+    return data.value || [];
+  } catch { return []; }
+}
+export async function listAdminUnits(top = 50): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/directory/administrativeUnits?$top=${top}`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Security
+// =====================================================
+export async function listSecurityAlerts(top = 20): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/security/alerts_v2?$top=${top}&$orderby=createdDateTime desc`);
+    return data.value || [];
+  } catch { return []; }
+}
+export async function getSecurityIncidents(top = 10): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/security/incidents?$top=${top}&$orderby=createdDateTime desc`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Audit Logs
+// =====================================================
+export async function getAuditLogs(top = 20): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/auditLogs/directoryAudits?$top=${top}&$orderby=activityDateTime desc`);
+    return data.value || [];
+  } catch { return []; }
+}
+export async function getSignInLogs(top = 20): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/auditLogs/signIns?$top=${top}&$orderby=createdDateTime desc`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Applications
+// =====================================================
+export async function listApplications(top = 50): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/applications?$top=${top}&$select=id,displayName,appId,signInAudience,createdDateTime`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Devices
+// =====================================================
+export async function listDevices(top = 50): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/devices?$top=${top}&$select=id,displayName,operatingSystem,operatingSystemVersion,isCompliant,isManaged`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Access Reviews (Compliance)
+// =====================================================
+export async function listAccessReviews(): Promise<any[]> {
+  try {
+    const data = await graphCall<any>('/identityGovernance/accessReviews/definitions?$top=20');
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Notes (OneNote)
+// =====================================================
+export async function listNotebooks(userId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/users/${userId}/onenote/notebooks?$select=id,displayName,createdDateTime,lastModifiedDateTime`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Tasks (To Do)
+// =====================================================
+export async function listTaskLists(userId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/users/${userId}/todo/lists`);
+    return data.value || [];
+  } catch { return []; }
+}
+export async function listTasks(userId: string, listId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/users/${userId}/todo/lists/${listId}/tasks?$top=50`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// SharePoint Sites
+// =====================================================
+export async function listSites(search?: string): Promise<any[]> {
+  try {
+    const q = search ? `/sites?search=${encodeURIComponent(search)}&$top=20` : '/sites?$top=20';
+    const data = await graphCall<any>(q);
+    return data.value || [];
+  } catch { return []; }
+}
+export async function getSiteLists(siteId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/sites/${siteId}/lists?$select=id,displayName,description,createdDateTime`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Bookings
+// =====================================================
+export async function listBookingBusinesses(): Promise<any[]> {
+  try {
+    const data = await graphCall<any>('/solutions/bookingBusinesses');
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Teams Channels
+// =====================================================
+export async function listTeamChannels(teamId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/teams/${teamId}/channels?$select=id,displayName,description,membershipType`);
+    return data.value || [];
+  } catch { return []; }
+}
+export async function listChannelMessages(teamId: string, channelId: string, top = 20): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/teams/${teamId}/channels/${channelId}/messages?$top=${top}`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Online Meetings
+// =====================================================
+export async function listOnlineMeetings(userId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/users/${userId}/onlineMeetings?$top=20&$orderby=startDateTime desc`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Service Health (Management APIs)
+// =====================================================
+export async function getServiceHealth(): Promise<any[]> {
+  try {
+    const data = await graphCall<any>('/admin/serviceAnnouncement/healthOverviews');
+    return data.value || [];
+  } catch { return []; }
+}
+export async function getServiceIssues(): Promise<any[]> {
+  try {
+    const data = await graphCall<any>('/admin/serviceAnnouncement/issues?$top=20&$orderby=startDateTime desc');
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// Advanced Mail Search
+// =====================================================
+
+/**
+ * Busca avançada de e-mails com filtros OData
+ */
+export async function searchEmails(
+  userId: string,
+  query?: string,
+  options?: {
+    from?: string;
+    subject?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    folder?: string;
+    hasAttachments?: boolean;
+    isRead?: boolean;
+    top?: number;
+  }
+): Promise<MSGraphEmail[]> {
+  try {
+    const top = options?.top || 50;
+    const filters: string[] = [];
+
+    if (options?.from) {
+      filters.push(`from/emailAddress/address eq '${options.from}'`);
+    }
+    if (options?.subject) {
+      filters.push(`contains(subject, '${options.subject}')`);
+    }
+    if (options?.dateFrom) {
+      filters.push(`receivedDateTime ge ${options.dateFrom}T00:00:00Z`);
+    }
+    if (options?.dateTo) {
+      filters.push(`receivedDateTime le ${options.dateTo}T23:59:59Z`);
+    }
+    if (options?.hasAttachments !== undefined) {
+      filters.push(`hasAttachments eq ${options.hasAttachments}`);
+    }
+    if (options?.isRead !== undefined) {
+      filters.push(`isRead eq ${options.isRead}`);
+    }
+
+    let endpoint = `/users/${userId}/messages?$top=${top}&$select=id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments&$orderby=receivedDateTime desc`;
+
+    if (filters.length > 0) {
+      endpoint += `&$filter=${filters.join(' and ')}`;
+    }
+
+    // Se tiver query textual, usar $search ao invés de $filter para subject/body
+    if (query && !options?.subject) {
+      endpoint = `/users/${userId}/messages?$top=${top}&$search="${encodeURIComponent(query)}"&$select=id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments&$orderby=receivedDateTime desc`;
+    }
+
+    const folder = options?.folder;
+    if (folder) {
+      endpoint = endpoint.replace(`/users/${userId}/messages`, `/users/${userId}/mailFolders/${folder}/messages`);
+    }
+
+    const data = await graphCall<any>(endpoint);
+    return (data.value || []).map((m: any) => ({
+      id: m.id,
+      subject: m.subject,
+      from: m.from,
+      receivedDateTime: m.receivedDateTime,
+      bodyPreview: m.bodyPreview,
+      isRead: m.isRead,
+      hasAttachments: m.hasAttachments,
+    }));
+  } catch (error) {
+    console.error('[MS Graph] Error searching emails:', error);
+    return [];
+  }
+}
+
+// =====================================================
+// OneNote - Create Page
+// =====================================================
+
+/**
+ * Cria uma página no OneNote
+ */
+export async function createOneNotePage(
+  userId: string,
+  sectionId: string,
+  title: string,
+  htmlContent: string
+): Promise<any> {
+  try {
+    const pageHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>${title}</title></head>
+        <body>
+          <h1>${title}</h1>
+          ${htmlContent}
+          <p style="color: gray; font-size: 10px;">Criado pelo Assistente IA — ABZ Group Portal — ${new Date().toLocaleString('pt-BR')}</p>
+        </body>
+      </html>
+    `;
+
+    const token = await getAppAccessToken();
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${userId}/onenote/sections/${sectionId}/pages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/xhtml+xml',
+        },
+        body: pageHtml,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OneNote API error (${response.status}): ${error}`);
+    }
+
+    const data = await response.json();
+    return { id: data.id, title: data.title, link: data.links?.oneNoteWebUrl?.href };
+  } catch (error) {
+    console.error('[MS Graph] Error creating OneNote page:', error);
+    return null;
+  }
+}
+
+/**
+ * Lista seções de um notebook do OneNote
+ */
+export async function listNotebookSections(userId: string, notebookId: string): Promise<any[]> {
+  try {
+    const data = await graphCall<any>(`/users/${userId}/onenote/notebooks/${notebookId}/sections?$select=id,displayName`);
+    return data.value || [];
+  } catch { return []; }
+}
+
+// =====================================================
+// To Do - Create Task
+// =====================================================
+
+/**
+ * Cria uma tarefa no Microsoft To Do
+ */
+export async function createToDoTask(
+  userId: string,
+  listId: string,
+  task: {
+    title: string;
+    body?: string;
+    dueDate?: string;
+    importance?: 'low' | 'normal' | 'high';
+    reminderDateTime?: string;
+  }
+): Promise<any> {
+  try {
+    const taskBody: any = {
+      title: task.title,
+      importance: task.importance || 'normal',
+    };
+
+    if (task.body) {
+      taskBody.body = { content: task.body, contentType: 'text' };
+    }
+
+    if (task.dueDate) {
+      taskBody.dueDateTime = {
+        dateTime: `${task.dueDate}T23:59:00`,
+        timeZone: 'America/Sao_Paulo',
+      };
+    }
+
+    if (task.reminderDateTime) {
+      taskBody.isReminderOn = true;
+      taskBody.reminderDateTime = {
+        dateTime: task.reminderDateTime,
+        timeZone: 'America/Sao_Paulo',
+      };
+    }
+
+    const data = await graphCall<any>(`/users/${userId}/todo/lists/${listId}/tasks`, 'POST', taskBody);
+    return { id: data.id, title: data.title, status: data.status };
+  } catch (error) {
+    console.error('[MS Graph] Error creating To Do task:', error);
+    return null;
+  }
+}
+
 // Exporta o cliente
 export const msGraphClient = {
-  getUser,
-  searchUsers,
-  getUserManager,
-  getDirectReports,
-  listUsers,
-  listEmails,
-  getEmail,
-  sendEmail,
-  listCalendarEvents,
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-  listTeamsChats,
-  listChatMessages,
-  sendTeamsMessage,
-  listOneDriveFiles,
-  searchOneDriveFiles,
-  downloadOneDriveFile,
-  setPresence,
-  getPresences,
+  // Users
+  getUser, searchUsers, getUserManager, getDirectReports, listUsers,
+  // Mail
+  listEmails, getEmail, sendEmail, searchEmails,
+  // Calendar
+  listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
+  // Contacts
+  listContacts,
+  // Groups
+  listGroups, getGroupMembers,
+  // Directory
+  getOrganization, listDomains, listAdminUnits,
+  // Teams
+  listTeamsChats, listChatMessages, sendTeamsMessage, listTeamChannels, listChannelMessages,
+  // Calls/Meetings
+  listOnlineMeetings,
+  // Files
+  listOneDriveFiles, searchOneDriveFiles, downloadOneDriveFile,
+  // SharePoint
+  listSites, getSiteLists,
+  // Notes
+  listNotebooks, listNotebookSections, createOneNotePage,
+  // Tasks
+  listTaskLists, listTasks, createToDoTask,
+  // Security
+  listSecurityAlerts, getSecurityIncidents,
+  // Audit
+  getAuditLogs, getSignInLogs,
+  // Applications
+  listApplications,
+  // Devices
+  listDevices,
+  // Compliance
+  listAccessReviews,
+  // Bookings
+  listBookingBusinesses,
+  // Presence
+  setPresence, getPresences,
+  // Service Health
+  getServiceHealth, getServiceIssues,
 };
 
 export default msGraphClient;

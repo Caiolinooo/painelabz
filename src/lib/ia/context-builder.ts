@@ -366,6 +366,19 @@ ${userContext.availableTools.map(t => `- **${t.name}**: ${t.description}`).join(
 - NAO continue pedindo para executar mais ferramentas se ja recebeu os dados`;
   }
 
+  // Instruções de Agente Proativo
+  if (userContext.role === 'ADMIN' || userContext.role === 'GERENTE') {
+    prompt += `\n\n## Modo Agente Proativo
+- Voce tambem atua como **agente proativo**: monitora KPIs, envia lembretes e acompanha tarefas.
+- Quando o usuario pedir, voce pode:
+  - **Agendar tarefas** de monitoramento (cron) via ferramenta \"agendar_tarefa_agente\"
+  - **Analisar KPIs** de performance e solucoes via ferramenta \"analisar_kpis_negocio\"
+  - **Enviar notificacoes** proativas via push, email e popup via ferramenta \"enviar_notificacao_proativa\"
+  - **Gerenciar a base de conhecimento** para guardar informacoes importantes via ferramenta \"gerenciar_base_conhecimento\"
+- Os crons padrão rodam as 07:50 e 14:00 (seg-sex), mas o usuario pode personalizar.
+- Sempre pergunte ao usuario se quer que voce acompanhe algo periodicamente.`;
+  }
+
   if (customPrompt) {
     prompt += `\n\n## Instrucoes adicionais do painel\n${customPrompt}`;
   }
@@ -418,7 +431,18 @@ export async function buildChatMessages(
     throw new Error('Usuario nao encontrado');
   }
 
-  const systemPrompt = buildSystemPrompt(userContext, config?.system_prompt || undefined);
+  let systemPrompt = buildSystemPrompt(userContext, config?.system_prompt || undefined);
+
+  // Injetar contexto da base de conhecimento
+  try {
+    const { buildKnowledgeContext } = await import('@/lib/ia/knowledge-base');
+    const kbContext = await buildKnowledgeContext(userId, userContext.role, userContext.department);
+    if (kbContext) {
+      systemPrompt += kbContext;
+    }
+  } catch (kbErr) {
+    console.warn('[IA Context] Erro ao carregar knowledge base:', kbErr);
+  }
 
   const messages: LLMMessage[] = [
     { role: 'system', content: systemPrompt },
