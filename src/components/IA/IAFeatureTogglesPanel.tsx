@@ -59,19 +59,19 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ key, enabled }),
+        // Envie ambos nomes de campos para cobrir contratos variados do backend
+        body: JSON.stringify({ key, feature_key: key, enabled }),
       });
       let data: any = {};
       try { data = await res.json(); } catch { data = {}; }
 
       if (res.ok) {
+        // Re-fetch toggles to align UI with backend state
+        await fetchToggles();
         setMessage({ type: 'success', text: `Ferramenta ${key} ${enabled ? 'ativada' : 'desativada'}.` });
       } else {
         const errMsg = (data as any)?.error || (data as any)?.message || 'Erro ao salvar alteração';
         // Debug adicional para entender a falha quando o backend retornar 4xx/5xx
-        try {
-          // @ts-ignore
-        } catch {}
         console.error('Falha ao salvar toggle IA', { key, enabled, status: res.status, response: data });
         setMessage({ type: 'error', text: `Erro ao salvar: ${errMsg}` });
       }
