@@ -35,7 +35,7 @@ export default function IAPermissionConfigPanel({ token }: ConfigPanelProps) {
   const loadConfigs = async () => {
     try {
       const configs = await getAllModuleConfigs();
-      setModules(configs);
+      setModules(Array.isArray(configs) ? configs : []);
       const msPerms = await getMicrosoftWritePermissions();
       setMsPermissions(msPerms);
     } catch (error) {

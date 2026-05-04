@@ -55,8 +55,25 @@ export default function IAConfigPanel({ token }: { token: string }) {
       const res = await fetch('/api/ia/models?test=true', { headers: hdrs() });
       const data = await res.json();
       setTestResult(data);
-      if (data.success && data.models) {
-        setModels(data.models.map((id: string) => ({ id, object: 'model', owned_by: 'local' })));
+      // Normalize potential shapes of models
+      if (data.success) {
+        const raw: any = data.models;
+        const items: any[] = Array.isArray(raw)
+          ? raw
+          : Array.isArray((raw as any)?.items)
+            ? (raw as any).items
+            : [];
+        if (items.length > 0) {
+          const mapped = items.map((m: any) => {
+            if (m && typeof m === 'object' && m.id != null) {
+              return { id: String(m.id), object: m.object ?? 'model', owned_by: m.owned_by ?? 'local' };
+            }
+            return { id: String(m), object: 'model', owned_by: 'local' };
+          });
+          setModels(mapped as any);
+        } else {
+          setModels([]);
+        }
       }
     } catch (err) {
       setTestResult({ success: false, message: 'Erro de conexão' });
@@ -68,7 +85,25 @@ export default function IAConfigPanel({ token }: { token: string }) {
     try {
       const res = await fetch('/api/ia/models', { headers: hdrs() });
       const data = await res.json();
-      if (data.models) setModels(data.models);
+      const raw: any = data?.models;
+      if (Array.isArray(raw)) {
+        const mapped = raw.map((m: any) => {
+          if (m && typeof m === 'object' && m.id != null) {
+            return { id: String(m.id), object: m.object ?? 'model', owned_by: m.owned_by ?? 'local' };
+          }
+          return { id: String(m), object: 'model', owned_by: 'local' };
+        });
+        setModels(mapped as any);
+      } else if (raw && Array.isArray(raw?.items)) {
+        const mapped = raw.items.map((m: any) => ({
+          id: String(m.id ?? m),
+          object: m.object ?? 'model',
+          owned_by: m.owned_by ?? 'local',
+        }));
+        setModels(mapped as any);
+      } else {
+        setModels([]);
+      }
     } catch { /* skip */ }
   };
 
