@@ -1,5 +1,29 @@
 # Changelog
 
+## [5.8.0] - 2026-05-04
+
+### Fixed
+- **Correção de Status de Férias**: Status usavam `pending/approved` (minúsculas), schema usa `PENDING_LEADER/APPROVED` (maiúsculas). Corrigido em:
+  - `context-builder.ts`: Filtros ajustados para `PENDING_LEADER`, `PENDING_MANAGER`, `APPROVED`
+  - `tools.ts`: Filtros de status corrigidos
+  - `ferias.tools.ts`: Status ajustados para schema
+  - `dashboard-service.ts`: Filtros corrigidos
+- **Correção de Status de Reembolso**: Status usavam `PENDING/APPROVED` (maiúsculas), schema usa `pendente/aprovado` (minúsculas). Corrigido em:
+  - `context-builder.ts`: Filtros ajustados para `pendente`, `aprovado`
+  - `tools.ts`: Campos e filtros corrigidos
+  - `reembolso.tools.ts`: Reescrito com normalização de status
+  - `dashboard-service.ts`: KPIs corrigidos
+  - `agent-service.ts`: Taxa de aprovação corrigida
+- **Correção de Schema Reimbursement**: Campo `user_id` não existe no schema (tabela usa `email`). Corrigido para buscar usuário via email.
+- **Correção de Campo**: Campo `valor_total` não existe (schema usa `valorTotal` em camelCase). Corrigido em todas as consultas.
+
+### Changed
+- **Modal de Férias Responsivo**: Modal de solicitação de férias agora é auto-adaptável:
+  - Largura: `max-w-lg` (antes `max-w-md`)
+  - Altura: `max-h-[90vh]` com scroll interno
+  - Padding e botões responsivos
+  - Acessível em qualquer resolução/zoom
+
 ## [5.7.0] - 2026-05-04
 
 ## [5.7.1] - 2026-05-04

@@ -152,8 +152,8 @@ async function fetchVacationKPIs(
       .limit(20);
 
     if (data && data.length > 0) {
-      const pending = data.filter((d: any) => d.status === 'pending');
-      const approved = data.filter((d: any) => d.status === 'approved');
+      const pending = data.filter((d: any) => d.status === 'PENDING_LEADER' || d.status === 'PENDING_MANAGER');
+      const approved = data.filter((d: any) => d.status === 'APPROVED');
 
       if (pending.length > 0) {
         kpis.push({
@@ -185,12 +185,20 @@ async function fetchReimbursementKPIs(
   const kpis: IADashboardKPI[] = [];
 
   try {
-let query = supabaseAdmin
+    let query = supabaseAdmin
       .from('Reimbursement')
-      .select('status, valor_total, user_id');
+      .select('status, valorTotal, email');
 
-    if (accessibleIds) {
-      query = query.in('user_id', accessibleIds);
+    if (accessibleIds && accessibleIds.length > 0) {
+      const { data: users } = await supabaseAdmin
+        .from('users_unified')
+        .select('email')
+        .in('id', accessibleIds);
+      
+      const emails = users?.map(u => u.email).filter(Boolean) || [];
+      if (emails.length > 0) {
+        query = query.in('email', emails);
+      }
     }
 
     const { data } = await query
@@ -198,9 +206,9 @@ let query = supabaseAdmin
       .limit(30);
 
     if (data && data.length > 0) {
-      const pending = data.filter((d: any) => d.status === 'PENDING');
+      const pending = data.filter((d: any) => d.status === 'pendente');
       if (pending.length > 0) {
-        const total = pending.reduce((s: number, d: any) => s + (d.valor_total || 0), 0);
+        const total = pending.reduce((s: number, d: any) => s + (parseFloat(d.valorTotal) || 0), 0);
         kpis.push({
           label: 'Reembolsos Pendentes',
           value: `${pending.length} (R$ ${Math.round(total).toLocaleString('pt-BR')})`,
@@ -208,11 +216,11 @@ let query = supabaseAdmin
         });
       }
     }
-  } catch {
-    // tabela pode não existir
+  } catch (err) {
+    // tabela pode nao existir
   }
 
-  return kpis;
+return kpis;
 }
 
 /**
@@ -320,7 +328,7 @@ async function fetchPendencies(
       const { data } = await supabaseAdmin
         .from('leave_requests')
         .select('id, user_id, start_date, status')
-        .eq('status', 'pending')
+        .eq('status', 'PENDING_LEADER')
         .order('start_date', { ascending: true })
         .limit(5);
 

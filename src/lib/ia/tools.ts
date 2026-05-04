@@ -1134,9 +1134,9 @@ return JSON.stringify(data);
             .order('start_date', { ascending: false })
             .limit(20);
 
-          const pendentes = ferias?.filter(f => f.status === 'pending') || [];
-          const aprovadas = ferias?.filter(f => f.status === 'approved') || [];
-          const canceladas = ferias?.filter(f => f.status === 'cancelled') || [];
+          const pendentes = ferias?.filter(f => f.status === 'PENDING_LEADER' || f.status === 'PENDING_MANAGER') || [];
+          const aprovadas = ferias?.filter(f => f.status === 'APPROVED') || [];
+          const canceladas = ferias?.filter(f => f.status === 'CANCELLED') || [];
 
           result.ferias = {
             pendentes: pendentes.map(f => ({
@@ -1158,32 +1158,42 @@ return JSON.stringify(data);
         }
 
         if (tipo === 'reembolsos' || tipo === 'resumo' || tipo === 'todos') {
-          const { data: reembolsos } = await supabaseAdmin
-            .from('Reimbursement')
-            .select('id, status, valor_total, descricao, data, categoria')
-            .eq('user_id', targetUserId)
-            .order('data', { ascending: false })
-            .limit(20);
+          const { data: userData } = await supabaseAdmin
+            .from('users_unified')
+            .select('email')
+            .eq('id', targetUserId)
+            .single();
+          
+          const userEmail = userData?.email;
+          
+          const { data: reembolsos } = userEmail 
+            ? await supabaseAdmin
+                .from('Reimbursement')
+                .select('id, status, valorTotal, descricao, data, categoria')
+                .eq('email', userEmail)
+                .order('data', { ascending: false })
+                .limit(20)
+            : { data: null };
 
-          const pendentes = reembolsos?.filter(r => r.status === 'PENDING') || [];
-          const aprovados = reembolsos?.filter(r => r.status === 'APPROVED') || [];
-          const rejeitados = reembolsos?.filter(r => r.status === 'REJECTED') || [];
+          const pendentes = reembolsos?.filter(r => r.status === 'pendente') || [];
+          const aprovados = reembolsos?.filter(r => r.status === 'aprovado') || [];
+          const rejeitados = reembolsos?.filter(r => r.status === 'rejeitado') || [];
 
-          const totalPendente = pendentes.reduce((sum, r) => sum + (r.valor_total || 0), 0);
-          const totalAprovado = aprovados.reduce((sum, r) => sum + (r.valor_total || 0), 0);
+          const totalPendente = pendentes.reduce((sum, r) => sum + (parseFloat(r.valorTotal) || 0), 0);
+          const totalAprovado = aprovados.reduce((sum, r) => sum + (parseFloat(r.valorTotal) || 0), 0);
 
           result.reembolsos = {
             pendentes: pendentes.map(r => ({
               id: r.id,
               descricao: r.descricao,
-              valor: r.valor_total,
+              valor: r.valorTotal,
               data: r.data,
               categoria: r.categoria
             })),
             aprovados: aprovados.map(r => ({
               id: r.id,
               descricao: r.descricao,
-              valor: r.valor_total,
+              valor: r.valorTotal,
               data: r.data,
               categoria: r.categoria
             })),
@@ -1377,13 +1387,13 @@ return JSON.stringify(data);
 
         let query = supabaseAdmin
           .from('Reimbursement')
-          .select('id, user_id, status, valor_total, descricao, data, categoria, created_at');
+          .select('id, user_id, status, valorTotal, descricao, data, categoria, created_at');
 
         if (accessInfo.ids) {
           query = query.in('user_id', accessInfo.ids);
         }
 
-        if (status) query = query.eq('status', status.toUpperCase());
+        if (status) query = query.eq('status', status.toLowerCase());
         if (data_inicio) query = query.gte('data', data_inicio);
         if (data_fim) query = query.lte('data', data_fim);
         if (categoria) query = query.ilike('categoria', `%${categoria}%`);
@@ -1410,7 +1420,7 @@ return JSON.stringify(data);
             departamento: u?.department || 'N/A',
             descricao: r.descricao,
             categoria: r.categoria,
-            valor: r.valor_total,
+            valor: r.valorTotal || '',
             status: r.status,
             data: r.data,
           };
@@ -1701,9 +1711,9 @@ return JSON.stringify(data);
 
         switch (tipo_dados) {
           case 'reembolsos': {
-            let query = supabaseAdmin.from('Reimbursement').select('id, user_id, status, valor_total, descricao, data, categoria');
+            let query = supabaseAdmin.from('Reimbursement').select('id, user_id, status, valorTotal, descricao, data, categoria');
             if (accessInfo.ids) query = query.in('user_id', accessInfo.ids);
-            if (filtros.status) query = query.eq('status', filtros.status.toUpperCase());
+            if (filtros.status) query = query.eq('status', filtros.status.toLowerCase());
             if (filtros.data_inicio) query = query.gte('data', filtros.data_inicio);
             if (filtros.data_fim) query = query.lte('data', filtros.data_fim);
             const { data: reemb } = await query.order('data', { ascending: false }).limit(500);
@@ -1863,9 +1873,9 @@ return JSON.stringify(data);
           switch (tipo_dados) {
             case 'resumo':
             case 'reembolsos': {
-              let query = supabaseAdmin.from('Reimbursement').select('id, user_id, status, valor_total, data, descricao, categoria');
+              let query = supabaseAdmin.from('Reimbursement').select('id, user_id, status, valorTotal, data, descricao, categoria');
               if (accessInfo.ids) query = query.in('user_id', accessInfo.ids);
-              if (filtros.status) query = query.eq('status', filtros.status.toUpperCase());
+              if (filtros.status) query = query.eq('status', filtros.status.toLowerCase());
               const { data: reemb } = await query.limit(500);
               
               const userIds = [...new Set((reemb || []).map((r: any) => r.user_id))];
@@ -1877,12 +1887,12 @@ return JSON.stringify(data);
                 departamento: 'Geral',
                 descricao: r.descricao || '-',
                 categoria: r.categoria || '-',
-                valor: r.valor_total || 0,
+                valor: r.valorTotal || 0,
                 status: r.status || '-',
                 data: r.data || '-',
               }));
               
-              totalValor = (reemb || []).reduce((sum: number, r: any) => sum + (r.valor_total || 0), 0);
+              totalValor = (reemb || []).reduce((sum: number, r: any) => sum + (parseFloat(r.valorTotal) || 0), 0);
               break;
             }
             case 'ferias': {
@@ -2099,13 +2109,13 @@ return JSON.stringify(data);
         if (tipo_analise === 'reembolsos' || tipo_analise === 'geral') {
           const { data: reemb } = await supabaseAdmin
             .from('Reimbursement')
-            .select('status, valor_total')
+            .select('status, valorTotal')
             .in('user_id', accessInfo.ids || [])
             .limit(500);
 
-          const pendentes = (reemb || []).filter((r: any) => r.status === 'PENDING');
-          const totalPendente = pendentes.reduce((sum: number, r: any) => sum + (r.valor_total || 0), 0);
-          const aprovados = (reemb || []).filter((r: any) => r.status === 'APPROVED');
+          const pendentes = (reemb || []).filter((r: any) => r.status === 'pendente');
+          const totalPendente = pendentes.reduce((sum: number, r: any) => sum + (parseFloat(r.valorTotal) || 0), 0);
+          const aprovados = (reemb || []).filter((r: any) => r.status === 'aprovado');
 
           if (pendentes.length > 10) {
             insights.push(`⚠️ Há ${pendentes.length} reembolsos pendentes totalizando R$ ${totalPendente.toLocaleString('pt-BR')}. Considere verificar com os aprovadores.`);

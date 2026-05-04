@@ -46,7 +46,7 @@ const buscarFeriasTool: IATool = {
         .eq('user_id', funcionario_id as string);
 
       if (incluir_pendentes) {
-        query = query.in('status', ['pending', 'approved', 'rejected']);
+        query = query.in('status', ['PENDING_LEADER', 'PENDING_MANAGER', 'APPROVED', 'REJECTED']);
       }
 
       const { data, error } = await query
