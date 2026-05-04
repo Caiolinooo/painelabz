@@ -2,6 +2,20 @@
 
 ## [5.7.0] - 2026-05-04
 
+## [5.7.1] - 2026-05-04
+
+### Added
+- MVP de IA agentic com pendências por fonte (Teams, Emails, Calendar) e Knowledge como fonte adicional opcional.
+- Endpoints MVP por fonte: /api/ia/pendencias/teams, /api/ia/pendencias/emails, /api/ia/pendencias/calendar, /api/ia/pendencias/knowledge (opcional).
+- Endpoint consolidado: /api/ia/pendencias/overview para visão geral por fonte.
+- Orquestrador skeleton para decisão de plano (em futuras iterações evolutivas).
+
+### Changed
+- Mantidas as alterações de MVP anteriores; inclusão de patches para suporte a pendências por fonte (agora com estrutura padronizada).
+
+### Fixed
+- Correções de rotas API para pendências com fallback seguro para cenários sem dados.
+
 ### Added
 - **Agente IA Proativo**: Novo motor de automação (`agent-service.ts`) que executa tarefas agendadas e proativas.
 - **Base de Conhecimento Corporativa**: Sistema de memória persistente (`ia_knowledge_base`) com injeção dinâmica de contexto baseada em cargo e departamento.
