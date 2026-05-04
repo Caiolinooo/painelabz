@@ -48,6 +48,7 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
   };
 
   const handleToggle = async (key: string, enabled: boolean) => {
+    // Atualização UI rápida (interface responsiva)
     setToggles(prev => Array.isArray(prev) ? prev.map(t => t.feature_key === key ? { ...t, is_enabled: enabled } : t) : prev);
     
     setSaving(true);
@@ -60,18 +61,21 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
         },
         body: ***REMOVED*** key, enabled }),
       });
-      
+      let data: any = {};
+      try { data = await res.json(); } catch { data = {}; }
+
       if (res.ok) {
         setMessage({ type: 'success', text: `Ferramenta ${key} ${enabled ? 'ativada' : 'desativada'}.` });
       } else {
-        setMessage({ type: 'error', text: 'Erro ao salvar alteração.' });
+        const errMsg = data?.error || data?.message || 'Erro ao salvar alteração';
+        setMessage({ type: 'error', text: `Erro ao salvar: ${errMsg}` });
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Erro de conexão.' });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setMessage(null), 3000);
     }
-    setSaving(false);
-    
-    setTimeout(() => setMessage(null), 3000);
   };
 
   const getIcon = (category: string) => {
