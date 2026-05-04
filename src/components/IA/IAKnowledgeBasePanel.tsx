@@ -38,7 +38,16 @@ export default function IAKnowledgeBasePanel({ token }: { token: string }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setEntries(data);
+        const list: KBEntry[] = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.entries)
+            ? (data as any).entries
+            : Array.isArray((data as any)?.data)
+              ? (data as any).data
+              : Array.isArray((data as any)?.items)
+                ? (data as any).items
+                : [];
+        setEntries(list);
       }
     } catch (err) {
       console.error('[KB] Error:', err);

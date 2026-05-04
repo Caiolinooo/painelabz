@@ -29,7 +29,17 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setToggles(data);
+        // Normalize possible API shapes to always an array
+        const normalized = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.items)
+            ? (data as any).items
+            : Array.isArray((data as any)?.data)
+              ? (data as any).data
+              : Array.isArray((data as any)?.toggles)
+                ? (data as any).toggles
+                : [];
+        setToggles(normalized as any);
       }
     } catch (err) {
       console.error('[Toggles] Error:', err);
@@ -38,7 +48,7 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
   };
 
   const handleToggle = async (key: string, enabled: boolean) => {
-    setToggles(prev => prev.map(t => t.feature_key === key ? { ...t, is_enabled: enabled } : t));
+    setToggles(prev => Array.isArray(prev) ? prev.map(t => t.feature_key === key ? { ...t, is_enabled: enabled } : t) : prev);
     
     setSaving(true);
     try {
