@@ -48,7 +48,13 @@ export default function ChatWindow({ token }: Props) {
     try {
       const res = await fetch('/api/ia/sessions', { headers: hdrs() });
       const data = await res.json();
-      setSessions(data.sessions || []);
+      const raw: any = data?.sessions;
+      const sessionsArray: any[] = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as any)?.items)
+          ? (raw as any).items
+          : [];
+      setSessions(sessionsArray);
     } catch (err) { console.error('Erro sessões:', err); }
     finally { setSessionsLoading(false); }
   }, [hdrs]);
@@ -80,7 +86,13 @@ export default function ChatWindow({ token }: Props) {
     try {
       const res = await fetch(`/api/ia/chat?session_id=${sid}`, { headers: hdrs() });
       const data = await res.json();
-      setMessages(data.messages || []);
+      const raw: any = data?.messages;
+      const messagesArray: any[] = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as any)?.items)
+          ? (raw as any).items
+          : [];
+      setMessages(messagesArray);
     } catch (err) { console.error('Erro msgs:', err); }
     finally { setIsLoading(false); }
   }, [hdrs]);
