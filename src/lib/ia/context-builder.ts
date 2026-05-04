@@ -78,7 +78,7 @@ async function getUserVacations(userId: string): Promise<{
       .from('leave_requests')
       .select('start_date, end_date, status')
       .eq('user_id', userId)
-      .in('status', ['pending', 'approved'])
+      .in('status', ['PENDING_LEADER', 'PENDING_MANAGER', 'APPROVED', 'CANCELLED'])
       .gte('end_date', new Date().toISOString().split('T')[0])
       .order('start_date', { ascending: true })
       .limit(5);
@@ -86,7 +86,7 @@ async function getUserVacations(userId: string): Promise<{
     if (error || !data) return { pending: 0, upcoming: [] };
 
     return {
-      pending: data.filter((d: any) => d.status === 'pending').length,
+      pending: data.filter((d: any) => d.status === 'PENDING_LEADER' || d.status === 'PENDING_MANAGER').length,
       upcoming: data.map((d: any) => ({
         start: d.start_date,
         end: d.end_date,
@@ -106,19 +106,27 @@ async function getUserReimbursements(userId: string): Promise<{
   totalApproved: number;
 }> {
   try {
+    const { data: user } = await supabaseAdmin
+      .from('users_unified')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (!user?.email) return { pending: 0, totalApproved: 0 };
+
     const { data, error } = await supabaseAdmin
       .from('Reimbursement')
-      .select('status, valor_total')
-      .eq('user_id', userId)
+      .select('status, valorTotal')
+      .eq('email', user.email)
       .order('data', { ascending: false })
       .limit(20);
 
     if (error || !data) return { pending: 0, totalApproved: 0 };
 
-    const pending = data.filter((d: any) => d.status === 'PENDING').length;
+    const pending = data.filter((d: any) => d.status === 'pendente').length;
     const totalApproved = data
-      .filter((d: any) => d.status === 'APPROVED')
-      .reduce((sum: number, d: any) => sum + (d.valor_total || 0), 0);
+      .filter((d: any) => d.status === 'aprovado')
+      .reduce((sum: number, d: any) => sum + (parseFloat(d.valorTotal) || 0), 0);
 
     return { pending, totalApproved: Math.round(totalApproved * 100) / 100 };
   } catch {
@@ -318,7 +326,7 @@ IMPORTANTE: Voce ja sabe o email e ID do usuario logado! NAO peca essas informac
       if (upcoming.length > 0) {
         prompt += `\n- Proximas ferias:`;
         for (const v of upcoming) {
-          prompt += `\n  - ${v.start} a ${v.end} (${v.status === 'approved' ? 'aprovada' : 'pendente'})`;
+          prompt += `\n  - ${v.start} a ${v.end} (${v.status === 'APPROVED' ? 'aprovada' : 'pendente'})`;
         }
       }
     }

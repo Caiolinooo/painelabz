@@ -867,9 +867,9 @@ export default function FeriasPage() {
 
                 {/* 1. Modal Nova Solicitação */}
                 {showModal && mounted && createPortal(
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
-                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] my-auto animate-in zoom-in-95 duration-300">
+                            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 sticky top-0 z-10">
                                 <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                                     <FiCalendar className="text-blue-600" />
                                     Nova Solicitação de Férias
@@ -895,8 +895,8 @@ export default function FeriasPage() {
                                 </div>
                             </div>
 
-                            <form onSubmit={handleSubmitRequest} className="p-0 flex flex-col h-full max-h-[80vh]">
-                                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+                            <form onSubmit={handleSubmitRequest} className="p-0 flex flex-col min-h-[200px] max-h-[calc(90vh-180px)]">
+                                <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5 mb-2">
                                     <div className="space-y-4">
                                         {formData.periods.map((period, index) => (
                                             <div key={index} className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm relative">
@@ -1026,14 +1026,14 @@ export default function FeriasPage() {
                                     </div>
                                 </div>
 
-                                <div className="p-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-white shrink-0">
-                                    <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div className="p-3 sm:p-4 border-t border-gray-100 flex items-center justify-end gap-2 sm:gap-3 bg-white sticky bottom-0">
+                                    <button type="button" onClick={() => setShowModal(false)} className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
                                         Cancelar
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={submitting || formData.periods.some(p => !p.startDate || !p.endDate)}
-                                        className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+                                        className="px-4 sm:px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors shadow-sm"
                                     >
                                         {submitting ? 'Enviando...' : 'Enviar Solicitação'}
                                     </button>
@@ -1048,31 +1048,31 @@ export default function FeriasPage() {
                 {/* 2. Modal Rejeitar Solicitação */}
                 {
                     showRejectModal && mounted && createPortal(
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
-                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95">
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
+                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-auto p-4 sm:p-6 animate-in zoom-in-95">
                                 <h3 className="text-lg font-bold text-gray-900 mb-2">Rejeitar Solicitação</h3>
-                                <p className="text-sm text-gray-500 mb-6">
+                                <p className="text-sm text-gray-500 mb-4 sm:mb-6">
                                     Você está rejeitando o pedido de {rejectingRequest?.user?.name}. Por favor, informe o motivo.
                                 </p>
 
                                 <textarea
-                                    className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none min-h-[100px] mb-6"
+                                    className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none min-h-[80px] sm:min-h-[100px] mb-4 sm:mb-6"
                                     placeholder="Justificativa da rejeição..."
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
                                 />
 
-                                <div className="flex gap-3 justify-end">
+                                <div className="flex gap-2 sm:gap-3 justify-end">
                                     <button
                                         onClick={() => setShowRejectModal(false)}
-                                        className="px-4 py-2 font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                                        className="px-3 sm:px-4 py-2 font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={submitReject}
                                         disabled={processingId === rejectingRequest?.id || !rejectReason.trim()}
-                                        className="px-4 py-2 font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-3 sm:px-4 py-2 font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {processingId === rejectingRequest?.id ? 'Rejeitando...' : 'Confirmar Rejeição'}
                                     </button>
@@ -1085,9 +1085,9 @@ export default function FeriasPage() {
 
                 {/* 3. Modal Detalhes / Ações - Todas as Solicitações */}
                 {isAllReqModalOpen && selectedAllReq && mounted && createPortal(
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
-                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95">
-                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95">
+                            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
                                 <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                                     <FiCalendar className="text-blue-600" />
                                     Detalhes da Solicitação
@@ -1097,7 +1097,7 @@ export default function FeriasPage() {
                                 </button>
                             </div>
 
-                            <div className="p-6 overflow-y-auto max-h-[70vh]">
+                            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
@@ -1159,12 +1159,12 @@ export default function FeriasPage() {
                                 )}
                             </div>
 
-                            <div className="bg-gray-50 px-6 py-4 flex flex-wrap gap-3 justify-end border-t border-gray-100">
+                            <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-wrap gap-2 sm:gap-3 justify-end border-t border-gray-100">
                                 <button
                                     type="button"
                                     onClick={() => !allReqModalProcessing && setIsAllReqModalOpen(false)}
                                     disabled={allReqModalProcessing}
-                                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                    className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
                                 >
                                     Fechar
                                 </button>
@@ -1173,7 +1173,7 @@ export default function FeriasPage() {
                                     type="button"
                                     onClick={() => handleAllReqDelete(selectedAllReq.id)}
                                     disabled={allReqModalProcessing}
-                                    className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                                    className="px-3 sm:px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     <FiTrash2 className="inline mr-1" /> Excluir
                                 </button>
@@ -1184,7 +1184,7 @@ export default function FeriasPage() {
                                             type="button"
                                             onClick={() => handleAllReqAction(selectedAllReq.id, 'REJECT')}
                                             disabled={allReqModalProcessing}
-                                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                                            className="px-3 sm:px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
                                         >
                                             <FiXCircle className="inline mr-1" /> Rejeitar
                                         </button>
@@ -1192,7 +1192,7 @@ export default function FeriasPage() {
                                             type="button"
                                             onClick={() => handleAllReqAction(selectedAllReq.id, 'APPROVE')}
                                             disabled={allReqModalProcessing}
-                                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                                            className="px-3 sm:px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
                                         >
                                             <FiCheckCircle className="inline mr-1" /> Aprovar
                                         </button>

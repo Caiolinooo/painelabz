@@ -233,7 +233,7 @@ async function calculateKPIValue(kpiKey: string, department?: string, sector?: s
         const { count: approved } = await supabaseAdmin
           .from('Reimbursement')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'APPROVED');
+          .eq('status', 'aprovado');
         if (!total || total === 0) return 0;
         return Math.round(((approved || 0) / total) * 100);
       }
