@@ -65,7 +65,7 @@ export function generatePDFReport<T extends Record<string, any>>(
   let currentY = 20;
 
   // ============ CABEÇALHO ============
-  doc.setFillColor(...ABZ_COLORS.primary);
+  doc.setFillColor(ABZ_COLORS.primary[0], ABZ_COLORS.primary[1], ABZ_COLORS.primary[2]);
   doc.rect(0, 0, pageWidth, 25, 'F');
   
   doc.setTextColor(255, 255, 255);
@@ -78,15 +78,15 @@ export function generatePDFReport<T extends Record<string, any>>(
   doc.text('Portal Corporativo', pageWidth / 2, 18, { align: 'center' });
 
   // ============ TÍTULO DO RELATÓRIO ============
-  currentY = 35;
-  doc.setTextColor(...ABZ_COLORS.primary);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
+   currentY = 35;
+   doc.setTextColor(ABZ_COLORS.primary[0], ABZ_COLORS.primary[1], ABZ_COLORS.primary[2]);
+   doc.setFontSize(16);
+   doc.setFont('helvetica', 'bold');
   doc.text(options.titulo, pageWidth / 2, currentY, { align: 'center' });
 
-  // ============ INFORMAÇÕES DO RELATÓRIO ============
-  currentY += 10;
-  doc.setTextColor(...ABZ_COLORS.text);
+   // ============ INFORMAÇÕES DO RELATÓRIO ============
+   currentY += 10;
+   doc.setTextColor(ABZ_COLORS.text[0], ABZ_COLORS.text[1], ABZ_COLORS.text[2]);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
 
@@ -134,19 +134,19 @@ export function generatePDFReport<T extends Record<string, any>>(
       head: [headers],
       body: body,
       theme: 'grid',
-      headStyles: {
-        fillColor: ABZ_COLORS.primary,
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
+       headStyles: {
+         fillColor: [ABZ_COLORS.primary[0], ABZ_COLORS.primary[1], ABZ_COLORS.primary[2]],
+         textColor: [255, 255, 255],
+         fontStyle: 'bold',
         fontSize: 9,
       },
-      bodyStyles: {
-        fontSize: 8,
-        textColor: ABZ_COLORS.text,
-      },
-      alternateRowStyles: {
-        fillColor: ABZ_COLORS.lightGray,
-      },
+       bodyStyles: {
+         fontSize: 8,
+         textColor: [ABZ_COLORS.text[0], ABZ_COLORS.text[1], ABZ_COLORS.text[2]],
+       },
+       alternateRowStyles: {
+         fillColor: [ABZ_COLORS.lightGray[0], ABZ_COLORS.lightGray[1], ABZ_COLORS.lightGray[2]],
+       },
       margin: { left: 10, right: 10 },
       tableWidth: 'auto',
     });
@@ -244,9 +244,9 @@ export function generateKPIsPDF(data: any, options: PDFReportOptions): Buffer {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  // Cabeçalho
-  doc.setFillColor(...ABZ_COLORS.primary);
-  doc.rect(0, 0, pageWidth, 25, 'F');
+   // Cabeçalho
+   doc.setFillColor(ABZ_COLORS.primary[0], ABZ_COLORS.primary[1], ABZ_COLORS.primary[2]);
+   doc.rect(0, 0, pageWidth, 25, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
@@ -254,11 +254,11 @@ export function generateKPIsPDF(data: any, options: PDFReportOptions): Buffer {
   doc.setFontSize(10);
   doc.text('Dashboard de Indicadores', pageWidth / 2, 18, { align: 'center' });
 
-  let y = 45;
-  doc.setTextColor(...ABZ_COLORS.text);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(options.titulo, 20, y);
+   let y = 45;
+   doc.setTextColor(ABZ_COLORS.text[0], ABZ_COLORS.text[1], ABZ_COLORS.text[2]);
+   doc.setFontSize(16);
+   doc.setFont('helvetica', 'bold');
+   doc.text(options.titulo, 20, y);
   
   y += 15;
   doc.setFontSize(12);
@@ -272,16 +272,16 @@ export function generateKPIsPDF(data: any, options: PDFReportOptions): Buffer {
     { label: 'Sessões de IA', value: data.total_sessoes_ia },
   ];
 
-  for (const kpi of kpis) {
-    doc.setFillColor(...ABZ_COLORS.lightGray);
-    doc.roundedRect(20, y, pageWidth - 40, 20, 3, 3, 'F');
+   for (const kpi of kpis) {
+     doc.setFillColor(ABZ_COLORS.lightGray[0], ABZ_COLORS.lightGray[1], ABZ_COLORS.lightGray[2]);
+     doc.roundedRect(20, y, pageWidth - 40, 20, 3, 3, 'F');
     doc.setFontSize(11);
     doc.text(kpi.label, 25, y + 8);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...ABZ_COLORS.primary);
-    doc.text(String(kpi.value || 0), pageWidth - 25, y + 13, { align: 'right' });
-    doc.setTextColor(...ABZ_COLORS.text);
+     doc.setFontSize(14);
+     doc.setFont('helvetica', 'bold');
+     doc.setTextColor(ABZ_COLORS.primary[0], ABZ_COLORS.primary[1], ABZ_COLORS.primary[2]);
+     doc.text(String(kpi.value || 0), pageWidth - 25, y + 13, { align: 'right' });
+     doc.setTextColor(ABZ_COLORS.text[0], ABZ_COLORS.text[1], ABZ_COLORS.text[2]);
     doc.setFont('helvetica', 'normal');
     y += 25;
   }

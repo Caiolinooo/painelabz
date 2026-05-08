@@ -5,14 +5,13 @@ import type { IAConfig, IAModel } from '@/types/ia';
 
 export default function IAConfigPanel({ token }: { token: string }) {
   const [config, setConfig] = useState<IAConfig | null>(null);
-  const [models, setModels] = useState<IAModel[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Form state
+  // General Form state
+  const [provider, setProvider] = useState<'lmstudio' | 'llamacpp'>('lmstudio');
   const [endpoint, setEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [modelDefault, setModelDefault] = useState('');
@@ -25,90 +24,59 @@ export default function IAConfigPanel({ token }: { token: string }) {
     'Authorization': `Bearer ${token}`,
   }), [token]);
 
-  // Load config
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/ia/config', { headers: hdrs() });
-        const data = await res.json();
-        if (data.config) {
-          const c = data.config as IAConfig;
-          setConfig(c);
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Config Geral
+      const resC = await fetch('/api/ia/config', { headers: hdrs() });
+      const dataC = await resC.json();
+      if (dataC.config) {
+        const c = dataC.config as IAConfig;
+        setConfig(c);
+        
+        const activeProv = c.provider || 'lmstudio';
+        setProvider(activeProv);
+        
+        if (c.provider_settings && c.provider_settings[activeProv]) {
+          const settings = c.provider_settings[activeProv];
+          setEndpoint(settings.endpoint || c.endpoint || '');
+          setApiKey(settings.api_key || c.api_key || '');
+          setModelDefault(settings.model_default || c.model_default || '');
+        } else {
           setEndpoint(c.endpoint || '');
           setApiKey(c.api_key || '');
           setModelDefault(c.model_default || '');
-          setMaxTokens(c.max_tokens || 8192);
-          setTemperatura(c.temperatura || 0.7);
-          setSystemPrompt(c.system_prompt || '');
         }
-      } catch (err) {
-        console.error(err);
-      } finally { setLoading(false); }
-    })();
+
+        setMaxTokens(c.max_tokens || 8192);
+        setTemperatura(c.temperatura || 0.7);
+        setSystemPrompt(c.system_prompt || '');
+      }
+
+    } catch (err) {
+      console.error(err);
+    } finally { setLoading(false); }
   }, [hdrs]);
 
-  // Test connection
-  const handleTest = async () => {
-    setTesting(true);
-    setTestResult(null);
-    try {
-      const res = await fetch('/api/ia/models?test=true', { headers: hdrs() });
-      const data = await res.json();
-      setTestResult(data);
-      // Normalize potential shapes of models
-      if (data.success) {
-        const raw: any = data.models;
-        const items: any[] = Array.isArray(raw)
-          ? raw
-          : Array.isArray((raw as any)?.items)
-            ? (raw as any).items
-            : [];
-        if (items.length > 0) {
-          const mapped = items.map((m: any) => {
-            if (m && typeof m === 'object' && m.id != null) {
-              return { id: String(m.id), object: m.object ?? 'model', owned_by: m.owned_by ?? 'local' };
-            }
-            return { id: String(m), object: 'model', owned_by: 'local' };
-          });
-          setModels(mapped as any);
-        } else {
-          setModels([]);
-        }
-      }
-    } catch (err) {
-      setTestResult({ success: false, message: 'Erro de conexão' });
-    } finally { setTesting(false); }
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const handleProviderSwitch = (newProvider: 'lmstudio' | 'llamacpp') => {
+    setProvider(newProvider);
+    if (config?.provider_settings?.[newProvider]) {
+      const settings = config.provider_settings[newProvider];
+      setEndpoint(settings.endpoint || '');
+      setApiKey(settings.api_key || '');
+      setModelDefault(settings.model_default || '');
+    } else {
+      setEndpoint('');
+      setApiKey('');
+      setModelDefault('');
+    }
   };
 
-  // Load models
-  const loadModels = async () => {
-    try {
-      const res = await fetch('/api/ia/models', { headers: hdrs() });
-      const data = await res.json();
-      const raw: any = data?.models;
-      if (Array.isArray(raw)) {
-        const mapped = raw.map((m: any) => {
-          if (m && typeof m === 'object' && m.id != null) {
-            return { id: String(m.id), object: m.object ?? 'model', owned_by: m.owned_by ?? 'local' };
-          }
-          return { id: String(m), object: 'model', owned_by: 'local' };
-        });
-        setModels(mapped as any);
-      } else if (raw && Array.isArray(raw?.items)) {
-        const mapped = raw.items.map((m: any) => ({
-          id: String(m.id ?? m),
-          object: m.object ?? 'model',
-          owned_by: m.owned_by ?? 'local',
-        }));
-        setModels(mapped as any);
-      } else {
-        setModels([]);
-      }
-    } catch { /* skip */ }
-  };
-
-  // Save
-  const handleSave = async () => {
+  const handleSaveConfig = async () => {
     setSaving(true);
     setMessage(null);
     try {
@@ -116,9 +84,18 @@ export default function IAConfigPanel({ token }: { token: string }) {
         method: 'PUT',
         headers: hdrs(),
         body: ***REMOVED***
+          provider,
           endpoint: endpoint.trim(),
           api_key: apiKey.trim(),
           model_default: modelDefault.trim(),
+          provider_settings: {
+            ...config?.provider_settings,
+            [provider]: {
+              endpoint: endpoint.trim(),
+              api_key: apiKey.trim(),
+              model_default: modelDefault.trim()
+            }
+          },
           max_tokens: maxTokens,
           temperatura,
           system_prompt: systemPrompt.trim(),
@@ -126,7 +103,7 @@ export default function IAConfigPanel({ token }: { token: string }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage({ type: 'success', text: data.message || 'Salvo com sucesso!' });
+        setMessage({ type: 'success', text: 'Configuração salva!' });
         if (data.config) setConfig(data.config);
       } else {
         setMessage({ type: 'error', text: data.error || 'Erro ao salvar' });
@@ -145,105 +122,95 @@ export default function IAConfigPanel({ token }: { token: string }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl mx-auto pb-12">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-5">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>🤖</span> Configuração da IA
           </h2>
-          <p className="text-blue-100 text-sm mt-1">Configure o endpoint, modelo e parâmetros do assistente</p>
+          <p className="text-blue-100 text-sm mt-1">Defina qual provedor usar e os parâmetros base</p>
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Endpoint */}
+          {/* Provider Switch */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Endpoint LLM</label>
-            <div className="flex gap-2">
-              <input type="text" value={endpoint} onChange={e => setEndpoint(e.target.value)}
-                placeholder="http://IP:PORT/v1"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" />
-              <button onClick={handleTest} disabled={testing || !endpoint}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
-                {testing ? '...' : '🔌 Testar'}
+            <label className="block text-sm font-medium text-gray-700 mb-3">Provedor Ativo</label>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => handleProviderSwitch('lmstudio')}
+                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                  provider === 'lmstudio' ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <span className="text-2xl">🏫</span>
+                <span className="font-bold text-gray-900">LM Studio</span>
+                <span className="text-xs text-gray-500">Externo / UI Própria</span>
+              </button>
+              <button 
+                onClick={() => handleProviderSwitch('llamacpp')}
+                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                  provider === 'llamacpp' ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <span className="text-2xl">🦙</span>
+                <span className="font-bold text-gray-900">llama.cpp</span>
+                <span className="text-xs text-gray-500">Endpoint Externo</span>
               </button>
             </div>
-            {testResult && (
-              <div className={`mt-2 text-xs px-3 py-2 rounded-lg ${testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                {testResult.success ? '✅' : '❌'} {testResult.message}
-              </div>
-            )}
           </div>
 
-          {/* API Key */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
-              placeholder="sk-..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Endpoint API</label>
+              <input type="text" value={endpoint} onChange={e => setEndpoint(e.target.value)}
+                placeholder="http://127.0.0.1:8080/v1"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 outline-none" />
+              <p className="text-[10px] text-gray-400 mt-1">Dica: LlamaCPP local geralmente é http://127.0.0.1:8080/v1</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+              <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
+                placeholder="Se necessário"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 outline-none" />
+            </div>
           </div>
 
-          {/* Model */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Modelo Padrão</label>
-            <div className="flex gap-2">
-              {models.length > 0 ? (
-                <select value={modelDefault} onChange={e => setModelDefault(e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
-                  <option value="">Selecione um modelo</option>
-                  {models.map(m => <option key={m.id} value={m.id}>{m.id}</option>)}
-                </select>
-              ) : (
-                <input type="text" value={modelDefault} onChange={e => setModelDefault(e.target.value)}
-                  placeholder="nome-do-modelo"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" />
-              )}
-              <button onClick={loadModels}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
-                🔄
-              </button>
-            </div>
+            <input type="text" value={modelDefault} onChange={e => setModelDefault(e.target.value)}
+              placeholder="Ex: meta-llama-3-8b"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 outline-none" />
           </div>
 
-          {/* Parameters */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Max Tokens</label>
               <input type="number" value={maxTokens} onChange={e => setMaxTokens(Number(e.target.value))}
-                min={256} max={32768} step={256}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Temperatura: {temperatura.toFixed(1)}
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Temperatura: {temperatura}</label>
               <input type="range" value={temperatura} onChange={e => setTemperatura(Number(e.target.value))}
-                min={0} max={2} step={0.1}
-                className="w-full mt-2" />
+                min={0} max={2} step={0.1} className="w-full mt-2" />
             </div>
           </div>
 
-          {/* System Prompt */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">System Prompt Adicional</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">System Prompt</label>
             <textarea value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)}
-              rows={4} placeholder="Instruções adicionais para o assistente..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none resize-y" />
-            <p className="text-xs text-gray-400 mt-1">Será adicionado ao final do system prompt padrão</p>
+              rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 outline-none resize-none" />
           </div>
 
-          {/* Message */}
           {message && (
-            <div className={`text-sm px-4 py-3 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-              {message.type === 'success' ? '✅' : '❌'} {message.text}
+            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {message.text}
             </div>
           )}
 
-          {/* Save button */}
-          <div className="flex justify-end pt-2">
-            <button onClick={handleSave} disabled={saving || !endpoint || !apiKey}
-              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-medium text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:shadow-none">
-              {saving ? 'Salvando...' : '💾 Salvar Configuração'}
+          <div className="flex justify-end">
+            <button onClick={handleSaveConfig} disabled={saving}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50">
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>
         </div>

@@ -166,26 +166,29 @@ export function buildUserFilter(
  * GERENTE: filtra por usuários da equipe
  * USER: retorna erro (não tem acesso a dados globais)
  */
-export function applyGlobalAccessFilter(
+/**
+ * Aplica filtro de acesso global conforme role do usuário
+ * ADMIN: sem filtro (retorna null)
+ * GERENTE: filtra por usuários da equipe
+ * USER: retorna erro (não tem acesso a dados globais)
+ */
+export async function applyGlobalAccessFilter(
   queryBuilder: any,
   userId: string,
   role: IAUserRole,
   userIdColumnName: string = 'user_id'
-): { query: any; hasAccess: boolean; error?: string } {
-  if (role === 'ADMIN') {
-    return { query: queryBuilder, hasAccess: true };
+): Promise<{ query: any; hasAccess: boolean; error?: string }> {
+  const access = await getAccessibleUserIdsForGlobal(userId, role);
+  
+  if (!access.hasAccess) {
+    return { query: null, hasAccess: false, error: access.error };
   }
 
-  if (role === 'GERENTE') {
-    return getTeamMemberIds(userId).then(teamIds => {
-      if (teamIds.length === 0) {
-        return { query: queryBuilder.eq(userIdColumnName, userId), hasAccess: true };
-      }
-      return { query: queryBuilder.in(userIdColumnName, [...teamIds, userId]), hasAccess: true };
-    }) as any;
+  if (access.ids) {
+    return { query: queryBuilder.in(userIdColumnName, access.ids), hasAccess: true };
   }
 
-  return { query: null, hasAccess: false, error: 'Acesso negado. Você não tem permissão para acessar dados globais. Apenas ADMIN e GERENTES podem consultar dados de múltiplos usuários.' };
+  return { query: queryBuilder, hasAccess: true };
 }
 
 /**

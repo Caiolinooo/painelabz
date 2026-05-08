@@ -3,6 +3,8 @@
  * Portal ABZ - IA Tools
  */
 import { supabaseAdmin } from '@/lib/supabase';
+import type { IAUserRole } from '@/types/ia';
+import { getEffectiveRole, getAccessibleUserIds, applyGlobalAccessFilter } from '../../permissions';
 import { registerTool } from '../tools-registry';
 import type { IATool, IAToolContext, IAToolResult } from '@/types/ia-global';
 
@@ -192,15 +194,18 @@ const buscarPendenciasFeriasTool: IATool = {
     const { days_limit = 30 } = args as { days_limit?: number };
 
     try {
-      // Se for admin, busca todas as pendências
-      // Se for gerente, busca apenas da sua equipe
-      let query = supabaseAdmin
+      let baseQuery = supabaseAdmin
         .from('leave_requests')
         .select('*, user:users_unified(first_name, last_name, department)')
-        .eq('status', 'pending')
+        .in('status', ['PENDING_LEADER', 'PENDING_MANAGER'])
         .gte('created_at', new Date(Date.now() - days_limit * 24 * 60 * 60 * 1000).toISOString());
 
-      const { data, error } = await query.order('created_at', { ascending: true });
+      const accessFilter = await applyGlobalAccessFilter(baseQuery, context.userId, context.userRole, 'user_id');
+      if (!accessFilter.hasAccess) {
+        return { success: false, error: accessFilter.error || 'Acesso negado' };
+      }
+
+      const { data, error } = await accessFilter.query.order('created_at', { ascending: true });
 
       if (error) {
         return { success: false, error: `Erro: ${error.message}` };
@@ -210,7 +215,7 @@ const buscarPendenciasFeriasTool: IATool = {
         success: true,
         data: {
           total_pendencias: data?.length || 0,
-          pendencias: data?.map(p => ({
+           pendencias: data?.map((p: any) => ({
             id: p.id,
             funcionario: p.user ? `${p.user.first_name} ${p.user.last_name}` : 'Desconhecido',
             departamento: p.user?.department || 'N/A',

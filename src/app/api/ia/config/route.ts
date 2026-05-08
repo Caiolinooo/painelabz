@@ -37,6 +37,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Não-admin: esconder api_key
+    const safeProviderSettings: any = {};
+    if (config.provider_settings) {
+      if (config.provider_settings.lmstudio) {
+        const { api_key, ...rest } = config.provider_settings.lmstudio;
+        safeProviderSettings.lmstudio = rest;
+      }
+      if (config.provider_settings.llamacpp) {
+        const { api_key, ...rest } = config.provider_settings.llamacpp;
+        safeProviderSettings.llamacpp = rest;
+      }
+    }
+
     const publicConfig: IAConfigPublic = {
       id: config.id,
       endpoint: config.endpoint,
@@ -45,6 +57,8 @@ export async function GET(request: NextRequest) {
       temperatura: config.temperatura,
       system_prompt: config.system_prompt,
       ativo: config.ativo,
+      provider: config.provider,
+      provider_settings: safeProviderSettings,
       created_at: config.created_at,
       updated_at: config.updated_at,
     };
@@ -68,7 +82,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const allowedFields = ['endpoint', 'api_key', 'model_default', 'max_tokens', 'temperatura', 'system_prompt', 'ativo'];
+    const allowedFields = ['endpoint', 'api_key', 'model_default', 'max_tokens', 'temperatura', 'system_prompt', 'ativo', 'provider', 'provider_settings'];
     const updateData: Record<string, any> = {};
 
     for (const field of allowedFields) {
@@ -119,6 +133,8 @@ export async function PUT(request: NextRequest) {
           max_tokens: updateData.max_tokens || 8192,
           temperatura: updateData.temperatura || 0.7,
           system_prompt: updateData.system_prompt || '',
+          provider: updateData.provider || 'lmstudio',
+          provider_settings: updateData.provider_settings || {},
           ativo: true,
         })
         .select()

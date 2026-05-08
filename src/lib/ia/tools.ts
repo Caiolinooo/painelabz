@@ -1,10 +1,30 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { mioClient } from '@/lib/mio/client';
-import { canAccessModule, getAccessibleUserIdsForGlobal, getTeamMemberIds } from './permissions';
-import { generateExcelReport, formatReembolsosForExcel, formatFeriasForExcel, formatAvaliacoesForExcel, formatUsuariosForExcel, formatEpisForExcel } from './excel-generator';
+import {
+  canAccessModule,
+  getAccessibleUserIdsForGlobal,
+  getTeamMemberIds,
+  resolveUserIdByIdentifier,
+  canAccessUserData,
+  getEffectiveRole
+} from './permissions';
+import {
+  generateExcelReport,
+  formatReembolsosForExcel,
+  formatFeriasForExcel,
+  formatAvaliacoesForExcel,
+  formatUsuariosForExcel,
+  formatEpisForExcel
+} from './excel-generator';
 import { generatePDFBase64 } from './pdf-generator';
 import { sendReportEmail, sendSimpleEmail, sendEmailWithNodemailer } from './email-tool';
 import { msGraphClient } from './microsoft/client';
+import {
+  executeGlobalSearchQuery,
+  fetchAssociatedUsers,
+  formatGlobalResponse
+} from './query-helpers';
+import { collectHolisticForUser } from './holistic-aggregator';
 
 // Definição da interface das ferramentas para a OpenAI / LM Studio
 export const IA_TOOLS_DEFINITION = [
@@ -69,6 +89,39 @@ export const IA_TOOLS_DEFINITION = [
       },
     },
     adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'render_dashboard',
+      description: 'Renderiza um dashboard interativo com métricas, tabelas ou listas para apresentar dados complexos ao usuário de forma visual e profissional.',
+      parameters: {
+        type: 'object',
+        properties: {
+          layout: {
+            type: 'object',
+            properties: {
+              columns: { type: 'number', description: 'Número de colunas (1-3)' },
+              widgets: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    type: { type: 'string', enum: ['metric', 'table', 'list', 'chart'] },
+                    title: { type: 'string' },
+                    data: { type: 'object', description: 'Dados específicos para o widget' }
+                  },
+                  required: ['id', 'type', 'data']
+                }
+              }
+            },
+            required: ['widgets']
+          }
+        },
+        required: ['layout']
+      }
+    }
   },
   {
     type: 'function',
@@ -218,7 +271,7 @@ export const IA_TOOLS_DEFINITION = [
             enum: ['reembolsos', 'ferias', 'ponto', 'avaliacoes', 'epis', 'compras', 'usuarios', 'eventos', 'cursos'],
             description: 'Tipo de dados para a planilha',
           },
-          filtros: { type: 'object', description: 'FiltrosapplyGlobalAccessFilter para os dados (same as *_global tools)' },
+          filtros: { type: 'object', description: 'Filtros para os dados (mesmos filtros das ferramentas *_global)' },
           titulo: { type: 'string', description: 'Título da planilha' },
           destino: { type: 'string', enum: ['download', 'email'], description: 'Destination: download (base64) ou email' },
           email_destino: { type: 'string', description: 'Email para enviar a planilha (se destino=email)' },
@@ -905,28 +958,199 @@ export const IA_TOOLS_DEFINITION = [
     adminOnly: false,
     featureToggle: 'proactive_notifications',
   },
+   {
+      type: 'function',
+      function: {
+        name: 'gerenciar_base_conhecimento',
+        description: 'Gerencia a base de conhecimento persistente da IA. Permite adicionar, buscar, atualizar e remover informações que a IA deve lembrar sobre o usuário, a empresa ou os processos.',
+        parameters: {
+          type: 'object',
+          properties: {
+            acao: { type: 'string', enum: ['adicionar', 'buscar', 'listar', 'atualizar', 'remover'], description: 'Ação a executar na base de conhecimento' },
+            titulo: { type: 'string', description: 'Título da entrada (para adicionar/atualizar)' },
+            conteudo: { type: 'string', description: 'Conteúdo da informação (para adicionar/atualizar)' },
+            categoria: { type: 'string', description: 'Categoria: preferencias, processos, regras, notas, geral (para adicionar)' },
+            escopo: { type: 'string', enum: ['global', 'user', 'department'], description: 'Escopo: global (todos), user (só este usuário), department (departamento)' },
+            tags: { type: 'string', description: 'Tags separadas por vírgula (para adicionar/buscar)' },
+            busca: { type: 'string', description: 'Termo para buscar na base (para buscar)' },
+            id: { type: 'string', description: 'ID da entrada (para atualizar/remover)' },
+          },
+          required: ['acao'],
+        },
+      },
+      adminOnly: false,
+      featureToggle: 'knowledge_base',
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'iniciar_agente_autonomo',
+        description: 'Inicia o agente IA autônomo para monitoramento e otimização contínua de KPIs. O agente executa ciclos periódicos para analisar KPIs, identificar gaps, gerar planos de ação e executar intervenções automaticamente.',
+        parameters: {
+          type: 'object',
+          properties: {
+            usuario_id: { type: 'string', description: 'ID do usuário para iniciar o agente autônomo' },
+            setor_id: { type: 'string', description: 'ID do setor/departamento para escopo do agente' },
+            config: {
+              type: 'object',
+              description: 'Configurações do agente autônomo',
+              properties: {
+                intervalo: { type: 'number', description: 'Intervalo entre ciclos em milissegundos (padrão: 30000 = 30s)', 'default': 30000},
+                nivel_autonomia: { type: 'string', enum: ['baixo', 'medio', 'alto', 'total'], description: 'Nível de autonomia do agente', 'default': 'medio'},
+                acoes_automaticas: { type: 'boolean', description: 'Permitir execução automática de ações', 'default': true},
+                max_acoes_por_ciclo: { type: 'number', description: 'Máximo de ações por ciclo', 'default': 3},
+                alertas_ativos: { type: 'boolean', description: 'Enviar alertas para anomalias detectadas', 'default': true},
+              },
+            },
+          },
+          required: ['usuario_id', 'setor_id'],
+        },
+      },
+      adminOnly: false,
+      featureToggle: 'autonomous_agent',
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'parar_agente_autonomo',
+        description: 'Para a execução do agente IA autônomo para um usuário específico.',
+        parameters: {
+          type: 'object',
+          properties: {
+            usuario_id: { type: 'string', description: 'ID do usuário para parar o agente autônomo' },
+          },
+          required: ['usuario_id'],
+        },
+      },
+      adminOnly: false,
+      featureToggle: 'autonomous_agent',
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'status_agente_autonomo',
+        description: 'Retorna o status atual e estatísticas do agente IA autônomo para um usuário.',
+        parameters: {
+          type: 'object',
+          properties: {
+            usuario_id: { type: 'string', description: 'ID do usuário para consultar status do agente' },
+          },
+          required: ['usuario_id'],
+        },
+      },
+      adminOnly: false,
+      featureToggle: 'autonomous_agent',
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'sobrescrever_acao_autonomo',
+        description: 'Executa uma ação manual que sobrescreve a decisão do agente autônomo. Útil para intervenções humanas imediatas.',
+        parameters: {
+          type: 'object',
+          properties: {
+            usuario_id: { type: 'string', description: 'ID do usuário que está sobrescrevendo' },
+            acao: { type: 'string', description: 'Tipo de ação manual a ser executada' },
+            parametros: { type: 'object', description: 'Parâmetros específicos da ação' },
+            justificativa: { type: 'string', description: 'Justificativa para a intervenção manual' },
+          },
+          required: ['usuario_id', 'acao', 'parametros', 'justificativa'],
+        },
+      },
+      adminOnly: false,
+      featureToggle: 'autonomous_agent',
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'analisar_kpis_negocio',
+        description: 'Analisa os KPIs de performance e soluções do portal, comparando valores atuais com metas definidas. Identifica anomalias e sugere ações. Dados incluem: avaliações, férias, reembolsos, EPIs.',
+        parameters: {
+          type: 'object',
+          properties: {
+            departamento: { type: 'string', description: 'Filtrar análise por departamento específico (opcional)' },
+            tipo_kpi: { type: 'string', enum: ['performance', 'solucoes', 'todos'], description: 'Tipo de KPI: performance (avaliações), solucoes (ações/entregas), todos' },
+          },
+          required: [],
+        },
+      },
+  adminOnly: false,
+  featureToggle: 'kpi_analysis',
+  },
   {
     type: 'function',
     function: {
-      name: 'gerenciar_base_conhecimento',
-      description: 'Gerencia a base de conhecimento persistente da IA. Permite adicionar, buscar, atualizar e remover informações que a IA deve lembrar sobre o usuário, a empresa ou os processos.',
+      name: 'coletar_dados_holisticos',
+      description: 'Coleta dados de TODAS as fontes disponíveis para um usuário: portal (reembolsos, férias, avaliações, EPIs, ponto), Microsoft 365 (emails, calendário, tarefas, OneDrive, Teams), KPIs e equipe. Respeita hierarquia: ADMIN vê tudo de todos, GERENTE vê dados da equipe + M365, USER vê só próprios dados do portal. Use para ter visão completa antes de qualquer análise ou decisão.',
       parameters: {
         type: 'object',
         properties: {
-          acao: { type: 'string', enum: ['adicionar', 'buscar', 'listar', 'atualizar', 'remover'], description: 'Ação a executar na base de conhecimento' },
-          titulo: { type: 'string', description: 'Título da entrada (para adicionar/atualizar)' },
-          conteudo: { type: 'string', description: 'Conteúdo da informação (para adicionar/atualizar)' },
-          categoria: { type: 'string', description: 'Categoria: preferencias, processos, regras, notas, geral (para adicionar)' },
-          escopo: { type: 'string', enum: ['global', 'user', 'department'], description: 'Escopo: global (todos), user (só este usuário), department (departamento)' },
-          tags: { type: 'string', description: 'Tags separadas por vírgula (para adicionar/buscar)' },
-          busca: { type: 'string', description: 'Termo para buscar na base (para buscar)' },
-          id: { type: 'string', description: 'ID da entrada (para atualizar/remover)' },
+          usuario: { type: 'string', description: 'Email, nome ou "meu" para dados do próprio usuário. Se omitido, usa o usuário logado.' },
+          incluir_emails: { type: 'boolean', description: 'Incluir leitura de emails do Outlook (apenas ADMIN/GERENTE)' },
+          incluir_calendario: { type: 'boolean', description: 'Incluir eventos do calendário Outlook' },
+          incluir_tarefas: { type: 'boolean', description: 'Incluir tarefas do Microsoft To Do' },
+          incluir_arquivos: { type: 'boolean', description: 'Incluir arquivos recentes do OneDrive' },
+          incluir_equipe: { type: 'boolean', description: 'Incluir dados da equipe subordinada (apenas GERENTE/ADMIN)' },
+          incluir_kpis: { type: 'boolean', description: 'Incluir análise de KPIs e metas' },
+          incluir_m365: { type: 'boolean', description: 'Incluir dados do Microsoft 365 (Teams, presença, etc)' },
         },
-        required: ['acao'],
+        required: [],
       },
     },
     adminOnly: false,
-    featureToggle: 'knowledge_base',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'editar_kpi',
+      description: 'Cria ou atualiza um KPI no sistema. Permite definir metas, valores atuais e alertas. ADMIN edita qualquer KPI, GERENTE apenas do seu departamento.',
+      parameters: {
+        type: 'object',
+        properties: {
+          kpi_key: { type: 'string', description: 'Identificador único do KPI (ex: evaluation_completion)' },
+          label: { type: 'string', description: 'Nome legível do KPI' },
+          target_value: { type: 'number', description: 'Valor meta do KPI' },
+          current_value: { type: 'number', description: 'Valor atual do KPI' },
+          unit: { type: 'string', description: 'Unidade (%, R$, un, etc)' },
+          department: { type: 'string', description: 'Departamento associado' },
+          alert_threshold: { type: 'number', description: 'Percentual mínimo para alerta (padrão: 80)' },
+        },
+        required: ['kpi_key', 'label', 'target_value'],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_kpis',
+      description: 'Lista todos os KPIs ativos com valores atuais e metas. ADMIN vê todos, GERENTE vê do departamento, USER vê gerais.',
+      parameters: {
+        type: 'object',
+        properties: {
+          department: { type: 'string', description: 'Filtrar por departamento' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'configurar_alerta_kpi',
+      description: 'Configura alertas automáticos para quando um KPI fica abaixo do threshold. Apenas ADMIN.',
+      parameters: {
+        type: 'object',
+        properties: {
+          kpi_key: { type: 'string', description: 'Chave do KPI' },
+          threshold: { type: 'number', description: 'Percentual mínimo (ex: 80 = alerta abaixo de 80% da meta)' },
+          channels: { type: 'string', description: 'Canais: push, email, portal (separados por vírgula)' },
+        },
+        required: ['kpi_key', 'threshold'],
+      },
+    },
+    adminOnly: true,
   },
 ];
 
@@ -1003,6 +1227,13 @@ export async function executeToolCall(name: string, args: any, userRole: string,
 
   try {
     switch (name) {
+      case 'render_dashboard': {
+        return ***REMOVED*** 
+          success: true, 
+          message: 'Dashboard renderizado com sucesso. O usuário verá os componentes logo abaixo desta resposta.',
+          _metadata: { dashboard: args.layout } 
+        });
+      }
       case 'buscar_funcionario': {
         const { busca } = args;
         const baseSelect = 'id, first_name, last_name, email, role, department, position';
@@ -1088,7 +1319,7 @@ return JSON.stringify(data);
         const { tipo, usuario } = args;
         const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
 
-        const { resolveUserIdByIdentifier, canAccessUserData } = await import('./permissions');
+
 
         let targetUserId: string;
         if (!usuario || usuario === 'meu' || usuario === 'minhas' || usuario === 'meus') {
@@ -1106,11 +1337,15 @@ return JSON.stringify(data);
           return `Você não tem permissão para ver dados deste usuário.`;
         }
 
-        const { data: targetUser } = await supabaseAdmin
+        const { data: targetUser, error: userError } = await supabaseAdmin
           .from('users_unified')
           .select('first_name, last_name, email, role, department, position')
           .eq('id', targetUserId)
           .single();
+
+        if (userError || !targetUser) {
+          return `Usuário não encontrado. Verifique o identificador informado.`;
+        }
 
         const userName = targetUser ? `${targetUser.first_name} ${targetUser.last_name}` : 'Desconhecido';
         const userEmail = targetUser?.email || '';
@@ -1129,7 +1364,7 @@ return JSON.stringify(data);
         if (tipo === 'ferias' || tipo === 'resumo' || tipo === 'todos') {
           const { data: ferias } = await supabaseAdmin
             .from('leave_requests')
-            .select('id, start_date, end_date, status, reason, created_at')
+            .select('id, start_date, end_date, status, created_at')
             .eq('user_id', targetUserId)
             .order('start_date', { ascending: false })
             .limit(20);
@@ -1169,7 +1404,7 @@ return JSON.stringify(data);
           const { data: reembolsos } = userEmail 
             ? await supabaseAdmin
                 .from('Reimbursement')
-                .select('id, status, valorTotal, descricao, data, categoria')
+                .select('id, status, valorTotal, descricao, data, tipo_reembolso')
                 .eq('email', userEmail)
                 .order('data', { ascending: false })
                 .limit(20)
@@ -1188,14 +1423,14 @@ return JSON.stringify(data);
               descricao: r.descricao,
               valor: r.valorTotal,
               data: r.data,
-              categoria: r.categoria
+              tipo_reembolso: r.tipo_reembolso
             })),
             aprovados: aprovados.map(r => ({
               id: r.id,
               descricao: r.descricao,
               valor: r.valorTotal,
               data: r.data,
-              categoria: r.categoria
+              tipo_reembolso: r.tipo_reembolso
             })),
             rejeitados: rejeitados.length,
             total_pendente: totalPendente,
@@ -1250,19 +1485,19 @@ return JSON.stringify(data);
           const ativos = epis?.filter(e => e.status === 'active' || e.status === 'delivered') || [];
           const devolvidos = epis?.filter(e => e.status === 'returned') || [];
 
-          result.epis = {
-            ativos: ativos.map(e => ({
-              id: e.id,
-              tipo: Array.isArray(e.epi_types) ? e.epi_types[0]?.name : e.epi_types?.name || 'N/A',
-              ca: Array.isArray(e.epi_types) ? e.epi_types[0]?.ca_number : e.epi_types?.ca_number || 'N/A',
-              entrega: e.delivery_date,
-              status: e.status
+           result.epis = {
+             ativos: ativos.map(e => ({
+               id: e.id,
+               tipo: Array.isArray((e as any).epi_types) ? (e as any).epi_types[0]?.name : (e as any).epi_types?.name || 'N/A',
+               ca: Array.isArray((e as any).epi_types) ? (e as any).epi_types[0]?.ca_number : (e as any).epi_types?.ca_number || 'N/A',
+               entrega: e.delivery_date,
+               status: e.status
             })),
-            devolvidos: devolvidos.map(e => ({
-              id: e.id,
-              tipo: Array.isArray(e.epi_types) ? e.epi_types[0]?.name : e.epi_types?.name || 'N/A',
-              entrega: e.delivery_date,
-              devolucao: e.return_date
+             devolvidos: devolvidos.map(e => ({
+               id: e.id,
+               tipo: Array.isArray((e as any).epi_types) ? (e as any).epi_types[0]?.name : (e as any).epi_types?.name || 'N/A',
+               entrega: e.delivery_date,
+               devolucao: e.return_date
             })),
             total: epis?.length || 0
           };
@@ -1331,34 +1566,21 @@ return JSON.stringify(data);
 
       case 'buscar_usuarios_global': {
         const { department, role, status, busca, limite = 50, ordenar_por = 'first_name', ordem = 'asc' } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
+        
+        const result = await executeGlobalSearchQuery({
+          table: 'users_unified',
+          select: 'id, first_name, last_name, email, role, department, position, status, created_at',
+          userId,
+          userRole,
+          userColumn: 'id',
+          filters: { department, role, status, busca },
+          limit: Math.min(limite, 200),
+          orderBy: { column: ordenar_por, ascending: ordem === 'asc' }
+        });
 
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
+        if (!result.success) return result.error!;
 
-        let query = supabaseAdmin
-          .from('users_unified')
-          .select('id, first_name, last_name, email, role, department, position, status, created_at');
-
-        if (accessInfo.ids) {
-          query = query.in('id', accessInfo.ids);
-        }
-
-        if (department) query = query.ilike('department', `%${department}%`);
-        if (role) query = query.eq('role', role.toUpperCase());
-        if (status) query = query.eq('status', status);
-        if (busca) {
-          query = query.or(`first_name.ilike.%${busca}%,last_name.ilike.%${busca}%,email.ilike.%${busca}%`);
-        }
-
-        query = query.order(ordenar_por, { ascending: ordem === 'asc' }).limit(Math.min(limite, 200));
-
-        const { data, error } = await query;
-        if (error) return `Erro ao buscar usuários: ${error.message}`;
-
-        const formattedData = (data || []).map((u: any) => ({
+        const formattedData = result.data.map((u: any) => ({
           id: u.id,
           nome: `${u.first_name} ${u.last_name}`.trim(),
           email: u.email,
@@ -1377,41 +1599,23 @@ return JSON.stringify(data);
       }
 
       case 'buscar_reembolsos_global': {
-        const { status, data_inicio, data_fim, departamento, categoria, limite = 100, ordenar_por = 'data', ordem = 'desc', agrupar_por, incluir_totais } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
+        const { status, data_inicio, data_fim, departamento, categoria, limite = 100, ordenar_por = 'data', ordem = 'desc', agrupar_por, incluir_totais, busca } = args;
+        
+        const result = await executeGlobalSearchQuery({
+          table: 'Reimbursement',
+          select: 'id, user_id, status, valorTotal, descricao, data, tipo_reembolso, created_at',
+          userId,
+          userRole,
+          filters: { status, data_inicio, data_fim, departamento, categoria, busca },
+          limit: Math.min(limite, 500),
+          orderBy: { column: (ordenar_por === 'valor_total' ? 'valorTotal' : ordenar_por), ascending: ordem === 'asc' }
+        });
 
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
+        if (!result.success) return result.error!;
 
-        let query = supabaseAdmin
-          .from('Reimbursement')
-          .select('id, user_id, status, valorTotal, descricao, data, categoria, created_at');
+        const userMap = await fetchAssociatedUsers(result.data);
 
-        if (accessInfo.ids) {
-          query = query.in('user_id', accessInfo.ids);
-        }
-
-        if (status) query = query.eq('status', status.toLowerCase());
-        if (data_inicio) query = query.gte('data', data_inicio);
-        if (data_fim) query = query.lte('data', data_fim);
-        if (categoria) query = query.ilike('categoria', `%${categoria}%`);
-
-        query = query.order(ordenar_por, { ascending: ordem === 'asc' }).limit(Math.min(limite, 500));
-
-        const { data: reembolsos, error } = await query;
-        if (error) return `Erro ao buscar reembolsos: ${error.message}`;
-
-        const userIds = [...new Set((reembolsos || []).map((r: any) => r.user_id))];
-        const { data: usuarios } = await supabaseAdmin
-          .from('users_unified')
-          .select('id, first_name, last_name, email, department')
-          .in('id', userIds);
-
-        const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-
-        const formattedData = (reembolsos || []).map((r: any) => {
+        const formattedData = result.data.map((r: any) => {
           const u = userMap.get(r.user_id);
           return {
             id: r.id,
@@ -1419,64 +1623,47 @@ return JSON.stringify(data);
             email: u?.email || 'N/A',
             departamento: u?.department || 'N/A',
             descricao: r.descricao,
-            categoria: r.categoria,
-            valor: r.valorTotal || '',
+            tipo_reembolso: r.tipo_reembolso,
+            valor: r.valorTotal || 0,
             status: r.status,
             data: r.data,
           };
         });
 
-        let result: any = { total: formattedData.length, reembolsos: formattedData };
+        let output: any = { total: formattedData.length, reembolsos: formattedData };
 
         if (agrupar_por && incluir_totais) {
           const grouped: Record<string, { count: number; total: number }> = {};
           for (const r of formattedData) {
-            const key = r[agrupar_por] || 'Sem grupo';
+            const key = (r as any)[agrupar_por] || 'Sem grupo';
             if (!grouped[key]) grouped[key] = { count: 0, total: 0 };
             grouped[key].count++;
             grouped[key].total += Number(r.valor || 0);
           }
-          result.totais_por_grupo = Object.entries(grouped).map(([k, v]) => ({ grupo: k, quantidade: v.count, total: v.total }));
+          output.totais_por_grupo = Object.entries(grouped).map(([k, v]) => ({ grupo: k, quantidade: v.count, total: v.total }));
         }
 
-        return JSON.stringify(result);
+        return JSON.stringify(output);
       }
 
       case 'buscar_ferias_global': {
         const { status, data_inicio, data_fim, departamento, limite = 100, ordenar_por = 'start_date', ordem = 'desc', agrupar_por } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
+        
+        const result = await executeGlobalSearchQuery({
+          table: 'leave_requests',
+          select: 'id, user_id, start_date, end_date, status, created_at',
+          userId,
+          userRole,
+          filters: { status, data_inicio, data_fim, departamento },
+          limit: Math.min(limite, 500),
+          orderBy: { column: ordenar_por, ascending: ordem === 'asc' }
+        });
 
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
+        if (!result.success) return result.error!;
 
-        let query = supabaseAdmin
-          .from('leave_requests')
-          .select('id, user_id, start_date, end_date, status, reason, created_at');
+        const userMap = await fetchAssociatedUsers(result.data);
 
-        if (accessInfo.ids) {
-          query = query.in('user_id', accessInfo.ids);
-        }
-
-        if (status) query = query.eq('status', status.toLowerCase());
-        if (data_inicio) query = query.gte('start_date', data_inicio);
-        if (data_fim) query = query.lte('start_date', data_fim);
-
-        query = query.order(ordenar_por, { ascending: ordem === 'asc' }).limit(Math.min(limite, 500));
-
-        const { data: ferias, error } = await query;
-        if (error) return `Erro ao buscar férias: ${error.message}`;
-
-        const userIds = [...new Set((ferias || []).map((f: any) => f.user_id))];
-        const { data: usuarios } = await supabaseAdmin
-          .from('users_unified')
-          .select('id, first_name, last_name, email, department')
-          .in('id', userIds);
-
-        const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-
-        const formattedData = (ferias || []).map((f: any) => {
+        const formattedData = result.data.map((f: any) => {
           const u = userMap.get(f.user_id);
           const start = new Date(f.start_date);
           const end = new Date(f.end_date);
@@ -1494,54 +1681,39 @@ return JSON.stringify(data);
           };
         });
 
-        let result: any = { total: formattedData.length, ferias: formattedData };
+        let output: any = { total: formattedData.length, ferias: formattedData };
 
         if (agrupar_por) {
           const grouped: Record<string, number> = {};
           for (const f of formattedData) {
-            const key = f[agrupar_por] || 'Sem grupo';
+            const key = (f as any)[agrupar_por] || 'Sem grupo';
             grouped[key] = (grouped[key] || 0) + 1;
           }
-          result.agrupado_por = grouped;
+          output.agrupado_por = grouped;
         }
 
-        return JSON.stringify(result);
+        return JSON.stringify(output);
       }
 
       case 'buscar_avaliacoes_global': {
         const { status, periodo, departamento, limite = 50, ordenar_por = 'created_at', ordem = 'desc', agrupar_por, incluir_totais } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
+        
+        const result = await executeGlobalSearchQuery({
+          table: 'avaliacoes_desempenho',
+          select: 'id, colaborador_id, nota_final, status, periodo_id, created_at',
+          userId,
+          userRole,
+          userColumn: 'colaborador_id',
+          filters: { status, periodo_id: periodo, departamento },
+          limit: Math.min(limite, 200),
+          orderBy: { column: ordenar_por, ascending: ordem === 'asc' }
+        });
 
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
+        if (!result.success) return result.error!;
 
-        let query = supabaseAdmin
-          .from('avaliacoes_desempenho')
-          .select('id, colaborador_id, nota_final, status, periodo_id, created_at');
+        const userMap = await fetchAssociatedUsers(result.data, 'colaborador_id');
 
-        if (accessInfo.ids) {
-          query = query.in('colaborador_id', accessInfo.ids);
-        }
-
-        if (status) query = query.eq('status', status);
-        if (periodo) query = query.ilike('periodo_id', `%${periodo}%`);
-
-        query = query.order(ordenar_por, { ascending: ordem === 'asc' }).limit(Math.min(limite, 200));
-
-        const { data: avaliacoes, error } = await query;
-        if (error) return `Erro ao buscar avaliações: ${error.message}`;
-
-        const userIds = [...new Set((avaliacoes || []).map((a: any) => a.colaborador_id))];
-        const { data: usuarios } = await supabaseAdmin
-          .from('users_unified')
-          .select('id, first_name, last_name, email, department')
-          .in('id', userIds);
-
-        const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-
-        const formattedData = (avaliacoes || []).map((a: any) => {
+        const formattedData = result.data.map((a: any) => {
           const u = userMap.get(a.colaborador_id);
           return {
             id: a.id,
@@ -1555,61 +1727,44 @@ return JSON.stringify(data);
           };
         });
 
-        let result: any = { total: formattedData.length, avaliacoes: formattedData };
+        let output: any = { total: formattedData.length, avaliacoes: formattedData };
 
         if (incluir_totais) {
           const notasValidas = formattedData.filter((a: any) => a.nota != null).map((a: any) => a.nota);
           const media = notasValidas.length > 0 ? notasValidas.reduce((a: number, b: number) => a + b, 0) / notasValidas.length : null;
-          result.media_nota = media ? Math.round(media * 100) / 100 : null;
+          output.media_nota = media ? Math.round(media * 100) / 100 : null;
         }
 
         if (agrupar_por) {
           const grouped: Record<string, number> = {};
           for (const a of formattedData) {
-            const key = a[agrupar_por] || 'Sem grupo';
+            const key = (a as any)[agrupar_por] || 'Sem grupo';
             grouped[key] = (grouped[key] || 0) + 1;
           }
-          result.agrupado_por = grouped;
+          output.agrupado_por = grouped;
         }
 
-        return JSON.stringify(result);
+        return JSON.stringify(output);
       }
 
       case 'buscar_epis_global': {
-        const { status, tipo, departamento, data_inicio, data_fim, limite = 100, ordenar_por = 'delivery_date', ordem = 'desc', agrupar_por } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
+        const { status, departamento, data_inicio, data_fim, limite = 100, ordenar_por = 'delivery_date', ordem = 'desc', agrupar_por, busca } = args;
+        
+        const result = await executeGlobalSearchQuery({
+          table: 'epi_registrations',
+          select: 'id, user_id, delivery_date, status, return_date, epi_types(name, ca_number), justification',
+          userId,
+          userRole,
+          filters: { status, data_inicio, data_fim, departamento, busca },
+          limit: Math.min(limite, 500),
+          orderBy: { column: ordenar_por, ascending: ordem === 'asc' }
+        });
 
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
+        if (!result.success) return result.error!;
 
-        let query = supabaseAdmin
-          .from('epi_registrations')
-          .select('id, user_id, delivery_date, status, return_date, epi_types(name, ca_number), justification');
+        const userMap = await fetchAssociatedUsers(result.data);
 
-        if (accessInfo.ids) {
-          query = query.in('user_id', accessInfo.ids);
-        }
-
-        if (status) query = query.eq('status', status.toLowerCase());
-        if (data_inicio) query = query.gte('delivery_date', data_inicio);
-        if (data_fim) query = query.lte('delivery_date', data_fim);
-
-        query = query.order(ordenar_por, { ascending: ordem === 'asc' }).limit(Math.min(limite, 500));
-
-        const { data: epis, error } = await query;
-        if (error) return `Erro ao buscar EPIs: ${error.message}`;
-
-        const userIds = [...new Set((epis || []).map((e: any) => e.user_id))];
-        const { data: usuarios } = await supabaseAdmin
-          .from('users_unified')
-          .select('id, first_name, last_name, email, department')
-          .in('id', userIds);
-
-        const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-
-        const formattedData = (epis || []).map((e: any) => {
+        const formattedData = result.data.map((e: any) => {
           const u = userMap.get(e.user_id);
           return {
             id: e.id,
@@ -1625,173 +1780,211 @@ return JSON.stringify(data);
           };
         });
 
-        let result: any = { total: formattedData.length, epis: formattedData };
+        let output: any = { total: formattedData.length, epis: formattedData };
 
         if (agrupar_por) {
           const grouped: Record<string, number> = {};
           for (const e of formattedData) {
-            const key = e[agrupar_por] || 'Sem grupo';
+            const key = (e as any)[agrupar_por] || 'Sem grupo';
             grouped[key] = (grouped[key] || 0) + 1;
           }
-          result.agrupado_por = grouped;
+          output.agrupado_por = grouped;
         }
 
-        return JSON.stringify(result);
+        return JSON.stringify(output);
       }
 
       case 'buscar_compras_global': {
-        const { tipo = 'requests', status, data_inicio, data_fim, departamento, limite = 50, ordenar_por = 'created_at', ordem = 'desc', agrupar_por } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
-
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
-
+        const { tipo = 'requests', status, data_inicio, data_fim, departamento, limite = 50, ordenar_por = 'created_at', ordem = 'desc', agrupar_por, busca } = args;
+        
         const table = tipo === 'orders' ? 'purchase_orders' : 'purchase_requests';
+        const userColumn = tipo === 'orders' ? 'user_id' : 'created_by';
 
-        let query = supabaseAdmin
-          .from(table)
-          .select('*');
+        const result = await executeGlobalSearchQuery({
+          table,
+          select: '*',
+          userId,
+          userRole,
+          userColumn,
+          filters: { status, data_inicio, data_fim, departamento, busca },
+          limit: Math.min(limite, 200),
+          orderBy: { column: ordenar_por, ascending: ordem === 'asc' }
+        });
 
-        if (accessInfo.ids) {
-          if (tipo === 'orders') {
-            query = query.or(`user_id.in.(${accessInfo.ids.join(',')}),approver_ids.cs.{${accessInfo.ids.join(',')}}`);
-          } else {
-            query = query.in('created_by', accessInfo.ids);
-          }
-        }
+        if (!result.success) return result.error!;
 
-        if (status) query = query.eq('status', status);
-        if (data_inicio) query = query.gte('created_at', data_inicio);
-        if (data_fim) query = query.lte('created_at', data_fim);
-
-        query = query.order(ordenar_, { ascending: ordem === 'asc' }).limit(Math.min(limite, 200));
-
-        const { data: compras, error } = await query;
-        if (error) return `Erro ao buscar compras: ${error.message}`;
-
-        const formattedData = (compras || []).map((c: any) => ({
+        const formattedData = result.data.map((c: any) => ({
           id: c.id,
           numero: c.rqf_number || c.po_number || c.id,
           tipo: tipo === 'orders' ? 'Pedido' : 'Solicitação',
           status: c.status,
-          valor: c.total_amount || c.valor_total,
-          descricao: c.description || c.descricao,
+          valor: c.total_value || c.total_amount || c.valor_total || 0,
+          descricao: c.description || c.descricao || c.provider_name || '-',
           created_at: c.created_at,
-          created_by: c.created_by,
+          created_by: c.created_by || c.user_id,
         }));
 
-        let result: any = { total: formattedData.length, compras: formattedData };
+        let output: any = { total: formattedData.length, compras: formattedData };
 
         if (agrupar_por && agrupar_por !== 'created_by') {
           const grouped: Record<string, number> = {};
           for (const c of formattedData) {
-            const key = c[agrupar_por] || 'Sem grupo';
+            const key = (c as any)[agrupar_por] || 'Sem grupo';
             grouped[key] = (grouped[key] || 0) + 1;
           }
-          result.agrupado_por = grouped;
+          output.agrupado_por = grouped;
         }
 
-        return JSON.stringify(result);
+        return JSON.stringify(output);
+      }
+
+      case 'buscar_ponto_global': {
+        const { status, data_inicio, data_fim, departamento, limite = 100, ordenar_por = 'created_at', ordem = 'desc', agrupar_por, busca } = args;
+        
+        const result = await executeGlobalSearchQuery({
+          table: 'registros_presenca',
+          select: 'id, user_id, nome_completo, funcao, empresa, created_at, lista_presenca(titulo, local, data_evento)',
+          userId,
+          userRole,
+          filters: { data_inicio, data_fim, departamento, busca },
+          limit: Math.min(limite, 500),
+          orderBy: { column: ordenar_por, ascending: ordem === 'asc' }
+        });
+
+        if (!result.success) return result.error!;
+
+        const formattedData = result.data.map((r: any) => ({
+          id: r.id,
+          usuario: r.nome_completo || 'N/A',
+          funcao: r.funcao || 'N/A',
+          empresa: r.empresa || 'N/A',
+          evento: r.lista_presenca?.titulo || 'Presença Manual',
+          local: r.lista_presenca?.local || '-',
+          data_evento: r.lista_presenca?.data_evento || r.created_at,
+          registrado_em: r.created_at,
+        }));
+
+        let output: any = { total: formattedData.length, registros: formattedData };
+
+        if (agrupar_por) {
+          const grouped: Record<string, number> = {};
+          for (const r of formattedData) {
+            const key = (r as any)[agrupar_por] || 'Sem grupo';
+            grouped[key] = (grouped[key] || 0) + 1;
+          }
+          output.agrupado_por = grouped;
+        }
+
+        return JSON.stringify(output);
       }
 
       case 'gerar_planilha_excel': {
         const { tipo_dados, filtros = {}, titulo, destino, email_destino } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
-
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
-
+        
         let data: any[] = [];
         let columns: any[] = [];
-        let periodo = { inicio: '', fim: '' };
+        let periodo = { inicio: filtros.data_inicio || 'Início', fim: filtros.data_fim || 'Atual' };
 
-        switch (tipo_dados) {
-          case 'reembolsos': {
-            let query = supabaseAdmin.from('Reimbursement').select('id, user_id, status, valorTotal, descricao, data, categoria');
-            if (accessInfo.ids) query = query.in('user_id', accessInfo.ids);
-            if (filtros.status) query = query.eq('status', filtros.status.toLowerCase());
-            if (filtros.data_inicio) query = query.gte('data', filtros.data_inicio);
-            if (filtros.data_fim) query = query.lte('data', filtros.data_fim);
-            const { data: reemb } = await query.order('data', { ascending: false }).limit(500);
-            const userIds = [...new Set((reemb || []).map((r: any) => r.user_id))];
-            const { data: usuarios } = await supabaseAdmin.from('users_unified').select('id, first_name, last_name, department').in('id', userIds);
-            const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-            data = (reemb || []).map((r: any) => {
-              const u = userMap.get(r.user_id);
-              return { usuario: u ? `${u.first_name} ${u.last_name}`.trim() : 'N/A', email: u?.email, departamento: u?.department, ...r };
-            });
-            const formatted = formatReembolsosForExcel(data);
-            columns = formatted.columns;
-            periodo = { inicio: filtros.data_inicio || 'Início', fim: filtros.data_fim || 'Atual' };
-            break;
+        // Configuration for different data types
+        const configMap: Record<string, any> = {
+          'reembolsos': {
+            table: 'Reimbursement',
+            select: 'id, user_id, status, valorTotal, descricao, data, categoria',
+            userColumn: 'user_id',
+            formatter: formatReembolsosForExcel,
+            dateColumn: 'data'
+          },
+          'ferias': {
+            table: 'leave_requests',
+            select: 'id, user_id, start_date, end_date, status, reason',
+            userColumn: 'user_id',
+            formatter: formatFeriasForExcel,
+            dateColumn: 'start_date'
+          },
+          'avaliacoes': {
+            table: 'avaliacoes_desempenho',
+            select: 'id, colaborador_id, nota_final, status, periodo_id, created_at',
+            userColumn: 'colaborador_id',
+            formatter: formatAvaliacoesForExcel,
+            dateColumn: 'created_at'
+          },
+          'usuarios': {
+            table: 'users_unified',
+            select: 'id, first_name, last_name, email, role, department, position, status, created_at',
+            userColumn: 'id',
+            formatter: formatUsuariosForExcel,
+            dateColumn: 'created_at'
+          },
+          'epis': {
+            table: 'epi_registrations',
+            select: 'id, user_id, delivery_date, status, epi_types(name, ca_number)',
+            userColumn: 'user_id',
+            formatter: formatEpisForExcel,
+            dateColumn: 'delivery_date'
           }
-          case 'ferias': {
-            let query = supabaseAdmin.from('leave_requests').select('id, user_id, start_date, end_date, status, reason');
-            if (accessInfo.ids) query = query.in('user_id', accessInfo.ids);
-            if (filtros.status) query = query.eq('status', filtros.status.toLowerCase());
-            const { data: fer } = await query.order('start_date', { ascending: false }).limit(500);
-            const userIds = [...new Set((fer || []).map((f: any) => f.user_id))];
-            const { data: usuarios } = await supabaseAdmin.from('users_unified').select('id, first_name, last_name, email, department').in('id', userIds);
-            const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-            data = (fer || []).map((f: any) => {
-              const u = userMap.get(f.user_id);
-              const start = new Date(f.start_date);
-              const end = new Date(f.end_date);
-              const dias = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-              return { usuario: u ? `${u.first_name} ${u.last_name}`.trim() : 'N/A', email: u?.email, departamento: u?.department, ...f, dias };
-            });
-            const formatted = formatFeriasForExcel(data);
-            columns = formatted.columns;
-            break;
+        };
+
+        const config = configMap[tipo_dados];
+        if (!config) return `Tipo de dados não suportado para planilha: ${tipo_dados}`;
+
+        // Fetch data using helper
+        const result = await executeGlobalSearchQuery({
+          table: config.table,
+          select: config.select,
+          userId,
+          userRole,
+          userColumn: config.userColumn,
+          filters: { 
+            status: filtros.status, 
+            data_inicio: filtros.data_inicio, 
+            data_fim: filtros.data_fim, 
+            departamento: filtros.departamento || filtros.department,
+            busca: filtros.busca 
+          },
+          limit: 1000, // Higher limit for spreadsheets
+          orderBy: { column: config.dateColumn, ascending: false }
+        });
+
+        if (!result.success) return result.error!;
+
+        // Enrichment
+        const userMap = await fetchAssociatedUsers(result.data, config.userColumn);
+
+        // Transform for spreadsheet
+        data = result.data.map((item: any) => {
+          const u = userMap.get(item[config.userColumn]);
+          const base = {
+            usuario: u ? `${u.first_name} ${u.last_name}`.trim() : 'N/A',
+            email: u?.email || '-',
+            departamento: u?.department || '-',
+            ...item
+          };
+
+          // Specific adjustments
+          if (tipo_dados === 'reembolsos') base.valor = item.valorTotal;
+          if (tipo_dados === 'avaliacoes') {
+            base.colaborador_id = item.colaborador_id;
+            base.nota = item.nota_final;
+            base.periodo = item.periodo_id;
           }
-          case 'avaliacoes': {
-            let query = supabaseAdmin.from('avaliacoes_desempenho').select('id, colaborador_id, nota_final, status, periodo_id, created_at');
-            if (accessInfo.ids) query = query.in('colaborador_id', accessInfo.ids);
-            if (filtros.status) query = query.eq('status', filtros.status);
-            const { data: avals } = await query.order('created_at', { ascending: false }).limit(200);
-            const userIds = [...new Set((avals || []).map((a: any) => a.colaborador_id))];
-            const { data: usuarios } = await supabaseAdmin.from('users_unified').select('id, first_name, last_name, email, department').in('id', userIds);
-            const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-            data = (avals || []).map((a: any) => {
-              const u = userMap.get(a.colaborador_id);
-              return { usuario: u ? `${u.first_name} ${u.last_name}`.trim() : 'N/A', email: u?.email, departamento: u?.department, ...a };
-            });
-            const formatted = formatAvaliacoesForExcel(data);
-            columns = formatted.columns;
-            break;
+          if (tipo_dados === 'ferias') {
+            const start = new Date(item.start_date);
+            const end = new Date(item.end_date);
+            base.dias = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           }
-          case 'usuarios': {
-            let query = supabaseAdmin.from('users_unified').select('id, first_name, last_name, email, role, department, position, status, created_at');
-            if (accessInfo.ids) query = query.in('id', accessInfo.ids);
-            if (filtros.department) query = query.ilike('department', `%${filtros.department}%`);
-            const { data: users } = await query.order('first_name').limit(200);
-            data = (users || []).map((u: any) => ({ nome: `${u.first_name} ${u.last_name}`.trim(), ...u }));
-            const formatted = formatUsuariosForExcel(data);
-            columns = formatted.columns;
-            break;
+          if (tipo_dados === 'epis') {
+            base.tipo_epi = item.epi_types?.name || 'N/A';
+            base.ca = item.epi_types?.ca_number || 'N/A';
           }
-          case 'epis': {
-            let query = supabaseAdmin.from('epi_registrations').select('id, user_id, delivery_date, status, epi_types(name, ca_number)');
-            if (accessInfo.ids) query = query.in('user_id', accessInfo.ids);
-            const { data: epiData } = await query.order('delivery_date', { ascending: false }).limit(500);
-            const userIds = [...new Set((epiData || []).map((e: any) => e.user_id))];
-            const { data: usuarios } = await supabaseAdmin.from('users_unified').select('id, first_name, last_name, email, department').in('id', userIds);
-            const userMap = new Map((usuarios || []).map((u: any) => [u.id, u]));
-            data = (epiData || []).map((e: any) => {
-              const u = userMap.get(e.user_id);
-              return { usuario: u ? `${u.first_name} ${u.last_name}`.trim() : 'N/A', email: u?.email, departamento: u?.department, tipo_epi: e.epi_types?.name, ca: e.epi_types?.ca_number, ...e };
-            });
-            const formatted = formatEpisForExcel(data);
-            columns = formatted.columns;
-            break;
+          if (tipo_dados === 'usuarios') {
+            base.nome = base.usuario;
           }
-          default:
-            return `Tipo de dados não suportado para planilha: ${tipo_dados}`;
-        }
+
+          return base;
+        });
+
+        const formatted = config.formatter(data);
+        columns = formatted.columns;
 
         const buffer = generateExcelReport(data, columns, {
           titulo: titulo || `Relatório de ${tipo_dados}`,
@@ -1800,10 +1993,9 @@ return JSON.stringify(data);
         });
 
         const base64 = buffer.toString('base64');
-        const filename = `${titulo || tipo_dados}_${new Date().toISOString().split('T')[0]}.xlsx`;
-        const totalValor = data.reduce((sum: number, r: any) => sum + (parseFloat(r.valor) || 0), 0);
+        const filename = `${(titulo || tipo_dados).replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const totalValor = data.reduce((sum: number, r: any) => sum + (parseFloat(r.valor || r.valorTotal || 0)), 0);
 
-        // Se destino for email, enviar realmente
         if (destino === 'email' && email_destino) {
           const summary = `Total de ${data.length} registros${totalValor > 0 ? ` | Valor Total: R$ ${totalValor.toFixed(2)}` : ''}`;
           const emailResult = await sendReportEmail(
@@ -1818,7 +2010,7 @@ return JSON.stringify(data);
           if (emailResult.success) {
             return ***REMOVED***
               success: true,
-              message: `✅ Planilha gerada com ${data.length} registros eenviada para ${email_destino}!`,
+              message: `✅ Planilha gerada com ${data.length} registros e enviada para ${email_destino}!`,
               formato: 'xlsx',
               registros: data.length,
               valor_total: totalValor,
@@ -1830,7 +2022,7 @@ return JSON.stringify(data);
           } else {
             return ***REMOVED***
               success: false,
-              message: `Planilha gerada masfalha ao enviar email: ${emailResult.error}`,
+              message: `Planilha gerada mas falha ao enviar email: ${emailResult.error}`,
               formato: 'xlsx',
               base64: base64,
               filename: filename,
@@ -1840,7 +2032,6 @@ return JSON.stringify(data);
           }
         }
 
-        // Retornar base64 para download
         return ***REMOVED***
           success: true,
           message: `✅ Planilha gerada com ${data.length} registros`,
@@ -1856,13 +2047,7 @@ return JSON.stringify(data);
 
       case 'gerar_relatorio_pdf': {
         const { tipo_dados, filtros = {}, titulo, periodo, destino, email_destino } = args;
-        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
-
-        const accessInfo = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
-        if (!accessInfo.hasAccess) {
-          return accessInfo.error || 'Acesso negado';
-        }
-
+        
         console.log('[IA Tools] Gerando relatório PDF real:', { tipo_dados, destino, email_destino });
 
         let dados: any[] = [];
@@ -1870,92 +2055,73 @@ return JSON.stringify(data);
         let totalValor = 0;
 
         try {
-          switch (tipo_dados) {
-            case 'resumo':
-            case 'reembolsos': {
-              let query = supabaseAdmin.from('Reimbursement').select('id, user_id, status, valorTotal, data, descricao, categoria');
-              if (accessInfo.ids) query = query.in('user_id', accessInfo.ids);
-              if (filtros.status) query = query.eq('status', filtros.status.toLowerCase());
-              const { data: reemb } = await query.limit(500);
-              
-              const userIds = [...new Set((reemb || []).map((r: any) => r.user_id))];
-              const { data: usuarios } = await supabaseAdmin.from('users_unified').select('id, first_name, department').in('id', userIds);
-              const userMap = new Map((usuarios || []).map((u: any) => [u.id, `${u.first_name}`]));
-              
-              dados = (reemb || []).map((r: any) => ({
-                usuario: userMap.get(r.user_id) || 'Unknown',
-                departamento: 'Geral',
-                descricao: r.descricao || '-',
-                categoria: r.categoria || '-',
-                valor: r.valorTotal || 0,
-                status: r.status || '-',
-                data: r.data || '-',
-              }));
-              
-              totalValor = (reemb || []).reduce((sum: number, r: any) => sum + (parseFloat(r.valorTotal) || 0), 0);
-              break;
-            }
-            case 'ferias': {
-              let query = supabaseAdmin.from('leave_requests').select('id, user_id, start_date, end_date, status');
-              if (accessInfo.ids) query = query.in('user_id', accessInfo.ids);
-              const { data: ferias } = await query.limit(500);
-              
-              const userIds = [...new Set((ferias || []).map((f: any) => f.user_id))];
-              const { data: usuarios } = await supabaseAdmin.from('users_unified').select('id, first_name, department').in('id', userIds);
-              const userMap = new Map((usuarios || []).map((u: any) => [u.id, `${u.first_name}`]));
-              
-              dados = (ferias || []).map((f: any) => ({
-                usuario: userMap.get(f.user_id) || 'Unknown',
-                departamento: 'Geral',
-                start_date: f.start_date || '-',
-                end_date: f.end_date || '-',
-                dias: f.start_date && f.end_date ? Math.ceil((new Date(f.end_date).getTime() - new Date(f.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0,
-                status: f.status || '-',
-              }));
-              break;
-            }
-            case 'avaliacoes': {
-              let query = supabaseAdmin.from('avaliacoes_desempenho').select('id, colaborador_id, nota_final, status, periodo_id, data_inicio, data_fim');
-              if (accessInfo.ids) query = query.in('colaborador_id', accessInfo.ids);
-              const { data: avals } = await query.limit(500);
-              
-              const userIds = [...new Set((avals || []).map((a: any) => a.colaborador_id))];
-              const { data: usuarios } = await supabaseAdmin.from('users_unified').select('id, first_name, department').in('id', userIds);
-              const userMap = new Map((usuarios || []).map((u: any) => [u.id, `${u.first_name}`]));
-              
-              dados = (avals || []).map((a: any) => ({
-                usuario: userMap.get(a.colaborador_id) || 'Unknown',
-                nota: a.nota_final || '-',
-                status: a.status || '-',
-                periodo: a.periodo_id || '-',
-                data_inicio: a.data_inicio || '-',
-                data_fim: a.data_fim || '-',
-              }));
-              break;
-            }
-            case 'usuarios': {
-              if (effectiveRole !== 'ADMIN') {
-                return 'Acesso negado. Apenas administradores podem gerar relatórios de usuários.';
-              }
-              const { data: users } = await supabaseAdmin.from('users_unified').select('id, first_name, last_name, email, department, position, status').limit(500);
-              dados = (users || []).map((u: any) => ({
-                nome: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
-                email: u.email || '-',
-                departamento: u.department || '-',
-                cargo: u.position || '-',
-                status: u.status || '-',
-              }));
-              break;
-            }
-            default:
-              return `Tipo de relatório não suportado: ${tipo_dados}`;
+          const configMap: Record<string, any> = {
+            'resumo': { table: 'Reimbursement', select: 'id, user_id, status, valorTotal, data, descricao, tipo_reembolso', userColumn: 'user_id', dateColumn: 'data' },
+            'reembolsos': { table: 'Reimbursement', select: 'id, user_id, status, valorTotal, data, descricao, tipo_reembolso', userColumn: 'user_id', dateColumn: 'data' },
+            'ferias': { table: 'leave_requests', select: 'id, user_id, start_date, end_date, status', userColumn: 'user_id', dateColumn: 'start_date' },
+            'avaliacoes': { table: 'avaliacoes_desempenho', select: 'id, colaborador_id, nota_final, status, periodo_id, data_inicio, data_fim', userColumn: 'colaborador_id', dateColumn: 'created_at' },
+            'usuarios': { table: 'users_unified', select: 'id, first_name, last_name, email, department, position, status', userColumn: 'id', dateColumn: 'created_at' }
+          };
+
+          const config = configMap[tipo_dados];
+          if (!config) return `Tipo de relatório não suportado: ${tipo_dados}`;
+
+          if (tipo_dados === 'usuarios' && userRole !== 'ADMIN') {
+            return 'Acesso negado. Apenas administradores podem gerar relatórios de usuários.';
           }
 
-          // Gerar PDF de verdade
+          const result = await executeGlobalSearchQuery({
+            table: config.table,
+            select: config.select,
+            userId,
+            userRole,
+            userColumn: config.userColumn,
+            filters: { 
+              status: filtros.status, 
+              data_inicio: filtros.data_inicio, 
+              data_fim: filtros.data_fim, 
+              departamento: filtros.departamento || filtros.department,
+              busca: filtros.busca 
+            },
+            limit: 500,
+            orderBy: { column: config.dateColumn, ascending: false }
+          });
+
+          if (!result.success) return result.error!;
+
+          const userMap = await fetchAssociatedUsers(result.data, config.userColumn);
+
+          dados = result.data.map((item: any) => {
+            const u = userMap.get(item[config.userColumn]);
+            const base: any = {
+              usuario: u ? u.first_name : 'Unknown',
+              departamento: u?.department || 'Geral',
+              ...item
+            };
+
+            if (tipo_dados === 'reembolsos' || tipo_dados === 'resumo') {
+              base.valor = item.valorTotal || 0;
+              totalValor += parseFloat(base.valor);
+            }
+
+            if (tipo_dados === 'ferias') {
+              base.dias = item.start_date && item.end_date ? Math.ceil((new Date(item.end_date).getTime() - new Date(item.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+            }
+
+            if (tipo_dados === 'avaliacoes') {
+              base.nota = item.nota_final || '-';
+              base.periodo = item.periodo_id || '-';
+            }
+
+            if (tipo_dados === 'usuarios') {
+              base.nome = `${item.first_name || ''} ${item.last_name || ''}`.trim();
+              base.cargo = item.position || '-';
+            }
+
+            return base;
+          });
+
           const reportTitulo = titulo || `Relatório de ${tipo_dados}`;
-          console.log('[IA Tools] Gerando PDF com', dados.length, 'registros');
-          
-          // Gerar PDF usando a função existente
           pdfBase64 = generatePDFBase64(dados, tipo_dados as any, {
             titulo: reportTitulo,
             periodo: periodo,
@@ -1963,17 +2129,12 @@ return JSON.stringify(data);
             incluirGraficos: false,
           });
 
-          console.log('[IA Tools] PDF gerado, tamanho base64:', pdfBase64.length);
-
-          // Se destino for email, enviar
           if (destino === 'email' && email_destino) {
-            console.log('[IA Tools] Enviando email para:', email_destino);
-            
             const summary = tipo_dados === 'reembolsos' || tipo_dados === 'resumo' 
               ? `Total de registros: ${dados.length} | Valor Total: R$ ${totalValor.toFixed(2).replace('.', ',')}`
               : `Total de registros: ${dados.length}`;
 
-            const result = await sendReportEmail(
+            const emailResult = await sendReportEmail(
               email_destino,
               reportTitulo,
               tipo_dados,
@@ -1982,7 +2143,7 @@ return JSON.stringify(data);
               summary
             );
 
-            if (result.success) {
+            if (emailResult.success) {
               return ***REMOVED***
                 success: true,
                 message: `✅ Relatório PDF enviado com sucesso para ${email_destino}!`,
@@ -1991,21 +2152,19 @@ return JSON.stringify(data);
                 valor_total: totalValor,
                 destino: 'email',
                 destinatario: email_destino,
-                message_id: result.messageId,
+                message_id: emailResult.messageId,
               });
             } else {
               return ***REMOVED***
                 success: false,
-                error: `Falha ao enviar email: ${result.error}`,
+                error: `Falha ao enviar email: ${emailResult.error}`,
                 tipo: tipo_dados,
                 registros: dados.length,
-                // Fallback: retornar base64
                 pdf_base64: pdfBase64.substring(0, 100) + '...',
               });
             }
           }
 
-          // Se destino for download, retornar base64
           return ***REMOVED***
             success: true,
             message: `✅ Relatório PDF gerado com sucesso!`,
@@ -2015,7 +2174,7 @@ return JSON.stringify(data);
             destino: 'download',
             pdf_base64: pdfBase64,
             tamanho_bytes: Math.ceil(pdfBase64.length * 0.75),
-            instrucao: 'O base64 pode ser decodificado para obter o arquivo PDF. Use: atob(base64) em JavaScript ou salve em arquivo com decodificação base64.',
+            instrucao: 'O base64 pode ser decodificado para obter o arquivo PDF.',
           });
 
         } catch (err) {
@@ -2043,8 +2202,8 @@ return JSON.stringify(data);
           // Se tem dados de anexo, gerar o arquivo
           if (dados_anexo && titulo_anexo) {
             if (anexo_tipo === 'xlsx' || titulo_anexo.endsWith('.xlsx')) {
-              // Gerar Excel
-              const excelBase64 = generateExcelReport(dados_anexo, 'resumo');
+               // Gerar Excel
+               const excelBase64 = generateExcelReport(dados_anexo, 'resumo' as any, { titulo: titulo_anexo });
               attachments.push({
                 filename: titulo_anexo,
                 content: excelBase64,
@@ -2052,7 +2211,7 @@ return JSON.stringify(data);
               });
             } else if (anexo_tipo === 'pdf' || titulo_anexo.endsWith('.pdf')) {
               // Gerar PDF
-              const pdfBase64 = generatePDFBase64(dados_anexo, 'resumo', {
+              const pdfBase64 = generatePDFBase64(dados_anexo, 'resumo' as any, {
                 titulo: titulo_anexo.replace('.pdf', ''),
                 gerarPor: userId,
               });
@@ -2226,7 +2385,7 @@ return JSON.stringify(data);
           // return `Erro: UUID inválido.`;
         }
 
-const { data, error } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from('Reimbursement')
           .select('status, valor_total, descricao, data')
           .eq('user_id', userId)
@@ -2315,19 +2474,20 @@ const { data, error } = await supabaseAdmin
       }
 
       case 'buscar_documento_corporativo': {
-        const { termo_pesquisa, categoria } = args;
-        
-        // 1. Buscar no Portal ABZ
-        let query = supabaseAdmin
-          .from('documents')
-          .select('id, title, description, category, subcategory, file_url, created_at')
-          .or(`title.ilike.%${termo_pesquisa}%,description.ilike.%${termo_pesquisa}%`)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (categoria) {
-          query = query.ilike('category', `%${categoria}%`);
-        }
+         const { termo_pesquisa, categoria } = args;
+         const termoStr = String(termo_pesquisa);
+         
+         // 1. Buscar no Portal ABZ
+         let query = supabaseAdmin
+           .from('documents')
+           .select('id, title, description, category, subcategory, file_url, created_at')
+           .or(`title.ilike.%${termoStr}%,description.ilike.%${termoStr}%`)
+           .order('created_at', { ascending: false })
+           .limit(10);
+         
+         if (categoria) {
+           query = query.ilike('category', `%${categoria}%`);
+         }
 
         const { data: portalDocs } = await query;
         const portalResults = (portalDocs || []).map((d: any) => ({
@@ -2343,7 +2503,7 @@ const { data, error } = await supabaseAdmin
         // 2. Buscar no SharePoint via Graph (fallback)
         let spResults: any[] = [];
         try {
-          const spFiles = await msGraphClient.searchOneDriveFiles(termo_pesquisa);
+           const spFiles = await msGraphClient.searchOneDriveFiles(userId, termoStr);
           spResults = spFiles.slice(0, 5).map((f: any) => ({
             fonte: 'SharePoint / OneDrive',
             título: f.name,
@@ -2503,7 +2663,7 @@ const { data, error } = await supabaseAdmin
         const { status, limite = 5 } = args;
         let query = supabaseAdmin
           .from('purchase_requests')
-          .select('id, rqf_number, provider_name, buyer_name, status, created_at')
+          .select('id, rqf_number, provider_name, buyer_name, total_value, status, created_at')
           .order('created_at', { ascending: false })
           .limit(limite);
 
@@ -2525,11 +2685,12 @@ const { data, error } = await supabaseAdmin
         const { limite = 5 } = args;
         let query = supabaseAdmin
           .from('purchase_orders')
-          .select('id, po_number, supplier_name, buyer_name, total_amount, status, created_at')
+          .select('id, po_number, provider_name, buyer_name, total_value, status, created_at')
           .order('created_at', { ascending: false })
           .limit(limite);
 
         if (userRole !== 'ADMIN') {
+          // No purchase_orders, o usuário pode ser o user_id (requisitante) ou estar em approver_ids
           query = query.or(`user_id.eq.${userId},approver_ids.cs.{${userId}}`);
         }
 
@@ -2731,8 +2892,259 @@ const { data, error } = await supabaseAdmin
       case 'gerenciar_base_conhecimento':
         return await executeGerenciarBaseConhecimento(args, userId);
 
-      default:
-        return `Ferramenta desconhecida: ${name}`;
+      case 'iniciar_agente_autonomo': {
+          const { usuario_id, setor_id, config } = args;
+          
+          const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
+          const hasAccess = await canAccessUserData(userId, effectiveRole, usuario_id);
+         if (!hasAccess) {
+           return 'Você não tem permissão para iniciar o agente para este usuário.';
+         }
+         
+         const { data: existing } = await supabaseAdmin
+           .from('autonomous_agents')
+           .select('*')
+           .eq('user_id', usuario_id)
+           .eq('is_active', true)
+           .single();
+         
+         if (existing) {
+           return `Agente já está ativo para este usuário desde ${existing.started_at}.`;
+         }
+         
+         const agentConfig = {
+           interval: config?.intervalo || 30000,
+           autonomy_level: config?.nivel_autonomia || 'medio',
+           auto_actions: config?.acoes_automaticas !== false,
+           max_actions_per_cycle: config?.max_acoes_por_ciclo || 3,
+           alerts_enabled: config?.alertas_ativos !== false,
+         };
+         
+         const { data, error } = await supabaseAdmin
+           .from('autonomous_agents')
+           .insert({
+             user_id: usuario_id,
+             sector_id: setor_id,
+             config: agentConfig,
+             is_active: true,
+             started_at: new Date().toISOString(),
+             last_cycle_at: new Date().toISOString(),
+             cycles_completed: 0,
+             actions_executed: 0,
+             created_by: userId,
+           })
+           .select()
+           .single();
+         
+         if (error) {
+           return `Erro ao iniciar agente: ${error.message}`;
+         }
+         
+         return `Agente autônomo iniciado com sucesso para o usuário ${usuario_id}. Configuração: intervalo=${agentConfig.interval}ms, autonomia=${agentConfig.autonomy_level}, ações automáticas=${agentConfig.auto_actions}.`;
+       }
+
+       case 'parar_agente_autonomo': {
+         const { usuario_id } = args;
+         
+         const { data, error } = await supabaseAdmin
+           .from('autonomous_agents')
+           .update({
+             is_active: false,
+             stopped_at: new Date().toISOString(),
+             updated_at: new Date().toISOString(),
+           })
+           .eq('user_id', usuario_id)
+           .eq('is_active', true)
+           .select()
+           .single();
+         
+         if (error || !data) {
+           return `Agente não está ativo para o usuário ${usuario_id}.`;
+         }
+         
+         return `Agente autônomo parado com sucesso. Total de ciclos: ${data.cycles_completed}, ações executadas: ${data.actions_executed}.`;
+       }
+
+       case 'status_agente_autonomo': {
+         const { usuario_id } = args;
+         
+         const { data, error } = await supabaseAdmin
+           .from('autonomous_agents')
+           .select('*')
+           .eq('user_id', usuario_id)
+           .order('created_at', { ascending: false })
+           .limit(1)
+           .single();
+         
+         if (error || !data) {
+           return `Nenhum agente encontrado para o usuário ${usuario_id}.`;
+         }
+         
+         const status = {
+           ativo: data.is_active,
+           usuario_id: data.user_id,
+           setor_id: data.sector_id,
+           configuracao: data.config,
+           ciclos_completados: data.cycles_completed || 0,
+           acoes_executadas: data.actions_executed || 0,
+           iniciado_em: data.started_at,
+           ultimo_ciclo: data.last_cycle_at,
+           parado_em: data.stopped_at || null,
+         };
+         
+         return JSON.stringify(status, null, 2);
+       }
+
+       case 'sobrescrever_acao_autonomo': {
+         const { usuario_id, acao, parametros, justificativa } = args;
+         
+         const { error } = await supabaseAdmin
+           .from('agent_action_log')
+           .insert({
+             user_id: usuario_id,
+             action_type: 'manual_override',
+             action_description: `Sobrescrita manual: ${acao}`,
+             details: {
+               acao,
+               parametros,
+               justificativa,
+               sobrescrito_por: userId,
+             },
+             channels_used: ['manual'],
+             success: true,
+           });
+         
+         if (error) {
+           return `Erro ao registrar sobrescrita: ${error.message}`;
+         }
+         
+         return `Ação manual "${acao}" executada com sucesso. Justificativa: ${justificativa}`;
+       }
+
+case 'coletar_dados_holisticos': {
+         const { usuario, incluir_emails, incluir_calendario, incluir_tarefas, incluir_arquivos, incluir_equipe, incluir_kpis, incluir_m365 } = args;
+
+         const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' ? 'GERENTE' : 'USER');
+
+         if (effectiveRole !== 'ADMIN' && effectiveRole !== 'GERENTE') {
+           const selfResult = await collectHolisticForUser(userId, userId);
+           if (selfResult.error) return `Erro ao coletar dados: ${selfResult.error}`;
+           return selfResult.aiContext || JSON.stringify(selfResult.data);
+         }
+
+         let targetUserId = userId;
+         if (usuario && usuario !== 'meu' && usuario !== 'minhas') {
+           const resolved = await resolveUserIdByIdentifier(usuario as string);
+           if (resolved) targetUserId = resolved;
+           else if (usuario.includes('@')) {
+             if (effectiveRole !== 'ADMIN') return 'Apenas ADMIN pode buscar por email de outros usuários.';
+             targetUserId = usuario as string;
+           }
+         }
+
+         const result = await collectHolisticForUser(userId, targetUserId);
+         if (result.error) return `Erro ao coletar dados holísticos: ${result.error}`;
+         return result.aiContext || JSON.stringify(result.data);
+       }
+
+       case 'editar_kpi': {
+         const { kpi_key, label, target_value, current_value, unit, department, alert_threshold } = args;
+
+         if (!kpi_key || !label || target_value === undefined) {
+           return 'Erro: kpi_key, label e target_value são obrigatórios.';
+         }
+
+         const { data: existing } = await supabaseAdmin
+           .from('kpi_targets')
+           .select('id')
+           .eq('kpi_key', kpi_key as string)
+           .maybeSingle();
+
+         const kpiData: Record<string, unknown> = {
+           kpi_label: label,
+           target_value,
+           unit: unit || '%',
+           alert_threshold: alert_threshold || 80,
+           is_active: true,
+           updated_at: new Date().toISOString(),
+         };
+
+         if (current_value !== undefined) kpiData.current_value = current_value;
+         if (department) kpiData.department = department;
+
+         if (existing) {
+           const { error } = await supabaseAdmin
+             .from('kpi_targets')
+             .update(kpiData)
+             .eq('id', existing.id);
+
+           return error
+             ? `Erro ao atualizar KPI: ${error.message}`
+             : `KPI "${label}" atualizado com sucesso.`;
+         }
+
+         kpiData.kpi_key = kpi_key;
+         kpiData.created_at = new Date().toISOString();
+
+         const { error } = await supabaseAdmin
+           .from('kpi_targets')
+           .insert([kpiData]);
+
+         return error
+           ? `Erro ao criar KPI: ${error.message}`
+           : `KPI "${label}" criado com sucesso.`;
+       }
+
+       case 'listar_kpis': {
+         const { department } = args;
+
+         let query = supabaseAdmin
+           .from('kpi_targets')
+           .select('*')
+           .eq('is_active', true)
+           .order('kpi_label');
+
+         if (department) {
+           query = query.or(`department.eq.${department},department.is.null`);
+         }
+
+         const { data, error } = await query;
+         if (error) return `Erro ao buscar KPIs: ${error.message}`;
+         if (!data || data.length === 0) return 'Nenhum KPI ativo encontrado.';
+
+         const kpis = data.map((k: any) => ({
+           key: k.kpi_key,
+           label: k.kpi_label,
+           current: k.current_value,
+           target: k.target_value,
+           unit: k.unit,
+           department: k.department,
+           gap: k.target_value && k.current_value ? `${((k.target_value - k.current_value) / k.target_value * 100).toFixed(1)}%` : null,
+           status: k.current_value >= k.target_value ? 'acima_meta' : 'abaixo_meta',
+         }));
+
+         return JSON.stringify(kpis);
+       }
+
+       case 'configurar_alerta_kpi': {
+         if (userRole !== 'ADMIN') return 'Acesso negado. Apenas ADMIN pode configurar alertas de KPI.';
+         const { kpi_key, threshold, channels } = args;
+
+         const { error } = await supabaseAdmin
+           .from('kpi_targets')
+           .update({
+             alert_threshold: threshold,
+             updated_at: new Date().toISOString(),
+           })
+           .eq('kpi_key', kpi_key as string);
+
+         return error
+           ? `Erro ao configurar alerta: ${error.message}`
+           : `Alerta configurado para KPI "${kpi_key}": notificar quando abaixo de ${threshold}% da meta. Canais: ${channels || 'push,portal'}.`;
+       }
+
+       default:
+         return `Ferramenta desconhecida: ${name}`;
     }
   } catch (err) {
     return `Erro interno ao executar ferramenta: ${err instanceof Error ? err.message : String(err)}`;

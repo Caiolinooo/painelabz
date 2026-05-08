@@ -77,15 +77,6 @@ export function middleware(request: NextRequest) {
   // Verificar se há um token nos cookies
   const token = request.cookies.get('abzToken')?.value || request.cookies.get('token')?.value;
 
-  // Verificar se a URL contém um parâmetro de timestamp (t=...)
-  if (request.nextUrl.searchParams.has('t')) {
-    // Remover o parâmetro de timestamp para evitar loops de redirecionamento
-    const cleanUrl = new URL(request.url);
-    cleanUrl.searchParams.delete('t');
-    console.log('Middleware: Removendo parâmetro t para evitar loop de redirecionamento');
-    return NextResponse.redirect(cleanUrl);
-  }
-
   // Redirecionar rotas específicas para evitar problemas
   if (pathname === '/avaliacao/avaliacoes' || pathname === '/avaliacao/avaliacoes/') {
     console.log('Middleware: Redirecionando /avaliacao/avaliacoes para /avaliacao');
@@ -150,9 +141,24 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Create the base response
+  const response = NextResponse.next();
+
+  // --- Locale Management ---
+  // Obter o locale do cookie ou usar o padrão pt-BR
+  const defaultLocale = 'pt-BR'; // Fallback if i18n config is not easily imported
+  const locale = request.cookies.get('NEXT_LOCALE')?.value || defaultLocale;
+
+  // Add locale to response headers for client-side access
+  response.headers.set('x-locale', locale);
+
+  // Definir o locale como variável global para acesso no cliente
+  response.cookies.set('NEXT_LOCALE', locale);
+  // -------------------------
+
   // Para simplificar e evitar problemas com o Twilio, vamos permitir outras requisições
   // A autenticação será verificada nas rotas de API e páginas
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
@@ -166,6 +172,6 @@ export const config = {
      *
      * Adicionando mais exceções para evitar problemas com rotas estáticas
      */
-    '/((?!_next/static|_next/image|_next/data|favicon.ico|public|images|fonts|documentos|api/_next).*)',
+    '/((?!api|_next/static|_next/image|_next/data|favicon.ico|public|images|fonts|documentos).*)',
   ],
 };

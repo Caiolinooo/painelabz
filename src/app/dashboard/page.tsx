@@ -55,6 +55,7 @@ import DashboardNewsWidget from '@/components/dashboard/DashboardNewsWidget';
 import QuickLinksWidget from '@/components/dashboard/QuickLinksWidget';
 import EventsWidget from '@/components/dashboard/EventsWidget';
 import UserShortcutsBar from '@/components/dashboard/UserShortcutsBar';
+import PendenciesWidget from '@/components/dashboard/PendenciesWidget';
 import PurchaseOrderWidget from '@/components/dashboard/widgets/PurchaseOrderWidget';
 
 export default function Dashboard() {
@@ -91,9 +92,10 @@ export default function Dashboard() {
               <PurchaseOrderWidget />
             </div>
 
-            {/* Right Column - Events - Spans 3 */}
-            <div className="lg:col-span-3 h-full">
+            {/* Right Column - Events + Pendencies - Spans 3 */}
+            <div className="lg:col-span-3 h-full flex flex-col gap-8">
               <EventsWidget />
+              <PendenciesWidget />
             </div>
 
           </div>
