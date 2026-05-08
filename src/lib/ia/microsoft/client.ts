@@ -786,7 +786,7 @@ export async function searchEmails(
 
     // Se tiver query textual, usar $search ao invés de $filter para subject/body
     if (query && !options?.subject) {
-      endpoint = `/users/${userId}/messages?$top=${top}&$search="${encodeURIComponent(query)}"&$select=id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments&$orderby=receivedDateTime desc`;
+      endpoint = `/users/${userId}/messages?$top=${top}&$search="${encodeURIComponent(query)}"&$select=id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments`;
     }
 
     const folder = options?.folder;

@@ -38,7 +38,52 @@ const nextConfig = {
   // Configurações experimentais
   experimental: {
     optimizeCss: true,
-    serverComponentsExternalPackages: ['@marsaud/smb2', 'ntlm'],
+  },
+
+  // Configurações do webpack para polyfill de módulos Node.js
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Polyfill para módulos Node.js no cliente
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        net: require.resolve('stream-browserify'),
+        tls: require.resolve('stream-browserify'),
+        dns: require.resolve('stream-browserify'),
+        fs: false,
+        child_process: false,
+        crypto: require.resolve('crypto-browserify'),
+        path: require.resolve('path-browserify'),
+        os: require.resolve('os-browserify/browser'),
+        util: require.resolve('util'),
+        stream: require.resolve('stream-browserify'),
+        buffer: require.resolve('buffer'),
+        events: require.resolve('events'),
+        http: require.resolve('stream-http'),
+        https: require.resolve('https-browserify'),
+        url: require.resolve('url'),
+        zlib: require.resolve('browserify-zlib'),
+      };
+      
+      // Adiciona os polyfills aos plugins
+      config.plugins = config.plugins || [];
+      
+      // Fornece as variáveis globais para buffer e process
+      config.plugins.push(
+        new (require('webpack').ProvidePlugin)({
+          Buffer: ['buffer', 'Buffer'],
+          process: 'process/browser',
+        })
+      );
+      
+      // Define o ambiente
+      config.plugins.push(
+        new (require('webpack').DefinePlugin)({
+          'global': 'globalThis',
+          'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+        })
+      );
+    }
+    return config;
   },
 
   // Configurações básicas de segurança

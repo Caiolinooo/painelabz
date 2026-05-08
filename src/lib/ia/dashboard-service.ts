@@ -220,7 +220,7 @@ async function fetchReimbursementKPIs(
     // tabela pode nao existir
   }
 
-return kpis;
+  return kpis;
 }
 
 /**
@@ -239,8 +239,6 @@ async function fetchModularKPIs(userId: string, role: string): Promise<IADashboa
     if (!targets || targets.length === 0) return [];
 
     for (const target of targets) {
-      // Aqui o agente IA calcularia o valor atual baseado na query_sql ou lógica Js
-      // Por enquanto, simulamos o cálculo buscando o valor "atual" se existir um log recente
       const { data: recentLog } = await supabaseAdmin
         .from('agent_action_log')
         .select('metadata')
@@ -274,7 +272,6 @@ async function fetchModularKPIs(userId: string, role: string): Promise<IADashboa
  * Exporta dados de KPI para XLSX (Buffer)
  */
 export async function exportKPIsToXLSX(data: any): Promise<Buffer> {
-  // Implementação real usaria a lib 'xlsx'
   return Buffer.from('XLSX_DATA_PLACEHOLDER');
 }
 
@@ -282,12 +279,11 @@ export async function exportKPIsToXLSX(data: any): Promise<Buffer> {
  * Exporta relatório de KPI para PDF (Buffer)
  */
 export async function exportKPIsToPDF(data: any): Promise<Buffer> {
-  // Implementação real usaria 'jspdf' ou 'pdfkit'
   return Buffer.from('PDF_DATA_PLACEHOLDER');
 }
 
 // =====================================================
-// Pendências
+// Pendências (Pessoais + Fila de Aprovação)
 // =====================================================
 
 async function fetchPendencies(
@@ -297,63 +293,76 @@ async function fetchPendencies(
 ): Promise<IADashboardPendency[]> {
   const pendencies: IADashboardPendency[] = [];
 
-  // Avaliações pendentes
+  // Obter email do usuario para queries de reembolso e Graph
+  let userEmail = '';
   try {
-    let query = supabaseAdmin
+    const { data: profile } = await supabaseAdmin
+      .from('users_unified')
+      .select('email')
+      .eq('id', userId)
+      .single();
+    userEmail = profile?.email || '';
+  } catch {}
+
+  // =====================================================
+  // 1. PENDENCIAS PESSOAIS (válido para TODOS os roles)
+  // =====================================================
+
+  // 1a. Avaliações pessoais pendentes
+  try {
+    const { data } = await supabaseAdmin
       .from('avaliacoes_desempenho')
-      .select('id, colaborador_id, status, created_at')
-      .in('status', ['pending', 'em_andamento']);
+      .select('id, colaborador_id, status, periodo_id, created_at')
+      .eq('colaborador_id', userId)
+      .in('status', ['pending', 'em_andamento', 'pendente', 'pendente_autoavaliacao'])
+      .order('created_at', { ascending: false })
+      .limit(5);
 
-    if (accessibleIds) {
-      query = query.in('colaborador_id', accessibleIds);
-    }
-
-    const { data } = await query.limit(10);
     if (data) {
       for (const item of data) {
         pendencies.push({
           id: item.id,
-          title: 'Avaliação de Desempenho',
-          description: `Avaliação pendente para ${role === 'USER' ? 'você' : 'um colaborador'}`,
+          title: 'Sua Avaliação Pendente',
+          description: `Avaliação de desempenho aguardando sua ação (período: ${item.periodo_id || 'N/A'})`,
           priority: 'high',
           module: 'Avaliação',
         });
       }
     }
-  } catch { /* tabela pode não existir */ }
+  } catch (err) { console.error('[IA Dashboard] Erro ao buscar avaliações pessoais:', err); }
 
-  // Férias pendentes (apenas para gerentes/admin que precisam aprovar)
-  if (role !== 'USER') {
-    try {
-      const { data } = await supabaseAdmin
-        .from('leave_requests')
-        .select('id, user_id, start_date, status')
-        .eq('status', 'PENDING_LEADER')
-        .order('start_date', { ascending: true })
-        .limit(5);
+  // 1b. Férias pessoais pendentes
+  try {
+    const { data } = await supabaseAdmin
+      .from('leave_requests')
+      .select('id, start_date, end_date, status, reason')
+      .eq('user_id', userId)
+      .in('status', ['PENDING_LEADER', 'PENDING_MANAGER', 'PENDING'])
+      .order('start_date', { ascending: true })
+      .limit(5);
 
-      if (data) {
-        for (const item of data) {
-          pendencies.push({
-            id: item.id,
-            title: 'Solicitação de Férias',
-            description: `Férias a partir de ${item.start_date} aguardando aprovação`,
-            priority: 'medium',
-            deadline: item.start_date,
-            module: 'Férias',
-          });
-        }
+    if (data) {
+      for (const item of data) {
+        pendencies.push({
+          id: item.id,
+          title: 'Suas Férias Pendentes',
+          description: `${item.start_date} a ${item.end_date} — aguardando aprovação`,
+          priority: 'medium',
+          deadline: item.start_date,
+          module: 'Férias',
+        });
       }
-    } catch { /* tabela pode não existir */ }
-  }
+    }
+  } catch (err) { console.error('[IA Dashboard] Erro ao buscar férias pessoais:', err); }
 
-  // Reembolsos pendentes (para quem aprova)
-  if (role !== 'USER') {
+  // 1c. Reembolsos pessoais pendentes
+  if (userEmail) {
     try {
       const { data } = await supabaseAdmin
         .from('Reimbursement')
-        .select('id, status, valor_total, data')
-        .eq('status', 'PENDING')
+        .select('id, status, valorTotal, descricao, data')
+        .eq('email', userEmail)
+        .eq('status', 'pendente')
         .order('data', { ascending: true })
         .limit(5);
 
@@ -361,14 +370,152 @@ async function fetchPendencies(
         for (const item of data) {
           pendencies.push({
             id: item.id,
-            title: 'Reembolso Pendente',
-            description: `R$ ${(item.valor_total || 0).toLocaleString('pt-BR')} aguardando aprovação`,
+            title: 'Seu Reembolso Pendente',
+            description: `R$ ${(parseFloat(item.valorTotal) || 0).toLocaleString('pt-BR')} — ${item.descricao || 'Sem descrição'}`,
             priority: 'medium',
             module: 'Reembolso',
           });
         }
       }
-    } catch { /* tabela pode não existir */ }
+    } catch (err) { console.error('[IA Dashboard] Erro ao buscar reembolsos pessoais:', err); }
+  }
+
+  // 1d. EPIs vencidos pessoais
+  try {
+    const { data } = await supabaseAdmin
+      .from('epi_records')
+      .select('id, epi_name, status, expiry_date')
+      .eq('user_id', userId)
+      .in('status', ['expired', 'vencido'])
+      .order('expiry_date', { ascending: true })
+      .limit(5);
+
+    if (data && data.length > 0) {
+      for (const item of data) {
+        pendencies.push({
+          id: item.id,
+          title: 'EPI Vencido',
+          description: `${(item as any).epi_name || 'Equipamento'} venceu em ${(item as any).expiry_date || 'data desconhecida'}`,
+          priority: 'high',
+          module: 'EPI',
+        });
+      }
+    }
+  } catch { /* tabela ou campo pode nao existir */ }
+
+  // 1e. Emails nao lidos (via Microsoft Graph, se configurado)
+  try {
+    const { msGraphClient } = await import('./microsoft/client');
+    if (userEmail) {
+      const emails = await msGraphClient.listEmails(userEmail, 10);
+      const unread = emails.filter((e: any) => !e.isRead);
+      if (unread.length > 0) {
+        pendencies.push({
+          id: `email_unread_${userId}`,
+          title: 'E-mails Não Lidos',
+          description: `Você tem ${unread.length} e-mail(s) não lido(s) na caixa de entrada`,
+          priority: unread.length > 5 ? 'high' : 'medium',
+          module: 'Email',
+        });
+      }
+    }
+  } catch { /* Graph pode nao estar configurado */ }
+
+  // 1f. Eventos próximos (hoje/amanhã)
+  try {
+    const hoje = new Date().toISOString().split('T')[0];
+    const amanha = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const { data: eventos } = await supabaseAdmin
+      .from('calendar_events')
+      .select('id, summary, start_time')
+      .eq('user_id', userId)
+      .gte('start_time', `${hoje}T00:00:00`)
+      .lte('start_time', `${amanha}T23:59:59`)
+      .order('start_time', { ascending: true })
+      .limit(5);
+
+    if (eventos && eventos.length > 0) {
+      for (const ev of eventos) {
+        pendencies.push({
+          id: ev.id,
+          title: 'Evento Hoje/Amanhã',
+          description: `${ev.summary} — ${new Date(ev.start_time).toLocaleString('pt-BR')}`,
+          priority: 'low',
+          deadline: ev.start_time,
+          module: 'Calendário',
+        });
+      }
+    }
+  } catch { /* tabela pode nao existir */ }
+
+  // =====================================================
+  // 2. FILA DE APROVAÇÃO (apenas ADMIN/GERENTE)
+  // =====================================================
+
+  if (role !== 'USER') {
+    // 2a. Férias aguardando aprovação
+    try {
+      let query = supabaseAdmin
+        .from('leave_requests')
+        .select('id, user_id, start_date, end_date, status')
+        .in('status', ['PENDING_LEADER', 'PENDING_MANAGER'])
+        .order('start_date', { ascending: true });
+
+      if (role === 'GERENTE' && accessibleIds) {
+        query = query.in('user_id', accessibleIds);
+      }
+
+      const { data } = await query.limit(10);
+
+      if (data) {
+        for (const item of data) {
+          if (item.user_id === userId) continue; // ja incluido nas pessoais
+          pendencies.push({
+            id: item.id,
+            title: 'Aprovar Férias',
+            description: `Férias de colaborador aguardando aprovação (${item.start_date} a ${item.end_date})`,
+            priority: 'medium',
+            deadline: item.start_date,
+            module: 'Férias',
+          });
+        }
+      }
+    } catch (err) { console.error('[IA Dashboard] Erro ao buscar aprovações de férias:', err); }
+
+    // 2b. Reembolsos aguardando aprovação
+    try {
+      let reimbQuery = supabaseAdmin
+        .from('Reimbursement')
+        .select('id, status, valorTotal, data, email')
+        .eq('status', 'pendente')
+        .order('data', { ascending: true });
+
+      if (role === 'GERENTE' && accessibleIds) {
+        const { data: teamUsers } = await supabaseAdmin
+          .from('users_unified')
+          .select('email')
+          .in('id', accessibleIds);
+        const teamEmails = teamUsers?.map(u => u.email).filter(Boolean) || [];
+        if (teamEmails.length > 0) {
+          reimbQuery = reimbQuery.in('email', teamEmails);
+        }
+      }
+
+      const { data } = await reimbQuery.limit(10);
+
+      if (data) {
+        for (const item of data) {
+          if (item.email === userEmail) continue; // ja incluido nas pessoais
+          pendencies.push({
+            id: item.id,
+            title: 'Aprovar Reembolso',
+            description: `R$ ${(parseFloat(item.valorTotal) || 0).toLocaleString('pt-BR')} aguardando aprovação`,
+            priority: 'medium',
+            module: 'Reembolso',
+          });
+        }
+      }
+    } catch (err) { console.error('[IA Dashboard] Erro ao buscar aprovações de reembolso:', err); }
   }
 
   return pendencies;
@@ -392,15 +539,28 @@ function buildSummary(
 
   const highlights: string[] = [];
 
-  if (pendencies.length > 0) {
-    highlights.push(`Você tem **${pendencies.length}** pendência(s) para resolver`);
-  } else {
-    highlights.push('Sem pendências no momento — tudo em dia! ✅');
+  const personalPendencies = pendencies.filter(p =>
+    p.title?.startsWith('Sua ') || p.title?.startsWith('Seu ') ||
+    p.title?.startsWith('EPI ') || p.title?.startsWith('E-mails ') ||
+    p.title?.startsWith('Evento ')
+  );
+  const approvalPendencies = pendencies.filter(p => !personalPendencies.includes(p));
+
+  if (personalPendencies.length > 0) {
+    highlights.push(`Você tem **${personalPendencies.length}** pendência(s) pessoal(is) para resolver`);
+  }
+
+  if (approvalPendencies.length > 0) {
+    highlights.push(`📋 **${approvalPendencies.length}** item(ns) aguardando sua aprovação`);
   }
 
   const highPriority = pendencies.filter(p => p.priority === 'high');
   if (highPriority.length > 0) {
     highlights.push(`⚠️ **${highPriority.length}** item(ns) de alta prioridade`);
+  }
+
+  if (pendencies.length === 0) {
+    highlights.push('Nenhuma pendência pessoal ou aprovação pendente encontrada');
   }
 
   if (role === 'GERENTE') {
@@ -409,7 +569,7 @@ function buildSummary(
     highlights.push('Painel completo — todos os departamentos disponíveis');
   }
 
-  const quickStats = kpis.slice(0, 4); // top 4 KPIs
+  const quickStats = kpis.slice(0, 4);
 
   return { greeting, highlights, quickStats };
 }

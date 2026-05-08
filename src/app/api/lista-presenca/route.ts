@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
         if (authError) return authError;
 
         const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
         const status = searchParams.get('status');
         const search = searchParams.get('search');
         const limit = parseInt(searchParams.get('limit') || '20');
@@ -19,8 +20,13 @@ export async function GET(request: NextRequest) {
         let query = supabaseAdmin
             .from('vw_listas_presenca_completo')
             .select('*')
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1);
+            .order('created_at', { ascending: false });
+
+        if (id) {
+            query = query.eq('id', id);
+        } else {
+            query = query.range(offset, offset + limit - 1);
+        }
 
         if (status) query = query.eq('status', status);
         if (search) query = query.or(`titulo.ilike.%${search}%,local.ilike.%${search}%`);

@@ -16,12 +16,25 @@ export interface IAConfig {
   temperatura: number;
   system_prompt: string;
   ativo: boolean;
+  provider: 'lmstudio' | 'llamacpp';
+  provider_settings: {
+    lmstudio?: { endpoint: string; api_key: string; model_default: string };
+    llamacpp?: { endpoint: string; api_key: string; model_default: string };
+  };
   created_at: string;
   updated_at: string;
 }
 
+
+
 /** Config sem dados sensíveis (para retorno em API não-admin) */
-export type IAConfigPublic = Omit<IAConfig, 'api_key'> & { api_key?: never };
+export type IAConfigPublic = Omit<IAConfig, 'api_key' | 'provider_settings'> & {
+  api_key?: never;
+  provider_settings: {
+    lmstudio?: { endpoint: string; model_default: string; api_key?: never };
+    llamacpp?: { endpoint: string; model_default: string; api_key?: never };
+  };
+};
 
 export interface IAChatSession {
   id: string;
@@ -43,8 +56,32 @@ export interface IAChatMessage {
   content: string;
   tokens_used: number | null;
   response_time_ms: number | null;
-  metadata: Record<string, unknown>;
+  status?: string; // Status profissional da IA
+  metadata: {
+    dashboard?: IADashboardLayout;
+    [key: string]: unknown;
+  };
   created_at: string;
+}
+
+// =====================================================
+// Tipos de Dashboard Generativo (AI-Driven)
+// =====================================================
+
+export type IADashboardWidgetType = 'metric' | 'table' | 'chart' | 'list';
+
+export interface IADashboardWidget {
+  id: string;
+  type: IADashboardWidgetType;
+  title: string;
+  data: any;
+  config?: Record<string, any>;
+}
+
+export interface IADashboardLayout {
+  id: string;
+  widgets: IADashboardWidget[];
+  columns?: number;
 }
 
 export interface IADashboardCache {
@@ -113,6 +150,8 @@ export interface IAUpdateConfigRequest {
   endpoint?: string;
   api_key?: string;
   model_default?: string;
+  provider?: 'lmstudio' | 'llamacpp';
+  provider_settings?: IAConfig['provider_settings'];
   max_tokens?: number;
   temperatura?: number;
   system_prompt?: string;
@@ -123,9 +162,11 @@ export interface IAUpdateConfigRequest {
 export interface IADashboardKPI {
   label: string;
   value: string | number;
+  target?: number;
   trend?: 'up' | 'down' | 'stable';
   change?: number;
   icon?: string;
+  unit?: string;
 }
 
 export interface IADashboardPendency {
@@ -161,7 +202,15 @@ export interface IADashboardResponse {
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content?: string;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
 }
 
 export interface LLMCompletionRequest {
@@ -178,6 +227,10 @@ export interface LLMCompletionChoice {
   message: {
     role: string;
     content: string;
+    metadata?: {
+      dashboard?: IADashboardLayout;
+      [key: string]: unknown;
+    };
   };
   finish_reason: string;
 }

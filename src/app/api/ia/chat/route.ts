@@ -85,45 +85,59 @@ export async function POST(request: NextRequest) {
       try {
         const startTime = Date.now();
         
-        // Usar chatCompletion (não-streaming) - que já processa tools automaticamente
-        console.log('[IA Stream] Fazendo chamada não-streaming...');
-        const result = await chatCompletion(llmMessages, undefined, { role: userRole, userId });
-        const content = result?.choices?.[0]?.message?.content || 'Erro ao processar resposta.';
-        console.log('[IA Stream] Resposta recebida, content length:', content.length);
+        // Usar chatCompletion (não-streaming) - que agora envia status em tempo real via ReadableStream
+        console.log('[IA Stream] Iniciando orquestração com status...');
         
-        // Criar stream fake com chunking para simular streaming
         const stream = new ReadableStream({
-          start(controller) {
+          async start(controller) {
             const encoder = new TextEncoder();
-            const chunkSize = 15;
-            let i = 0;
+            let finalContent = '';
             
-            const sendChunk = () => {
-              if (i < content.length) {
-                const chunk = content.slice(i, i + chunkSize);
-                i += chunkSize;
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: chunk })}\n\n`));
-                setTimeout(sendChunk, 30); // Simular delay de streaming
-              } else {
-                // Evento final
-                const finalEvent = `data: ${JSON.stringify({ done: true, fullContent: content })}\n\n`;
-                controller.enqueue(encoder.encode(finalEvent));
-                controller.close();
-              }
-            };
-            
-            sendChunk();
+            try {
+              const result = await chatCompletion(
+                llmMessages, 
+                { 
+                  signal: request.signal,
+                  onStatus: (status) => {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status })}\n\n`));
+                  }
+                }, 
+                { role: userRole, userId }
+              );
+
+              finalContent = result?.choices?.[0]?.message?.content || 'Erro ao processar resposta.';
+              const dashboard = result?.choices?.[0]?.message?.metadata?.dashboard;
+
+              console.log('[IA Stream] Orquestração finalizada, enviando conteúdo principal.');
+              
+              // Envia o conteúdo final e metadados
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: finalContent, metadata: { dashboard } })}\n\n`));
+              
+              // Evento final compatível com o frontend
+              const finalEvent = `data: ${JSON.stringify({ done: true, fullContent: finalContent, metadata: { dashboard } })}\n\n`;
+              controller.enqueue(encoder.encode(finalEvent));
+
+              // Salvar no banco (dentro da stream)
+              const responseTime = Date.now() - startTime;
+              await supabaseAdmin.from('ia_chat_messages').insert({
+                session_id: sessionId,
+                role: 'assistant',
+                content: finalContent,
+                response_time_ms: responseTime,
+                metadata: { orchestrated: true, streamed: true, dashboard },
+              });
+            } catch (err: any) {
+              console.error('[IA Stream] Erro durante orquestração:', err);
+              const errMsg = err.name === 'AbortError' 
+                ? 'A operação demorou muito e foi interrompida. Por favor, tente um comando mais simples.'
+                : `Ocorreu um erro: ${err.message}`;
+              
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: `\n\n**Erro:** ${errMsg}` })}\n\n`));
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+            } finally {
+              controller.close();
+            }
           }
-        });
-        
-        // Salvar no banco
-        const responseTime = Date.now() - startTime;
-        await supabaseAdmin.from('ia_chat_messages').insert({
-          session_id: sessionId,
-          role: 'assistant',
-          content,
-          response_time_ms: responseTime,
-          metadata: { streamed: true },
         });
         
         return new Response(stream, {
@@ -143,12 +157,12 @@ export async function POST(request: NextRequest) {
     // =====================================================
     // Sync mode (fallback ou explícito)
     // =====================================================
-
-    // =====================================================
-    // Sync mode (fallback ou explícito)
-    // =====================================================
     const startTime = Date.now();
-    const llmResponse = await chatCompletion(llmMessages, undefined, { role: userRole, userId });
+    const llmResponse = await chatCompletion(
+      llmMessages, 
+      { signal: request.signal }, 
+      { role: userRole, userId }
+    );
     const responseTime = Date.now() - startTime;
 
     const assistantContent = llmResponse.choices?.[0]?.message?.content || 'Desculpe, não consegui gerar uma resposta.';
@@ -165,6 +179,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           model: llmResponse.model,
           finish_reason: llmResponse.choices?.[0]?.finish_reason,
+          dashboard: llmResponse.choices?.[0]?.message?.metadata?.dashboard
         },
       })
       .select()

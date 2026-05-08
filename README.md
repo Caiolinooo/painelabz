@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.7.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.9.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -25,7 +25,8 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ## ✨ Funcionalidades Atuais
 
-### 🤖 **Inteligência Artificial (v5.7)**
+### 🤖 **Inteligência Artificial (v5.9)**
+- **Agente IA Autônomo para KPIs** - Ciclo contínuo de análise e otimização de metas com múltiplos níveis de autonomia, memória e decisões automatizadas.
 - **Agente Proativo** - Automação de tarefas diárias, análise de e-mails pendentes e acompanhamento de metas sem intervenção humana.
 - **Base de Conhecimento** - Inteligência corporativa personalizada injetada no contexto da IA para respostas precisas sobre processos internos.
 - **Dashboard de KPIs** - Visualização modular de performance com metas em tempo real e exportação para PDF/XLSX.
@@ -80,12 +81,12 @@ npm run dev
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
 
-## 🚀 Últimas Atualizações (v5.7.0)
+## 🚀 Últimas Atualizações (v5.9.0)
 
-- **IA como Agente Autônomo**: Evolução do sistema de chat para um assistente proativo que agenda cronjobs e monitora KPIs corporativos.
-- **Memória Corporativa (Knowledge Base)**: Interface administrativa para gerenciar o conhecimento que a IA utiliza para atender os usuários.
-- **Gestão de KPI Modular**: Sistema flexível para definição e acompanhamento de metas por setor/usuário.
-- **Tool Toggles**: Controle centralizado para habilitar ou desativar funcionalidades da IA instantaneamente.
+- **Motor de Agente Autônomo (Autonomous Loop)**: Ciclos de execução contínua programáveis com 4 níveis de autonomia, memória de interações e previsões comportamentais.
+- **Orquestrador Avançado & KPIs**: Tomada de decisão inteligente baseada em cálculo de prioridades, plano de ação dinâmico com estimativa de impacto e histórico de decisões.
+- **Dashboard Integrado com Presets**: Painel de controle na interface de KPI com play/pause/stop, seletor de nível de autonomia, visualização de layouts dinâmicos e logs em tempo real.
+- **Persistência & Notificações Robustas**: Suporte a notificações via Push, Email e Portal de forma automática em canais configurados de acordo com metas/gaps detectados.
 
 ---
 

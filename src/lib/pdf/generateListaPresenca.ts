@@ -32,7 +32,7 @@ export async function generateListaPresencaPDF(
     const contentWidth = pageWidth - margin * 2;
 
     // ===== HEADER =====
-    // Try to load logo
+    // Try to load logo (preserving aspect ratio)
     try {
         const logoRes = await fetch('/images/logo.png');
         const logoBlob = await logoRes.blob();
@@ -42,7 +42,18 @@ export async function generateListaPresencaPDF(
             reader.onerror = reject;
             reader.readAsDataURL(logoBlob);
         });
-        doc.addImage(logoBase64, 'PNG', margin, 10, 30, 12);
+
+        // Read intrinsic dimensions to preserve aspect ratio
+        const logoDims = await new Promise<{ w: number; h: number }>((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+            img.onerror = () => resolve({ w: 4.2, h: 1 }); // fallback ratio
+            img.src = logoBase64;
+        });
+
+        const logoWidth = 35;
+        const logoHeight = logoWidth * (logoDims.h / logoDims.w);
+        doc.addImage(logoBase64, 'PNG', margin, 10, logoWidth, logoHeight);
     } catch {
         // No logo, continue
     }
@@ -100,9 +111,22 @@ export async function generateListaPresencaPDF(
         doc.setFont('helvetica', 'bold');
         doc.text('Pauta / Subject:', margin, y);
         doc.setFont('helvetica', 'normal');
-        const pautaText = lista.pauta.length > 120 ? lista.pauta.substring(0, 117) + '...' : lista.pauta;
-        doc.text(pautaText, margin + 30, y, { maxWidth: contentWidth - 30 });
-        y += Math.ceil(pautaText.length / 70) * 4 + 2;
+        
+        // Available width after the label
+        const pautaX = margin + 30;
+        const pautaMaxWidth = contentWidth - 30;
+        
+        // Split the pauta into properly wrapped lines
+        const pautaLines = doc.splitTextToSize(lista.pauta, pautaMaxWidth);
+        
+        // Render each line
+        for (let i = 0; i < pautaLines.length; i++) {
+            doc.text(pautaLines[i], pautaX, y);
+            if (i < pautaLines.length - 1) {
+                y += 4;
+            }
+        }
+        y += 4;
     }
 
     y += 3;

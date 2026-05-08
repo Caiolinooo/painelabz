@@ -58,14 +58,15 @@ export default function ListaDetailPage() {
         try {
             setIsLoading(true);
             const [listaRes, regRes] = await Promise.all([
-                fetchWithAuth(`/api/lista-presenca?limit=1&search=`),
+                fetchWithAuth(`/api/lista-presenca?id=${listaId}`),
                 fetchWithAuth(`/api/lista-presenca/registros?lista_id=${listaId}`),
             ]);
             const listaData = await listaRes.json();
             const regData = await regRes.json();
 
-            // Find the specific list from results
-            const matchedList = (listaData.listas || []).find((l: any) => l.id === listaId);
+            // Try direct match first, then fallback to searching in array
+            const listas = listaData.listas || [];
+            const matchedList = listas.find((l: any) => l.id === listaId) || (listas.length === 1 ? listas[0] : null);
             if (matchedList) setLista(matchedList);
             if (regData.success) setRegistros(regData.registros || []);
         } catch (err) {

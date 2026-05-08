@@ -54,13 +54,12 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
     setSaving(true);
     try {
       const res = await fetch('/api/ia/feature-toggles', {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        // Envie ambos nomes de campos para cobrir contratos variados do backend
-        body: JSON.stringify({ key, feature_key: key, enabled }),
+        body: JSON.stringify({ feature_key: key, is_enabled: enabled }),
       });
       let data: any = {};
       try { data = await res.json(); } catch { data = {}; }

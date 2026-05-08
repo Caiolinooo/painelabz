@@ -57,7 +57,7 @@ export default function IAPage() {
 
   return (
     <MainLayout>
-      <div className="-mx-4 md:-mx-8 -my-8" style={{ height: 'calc(100vh - 80px)' }}>
+      <div className="flex flex-col h-[calc(100vh-120px)] bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <ChatWindow token={token} />
       </div>
     </MainLayout>

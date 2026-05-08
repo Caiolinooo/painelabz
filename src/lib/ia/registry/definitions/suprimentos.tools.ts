@@ -3,6 +3,8 @@
  * Portal ABZ - IA Tools
  */
 import { supabaseAdmin } from '@/lib/supabase';
+import type { IAUserRole } from '@/types/ia';
+import { getEffectiveRole, getAccessibleUserIds, applyGlobalAccessFilter } from '../../permissions';
 import { registerTool } from '../tools-registry';
 import type { IATool } from '@/types/ia-global';
 
@@ -92,17 +94,18 @@ const buscarPendenciasAprovacaoTool: IATool = {
   requireModule: 'suprimentos',
   adminOnly: false,
   handler: async (args, context) => {
-    const isAdmin = context.userRole === 'ADMIN';
-    
     try {
-      let query = supabaseAdmin
+      let baseQuery = supabaseAdmin
         .from('purchase_requests')
         .select('*, user:users_unified(first_name, last_name, department)')
         .eq('status', 'pending')
         .order('created_at', { ascending: true })
         .limit(20);
 
-      const { data, error } = await query;
+      const accessFilter = await applyGlobalAccessFilter(baseQuery, context.userId, context.userRole, 'user_id');
+      if (!accessFilter.hasAccess) return { success: false, error: accessFilter.error || 'Acesso negado' };
+
+      const { data, error } = await accessFilter.query;
 
       if (error) return { success: false, error: error.message };
 
@@ -110,7 +113,7 @@ const buscarPendenciasAprovacaoTool: IATool = {
         success: true,
         data: {
           total_pendencias: data?.length || 0,
-          pendencias: data?.map(s => ({
+           pendencias: data?.map((s: any) => ({
             id: s.id,
             numero: s.rqf_number,
             solicitante: s.user ? `${s.user.first_name} ${s.user.last_name}` : 'N/A',

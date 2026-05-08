@@ -141,6 +141,39 @@ app.prepare().then(() => {
   serverInstance.on('upgrade', (request, socket, head) => {
     const { pathname } = parse(request.url || '', true);
 
+    // Handle WebSocket upgrade for Llama Server logs
+    if (pathname === '/api/ia/server/logs') {
+      console.log('[WebSocket] Upgrade request for Llama Server logs');
+      
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        const manager = global.llamaServerManager;
+        
+        if (!manager) {
+          ws.send(JSON.stringify({ type: 'log', content: '[System] Manager ainda não inicializado pela API.' }));
+        } else {
+          // Enviar logs existentes
+          const status = manager.getStatus();
+          status.logs.forEach(log => {
+            ws.send(JSON.stringify({ type: 'log', content: log }));
+          });
+
+          // Subscrever a novos logs
+          const logHandler = (line) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'log', content: line }));
+            }
+          };
+
+          manager.on('log', logHandler);
+
+          ws.on('close', () => {
+            manager.off('log', logHandler);
+          });
+        }
+      });
+      return;
+    }
+
     // Handle WebSocket upgrade for Guacamole tunnel
     if (pathname?.includes('websocket-tunnel') || pathname?.includes('tunnel')) {
       console.log('[WebSocket] Upgrade request for Guacamole tunnel:', pathname);

@@ -215,25 +215,25 @@ async function calculateKPIValue(kpiKey: string, department?: string, sector?: s
       case 'vacation_pending_rate': {
         // % de férias pendentes
         const { count: total } = await supabaseAdmin
-          .from('Vacation')
+          .from('leave_requests')
           .select('*', { count: 'exact', head: true });
         const { count: pending } = await supabaseAdmin
-          .from('Vacation')
+          .from('leave_requests')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'PENDENTE');
+          .eq('status', 'PENDING_LEADER');
         if (!total || total === 0) return 0;
         return Math.round(((pending || 0) / total) * 100);
       }
 
       case 'reimbursement_approval_rate': {
-        // % de reembolsos aprovados
+        // % de reembolsos aprovados (pagos)
         const { count: total } = await supabaseAdmin
           .from('Reimbursement')
           .select('*', { count: 'exact', head: true });
         const { count: approved } = await supabaseAdmin
           .from('Reimbursement')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'aprovado');
+          .eq('status', 'pago');
         if (!total || total === 0) return 0;
         return Math.round(((approved || 0) / total) * 100);
       }
@@ -339,27 +339,12 @@ export async function sendProactiveReminder(
           .single();
 
         if (user?.email) {
-          const { sendToolEmail } = await import('@/lib/ia/email-tool');
-          await sendToolEmail({
-            to: user.email,
-            subject: `[ABZ IA] ${title}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: #003087; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-                  <h2 style="margin: 0;">🤖 Assistente IA — ABZ Group</h2>
-                </div>
-                <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-                  <p>Olá <strong>${user.first_name || 'Colaborador'}</strong>,</p>
-                  <h3 style="color: #003087;">${title}</h3>
-                  <p>${message}</p>
-                  ${options?.actionUrl ? `<a href="${options.actionUrl}" style="display: inline-block; background: #003087; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; margin-top: 12px;">Ver no Portal</a>` : ''}
-                  <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
-                  <p style="font-size: 12px; color: #9ca3af;">Esta mensagem foi gerada automaticamente pelo Assistente IA do Portal ABZ Group.</p>
-                </div>
-              </div>
-            `,
-          });
-          results.email = true;
+          const { sendSimpleEmail } = await import('@/lib/ia/email-tool');
+          await sendSimpleEmail(
+            user.email,
+            `[ABZ IA] ${title}`,
+            `${message}<br><br><a href="${options?.actionUrl || '/ia'}">Ver no Portal</a>`
+          );
         }
       } catch (emailErr) {
         console.error('[Agent] Error sending email:', emailErr);

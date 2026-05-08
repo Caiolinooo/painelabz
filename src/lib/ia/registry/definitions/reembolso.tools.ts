@@ -3,6 +3,8 @@
  * Portal ABZ - IA Tools
  */
 import { supabaseAdmin } from '@/lib/supabase';
+import type { IAUserRole } from '@/types/ia';
+import { getEffectiveRole, getAccessibleUserIds, applyGlobalAccessFilter } from '../../permissions';
 import { registerTool } from '../tools-registry';
 import type { IATool } from '@/types/ia-global';
 
@@ -110,14 +112,19 @@ const buscarPendenciasReembolsoTool: IATool = {
   },
   requireModule: 'reembolsos',
   adminOnly: false,
-  handler: async () => {
+  handler: async (args, context) => {
     try {
-      const { data, error } = await supabaseAdmin
+      let baseQuery = supabaseAdmin
         .from('Reimbursement')
         .select('id, status, valorTotal, descricao, data, email, nome')
         .eq('status', 'pendente')
         .order('data', { ascending: true })
         .limit(20);
+
+      const accessFilter = await applyGlobalAccessFilter(baseQuery, context.userId, context.userRole, 'user_id');
+      if (!accessFilter.hasAccess) return { success: false, error: accessFilter.error || 'Acesso negado' };
+
+      const { data, error } = await accessFilter.query;
 
       if (error) return { success: false, error: error.message };
 
@@ -125,7 +132,7 @@ const buscarPendenciasReembolsoTool: IATool = {
         success: true,
         data: {
           total_pendencias: data?.length || 0,
-          pendencias: data?.map(r => ({
+           pendencias: data?.map((r: any) => ({
             id: r.id,
             nome: r.nome,
             email: r.email,

@@ -79,7 +79,7 @@ async function getUserVacations(userId: string): Promise<{
       .select('start_date, end_date, status')
       .eq('user_id', userId)
       .in('status', ['PENDING_LEADER', 'PENDING_MANAGER', 'APPROVED', 'CANCELLED'])
-      .gte('end_date', new Date().toISOString().split('T')[0])
+      .gte('start_date', new Date().toISOString().split('T')[0])
       .order('start_date', { ascending: true })
       .limit(5);
 
@@ -296,8 +296,9 @@ Voce: (executa ferramenta) -> resultado -> (executa mesma ferramenta novamente) 
 - **Seu ID:** ${userContext.userId}
 
 QUANDO O USUARIO PERGUNTAR:
-- "minhas ferias", "meus reembolsos", "meus eventos", "meus EPIs", "minhas avaliacoes" → use a ferramenta buscar_dados_usuario com usuario: "meu"
-- "resumo", "minhas pendencias", "meu resumo" → use tipo: "resumo" com usuario: "meu"
+- Sobre solicitações DELE (ex: "minhas ferias", "meus reembolsos", "meus eventos", "meus EPIs", "minhas avaliacoes", "meu resumo") → use a ferramenta buscar_dados_usuario com usuario: "meu"
+- Sobre o que ELE PRECISA APROVAR (ex: "o que tenho pendente para aprovar?", "quais as pendencias da equipe?", "pendencias do sistema") → use as ferramentas específicas: buscar_pendencias_ferias, buscar_pendencias_reembolso, buscar_pendencias_aprovacao.
+- Sobre "minhas pendencias", "pendencias" → SE ELE FOR GERENTE OU ADMIN, assuma que ele quer saber de TUDO (suas próprias e as de terceiros para aprovar). Execute as ferramentas de pendências de aprovação e também a buscar_dados_usuario (tipo resumo). SE ELE FOR USER, use apenas buscar_dados_usuario (tipo resumo).
 - Para ver dados de OUTRA pessoa → use o email ou nome dessa pessoa
 
 O sistema ja verifica permissões automaticamente:
@@ -306,6 +307,21 @@ O sistema ja verifica permissões automaticamente:
 - ADMIN: vê todos os dados
 
 IMPORTANTE: Voce ja sabe o email e ID do usuario logado! NAO peca essas informacoes. Use a ferramenta buscar_dados_usuario para buscar dados.`;
+
+  prompt += `
+
+## DASHBOARD GENERATIVO (NOVIDADE)
+Voce tem a capacidade de renderizar uma interface visual dinâmica e interativa para o usuario.
+- Sempre que o usuario pedir um **resumo**, **status geral**, **pendencias** ou **KPIs**, use a ferramenta \`render_dashboard\`.
+- O dashboard deve ser usado para COMPLEMENTAR sua resposta de texto.
+- Voce pode criar widgets de: \`metric\` (numeros), \`chart\` (graficos bar/line/pie), \`table\` (tabelas de dados) e \`list\` (listas de tarefas).
+- Seja criativo e use cores/icones para tornar o dashboard profissional.
+
+Exemplo: Se o usuario perguntar "Como estao minhas pendencias?", voce deve:
+1. Buscar os dados (ferias, reembolsos, etc).
+2. Chamar \`render_dashboard\` com um layout contendo métricas e tabelas dos dados encontrados.
+3. Responder em texto fazendo um resumo do que foi mostrado no dashboard.
+- NUNCA imprima o JSON do dashboard no texto da resposta. Use exclusivamente a ferramenta.`;
 
   if (userContext.evaluations && userContext.evaluations.count > 0) {
     prompt += `\n\n## Avaliacoes de Desempenho
