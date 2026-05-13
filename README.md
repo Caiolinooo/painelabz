@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.9.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.10.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -81,12 +81,12 @@ npm run dev
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
 
-## 🚀 Últimas Atualizações (v5.9.0)
+## 🚀 Últimas Atualizações (v5.10.0)
 
-- **Motor de Agente Autônomo (Autonomous Loop)**: Ciclos de execução contínua programáveis com 4 níveis de autonomia, memória de interações e previsões comportamentais.
-- **Orquestrador Avançado & KPIs**: Tomada de decisão inteligente baseada em cálculo de prioridades, plano de ação dinâmico com estimativa de impacto e histórico de decisões.
-- **Dashboard Integrado com Presets**: Painel de controle na interface de KPI com play/pause/stop, seletor de nível de autonomia, visualização de layouts dinâmicos e logs em tempo real.
-- **Persistência & Notificações Robustas**: Suporte a notificações via Push, Email e Portal de forma automática em canais configurados de acordo com metas/gaps detectados.
+- **Dynamic AI Dashboard Framework**: Split-view UI management that allows AI to render complex, interactive widgets (metrics, tables, lists) within the sidebar context.
+- **SSH Connectivity for Local LLMs**: Integrates SSH management capabilities for local LLM servers (`node-ssh`), including Start/Stop remote lifecycle controls.
+- **Contratos e Assinaturas (Refactoring)**: Enforced strict visual layout permissions (`Setor -> Role -> User`) and added robust routing checks.
+- **Melhorias de UI e Emails**: Sidebar expandida (`max-h`) para exibir muitos itens. Módulos integrados agora utilizam logo e nome dinâmico nos envios de notificação (portal.groupabz.com).
 
 ---
 

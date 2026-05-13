@@ -149,7 +149,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     // Ensure icon is a component
     icon: item.icon,
     label: item.title, // Map title to label
-    badge: item.id === 'noticias' && newsUnreadCount > 0 ? newsUnreadCount : undefined
+    badge: item.badge
   });
 
   // Filter unified items by category
@@ -159,10 +159,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
   // IDs de itens que não devem aparecer no menu lateral
   const hiddenFromSidebar = ['politicas'];
 
-  const unifiedCore = menuItems.filter(i => (!i.category || i.category === 'core') && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
-  const unifiedHr = menuItems.filter(i => i.category === 'hr' && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
-  const unifiedDept = menuItems.filter(i => i.category === 'department' && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
-  const unifiedContent = menuItems.filter(i => i.category === 'content' && i.showInMenu && !hiddenFromSidebar.includes(i.id)).map(prepareItem);
+  const unifiedCore = menuItems.filter(i => (!i.category || i.category === 'core') && i.showInMenu && !hiddenFromSidebar.includes(i.id) && hasPermission(i.id)).map(prepareItem);
+  const unifiedHr = menuItems.filter(i => i.category === 'hr' && i.showInMenu && !hiddenFromSidebar.includes(i.id) && hasPermission(i.id)).map(prepareItem);
+  const unifiedDept = menuItems.filter(i => i.category === 'department' && i.showInMenu && !hiddenFromSidebar.includes(i.id) && hasPermission(i.id)).map(prepareItem);
+  const unifiedContent = menuItems.filter(i => i.category === 'content' && i.showInMenu && !hiddenFromSidebar.includes(i.id) && hasPermission(i.id)).map(prepareItem);
 
   const renderItem = (item: any) => {
     const isActive = pathname === item.href;
@@ -291,7 +291,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </button>
 
                 {/* Submenu */}
-                <div className={`overflow-hidden transition-all duration-300 ${isMeuRHOpen && !isCollapsed ? 'max-h-[500px] mt-1' : 'max-h-0'}`}>
+                <div className={`overflow-hidden transition-all duration-300 ${isMeuRHOpen && !isCollapsed ? 'max-h-[1200px] mt-1' : 'max-h-0'}`}>
                   {unifiedHr.map(renderItem)}
                 </div>
               </div>
@@ -316,7 +316,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </button>
 
                 {/* Submenu */}
-                <div className={`overflow-hidden transition-all duration-300 ${isDepartmentOpen && !isCollapsed ? 'max-h-[800px] mt-1' : 'max-h-0'}`}>
+                <div className={`overflow-hidden transition-all duration-300 ${isDepartmentOpen && !isCollapsed ? 'max-h-[1200px] mt-1' : 'max-h-0'}`}>
                   {unifiedDept.map(renderItem)}
                 </div>
               </div>

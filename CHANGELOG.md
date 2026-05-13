@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.10.0] - 2026-05-13
+
+### Added
+- **SSH Connectivity for Local LLMs**: SSH management implementation for local LLM servers (`node-ssh`), including Start/Stop remote lifecycle controls.
+- **Dynamic AI Dashboard Framework**: Split-view UI management that allows AI to render complex, interactive widgets (metrics, tables, lists) within the sidebar context.
+
+### Changed
+- **Contracts Module Access**: Enforced the `hasPermission` hierarchy recursively in both the sidebar visibility (`MainLayout.tsx`) and the page component route to restrict unauthorized access.
+- **Sidebar CSS Overflows**: Fixed visual bug related to `max-h` CSS constraints clipping the "Meu RH" dropdown menu items in the sidebar.
+- **Sidebar Notification Badges**: Removed hardcoded generic news badges; notifications now rely solely on module-specific metadata.
+- **Email Templates**: Added dynamic variables for recipient name and company logo. Updated links to explicitly point to `portal.groupabz.com`.
+- **System Version**: Bumped version uniformly across `package.json` and internal app config from 5.9.0 to 5.10.0.
+
+### Fixed
+- **API 404 Route Errors**: Fixed conflicts causing 404s in various API routes.
+- **PDF Generation**: Restored functionality for downloading "Lista de Presença" PDFs, and formatted the document's Pauta/Subject field.
+
 ## [5.9.0] - 2026-05-08
 
 ### Added

@@ -1,0 +1,277 @@
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import MainLayout from '@/components/Layout/MainLayout';
+import {
+    FiUpload, FiFileText, FiSearch, FiFilter,
+    FiClock, FiCheckCircle, FiXCircle, FiChevronRight,
+    FiCalendar, FiUser, FiRefreshCw
+} from 'react-icons/fi';
+import Link from 'next/link';
+import { fetchWithAuth } from '@/lib/authUtils';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { hasFeaturePermission } from '@/lib/permissions';
+import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
+import DocumentUploadModal from '@/components/contratos/DocumentUploadModal';
+import DocumentStatusBadge from '@/components/contratos/DocumentStatusBadge';
+import toast from 'react-hot-toast';
+
+type FilterStatus = 'ALL' | 'PENDING' | 'SIGNED';
+
+export default function ContratosPage() {
+    const { profile } = useSupabaseAuth();
+    const { hasPermission, loading: permsLoading } = useEffectivePermissions();
+    const isManager = hasFeaturePermission(profile as any, 'contracts.manage')
+        || profile?.role === 'ADMIN'
+        || profile?.role === 'MANAGER';
+
+    const [documentos, setDocumentos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
+    const [isUploadOpen, setIsUploadOpen] = useState(false);
+
+    const fetchDocumentos = useCallback(async () => {
+        try {
+            setLoading(true);
+            const params = new URLSearchParams();
+            if (statusFilter !== 'ALL') params.set('status', statusFilter);
+            if (searchTerm.trim()) params.set('search', searchTerm.trim());
+
+            const res = await fetchWithAuth(`/api/contracts?${params.toString()}`);
+            const data = await res.json();
+
+            if (data.success) {
+                setDocumentos(data.documentos || []);
+            }
+        } catch (err) {
+            console.error('Erro ao buscar documentos:', err);
+            toast.error('Erro ao carregar documentos');
+        } finally {
+            setLoading(false);
+        }
+    }, [statusFilter, searchTerm]);
+
+    useEffect(() => {
+        fetchDocumentos();
+    }, [fetchDocumentos]);
+
+    // Stats
+    const totalDocs = documentos.length;
+    const pendingDocs = documentos.filter((d: any) =>
+        isManager ? (d.total_pendentes > 0) : (d.status === 'PENDING')
+    ).length;
+    const signedDocs = documentos.filter((d: any) =>
+        isManager ? (d.total_pendentes === 0 && d.total_assinados > 0) : (d.status === 'SIGNED')
+    ).length;
+
+    if (permsLoading) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+                </div>
+            </MainLayout>
+        );
+    }
+
+    if (!hasPermission('contratos')) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+                    <FiFileText className="w-16 h-16 text-gray-300 mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Restrito</h2>
+                    <p className="text-gray-500 max-w-md">Você não tem permissão para acessar o módulo de contratos e assinaturas.</p>
+                </div>
+            </MainLayout>
+        );
+    }
+
+    return (
+        <MainLayout>
+            <div className="max-w-7xl mx-auto space-y-6">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            {isManager ? 'Envelopes de Contratos' : 'Meus Documentos'}
+                        </h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            {isManager
+                                ? 'Crie envelopes com múltiplos documentos, atribua assinaturas e acompanhe o progresso'
+                                : 'Documentos pendentes de assinatura eletrônica'}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={fetchDocumentos}
+                            className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Atualizar"
+                        >
+                            <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                        {isManager && (
+                            <button
+                                onClick={() => setIsUploadOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+                            >
+                                <FiUpload className="w-4 h-4" />
+                                Criar Envelope
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
+                        <div className="p-3 bg-blue-50 rounded-xl">
+                            <FiFileText className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900">{totalDocs}</p>
+                            <p className="text-xs text-gray-500">{isManager ? 'Total de Envelopes' : 'Total de Documentos'}</p>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
+                        <div className="p-3 bg-amber-50 rounded-xl">
+                            <FiClock className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900">{pendingDocs}</p>
+                            <p className="text-xs text-gray-500">Pendentes</p>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
+                        <div className="p-3 bg-emerald-50 rounded-xl">
+                            <FiCheckCircle className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900">{signedDocs}</p>
+                            <p className="text-xs text-gray-500">Concluídos</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filters */}
+                <div className="bg-white rounded-xl border border-gray-100 p-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Buscar por título..."
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            {(['ALL', 'PENDING', 'SIGNED'] as FilterStatus[]).map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => setStatusFilter(s)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                                        ${statusFilter === s
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                                >
+                                    {s === 'ALL' ? 'Todos' : s === 'PENDING' ? 'Pendentes' : 'Assinados'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Document List */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-16">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+                        </div>
+                    ) : documentos.length === 0 ? (
+                        <div className="text-center py-16">
+                            <FiFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500 text-sm">{isManager ? 'Nenhum envelope encontrado' : 'Nenhum documento encontrado'}</p>
+                            {isManager && (
+                                <button
+                                    onClick={() => setIsUploadOpen(true)}
+                                    className="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                    Criar o primeiro envelope →
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-50">
+                            {documentos.map((doc: any) => {
+                                const docData = isManager ? doc : doc.documento;
+                                const docId = isManager ? doc.id : docData?.id;
+                                const titulo = isManager ? doc.titulo : docData?.titulo;
+                                const dataCriacao = isManager ? doc.data_criacao : docData?.data_criacao;
+                                const docStatus = isManager
+                                    ? (doc.total_pendentes > 0 ? 'PENDING' : doc.total_assinados > 0 ? 'SIGNED' : 'ACTIVE')
+                                    : doc.status;
+
+                                return (
+                                    <Link
+                                        key={doc.id}
+                                        href={`/contratos/${docId}`}
+                                        className="flex items-center justify-between p-5 hover:bg-gray-50 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <div className={`p-2.5 rounded-xl flex-shrink-0 ${
+                                                docStatus === 'SIGNED' ? 'bg-emerald-50' :
+                                                docStatus === 'PENDING' ? 'bg-amber-50' : 'bg-blue-50'
+                                            }`}>
+                                                <FiFileText className={`w-5 h-5 ${
+                                                    docStatus === 'SIGNED' ? 'text-emerald-500' :
+                                                    docStatus === 'PENDING' ? 'text-amber-500' : 'text-blue-500'
+                                                }`} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 truncate">
+                                                    {titulo}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                        <FiCalendar className="w-3 h-3" />
+                                                        {dataCriacao && new Date(dataCriacao).toLocaleDateString('pt-BR')}
+                                                    </span>
+                                                    {isManager && (
+                                                        <>
+                                                            <span className="flex items-center gap-1 text-xs text-gray-400 border-l border-gray-200 pl-2">
+                                                                <FiFileText className="w-3 h-3" />
+                                                                {doc.total_documentos || 0} docs
+                                                            </span>
+                                                            <span className="flex items-center gap-1 text-xs text-gray-400 border-l border-gray-200 pl-2">
+                                                                <FiUser className="w-3 h-3" />
+                                                                {doc.total_assinados || 0}/{doc.total_solicitacoes || 0} assinados
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                            <DocumentStatusBadge status={docStatus} />
+                                            <FiChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Upload Modal */}
+            <DocumentUploadModal
+                isOpen={isUploadOpen}
+                onClose={() => setIsUploadOpen(false)}
+                onSuccess={fetchDocumentos}
+            />
+        </MainLayout>
+    );
+}
