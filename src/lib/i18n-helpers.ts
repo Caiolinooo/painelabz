@@ -5,6 +5,7 @@
 
 import { getTranslation, type Locale } from '@/i18n';
 import { supabaseAdmin } from './supabase';
+import { baseTemplate } from './emailTemplates';
 
 /**
  * Obtém o idioma preferido de um usuário
@@ -229,42 +230,20 @@ export async function generateTranslatedEmailHTML(
     </div>
   ` : '';
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${title}</title>
-    </head>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 0;">
-      <div style="max-width: 600px; margin: 20px auto; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <!-- Header -->
-        <div style="background-color: #0066cc; color: white; padding: 20px; text-align: center;">
-          <h1 style="margin: 0; font-size: 24px;">${title}</h1>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 30px;">
-          ${content}
-          ${actionButton}
-        </div>
-        
-        <!-- Footer -->
-        <div style="background-color: #f8f8f8; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;">
-          <p style="color: #666; font-size: 12px; margin: 5px 0;">
-            ${common.automaticNotification}
-          </p>
-          <p style="color: #666; font-size: 12px; margin: 5px 0;">
-            ${common.doNotReply}
-          </p>
-          <p style="color: #999; font-size: 11px; margin: 15px 0 5px 0;">
-            © ${new Date().getFullYear()} ABZ Group. ${t(locale, 'common.allRights')} ${t(locale, 'common.rights')} ${t(locale, 'common.reserved')}.
-          </p>
-        </div>
+  return baseTemplate(`
+    <div style="color: #333;">
+      <!-- Header -->
+      <div style="background-color: #0066cc; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin-bottom: 20px;">
+        <h1 style="margin: 0; font-size: 24px; color: white;">${title}</h1>
       </div>
-    </body>
-    </html>
-  `;
+      
+      <!-- Content -->
+      <div style="padding: 10px 0; font-size: 16px; line-height: 1.6;">
+        ${content}
+        ${actionButton}
+      </div>
+    </div>
+  `, locale);
 }
 
 /**

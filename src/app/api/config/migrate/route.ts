@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
 -- Criar tabela SiteConfig se não existir
 CREATE TABLE IF NOT EXISTS "SiteConfig" (
   id VARCHAR(50) PRIMARY KEY DEFAULT 'default',
-  title VARCHAR(255) NOT NULL DEFAULT 'Painel ABZ Group',
-  description TEXT DEFAULT 'Painel centralizado para colaboradores da ABZ Group',
+  title VARCHAR(255) NOT NULL DEFAULT 'Portal ABZ',
+  description TEXT DEFAULT 'Portal centralizado para colaboradores da ABZ Group',
   logo VARCHAR(500) DEFAULT '/images/LC1_Azul.png',
   favicon VARCHAR(500) DEFAULT '/favicon.ico',
   "primaryColor" VARCHAR(7) DEFAULT '#005dff',
@@ -49,8 +49,8 @@ INSERT INTO "SiteConfig" (
   "googleClientId", "googleClientSecret", "googleRedirectUri"
 ) VALUES (
   'default',
-  'Painel ABZ Group',
-  'Painel centralizado para colaboradores da ABZ Group',
+  'Portal ABZ',
+  'Portal centralizado para colaboradores da ABZ Group',
   '/images/LC1_Azul.png',
   '/favicon.ico',
   '#005dff',

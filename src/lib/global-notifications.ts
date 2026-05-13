@@ -60,7 +60,6 @@ export async function sendGlobalNotification(payload: NotificationPayload): Prom
                 data: JSON.stringify({ ...data, sub_type: type }), // Store specific type in data
                 action_url: actionUrl,
                 priority,
-                read: false,
                 expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
                 created_at: new Date().toISOString()
             };
@@ -107,7 +106,8 @@ export async function sendGlobalNotification(payload: NotificationPayload): Prom
                 const emailActionUrl = actionUrl ? buildAppUrl(actionUrl) : '';
                 const htmlContent = emailHtml || baseTemplate(`
           <div style="color: #333;">
-            <h2 style="color: #0066cc;">${title}</h2>
+            <p style="font-size: 16px;">Olá, <strong>${user.first_name || 'Colaborador'}</strong>!</p>
+            <h2 style="color: #0066cc; margin-top: 20px;">${title}</h2>
             <p style="font-size: 16px;">${message}</p>
             ${actionUrl ? `
               <div style="margin-top: 20px;">

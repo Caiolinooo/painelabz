@@ -1,0 +1,631 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { FiArrowLeft, FiArrowRight, FiCheck, FiShield, FiFileText, FiAlertCircle, FiDownload, FiChevronLeft, FiChevronRight, FiZoomIn, FiZoomOut } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { useSignature } from '@/contexts/SignatureContext';
+import SignaturePositionOverlay, { getSignerColor } from '@/components/contratos/SignaturePositionOverlay';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { getToken } from '@/lib/tokenStorage';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+const PDF_OPTIONS = {
+  cMapUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/cmaps/',
+  cMapPacked: true,
+  standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/standard_fonts/'
+};
+
+export default function AssinaturaExternaPage() {
+    const params = useParams();
+    const token = params?.token as string;
+    const { requestSignature } = useSignature();
+    const { user: authUser, profile: authProfile, isAuthenticated, isLoading: isAuthLoading } = useSupabaseAuth();
+
+    const [loading, setLoading] = useState(true);
+    const [queue, setQueue] = useState<any[]>([]);
+    const [activeIndex, setActiveIndex] = useState(0);
+    
+    // Auth & Legal steps
+    const [step, setStep] = useState<'AUTH' | 'REVIEW' | 'SIGNED'>('AUTH');
+    const [authData, setAuthData] = useState({ nome: '', cpf: '', email: '' });
+    const [legalAccepted, setLegalAccepted] = useState(false);
+    const [isSigning, setIsSigning] = useState(false);
+
+    // PDF Viewing State
+    const [numPages, setNumPages] = useState<number>(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pdfWidth, setPdfWidth] = useState(600);
+    const [pdfScale, setPdfScale] = useState(1.0);
+    const pdfContainerRef = React.useRef<HTMLDivElement>(null);
+    const [originalPageSize, setOriginalPageSize] = useState<{ width: number; height: number } | null>(null);
+
+    // Auto-size PDF container
+    useEffect(() => {
+        const updateWidth = () => {
+            if (pdfContainerRef.current) {
+                // Account for padding/borders
+                const w = pdfContainerRef.current.clientWidth - 16; 
+                setPdfWidth(Math.min(w, 1000));
+            }
+        };
+        updateWidth();
+        // Small delay to catch initial rendering size
+        const timer = setTimeout(updateWidth, 200);
+        window.addEventListener('resize', updateWidth);
+        return () => {
+            window.removeEventListener('resize', updateWidth);
+            clearTimeout(timer);
+        };
+    }, []);
+
+    const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
+        setNumPages(n);
+        setCurrentPage(1);
+    };
+
+    const onPageLoadSuccess = (page: any) => {
+        const viewport = page.getViewport({ scale: 1.0 });
+        setOriginalPageSize({ width: viewport.width, height: viewport.height });
+    };
+
+    const onDocumentLoadError = (error: Error) => {
+        console.error('[AssinaturaExterna] Erro ao carregar PDF:', error);
+        toast.error(`Erro ao processar visualização do documento: ${error.message}`);
+    };
+
+    useEffect(() => {
+        if (!token) return;
+
+        const fetchTokenData = async () => {
+            try {
+                const res = await fetch(`/api/contracts/sign-access/${token}`);
+                const data = await res.json();
+
+                if (data.success && data.queue) {
+                    // Filter only pending items for user progression
+                    const pendingItems = data.queue.filter((q: any) => q.status === 'PENDING');
+                    
+                    if (pendingItems.length === 0) {
+                        // Already signed everything in this queue
+                        setStep('SIGNED');
+                    } else {
+                        setQueue(data.queue); // Keep full list for visual sequence context
+                        // Set initial active index to first pending
+                        const firstPendingIdx = data.queue.findIndex((q: any) => q.status === 'PENDING');
+                        setActiveIndex(firstPendingIdx !== -1 ? firstPendingIdx : 0);
+                    }
+                } else {
+                    toast.error(data.error || 'Token inválido ou expirado');
+                }
+            } catch (err) {
+                toast.error('Erro ao buscar fila de documentos');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTokenData();
+    }, [token]);
+
+    // Auto-recognize and log in authenticated portal users
+    useEffect(() => {
+        if (isAuthenticated && !isAuthLoading && (authProfile || authUser) && queue.length > 0 && step === 'AUTH') {
+            const profile = authProfile || {};
+            const user = authUser || {};
+            
+            const firstName = (profile as any).first_name || (user as any).first_name || '';
+            const lastName = (profile as any).last_name || (user as any).last_name || '';
+            const name = `${firstName} ${lastName}`.trim();
+            const email = (profile as any).email || (user as any).email || '';
+            const taxId = (profile as any).tax_id || (user as any).tax_id || (profile as any).profile_data?.cpf || '';
+            
+            if (email) {
+                // Check if the authenticated email matches the expected recipient email to be safe
+                const expectedEmail = queue[activeIndex]?.target_email?.toLowerCase()?.trim();
+                const currentEmail = email.toLowerCase().trim();
+                
+                if (expectedEmail && currentEmail !== expectedEmail) {
+                    // We are logged in as a different user than the expected signer
+                    // Do NOT auto-fill to avoid signing as the wrong person!
+                    console.warn('[AssinaturaExterna] Usuário logado não corresponde ao destinatário esperado do envelope.');
+                    return;
+                }
+                
+                setAuthData({
+                    nome: name || 'Usuário Autenticado',
+                    email: email,
+                    cpf: taxId || 'Não Informado'
+                });
+                setStep('REVIEW');
+                toast.success(`Bem-vindo de volta! Carregamos seus dados do portal.`, {
+                    icon: '👤',
+                    id: 'portal-auth-restore'
+                });
+            }
+        }
+    }, [isAuthenticated, isAuthLoading, authProfile, authUser, queue, step, activeIndex]);
+
+    // Track document visualization
+    useEffect(() => {
+        if (step === 'REVIEW' && token) {
+            fetch('/api/contracts/sign', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            }).catch(e => console.warn('[Tracker] Erro ao registrar visualização:', e));
+        }
+    }, [step, token]);
+
+    const currentItem = queue[activeIndex];
+    const documento = currentItem?.documento;
+    const pdfUrl = currentItem?.pdf_url;
+
+    const handleAuthSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!authData.nome || !authData.cpf || !authData.email) {
+            toast.error('Preencha todos os campos para continuar');
+            return;
+        }
+
+        // Check against the expected target email to recognize/verify the user
+        const expectedEmail = currentItem?.target_email?.toLowerCase()?.trim();
+        const typedEmail = authData.email.toLowerCase().trim();
+
+        if (expectedEmail && typedEmail !== expectedEmail) {
+            toast.error('Identidade não reconhecida: O e-mail informado não é o destinatário oficial deste documento.', {
+                icon: '🔒',
+                duration: 5000
+            });
+            return;
+        }
+
+        setStep('REVIEW');
+    };
+
+    const handleSign = async () => {
+        if (!legalAccepted || !currentItem) {
+            toast.error('Você deve aceitar os termos legais.');
+            return;
+        }
+
+        try {
+            const result = await requestSignature({
+                title: 'Assinar Documento',
+                description: `Assine o documento: ${documento?.titulo || 'Contrato'}`,
+            });
+
+            if (!result) return;
+
+            setIsSigning(true);
+
+            let signatureBase64 = result.signatureUrl;
+            if (result.signatureUrl.startsWith('http')) {
+                const sigRes = await fetch(result.signatureUrl);
+                const blob = await sigRes.blob();
+                signatureBase64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                });
+            }
+
+            const authToken = getToken();
+            const headers: Record<string, string> = { 
+                'Content-Type': 'application/json' 
+            };
+            
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const res = await fetch('/api/contracts/sign', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    solicitacao_id: currentItem.id,
+                    signature_base64: signatureBase64,
+                    signer_data: authData,
+                    sign_method: 'externo_token',
+                }),
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                toast.success('Documento assinado com sucesso!');
+                
+                // Locate the next pending document in queue
+                const updatedQueue = [...queue];
+                updatedQueue[activeIndex].status = 'SIGNED';
+                setQueue(updatedQueue);
+                
+                const nextPendingIndex = updatedQueue.findIndex((q, idx) => idx > activeIndex && q.status === 'PENDING');
+                
+                if (nextPendingIndex !== -1) {
+                    setActiveIndex(nextPendingIndex);
+                    setLegalAccepted(false); // Reset agreement for next document
+                    toast.success('Carregando próximo documento da fila...', { icon: '📄' });
+                } else {
+                    // Fully finished!
+                    setStep('SIGNED');
+                }
+            } else {
+                toast.error(data.error || 'Erro ao assinar documento');
+            }
+        } catch (err) {
+            toast.error('Erro de conexão ao assinar');
+        } finally {
+            setIsSigning(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-600 border-t-transparent" />
+            </div>
+        );
+    }
+
+    if (step === 'SIGNED') {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-t-4 border-emerald-500">
+                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FiCheck className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Assinatura Concluída!</h2>
+                    <p className="text-gray-600 text-sm mb-6">Todas as suas atribuições neste envelope foram completadas com sucesso. Possuem validade jurídica (MP 2.200-2/2001).</p>
+                    <p className="text-xs text-gray-400">Você já pode fechar esta aba. Uma cópia dos documentos será gerada e enviada ao seu e-mail assim que o fluxo completo for finalizado.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!queue || queue.length === 0 || !currentItem) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+                    <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FiAlertCircle className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Link Inválido</h2>
+                    <p className="text-gray-600 text-sm">Este link de assinatura expirou ou o envelope associado já foi processado.</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Helper counts
+    const totalDocs = queue.length;
+    const completedCount = queue.filter(q => q.status === 'SIGNED').length;
+    const pendingCount = totalDocs - completedCount;
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+            <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-50">
+                <div className="flex items-center gap-3">
+                    <div className="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
+                        <FiShield className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="font-bold text-gray-900 leading-tight text-base">Portal de Assinatura Segura</h1>
+                        <p className="text-xs text-gray-500">ABZ Group</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {step === 'REVIEW' && totalDocs > 1 && (
+                        <div className="hidden md:flex items-center gap-2 text-xs font-medium text-gray-500 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100">
+                            <FiFileText />
+                            <span>Progresso: <strong>{completedCount + 1} de {totalDocs}</strong></span>
+                        </div>
+                    )}
+                    <div className={`text-xs font-semibold px-3 py-1.5 rounded-full ${step === 'AUTH' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+                        {step === 'AUTH' ? 'Passo 1: Identificação' : 'Passo 2: Assinatura'}
+                    </div>
+                </div>
+            </header>
+
+            {/* Continuous progress bar */}
+            {step === 'REVIEW' && totalDocs > 1 && (
+                <div className="h-1 w-full bg-gray-200">
+                    <div 
+                        className="h-full bg-blue-600 transition-all duration-500 ease-out" 
+                        style={{ width: `${((completedCount) / totalDocs) * 100}%` }}
+                    />
+                </div>
+            )}
+
+            <main className="flex-1 flex flex-col md:flex-row overflow-hidden max-w-7xl mx-auto w-full p-4 gap-6">
+                
+                {/* Left Panel - Document Viewer */}
+                <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-[70vh] md:h-auto relative">
+                    <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between sticky top-0 z-20">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <FiFileText className="text-blue-600 flex-shrink-0" />
+                            <h2 className="font-semibold text-gray-800 text-sm truncate">
+                                {documento?.titulo || 'Visualizando Documento'}
+                            </h2>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            {totalDocs > 1 && (
+                                <div className="text-xs font-medium bg-white border px-2 py-1 rounded text-gray-500">
+                                    Doc {activeIndex + 1}/{totalDocs}
+                                </div>
+                            )}
+                            {pdfUrl && (
+                                <a 
+                                    href={pdfUrl} 
+                                    download 
+                                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Baixar Documento"
+                                >
+                                    <FiDownload className="w-4 h-4" />
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div ref={pdfContainerRef} className="flex-1 bg-gray-100 overflow-auto custom-scrollbar relative">
+                        {step === 'AUTH' ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center backdrop-blur-md bg-gray-100/90 z-[60]">
+                                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-gray-400 mb-4">
+                                    <FiShield className="w-8 h-8" />
+                                </div>
+                                <h3 className="font-semibold text-gray-900 text-lg mb-2">Acesso Restrito</h3>
+                                <p className="text-sm text-gray-600 max-w-sm">Complete a sua identificação no painel ao lado para visualizar o conteúdo deste documento e realizar a assinatura.</p>
+                            </div>
+                        ) : null}
+
+                        {pdfUrl ? (
+                            <div className="flex flex-col items-center min-h-full py-4">
+                                {numPages > 1 && (
+                                    <div className="sticky top-2 z-30 flex items-center gap-3 bg-black/80 text-white px-4 py-2 rounded-full shadow-lg backdrop-blur mb-4">
+                                        <button 
+                                            disabled={currentPage <= 1} 
+                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                            className="p-1 hover:text-blue-400 disabled:opacity-30"
+                                        >
+                                            <FiChevronLeft className="w-5 h-5" />
+                                        </button>
+                                        <span className="text-xs font-medium select-none">Página {currentPage} de {numPages}</span>
+                                        <button 
+                                            disabled={currentPage >= numPages} 
+                                            onClick={() => setCurrentPage(prev => Math.min(numPages, prev + 1))}
+                                            className="p-1 hover:text-blue-400 disabled:opacity-30"
+                                        >
+                                            <FiChevronRight className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="shadow-2xl bg-white">
+                                    <Document
+                                        file={pdfUrl}
+                                        onLoadSuccess={onDocumentLoadSuccess}
+                                        onLoadError={onDocumentLoadError}
+                                        loading={
+                                            <div className="h-[60vh] w-full flex flex-col items-center justify-center gap-3">
+                                                <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent" />
+                                                <p className="text-sm text-gray-500">Carregando documento...</p>
+                                            </div>
+                                        }
+                                        options={PDF_OPTIONS}
+                                    >
+                                        <div className="relative bg-white">
+                                            <Page
+                                                pageNumber={currentPage}
+                                                width={pdfWidth}
+                                                scale={pdfScale}
+                                                renderTextLayer={true}
+                                                renderAnnotationLayer={true}
+                                                onLoadSuccess={onPageLoadSuccess}
+                                            />
+                                            
+                                            {/* Inject Floating Overlay for Current Item if it belongs to this page */}
+                                            {step !== 'AUTH' && currentItem?.pagina_assinatura === currentPage && (
+                                                (() => {
+                                                    // Compute display coordinates
+                                                    let displayX = currentItem.posicao_x;
+                                                    let displayY = currentItem.posicao_y;
+                                                    let displayW = currentItem.largura_assinatura || 150;
+                                                    let displayH = currentItem.altura_assinatura || 50;
+                                                    
+                                                    if (originalPageSize) {
+                                                        // Apply PDF Scale multiplier as well
+                                                        const baseScale = pdfWidth / originalPageSize.width;
+                                                        const totalScale = baseScale * pdfScale;
+                                                        
+                                                        displayX = displayX * totalScale;
+                                                        displayY = displayY * totalScale;
+                                                        displayW = displayW * totalScale;
+                                                        displayH = displayH * totalScale;
+                                                    }
+                                                    
+                                                    return (
+                                                        <SignaturePositionOverlay
+                                                            key={`ext-overlay-${currentItem.id}`}
+                                                            x={displayX}
+                                                            y={displayY}
+                                                            width={displayW}
+                                                            height={displayH}
+                                                            label={`Seu local de Assinatura`}
+                                                            status="PENDING"
+                                                            interactive={true}
+                                                            pulse={true}
+                                                            colorClasses={getSignerColor(currentItem?.target_email || currentItem?.id)}
+                                                        />
+                                                    );
+                                                })()
+                                            )}
+                                        </div>
+                                    </Document>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-gray-500">
+                                <div className="animate-pulse flex flex-col items-center gap-2">
+                                    <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                                    <span>Carregando visualizador...</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Panel - Actions */}
+                <div className="w-full md:w-[380px] shrink-0 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 overflow-y-auto flex flex-col h-fit max-h-full sticky top-6">
+                    {step === 'AUTH' ? (
+                        <div className="space-y-6">
+                            <div>
+                                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
+                                    <FiShield className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900">Identificação Necessária</h3>
+                                <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+                                    Para garantir a validade jurídica das assinaturas, precisamos confirmar quem é você.
+                                </p>
+                            </div>
+
+                            <form onSubmit={handleAuthSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Nome Completo</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm text-gray-900"
+                                        placeholder="Ex: João da Silva"
+                                        value={authData.nome}
+                                        onChange={e => setAuthData({...authData, nome: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">CPF</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm text-gray-900"
+                                        placeholder="000.000.000-00"
+                                        value={authData.cpf}
+                                        onChange={e => setAuthData({...authData, cpf: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">E-mail</label>
+                                    <input 
+                                        type="email" 
+                                        required
+                                        className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm text-gray-900"
+                                        placeholder="joao@exemplo.com"
+                                        value={authData.email}
+                                        onChange={e => setAuthData({...authData, email: e.target.value})}
+                                    />
+                                </div>
+                                
+                                <button 
+                                    type="submit"
+                                    className="w-full flex items-center justify-center gap-2 mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98]"
+                                >
+                                    <span>Continuar para os Documentos</span>
+                                    <FiArrowRight className="w-4 h-4" />
+                                </button>
+                            </form>
+                            
+                            <div className="flex items-start gap-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
+                                <FiShield className="text-blue-600 mt-0.5 shrink-0 w-4 h-4" />
+                                <p>
+                                    Dados protegidos sob a LGPD. Serão utilizados exclusivamente para compor a integridade da trilha de auditoria do documento.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">Revisão e Assinatura</h3>
+                                    <p className="text-sm text-gray-500 mt-1">Leia com atenção antes de prosseguir.</p>
+                                </div>
+                                {totalDocs > 1 && (
+                                    <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded">
+                                        {completedCount + 1}/{totalDocs}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Signatário</span>
+                                    <button 
+                                        onClick={() => setStep('AUTH')}
+                                        className="text-xs text-blue-600 hover:underline"
+                                    >
+                                        Alterar
+                                    </button>
+                                </div>
+                                <div className="font-bold text-gray-900 truncate">{authData.nome}</div>
+                                <div className="text-xs text-gray-600 mt-0.5">CPF {authData.cpf} | {authData.email}</div>
+                            </div>
+
+                            <div className="pt-4 border-t border-gray-100 space-y-4">
+                                <div>
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase mb-2">
+                                        <FiFileText className="w-3.5 h-3.5" />
+                                        Documento Atual
+                                    </div>
+                                    <div className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-800 shadow-sm break-words">
+                                        {documento?.titulo}
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl relative group cursor-pointer hover:border-blue-300 transition-colors" onClick={() => setLegalAccepted(!legalAccepted)}>
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <div className="mt-0.5">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                checked={legalAccepted}
+                                                onChange={() => {}} // Handled by parent onClick
+                                            />
+                                        </div>
+                                        <span className="text-xs text-slate-700 leading-relaxed select-none">
+                                            Declaro que li e compreendi o documento exibido. Reconheço a validade jurídica desta assinatura eletrônica conforme o <strong>Art. 10, § 2º, da MP nº 2.200-2/2001</strong>.
+                                        </span>
+                                    </label>
+                                </div>
+                                
+                                <button 
+                                    onClick={handleSign}
+                                    disabled={!legalAccepted || isSigning}
+                                    className={`w-full flex items-center justify-center gap-3 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] ${
+                                        !legalAccepted || isSigning 
+                                        ? 'bg-gray-300 shadow-none cursor-not-allowed' 
+                                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                                    }`}
+                                >
+                                    {isSigning ? (
+                                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                                    ) : (
+                                        <FiCheck className="w-5 h-5" />
+                                    )}
+                                    <span>{isSigning ? 'Processando...' : (pendingCount > 1 ? 'Assinar e Próximo' : 'Concordar e Assinar')}</span>
+                                </button>
+
+                                {pendingCount > 1 && (
+                                    <p className="text-center text-xs text-gray-500 font-medium">
+                                        Ainda restam {pendingCount - 1} documentos neste lote
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </main>
+        </div>
+    );
+}

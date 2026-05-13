@@ -83,6 +83,8 @@ export function checkPermissions(user: AuthenticatedUser, permission: string): b
       return hasFeaturePermission(user, 'news_editor') || hasFeaturePermission(user, 'news_manager') || role === 'ADMIN' || role === 'MANAGER';
     case 'news_manager':
       return hasFeaturePermission(user, 'news_manager') || role === 'ADMIN' || role === 'MANAGER';
+    case 'contracts_manager':
+      return hasFeaturePermission(user, 'contracts.manage') || role === 'ADMIN' || role === 'MANAGER';
     default:
       return false;
   }

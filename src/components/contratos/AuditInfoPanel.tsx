@@ -1,0 +1,106 @@
+'use client';
+
+import React from 'react';
+import { FiShield, FiClock, FiGlobe, FiMonitor, FiHash } from 'react-icons/fi';
+
+interface AuditInfoPanelProps {
+    hashOriginal: string;
+    hashFinal?: string;
+    ip?: string;
+    userAgent?: string;
+    dataAssinatura?: string;
+    colaboradorNome?: string;
+}
+
+export default function AuditInfoPanel({
+    hashOriginal,
+    hashFinal,
+    ip,
+    userAgent,
+    dataAssinatura,
+    colaboradorNome,
+}: AuditInfoPanelProps) {
+    const truncateHash = (hash: string) =>
+        hash.length > 16 ? `${hash.slice(0, 8)}...${hash.slice(-8)}` : hash;
+
+    return (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+                <FiShield className="w-4 h-4 text-blue-600" />
+                <h4 className="text-sm font-semibold text-gray-800">Dados de Auditoria</h4>
+            </div>
+
+            <div className="space-y-2.5">
+                {/* Hash Original */}
+                <div className="flex items-start gap-2">
+                    <FiHash className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500">Hash Original (SHA-256)</p>
+                        <p className="text-xs font-mono text-gray-700 break-all" title={hashOriginal}>
+                            {truncateHash(hashOriginal)}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Hash Final */}
+                {hashFinal && (
+                    <div className="flex items-start gap-2">
+                        <FiHash className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0">
+                            <p className="text-xs text-gray-500">Hash Final (SHA-256)</p>
+                            <p className="text-xs font-mono text-emerald-700 break-all" title={hashFinal}>
+                                {truncateHash(hashFinal)}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Collaborator */}
+                {colaboradorNome && (
+                    <div className="flex items-start gap-2">
+                        <FiShield className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="text-xs text-gray-500">Assinado por</p>
+                            <p className="text-xs font-medium text-gray-700">{colaboradorNome}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Timestamp */}
+                {dataAssinatura && (
+                    <div className="flex items-start gap-2">
+                        <FiClock className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="text-xs text-gray-500">Data/Hora</p>
+                            <p className="text-xs text-gray-700">
+                                {new Date(dataAssinatura).toLocaleString('pt-BR')}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* IP */}
+                {ip && (
+                    <div className="flex items-start gap-2">
+                        <FiGlobe className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="text-xs text-gray-500">IP de Origem</p>
+                            <p className="text-xs font-mono text-gray-700">{ip}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* User Agent */}
+                {userAgent && (
+                    <div className="flex items-start gap-2">
+                        <FiMonitor className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="text-xs text-gray-500">Navegador</p>
+                            <p className="text-xs text-gray-700 line-clamp-2">{userAgent}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

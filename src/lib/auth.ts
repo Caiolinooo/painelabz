@@ -1164,17 +1164,24 @@ function userHasPassword(user: any): boolean {
 // Função para buscar usuário por ID usando Supabase (para evitar conflito de import)
 async function getUserByIdFromSupabase(userId: string): Promise<User | null> {
   try {
-    const { data: user, error } = await supabase
-      .from('users_unified')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
 
-    if (error) {
+    try {
+      const result = await pool.query('SELECT * FROM "users_unified" WHERE "id" = $1', [userId]);
+      await pool.end();
+
+      if (result.rows.length > 0) {
+        return result.rows[0] as User;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Erro ao executar query de usuário por ID no PostgreSQL:', error);
+      try { await pool.end(); } catch {}
       return null;
     }
-
-    return user;
   } catch (error) {
     console.error('Erro ao buscar usuário por ID:', error);
     return null;

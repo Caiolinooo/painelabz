@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { Pool } from 'pg';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,17 +13,26 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'User ID required' }, { status: 400 });
         }
 
-        // Upsert na tabela user_activity
-        const { error } = await supabaseAdmin
-            .from('user_activity')
-            .upsert({
-                user_id: userId,
-                last_active_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
+        const pool = new Pool({
+            connectionString: process.env.DATABASE_URL
+        });
 
-        if (error) {
-            console.error('Erro ao registrar heartbeart de atividade:', error);
+        try {
+            const now = new Date().toISOString();
+            // Upsert na tabela user_activity usando Postgres Nativo
+            await pool.query(
+                `INSERT INTO "user_activity" (user_id, last_active_at, updated_at)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (user_id)
+                 DO UPDATE SET 
+                    last_active_at = EXCLUDED.last_active_at,
+                    updated_at = EXCLUDED.updated_at`,
+                [userId, now, now]
+            );
+            await pool.end();
+        } catch (error) {
+            console.error('Erro ao registrar heartbeart de atividade no PostgreSQL:', error);
+            try { await pool.end(); } catch {}
             // Não falhar request, tracking é secundário
         }
 

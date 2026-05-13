@@ -321,7 +321,7 @@ export async function sendInvitationEmail(
 ) {
   const inviteUrl = buildAppUrl(`/set-password?invite=${inviteCode}`);
 
-  const text = `Olá ${name || ''},\n\nVocê foi convidado para acessar o Painel ABZ Group.\n\nSeu código de convite é: ${inviteCode}\n\nAcesse o portal em: ${inviteUrl}\n\nEste convite não expira, mas pode ser revogado pelo administrador.\n\nAtenciosamente,\nEquipe ABZ Group`;
+  const text = `Olá ${name || ''},\n\nVocê foi convidado para acessar o Portal ABZ.\n\nSeu código de convite é: ${inviteCode}\n\nAcesse o portal em: ${inviteUrl}\n\nEste convite não expira, mas pode ser revogado pelo administrador.\n\nAtenciosamente,\nEquipe ABZ Group`;
 
   const html = `
     <!DOCTYPE html>
@@ -329,7 +329,7 @@ export async function sendInvitationEmail(
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Convite para o Painel ABZ Group</title>
+      <title>Convite para o Portal ABZ</title>
     </head>
     <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9f9f9; color: #333333;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -346,9 +346,9 @@ export async function sendInvitationEmail(
               <!-- Conteúdo -->
               <tr>
                 <td style="padding: 20px 30px;">
-                  <h2 style="color: #0066cc; text-align: center; margin-top: 0;">Convite para o Painel ABZ Group</h2>
+                  <h2 style="color: #0066cc; text-align: center; margin-top: 0;">Convite para o Portal ABZ</h2>
                   <p style="margin-bottom: 20px;">Olá ${name || ''},</p>
-                  <p style="margin-bottom: 20px;">Você foi convidado para acessar o Painel ABZ Group, nossa plataforma interna para colaboradores.</p>
+                  <p style="margin-bottom: 20px;">Você foi convidado para acessar o Portal ABZ, nossa plataforma interna para colaboradores.</p>
 
                   <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p style="margin-bottom: 10px; font-weight: bold;">Seu código de convite:</p>
@@ -398,7 +398,7 @@ export async function sendInvitationEmail(
 
   // Usar a função genérica para enviar o email
   try {
-    const result = await sendEmail(email, 'Convite para o Painel ABZ Group', text, html);
+    const result = await sendEmail(email, 'Convite para o Portal ABZ', text, html);
     return result;
   } catch (error) {
     console.error('Erro ao enviar email de convite:', error);

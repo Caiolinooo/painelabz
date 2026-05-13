@@ -29,7 +29,8 @@ const ICON_MAP: Record<string, string> = {
   'contatos': 'FiPhone',
   'emergencia': 'FiAlertTriangle',
   'guia_offshore': 'FiCompass',
-  'integracao-erp': 'FiDatabase'
+  'integracao-erp': 'FiDatabase',
+  'contratos': 'FiFileText'
 };
 
 // Helper to merge cards

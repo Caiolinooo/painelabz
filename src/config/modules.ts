@@ -95,6 +95,13 @@ export const SYSTEM_MODULES: ModuleDefinition[] = [
         category: 'hr'
     },
     {
+        key: 'contratos',
+        name: 'Contratos e Assinaturas',
+        description: 'Gestão de contratos e assinaturas eletrônicas',
+        defaultRoles: ['ADMIN', 'MANAGER', 'USER'],
+        category: 'hr'
+    },
+    {
         key: 'admin',
         name: 'Administração',
         description: 'Configurações do sistema',

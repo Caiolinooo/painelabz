@@ -10,7 +10,8 @@ import {
   reimbursementApprovalTemplate,
   reimbursementRejectionTemplate,
   newUserWelcomeTemplate,
-  inviteTemplate
+  inviteTemplate,
+  baseTemplate
 } from './emailTemplates';
 import { buildAppUrl } from './app-url';
 
@@ -662,25 +663,18 @@ export async function sendReimbursementPaymentEmail(
 ): Promise<{ success: boolean; message: string; previewUrl?: string }> {
   try {
     // Gerar conteúdo do email
-    const emailContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Reembolso Pago</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">✅ Reembolso Pago!</h1>
+    const emailContent = baseTemplate(`
+        <div style="background: #10b981; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; font-size: 22px;">✅ Reembolso Pago!</h1>
         </div>
-        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb;">
-          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-            Olá <strong>${nome}</strong>,
+        <div style="color: #374151;">
+          <p style="font-size: 16px; line-height: 1.6;">
+            Olá, <strong>${nome}</strong>!
           </p>
-          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+          <p style="font-size: 16px; line-height: 1.6;">
             Temos o prazer de informar que seu reembolso foi <strong style="color: #10b981;">pago</strong> com sucesso!
           </p>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
             <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
             <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
             <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">PAGO</span></p>
@@ -690,14 +684,8 @@ export async function sendReimbursementPaymentEmail(
             O valor foi depositado conforme os dados bancários informados na solicitação.
             Em caso de dúvidas, entre em contato com o departamento financeiro.
           </p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            Este é um email automático do Portal ABZ Group. Por favor, não responda a este email.
-          </p>
         </div>
-      </body>
-      </html>
-    `;
+    `);
 
     // Enviar email
     const result = await sendCustomEmail(
@@ -749,29 +737,22 @@ export async function sendReimbursementApprovalToFinanceEmail(
          <p style="margin: 5px 0;"><strong>Agência:</strong> ${dadosBancarios?.agencia || 'N/A'}</p>
          <p style="margin: 5px 0;"><strong>Conta:</strong> ${dadosBancarios?.conta || 'N/A'}</p>`;
 
-    const emailContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Reembolso Aprovado - Pendente de Pagamento</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 30px; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">💰 Reembolso Aprovado - Aguardando Pagamento</h1>
+    const emailContent = baseTemplate(`
+        <div style="background: #f59e0b; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; font-size: 22px;">💰 Reembolso Aprovado - Aguardando Pagamento</h1>
         </div>
-        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb;">
-          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+        <div style="color: #374151;">
+          <p style="font-size: 16px; line-height: 1.6;">
             Um novo reembolso foi <strong style="color: #f59e0b;">aprovado</strong> e está aguardando pagamento.
           </p>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <h3 style="margin: 0 0 15px 0; color: #374151;">Dados do Reembolso</h3>
+          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <h3 style="margin: 0 0 10px 0; color: #374151;">Dados do Reembolso</h3>
             <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
             <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${solicitanteNome}</p>
             <p style="margin: 5px 0;"><strong>Valor:</strong> <span style="color: #10b981; font-weight: bold;">${valor}</span></p>
           </div>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
-            <h3 style="margin: 0 0 15px 0; color: #374151;">Dados para Pagamento</h3>
+          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+            <h3 style="margin: 0 0 10px 0; color: #374151;">Dados para Pagamento</h3>
             <p style="margin: 5px 0;"><strong>Método:</strong> ${metodoPagamento}</p>
             ${dadosPagamento}
           </div>
@@ -780,18 +761,14 @@ export async function sendReimbursementApprovalToFinanceEmail(
               <strong>⚠️ Ação necessária:</strong> Acesse o painel de reembolsos para visualizar os comprovantes e marcar como pago após efetuar o pagamento.
             </p>
           </div>
-          <a href="${buildAppUrl('/reembolso?tab=approval')}" 
-             style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px;">
-            Acessar Painel de Reembolsos
-          </a>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            Este é um email automático do Portal ABZ Group. Por favor, não responda a este email.
-          </p>
+          <div style="text-align: center; margin: 25px 0;">
+            <a href="${buildAppUrl('/reembolso?tab=approval')}" 
+               style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+              Acessar Painel de Reembolsos
+            </a>
+          </div>
         </div>
-      </body>
-      </html>
-    `;
+    `);
 
     // Enviar email
     const result = await sendCustomEmail(

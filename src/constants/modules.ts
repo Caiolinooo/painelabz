@@ -23,6 +23,7 @@ export const SYSTEM_MODULES: SystemModule[] = [
     { id: 'epi', label: 'EPI', description: 'Equipamentos de Proteção Individual', category: 'hr', href: '/epi' },
     { id: 'ferias', label: 'Férias', description: 'Solicitação e aprovação de férias', category: 'hr', href: '/ferias' },
     { id: 'lista-presenca', label: 'Lista de Presença', description: 'Controle de presença e assinaturas', category: 'hr', href: '/lista-presenca' },
+    { id: 'contratos', label: 'Contratos', description: 'Gestão de documentos e assinaturas digitais', category: 'hr', href: '/contratos' },
 
     // Content & Knowledge
     { id: 'manual', label: 'Manual do Colaborador', description: 'Guia de normas e conduta', category: 'department', href: '/manual', visible: false },

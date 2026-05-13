@@ -588,8 +588,11 @@ export default {
     folha: 'Payroll',
     biblioteca: 'Library',
     universidade: 'University',
+    contratos: 'Contracts & E-Sign',
   },
   cards: {
+    contratos: 'Contracts',
+    contratosDesc: 'Document management and electronic signatures',
     // Traduções padrão para os cards do menu
     wkradar: 'WK Radar',
     chat: 'Internal Chat',

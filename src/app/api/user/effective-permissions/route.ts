@@ -23,7 +23,8 @@ const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
             'wkradar': true,
             'guia_offshore': true,
             'epi': true,
-            'ferias_admin': true
+            'ferias_admin': true,
+            'contratos': true
         }
     },
     MANAGER: {
@@ -43,7 +44,8 @@ const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
             'wkradar': true,
             'guia_offshore': true,
             'epi': true,
-            'ferias_admin': true
+            'ferias_admin': true,
+            'contratos': true
         }
     },
     USER: {
@@ -58,7 +60,8 @@ const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
             contracheque: true,
             ponto: true,
             admin: false,
-            'compras': true
+            'compras': true,
+            'contratos': true
         }
     }
 };

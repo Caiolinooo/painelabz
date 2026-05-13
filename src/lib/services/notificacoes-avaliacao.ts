@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email';
 import { buildAppUrl } from '@/lib/app-url';
+import { baseTemplate } from '@/lib/emailTemplates';
 
 /**
  * Tipos de notificação para avaliação
@@ -105,48 +106,18 @@ Atenciosamente,
 Equipe ABZ Group
       `.trim();
 
-      const html = `
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${notificacao.titulo}</title>
-        </head>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9f9f9; color: #333333;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-            <tr>
-              <td align="center" style="padding: 20px 0;">
-                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden;">
-                  <tr>
-                    <td align="center" style="padding: 30px 20px; background-color: #ffffff;">
-                      <img src="${process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png'}" alt="ABZ Group Logo" style="max-width: 200px; height: auto;">
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 20px 30px;">
-                      <h2 style="color: #0066cc; text-align: center; margin-top: 0;">${notificacao.titulo}</h2>
-                      <p style="margin-bottom: 20px;">Olá ${nomeUsuario},</p>
-                      <p style="margin-bottom: 20px;">${notificacao.mensagem}</p>
-                      <div style="text-align: center; margin: 30px 0;">
-                        <a href="${avaliacaoUrl}" style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar Avaliações</a>
-                      </div>
-                      <p style="margin-bottom: 5px;">Atenciosamente,</p>
-                      <p style="margin-bottom: 20px;"><strong>Equipe ABZ Group</strong></p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 20px 30px; text-align: center; background-color: #ffffff; border-top: 1px solid #e0e0e0;">
-                      <p style="font-size: 12px; color: #999999; margin: 0;">&copy; ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.</p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
-      `;
+      const html = baseTemplate(`
+          <div style="color: #374151;">
+            <h2 style="color: #0066cc; text-align: center; margin-top: 0;">${notificacao.titulo}</h2>
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Olá <strong>${nomeUsuario}</strong>,</p>
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">${notificacao.mensagem}</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${avaliacaoUrl}" style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar Avaliações</a>
+            </div>
+            <p style="font-size: 14px; line-height: 1.6; color: #6b7280; margin-bottom: 5px;">Atenciosamente,</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #6b7280; margin-bottom: 20px;"><strong>Equipe ABZ Group</strong></p>
+          </div>
+      `);
 
       await sendEmail(usuario.email, notificacao.titulo, text, html);
       console.log(`Email de notificação enviado para ${usuario.email}`);
