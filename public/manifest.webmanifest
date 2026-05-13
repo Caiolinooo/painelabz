@@ -1,13 +1,13 @@
 {
-  "name": "Painel ABZ Group",
-  "short_name": "Painel ABZ",
+  "name": "Portal ABZ",
+  "short_name": "Portal ABZ",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#0B72E7",
-  "description": "Painel centralizado para colaboradores da ABZ Group",
+  "description": "Portal centralizado para colaboradores da ABZ Group",
   "categories": [
     "business",
     "productivity"

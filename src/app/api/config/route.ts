@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 
 // Configuração padrão do site
 const defaultConfig: SiteConfig = {
-  title: "Painel ABZ Group",
-  description: "Painel centralizado para colaboradores da ABZ Group",
+  title: "Portal ABZ",
+  description: "Portal centralizado para colaboradores da ABZ Group",
   logo: "/images/LC1_Azul.png",
   favicon: "/favicon.ico",
   primaryColor: "#005dff", // abz-blue
@@ -17,7 +17,7 @@ const defaultConfig: SiteConfig = {
   footerText: "© 2024 ABZ Group. Todos os direitos reservados.",
   dashboardTitle: "Painel de Logística ABZ Group",
   dashboardDescription: "Bem-vindo ao centro de recursos para colaboradores da logística.",
-  sidebarTitle: "Painel ABZ",
+  sidebarTitle: "Portal ABZ",
   googleClientId: "",
   googleClientSecret: "",
   googleRedirectUri: "",

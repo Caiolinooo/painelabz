@@ -50,6 +50,8 @@ export interface PermissionFeatures {
   'chat.admin'?: boolean;
   'news_editor'?: boolean;
   'news_manager'?: boolean;
+  'contracts.manage'?: boolean;
+  'contracts.sign'?: boolean;
   [key: string]: boolean | undefined;
 }
 
@@ -123,6 +125,22 @@ export function hasAcademyAccess(user: AppUserLike | null): boolean {
  */
 export function hasSocialAccess(user: AppUserLike | null): boolean {
   return canEditSocial(user) || canModerateSocial(user);
+}
+
+/**
+ * Check if user can manage contracts (upload, assign signatures)
+ */
+export function canManageContracts(user: AppUserLike | null): boolean {
+  return hasFeaturePermission(user, 'contracts.manage');
+}
+
+/**
+ * Check if user can sign contracts
+ */
+export function canSignContracts(user: AppUserLike | null): boolean {
+  if (!user) return false;
+  // All authenticated users can sign documents assigned to them
+  return true;
 }
 
 /**
@@ -267,6 +285,10 @@ export const PERMISSIONS = {
   NEWS: {
     EDITOR: 'news_editor',
     MANAGER: 'news_manager'
+  },
+  CONTRACTS: {
+    MANAGE: 'contracts.manage',
+    SIGN: 'contracts.sign'
   }
 } as const;
 
@@ -297,6 +319,14 @@ export const PERMISSION_DESCRIPTIONS = {
   news_manager: {
     title: 'Gerente de Notícias',
     description: 'Pode gerenciar, publicar e excluir notícias'
+  },
+  'contracts.manage': {
+    title: 'Gestor de Contratos',
+    description: 'Pode fazer upload de documentos e definir posições de assinatura'
+  },
+  'contracts.sign': {
+    title: 'Assinatura de Contratos',
+    description: 'Pode assinar documentos atribuídos eletronicamente'
   }
 } as const;
 
@@ -323,7 +353,9 @@ export const DEFAULT_PERMISSIONS_BY_ROLE = {
     'relatorios.templates.create': true,
     'relatorios.templates.edit': true,
     'relatorios.historico.read': true,
-    'relatorios.historico.manage': true
+    'relatorios.historico.manage': true,
+    'contracts.manage': true,
+    'contracts.sign': true
   },
   MANAGER: {
     academy_editor: false,
@@ -344,7 +376,9 @@ export const DEFAULT_PERMISSIONS_BY_ROLE = {
     'relatorios.templates.create': false,
     'relatorios.templates.edit': false,
     'relatorios.historico.read': true,
-    'relatorios.historico.manage': false
+    'relatorios.historico.manage': false,
+    'contracts.manage': true,
+    'contracts.sign': true
   },
   USER: {
     academy_editor: false,
@@ -365,6 +399,8 @@ export const DEFAULT_PERMISSIONS_BY_ROLE = {
     'relatorios.templates.create': false,
     'relatorios.templates.edit': false,
     'relatorios.historico.read': false,
-    'relatorios.historico.manage': false
+    'relatorios.historico.manage': false,
+    'contracts.manage': false,
+    'contracts.sign': true
   }
 } as const;

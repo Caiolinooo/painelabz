@@ -9,11 +9,14 @@ import { useI18n } from '@/contexts/I18nContext';
 // Configurar worker do PDF.js
 // Usar o worker local para evitar problemas de CORS
 
-// Definir o worker src para o worker local
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url,
-).toString();
+// Definir o worker src para o CDN oficial para evitar conflitos de resolução no Next.js
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+const PDF_OPTIONS = {
+  cMapUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/cmaps/',
+  cMapPacked: true,
+  standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/standard_fonts/'
+};
 
 interface ReactPdfViewerProps {
   title: string;
@@ -124,11 +127,7 @@ const ReactPdfViewer: React.FC<ReactPdfViewerProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-4 bg-gray-100">
-          {loading && (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          )}
+
 
           {error && (
             <div className="flex flex-col items-center justify-center h-full p-6">
@@ -151,7 +150,7 @@ const ReactPdfViewer: React.FC<ReactPdfViewerProps> = ({
             </div>
           )}
 
-          {!loading && !error && (
+          {!error && (
             <div className="flex flex-col items-center">
               <Document
                 file={getNormalizedPath()}
@@ -162,11 +161,7 @@ const ReactPdfViewer: React.FC<ReactPdfViewerProps> = ({
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
                   </div>
                 }
-                options={{
-                  cMapUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/cmaps/',
-                  cMapPacked: true,
-                  standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/standard_fonts/'
-                }}
+                options={PDF_OPTIONS}
               >
                 <Page
                   pageNumber={pageNumber}

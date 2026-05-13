@@ -9,8 +9,8 @@ export async function POST(request: NextRequest) {
 
     // Configuração padrão
     const defaultConfig = {
-      title: "Painel ABZ Group",
-      description: "Painel centralizado para colaboradores da ABZ Group",
+      title: "Portal ABZ",
+      description: "Portal centralizado para colaboradores da ABZ Group",
       logo: "/images/LC1_Azul.png",
       favicon: "/favicon.ico",
       primaryColor: "#005dff",
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       contactEmail: "contato@groupabz.com",
       footerText: "© 2024 ABZ Group. Todos os direitos reservados.",
       dashboardTitle: "Painel de Logística ABZ Group",
-      sidebarTitle: "Painel ABZ",
+      sidebarTitle: "Portal ABZ",
       googleClientId: "",
       googleClientSecret: "",
       googleRedirectUri: ""
@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
 -- Criar tabela de configurações do site
 CREATE TABLE IF NOT EXISTS site_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title VARCHAR(255) NOT NULL DEFAULT 'Painel ABZ Group',
-  description TEXT DEFAULT 'Painel centralizado para colaboradores da ABZ Group',
+  title VARCHAR(255) NOT NULL DEFAULT 'Portal ABZ',
+  description TEXT DEFAULT 'Portal centralizado para colaboradores da ABZ Group',
   logo VARCHAR(500) DEFAULT '/images/LC1_Azul.png',
   favicon VARCHAR(500) DEFAULT '/favicon.ico',
   "primaryColor" VARCHAR(7) DEFAULT '#005dff',
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS site_config (
   "footerText" TEXT DEFAULT '© 2024 ABZ Group. Todos os direitos reservados.',
   "dashboardTitle" VARCHAR(255) DEFAULT 'Painel de Logística ABZ Group',
   "dashboardDescription" TEXT DEFAULT 'Bem-vindo ao centro de recursos para colaboradores da logística.',
-  "sidebarTitle" VARCHAR(255) DEFAULT 'Painel ABZ',
+  "sidebarTitle" VARCHAR(255) DEFAULT 'Portal ABZ',
   "googleClientId" TEXT DEFAULT '',
   "googleClientSecret" TEXT DEFAULT '',
   "googleRedirectUri" TEXT DEFAULT '',
@@ -67,8 +67,8 @@ INSERT INTO site_config (
   "companyName", "contactEmail", "footerText", "dashboardTitle", "dashboardDescription", "sidebarTitle",
   "googleClientId", "googleClientSecret", "googleRedirectUri"
 ) VALUES (
-  'Painel ABZ Group',
-  'Painel centralizado para colaboradores da ABZ Group',
+  'Portal ABZ',
+  'Portal centralizado para colaboradores da ABZ Group',
   '/images/LC1_Azul.png',
   '/favicon.ico',
   '#005dff',
@@ -78,7 +78,7 @@ INSERT INTO site_config (
   '© 2024 ABZ Group. Todos os direitos reservados.',
   'Painel de Logística ABZ Group',
   'Bem-vindo ao centro de recursos para colaboradores da logística.',
-  'Painel ABZ',
+  'Portal ABZ',
   '',
   '',
   ''

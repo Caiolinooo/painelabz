@@ -46,23 +46,18 @@ https://abzgroup.com.br
 ${new Date().getFullYear()} © Todos os direitos reservados.
     `.trim();
 
-    // HTML para clientes que suportam HTML
-    const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; ***REMOVED*** #ffffff;">
-      <!-- Header com logo -->
-      <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
-        <img src="https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png" alt="ABZ Group Logo" style="max-width: 200px; height: auto;">
-      </div>
+    const { baseTemplate } = await import('@/lib/emailTemplates');
 
-      <!-- Conteúdo principal -->
-      <div style="text-align: center;">
+    // HTML para clientes que suportam HTML
+    const html = baseTemplate(`
+      <div style="text-align: center; color: #333333;">
         <h1 style="color: #0066cc; font-size: 24px; margin-bottom: 20px;">Bem-vindo ao ABZ Group!</h1>
         
-        <p style="color: #333333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-          Olá <strong>${name}</strong>,
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+          Olá, <strong>${name}</strong>!
         </p>
         
-        <p style="color: #333333; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
           Para completar seu cadastro e ativar sua conta, por favor verifique seu endereço de email clicando no botão abaixo:
         </p>
 
@@ -74,7 +69,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
           </a>
         </div>
 
-        <p style="color: #666666; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        <p style="color: #666666; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
           Ou copie e cole este link no seu navegador:
         </p>
         
@@ -82,31 +77,17 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
           ${verificationUrl}
         </p>
 
-        <div style="***REMOVED*** #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0;">
+        <div style="***REMOVED*** #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0; text-align: left;">
           <p style="color: #856404; font-size: 14px; margin: 0;">
             <strong>⏰ Importante:</strong> Este link é válido por 24 horas.
           </p>
         </div>
 
-        <p style="color: #333333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
           Após verificar seu email, você poderá fazer login no sistema e acessar todas as funcionalidades.
         </p>
       </div>
-
-      <!-- Footer -->
-      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center;">
-        <p style="color: #666666; font-size: 12px; margin: 0;">
-          Se você não se cadastrou no ABZ Group, por favor ignore este email.
-        </p>
-        <p style="color: #666666; font-size: 12px; margin: 10px 0 0 0;">
-          © ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.
-        </p>
-        <p style="color: #666666; font-size: 12px; margin: 5px 0 0 0;">
-          <a href="https://abzgroup.com.br" style="color: #0066cc; text-decoration: none;">abzgroup.com.br</a>
-        </p>
-      </div>
-    </div>
-    `;
+    `);
 
     // Enviar o email
     const result = await sendEmail(

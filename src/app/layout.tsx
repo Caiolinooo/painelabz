@@ -53,8 +53,8 @@ const plusJakartaSans = localFont({
 
 // Metadata estático (o SiteHead component atualiza dinamicamente em runtime)
 export const metadata: Metadata = {
-  title: "Painel ABZ Group",
-  description: "Painel centralizado para colaboradores da ABZ Group",
+  title: "Portal ABZ",
+  description: "Portal centralizado para colaboradores da ABZ Group",
 };
 
 export default function RootLayout({

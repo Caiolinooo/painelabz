@@ -84,6 +84,15 @@ export default function QuickLinksWidget() {
             href: '/academy',
             iconBgColor: 'bg-purple-50',
             iconColor: 'text-purple-500'
+        },
+        {
+            id: 'contratos',
+            title: t('menu.contratos', 'Contratos e Assinaturas'),
+            subtitle: t('dashboard.signDocuments', 'Assine seus documentos'),
+            icon: HiDocumentText,
+            href: '/contratos',
+            iconBgColor: 'bg-indigo-50',
+            iconColor: 'text-indigo-500'
         }
     ];
 

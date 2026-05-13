@@ -607,7 +607,7 @@ export default {
     events: 'Eventos',
     noEvents: 'Sem eventos próximos',
     title: 'Painel',
-    welcome: 'Bem-vindo ao Painel ABZ',
+    welcome: 'Bem-vindo ao Portal ABZ',
     greeting: 'Olá',
     usuario: 'Usuário',
     quickAccess: 'Acesso Rápido',
@@ -680,8 +680,11 @@ export default {
     folha: 'Folha de Pagamento',
     biblioteca: 'Biblioteca',
     universidade: 'Universidade',
+    contratos: 'Contratos e Assinaturas',
   },
   cards: {
+    contratos: 'Contratos',
+    contratosDesc: 'Gerenciamento de documentos e assinaturas eletrônicas',
     // Traduções padrão para os cards do menu
     wkradar: 'WK Radar',
     chat: 'Chat Interno',

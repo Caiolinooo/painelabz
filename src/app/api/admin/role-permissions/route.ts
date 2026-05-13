@@ -31,7 +31,8 @@ export async function GET() {
             contracheque: true,
             ponto: true,
             admin: true,
-            avaliacao: true
+            avaliacao: true,
+            contratos: true
           },
           features: {
             reimbursement_approval: true,
@@ -51,7 +52,8 @@ export async function GET() {
             contracheque: true,
             ponto: true,
             admin: false,
-            avaliacao: true
+            avaliacao: true,
+            contratos: true
           },
           features: {
             reimbursement_approval: true,
@@ -71,7 +73,8 @@ export async function GET() {
             contracheque: true,
             ponto: true,
             admin: false,
-            avaliacao: false
+            avaliacao: false,
+            contratos: true
           },
           features: {
             reimbursement_approval: false,

@@ -363,10 +363,10 @@ class UnifiedDataService {
         if (item.managerOnly && !['admin', 'manager'].includes(filters.userRole || '')) {
           return false;
         }
-        if (item.allowedRoles && !item.allowedRoles.includes(filters.userRole || '')) {
+        if (item.allowedRoles && item.allowedRoles.length > 0 && !item.allowedRoles.includes(filters.userRole || '')) {
           return false;
         }
-        if (item.allowedUserIds && !item.allowedUserIds.includes(filters.userId || '')) {
+        if (item.allowedUserIds && item.allowedUserIds.length > 0 && !item.allowedUserIds.includes(filters.userId || '')) {
           return false;
         }
 

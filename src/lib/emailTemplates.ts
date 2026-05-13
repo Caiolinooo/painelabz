@@ -12,7 +12,7 @@ const getEmailConfig = () => {
   const appUrl = getAppBaseUrl();
 
   // Garantir que a URL do logo seja absoluta e correta
-  const logoUrl = process.env.EMAIL_LOGO_URL || 'https://portal.groupabz.com/images/logo-abz.png';
+  const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/images/logo.png`;
 
   console.log('Logo URL para emails:', logoUrl);
 

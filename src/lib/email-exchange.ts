@@ -341,7 +341,7 @@ export async function sendInvitationEmail(
 ) {
   const inviteUrl = buildAppUrl(`/set-password?invite=${inviteCode}`);
 
-  const text = `Olá ${name || ''},\n\nVocê foi convidado para acessar o Painel ABZ Group.\n\nSeu código de convite é: ${inviteCode}\n\nAcesse o portal em: ${inviteUrl}\n\nEste convite não expira, mas pode ser revogado pelo administrador.\n\nAtenciosamente,\nEquipe ABZ Group`;
+  const text = `Olá ${name || ''},\n\nVocê foi convidado para acessar o Portal ABZ.\n\nSeu código de convite é: ${inviteCode}\n\nAcesse o portal em: ${inviteUrl}\n\nEste convite não expira, mas pode ser revogado pelo administrador.\n\nAtenciosamente,\nEquipe ABZ Group`;
 
   // Usar a função genérica para enviar o email
   try {
@@ -351,7 +351,7 @@ export async function sendInvitationEmail(
     // Gerar HTML usando o template
     const html = inviteTemplate(inviteCode, inviteUrl, '', undefined);
 
-    const result = await sendEmail(email, 'Convite para o Painel ABZ Group', text, html);
+    const result = await sendEmail(email, 'Convite para o Portal ABZ', text, html);
     return result;
   } catch (error) {
     console.error('Erro ao enviar email de convite:', error);
@@ -476,7 +476,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
               <tr>
                 <td align="left" style="padding: 0 20px 20px 20px;">
                   <p style="margin: 0 0 15px 0;">Olá,</p>
-                  <p style="margin: 0 0 15px 0;">Recebemos uma solicitação para redefinir a senha da sua conta no Painel ABZ Group.</p>
+                  <p style="margin: 0 0 15px 0;">Recebemos uma solicitação para redefinir a senha da sua conta no Portal ABZ.</p>
                   <p style="margin: 0 0 25px 0;">Clique no botão abaixo para criar uma nova senha:</p>
                   
                   <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">

@@ -1,0 +1,1408 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+const PDF_OPTIONS = {
+  cMapUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/cmaps/',
+  cMapPacked: true,
+  standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/standard_fonts/'
+};
+
+import {
+    FiArrowLeft, FiFileText, FiUsers, FiEdit3,
+    FiDownload, FiCheck, FiX, FiPlus,
+    FiChevronLeft, FiChevronRight, FiTrash2, FiShield,
+    FiMail, FiLink, FiPenTool, FiCheckCircle,
+    FiTarget, FiEdit, FiUserPlus, FiPlusCircle, FiSearch, FiEye
+} from 'react-icons/fi';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { fetchWithAuth } from '@/lib/authUtils';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { hasFeaturePermission } from '@/lib/permissions';
+import { useSignature } from '@/contexts/SignatureContext';
+import DocumentStatusBadge from '@/components/contratos/DocumentStatusBadge';
+import SignaturePositionOverlay, { getSignerColor } from '@/components/contratos/SignaturePositionOverlay';
+import AuditInfoPanel from '@/components/contratos/AuditInfoPanel';
+import toast from 'react-hot-toast';
+import MainLayout from '@/components/Layout/MainLayout';
+
+export default function ContratoDetailPage() {
+    const params = useParams();
+    const router = useRouter();
+    const docId = params?.id as string;
+
+    const { profile, user } = useSupabaseAuth();
+    const { requestSignature } = useSignature();
+
+    const isManager = hasFeaturePermission(profile as any, 'contracts.manage')
+        || profile?.role === 'ADMIN'
+        || profile?.role === 'MANAGER';
+
+    const [envelope, setEnvelope] = useState<any>(null);
+    const [documentos, setDocumentos] = useState<any[]>([]);
+    const [activeDocIndex, setActiveDocIndex] = useState(0);
+    const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [pdfWidth, setPdfWidth] = useState(600);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [numPages, setNumPages] = useState<number>(0);
+
+    // Assignment state (HR)
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [selectedColaborador, setSelectedColaborador] = useState('');
+    const [colaboradores, setColaboradores] = useState<any[]>([]);
+    const [clickPos, setClickPos] = useState<{ x: number; y: number; page: number; tipo: 'assinatura' | 'rubrica' | 'copia' } | null>(null);
+    const [signatureType, setSignatureType] = useState<'assinatura' | 'rubrica' | 'copia'>('assinatura');
+    const [signatureOrder, setSignatureOrder] = useState<number>(1);
+    
+    // Advanced Search / External signer states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [manualSignerName, setManualSignerName] = useState('');
+    const [manualSignerEmail, setManualSignerEmail] = useState('');
+    const [isExternalInput, setIsExternalInput] = useState(false);
+    const [showTutorial, setShowTutorial] = useState(false);
+
+    // CC (Cópia) States
+    const [ccEmail, setCcEmail] = useState('');
+    const [ccName, setCcName] = useState('');
+    const [isAddingCC, setIsAddingCC] = useState(false);
+
+    // Check for first-time tutorial on load
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const hasSeen = localStorage.getItem('has_seen_sign_tutorial');
+            if (!hasSeen) setShowTutorial(true);
+        }
+    }, []);
+
+    const dismissTutorial = () => {
+        localStorage.setItem('has_seen_sign_tutorial', 'true');
+        setShowTutorial(false);
+    };
+
+    const resetAssignState = () => {
+        setSelectedColaborador('');
+        setSearchQuery('');
+        setManualSignerName('');
+        setManualSignerEmail('');
+        setIsExternalInput(false);
+        setClickPos(null);
+    };
+    
+    // Original PDF Dimensions (Points) used for scaling normalization
+    const [originalPageSize, setOriginalPageSize] = useState<{ width: number; height: number } | null>(null);
+
+    // Send modal state
+    const [showSendModal, setShowSendModal] = useState(false);
+    const [sendMode, setSendMode] = useState<'email' | 'link' | null>(null);
+    const [emailRecipient, setEmailRecipient] = useState('');
+    const [copiedLink, setCopiedLink] = useState(false);
+
+    // Signing state (Collaborator)
+    const [isSigning, setIsSigning] = useState(false);
+    const [mySolicitacao, setMySolicitacao] = useState<any>(null);
+    const [showLegalConfirm, setShowLegalConfirm] = useState(false);
+    const [legalAccepted, setLegalAccepted] = useState(false);
+    const [signMethod, setSignMethod] = useState<'certificado' | 'dados' | null>(null);
+    const [signerData, setSignerData] = useState({ nome: '', cpf: '', email: '', telefone: '' });
+
+    // Signed PDF URL (available after signing)
+    const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
+
+    // Audit data
+    const [auditData, setAuditData] = useState<any>(null);
+
+    const pdfContainerRef = useRef<HTMLDivElement>(null);
+
+    // Active document selector
+    const currentDocumento = documentos[activeDocIndex] || null;
+    // Filtered assignments for current document (EXCLUDING CCs)
+    const currentSolicitacoes = solicitacoes.filter((s: any) => s.documento_id === currentDocumento?.id && s.tipo !== 'copia');
+    // Active CCs (Observers) in the entire envelope
+    const ccSolicitacoes = solicitacoes.filter((s: any) => s.tipo === 'copia');
+
+    const fetchDocumento = useCallback(async () => {
+        try {
+            setLoading(true);
+            const res = await fetchWithAuth(`/api/contracts?id=${docId}`);
+            const data = await res.json();
+
+            if (data.success) {
+                console.log('[ContratoDetail] Envelope carregado:', data.envelope?.titulo);
+                setEnvelope(data.envelope);
+                setDocumentos(data.documentos || []);
+                setSolicitacoes(data.solicitacoes || []);
+
+                // Reset page when docs load
+                setCurrentPage(1);
+
+                // Find my assignment in any document
+                if (user?.id) {
+                    const mine = (data.solicitacoes || []).find(
+                        (s: any) => s.colaborador_id === user.id
+                    );
+                    setMySolicitacao(mine || null);
+                }
+            } else {
+                toast.error(data.error || 'Envelope não encontrado');
+                router.push('/contratos');
+            }
+        } catch (err) {
+            toast.error('Erro ao carregar envelope');
+        } finally {
+            setLoading(false);
+        }
+    }, [docId, user?.id, router]);
+
+    useEffect(() => {
+        if (docId) fetchDocumento();
+    }, [docId, fetchDocumento]);
+
+    // When switching documents, reset page
+    useEffect(() => {
+        setCurrentPage(1);
+        resetAssignState();
+    }, [activeDocIndex]);
+
+    // Fetch collaborators for assignment (HR only)
+    useEffect(() => {
+        if (isManager) {
+            console.log('[ContratoDetail] Buscando colaboradores...');
+            fetchWithAuth('/api/users?limit=200')
+                .then(res => res.json())
+                .then(data => {
+                    const users = data.users || (Array.isArray(data) ? data : []) || [];
+                    setColaboradores(Array.isArray(users) ? users : []);
+                })
+                .catch((err) => {
+                    console.error('[ContratoDetail] Erro ao buscar usuários:', err);
+                    setColaboradores([]);
+                });
+        }
+    }, [isManager]);
+
+    // Auto-size PDF container
+    useEffect(() => {
+        const updateWidth = () => {
+            if (pdfContainerRef.current) {
+                const w = pdfContainerRef.current.clientWidth - 32;
+                setPdfWidth(Math.min(w, 800));
+            }
+        };
+        updateWidth();
+        window.addEventListener('resize', updateWidth);
+        return () => window.removeEventListener('resize', updateWidth);
+    }, []);
+
+    const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
+        setNumPages(n);
+    };
+
+    const onPageLoadSuccess = (page: any) => {
+        const viewport = page.getViewport({ scale: 1.0 });
+        console.log('[ContratoDetail] Página carregada - Dimensões originais:', viewport.width, viewport.height);
+        setOriginalPageSize({ width: viewport.width, height: viewport.height });
+    };
+
+    const onDocumentLoadError = (error: Error) => {
+        console.error('[ContratoDetail] Erro ao carregar PDF:', error);
+        toast.error(`Erro ao carregar PDF: ${error.message}`);
+    };
+
+    // Handle click on PDF to set signature position
+    const handlePdfClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isAssigning || signatureType === 'copia') return;
+
+        // Prevent setting a new position if we are clicking on an existing Draggable overlay
+        if ((e.target as HTMLElement).closest('.cursor-grab')) return;
+        
+        // Also prevent if already have a clickPos active (force resolve that one first, or allow move?)
+        // Actually allowing replace is good UX.
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = Math.round(e.clientX - rect.left);
+        const y = Math.round(e.clientY - rect.top);
+
+        // Scroll slightly if needed?
+        
+        setClickPos({
+            x,
+            y,
+            page: currentPage,
+            tipo: signatureType
+        });
+        
+        // Keep current selections unless explicitly desired to reset
+        // actually, just toast the positional lock.
+    };
+
+    // Copy specific token link
+    const handleCopyTokenLink = async (token: string) => {
+        const link = `${window.location.origin}/assinatura/${token}`;
+        await navigator.clipboard.writeText(link);
+        toast.success('Link único de assinatura copiado!');
+    };
+
+    // Copy generic public link
+    const handleCopyLink = async () => {
+        const link = `${window.location.origin}/contratos/${docId}/assinar?publico=true`;
+        await navigator.clipboard.writeText(link);
+        setCopiedLink(true);
+        toast.success('Link genérico copiado!');
+        setTimeout(() => setCopiedLink(false), 3000);
+    };
+
+    // Send via email
+    const handleSendEmail = async () => {
+        if (!emailRecipient) {
+            toast.error('Informe o e-mail do destinatário');
+            return;
+        }
+
+        try {
+            const res = await fetchWithAuth('/api/contracts/send-email', {
+                method: 'POST',
+                body: ***REMOVED***
+                    documento_id: docId,
+                    recipient_email: emailRecipient,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.success('E-mail enviado com sucesso!');
+                setShowSendModal(false);
+                setEmailRecipient('');
+            } else {
+                toast.error(data.error || 'Erro ao enviar e-mail');
+            }
+        } catch (err) {
+            toast.error('Erro ao enviar e-mail');
+        }
+    };
+
+    // Save assignment (HR)
+    const handleSaveAssignment = async () => {
+        console.log('[ContratoDetail] Salvando atribuição...', {
+            selectedColaborador,
+            manualSignerEmail,
+            clickPos
+        });
+
+        const hasInternal = !!selectedColaborador;
+        const hasExternal = !!manualSignerEmail;
+
+        if (!hasInternal && !hasExternal) {
+            toast.error('Selecione um colaborador da lista ou informe um e-mail válido.');
+            return;
+        }
+
+        const posX = clickPos?.x || 100;
+        const posY = clickPos?.y || 500;
+        const posPage = clickPos?.page || 1;
+        const posTipo = clickPos?.tipo || signatureType;
+
+        if (!currentDocumento?.id) {
+            toast.error('Nenhum documento selecionado');
+            return;
+        }
+
+        // CONVERSION: Scale pixel browser clicks to canonical PDF Points
+        let finalX = posX;
+        let finalY = posY;
+        let finalW = posTipo === 'rubrica' ? 100 : 150;
+        let finalH = posTipo === 'rubrica' ? 30 : 50;
+
+        if (originalPageSize) {
+            const scaleFactor = originalPageSize.width / pdfWidth;
+            finalX = Math.round(posX * scaleFactor);
+            finalY = Math.round(posY * scaleFactor);
+            finalW = Math.round(finalW * scaleFactor);
+            finalH = Math.round(finalH * scaleFactor);
+        }
+
+        try {
+            const res = await fetchWithAuth(`/api/contracts/${docId}/assign`, {
+                method: 'POST',
+                body: ***REMOVED***
+                    documento_id: currentDocumento.id,
+                    colaborador_id: selectedColaborador || null,
+                    external_signer_name: manualSignerName || null,
+                    external_signer_email: manualSignerEmail || null,
+                    pagina_assinatura: posPage,
+                    posicao_x: finalX,
+                    posicao_y: finalY,
+                    largura_assinatura: finalW,
+                    altura_assinatura: finalH,
+                    tipo: posTipo,
+                    ordem: signatureOrder,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                toast.success('Assinatura posicionada com sucesso!');
+                resetAssignState();
+                fetchDocumento();
+            } else {
+                toast.error(data.error || 'Erro ao atribuir');
+            }
+        } catch (err) {
+            toast.error('Erro ao salvar atribuição');
+        }
+    };
+
+    // Add CC (Cópia) observer
+    const handleSaveCC = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!ccName.trim() || !ccEmail.trim()) {
+            toast.error('Informe o nome e e-mail para enviar em cópia.');
+            return;
+        }
+        if (!currentDocumento?.id) {
+            toast.error('Nenhum documento ativo.');
+            return;
+        }
+
+        try {
+            setIsAddingCC(true);
+            const res = await fetchWithAuth(`/api/contracts/${docId}/assign`, {
+                method: 'POST',
+                body: ***REMOVED***
+                    documento_id: currentDocumento.id,
+                    external_signer_name: ccName.trim(),
+                    external_signer_email: ccEmail.trim(),
+                    tipo: 'copia',
+                    ordem: 1,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                toast.success('Pessoa em cópia adicionada com sucesso!');
+                setCcName('');
+                setCcEmail('');
+                fetchDocumento();
+            } else {
+                toast.error(data.error || 'Erro ao adicionar pessoa em cópia');
+            }
+        } catch {
+            toast.error('Erro de comunicação ao salvar cópia');
+        } finally {
+            setIsAddingCC(false);
+        }
+    };
+
+    // Delete assignment (HR)
+    const handleDeleteAssignment = async (solicitacaoId: string) => {
+        if (!confirm('Remover esta atribuição?')) return;
+
+        try {
+            await fetchWithAuth(`/api/contracts/${docId}/assign?solicitacao_id=${solicitacaoId}`, {
+                method: 'DELETE',
+            });
+            toast.success('Atribuição removida');
+            fetchDocumento();
+        } catch {
+            toast.error('Erro ao remover');
+        }
+    };
+
+    // Dispatch envelope sequence (HR)
+    const handleSendEnvelope = async () => {
+        try {
+            setLoading(true);
+            const res = await fetchWithAuth(`/api/contracts/${docId}/dispatch`, {
+                method: 'POST',
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                toast.success('Fluxo de assinaturas iniciado! Os signatários da vez foram notificados.');
+                setShowSendModal(false);
+                fetchDocumento(); 
+            } else {
+                toast.error(data.error || 'Erro ao disparar envelope');
+            }
+        } catch (err) {
+            toast.error('Erro de rede ao enviar envelope');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Delete complete envelope (HR)
+    const handleDeleteEnvelope = async () => {
+        if (!window.confirm('ATENÇÃO: Esta ação é IRREVERSÍVEL.\n\nVocê tem certeza que deseja EXCLUIR este envelope, todos os seus documentos e assinaturas permanentemente da plataforma e do armazenamento em nuvem?')) {
+            return;
+        }
+        
+        try {
+            setLoading(true);
+            const res = await fetchWithAuth(`/api/contracts?id=${docId}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                toast.success('Envelope excluído com sucesso!');
+                router.push('/contratos');
+            } else {
+                toast.error(data.error || 'Falha ao excluir envelope');
+                setLoading(false);
+            }
+        } catch (err) {
+            toast.error('Erro de rede ao tentar excluir');
+            setLoading(false);
+        }
+    };
+
+    // Sign document (Collaborator)
+    const handleSign = async () => {
+        if (!mySolicitacao || !legalAccepted) return;
+
+        setShowLegalConfirm(false);
+
+        try {
+            const result = await requestSignature({
+                title: 'Assinar Documento',
+                description: `Assine o documento: ${currentDocumento?.titulo || ''}`,
+            });
+
+            if (!result) return;
+
+            try {
+                setIsSigning(true);
+
+                let signatureBase64 = result.signatureUrl;
+                if (result.signatureUrl.startsWith('http')) {
+                    const sigRes = await fetch(result.signatureUrl);
+                    const blob = await sigRes.blob();
+                    signatureBase64 = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(blob);
+                    });
+                }
+
+                const res = await fetchWithAuth('/api/contracts/sign', {
+                    method: 'POST',
+                    body: ***REMOVED***
+                        solicitacao_id: mySolicitacao.id,
+                        signature_base64: signatureBase64,
+                    }),
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    toast.success('Documento assinado com sucesso!');
+                    if (data.arquivo_assinado_url) {
+                        setSignedPdfUrl(data.arquivo_assinado_url);
+                    }
+                    fetchDocumento();
+                } else {
+                    toast.error(data.error || 'Erro ao assinar');
+                }
+            } catch (err: any) {
+                toast.error(err.message || 'Erro ao assinar documento');
+            } finally {
+                setIsSigning(false);
+            }
+        } catch {
+            toast.error('Erro ao iniciar assinatura');
+        }
+    };
+
+    // Render PDF URL for current document
+    const pdfUrl = currentDocumento?.arquivo_url;
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent" />
+            </div>
+        );
+    }
+
+    if (!envelope) {
+        return (
+            <MainLayout>
+                <div className="text-center py-20">
+                    <FiFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">Envelope não encontrado</p>
+                    <Link href="/contratos" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+                        ← Voltar para lista
+                    </Link>
+                </div>
+            </MainLayout>
+        );
+    }
+
+    return (
+        <MainLayout>
+            <div className="max-w-7xl mx-auto space-y-6">
+                {/* Back + Header */}
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    <div className="flex items-center gap-3 flex-1">
+                        <Link
+                            href="/contratos"
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+                        >
+                            <FiArrowLeft className="w-5 h-5" />
+                        </Link>
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded uppercase tracking-wide font-bold">Envelope</span>
+                                {envelope.titulo}
+                            </h1>
+                            {envelope.descricao && (
+                                <p className="text-sm text-gray-500 mt-0.5">{envelope.descricao}</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <DocumentStatusBadge
+                            status={
+                                envelope.total_pendentes > 0 ? 'PENDING' :
+                                envelope.total_assinados > 0 ? 'SIGNED' : 'ACTIVE'
+                            }
+                            size="md"
+                        />
+                        {isManager && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleDeleteEnvelope}
+                                    disabled={loading}
+                                    className="flex items-center gap-2 px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium shadow-sm"
+                                    title="Excluir envelope e limpar arquivos"
+                                >
+                                    <FiTrash2 className="w-4 h-4" />
+                                    <span>Excluir</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowSendModal(true)}
+                                    disabled={loading}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm"
+                                >
+                                    <FiMail className="w-4 h-4" />
+                                    Enviar Envelope
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Document Tabs Selector */}
+                {documentos.length > 1 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-200">
+                        {documentos.map((doc, index) => {
+                            const isActive = index === activeDocIndex;
+                            const docSols = solicitacoes.filter(s => s.documento_id === doc.id);
+                            const hasSigned = docSols.some(s => s.status === 'SIGNED');
+                            
+                            return (
+                                <button
+                                    key={doc.id}
+                                    onClick={() => {
+                                        setActiveDocIndex(index);
+                                        setIsAssigning(false);
+                                    }}
+                                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
+                                        isActive 
+                                            ? 'bg-white border-blue-200 text-blue-700 shadow-sm' 
+                                            : 'bg-gray-50 border-transparent text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <FiFileText className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                                    <span className="max-w-[180px] truncate">{doc.titulo}</span>
+                                    {hasSigned && <FiCheckCircle className="w-3 h-3 text-emerald-500" />}
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'}`}>
+                                        {docSols.length}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* PDF Viewer (2 cols) */}
+                    <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 overflow-hidden">
+                        {/* Active Document Status Header */}
+                        {currentDocumento && documentos.length > 1 && (
+                            <div className="bg-blue-50/50 px-4 py-2 text-xs font-medium text-blue-700 border-b border-blue-100 flex items-center gap-2">
+                                <span className="uppercase tracking-wider opacity-70">Visualizando Documento {activeDocIndex + 1} de {documentos.length}:</span>
+                                <strong>{currentDocumento.titulo}</strong>
+                            </div>
+                        )}
+
+                        {/* PDF Controls */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-gray-600">
+                                    Página: <input
+                                        type="number"
+                                        min="1"
+                                        value={currentPage}
+                                        onChange={(e) => setCurrentPage(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-12 px-1 py-0.5 border border-gray-300 rounded text-center"
+                                    />
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage <= 1}
+                                    className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"
+                                >
+                                    <FiChevronLeft className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(p => p + 1)}
+                                    className="p-1 rounded hover:bg-gray-200"
+                                >
+                                    <FiChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {isManager && (
+                                <button
+                                    onClick={() => {
+                                        setIsAssigning(!isAssigning);
+                                        if (!isAssigning) setClickPos(null);
+                                    }}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                                        ${isAssigning
+                                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                                >
+                                    {isAssigning ? <FiX className="w-4 h-4" /> : <FiPlus className="w-4 h-4" />}
+                                    {isAssigning ? 'Cancelar' : 'Posicionar Assinatura'}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Informative Banner when Assigning Mode Active */}
+                        {isAssigning && (
+                            <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-blue-100 p-2 rounded-lg">
+                                        <FiTarget className="w-5 h-5 text-blue-600 animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-blue-900">Modo de Posicionamento Ativo</p>
+                                        <p className="text-xs text-blue-700">Navegue até a página desejada e <span className="font-bold underline">clique no local</span> onde deseja a assinatura.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {showTutorial === false && (
+                                        <button onClick={() => setShowTutorial(true)} className="text-xs font-medium text-blue-600 hover:underline px-2">
+                                            Ajuda?
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setIsAssigning(false)}
+                                        className="px-3 py-1.5 text-xs font-medium bg-white border border-blue-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        Sair do Modo
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Onboarding Tutorial Modal */}
+                        {isAssigning && showTutorial && (
+                            <div className="fixed inset-0 z-[99] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+                                <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-center relative">
+                                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+                                        <div className="bg-white/20 backdrop-blur-md w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner border border-white/30">
+                                            <FiEdit className="w-8 h-8 text-white" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white">Como posicionar assinaturas?</h3>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <div className="flex gap-4">
+                                            <div className="flex-shrink-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">1</div>
+                                            <p className="text-sm text-gray-600 pt-1"><strong className="text-gray-900">Clique no PDF</strong> exatamente onde a assinatura deve ficar.</p>
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <div className="flex-shrink-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">2</div>
+                                            <p className="text-sm text-gray-600 pt-1"><strong className="text-gray-900">Selecione a pessoa</strong> digitando o nome/email ou opte por um signatário externo.</p>
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <div className="flex-shrink-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">3</div>
+                                            <p className="text-sm text-gray-600 pt-1"><strong className="text-gray-900">Confirme</strong> no card flutuante que surgirá no local.</p>
+                                        </div>
+                                        
+                                        <button 
+                                            onClick={dismissTutorial}
+                                            className="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-[0.98]"
+                                        >
+                                            Entendi, vamos lá!
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* PDF Renderer */}
+                        <div
+                            ref={pdfContainerRef}
+                            className="p-4 flex flex-col items-center overflow-auto bg-gray-100 min-h-[600px]"
+                            style={{ position: 'relative' }}
+                        >
+                            {pdfUrl ? (
+                                <div className="w-full space-y-3">
+                                    {/* Controls */}
+                                    <div className="flex items-center justify-between flex-wrap gap-2 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage <= 1}
+                                                className="p-1.5 rounded bg-gray-100 text-gray-600 disabled:opacity-50 hover:bg-gray-200 transition-colors"
+                                            >
+                                                <FiChevronLeft className="w-5 h-5" />
+                                            </button>
+                                            <span className="text-sm font-medium text-gray-700">
+                                                Página {currentPage} de {numPages || '-'}
+                                            </span>
+                                            <button 
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, numPages || 1))}
+                                                disabled={currentPage >= (numPages || 1)}
+                                                className="p-1.5 rounded bg-gray-100 text-gray-600 disabled:opacity-50 hover:bg-gray-200 transition-colors"
+                                            >
+                                                <FiChevronRight className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <a
+                                                href={pdfUrl}
+                                                target="_blank"
+                                                rel="noopener"
+                                                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                                            >
+                                                <FiDownload className="w-4 h-4" />
+                                                Abrir em nova aba
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    {/* PDF Native Renderer */}
+                                    <div className="flex justify-center bg-gray-200/50 p-6 rounded-lg overflow-hidden border border-gray-300">
+                                        <Document
+                                            file={pdfUrl}
+                                            onLoadSuccess={onDocumentLoadSuccess}
+                                            onLoadError={onDocumentLoadError}
+                                            loading={<div className="p-10 text-gray-500 flex flex-col items-center gap-3">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                                <p>Carregando Documento...</p>
+                                            </div>}
+                                            options={PDF_OPTIONS}
+                                        >
+                                            <div 
+                                                className="relative inline-block shadow-lg bg-white" 
+                                                onClick={handlePdfClick}
+                                                style={{ cursor: isAssigning ? 'crosshair' : 'default' }}
+                                            >
+                                                <Page
+                                                    pageNumber={currentPage}
+                                                    width={pdfWidth}
+                                                    renderTextLayer={true}
+                                                    renderAnnotationLayer={true}
+                                                    onLoadSuccess={onPageLoadSuccess}
+                                                />
+                                                
+                                                {/* Signature overlays specific to CURRENT DOCUMENT and current page */}
+                                                {currentSolicitacoes.filter((s: any) => s.pagina_assinatura === currentPage).map((s: any) => {
+                                                    // Inverse Conversion: Scale PDF Points back to UI pixels for display
+                                                    let displayX = s.posicao_x;
+                                                    let displayY = s.posicao_y;
+                                                    let displayW = s.largura_assinatura || 150;
+                                                    let displayH = s.altura_assinatura || 50;
+
+                                                    if (originalPageSize) {
+                                                        const scaleFactor = pdfWidth / originalPageSize.width;
+                                                        displayX = displayX * scaleFactor;
+                                                        displayY = displayY * scaleFactor;
+                                                        displayW = displayW * scaleFactor;
+                                                        displayH = displayH * scaleFactor;
+                                                    }
+
+                                                    const displayName = s.colaborador?.first_name 
+                                                        ? `${s.colaborador.first_name} ${s.colaborador.last_name || ''}`
+                                                        : (s.external_signer_name || s.external_signer_email || 'Convidado');
+                                                    
+                                                    const signerId = s.colaborador_id || s.external_signer_email || s.id;
+                                                    
+                                                    return (
+                                                        <SignaturePositionOverlay
+                                                            key={`overlay-${s.id}`}
+                                                            x={displayX}
+                                                            y={displayY}
+                                                            width={displayW}
+                                                            height={displayH}
+                                                            label={`${displayName}`}
+                                                            status={s.status as 'PENDING' | 'SIGNED' | 'REJECTED'}
+                                                            interactive={false}
+                                                            colorClasses={getSignerColor(signerId)}
+                                                        />
+                                                    );
+                                                })}
+
+                                                {/* Click position indicator AND Configuration Floating Card */}
+                                                {clickPos && clickPos.page === currentPage && signatureType !== 'copia' && (
+                                                    <>
+                                                        <SignaturePositionOverlay
+                                                            x={clickPos.x}
+                                                            y={clickPos.y}
+                                                            width={150}
+                                                            height={50}
+                                                            label={selectedColaborador 
+                                                                ? (colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.first_name || 'Selecionado') 
+                                                                : (manualSignerName || 'Posição Nova')}
+                                                            status="PENDING"
+                                                            interactive={true}
+                                                            draggable={true}
+                                                            onDragEnd={(newX, newY) => setClickPos(prev => prev ? { ...prev, x: newX, y: newY } : null)}
+                                                            colorClasses={getSignerColor(selectedColaborador || manualSignerEmail || 'temp')}
+                                                        />
+
+                                                        {/* Floating Config Card */}
+                                                        <div 
+                                                            className="absolute z-[60] bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 p-5 w-[320px] animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-200 text-left"
+                                                            style={{ 
+                                                                left: Math.max(10, Math.min(clickPos.x + 20, pdfWidth - 340)), 
+                                                                top: Math.max(10, Math.min(clickPos.y - 20, (originalPageSize ? (pdfWidth / originalPageSize.width * originalPageSize.height) : 800) - 440)),
+                                                                pointerEvents: 'auto',
+                                                                cursor: 'default'
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                                                                <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5 uppercase tracking-wide">
+                                                                    <FiUserPlus className="text-blue-600 w-3.5 h-3.5" /> Signatário
+                                                                </h4>
+                                                                <button onClick={() => resetAssignState()} className="text-gray-400 hover:text-red-500 transition-colors">
+                                                                    <FiX className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center justify-between gap-2 py-1 px-2.5 bg-blue-50/50 rounded-lg border border-blue-100/50 mb-1">
+                                                                    <div>
+                                                                        <label className="text-[10px] font-bold text-blue-600 block">Fluxo de Assinatura</label>
+                                                                        <span className="text-[11px] text-gray-600">Posição para assinatura digital</span>
+                                                                    </div>
+                                                                    <div className="w-16">
+                                                                        <label className="text-[9px] font-bold text-gray-500 block mb-0.5 text-right">Ordem</label>
+                                                                        <input 
+                                                                            type="number"
+                                                                            min="1"
+                                                                            value={signatureOrder}
+                                                                            onChange={(e) => setSignatureOrder(parseInt(e.target.value) || 1)}
+                                                                            className="w-full px-2 py-1 border border-gray-200 rounded-md text-xs bg-white text-center focus:ring-1 focus:ring-blue-500 outline-none font-semibold"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="relative pt-1">
+                                                                    <label className="text-[10px] font-bold text-gray-500 block mb-1">Vincular a quem?</label>
+                                                                    
+                                                                    {!isExternalInput && !selectedColaborador && (
+                                                                        <div className="relative">
+                                                                            <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                                                                            <input 
+                                                                                type="text"
+                                                                                placeholder="Buscar nome ou email..."
+                                                                                value={searchQuery}
+                                                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                                                className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm placeholder:text-gray-300"
+                                                                            />
+                                                                            
+                                                                            {searchQuery.length > 1 && (
+                                                                                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-100 shadow-xl rounded-lg max-h-48 overflow-y-auto z-[70] divide-y divide-gray-50">
+                                                                                    {colaboradores
+                                                                                        .filter(c => 
+                                                                                            `${c.first_name} ${c.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                                                                            c.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                                                                                        )
+                                                                                        .slice(0, 5)
+                                                                                        .map(c => (
+                                                                                            <div 
+                                                                                                key={c.id||c._id}
+                                                                                                className="p-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 transition-colors"
+                                                                                                onClick={() => {
+                                                                                                    setSelectedColaborador(c.id || c._id);
+                                                                                                    setSearchQuery('');
+                                                                                                }}
+                                                                                            >
+                                                                                                {c.avatar_url ? (
+                                                                                                    <img src={c.avatar_url} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                                                                                                ) : (
+                                                                                                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                                                                                                        {c.first_name?.[0]}{(c.last_name || c.first_name?.[1])?.[0]}
+                                                                                                    </div>
+                                                                                                )}
+                                                                                                <div className="min-w-0 flex-1">
+                                                                                                    <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{c.first_name} {c.last_name}</p>
+                                                                                                    <p className="text-[10px] text-gray-500 truncate">{c.email}</p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        ))
+                                                                                    }
+                                                                                    <div 
+                                                                                        className="p-2.5 bg-gray-50 hover:bg-indigo-50 cursor-pointer text-[11px] font-bold text-indigo-600 text-center border-t border-dashed border-gray-200 transition-colors flex items-center justify-center gap-1"
+                                                                                        onClick={() => {
+                                                                                            setIsExternalInput(true);
+                                                                                            setManualSignerEmail(searchQuery.includes('@') ? searchQuery : '');
+                                                                                        }}
+                                                                                    >
+                                                                                        <FiPlusCircle className="w-3 h-3" /> Inserir Signatário Externo
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {selectedColaborador && (
+                                                                        <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm">
+                                                                                {colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.first_name?.[0] || 'U'}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-xs font-bold text-gray-900 truncate">
+                                                                                    {colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.first_name} {colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.last_name}
+                                                                                </p>
+                                                                                <p className="text-[10px] text-blue-600 font-medium">Base Interna ABZ</p>
+                                                                            </div>
+                                                                            <button onClick={() => setSelectedColaborador('')} className="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-white transition-colors">
+                                                                                <FiX className="w-3.5 h-3.5" />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {isExternalInput && !selectedColaborador && (
+                                                                        <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                                                            <input 
+                                                                                type="email"
+                                                                                placeholder="E-mail do signatário"
+                                                                                value={manualSignerEmail}
+                                                                                onChange={(e) => setManualSignerEmail(e.target.value)}
+                                                                                className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                                            />
+                                                                            <input 
+                                                                                type="text"
+                                                                                placeholder="Nome Completo"
+                                                                                value={manualSignerName}
+                                                                                onChange={(e) => setManualSignerName(e.target.value)}
+                                                                                className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                                            />
+                                                                            <button 
+                                                                                type="button" 
+                                                                                onClick={() => { setIsExternalInput(false); setManualSignerName(''); setManualSignerEmail(''); }}
+                                                                                className="text-[10px] text-gray-500 font-medium flex items-center gap-1 hover:text-gray-800"
+                                                                            >
+                                                                                <FiArrowLeft className="w-2.5 h-2.5" /> Voltar para busca
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="pt-1">
+                                                                    <button 
+                                                                        onClick={handleSaveAssignment}
+                                                                        disabled={!selectedColaborador && (!manualSignerEmail || !manualSignerName)}
+                                                                        className="w-full px-3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-200 disabled:opacity-40 disabled:shadow-none transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                                                                    >
+                                                                        <FiCheckCircle className="w-3.5 h-3.5" /> Fixar Assinatura
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </Document>
+                                    </div>
+
+                                    {/* Posições já definidas - lista lateral */}
+                                    {currentSolicitacoes.length > 0 && (
+                                        <div className="bg-white rounded-lg p-3 text-sm">
+                                            <p className="font-medium text-gray-700 mb-2">📍 Posições definidas para este documento:</p>
+                                            <div className="space-y-1">
+                                                {currentSolicitacoes.map((s: any) => (
+                                                    <div key={s.id} className="flex justify-between text-xs">
+                                                        <span className="text-gray-600">
+                                                            {s.colaborador?.first_name 
+                                                                ? `${s.colaborador.first_name}` 
+                                                                : (s.external_signer_name || s.external_signer_email || 'Convidado')}
+                                                            {s.tipo === 'rubrica' ? ' (Rubrica)' : ' (Assinatura)'}
+                                                        </span>
+                                                        <span className="text-gray-400">
+                                                            Pág {s.pagina_assinatura} | X:{s.posicao_x} Y:{s.posicao_y}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="text-center py-20 text-gray-500">
+                                    <FiFileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                    <p className="text-sm">Nenhum documento selecionado</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Sidebar (1 col) */}
+                    <div className="space-y-4">
+                        {/* Document Info */}
+                        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+                            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                <FiFileText className="w-4 h-4 text-gray-400" />
+                                Informações do Envelope
+                            </h3>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Criado por</span>
+                                    <span className="text-gray-800 font-medium">
+                                        {envelope.enviado_por_nome || 'RH'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Data</span>
+                                    <span className="text-gray-800">
+                                        {new Date(envelope.data_criacao).toLocaleDateString('pt-BR')}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Documentos</span>
+                                    <span className="text-gray-800 font-medium">
+                                        {documentos.length}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Download options */}
+                            {currentDocumento && (
+                                <div className="pt-3 border-t border-gray-100 space-y-2">
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase">Arquivo Atual</p>
+                                    <a
+                                        href={currentDocumento.arquivo_url}
+                                        target="_blank"
+                                        rel="noopener"
+                                        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium transition-colors"
+                                    >
+                                        <FiDownload className="w-4 h-4" />
+                                        Baixar Doc Atual
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Assignments for ALL DOCUMENTS grouped or simplified */}
+                        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+                            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                <FiUsers className="w-4 h-4 text-gray-400" />
+                                Assinaturas Gerais ({solicitacoes.filter(s => s.tipo !== 'copia').length})
+                            </h3>
+
+                            {solicitacoes.filter(s => s.tipo !== 'copia').length === 0 ? (
+                                <p className="text-xs text-gray-400 py-2">Nenhuma assinatura atribuída no envelope</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {solicitacoes.filter((s: any) => s.tipo !== 'copia').map((s: any) => {
+                                        const docAssigned = documentos.find(d => d.id === s.documento_id);
+                                        return (
+                                        <div
+                                            key={s.id}
+                                            className={`flex flex-col p-3 rounded-lg border ${s.documento_id === currentDocumento?.id ? 'bg-blue-50/30 border-blue-100' : 'bg-gray-50 border-transparent'}`}
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <p className="text-sm font-medium text-gray-800">
+                                                    <span className="inline-flex items-center justify-center bg-gray-200 text-gray-700 text-[10px] font-bold h-4 w-4 rounded-full mr-1.5">
+                                                        {s.ordem}
+                                                    </span>
+                                                    {s.colaborador?.first_name 
+                                                        ? `${s.colaborador.first_name} ${s.colaborador.last_name || ''}`
+                                                        : (s.external_signer_name || s.external_signer_email || 'Externo')}
+                                                </p>
+                                                <DocumentStatusBadge status={s.status} />
+                                            </div>
+                                            {s.visualizado_em && s.status === 'PENDING' && (
+                                                <div className="flex items-center gap-1 mb-1.5 text-[10px] text-indigo-600 bg-indigo-50/60 px-2 py-0.5 rounded-md font-medium border border-indigo-100/30 w-fit shadow-xs">
+                                                    <FiEye className="w-2.5 h-2.5 text-indigo-500" /> 
+                                                    Visualizado às {new Date(s.visualizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({new Date(s.visualizado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
+                                                </div>
+                                            )}
+                                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                                <span className="truncate max-w-[120px]">📄 {docAssigned?.titulo || 'Doc'}</span>
+                                                <div className="flex items-center gap-1">
+                                                {isManager && s.status === 'PENDING' && (
+                                                    <>
+                                                        {s.token_acesso && (
+                                                            <button
+                                                                onClick={() => handleCopyTokenLink(s.token_acesso)}
+                                                                className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                                                                title="Copiar Link Único de Assinatura"
+                                                            >
+                                                                <FiLink className="w-3 h-3" />
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDeleteAssignment(s.id)}
+                                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                            title="Remover atribuição"
+                                                        >
+                                                            <FiTrash2 className="w-3 h-3" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )})}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* CC / Observers Management Panel */}
+                        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                    <FiMail className="w-4 h-4 text-indigo-500" />
+                                    Acompanhamento (Cópia)
+                                </h3>
+                                <span className="bg-indigo-50 text-indigo-600 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                                    {ccSolicitacoes.length}
+                                </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 leading-relaxed">
+                                Pessoas listadas aqui não assinam, mas recebem cópias do documento final e notificações de andamento.
+                            </p>
+
+                            {/* Active CC list */}
+                            {ccSolicitacoes.length > 0 && (
+                                <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                                    {ccSolicitacoes.map((cc: any) => (
+                                        <div key={cc.id} className="flex items-center justify-between bg-indigo-50/20 border border-indigo-100/40 rounded-lg p-2.5 text-xs">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-medium text-gray-800 truncate">
+                                                    {cc.external_signer_name}
+                                                </p>
+                                                <p className="text-[10px] text-gray-500 truncate">{cc.external_signer_email}</p>
+                                            </div>
+                                            {isManager && (
+                                                <button 
+                                                    onClick={() => handleDeleteAssignment(cc.id)}
+                                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                    title="Remover observador"
+                                                >
+                                                    <FiTrash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Simple creation form */}
+                            {isManager && (
+                                <form onSubmit={handleSaveCC} className="pt-2 border-t border-dashed border-gray-100 space-y-2">
+                                    <input 
+                                        type="text"
+                                        required
+                                        placeholder="Nome do observador"
+                                        value={ccName}
+                                        onChange={(e) => setCcName(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white hover:border-gray-300 focus:border-indigo-500 outline-none transition-colors"
+                                    />
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="email"
+                                            required
+                                            placeholder="E-mail"
+                                            value={ccEmail}
+                                            onChange={(e) => setCcEmail(e.target.value)}
+                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white hover:border-gray-300 focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                        <button 
+                                            type="submit"
+                                            disabled={isAddingCC || !currentDocumento?.id}
+                                            className="px-3.5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs font-bold shadow-sm disabled:opacity-50 flex items-center justify-center"
+                                        >
+                                            {isAddingCC ? (
+                                                <div className="animate-spin h-3.5 w-3.5 border border-white border-t-transparent rounded-full" />
+                                            ) : (
+                                                'Adicionar'
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+
+                        {/* Audit Info */}
+                        {currentDocumento?.hash_original && (
+                            <AuditInfoPanel hashOriginal={currentDocumento.hash_original} />
+                        )}
+
+                        {/* Sign Button (Collaborator) */}
+                        {!isManager && mySolicitacao && mySolicitacao.status === 'PENDING' && (
+                            <button
+                                onClick={() => setShowLegalConfirm(true)}
+                                disabled={isSigning}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 transition-colors font-medium text-sm shadow-sm"
+                            >
+                                {isSigning ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                ) : (
+                                    <FiEdit3 className="w-4 h-4" />
+                                )}
+                                {isSigning ? 'Assinando...' : 'Assinar Documento'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Send Envelope Dispatch Modal */}
+                {showSendModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                        <div className="bg-white rounded-xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                            <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-lg">
+                                    <FiMail className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Disparar Envelope</h3>
+                                    <p className="text-xs text-gray-500">Iniciar fluxo de assinaturas sequencial</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowSendModal(false)}
+                                    className="ml-auto text-gray-400 hover:text-gray-600"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="px-6 py-6 space-y-5">
+                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                    <p className="text-sm text-blue-800 font-medium mb-2">O que acontecerá ao confirmar?</p>
+                                    <ul className="space-y-2 text-xs text-blue-700 list-disc ml-4">
+                                        <li>O sistema identificará a <strong>ordem cronológica</strong> definida nas atribuições.</li>
+                                        <li>Apenas os signatários de <strong>Ordem 1</strong> receberão as notificações iniciais.</li>
+                                        <li>O envelope será marcado como <strong>Enviado</strong> e o fluxo avança automaticamente à medida que cada parte assina.</li>
+                                    </ul>
+                                </div>
+
+                                {solicitacoes.length === 0 ? (
+                                    <div className="p-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-xs flex items-start gap-2">
+                                        <FiShield className="flex-shrink-0 w-4 h-4 mt-0.5" />
+                                        <span><strong>Aviso:</strong> Não existem assinaturas configuradas neste envelope ainda. Adicione signatários antes de enviar.</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-600">
+                                        Total de signatários configurados: <strong className="text-gray-900">{solicitacoes.length}</strong>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <button
+                                        onClick={() => setShowSendModal(false)}
+                                        className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                                    >
+                                        Revisar
+                                    </button>
+                                    <button
+                                        onClick={handleSendEnvelope}
+                                        disabled={solicitacoes.length === 0 || loading}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
+                                    >
+                                        {loading ? 'Disparando...' : 'Confirmar e Disparar'}
+                                        {!loading && <FiArrowLeft className="rotate-180 w-4 h-4 ml-1" />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Legal Confirmation Modal */}
+                {showLegalConfirm && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                        <div className="bg-white rounded-xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-lg">
+                                    <FiShield className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Confirmação Legal</h3>
+                                    <p className="text-xs text-gray-500">Leia atentamente antes de assinar</p>
+                                </div>
+                            </div>
+
+                            <div className="px-6 py-5 space-y-4">
+                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 leading-relaxed">
+                                    Ao assinar eletronicamente este documento, você declara que:
+                                    <ul className="list-disc ml-4 mt-2 space-y-1 text-xs text-gray-600">
+                                        <li>É o titular autenticado desta conta no Portal ABZ</li>
+                                        <li>Leu e compreendeu o conteúdo integral do documento</li>
+                                        <li>Reconhece a validade jurídica desta assinatura conforme MP 2.200-2/2001</li>
+                                        <li>Está ciente de que IP, data/hora e navegador serão registrados</li>
+                                    </ul>
+                                </div>
+
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={legalAccepted}
+                                        onChange={(e) => setLegalAccepted(e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                                    />
+                                    <span className="text-sm text-gray-700">
+                                        <strong>Confirmo</strong> ser o titular desta conta e assino eletronicamente
+                                        este documento, reconhecendo sua validade jurídica e integridade.
+                                    </span>
+                                </label>
+
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setShowLegalConfirm(false);
+                                            setLegalAccepted(false);
+                                        }}
+                                        className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleSign}
+                                        disabled={!legalAccepted || isSigning}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                                    >
+                                        {isSigning ? (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                        ) : (
+                                            <FiEdit3 className="w-4 h-4" />
+                                        )}
+                                        {isSigning ? 'Assinando...' : 'Assinar Documento'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </MainLayout>
+    );
+}
