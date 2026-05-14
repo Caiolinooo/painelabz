@@ -36,14 +36,21 @@ export async function checkAndNotifyLowStock(
     const epiName = epiType?.name || 'EPI Desconhecido';
     const epiCategory = epiType?.category || '';
 
-    // Fetch all admin/manager users to notify
-    const { data: admins } = await supabaseAdmin
-        .from('users_unified')
-        .select('id')
-        .in('role', ['ADMIN', 'MANAGER']);
+    // Fetch all registered EPI sector responsibles to notify
+    const { data: responsibles, error } = await supabaseAdmin
+        .from('epi_sector_responsibles')
+        .select('user_id');
 
-    if (!admins || admins.length === 0) {
-        console.warn('⚠️ No admins/managers found to notify about low stock');
+    if (error) {
+        console.error('Error fetching EPI sector responsibles:', error);
+    }
+
+    // Deduplicate and map into the structure expected downstream ({ id: string }[])
+    const uniqueUserIds = Array.from(new Set((responsibles || []).map(r => r.user_id).filter(Boolean)));
+    const admins = uniqueUserIds.map(id => ({ id }));
+
+    if (admins.length === 0) {
+        console.warn('⚠️ No EPI responsibles found in the admin panel to notify about low stock');
         return;
     }
 

@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.11.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.12.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -25,7 +25,8 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ## ✨ Funcionalidades Atuais
 
-### 🤖 **Inteligência Artificial (v5.9)**
+### 🤖 **Inteligência Artificial (v5.12)**
+- **Agente de Voz Real-Time (LiveKit)** - Canal WebRTC de áudio bidirecional para diálogo natural instantâneo com a IA sem digitação.
 - **Agente IA Autônomo para KPIs** - Ciclo contínuo de análise e otimização de metas com múltiplos níveis de autonomia, memória e decisões automatizadas.
 - **Agente Proativo** - Automação de tarefas diárias, análise de e-mails pendentes e acompanhamento de metas sem intervenção humana.
 - **Base de Conhecimento** - Inteligência corporativa personalizada injetada no contexto da IA para respostas precisas sobre processos internos.
@@ -81,12 +82,17 @@ npm run dev
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
 
-## 🚀 Últimas Atualizações (v5.11.0)
+## 🚀 Últimas Atualizações (v5.12.0)
 
-- **Expansão Internacional (i18n)**: Tradução completa e integrada para os módulos de Contratos, Assinaturas, Reembolsos e Listas de Presença.
-- **Localidade de Datas**: Patch avançado no `I18nContext` para formatar dinamicamente strings de data e hora de acordo com o idioma selecionado pelo usuário.
-- **Self-Hosted PDF Workers**: Implementação local dos workers do PDF.js (`public/workers`), eliminando CDNs externos e garantindo segurança e performance offline.
-- **Refatoração de Assinaturas**: Melhorias robustas no painel de auditoria, fluxo de envelopes e compatibilidade dinâmica para links e ambientes Netlify.
+- **Agente de Voz Real-Time (LiveKit)**: Integração nativa de WebRTC de alto desempenho, garantindo processamento de voz bi-direcional para suporte interativo sem fricção.
+- **Auto-Recuperação e Resiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.
+- **Otimização de Notificações (EPI)**: Restrição inteligente do envio de e-mails de estoque crítico unicamente aos IDs listados como responsáveis setoriais cadastrados.
+
+## 🚀 Destaques Recentes (v5.11.0)
+
+- **Expansão Internacional (i18n)**: Suporte PT-BR / EN-US completo integrado aos módulos de Contratos, Assinaturas e Reembolsos.
+- **Locais e Datas Dinâmicas**: Patch avançado no motor JavaScript Date para renderização inteligente de fuso-horário global.
+- **Workers Locais PDF**: Processamento de renderização de PDFs offline local (`public/workers`) para máxima privacidade e performance sem CDNs.
 
 ---
 

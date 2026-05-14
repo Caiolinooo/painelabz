@@ -7,7 +7,8 @@ import ChatSidebar from './ChatSidebar';
 import ExchangeIntegrationModal from './ExchangeIntegrationModal';
 import GenerativeDashboard from './GenerativeDashboard';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity } from 'lucide-react';
+import { Activity, Mic } from 'lucide-react';
+import VoiceAssistantModal from './VoiceAssistantModal';
 
 interface Props {
   token: string;
@@ -34,6 +35,8 @@ export default function ChatWindow({ token }: Props) {
 
   const [activeDashboard, setActiveDashboard] = useState<any>(null);
   const [showDashboard, setShowDashboard] = useState(false);
+  
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -341,6 +344,12 @@ export default function ChatWindow({ token }: Props) {
           token={token} 
         />
 
+        <VoiceAssistantModal 
+          isOpen={showVoiceModal}
+          onClose={() => setShowVoiceModal(false)}
+          authToken={token}
+        />
+
         {/* Top Header Bar */}
         <div className="h-14 border-b border-gray-100 px-4 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-20">
           <div className="flex items-center gap-3">
@@ -376,6 +385,13 @@ export default function ChatWindow({ token }: Props) {
                 {showDashboard ? 'Ocultar Dashboard' : 'Ver Dashboard'}
               </button>
             )}
+            <button 
+              onClick={() => setShowVoiceModal(true)} 
+              className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-gray-500" 
+              title="Conversa por Voz em Tempo Real"
+            >
+              <Mic className="w-5 h-5" />
+            </button>
             <button onClick={handleNewSession} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500" title="Nova Conversa">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -462,6 +478,13 @@ export default function ChatWindow({ token }: Props) {
                 Shift + Enter para nova linha
               </div>
             </div>
+            <button 
+              onClick={() => setShowVoiceModal(true)}
+              className="flex-shrink-0 w-14 h-14 bg-slate-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 text-slate-600 hover:text-blue-600 rounded-2xl transition-all flex items-center justify-center group active:scale-95 shadow-sm hover:shadow"
+              title="Iniciar conversa por Voz em Tempo Real"
+            >
+              <Mic className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
             <button 
               onClick={handleSend} 
               disabled={!input.trim() || isSending}

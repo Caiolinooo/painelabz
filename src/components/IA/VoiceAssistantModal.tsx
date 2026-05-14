@@ -1,0 +1,343 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  LiveKitRoom, 
+  RoomAudioRenderer, 
+  useVoiceAssistant,
+  BarVisualizer,
+  useLocalParticipant,
+  useConnectionState
+} from '@livekit/components-react';
+import { Track, ConnectionState } from 'livekit-client';
+import { X, Mic, MicOff, PhoneOff, Loader2, Wifi, Volume2 } from 'lucide-react';
+
+// Interface do token retornado pelo nosso backend
+interface LiveKitConnectionDetails {
+  token: string;
+  roomName: string;
+  serverUrl: string;
+}
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  authToken: string; // Token do Portal ABZ
+}
+
+export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Props) {
+  const [connDetails, setConnDetails] = useState<LiveKitConnectionDetails | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Busca o token do LiveKit ao abrir o modal
+  useEffect(() => {
+    if (!isOpen) {
+      setConnDetails(null);
+      setError(null);
+      return;
+    }
+
+    async function getLiveKitToken() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/ia/voice/token', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          }
+        });
+        
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Erro ao obter autorização de voz.');
+        }
+        
+        const data = await res.json();
+        setConnDetails(data);
+      } catch (err: any) {
+        console.error('[Voice Assistant] Token Fetch Error:', err);
+        setError(err.message || 'Não foi possível conectar ao servidor de voz.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    getLiveKitToken();
+  }, [isOpen, authToken]);
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-2xl p-4 md:p-6"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          transition={{ type: "spring", damping: 25, stiffness: 250 }}
+          className="relative w-full max-w-lg h-[550px] md:h-[650px] bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+        >
+          {/* Header do Modal */}
+          <div className="absolute top-6 left-6 right-6 z-20 flex items-center justify-between text-slate-400">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-xs font-medium uppercase tracking-widest text-slate-400">ABZ Live Voice</span>
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Conteúdo Principal */}
+          <div className="flex-1 flex flex-col items-center justify-center pt-12 px-6 relative">
+            {loading ? (
+              <div className="text-center space-y-4">
+                <div className="relative flex items-center justify-center">
+                  <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                  <Wifi className="w-6 h-6 text-blue-400 absolute animate-pulse" />
+                </div>
+                <p className="text-slate-400 text-sm font-medium animate-pulse">Iniciando conexão criptografada...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center space-y-4 max-w-xs">
+                <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                  <X className="w-6 h-6 text-red-500" />
+                </div>
+                <h3 className="text-white font-bold text-base">Falha na Conexão</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{error}</p>
+                <button 
+                  onClick={onClose}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors mt-2"
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : connDetails ? (
+              <LiveKitRoom
+                token={connDetails.token}
+                serverUrl={connDetails.serverUrl}
+                connect={true}
+                audio={true}
+                video={false}
+                className="flex-1 flex flex-col items-center justify-center w-full"
+              >
+                <VoiceAssistantInner onClose={onClose} />
+                {/* Componente exigido pelo LiveKit para tocar o áudio recebido */}
+                <RoomAudioRenderer />
+              </LiveKitRoom>
+            ) : null}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// Interface interna conectada ao contexto da sala LiveKit
+function VoiceAssistantInner({ onClose }: { onClose: () => void }) {
+  const { state, audioTrack, agent } = useVoiceAssistant();
+  const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
+  const connectionState = useConnectionState();
+  
+  // Mapear estados para mensagens elegantes
+  const getStatusText = () => {
+    if (connectionState === ConnectionState.Connecting) {
+      return 'Estabelecendo canal de voz...';
+    }
+    if (connectionState === ConnectionState.Reconnecting) {
+      return 'Instabilidade na rede. Reconectando...';
+    }
+    if (connectionState === ConnectionState.Disconnected) {
+      return 'Conexão encerrada.';
+    }
+    if (!agent) {
+      return 'Aguardando o Agente de IA conectar...';
+    }
+    switch (state) {
+      case 'connecting': return 'Estabelecendo canal de voz...';
+      case 'listening': return 'Ouvindo você...';
+      case 'thinking': return 'Processando resposta...';
+      case 'speaking': return 'ABZ Assistant falando';
+      default: return 'Conectado e Pronto';
+    }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-between w-full py-10">
+      {/* Indicador superior */}
+      <div className="text-center space-y-1">
+        <h2 className="text-white text-lg font-medium tracking-wide">
+          {state === 'speaking' ? 'Atendente Virtual' : 'ABZ Assistant'}
+        </h2>
+        <p className="text-slate-400 text-xs transition-all">
+          {getStatusText()}
+        </p>
+      </div>
+
+      {/* Visualizador Visual de Alto Nível (Estilo ChatGPT/Gemini) */}
+      <div className="relative w-full flex items-center justify-center flex-1 min-h-[250px]">
+        {/* Círculos de Glow de Fundo baseados no Estado */}
+        <div className="absolute w-64 h-64 bg-blue-600/10 rounded-full blur-[80px] transition-all duration-700 mix-blend-screen"
+          style={{
+            transform: state === 'speaking' ? 'scale(1.3)' : state === 'thinking' ? 'scale(1.1)' : 'scale(1.0)',
+            background: state === 'speaking' ? 'rgba(99, 102, 241, 0.15)' : state === 'thinking' ? 'rgba(168, 85, 247, 0.15)' : 'rgba(59, 130, 246, 0.10)'
+          }}
+        />
+        
+        <div className="absolute w-48 h-48 bg-indigo-600/10 rounded-full blur-[60px] transition-all duration-700"
+          style={{
+            transform: state === 'listening' ? 'scale(1.2)' : 'scale(1.0)',
+          }}
+        />
+
+        {/* O ORBE / WAVEFORM PRINCIPAL */}
+        <div className="relative z-10 flex items-center justify-center w-48 h-48">
+          <AnimatePresence mode="wait">
+            {/* Animação de "Pensando" (Thinking) - Rotação Hipnótica */}
+            {state === 'thinking' && (
+              <motion.div
+                key="thinking"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <div className="w-28 h-28 rounded-full border-2 border-t-indigo-500 border-r-purple-500 border-b-blue-500 border-l-transparent animate-spin duration-[1.5s]" />
+                <div className="absolute w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full blur-md opacity-40 animate-pulse" />
+              </motion.div>
+            )}
+
+            {/* Animação de "Ouvindo" (Listening) ou "Inativo" (Idle) - Orbe que Pulsa Leve */}
+            {(state === 'listening' || state === 'idle') && (
+              <motion.div
+                key="idle-listening"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="relative w-24 h-24 flex items-center justify-center"
+              >
+                {/* Ondas concêntricas leves que expandem no listening */}
+                {state === 'listening' && (
+                  <>
+                    <motion.div 
+                      animate={{ scale: [1, 1.6], opacity: [0.3, 0] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
+                      className="absolute inset-0 rounded-full bg-blue-500/20"
+                    />
+                    <motion.div 
+                      animate={{ scale: [1, 2.2], opacity: [0.15, 0] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeOut", delay: 0.6 }}
+                      className="absolute inset-0 rounded-full bg-blue-400/10"
+                    />
+                  </>
+                )}
+                
+                {/* Orbe Sólido Minimalista com Degradê Dinâmico */}
+                <motion.div 
+                  animate={state === 'listening' ? {
+                    scale: [1, 1.05, 1],
+                    borderRadius: ["42% 58% 70% 30% / 45% 45% 55% 55%", "55% 45% 41% 59% / 39% 53% 47% 61%", "42% 58% 70% 30% / 45% 45% 55% 55%"]
+                  } : { scale: 1 }}
+                  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                  className="w-20 h-20 bg-gradient-to-tr from-blue-600 to-cyan-500 rounded-full shadow-[0_0_30px_rgba(59,130,246,0.5)] flex items-center justify-center z-20"
+                >
+                  {state === 'listening' ? <Mic className="w-7 h-7 text-white animate-pulse" /> : <Volume2 className="w-7 h-7 text-white opacity-80" />}
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Animação de "Falando" (Speaking) - Visualizer Real da Voz da IA */}
+            {state === 'speaking' && (
+              <motion.div
+                key="speaking"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="w-full max-w-xs flex flex-col items-center justify-center"
+              >
+                {/* Círculo central que pulsa suave */}
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(99,102,241,0.4)] mb-8 z-10">
+                  <Volume2 className="w-6 h-6 text-white" />
+                </div>
+                
+                {/* O Visualizador de Barras reativo do LiveKit */}
+                <div className="w-full h-16 flex justify-center">
+                  <BarVisualizer 
+                    trackRef={audioTrack} 
+                    barCount={9}
+                    className="h-full w-48 flex items-center gap-1.5 lk-bar-visualizer"
+                    style={{
+                      ['--lk-va-bar-width' as any]: '6px',
+                      ['--lk-va-bar-radius' as any]: '999px',
+                      ['--lk-va-bar-color' as any]: '#6366f1', // Indigo-500
+                    }}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Rodapé com Ações (Controles minimalistas) */}
+      <div className="w-full flex flex-col items-center gap-6">
+        {/* Informação sobre transcrição ou dica caso a IA fale */}
+        <div className="h-6 text-center px-4">
+          {state === 'listening' && (
+            <p className="text-slate-500 text-xs animate-pulse">Diga algo como "verificar meus chamados"...</p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-8">
+          {/* Botão Mute/Unmute customizado usando useLocalParticipant */}
+          <button
+            onClick={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
+            className="w-12 h-12 rounded-full border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all"
+            title={isMicrophoneEnabled ? 'Mutar microfone' : 'Ativar microfone'}
+          >
+            {isMicrophoneEnabled ? (
+              <Mic className="w-5 h-5" />
+            ) : (
+              <MicOff className="w-5 h-5 text-red-400" />
+            )}
+          </button>
+
+          {/* Botão de Encerrar Chamada */}
+          <button
+            onClick={onClose}
+            className="w-16 h-16 bg-red-500 hover:bg-red-600 active:bg-red-700 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-500/20 hover:shadow-red-500/30 transition-all transform hover:scale-105 active:scale-95"
+            title="Encerrar conversa"
+          >
+            <PhoneOff className="w-6 h-6 fill-current" />
+          </button>
+
+          {/* Espaçador ou botão de configurações no futuro */}
+          <div className="w-12 h-12 flex items-center justify-center text-slate-600">
+            {/* Vazio por enquanto para manter simetria visual perfeita */}
+          </div>
+        </div>
+      </div>
+
+      {/* Custom CSS injetado para as Barras do Visualizer do LiveKit */}
+      <style jsx global>{`
+        .lk-bar-visualizer div {
+          background: linear-gradient(to top, #4f46e5, #8b5cf6);
+          width: 6px !important;
+          border-radius: 99px !important;
+          transition: height 0.05s ease;
+        }
+        }
+      `}</style>
+    </div>
+  );
+}
