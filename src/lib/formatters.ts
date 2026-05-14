@@ -48,6 +48,10 @@ export function formatViewsMinimal(count: number): string {
  * @example formatNumber(1234567) => "1.234.567"
  */
 export function formatNumber(num: number): string {
+    if (typeof window !== 'undefined') {
+        const locale = localStorage.getItem('locale') || 'pt-BR';
+        return num.toLocaleString(locale);
+    }
     return num.toLocaleString('pt-BR');
 }
 
@@ -62,11 +66,17 @@ export function formatRelativeTime(date: Date | string): string {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Agora há pouco';
+    let isEnglish = false;
+    if (typeof window !== 'undefined') {
+        const savedLocale = localStorage.getItem('locale');
+        isEnglish = savedLocale === 'en-US';
+    }
+
+    if (diffMins < 1) return isEnglish ? 'Just now' : 'Agora há pouco';
     if (diffMins < 60) return `${diffMins}min`;
     if (diffHours < 24) return `${diffHours}h`;
     if (diffDays < 7) return `${diffDays}d`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}sem`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mês`;
-    return `${Math.floor(diffDays / 365)}ano`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}${isEnglish ? 'w' : 'sem'}`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)}${isEnglish ? 'mo' : 'mês'}`;
+    return `${Math.floor(diffDays / 365)}${isEnglish ? 'yr' : 'ano'}`;
 }

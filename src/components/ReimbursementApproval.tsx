@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { FiDollarSign, FiFilter, FiRefreshCw, FiCheck, FiX, FiEye, FiSearch, FiAlertTriangle } from 'react-icons/fi';
@@ -54,7 +54,7 @@ interface Reimbursement {
 }
 
 export default function ReimbursementApproval() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { user, isAdmin, isManager, hasApprovalPermission } = useSupabaseAuth();
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
@@ -444,7 +444,7 @@ export default function ReimbursementApproval() {
 
   // Função para formatar valor monetário
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
@@ -452,7 +452,7 @@ export default function ReimbursementApproval() {
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    return new Date(dateString).toLocaleDateString(locale);
   };
 
   // Verificar se o email do usuário é o email do administrador

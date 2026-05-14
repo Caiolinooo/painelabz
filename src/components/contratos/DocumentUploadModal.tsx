@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { FiUpload, FiX, FiFile, FiAlertCircle, FiPlus } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface DocumentUploadModalProps {
     isOpen: boolean;
@@ -11,6 +12,7 @@ interface DocumentUploadModalProps {
 }
 
 export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: DocumentUploadModalProps) {
+    const { t } = useI18n();
     const [titulo, setTitulo] = useState('');
     const [descricao, setDescricao] = useState('');
     const [files, setFiles] = useState<File[]>([]);
@@ -56,11 +58,11 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
         
         for (const f of incomingFiles) {
             if (!f.type.includes('pdf')) {
-                toast.error(`"${f.name}" não é um PDF e foi ignorado.`);
+                toast.error(t('contratos.upload.not_pdf_error', { name: f.name }, `"${f.name}" não é um PDF e foi ignorado.`));
                 continue;
             }
             if (f.size > MAX_SIZE) {
-                toast.error(`"${f.name}" excede o limite de 25MB e foi ignorado.`);
+                toast.error(t('contratos.upload.size_error', { name: f.name }, `"${f.name}" excede o limite de 25MB e foi ignorado.`));
                 continue;
             }
             validFiles.push(f);
@@ -81,7 +83,7 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (files.length === 0 || !titulo.trim()) {
-            toast.error('Título e pelo menos um arquivo PDF são obrigatórios.');
+            toast.error(t('contratos.upload.validation_error', 'Título e pelo menos um arquivo PDF são obrigatórios.'));
             return;
         }
 
@@ -108,15 +110,15 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Erro ao criar envelope');
+                throw new Error(data.error || t('contratos.upload.create_error', 'Erro ao criar envelope'));
             }
 
-            toast.success('Envelope e documentos enviados com sucesso!');
+            toast.success(t('contratos.upload.success', 'Envelope e documentos enviados com sucesso!'));
             resetForm();
             onSuccess();
             onClose();
         } catch (err: any) {
-            toast.error(err.message || 'Erro ao enviar envelope');
+            toast.error(err.message || t('contratos.upload.send_error', 'Erro ao enviar envelope'));
         } finally {
             setIsUploading(false);
         }
@@ -134,8 +136,8 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
                             <FiUpload className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900">Novo Envelope</h3>
-                            <p className="text-xs text-gray-500">Envie um ou mais PDFs agrupados</p>
+                            <h3 className="text-lg font-semibold text-gray-900">{t('contratos.upload.modal_title', 'Novo Envelope')}</h3>
+                            <p className="text-xs text-gray-500">{t('contratos.upload.modal_subtitle', 'Envie um ou mais PDFs agrupados')}</p>
                         </div>
                     </div>
                     <button
@@ -150,12 +152,12 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
                 <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
                     {/* Title */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Envelope *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('contratos.upload.label_title', 'Nome do Envelope *')}</label>
                         <input
                             type="text"
                             value={titulo}
                             onChange={(e) => setTitulo(e.target.value)}
-                            placeholder="Ex: Contratação - Lucas Santos"
+                            placeholder={t('contratos.upload.placeholder_title', 'Ex: Contratação - Lucas Santos')}
                             className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             disabled={isUploading}
                             required
@@ -164,11 +166,11 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
 
                     {/* Description */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição (opcional)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('contratos.upload.label_desc', 'Descrição (opcional)')}</label>
                         <textarea
                             value={descricao}
                             onChange={(e) => setDescricao(e.target.value)}
-                            placeholder="Ex: Contrato social + NDA"
+                            placeholder={t('contratos.upload.placeholder_desc', 'Ex: Contrato social + NDA')}
                             rows={2}
                             className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
                             disabled={isUploading}
@@ -177,7 +179,7 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
 
                     {/* File Drop Zone */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Documentos PDF *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('contratos.upload.label_files', 'Documentos PDF *')}</label>
                         <div
                             onDragEnter={handleDrag}
                             onDragOver={handleDrag}
@@ -197,9 +199,9 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
                             <div>
                                 <FiUpload className="w-7 h-7 text-gray-400 mx-auto mb-1" />
                                 <p className="text-sm text-gray-600 font-medium">
-                                    Clique ou arraste seus PDFs
+                                    {t('contratos.upload.drag_title', 'Clique ou arraste seus PDFs')}
                                 </p>
-                                <p className="text-xs text-gray-400">Arquivos individuais até 25MB</p>
+                                <p className="text-xs text-gray-400">{t('contratos.upload.drag_subtitle', 'Arquivos individuais até 25MB')}</p>
                             </div>
                         </div>
                     </div>
@@ -208,7 +210,7 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
                     {files.length > 0 && (
                         <div className="space-y-2">
                             <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                                <FiFile className="w-3 h-3"/> Arquivos selecionados ({files.length}):
+                                <FiFile className="w-3 h-3"/> {t('contratos.upload.selected_files', { count: files.length }, 'Arquivos selecionados')}
                             </p>
                             <div className="max-h-40 overflow-y-auto space-y-1.5 border border-gray-100 rounded-lg p-2 bg-gray-50/50">
                                 {files.map((f, index) => (
@@ -238,7 +240,7 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
                     <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
                         <FiAlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                         <p className="text-xs text-blue-700 leading-relaxed">
-                            Os documentos serão processados no mesmo envelope e sequenciados após a configuração das assinaturas.
+                            {t('contratos.upload.info_notice', 'Os documentos serão processados no mesmo envelope e sequenciados após a configuração das assinaturas.')}
                         </p>
                     </div>
 
@@ -250,7 +252,7 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
                             disabled={isUploading}
                             className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         >
-                            Cancelar
+                            {t('contratos.upload.btn_cancel', 'Cancelar')}
                         </button>
                         <button
                             type="submit"
@@ -262,7 +264,7 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess }: Docu
                             ) : (
                                 <FiPlus className="w-4 h-4" />
                             )}
-                            {isUploading ? 'Processando...' : 'Criar Envelope'}
+                            {isUploading ? t('contratos.upload.btn_processing', 'Processando...') : t('contratos.upload.btn_submit', 'Criar Envelope')}
                         </button>
                     </div>
                 </form>

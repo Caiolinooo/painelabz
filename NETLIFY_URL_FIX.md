@@ -21,9 +21,9 @@ URL: https://painelabz.netlify.app/verify-email?token=1b6c5934-4192-43a8-ae6d-b3
 NEXT_PUBLIC_APP_URL=https://painelabz.netlify.app
 NEXT_PUBLIC_API_URL=https://painelabz.netlify.app/api
 
-# Depois (CORRETO)
-NEXT_PUBLIC_APP_URL=https://painelabzgroup.netlify.app
-NEXT_PUBLIC_API_URL=https://painelabzgroup.netlify.app/api
+# Depois (CORRETO - DOMÍNIO PRODUÇÃO)
+NEXT_PUBLIC_APP_URL=https://portal.groupabz.com
+NEXT_PUBLIC_API_URL=https://portal.groupabz.com/api
 ```
 
 ### 2. **Arquivos Corrigidos**
@@ -53,8 +53,8 @@ chmod +x fix-url-netlify.sh
 ### **Opção 3: Manual**
 ```bash
 # 1. Atualizar variáveis de ambiente
-npx netlify env:set NEXT_PUBLIC_APP_URL "https://painelabzgroup.netlify.app"
-npx netlify env:set NEXT_PUBLIC_API_URL "https://painelabzgroup.netlify.app/api"
+npx netlify env:set NEXT_PUBLIC_APP_URL "https://portal.groupabz.com"
+npx netlify env:set NEXT_PUBLIC_API_URL "https://portal.groupabz.com/api"
 
 # 2. Fazer novo deploy
 git add .
@@ -71,7 +71,7 @@ git push origin main
 
 ### ✅ **Após a Correção:**
 - ✅ Links de verificação funcionais
-- ✅ URL correta: `https://painelabzgroup.netlify.app/verify-email?token=...`
+- ✅ URL correta: `https://portal.groupabz.com/verify-email?token=...`
 - ✅ Sistema de autenticação totalmente funcional
 
 ## 🔍 **Verificação**
@@ -84,17 +84,17 @@ npx netlify env:list
 ```
 
 2. **Verificar site funcionando:**
-- Acesse: https://painelabzgroup.netlify.app
+- Acesse: https://portal.groupabz.com
 - Teste o registro de novo usuário
 - Verifique se o email de verificação chega com URL correta
 
 3. **Verificar deploy:**
 - Admin: https://app.netlify.com/sites/painelabzgroup/deploys
-- Status: https://painelabzgroup.netlify.app
+- Status: https://portal.groupabz.com
 
 ## 📝 **Commits Relacionados**
 
-- `d5426ed` - fix: Corrigir URLs do Netlify para painelabzgroup.netlify.app
+- `d5426ed` - fix: Corrigir URLs do Netlify para portal.groupabz.com
 - `12fd327` - fix: Corrigir comando de build no netlify.toml para compatibilidade Windows
 
 ## 🎯 **Status Final**

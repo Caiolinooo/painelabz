@@ -10,11 +10,13 @@ import {
 import Link from 'next/link';
 import { fetchWithAuth } from '@/lib/authUtils';
 import { useSignature } from '@/contexts/SignatureContext';
+import { useI18n } from '@/contexts/I18nContext';
 import DocumentStatusBadge from '@/components/contratos/DocumentStatusBadge';
 import SignaturePositionOverlay from '@/components/contratos/SignaturePositionOverlay';
 import toast from 'react-hot-toast';
 
 export default function AssinarDocumentoPage() {
+    const { t } = useI18n();
     const params = useParams();
     const searchParams = useSearchParams();
     const docId = params?.id as string;
@@ -78,14 +80,14 @@ export default function AssinarDocumentoPage() {
                 setSolicitacao(data.solicitacao);
                 setPdfUrl(data.pdf_url || '');
             } else {
-                toast.error(data.error || 'Documento não encontrado');
+                toast.error(data.error || t('contrato.assinar.erro_nao_encontrado', 'Documento não encontrado'));
             }
         } catch (err) {
-            toast.error('Erro ao carregar documento');
+            toast.error(t('contrato.assinar.erro_carregar', 'Erro ao carregar documento'));
         } finally {
             setLoading(false);
         }
-    }, [docId, emailParam]);
+    }, [docId, emailParam, t]);
 
     useEffect(() => {
         if (docId) fetchDocumento();
@@ -114,15 +116,15 @@ export default function AssinarDocumentoPage() {
     // Handle signing with certificate (browser's built-in)
     const handleSignWithCertificate = async () => {
         if (!legalAccepted) {
-            toast.error('Confirme a declaração legal para continuar');
+            toast.error(t('contrato.assinar.erro_declaracao', 'Confirme a declaração legal para continuar'));
             return;
         }
 
         setIsSigning(true);
         try {
             const result = await requestSignature({
-                title: 'Assinar com Certificado Digital',
-                description: `Assine o documento: ${documento?.titulo}`,
+                title: t('contrato.assinar.modal_titulo_cert', 'Assinar com Certificado Digital'),
+                description: `${t('contrato.assinar.descricao_assinar', 'Assine o documento')}: ${documento?.titulo}`,
             });
 
             if (!result) {
@@ -133,7 +135,7 @@ export default function AssinarDocumentoPage() {
             await finalizeSignature(result.signatureUrl);
         } catch (err: any) {
             console.error('[Assinar] Erro ao assinar com certificado:', err);
-            toast.error(err.message || 'Erro ao assinar com certificado digital');
+            toast.error(err.message || t('contrato.assinar.erro_assinar_cert', 'Erro ao assinar com certificado digital'));
         } finally {
             setIsSigning(false);
         }
@@ -142,11 +144,11 @@ export default function AssinarDocumentoPage() {
     // Handle signing with data + signature pad
     const handleSignWithData = async () => {
         if (!signerData.nome || !signerData.cpf || !signerData.email) {
-            toast.error('Preencha todos os campos obrigatórios');
+            toast.error(t('contrato.assinar.campos_obrigatorios', 'Preencha todos os campos obrigatórios'));
             return;
         }
         if (!legalAccepted) {
-            toast.error('Confirme a declaração legal para continuar');
+            toast.error(t('contrato.assinar.erro_declaracao', 'Confirme a declaração legal para continuar'));
             return;
         }
 
@@ -155,8 +157,8 @@ export default function AssinarDocumentoPage() {
 
         try {
             const result = await requestSignature({
-                title: 'Assinar Documento',
-                description: `Assine o documento: ${documento?.titulo}`,
+                title: t('contrato.assinar.modal_titulo_manual', 'Assinar Documento'),
+                description: `${t('contrato.assinar.descricao_assinar', 'Assine o documento')}: ${documento?.titulo}`,
             });
 
             if (!result) {
@@ -166,7 +168,7 @@ export default function AssinarDocumentoPage() {
 
             await finalizeSignature(result.signatureUrl, signerData);
         } catch (err: any) {
-            toast.error(err.message || 'Erro ao assinar documento');
+            toast.error(err.message || t('contrato.assinar.erro_assinar_manual', 'Erro ao assinar documento'));
         } finally {
             setIsSigning(false);
         }
@@ -199,13 +201,13 @@ export default function AssinarDocumentoPage() {
             const result = await res.json();
 
             if (result.success) {
-                toast.success('Documento assinado com sucesso!');
+                toast.success(t('contrato.assinar.sucesso', 'Documento assinado com sucesso!'));
                 fetchDocumento();
             } else {
-                toast.error(result.error || 'Erro ao assinar');
+                toast.error(result.error || t('contrato.assinar.erro_final', 'Erro ao assinar'));
             }
         } catch (err) {
-            toast.error('Erro ao finalizar assinatura');
+            toast.error(t('contrato.assinar.erro_finalizar', 'Erro ao finalizar assinatura'));
         }
     };
 
@@ -222,9 +224,9 @@ export default function AssinarDocumentoPage() {
             <MainLayout>
                 <div className="text-center py-20">
                     <FiAlertCircle className="w-12 h-12 text-red-300 mx-auto mb-3" />
-                    <p className="text-gray-500">Documento não encontrado ou acesso inválido</p>
+                    <p className="text-gray-500">{t('contrato.assinar.acesso_invalido', 'Documento não encontrado ou acesso inválido')}</p>
                     <Link href="/" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
-                        ← Voltar para o início
+                        ← {t('contrato.assinar.voltar', 'Voltar para o início')}
                     </Link>
                 </div>
             </MainLayout>
@@ -264,7 +266,7 @@ export default function AssinarDocumentoPage() {
                                     <FiChevronLeft className="w-4 h-4" />
                                 </button>
                                 <span className="text-sm text-gray-600">
-                                    Página {currentPage} de {numPages || '...'}
+                                    {t('contrato.assinar.pagina', 'Página')} {currentPage} {t('contrato.assinar.de', 'de')} {numPages || '...'}
                                 </span>
                                 <button
                                     onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
@@ -296,7 +298,7 @@ export default function AssinarDocumentoPage() {
                                             y={solicitacao.posicao_y}
                                             width={solicitacao.largura_assinatura || 150}
                                             height={solicitacao.altura_assinatura || 50}
-                                            label="Sua assinatura aqui"
+                                            label={t('contrato.assinar.sua_aqui', 'Sua assinatura aqui')}
                                             status="PENDING"
                                             interactive={false}
                                         />
@@ -308,7 +310,7 @@ export default function AssinarDocumentoPage() {
                                             y={solicitacao.posicao_y || 500}
                                             width={solicitacao.largura_assinatura || 150}
                                             height={solicitacao.altura_assinatura || 50}
-                                            label="✓ Assinado"
+                                            label={t('contrato.assinar.assinado', '✓ Assinado')}
                                             status="SIGNED"
                                             interactive={false}
                                         />
@@ -323,7 +325,7 @@ export default function AssinarDocumentoPage() {
                         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
                             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                                 <FiEdit3 className="w-4 h-4 text-gray-400" />
-                                Assinar Documento
+                                {t('contrato.assinar.titulo', 'Assinar Documento')}
                             </h3>
 
                             {solicitacao?.status === 'SIGNED' ? (
@@ -331,9 +333,9 @@ export default function AssinarDocumentoPage() {
                                     <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                         <FiCheck className="w-6 h-6 text-green-600" />
                                     </div>
-                                    <p className="text-green-600 font-medium">Documento Assinado</p>
+                                    <p className="text-green-600 font-medium">{t('contrato.assinar.status_assinado', 'Documento Assinado')}</p>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Assinado em {new Date(solicitacao.updated_at).toLocaleDateString('pt-BR')}
+                                        {t('contrato.assinar.data_assinatura', 'Assinado em')} {new Date(solicitacao.updated_at).toLocaleDateString('pt-BR')}
                                     </p>
                                 </div>
                             ) : (
@@ -350,8 +352,8 @@ export default function AssinarDocumentoPage() {
                                             <FiShield className="w-5 h-5 text-blue-600" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900">Certificado Digital</p>
-                                            <p className="text-xs text-gray-500">Use seu e-CPF, e-CNPJ ou token</p>
+                                            <p className="font-medium text-gray-900">{t('contrato.assinar.opcao_certificado', 'Certificado Digital')}</p>
+                                            <p className="text-xs text-gray-500">{t('contrato.assinar.desc_certificado', 'Use seu e-CPF, e-CNPJ ou token')}</p>
                                         </div>
                                     </button>
 
@@ -367,8 +369,8 @@ export default function AssinarDocumentoPage() {
                                             <FiUser className="w-5 h-5 text-green-600" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900">Dados Pessoais + Assinatura</p>
-                                            <p className="text-xs text-gray-500">Preencha seus dados e assine manualmente</p>
+                                            <p className="font-medium text-gray-900">{t('contrato.assinar.opcao_dados', 'Dados Pessoais + Assinatura')}</p>
+                                            <p className="text-xs text-gray-500">{t('contrato.assinar.desc_dados', 'Preencha seus dados e assine manualmente')}</p>
                                         </div>
                                     </button>
                                 </div>
@@ -377,10 +379,10 @@ export default function AssinarDocumentoPage() {
 
                         {/* Document Info */}
                         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
-                            <h3 className="text-sm font-semibold text-gray-800">Informações</h3>
+                            <h3 className="text-sm font-semibold text-gray-800">{t('contrato.assinar.informacoes', 'Informações')}</h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Enviado em</span>
+                                    <span className="text-gray-500">{t('contrato.assinar.enviado_em', 'Enviado em')}</span>
                                     <span className="text-gray-800">
                                         {new Date(documento.data_criacao).toLocaleDateString('pt-BR')}
                                     </span>
@@ -395,9 +397,9 @@ export default function AssinarDocumentoPage() {
                                 )}
                                 {solicitacao && (
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500">Posição</span>
+                                        <span className="text-gray-500">{t('contrato.assinar.posicao', 'Posição')}</span>
                                         <span className="text-gray-800 text-xs">
-                                            Pág {solicitacao.pagina_assinatura || 1} | X:{solicitacao.posicao_x || 100} Y:{solicitacao.posicao_y || 500}
+                                            {t('contrato.assinar.pag', 'Pág')} {solicitacao.pagina_assinatura || 1} | X:{solicitacao.posicao_x || 100} Y:{solicitacao.posicao_y || 500}
                                         </span>
                                     </div>
                                 )}
@@ -406,7 +408,6 @@ export default function AssinarDocumentoPage() {
                     </div>
                 </div>
             </div>
-
             {/* Data Modal */}
             {showDataModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
@@ -416,8 +417,8 @@ export default function AssinarDocumentoPage() {
                                 <FiUser className="w-5 h-5 text-green-600" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Seus Dados</h3>
-                                <p className="text-xs text-gray-500">Preencha para assinar o documento</p>
+                                <h3 className="text-lg font-semibold text-gray-900">{t('contrato.assinar.seus_dados', 'Seus Dados')}</h3>
+                                <p className="text-xs text-gray-500">{t('contrato.assinar.preencha', 'Preencha para assinar o documento')}</p>
                             </div>
                             <button
                                 onClick={() => setShowDataModal(false)}
@@ -430,7 +431,7 @@ export default function AssinarDocumentoPage() {
                         <div className="px-6 py-5 space-y-4">
                             <div>
                                 <label className="text-sm text-gray-700 font-medium block mb-1">
-                                    Nome Completo *
+                                    {t('contrato.assinar.nome_label', 'Nome Completo *')}
                                 </label>
                                 <div className="relative">
                                     <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -439,14 +440,14 @@ export default function AssinarDocumentoPage() {
                                         value={signerData.nome}
                                         onChange={(e) => setSignerData({ ...signerData, nome: e.target.value })}
                                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg"
-                                        placeholder="Seu nome completo"
+                                        placeholder={t('contrato.assinar.nome_placeholder', 'Seu nome completo')}
                                     />
                                 </div>
                             </div>
 
                             <div>
                                 <label className="text-sm text-gray-700 font-medium block mb-1">
-                                    CPF *
+                                    {t('contrato.assinar.cpf_label', 'CPF *')}
                                 </label>
                                 <input
                                     type="text"
@@ -460,7 +461,7 @@ export default function AssinarDocumentoPage() {
 
                             <div>
                                 <label className="text-sm text-gray-700 font-medium block mb-1">
-                                    E-mail *
+                                    {t('contrato.assinar.email_label', 'E-mail *')}
                                 </label>
                                 <div className="relative">
                                     <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -476,7 +477,7 @@ export default function AssinarDocumentoPage() {
 
                             <div>
                                 <label className="text-sm text-gray-700 font-medium block mb-1">
-                                    Telefone
+                                    {t('contrato.assinar.telefone_label', 'Telefone')}
                                 </label>
                                 <div className="relative">
                                     <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -485,7 +486,7 @@ export default function AssinarDocumentoPage() {
                                         value={signerData.telefone}
                                         onChange={(e) => setSignerData({ ...signerData, telefone: e.target.value })}
                                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg"
-                                        placeholder="(00) 00000-0000"
+                                        placeholder={t('contrato.assinar.telefone_placeholder', '(00) 00000-0000')}
                                     />
                                 </div>
                             </div>
@@ -498,7 +499,7 @@ export default function AssinarDocumentoPage() {
                                 disabled={!signerData.nome || !signerData.cpf || !signerData.email}
                                 className="w-full px-4 py-3 bg-green-600 text-white rounded-lg font-medium disabled:bg-gray-300 hover:bg-green-700 transition-colors"
                             >
-                                Prosseguir para Assinatura
+                                {t('contrato.assinar.prosseguir', 'Prosseguir para Assinatura')}
                             </button>
                         </div>
                     </div>
@@ -514,21 +515,21 @@ export default function AssinarDocumentoPage() {
                                 <FiShield className="w-5 h-5 text-blue-600" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Confirmação Legal</h3>
-                                <p className="text-xs text-gray-500">Leia atentamente antes de assinar</p>
+                                <h3 className="text-lg font-semibold text-gray-900">{t('contrato.assinar.confirmacao_legal', 'Confirmação Legal')}</h3>
+                                <p className="text-xs text-gray-500">{t('contrato.assinar.leia_atentamente', 'Leia atentamente antes de assinar')}</p>
                             </div>
                         </div>
 
                         <div className="px-6 py-5 space-y-4">
                             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 leading-relaxed">
-                                Ao assinar eletronicamente este documento, você declara que:
+                                {t('contrato.assinar.declaracao_intro', 'Ao assinar eletronicamente este documento, você declara que:')}
                                 <ul className="list-disc ml-4 mt-2 space-y-1 text-xs text-gray-600">
-                                    <li>É o titular das informações preenchidas</li>
-                                    <li>Leu e compreendeu o conteúdo integral do documento</li>
-                                    <li>Reconhece a validade jurídica desta assinatura conforme MP 2.200-2/2001</li>
-                                    <li>Está ciente que IP, data/hora e navegador serão registrados para auditoria</li>
+                                    <li>{t('contrato.assinar.declaracao_1', 'É o titular das informações preenchidas')}</li>
+                                    <li>{t('contrato.assinar.declaracao_2', 'Leu e compreendeu o conteúdo integral do documento')}</li>
+                                    <li>{t('contrato.assinar.declaracao_3', 'Reconhece a validade jurídica desta assinatura conforme MP 2.200-2/2001')}</li>
+                                    <li>{t('contrato.assinar.declaracao_4', 'Está ciente que IP, data/hora e navegador serão registrados para auditoria')}</li>
                                     {signMethod === 'certificado' && (
-                                        <li>Está utilizando certificado digital válido (e-CPF/e-CNPJ)</li>
+                                        <li>{t('contrato.assinar.declaracao_5', 'Está utilizando certificado digital válido (e-CPF/e-CNPJ)')}</li>
                                     )}
                                 </ul>
                             </div>
@@ -541,8 +542,7 @@ export default function AssinarDocumentoPage() {
                                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
                                 />
                                 <span className="text-sm text-gray-700">
-                                    <strong>Confirmo</strong> que as informações são verdadeiras e assino
-                                    eletronicamente este documento, reconhecendo sua validade jurídica e integridade.
+                                    <strong>{t('contrato.assinar.declaracao_confirmo', 'Confirmo')}</strong> {t('contrato.assinar.declaracao_checkbox_texto', 'que as informações são verdadeiras e assino eletronicamente este documento, reconhecendo sua validade jurídica e integridade.')}
                                 </span>
                             </label>
 
@@ -554,7 +554,7 @@ export default function AssinarDocumentoPage() {
                                     }}
                                     className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
-                                    Cancelar
+                                    {t('contrato.assinar.cancelar', 'Cancelar')}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -573,7 +573,7 @@ export default function AssinarDocumentoPage() {
                                     ) : (
                                         <FiEdit3 className="w-4 h-4" />
                                     )}
-                                    {isSigning ? 'Assinando...' : 'Assinar Agora'}
+                                    {isSigning ? t('contrato.assinar.assinando', 'Assinando...') : t('contrato.assinar.assinar_agora', 'Assinar Agora')}
                                 </button>
                             </div>
                         </div>

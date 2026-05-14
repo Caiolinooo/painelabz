@@ -14,6 +14,7 @@ import { hasFeaturePermission } from '@/lib/permissions';
 import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
 import DocumentUploadModal from '@/components/contratos/DocumentUploadModal';
 import DocumentStatusBadge from '@/components/contratos/DocumentStatusBadge';
+import { useI18n } from '@/contexts/I18nContext';
 import toast from 'react-hot-toast';
 
 type FilterStatus = 'ALL' | 'PENDING' | 'SIGNED';
@@ -21,6 +22,7 @@ type FilterStatus = 'ALL' | 'PENDING' | 'SIGNED';
 export default function ContratosPage() {
     const { profile } = useSupabaseAuth();
     const { hasPermission, loading: permsLoading } = useEffectivePermissions();
+    const { t } = useI18n();
     const isManager = hasFeaturePermission(profile as any, 'contracts.manage')
         || profile?.role === 'ADMIN'
         || profile?.role === 'MANAGER';
@@ -46,7 +48,7 @@ export default function ContratosPage() {
             }
         } catch (err) {
             console.error('Erro ao buscar documentos:', err);
-            toast.error('Erro ao carregar documentos');
+            toast.error(t('contratos.error_loading', 'Erro ao carregar documentos'));
         } finally {
             setLoading(false);
         }
@@ -80,8 +82,8 @@ export default function ContratosPage() {
             <MainLayout>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
                     <FiFileText className="w-16 h-16 text-gray-300 mb-4" />
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Restrito</h2>
-                    <p className="text-gray-500 max-w-md">Você não tem permissão para acessar o módulo de contratos e assinaturas.</p>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('common.access_restricted', 'Acesso Restrito')}</h2>
+                    <p className="text-gray-500 max-w-md">{t('common.no_permission_contract', 'Você não tem permissão para acessar o módulo de contratos e assinaturas.')}</p>
                 </div>
             </MainLayout>
         );
@@ -94,19 +96,19 @@ export default function ContratosPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
-                            {isManager ? 'Envelopes de Contratos' : 'Meus Documentos'}
+                            {isManager ? t('contratos.title_manager', 'Envelopes de Contratos') : t('contratos.title_user', 'Meus Documentos')}
                         </h1>
                         <p className="text-sm text-gray-500 mt-1">
                             {isManager
-                                ? 'Crie envelopes com múltiplos documentos, atribua assinaturas e acompanhe o progresso'
-                                : 'Documentos pendentes de assinatura eletrônica'}
+                                ? t('contratos.desc_manager', 'Crie envelopes com múltiplos documentos, atribua assinaturas e acompanhe o progresso')
+                                : t('contratos.desc_user', 'Documentos pendentes de assinatura eletrônica')}
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={fetchDocumentos}
                             className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Atualizar"
+                            title={t('common.update', 'Atualizar')}
                         >
                             <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </button>
@@ -116,7 +118,7 @@ export default function ContratosPage() {
                                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
                             >
                                 <FiUpload className="w-4 h-4" />
-                                Criar Envelope
+                                {t('contratos.btn_create', 'Criar Envelope')}
                             </button>
                         )}
                     </div>
@@ -130,7 +132,7 @@ export default function ContratosPage() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-gray-900">{totalDocs}</p>
-                            <p className="text-xs text-gray-500">{isManager ? 'Total de Envelopes' : 'Total de Documentos'}</p>
+                            <p className="text-xs text-gray-500">{isManager ? t('contratos.total_envelopes', 'Total de Envelopes') : t('contratos.total_docs', 'Total de Documentos')}</p>
                         </div>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
@@ -139,7 +141,7 @@ export default function ContratosPage() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-gray-900">{pendingDocs}</p>
-                            <p className="text-xs text-gray-500">Pendentes</p>
+                            <p className="text-xs text-gray-500">{t('contratos.pending', 'Pendentes')}</p>
                         </div>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
@@ -148,7 +150,7 @@ export default function ContratosPage() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-gray-900">{signedDocs}</p>
-                            <p className="text-xs text-gray-500">Concluídos</p>
+                            <p className="text-xs text-gray-500">{t('contratos.completed', 'Concluídos')}</p>
                         </div>
                     </div>
                 </div>
@@ -162,7 +164,7 @@ export default function ContratosPage() {
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Buscar por título..."
+                                placeholder={t('contratos.search_placeholder', 'Buscar por título...')}
                                 className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                             />
                         </div>
@@ -176,7 +178,7 @@ export default function ContratosPage() {
                                             ? 'bg-blue-600 text-white'
                                             : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
                                 >
-                                    {s === 'ALL' ? 'Todos' : s === 'PENDING' ? 'Pendentes' : 'Assinados'}
+                                    {s === 'ALL' ? t('common.all', 'Todos') : s === 'PENDING' ? t('contratos.pending', 'Pendentes') : t('contratos.signed', 'Assinados')}
                                 </button>
                             ))}
                         </div>
@@ -192,13 +194,13 @@ export default function ContratosPage() {
                     ) : documentos.length === 0 ? (
                         <div className="text-center py-16">
                             <FiFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                            <p className="text-gray-500 text-sm">{isManager ? 'Nenhum envelope encontrado' : 'Nenhum documento encontrado'}</p>
+                            <p className="text-gray-500 text-sm">{isManager ? t('contratos.no_envelope', 'Nenhum envelope encontrado') : t('contratos.no_document', 'Nenhum documento encontrado')}</p>
                             {isManager && (
                                 <button
                                     onClick={() => setIsUploadOpen(true)}
                                     className="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium"
                                 >
-                                    Criar o primeiro envelope →
+                                    {t('contratos.create_first', 'Criar o primeiro envelope →')}
                                 </button>
                             )}
                         </div>
@@ -242,11 +244,11 @@ export default function ContratosPage() {
                                                         <>
                                                             <span className="flex items-center gap-1 text-xs text-gray-400 border-l border-gray-200 pl-2">
                                                                 <FiFileText className="w-3 h-3" />
-                                                                {doc.total_documentos || 0} docs
+                                                                {doc.total_documentos || 0} {t('contratos.docs_short', 'docs')}
                                                             </span>
                                                             <span className="flex items-center gap-1 text-xs text-gray-400 border-l border-gray-200 pl-2">
                                                                 <FiUser className="w-3 h-3" />
-                                                                {doc.total_assinados || 0}/{doc.total_solicitacoes || 0} assinados
+                                                                {t('contratos.signed_count', '{signed}/{total} assinados').replace('{signed}', (doc.total_assinados || 0).toString()).replace('{total}', (doc.total_solicitacoes || 0).toString())}
                                                             </span>
                                                         </>
                                                     )}

@@ -39,7 +39,7 @@ const siteConfig: SiteConfig = {
   dashboardTitle: "Painel de Logística ABZ Group",
   dashboardDescription: "Bem-vindo ao centro de recursos para colaboradores da logística.",
   sidebarTitle: "Portal ABZ",
-  version: "5.10.0",
+  version: "5.11.0",
   login_logo: "",
   sidebar_logo: "",
   widget_logo: ""

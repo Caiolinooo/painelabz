@@ -5,12 +5,14 @@ import { useParams } from 'next/navigation';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
-import { FiArrowLeft, FiArrowRight, FiCheck, FiShield, FiFileText, FiAlertCircle, FiDownload, FiChevronLeft, FiChevronRight, FiZoomIn, FiZoomOut } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiCheck, FiShield, FiFileText, FiAlertCircle, FiDownload, FiChevronLeft, FiChevronRight, FiZoomIn, FiZoomOut, FiGlobe } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useSignature } from '@/contexts/SignatureContext';
 import SignaturePositionOverlay, { getSignerColor } from '@/components/contratos/SignaturePositionOverlay';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { getToken } from '@/lib/tokenStorage';
+import { useI18n } from '@/contexts/I18nContext';
+
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -25,8 +27,20 @@ export default function AssinaturaExternaPage() {
     const token = params?.token as string;
     const { requestSignature } = useSignature();
     const { user: authUser, profile: authProfile, isAuthenticated, isLoading: isAuthLoading } = useSupabaseAuth();
+    const { t, setLocale, locale } = useI18n();
 
+    const [showLangModal, setShowLangModal] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    // Trigger Language selection overlay conditionally on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const chosen = sessionStorage.getItem('signature_lang_chosen');
+            if (!chosen) {
+                setShowLangModal(true);
+            }
+        }
+    }, []);
     const [queue, setQueue] = useState<any[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
     
@@ -35,6 +49,11 @@ export default function AssinaturaExternaPage() {
     const [authData, setAuthData] = useState({ nome: '', cpf: '', email: '' });
     const [legalAccepted, setLegalAccepted] = useState(false);
     const [isSigning, setIsSigning] = useState(false);
+
+    const handleConfirmLang = () => {
+        sessionStorage.setItem('signature_lang_chosen', 'true');
+        setShowLangModal(false);
+    };
 
     // PDF Viewing State
     const [numPages, setNumPages] = useState<number>(0);
@@ -75,7 +94,7 @@ export default function AssinaturaExternaPage() {
 
     const onDocumentLoadError = (error: Error) => {
         console.error('[AssinaturaExterna] Erro ao carregar PDF:', error);
-        toast.error(`Erro ao processar visualização do documento: ${error.message}`);
+        toast.error(t('assinatura.externa.erro_visualizar_pdf', { erro: error.message }, `Erro ao processar visualização do documento: ${error.message}`));
     };
 
     useEffect(() => {
@@ -97,13 +116,34 @@ export default function AssinaturaExternaPage() {
                         setQueue(data.queue); // Keep full list for visual sequence context
                         // Set initial active index to first pending
                         const firstPendingIdx = data.queue.findIndex((q: any) => q.status === 'PENDING');
-                        setActiveIndex(firstPendingIdx !== -1 ? firstPendingIdx : 0);
+                        const chosenIdx = firstPendingIdx !== -1 ? firstPendingIdx : 0;
+                        setActiveIndex(chosenIdx);
+
+                        // Pre-fill data from queue item
+                        const activeItem = data.queue[chosenIdx];
+                        if (activeItem) {
+                            const initialAuthData = {
+                                nome: activeItem.target_name || '',
+                                email: activeItem.target_email || '',
+                                cpf: activeItem.target_tax_id || ''
+                            };
+                            setAuthData(initialAuthData);
+
+                            // Auto-fill bypass ONLY if ALL required fields are complete
+                            if (initialAuthData.nome && initialAuthData.email && initialAuthData.cpf) {
+                                setStep('REVIEW');
+                                toast.success(t('assinatura.externa.sucesso_auto_id', 'Identificação automática de colaborador concluída!'), {
+                                    icon: '🔐',
+                                    id: 'auto-id-completed'
+                                });
+                            }
+                        }
                     }
                 } else {
-                    toast.error(data.error || 'Token inválido ou expirado');
+                    toast.error(data.error || t('assinatura.externa.erro_token_invalido', 'Token inválido ou expirado'));
                 }
             } catch (err) {
-                toast.error('Erro ao buscar fila de documentos');
+                toast.error(t('assinatura.externa.erro_buscar_fila', 'Erro ao buscar fila de documentos'));
             } finally {
                 setLoading(false);
             }
@@ -142,7 +182,7 @@ export default function AssinaturaExternaPage() {
                     cpf: taxId || 'Não Informado'
                 });
                 setStep('REVIEW');
-                toast.success(`Bem-vindo de volta! Carregamos seus dados do portal.`, {
+                toast.success(t('assinatura.externa.sucesso_autenticado', 'Bem-vindo de volta! Carregamos seus dados do portal.'), {
                     icon: '👤',
                     id: 'portal-auth-restore'
                 });
@@ -168,7 +208,7 @@ export default function AssinaturaExternaPage() {
     const handleAuthSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!authData.nome || !authData.cpf || !authData.email) {
-            toast.error('Preencha todos os campos para continuar');
+            toast.error(t('assinatura.externa.erro_preencher_campos', 'Preencha todos os campos para continuar'));
             return;
         }
 
@@ -177,7 +217,7 @@ export default function AssinaturaExternaPage() {
         const typedEmail = authData.email.toLowerCase().trim();
 
         if (expectedEmail && typedEmail !== expectedEmail) {
-            toast.error('Identidade não reconhecida: O e-mail informado não é o destinatário oficial deste documento.', {
+            toast.error(t('assinatura.externa.erro_email_incorreto', 'Identidade não reconhecida: O e-mail informado não é o destinatário oficial deste documento.'), {
                 icon: '🔒',
                 duration: 5000
             });
@@ -189,14 +229,14 @@ export default function AssinaturaExternaPage() {
 
     const handleSign = async () => {
         if (!legalAccepted || !currentItem) {
-            toast.error('Você deve aceitar os termos legais.');
+            toast.error(t('assinatura.externa.erro_termos_legais', 'Você deve aceitar os termos legais.'));
             return;
         }
 
         try {
             const result = await requestSignature({
-                title: 'Assinar Documento',
-                description: `Assine o documento: ${documento?.titulo || 'Contrato'}`,
+                title: t('assinatura.externa.modal_assinar_titulo', 'Assinar Documento'),
+                description: t('assinatura.externa.modal_assinar_desc', { titulo: documento?.titulo || 'Contrato' }, `Assine o documento: ${documento?.titulo || 'Contrato'}`),
             });
 
             if (!result) return;
@@ -237,7 +277,7 @@ export default function AssinaturaExternaPage() {
             const data = await res.json();
 
             if (data.success) {
-                toast.success('Documento assinado com sucesso!');
+                toast.success(t('assinatura.externa.sucesso_assinatura', 'Documento assinado com sucesso!'));
                 
                 // Locate the next pending document in queue
                 const updatedQueue = [...queue];
@@ -249,16 +289,16 @@ export default function AssinaturaExternaPage() {
                 if (nextPendingIndex !== -1) {
                     setActiveIndex(nextPendingIndex);
                     setLegalAccepted(false); // Reset agreement for next document
-                    toast.success('Carregando próximo documento da fila...', { icon: '📄' });
+                    toast.success(t('assinatura.externa.carregando_proximo', 'Carregando próximo documento da fila...'), { icon: '📄' });
                 } else {
                     // Fully finished!
                     setStep('SIGNED');
                 }
             } else {
-                toast.error(data.error || 'Erro ao assinar documento');
+                toast.error(data.error || t('assinatura.externa.erro_assinar', 'Erro ao assinar documento'));
             }
         } catch (err) {
-            toast.error('Erro de conexão ao assinar');
+            toast.error(t('assinatura.externa.erro_conexao', 'Erro de conexão ao assinar'));
         } finally {
             setIsSigning(false);
         }
@@ -279,9 +319,9 @@ export default function AssinaturaExternaPage() {
                     <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                         <FiCheck className="w-8 h-8" />
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">Assinatura Concluída!</h2>
-                    <p className="text-gray-600 text-sm mb-6">Todas as suas atribuições neste envelope foram completadas com sucesso. Possuem validade jurídica (MP 2.200-2/2001).</p>
-                    <p className="text-xs text-gray-400">Você já pode fechar esta aba. Uma cópia dos documentos será gerada e enviada ao seu e-mail assim que o fluxo completo for finalizado.</p>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">{t('assinatura.externa.concluida_titulo', 'Assinatura Concluída!')}</h2>
+                    <p className="text-gray-600 text-sm mb-6">{t('assinatura.externa.concluida_desc', 'Todas as suas atribuições neste envelope foram completadas com sucesso. Possuem validade jurídica (MP 2.200-2/2001).')}</p>
+                    <p className="text-xs text-gray-400">{t('assinatura.externa.concluida_rodape', 'Você já pode fechar esta aba. Uma cópia dos documentos será gerada e enviada ao seu e-mail assim que o fluxo completo for finalizado.')}</p>
                 </div>
             </div>
         );
@@ -294,8 +334,8 @@ export default function AssinaturaExternaPage() {
                     <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
                         <FiAlertCircle className="w-8 h-8" />
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">Link Inválido</h2>
-                    <p className="text-gray-600 text-sm">Este link de assinatura expirou ou o envelope associado já foi processado.</p>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">{t('assinatura.externa.link_invalido_titulo', 'Link Inválido')}</h2>
+                    <p className="text-gray-600 text-sm">{t('assinatura.externa.link_invalido_desc', 'Este link de assinatura expirou ou o envelope associado já foi processado.')}</p>
                 </div>
             </div>
         );
@@ -314,7 +354,7 @@ export default function AssinaturaExternaPage() {
                         <FiShield className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="font-bold text-gray-900 leading-tight text-base">Portal de Assinatura Segura</h1>
+                        <h1 className="font-bold text-gray-900 leading-tight text-base">{t('assinatura.externa.cabecalho_titulo', 'Portal de Assinatura Segura')}</h1>
                         <p className="text-xs text-gray-500">ABZ Group</p>
                     </div>
                 </div>
@@ -323,11 +363,11 @@ export default function AssinaturaExternaPage() {
                     {step === 'REVIEW' && totalDocs > 1 && (
                         <div className="hidden md:flex items-center gap-2 text-xs font-medium text-gray-500 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100">
                             <FiFileText />
-                            <span>Progresso: <strong>{completedCount + 1} de {totalDocs}</strong></span>
+                            <span>{t('assinatura.externa.progresso_label', { atual: completedCount + 1, total: totalDocs }, `Progresso: ${completedCount + 1} de ${totalDocs}`)}</span>
                         </div>
                     )}
                     <div className={`text-xs font-semibold px-3 py-1.5 rounded-full ${step === 'AUTH' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
-                        {step === 'AUTH' ? 'Passo 1: Identificação' : 'Passo 2: Assinatura'}
+                        {step === 'AUTH' ? t('assinatura.externa.passo_identificacao', 'Passo 1: Identificação') : t('assinatura.externa.passo_assinatura', 'Passo 2: Assinatura')}
                     </div>
                 </div>
             </header>
@@ -350,7 +390,7 @@ export default function AssinaturaExternaPage() {
                         <div className="flex items-center gap-2 min-w-0">
                             <FiFileText className="text-blue-600 flex-shrink-0" />
                             <h2 className="font-semibold text-gray-800 text-sm truncate">
-                                {documento?.titulo || 'Visualizando Documento'}
+                                {documento?.titulo || t('assinatura.externa.visualizando_doc', 'Visualizando Documento')}
                             </h2>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -364,7 +404,7 @@ export default function AssinaturaExternaPage() {
                                     href={pdfUrl} 
                                     download 
                                     className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                    title="Baixar Documento"
+                                    title={t('assinatura.externa.baixar_doc', 'Baixar Documento')}
                                 >
                                     <FiDownload className="w-4 h-4" />
                                 </a>
@@ -378,8 +418,8 @@ export default function AssinaturaExternaPage() {
                                 <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-gray-400 mb-4">
                                     <FiShield className="w-8 h-8" />
                                 </div>
-                                <h3 className="font-semibold text-gray-900 text-lg mb-2">Acesso Restrito</h3>
-                                <p className="text-sm text-gray-600 max-w-sm">Complete a sua identificação no painel ao lado para visualizar o conteúdo deste documento e realizar a assinatura.</p>
+                                <h3 className="font-semibold text-gray-900 text-lg mb-2">{t('assinatura.externa.acesso_restrito_titulo', 'Acesso Restrito')}</h3>
+                                <p className="text-sm text-gray-600 max-w-sm">{t('assinatura.externa.acesso_restrito_desc', 'Complete a sua identificação no painel ao lado para visualizar o conteúdo deste documento e realizar a assinatura.')}</p>
                             </div>
                         ) : null}
 
@@ -394,7 +434,7 @@ export default function AssinaturaExternaPage() {
                                         >
                                             <FiChevronLeft className="w-5 h-5" />
                                         </button>
-                                        <span className="text-xs font-medium select-none">Página {currentPage} de {numPages}</span>
+                                        <span className="text-xs font-medium select-none">{t('assinatura.externa.pagina_x_de_y', { atual: currentPage, total: numPages }, `Página ${currentPage} de ${numPages}`)}</span>
                                         <button 
                                             disabled={currentPage >= numPages} 
                                             onClick={() => setCurrentPage(prev => Math.min(numPages, prev + 1))}
@@ -413,7 +453,7 @@ export default function AssinaturaExternaPage() {
                                         loading={
                                             <div className="h-[60vh] w-full flex flex-col items-center justify-center gap-3">
                                                 <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent" />
-                                                <p className="text-sm text-gray-500">Carregando documento...</p>
+                                                <p className="text-sm text-gray-500">{t('assinatura.externa.carregando_doc', 'Carregando documento...')}</p>
                                             </div>
                                         }
                                         options={PDF_OPTIONS}
@@ -455,7 +495,7 @@ export default function AssinaturaExternaPage() {
                                                             y={displayY}
                                                             width={displayW}
                                                             height={displayH}
-                                                            label={`Seu local de Assinatura`}
+                                                            label={t('assinatura.externa.local_assinatura', 'Seu local de Assinatura')}
                                                             status="PENDING"
                                                             interactive={true}
                                                             pulse={true}
@@ -472,7 +512,7 @@ export default function AssinaturaExternaPage() {
                             <div className="h-full flex items-center justify-center text-gray-500">
                                 <div className="animate-pulse flex flex-col items-center gap-2">
                                     <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
-                                    <span>Carregando visualizador...</span>
+                                    <span>{t('assinatura.externa.carregando_visualizador', 'Carregando visualizador...')}</span>
                                 </div>
                             </div>
                         )}
@@ -487,15 +527,15 @@ export default function AssinaturaExternaPage() {
                                 <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
                                     <FiShield className="w-5 h-5 text-blue-600" />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">Identificação Necessária</h3>
+                                <h3 className="text-lg font-bold text-gray-900">{t('assinatura.externa.identificacao_necessaria', 'Identificação Necessária')}</h3>
                                 <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-                                    Para garantir a validade jurídica das assinaturas, precisamos confirmar quem é você.
+                                    {t('assinatura.externa.identificacao_desc', 'Para garantir a validade jurídica das assinaturas, precisamos confirmar quem é você.')}
                                 </p>
                             </div>
 
                             <form onSubmit={handleAuthSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Nome Completo</label>
+                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">{t('assinatura.externa.nome_completo_label', 'Nome Completo')}</label>
                                     <input 
                                         type="text" 
                                         required
@@ -506,7 +546,7 @@ export default function AssinaturaExternaPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">CPF</label>
+                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">{t('assinatura.externa.cpf_label', 'CPF')}</label>
                                     <input 
                                         type="text" 
                                         required
@@ -517,7 +557,7 @@ export default function AssinaturaExternaPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">E-mail</label>
+                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">{t('assinatura.externa.email_label', 'E-mail')}</label>
                                     <input 
                                         type="email" 
                                         required
@@ -532,7 +572,7 @@ export default function AssinaturaExternaPage() {
                                     type="submit"
                                     className="w-full flex items-center justify-center gap-2 mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98]"
                                 >
-                                    <span>Continuar para os Documentos</span>
+                                    <span>{t('assinatura.externa.botao_continuar', 'Continuar para os Documentos')}</span>
                                     <FiArrowRight className="w-4 h-4" />
                                 </button>
                             </form>
@@ -540,7 +580,7 @@ export default function AssinaturaExternaPage() {
                             <div className="flex items-start gap-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
                                 <FiShield className="text-blue-600 mt-0.5 shrink-0 w-4 h-4" />
                                 <p>
-                                    Dados protegidos sob a LGPD. Serão utilizados exclusivamente para compor a integridade da trilha de auditoria do documento.
+                                    {t('assinatura.externa.lgpd_aviso', 'Dados protegidos sob a LGPD. Serão utilizados exclusivamente para compor a integridade da trilha de auditoria do documento.')}
                                 </p>
                             </div>
                         </div>
@@ -548,8 +588,8 @@ export default function AssinaturaExternaPage() {
                         <div className="space-y-6">
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900">Revisão e Assinatura</h3>
-                                    <p className="text-sm text-gray-500 mt-1">Leia com atenção antes de prosseguir.</p>
+                                    <h3 className="text-lg font-bold text-gray-900">{t('assinatura.externa.revisao_titulo', 'Revisão e Assinatura')}</h3>
+                                    <p className="text-sm text-gray-500 mt-1">{t('assinatura.externa.revisao_subtitulo', 'Leia com atenção antes de prosseguir.')}</p>
                                 </div>
                                 {totalDocs > 1 && (
                                     <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded">
@@ -560,23 +600,23 @@ export default function AssinaturaExternaPage() {
 
                             <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
                                 <div className="flex justify-between items-start mb-1">
-                                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Signatário</span>
+                                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('assinatura.externa.signatario_label', 'Signatário')}</span>
                                     <button 
                                         onClick={() => setStep('AUTH')}
                                         className="text-xs text-blue-600 hover:underline"
                                     >
-                                        Alterar
+                                        {t('assinatura.externa.alterar_label', 'Alterar')}
                                     </button>
                                 </div>
                                 <div className="font-bold text-gray-900 truncate">{authData.nome}</div>
-                                <div className="text-xs text-gray-600 mt-0.5">CPF {authData.cpf} | {authData.email}</div>
+                                <div className="text-xs text-gray-600 mt-0.5">{t('assinatura.externa.cpf_label', 'CPF')} {authData.cpf} | {authData.email}</div>
                             </div>
 
                             <div className="pt-4 border-t border-gray-100 space-y-4">
                                 <div>
                                     <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase mb-2">
                                         <FiFileText className="w-3.5 h-3.5" />
-                                        Documento Atual
+                                        {t('assinatura.externa.doc_atual_label', 'Documento Atual')}
                                     </div>
                                     <div className="p-3 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-800 shadow-sm break-words">
                                         {documento?.titulo}
@@ -594,7 +634,7 @@ export default function AssinaturaExternaPage() {
                                             />
                                         </div>
                                         <span className="text-xs text-slate-700 leading-relaxed select-none">
-                                            Declaro que li e compreendi o documento exibido. Reconheço a validade jurídica desta assinatura eletrônica conforme o <strong>Art. 10, § 2º, da MP nº 2.200-2/2001</strong>.
+                                            {t('assinatura.externa.declaracao_termo', 'Declaro que li e compreendi o documento exibido. Reconheço a validade jurídica desta assinatura eletrônica conforme o Art. 10, § 2º, da MP nº 2.200-2/2001.')}
                                         </span>
                                     </label>
                                 </div>
@@ -613,12 +653,18 @@ export default function AssinaturaExternaPage() {
                                     ) : (
                                         <FiCheck className="w-5 h-5" />
                                     )}
-                                    <span>{isSigning ? 'Processando...' : (pendingCount > 1 ? 'Assinar e Próximo' : 'Concordar e Assinar')}</span>
+                                    <span>
+                                        {isSigning 
+                                            ? t('assinatura.externa.processando', 'Processando...') 
+                                            : (pendingCount > 1 
+                                                ? t('assinatura.externa.assinar_e_proximo', 'Assinar e Próximo') 
+                                                : t('assinatura.externa.concordar_e_assinar', 'Concordar e Assinar'))}
+                                    </span>
                                 </button>
 
                                 {pendingCount > 1 && (
                                     <p className="text-center text-xs text-gray-500 font-medium">
-                                        Ainda restam {pendingCount - 1} documentos neste lote
+                                        {t('assinatura.externa.restam_documentos', { count: pendingCount - 1 }, `Ainda restam ${pendingCount - 1} documentos neste lote`)}
                                     </p>
                                 )}
                             </div>
@@ -626,6 +672,81 @@ export default function AssinaturaExternaPage() {
                     )}
                 </div>
             </main>
+            {/* Blocking Language Selection Modal */}
+            {showLangModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 p-8 animate-in zoom-in-95 duration-300">
+                        <div className="text-center mb-6">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-4 text-blue-600">
+                                <FiGlobe className="w-8 h-8 animate-pulse" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 leading-snug">
+                                {t('assinatura.externa.modal_idioma_titulo', 'Escolha seu Idioma / Choose your Language')}
+                            </h3>
+                            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                                {t('assinatura.externa.modal_idioma_desc', 'Selecione o idioma para prosseguir com a visualização e assinatura dos documentos.')}
+                            </p>
+                        </div>
+
+                        <div className="space-y-3 mb-8">
+                            {/* PT-BR Button */}
+                            <button
+                                type="button"
+                                onClick={() => setLocale('pt-BR')}
+                                className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                                    locale === 'pt-BR'
+                                        ? 'border-blue-600 bg-blue-50/50'
+                                        : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3 text-left">
+                                    <span className="text-2xl">🇧🇷</span>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-sm">Português</p>
+                                        <p className="text-slate-500 text-xs">Brasil</p>
+                                    </div>
+                                </div>
+                                {locale === 'pt-BR' && (
+                                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-sm">
+                                        <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
+                                    </div>
+                                )}
+                            </button>
+
+                            {/* EN-US Button */}
+                            <button
+                                type="button"
+                                onClick={() => setLocale('en-US')}
+                                className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                                    locale === 'en-US'
+                                        ? 'border-blue-600 bg-blue-50/50'
+                                        : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3 text-left">
+                                    <span className="text-2xl">🇺🇸</span>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-sm">English</p>
+                                        <p className="text-slate-500 text-xs">United States</p>
+                                    </div>
+                                </div>
+                                {locale === 'en-US' && (
+                                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-sm">
+                                        <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
+                                    </div>
+                                )}
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={handleConfirmLang}
+                            className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold tracking-wide transition-all active:scale-[0.98] shadow-lg"
+                        >
+                            {t('assinatura.externa.idioma_confirmar', 'Confirmar / Confirm')}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

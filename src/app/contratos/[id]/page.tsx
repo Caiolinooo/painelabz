@@ -29,6 +29,7 @@ import { useSignature } from '@/contexts/SignatureContext';
 import DocumentStatusBadge from '@/components/contratos/DocumentStatusBadge';
 import SignaturePositionOverlay, { getSignerColor } from '@/components/contratos/SignaturePositionOverlay';
 import AuditInfoPanel from '@/components/contratos/AuditInfoPanel';
+import { useI18n } from '@/contexts/I18nContext';
 import toast from 'react-hot-toast';
 import MainLayout from '@/components/Layout/MainLayout';
 
@@ -39,6 +40,7 @@ export default function ContratoDetailPage() {
 
     const { profile, user } = useSupabaseAuth();
     const { requestSignature } = useSignature();
+    const { t } = useI18n();
 
     const isManager = hasFeaturePermission(profile as any, 'contracts.manage')
         || profile?.role === 'ADMIN'
@@ -150,11 +152,11 @@ export default function ContratoDetailPage() {
                     setMySolicitacao(mine || null);
                 }
             } else {
-                toast.error(data.error || 'Envelope não encontrado');
+                toast.error(data.error || t('contratos.detail.envelope_not_found', 'Envelope não encontrado'));
                 router.push('/contratos');
             }
         } catch (err) {
-            toast.error('Erro ao carregar envelope');
+            toast.error(t('contratos.detail.error_loading_envelope', 'Erro ao carregar envelope'));
         } finally {
             setLoading(false);
         }
@@ -212,7 +214,7 @@ export default function ContratoDetailPage() {
 
     const onDocumentLoadError = (error: Error) => {
         console.error('[ContratoDetail] Erro ao carregar PDF:', error);
-        toast.error(`Erro ao carregar PDF: ${error.message}`);
+        toast.error(`${t('contratos.detail.error_loading_pdf', 'Erro ao carregar PDF')}: ${error.message}`);
     };
 
     // Handle click on PDF to set signature position
@@ -246,7 +248,7 @@ export default function ContratoDetailPage() {
     const handleCopyTokenLink = async (token: string) => {
         const link = `${window.location.origin}/assinatura/${token}`;
         await navigator.clipboard.writeText(link);
-        toast.success('Link único de assinatura copiado!');
+        toast.success(t('contratos.detail.success_link_copied', 'Link único de assinatura copiado!'));
     };
 
     // Copy generic public link
@@ -254,14 +256,14 @@ export default function ContratoDetailPage() {
         const link = `${window.location.origin}/contratos/${docId}/assinar?publico=true`;
         await navigator.clipboard.writeText(link);
         setCopiedLink(true);
-        toast.success('Link genérico copiado!');
+        toast.success(t('contratos.detail.success_generic_copied', 'Link genérico copiado!'));
         setTimeout(() => setCopiedLink(false), 3000);
     };
 
     // Send via email
     const handleSendEmail = async () => {
         if (!emailRecipient) {
-            toast.error('Informe o e-mail do destinatário');
+            toast.error(t('contratos.detail.fill_email', 'Informe o e-mail do destinatário'));
             return;
         }
 
@@ -276,14 +278,14 @@ export default function ContratoDetailPage() {
 
             const data = await res.json();
             if (data.success) {
-                toast.success('E-mail enviado com sucesso!');
+                toast.success(t('contratos.detail.success_email_sent', 'E-mail enviado com sucesso!'));
                 setShowSendModal(false);
                 setEmailRecipient('');
             } else {
-                toast.error(data.error || 'Erro ao enviar e-mail');
+                toast.error(data.error || t('contratos.detail.error_email_send', 'Erro ao enviar e-mail'));
             }
         } catch (err) {
-            toast.error('Erro ao enviar e-mail');
+            toast.error(t('contratos.detail.error_email_send', 'Erro ao enviar e-mail'));
         }
     };
 
@@ -299,7 +301,7 @@ export default function ContratoDetailPage() {
         const hasExternal = !!manualSignerEmail;
 
         if (!hasInternal && !hasExternal) {
-            toast.error('Selecione um colaborador da lista ou informe um e-mail válido.');
+            toast.error(t('contratos.detail.error_select_signer', 'Selecione um colaborador da lista ou informe um e-mail válido.'));
             return;
         }
 
@@ -309,7 +311,7 @@ export default function ContratoDetailPage() {
         const posTipo = clickPos?.tipo || signatureType;
 
         if (!currentDocumento?.id) {
-            toast.error('Nenhum documento selecionado');
+            toast.error(t('contratos.detail.error_no_doc', 'Nenhum documento selecionado'));
             return;
         }
 
@@ -348,14 +350,14 @@ export default function ContratoDetailPage() {
             const data = await res.json();
 
             if (data.success) {
-                toast.success('Assinatura posicionada com sucesso!');
+                toast.success(t('contratos.detail.success_assigned', 'Assinatura posicionada com sucesso!'));
                 resetAssignState();
                 fetchDocumento();
             } else {
-                toast.error(data.error || 'Erro ao atribuir');
+                toast.error(data.error || t('contratos.detail.error_assigning', 'Erro ao atribuir'));
             }
         } catch (err) {
-            toast.error('Erro ao salvar atribuição');
+            toast.error(t('contratos.detail.error_assigning_save', 'Erro ao salvar atribuição'));
         }
     };
 
@@ -363,11 +365,11 @@ export default function ContratoDetailPage() {
     const handleSaveCC = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!ccName.trim() || !ccEmail.trim()) {
-            toast.error('Informe o nome e e-mail para enviar em cópia.');
+            toast.error(t('contratos.detail.error_cc_fields', 'Informe o nome e e-mail para enviar em cópia.'));
             return;
         }
         if (!currentDocumento?.id) {
-            toast.error('Nenhum documento ativo.');
+            toast.error(t('contratos.detail.error_active_doc', 'Nenhum documento ativo.'));
             return;
         }
 
@@ -387,15 +389,15 @@ export default function ContratoDetailPage() {
             const data = await res.json();
 
             if (data.success) {
-                toast.success('Pessoa em cópia adicionada com sucesso!');
+                toast.success(t('contratos.detail.success_cc_added', 'Pessoa em cópia adicionada com sucesso!'));
                 setCcName('');
                 setCcEmail('');
                 fetchDocumento();
             } else {
-                toast.error(data.error || 'Erro ao adicionar pessoa em cópia');
+                toast.error(data.error || t('contratos.detail.error_cc_add', 'Erro ao adicionar pessoa em cópia'));
             }
         } catch {
-            toast.error('Erro de comunicação ao salvar cópia');
+            toast.error(t('contratos.detail.error_cc_comms', 'Erro de comunicação ao salvar cópia'));
         } finally {
             setIsAddingCC(false);
         }
@@ -403,16 +405,16 @@ export default function ContratoDetailPage() {
 
     // Delete assignment (HR)
     const handleDeleteAssignment = async (solicitacaoId: string) => {
-        if (!confirm('Remover esta atribuição?')) return;
+        if (!confirm(t('contratos.detail.confirm_delete_assign', 'Remover esta atribuição?'))) return;
 
         try {
             await fetchWithAuth(`/api/contracts/${docId}/assign?solicitacao_id=${solicitacaoId}`, {
                 method: 'DELETE',
             });
-            toast.success('Atribuição removida');
+            toast.success(t('contratos.detail.success_removed', 'Atribuição removida'));
             fetchDocumento();
         } catch {
-            toast.error('Erro ao remover');
+            toast.error(t('common.error_removing', 'Erro ao remover'));
         }
     };
 
@@ -426,14 +428,14 @@ export default function ContratoDetailPage() {
             const data = await res.json();
 
             if (data.success) {
-                toast.success('Fluxo de assinaturas iniciado! Os signatários da vez foram notificados.');
+                toast.success(t('contratos.detail.success_dispatched', 'Fluxo de assinaturas iniciado! Os signatários da vez foram notificados.'));
                 setShowSendModal(false);
                 fetchDocumento(); 
             } else {
-                toast.error(data.error || 'Erro ao disparar envelope');
+                toast.error(data.error || t('contratos.detail.error_dispatch', 'Erro ao disparar envelope'));
             }
         } catch (err) {
-            toast.error('Erro de rede ao enviar envelope');
+            toast.error(t('contratos.detail.error_dispatch_net', 'Erro de rede ao enviar envelope'));
         } finally {
             setLoading(false);
         }
@@ -441,7 +443,7 @@ export default function ContratoDetailPage() {
 
     // Delete complete envelope (HR)
     const handleDeleteEnvelope = async () => {
-        if (!window.confirm('ATENÇÃO: Esta ação é IRREVERSÍVEL.\n\nVocê tem certeza que deseja EXCLUIR este envelope, todos os seus documentos e assinaturas permanentemente da plataforma e do armazenamento em nuvem?')) {
+        if (!window.confirm(t('contratos.detail.confirm_delete_envelope', 'ATENÇÃO: Esta ação é IRREVERSÍVEL.\n\nVocê tem certeza que deseja EXCLUIR este envelope, todos os seus documentos e assinaturas permanentemente da plataforma e do armazenamento em nuvem?'))) {
             return;
         }
         
@@ -453,14 +455,14 @@ export default function ContratoDetailPage() {
             const data = await res.json();
 
             if (data.success) {
-                toast.success('Envelope excluído com sucesso!');
+                toast.success(t('contratos.detail.success_envelope_deleted', 'Envelope excluído com sucesso!'));
                 router.push('/contratos');
             } else {
-                toast.error(data.error || 'Falha ao excluir envelope');
+                toast.error(data.error || t('contratos.detail.error_envelope_delete', 'Falha ao excluir envelope'));
                 setLoading(false);
             }
         } catch (err) {
-            toast.error('Erro de rede ao tentar excluir');
+            toast.error(t('contratos.detail.error_net_delete', 'Erro de rede ao tentar excluir'));
             setLoading(false);
         }
     };
@@ -473,8 +475,8 @@ export default function ContratoDetailPage() {
 
         try {
             const result = await requestSignature({
-                title: 'Assinar Documento',
-                description: `Assine o documento: ${currentDocumento?.titulo || ''}`,
+                title: t('contratos.detail.sign_action_title', 'Assinar Documento'),
+                description: `${t('contratos.detail.sign_action_desc', 'Assine o documento')}: ${currentDocumento?.titulo || ''}`,
             });
 
             if (!result) return;
@@ -504,21 +506,21 @@ export default function ContratoDetailPage() {
                 const data = await res.json();
 
                 if (data.success) {
-                    toast.success('Documento assinado com sucesso!');
+                    toast.success(t('contratos.detail.success_signed_now', 'Documento assinado com sucesso!'));
                     if (data.arquivo_assinado_url) {
                         setSignedPdfUrl(data.arquivo_assinado_url);
                     }
                     fetchDocumento();
                 } else {
-                    toast.error(data.error || 'Erro ao assinar');
+                    toast.error(data.error || t('contratos.detail.error_signing', 'Erro ao assinar'));
                 }
             } catch (err: any) {
-                toast.error(err.message || 'Erro ao assinar documento');
+                toast.error(err.message || t('contratos.detail.error_signing_action', 'Erro ao assinar documento'));
             } finally {
                 setIsSigning(false);
             }
         } catch {
-            toast.error('Erro ao iniciar assinatura');
+            toast.error(t('contratos.detail.error_init_sign', 'Erro ao iniciar assinatura'));
         }
     };
 
@@ -538,9 +540,9 @@ export default function ContratoDetailPage() {
             <MainLayout>
                 <div className="text-center py-20">
                     <FiFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">Envelope não encontrado</p>
+                    <p className="text-gray-500">{t('contratos.detail.envelope_not_found', 'Envelope não encontrado')}</p>
                     <Link href="/contratos" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
-                        ← Voltar para lista
+                        ← {t('contratos.detail.back_to_list', 'Voltar para lista')}
                     </Link>
                 </div>
             </MainLayout>
@@ -583,10 +585,10 @@ export default function ContratoDetailPage() {
                                     onClick={handleDeleteEnvelope}
                                     disabled={loading}
                                     className="flex items-center gap-2 px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium shadow-sm"
-                                    title="Excluir envelope e limpar arquivos"
+                                    title={t('contratos.detail.title_delete', 'Excluir envelope e limpar arquivos')}
                                 >
                                     <FiTrash2 className="w-4 h-4" />
-                                    <span>Excluir</span>
+                                    <span>{t('common.delete', 'Excluir')}</span>
                                 </button>
                                 <button
                                     onClick={() => setShowSendModal(true)}
@@ -594,7 +596,7 @@ export default function ContratoDetailPage() {
                                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm"
                                 >
                                     <FiMail className="w-4 h-4" />
-                                    Enviar Envelope
+                                    {t('contratos.detail.btn_send', 'Enviar Envelope')}
                                 </button>
                             </div>
                         )}
@@ -640,7 +642,7 @@ export default function ContratoDetailPage() {
                         {/* Active Document Status Header */}
                         {currentDocumento && documentos.length > 1 && (
                             <div className="bg-blue-50/50 px-4 py-2 text-xs font-medium text-blue-700 border-b border-blue-100 flex items-center gap-2">
-                                <span className="uppercase tracking-wider opacity-70">Visualizando Documento {activeDocIndex + 1} de {documentos.length}:</span>
+                                <span className="uppercase tracking-wider opacity-70">{t('contratos.detail.viewing_doc', 'Visualizando Documento')} {activeDocIndex + 1} {t('common.of', 'de')} {documentos.length}:</span>
                                 <strong>{currentDocumento.titulo}</strong>
                             </div>
                         )}
@@ -649,7 +651,7 @@ export default function ContratoDetailPage() {
                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-gray-600">
-                                    Página: <input
+                                    {t('common.page', 'Página')}: <input
                                         type="number"
                                         min="1"
                                         value={currentPage}
@@ -684,7 +686,7 @@ export default function ContratoDetailPage() {
                                             : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                                 >
                                     {isAssigning ? <FiX className="w-4 h-4" /> : <FiPlus className="w-4 h-4" />}
-                                    {isAssigning ? 'Cancelar' : 'Posicionar Assinatura'}
+                                    {isAssigning ? t('common.cancel', 'Cancelar') : t('contratos.detail.btn_position', 'Posicionar Assinatura')}
                                 </button>
                             )}
                         </div>
@@ -697,21 +699,21 @@ export default function ContratoDetailPage() {
                                         <FiTarget className="w-5 h-5 text-blue-600 animate-pulse" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-blue-900">Modo de Posicionamento Ativo</p>
-                                        <p className="text-xs text-blue-700">Navegue até a página desejada e <span className="font-bold underline">clique no local</span> onde deseja a assinatura.</p>
+                                        <p className="text-sm font-bold text-blue-900">{t('contratos.detail.assign_active', 'Modo de Posicionamento Ativo')}</p>
+                                        <p className="text-xs text-blue-700">{t('contratos.detail.assign_tip', 'Navegue até a página desejada e clique no local onde deseja a assinatura.')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {showTutorial === false && (
                                         <button onClick={() => setShowTutorial(true)} className="text-xs font-medium text-blue-600 hover:underline px-2">
-                                            Ajuda?
+                                            {t('common.help', 'Ajuda?')}
                                         </button>
                                     )}
                                     <button
                                         onClick={() => setIsAssigning(false)}
                                         className="px-3 py-1.5 text-xs font-medium bg-white border border-blue-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                                     >
-                                        Sair do Modo
+                                        {t('contratos.detail.exit_mode', 'Sair do Modo')}
                                     </button>
                                 </div>
                             </div>
@@ -726,27 +728,27 @@ export default function ContratoDetailPage() {
                                         <div className="bg-white/20 backdrop-blur-md w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner border border-white/30">
                                             <FiEdit className="w-8 h-8 text-white" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-white">Como posicionar assinaturas?</h3>
+                                        <h3 className="text-xl font-bold text-white">{t('contratos.detail.tutorial.title', 'Como posicionar assinaturas?')}</h3>
                                     </div>
                                     <div className="p-6 space-y-4">
                                         <div className="flex gap-4">
                                             <div className="flex-shrink-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">1</div>
-                                            <p className="text-sm text-gray-600 pt-1"><strong className="text-gray-900">Clique no PDF</strong> exatamente onde a assinatura deve ficar.</p>
+                                            <p className="text-sm text-gray-600 pt-1">{t('contratos.detail.tutorial.step1', 'Clique no PDF exatamente onde a assinatura deve ficar.')}</p>
                                         </div>
                                         <div className="flex gap-4">
                                             <div className="flex-shrink-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">2</div>
-                                            <p className="text-sm text-gray-600 pt-1"><strong className="text-gray-900">Selecione a pessoa</strong> digitando o nome/email ou opte por um signatário externo.</p>
+                                            <p className="text-sm text-gray-600 pt-1">{t('contratos.detail.tutorial.step2', 'Selecione a pessoa digitando o nome/email ou opte por um signatário externo.')}</p>
                                         </div>
                                         <div className="flex gap-4">
                                             <div className="flex-shrink-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">3</div>
-                                            <p className="text-sm text-gray-600 pt-1"><strong className="text-gray-900">Confirme</strong> no card flutuante que surgirá no local.</p>
+                                            <p className="text-sm text-gray-600 pt-1">{t('contratos.detail.tutorial.step3', 'Confirme no card flutuante que surgirá no local.')}</p>
                                         </div>
                                         
                                         <button 
                                             onClick={dismissTutorial}
                                             className="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-[0.98]"
                                         >
-                                            Entendi, vamos lá!
+                                            {t('contratos.detail.tutorial.ok', 'Entendi, vamos lá!')}
                                         </button>
                                     </div>
                                 </div>
@@ -772,7 +774,7 @@ export default function ContratoDetailPage() {
                                                 <FiChevronLeft className="w-5 h-5" />
                                             </button>
                                             <span className="text-sm font-medium text-gray-700">
-                                                Página {currentPage} de {numPages || '-'}
+                                                {t('common.page', 'Página')} {currentPage} {t('common.of', 'de')} {numPages || '-'}
                                             </span>
                                             <button 
                                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, numPages || 1))}
@@ -790,7 +792,7 @@ export default function ContratoDetailPage() {
                                                 className="text-sm text-blue-600 hover:underline flex items-center gap-1"
                                             >
                                                 <FiDownload className="w-4 h-4" />
-                                                Abrir em nova aba
+                                                {t('contratos.detail.open_tab', 'Abrir em nova aba')}
                                             </a>
                                         </div>
                                     </div>
@@ -803,7 +805,7 @@ export default function ContratoDetailPage() {
                                             onLoadError={onDocumentLoadError}
                                             loading={<div className="p-10 text-gray-500 flex flex-col items-center gap-3">
                                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                                                <p>Carregando Documento...</p>
+                                                <p>{t('contratos.detail.loading_doc', 'Carregando Documento...')}</p>
                                             </div>}
                                             options={PDF_OPTIONS}
                                         >
@@ -838,7 +840,7 @@ export default function ContratoDetailPage() {
 
                                                     const displayName = s.colaborador?.first_name 
                                                         ? `${s.colaborador.first_name} ${s.colaborador.last_name || ''}`
-                                                        : (s.external_signer_name || s.external_signer_email || 'Convidado');
+                                                        : (s.external_signer_name || s.external_signer_email || t('common.guest', 'Convidado'));
                                                     
                                                     const signerId = s.colaborador_id || s.external_signer_email || s.id;
                                                     
@@ -866,8 +868,8 @@ export default function ContratoDetailPage() {
                                                             width={150}
                                                             height={50}
                                                             label={selectedColaborador 
-                                                                ? (colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.first_name || 'Selecionado') 
-                                                                : (manualSignerName || 'Posição Nova')}
+                                                                ? (colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.first_name || t('common.selected', 'Selecionado')) 
+                                                                : (manualSignerName || t('contratos.detail.new_position', 'Posição Nova'))}
                                                             status="PENDING"
                                                             interactive={true}
                                                             draggable={true}
@@ -888,7 +890,7 @@ export default function ContratoDetailPage() {
                                                         >
                                                             <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
                                                                 <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5 uppercase tracking-wide">
-                                                                    <FiUserPlus className="text-blue-600 w-3.5 h-3.5" /> Signatário
+                                                                    <FiUserPlus className="text-blue-600 w-3.5 h-3.5" /> {t('contratos.detail.signer', 'Signatário')}
                                                                 </h4>
                                                                 <button onClick={() => resetAssignState()} className="text-gray-400 hover:text-red-500 transition-colors">
                                                                     <FiX className="w-4 h-4" />
@@ -898,11 +900,11 @@ export default function ContratoDetailPage() {
                                                             <div className="space-y-3">
                                                                 <div className="flex items-center justify-between gap-2 py-1 px-2.5 bg-blue-50/50 rounded-lg border border-blue-100/50 mb-1">
                                                                     <div>
-                                                                        <label className="text-[10px] font-bold text-blue-600 block">Fluxo de Assinatura</label>
-                                                                        <span className="text-[11px] text-gray-600">Posição para assinatura digital</span>
+                                                                        <label className="text-[10px] font-bold text-blue-600 block">{t('contratos.detail.flow', 'Fluxo de Assinatura')}</label>
+                                                                        <span className="text-[11px] text-gray-600">{t('contratos.detail.flow_desc', 'Posição para assinatura digital')}</span>
                                                                     </div>
                                                                     <div className="w-16">
-                                                                        <label className="text-[9px] font-bold text-gray-500 block mb-0.5 text-right">Ordem</label>
+                                                                        <label className="text-[9px] font-bold text-gray-500 block mb-0.5 text-right">{t('contratos.detail.order', 'Ordem')}</label>
                                                                         <input 
                                                                             type="number"
                                                                             min="1"
@@ -914,14 +916,14 @@ export default function ContratoDetailPage() {
                                                                 </div>
 
                                                                 <div className="relative pt-1">
-                                                                    <label className="text-[10px] font-bold text-gray-500 block mb-1">Vincular a quem?</label>
+                                                                    <label className="text-[10px] font-bold text-gray-500 block mb-1">{t('contratos.detail.link_whom', 'Vincular a quem?')}</label>
                                                                     
                                                                     {!isExternalInput && !selectedColaborador && (
                                                                         <div className="relative">
                                                                             <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
                                                                             <input 
                                                                                 type="text"
-                                                                                placeholder="Buscar nome ou email..."
+                                                                                placeholder={t('contratos.detail.search_placeholder_signer', 'Buscar nome ou email...')}
                                                                                 value={searchQuery}
                                                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                                                 className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm placeholder:text-gray-300"
@@ -965,7 +967,7 @@ export default function ContratoDetailPage() {
                                                                                             setManualSignerEmail(searchQuery.includes('@') ? searchQuery : '');
                                                                                         }}
                                                                                     >
-                                                                                        <FiPlusCircle className="w-3 h-3" /> Inserir Signatário Externo
+                                                                                        <FiPlusCircle className="w-3 h-3" /> {t('contratos.detail.add_external', 'Inserir Signatário Externo')}
                                                                                     </div>
                                                                                 </div>
                                                                             )}
@@ -981,7 +983,7 @@ export default function ContratoDetailPage() {
                                                                                 <p className="text-xs font-bold text-gray-900 truncate">
                                                                                     {colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.first_name} {colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.last_name}
                                                                                 </p>
-                                                                                <p className="text-[10px] text-blue-600 font-medium">Base Interna ABZ</p>
+                                                                                <p className="text-[10px] text-blue-600 font-medium">{t('contratos.detail.internal_base', 'Base Interna ABZ')}</p>
                                                                             </div>
                                                                             <button onClick={() => setSelectedColaborador('')} className="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-white transition-colors">
                                                                                 <FiX className="w-3.5 h-3.5" />
@@ -993,14 +995,14 @@ export default function ContratoDetailPage() {
                                                                         <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
                                                                             <input 
                                                                                 type="email"
-                                                                                placeholder="E-mail do signatário"
+                                                                                placeholder={t('contratos.detail.signer_email_placeholder', 'E-mail do signatário')}
                                                                                 value={manualSignerEmail}
                                                                                 onChange={(e) => setManualSignerEmail(e.target.value)}
                                                                                 className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                                                             />
                                                                             <input 
                                                                                 type="text"
-                                                                                placeholder="Nome Completo"
+                                                                                placeholder={t('contratos.detail.signer_name_placeholder', 'Nome Completo')}
                                                                                 value={manualSignerName}
                                                                                 onChange={(e) => setManualSignerName(e.target.value)}
                                                                                 className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -1010,7 +1012,7 @@ export default function ContratoDetailPage() {
                                                                                 onClick={() => { setIsExternalInput(false); setManualSignerName(''); setManualSignerEmail(''); }}
                                                                                 className="text-[10px] text-gray-500 font-medium flex items-center gap-1 hover:text-gray-800"
                                                                             >
-                                                                                <FiArrowLeft className="w-2.5 h-2.5" /> Voltar para busca
+                                                                                <FiArrowLeft className="w-2.5 h-2.5" /> {t('contratos.detail.back_to_search', 'Voltar para busca')}
                                                                             </button>
                                                                         </div>
                                                                     )}
@@ -1022,7 +1024,7 @@ export default function ContratoDetailPage() {
                                                                         disabled={!selectedColaborador && (!manualSignerEmail || !manualSignerName)}
                                                                         className="w-full px-3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-200 disabled:opacity-40 disabled:shadow-none transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
                                                                     >
-                                                                        <FiCheckCircle className="w-3.5 h-3.5" /> Fixar Assinatura
+                                                                        <FiCheckCircle className="w-3.5 h-3.5" /> {t('contratos.detail.fix_signature', 'Fixar Assinatura')}
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -1036,18 +1038,18 @@ export default function ContratoDetailPage() {
                                     {/* Posições já definidas - lista lateral */}
                                     {currentSolicitacoes.length > 0 && (
                                         <div className="bg-white rounded-lg p-3 text-sm">
-                                            <p className="font-medium text-gray-700 mb-2">📍 Posições definidas para este documento:</p>
+                                            <p className="font-medium text-gray-700 mb-2">📍 {t('contratos.detail.defined_positions', 'Posições definidas para este documento')}:</p>
                                             <div className="space-y-1">
                                                 {currentSolicitacoes.map((s: any) => (
                                                     <div key={s.id} className="flex justify-between text-xs">
                                                         <span className="text-gray-600">
                                                             {s.colaborador?.first_name 
                                                                 ? `${s.colaborador.first_name}` 
-                                                                : (s.external_signer_name || s.external_signer_email || 'Convidado')}
-                                                            {s.tipo === 'rubrica' ? ' (Rubrica)' : ' (Assinatura)'}
+                                                                : (s.external_signer_name || s.external_signer_email || t('common.guest', 'Convidado'))}
+                                                            {s.tipo === 'rubrica' ? ` (${t('contratos.detail.rubric', 'Rubrica')})` : ` (${t('contratos.detail.signature_label', 'Assinatura')})`}
                                                         </span>
                                                         <span className="text-gray-400">
-                                                            Pág {s.pagina_assinatura} | X:{s.posicao_x} Y:{s.posicao_y}
+                                                            {t('common.page_short', 'Pág')} {s.pagina_assinatura} | X:{s.posicao_x} Y:{s.posicao_y}
                                                         </span>
                                                     </div>
                                                 ))}
@@ -1058,7 +1060,7 @@ export default function ContratoDetailPage() {
                             ) : (
                                 <div className="text-center py-20 text-gray-500">
                                     <FiFileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                                    <p className="text-sm">Nenhum documento selecionado</p>
+                                    <p className="text-sm">{t('contratos.detail.no_doc_selected', 'Nenhum documento selecionado')}</p>
                                 </div>
                             )}
                         </div>
@@ -1070,23 +1072,23 @@ export default function ContratoDetailPage() {
                         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
                             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                                 <FiFileText className="w-4 h-4 text-gray-400" />
-                                Informações do Envelope
+                                {t('contratos.detail.envelope_info', 'Informações do Envelope')}
                             </h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Criado por</span>
+                                    <span className="text-gray-500">{t('contratos.detail.created_by', 'Criado por')}</span>
                                     <span className="text-gray-800 font-medium">
                                         {envelope.enviado_por_nome || 'RH'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Data</span>
+                                    <span className="text-gray-500">{t('common.date', 'Data')}</span>
                                     <span className="text-gray-800">
                                         {new Date(envelope.data_criacao).toLocaleDateString('pt-BR')}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Documentos</span>
+                                    <span className="text-gray-500">{t('contratos.total_docs', 'Documentos')}</span>
                                     <span className="text-gray-800 font-medium">
                                         {documentos.length}
                                     </span>
@@ -1096,7 +1098,7 @@ export default function ContratoDetailPage() {
                             {/* Download options */}
                             {currentDocumento && (
                                 <div className="pt-3 border-t border-gray-100 space-y-2">
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase">Arquivo Atual</p>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase">{t('contratos.detail.current_file', 'Arquivo Atual')}</p>
                                     <a
                                         href={currentDocumento.arquivo_url}
                                         target="_blank"
@@ -1104,7 +1106,7 @@ export default function ContratoDetailPage() {
                                         className="flex items-center justify-center gap-2 w-full px-3 py-2.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium transition-colors"
                                     >
                                         <FiDownload className="w-4 h-4" />
-                                        Baixar Doc Atual
+                                        {t('contratos.detail.download_current', 'Baixar Doc Atual')}
                                     </a>
                                 </div>
                             )}
@@ -1114,11 +1116,11 @@ export default function ContratoDetailPage() {
                         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
                             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                                 <FiUsers className="w-4 h-4 text-gray-400" />
-                                Assinaturas Gerais ({solicitacoes.filter(s => s.tipo !== 'copia').length})
+                                {t('contratos.detail.general_signatures', 'Assinaturas Gerais')} ({solicitacoes.filter(s => s.tipo !== 'copia').length})
                             </h3>
 
                             {solicitacoes.filter(s => s.tipo !== 'copia').length === 0 ? (
-                                <p className="text-xs text-gray-400 py-2">Nenhuma assinatura atribuída no envelope</p>
+                                <p className="text-xs text-gray-400 py-2">{t('contratos.detail.no_signatures_assigned', 'Nenhuma assinatura atribuída no envelope')}</p>
                             ) : (
                                 <div className="space-y-2">
                                     {solicitacoes.filter((s: any) => s.tipo !== 'copia').map((s: any) => {
@@ -1142,7 +1144,7 @@ export default function ContratoDetailPage() {
                                             {s.visualizado_em && s.status === 'PENDING' && (
                                                 <div className="flex items-center gap-1 mb-1.5 text-[10px] text-indigo-600 bg-indigo-50/60 px-2 py-0.5 rounded-md font-medium border border-indigo-100/30 w-fit shadow-xs">
                                                     <FiEye className="w-2.5 h-2.5 text-indigo-500" /> 
-                                                    Visualizado às {new Date(s.visualizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({new Date(s.visualizado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
+                                                    {t('contratos.detail.viewed_at', 'Visualizado às {time} ({date})').replace('{time}', new Date(s.visualizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })).replace('{date}', new Date(s.visualizado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }))}
                                                 </div>
                                             )}
                                             <div className="flex items-center justify-between text-xs text-gray-500">
@@ -1154,7 +1156,7 @@ export default function ContratoDetailPage() {
                                                             <button
                                                                 onClick={() => handleCopyTokenLink(s.token_acesso)}
                                                                 className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                                                                title="Copiar Link Único de Assinatura"
+                                                                title={t('contratos.detail.title_copy_unique', 'Copiar Link Único de Assinatura')}
                                                             >
                                                                 <FiLink className="w-3 h-3" />
                                                             </button>
@@ -1162,7 +1164,7 @@ export default function ContratoDetailPage() {
                                                         <button
                                                             onClick={() => handleDeleteAssignment(s.id)}
                                                             className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                            title="Remover atribuição"
+                                                            title={t('contratos.detail.title_remove_assign', 'Remover atribuição')}
                                                         >
                                                             <FiTrash2 className="w-3 h-3" />
                                                         </button>
@@ -1181,14 +1183,14 @@ export default function ContratoDetailPage() {
                             <div className="flex items-center justify-between">
                                 <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                                     <FiMail className="w-4 h-4 text-indigo-500" />
-                                    Acompanhamento (Cópia)
+                                    {t('contratos.detail.cc_title', 'Acompanhamento (Cópia)')}
                                 </h3>
                                 <span className="bg-indigo-50 text-indigo-600 text-[11px] font-bold px-2 py-0.5 rounded-full">
                                     {ccSolicitacoes.length}
                                 </span>
                             </div>
                             <p className="text-[11px] text-gray-500 leading-relaxed">
-                                Pessoas listadas aqui não assinam, mas recebem cópias do documento final e notificações de andamento.
+                                {t('contratos.detail.cc_desc', 'Pessoas listadas aqui não assinam, mas recebem cópias do documento final e notificações de andamento.')}
                             </p>
 
                             {/* Active CC list */}
@@ -1206,7 +1208,7 @@ export default function ContratoDetailPage() {
                                                 <button 
                                                     onClick={() => handleDeleteAssignment(cc.id)}
                                                     className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                    title="Remover observador"
+                                                    title={t('contratos.detail.title_remove_observer', 'Remover observador')}
                                                 >
                                                     <FiTrash2 className="w-3.5 h-3.5" />
                                                 </button>
@@ -1222,7 +1224,7 @@ export default function ContratoDetailPage() {
                                     <input 
                                         type="text"
                                         required
-                                        placeholder="Nome do observador"
+                                        placeholder={t('contratos.detail.cc_name_placeholder', 'Nome do observador')}
                                         value={ccName}
                                         onChange={(e) => setCcName(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white hover:border-gray-300 focus:border-indigo-500 outline-none transition-colors"
@@ -1231,7 +1233,7 @@ export default function ContratoDetailPage() {
                                         <input 
                                             type="email"
                                             required
-                                            placeholder="E-mail"
+                                            placeholder={t('common.email', 'E-mail')}
                                             value={ccEmail}
                                             onChange={(e) => setCcEmail(e.target.value)}
                                             className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white hover:border-gray-300 focus:border-indigo-500 outline-none transition-colors"
@@ -1244,7 +1246,7 @@ export default function ContratoDetailPage() {
                                             {isAddingCC ? (
                                                 <div className="animate-spin h-3.5 w-3.5 border border-white border-t-transparent rounded-full" />
                                             ) : (
-                                                'Adicionar'
+                                                t('common.add', 'Adicionar')
                                             )}
                                         </button>
                                     </div>
@@ -1269,7 +1271,7 @@ export default function ContratoDetailPage() {
                                 ) : (
                                     <FiEdit3 className="w-4 h-4" />
                                 )}
-                                {isSigning ? 'Assinando...' : 'Assinar Documento'}
+                                {isSigning ? `${t('contratos.detail.signing', 'Assinando')}...` : t('contratos.detail.btn_sign_doc', 'Assinar Documento')}
                             </button>
                         )}
                     </div>
@@ -1284,8 +1286,8 @@ export default function ContratoDetailPage() {
                                     <FiMail className="w-5 h-5 text-blue-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">Disparar Envelope</h3>
-                                    <p className="text-xs text-gray-500">Iniciar fluxo de assinaturas sequencial</p>
+                                    <h3 className="text-lg font-semibold text-gray-900">{t('contratos.detail.dispatch_modal.title', 'Disparar Envelope')}</h3>
+                                    <p className="text-xs text-gray-500">{t('contratos.detail.dispatch_modal.subtitle', 'Iniciar fluxo de assinaturas sequencial')}</p>
                                 </div>
                                 <button
                                     onClick={() => setShowSendModal(false)}
@@ -1297,22 +1299,22 @@ export default function ContratoDetailPage() {
 
                             <div className="px-6 py-6 space-y-5">
                                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                                    <p className="text-sm text-blue-800 font-medium mb-2">O que acontecerá ao confirmar?</p>
+                                    <p className="text-sm text-blue-800 font-medium mb-2">{t('contratos.detail.dispatch_modal.what_happens', 'O que acontecerá ao confirmar?')}</p>
                                     <ul className="space-y-2 text-xs text-blue-700 list-disc ml-4">
-                                        <li>O sistema identificará a <strong>ordem cronológica</strong> definida nas atribuições.</li>
-                                        <li>Apenas os signatários de <strong>Ordem 1</strong> receberão as notificações iniciais.</li>
-                                        <li>O envelope será marcado como <strong>Enviado</strong> e o fluxo avança automaticamente à medida que cada parte assina.</li>
+                                        <li>{t('contratos.detail.dispatch_modal.step1', 'O sistema identificará a ordem cronológica definida nas atribuições.')}</li>
+                                        <li>{t('contratos.detail.dispatch_modal.step2', 'Apenas os signatários de Ordem 1 receberão as notificações iniciais.')}</li>
+                                        <li>{t('contratos.detail.dispatch_modal.step3', 'O envelope será marcado como Enviado e o fluxo avança automaticamente à medida que cada parte assina.')}</li>
                                     </ul>
                                 </div>
 
                                 {solicitacoes.length === 0 ? (
                                     <div className="p-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-xs flex items-start gap-2">
                                         <FiShield className="flex-shrink-0 w-4 h-4 mt-0.5" />
-                                        <span><strong>Aviso:</strong> Não existem assinaturas configuradas neste envelope ainda. Adicione signatários antes de enviar.</span>
+                                        <span>{t('contratos.detail.dispatch_modal.warning_empty', 'Aviso: Não existem assinaturas configuradas neste envelope ainda. Adicione signatários antes de enviar.')}</span>
                                     </div>
                                 ) : (
                                     <div className="text-sm text-gray-600">
-                                        Total de signatários configurados: <strong className="text-gray-900">{solicitacoes.length}</strong>
+                                        {t('contratos.detail.dispatch_modal.total_configured', 'Total de signatários configurados')}: <strong className="text-gray-900">{solicitacoes.length}</strong>
                                     </div>
                                 )}
 
@@ -1321,14 +1323,14 @@ export default function ContratoDetailPage() {
                                         onClick={() => setShowSendModal(false)}
                                         className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
                                     >
-                                        Revisar
+                                        {t('common.review', 'Revisar')}
                                     </button>
                                     <button
                                         onClick={handleSendEnvelope}
                                         disabled={solicitacoes.length === 0 || loading}
                                         className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
                                     >
-                                        {loading ? 'Disparando...' : 'Confirmar e Disparar'}
+                                        {loading ? `${t('contratos.detail.dispatching', 'Disparando')}...` : t('contratos.detail.dispatch_confirm', 'Confirmar e Disparar')}
                                         {!loading && <FiArrowLeft className="rotate-180 w-4 h-4 ml-1" />}
                                     </button>
                                 </div>
@@ -1346,19 +1348,19 @@ export default function ContratoDetailPage() {
                                     <FiShield className="w-5 h-5 text-blue-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">Confirmação Legal</h3>
-                                    <p className="text-xs text-gray-500">Leia atentamente antes de assinar</p>
+                                    <h3 className="text-lg font-semibold text-gray-900">{t('contratos.detail.legal_modal.title', 'Confirmação Legal')}</h3>
+                                    <p className="text-xs text-gray-500">{t('contratos.detail.legal_modal.subtitle', 'Leia atentamente antes de assinar')}</p>
                                 </div>
                             </div>
 
                             <div className="px-6 py-5 space-y-4">
                                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 leading-relaxed">
-                                    Ao assinar eletronicamente este documento, você declara que:
+                                    {t('contratos.detail.legal_modal.intro', 'Ao assinar eletronicamente este documento, você declara que:')}
                                     <ul className="list-disc ml-4 mt-2 space-y-1 text-xs text-gray-600">
-                                        <li>É o titular autenticado desta conta no Portal ABZ</li>
-                                        <li>Leu e compreendeu o conteúdo integral do documento</li>
-                                        <li>Reconhece a validade jurídica desta assinatura conforme MP 2.200-2/2001</li>
-                                        <li>Está ciente de que IP, data/hora e navegador serão registrados</li>
+                                        <li>{t('contratos.detail.legal_modal.term1', 'É o titular autenticado desta conta no Portal ABZ')}</li>
+                                        <li>{t('contratos.detail.legal_modal.term2', 'Leu e compreendeu o conteúdo integral do documento')}</li>
+                                        <li>{t('contratos.detail.legal_modal.term3', 'Reconhece a validade jurídica desta assinatura conforme MP 2.200-2/2001')}</li>
+                                        <li>{t('contratos.detail.legal_modal.term4', 'Está ciente de que IP, data/hora e navegador serão registrados')}</li>
                                     </ul>
                                 </div>
 
@@ -1370,8 +1372,7 @@ export default function ContratoDetailPage() {
                                         className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
                                     />
                                     <span className="text-sm text-gray-700">
-                                        <strong>Confirmo</strong> ser o titular desta conta e assino eletronicamente
-                                        este documento, reconhecendo sua validade jurídica e integridade.
+                                        {t('contratos.detail.legal_modal.confirm_checkbox', 'Confirmo ser o titular desta conta e assino eletronicamente este documento, reconhecendo sua validade jurídica e integridade.')}
                                     </span>
                                 </label>
 
@@ -1383,7 +1384,7 @@ export default function ContratoDetailPage() {
                                         }}
                                         className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
-                                        Cancelar
+                                        {t('common.cancel', 'Cancelar')}
                                     </button>
                                     <button
                                         onClick={handleSign}
@@ -1395,7 +1396,7 @@ export default function ContratoDetailPage() {
                                         ) : (
                                             <FiEdit3 className="w-4 h-4" />
                                         )}
-                                        {isSigning ? 'Assinando...' : 'Assinar Documento'}
+                                        {isSigning ? `${t('contratos.detail.signing', 'Assinando')}...` : t('contratos.detail.btn_sign_doc', 'Assinar Documento')}
                                     </button>
                                 </div>
                             </div>

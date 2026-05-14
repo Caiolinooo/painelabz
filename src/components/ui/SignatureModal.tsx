@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { FiX, FiKey, FiCheck, FiEdit3, FiShield } from 'react-icons/fi';
 import SignaturePad from '@/components/ui/SignaturePad';
 import toast from 'react-hot-toast';
+import { useI18n } from '@/contexts/I18nContext';
 
 export interface SignatureModalProps {
     isOpen: boolean;
@@ -33,10 +34,14 @@ export default function SignatureModal({
     onConfirm,
     userSignatureUrl,
     isSubmitting = false,
-    title = 'Assinatura Digital',
-    description = 'Confirme sua identidade para assinar este documento.',
+    title,
+    description,
     onRegisterSignature,
 }: SignatureModalProps) {
+    const { t } = useI18n();
+    const displayTitle = title || t('signature.modal.title_default', 'Assinatura Digital');
+    const displayDescription = description || t('signature.modal.desc_default', 'Confirme sua identidade para assinar este documento.');
+
     const [step, setStep] = useState<ModalStep>(userSignatureUrl ? 'preview' : 'register');
     const [newSignatureBase64, setNewSignatureBase64] = useState<string | null>(null);
     const [isRegistering, setIsRegistering] = useState(false);
@@ -57,7 +62,7 @@ export default function SignatureModal({
     // Step 1: Register new signature
     const handleRegisterSignature = async () => {
         if (!newSignatureBase64) {
-            toast.error('Por favor, desenhe sua assinatura.');
+            toast.error(t('signature.modal.toast.draw_required', 'Por favor, desenhe sua assinatura.'));
             return;
         }
 
@@ -66,9 +71,9 @@ export default function SignatureModal({
             const url = await onRegisterSignature(newSignatureBase64);
             setCurrentSignatureUrl(url);
             setStep('preview');
-            toast.success('Assinatura cadastrada com sucesso!');
+            toast.success(t('signature.modal.toast.register_success', 'Assinatura cadastrada com sucesso!'));
         } catch (error: any) {
-            toast.error(error.message || 'Erro ao cadastrar assinatura');
+            toast.error(error.message || t('signature.modal.toast.register_error', 'Erro ao cadastrar assinatura'));
         } finally {
             setIsRegistering(false);
         }
@@ -84,14 +89,14 @@ export default function SignatureModal({
 
             const optionsRes = await fetch('/api/auth/webauthn/sign/options', { method: 'POST' });
             const optionsPayload = await optionsRes.json().catch(() => null);
-            if (!optionsRes.ok) throw new Error(optionsPayload?.error || 'Erro ao iniciar autenticação biométrica');
+            if (!optionsRes.ok) throw new Error(optionsPayload?.error || t('signature.modal.toast.biometric_error', 'Erro ao iniciar autenticação biométrica'));
 
             let asseResp;
             try {
                 asseResp = await startAuthentication({ optionsJSON: optionsPayload });
             } catch (err: any) {
                 if (err.name === 'NotAllowedError') return; // User cancelled
-                throw new Error('Falha ao usar biometria. Verifique se há uma Passkey cadastrada.');
+                throw new Error(t('signature.modal.toast.biometric_failed', 'Falha ao usar biometria. Verifique se há uma Passkey cadastrada.'));
             }
 
             const verifyRes = await fetch('/api/auth/webauthn/sign/verify', {
@@ -102,14 +107,14 @@ export default function SignatureModal({
             const verification = await verifyRes.json();
 
             if (verification.success) {
-                toast.success('Identidade confirmada via biometria!');
+                toast.success(t('signature.modal.toast.biometric_success', 'Identidade confirmada via biometria!'));
                 onConfirm(currentSignatureUrl, 'passkey');
             } else {
-                throw new Error(verification.error || 'Erro na verificação');
+                throw new Error(verification.error || t('signature.modal.toast.biometric_error', 'Erro na verificação'));
             }
         } catch (error: any) {
             console.error(error);
-            toast.error(error.message || 'Erro ao autenticar com biometria');
+            toast.error(error.message || t('signature.modal.toast.biometric_error', 'Erro ao autenticar com biometria'));
         } finally {
             setIsPasskeyLoading(false);
         }
@@ -131,8 +136,8 @@ export default function SignatureModal({
                             <FiEdit3 className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-                            <p className="text-xs text-gray-500">{description}</p>
+                            <h3 className="text-lg font-semibold text-gray-900">{displayTitle}</h3>
+                            <p className="text-xs text-gray-500">{displayDescription}</p>
                         </div>
                     </div>
                     <button
@@ -152,14 +157,14 @@ export default function SignatureModal({
                                 <FiShield className="w-5 h-5 text-amber-600 flex-shrink-0" />
                                 <p className="text-sm text-amber-800">
                                     {currentSignatureUrl
-                                        ? 'Desenhe sua nova assinatura abaixo para substituir a atual.'
-                                        : 'Você ainda não possui assinatura cadastrada. Desenhe sua assinatura abaixo para continuar.'}
+                                        ? t('signature.modal.draw_to_replace', 'Desenhe sua nova assinatura abaixo para substituir a atual.')
+                                        : t('signature.modal.draw_to_continue', 'Você ainda não possui assinatura cadastrada. Desenhe sua assinatura abaixo para continuar.')}
                                 </p>
                             </div>
 
                             <SignaturePad
                                 onSignatureChange={setNewSignatureBase64}
-                                placeholder="Desenhe sua assinatura aqui"
+                                placeholder={t('signature.modal.draw_placeholder', 'Desenhe sua assinatura aqui')}
                                 disabled={isRegistering}
                             />
 
@@ -171,7 +176,7 @@ export default function SignatureModal({
                                         disabled={isRegistering}
                                         className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
-                                        Cancelar
+                                        {t('signature.modal.cancel', 'Cancelar')}
                                     </button>
                                 )}
                                 <button
@@ -185,7 +190,7 @@ export default function SignatureModal({
                                     ) : (
                                         <FiCheck className="w-4 h-4" />
                                     )}
-                                    {isRegistering ? 'Salvando...' : 'Cadastrar Assinatura'}
+                                    {isRegistering ? t('signature.modal.saving', 'Salvando...') : t('signature.modal.register_btn', 'Cadastrar Assinatura')}
                                 </button>
                             </div>
                         </div>
@@ -197,12 +202,12 @@ export default function SignatureModal({
                             {/* Signature Preview */}
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                                    Sua Assinatura
+                                    {t('signature.modal.your_signature', 'Sua Assinatura')}
                                 </label>
                                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center min-h-[120px]">
                                     <img
                                         src={currentSignatureUrl}
-                                        alt="Minha assinatura"
+                                        alt={t('signature.modal.alt_text', 'Minha assinatura')}
                                         className="max-h-24 max-w-full object-contain"
                                         crossOrigin="anonymous"
                                     />
@@ -217,14 +222,14 @@ export default function SignatureModal({
                                     disabled={isSubmitting || isPasskeyLoading}
                                     className="text-xs text-blue-600 hover:text-blue-800 font-medium underline underline-offset-2"
                                 >
-                                    Alterar assinatura
+                                    {t('signature.modal.change_signature', 'Alterar assinatura')}
                                 </button>
                             </div>
 
                             {/* Auth Methods */}
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-3 uppercase tracking-wider">
-                                    Confirme sua Identidade
+                                    {t('signature.modal.confirm_identity', 'Confirme sua Identidade')}
                                 </label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {/* Direct Confirm (Canvas — identity implicitly confirmed) */}
@@ -239,7 +244,7 @@ export default function SignatureModal({
                                         ) : (
                                             <FiCheck className="w-4 h-4" />
                                         )}
-                                        Confirmar e Assinar
+                                        {t('signature.modal.confirm_btn', 'Confirmar e Assinar')}
                                     </button>
 
                                     {/* Passkey / Biometria */}
@@ -254,7 +259,7 @@ export default function SignatureModal({
                                         ) : (
                                             <FiKey className="w-4 h-4" />
                                         )}
-                                        Usar Biometria
+                                        {t('signature.modal.use_biometric_btn', 'Usar Biometria')}
                                     </button>
                                 </div>
                             </div>

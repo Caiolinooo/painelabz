@@ -6,6 +6,7 @@ import MainLayout from '@/components/Layout/MainLayout';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useSignature } from '@/contexts/SignatureContext';
 import { fetchWithAuth } from '@/lib/authUtils';
+import { useI18n } from '@/contexts/I18nContext';
 import { toast } from 'react-hot-toast';
 import {
     FiArrowLeft, FiCalendar, FiMapPin, FiUsers, FiCopy,
@@ -45,6 +46,7 @@ export default function ListaDetailPage() {
     const listaId = params?.id as string;
     const { profile, user } = useSupabaseAuth();
     const { requestSignature, hasSignature } = useSignature();
+    const { t, locale } = useI18n();
 
     const [lista, setLista] = useState<ListaDetail | null>(null);
     const [registros, setRegistros] = useState<Registro[]>([]);
@@ -71,7 +73,7 @@ export default function ListaDetailPage() {
             if (regData.success) setRegistros(regData.registros || []);
         } catch (err) {
             console.error('Erro ao carregar detalhes:', err);
-            toast.error('Erro ao carregar detalhes da lista');
+            toast.error(t('presenca.detail.error_loading', 'Erro ao carregar detalhes da lista'));
         } finally {
             setIsLoading(false);
         }
@@ -84,13 +86,13 @@ export default function ListaDetailPage() {
     // Assinar presença (usuário logado)
     const handleSignAttendance = async () => {
         if (!profile || !user) {
-            toast.error('Faça login para assinar');
+            toast.error(t('presenca.detail.login_required', 'Faça login para assinar'));
             return;
         }
 
         const result = await requestSignature({
-            title: 'Registrar Presença',
-            description: `Confirme sua identidade para registrar presença em "${lista?.titulo || 'evento'}"`,
+            title: t('presenca.detail.sign_title', 'Registrar Presença'),
+            description: t('presenca.detail.sign_desc', 'Confirme sua identidade para registrar presença em "{title}"').replace('{title}', lista?.titulo || 'evento'),
         });
 
         if (!result) return;
@@ -111,13 +113,13 @@ export default function ListaDetailPage() {
             });
             const data = await res.json();
             if (data.success) {
-                toast.success('Presença registrada!');
+                toast.success(t('presenca.detail.success_registered', 'Presença registrada!'));
                 fetchData();
             } else {
-                toast.error(data.error || 'Erro ao registrar');
+                toast.error(data.error || t('presenca.detail.error_registering', 'Erro ao registrar'));
             }
         } catch (err: any) {
-            toast.error(err.message || 'Erro ao registrar presença');
+            toast.error(err.message || t('presenca.detail.error_registering', 'Erro ao registrar presença'));
         } finally {
             setIsSigningIn(false);
         }
@@ -127,24 +129,24 @@ export default function ListaDetailPage() {
         if (!lista) return;
         const url = `${window.location.origin}/lista-presenca/public/${lista.link_unico}`;
         navigator.clipboard.writeText(url);
-        toast.success('Link copiado!');
+        toast.success(t('presenca.link_copied', 'Link copiado!'));
     };
 
-    const formatDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formatDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
     const formatTime = (t: string | null) => t ? t.slice(0, 5) : '';
-    const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const formatDateTime = (d: string) => new Date(d).toLocaleString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     const handleDownloadPDF = async () => {
         if (!lista) return;
         try {
             setIsDownloading(true);
-            toast.loading('Gerando PDF...', { id: 'pdf-toast' });
-            const doc = await generateListaPresencaPDF(lista, registros);
+            toast.loading(t('presenca.detail.generating_pdf', 'Gerando PDF...'), { id: 'pdf-toast' });
+            const doc = await generateListaPresencaPDF(lista, registros, locale);
             doc.save(`lista_presenca_${lista.titulo.replace(/[^\w-]/g, '_')}_${lista.data_evento}.pdf`);
-            toast.success('Download concluído!', { id: 'pdf-toast' });
+            toast.success(t('presenca.detail.download_completed', 'Download concluído!'), { id: 'pdf-toast' });
         } catch (error) {
             console.error('Erro ao gerar PDF:', error);
-            toast.error('Erro ao gerar documento PDF', { id: 'pdf-toast' });
+            toast.error(t('presenca.detail.error_pdf', 'Erro ao gerar documento PDF'), { id: 'pdf-toast' });
         } finally {
             setIsDownloading(false);
         }
@@ -170,7 +172,7 @@ export default function ListaDetailPage() {
                 <div>
                     <button onClick={() => router.push('/lista-presenca')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
                         <FiArrowLeft className="w-4 h-4" />
-                        Voltar
+                        {t('common.back', 'Voltar')}
                     </button>
 
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
@@ -196,7 +198,7 @@ export default function ListaDetailPage() {
                                     )}
                                     <span className="flex items-center gap-1.5">
                                         <FiUsers className="w-4 h-4 text-gray-400" />
-                                        {lista?.total_participantes || registros.length} participantes
+                                        {lista?.total_participantes || registros.length} {t('presenca.participant_plural', 'participantes')}
                                     </span>
                                 </div>
                                 {lista?.pauta && (
@@ -207,12 +209,12 @@ export default function ListaDetailPage() {
                                 {isManager && (
                                     <button onClick={handleDownloadPDF} disabled={isDownloading} className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
                                         {isDownloading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" /> : <FiDownload className="w-4 h-4" />}
-                                        Baixar PDF
+                                        {t('presenca.detail.download_pdf', 'Baixar PDF')}
                                     </button>
                                 )}
                                 <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors">
                                     <FiCopy className="w-4 h-4" />
-                                    Copiar Link
+                                    {t('presenca.copy_link', 'Copiar Link')}
                                 </button>
                                 {lista?.status === 'aberta' && !alreadySigned && (
                                     <button
@@ -221,13 +223,13 @@ export default function ListaDetailPage() {
                                         className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:bg-gray-300 transition-colors font-medium text-sm"
                                     >
                                         {isSigningIn ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> : <FiEdit3 className="w-4 h-4" />}
-                                        Assinar Presença
+                                        {t('presenca.detail.btn_sign', 'Assinar Presença')}
                                     </button>
                                 )}
                                 {alreadySigned && (
                                     <span className="flex items-center gap-1.5 px-4 py-2.5 bg-green-50 text-green-700 rounded-xl text-sm font-medium">
                                         <FiCheck className="w-4 h-4" />
-                                        Presença Registrada
+                                        {t('presenca.detail.status_signed', 'Presença Registrada')}
                                     </span>
                                 )}
                             </div>
@@ -238,13 +240,13 @@ export default function ListaDetailPage() {
                 {/* Records Table */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-100">
-                        <h2 className="font-semibold text-gray-900">Registros de Presença</h2>
+                        <h2 className="font-semibold text-gray-900">{t('presenca.detail.table_title', 'Registros de Presença')}</h2>
                     </div>
 
                     {registros.length === 0 ? (
                         <div className="text-center py-12 text-gray-400">
                             <FiUsers className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                            <p className="text-sm">Nenhuma presença registrada ainda.</p>
+                            <p className="text-sm">{t('presenca.detail.no_records', 'Nenhuma presença registrada ainda.')}</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -252,10 +254,10 @@ export default function ListaDetailPage() {
                                 <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                                     <tr>
                                         <th className="px-6 py-3 text-left font-medium">#</th>
-                                        <th className="px-6 py-3 text-left font-medium">Nome / Name</th>
-                                        <th className="px-6 py-3 text-left font-medium">Função / Position</th>
-                                        <th className="px-6 py-3 text-left font-medium">Assinatura / Signature</th>
-                                        <th className="px-6 py-3 text-left font-medium">Data/Hora</th>
+                                        <th className="px-6 py-3 text-left font-medium">{t('presenca.detail.table.name', 'Nome / Name')}</th>
+                                        <th className="px-6 py-3 text-left font-medium">{t('presenca.detail.table.position', 'Função / Position')}</th>
+                                        <th className="px-6 py-3 text-left font-medium">{t('presenca.detail.table.signature', 'Assinatura / Signature')}</th>
+                                        <th className="px-6 py-3 text-left font-medium">{t('presenca.detail.table.date_time', 'Data/Hora')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -267,7 +269,7 @@ export default function ListaDetailPage() {
                                             <td className="px-6 py-3">
                                                 <img
                                                     src={reg.assinatura_url}
-                                                    alt={`Assinatura de ${reg.nome_completo}`}
+                                                    alt={t('presenca.detail.table.signature_alt', 'Assinatura de {name}').replace('{name}', reg.nome_completo)}
                                                     className="h-10 max-w-[120px] object-contain"
                                                     crossOrigin="anonymous"
                                                 />

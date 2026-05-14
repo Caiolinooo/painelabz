@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔧 Corrigindo URL do Netlify para painelabzgroup.netlify.app"
+echo "🔧 Corrigindo URL do Netlify para portal.groupabz.com"
 echo "=================================================="
 
 # Verificar se o Netlify CLI está instalado
@@ -16,8 +16,8 @@ netlify status
 # Atualizar as variáveis de ambiente com a URL correta
 echo "🌐 Atualizando variáveis de ambiente..."
 
-netlify env:set NEXT_PUBLIC_APP_URL "https://painelabzgroup.netlify.app"
-netlify env:set NEXT_PUBLIC_API_URL "https://painelabzgroup.netlify.app/api"
+netlify env:set NEXT_PUBLIC_APP_URL "https://portal.groupabz.com"
+netlify env:set NEXT_PUBLIC_API_URL "https://portal.groupabz.com/api"
 
 echo "✅ URLs atualizadas com sucesso!"
 
@@ -28,6 +28,6 @@ netlify deploy --prod
 echo "🎉 Deploy iniciado! Verifique o progresso em: https://app.netlify.com/sites/painelabzgroup/deploys"
 echo ""
 echo "📧 Após o deploy, os links de verificação de email usarão a URL correta:"
-echo "   https://painelabzgroup.netlify.app/verify-email?token=..."
+echo "   https://portal.groupabz.com/verify-email?token=..."
 echo ""
 echo "✅ Problema resolvido!"
