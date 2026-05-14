@@ -5,13 +5,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiGlobe, FiCheck } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { Locale } from '@/i18n';
+import { usePathname } from 'next/navigation';
 
 export default function LanguageDialog() {
   const { locale, setLocale, t, availableLocales } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [hasShown, setHasShown] = useState(false);
 
+  const pathname = usePathname();
+  const isPublicPath = pathname?.includes('/assinatura/') || 
+                       pathname?.includes('/lista-presenca/public/') || 
+                       pathname?.startsWith('/login') || 
+                       pathname?.startsWith('/register') || 
+                       pathname?.startsWith('/reset-password');
+
   useEffect(() => {
+    // Do not run timeouts or state updates on public guest flows
+    if (isPublicPath) return;
+
     // Check if the dialog has been shown before
     const hasShownDialog = localStorage.getItem('languageDialogShown');
     
@@ -25,7 +36,7 @@ export default function LanguageDialog() {
     } else {
       setHasShown(true);
     }
-  }, []);
+  }, [isPublicPath]);
 
   const handleSelectLanguage = (localeCode: Locale) => {
     setLocale(localeCode);
@@ -62,7 +73,7 @@ export default function LanguageDialog() {
     }
   };
 
-  if (hasShown && !isOpen) {
+  if (isPublicPath || (hasShown && !isOpen)) {
     return null;
   }
 
@@ -73,7 +84,7 @@ export default function LanguageDialog() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}

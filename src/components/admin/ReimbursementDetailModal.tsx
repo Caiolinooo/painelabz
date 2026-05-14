@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { FiX, FiCheck, FiDownload, FiFileText, FiDollarSign, FiUser, FiCalendar, FiClock, FiInfo, FiAlertTriangle, FiTrash2 } from 'react-icons/fi';
@@ -69,7 +69,7 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -118,7 +118,7 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
   // Função para formatar valor monetário
   const formatCurrency = (value?: number) => {
     if (value === undefined) return 'N/A';
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: reimbursement.moeda || 'BRL'
     }).format(value);
@@ -126,7 +126,7 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

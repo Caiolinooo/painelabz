@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
             .select(`
                 *,
                 documento:documentos_trabalhistas (*),
-                colaborador:users_unified!colaborador_id (email, first_name, last_name),
+                colaborador:users_unified!colaborador_id (email, first_name, last_name, tax_id),
                 envelope:envelopes!envelope_id (id, titulo, remetente_id)
             `)
             .eq('token_acesso', token);
@@ -139,6 +139,7 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
                 altura_assinatura: sol.altura_assinatura,
                 target_email: targetEmail,
                 target_name: targetName,
+                target_tax_id: sol.colaborador?.tax_id || null,
                 documento: {
                     id: doc?.id,
                     titulo: doc?.titulo,

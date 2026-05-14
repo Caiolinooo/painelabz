@@ -16,6 +16,72 @@ interface I18nContextType {
   setAutoTranslationEnabled: (enabled: boolean) => void;
 }
 
+// Ensure TypeScript is aware of our patch state
+declare global {
+  interface Window {
+    __dateLocalePatched?: boolean;
+  }
+}
+
+// Global Date locale override to force active translation context across all modules
+if (typeof window !== 'undefined' && !window.__dateLocalePatched) {
+  window.__dateLocalePatched = true;
+
+  const originalToLocaleDateString = Date.prototype.toLocaleDateString;
+  const originalToLocaleString = Date.prototype.toLocaleString;
+  const originalToLocaleTimeString = Date.prototype.toLocaleTimeString;
+
+  const getRuntimeLocale = (): string => {
+    try {
+      return localStorage.getItem('locale') || 'pt-BR';
+    } catch (e) {
+      return 'pt-BR';
+    }
+  };
+
+  // Override date string to intercept hardcoded pt-BR triggers when English is active
+  Date.prototype.toLocaleDateString = function(locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+    const activeLocale = getRuntimeLocale();
+    if (activeLocale !== 'pt-BR') {
+      if (!locales || locales === 'pt-BR') {
+        return originalToLocaleDateString.call(this, activeLocale, options);
+      }
+      if (Array.isArray(locales) && (locales.length === 0 || locales[0] === 'pt-BR')) {
+        return originalToLocaleDateString.call(this, activeLocale, options);
+      }
+    }
+    return originalToLocaleDateString.call(this, locales, options);
+  };
+
+  // Override date-time combined string formatting
+  Date.prototype.toLocaleString = function(locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+    const activeLocale = getRuntimeLocale();
+    if (activeLocale !== 'pt-BR') {
+      if (!locales || locales === 'pt-BR') {
+        return originalToLocaleString.call(this, activeLocale, options);
+      }
+      if (Array.isArray(locales) && (locales.length === 0 || locales[0] === 'pt-BR')) {
+        return originalToLocaleString.call(this, activeLocale, options);
+      }
+    }
+    return originalToLocaleString.call(this, locales, options);
+  };
+
+  // Override time component string formatting
+  Date.prototype.toLocaleTimeString = function(locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+    const activeLocale = getRuntimeLocale();
+    if (activeLocale !== 'pt-BR') {
+      if (!locales || locales === 'pt-BR') {
+        return originalToLocaleTimeString.call(this, activeLocale, options);
+      }
+      if (Array.isArray(locales) && (locales.length === 0 || locales[0] === 'pt-BR')) {
+        return originalToLocaleTimeString.call(this, activeLocale, options);
+      }
+    }
+    return originalToLocaleTimeString.call(this, locales, options);
+  };
+}
+
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 interface I18nProviderProps {

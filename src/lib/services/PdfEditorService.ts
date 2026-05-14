@@ -96,11 +96,19 @@ export async function addAuditPage(
     page.drawText('CERTIFICADO DE ASSINATURA ELETRÔNICA', {
         x: margin,
         y,
-        size: 16,
+        size: 13,
         font: boldFont,
         color: rgb(0, 0.4, 1),
     });
-    y -= 10;
+    y -= 14;
+    page.drawText('ELECTRONIC SIGNATURE CERTIFICATE', {
+        x: margin,
+        y,
+        size: 9,
+        font: boldFont,
+        color: rgb(0, 0.4, 1),
+    });
+    y -= 6;
 
     // Blue line
     page.drawLine({
@@ -130,26 +138,26 @@ export async function addAuditPage(
         y -= 20;
     };
 
-    drawField('Documento:', data.documentoTitulo);
-    drawField('Assinado por:', data.colaboradorNome);
+    drawField('Documento / Document:', data.documentoTitulo);
+    drawField('Assinado por / Signed by:', data.colaboradorNome);
     if (data.assinaturaTipo) {
-        drawField('Tipo:', data.assinaturaTipo);
+        drawField('Tipo / Type:', data.assinaturaTipo);
     }
     if (data.colaboradorCpf) {
-        drawField('CPF:', data.colaboradorCpf);
+        drawField('CPF / Tax ID:', data.colaboradorCpf);
     }
     if (data.colaboradorEmail) {
-        drawField('E-mail:', data.colaboradorEmail);
+        drawField('E-mail / Email:', data.colaboradorEmail);
     }
     if (data.telefone) {
-        drawField('Telefone:', data.telefone);
+        drawField('Telefone / Phone:', data.telefone);
     }
     if (data.metodoAssinatura) {
-        drawField('Método:', data.metodoAssinatura === 'certificado' ? 'Certificado Digital' : 'Dados Pessoais + Assinatura');
+        drawField('Método / Method:', data.metodoAssinatura === 'certificado' ? 'Certificado Digital / Digital Certificate' : 'Dados Pessoais + Assinatura / Personal Data + Signature');
     }
-    drawField('Data/Hora:', data.dataHora);
-    drawField('Endereço IP:', data.ip);
-    drawField('Navegador:', truncate(data.navegador, 80));
+    drawField('Data/Hora / Date/Time:', data.dataHora);
+    drawField('Endereço IP / IP Address:', data.ip);
+    drawField('Navegador / Browser:', truncate(data.navegador, 80));
 
     y -= 10;
     page.drawLine({
@@ -161,57 +169,76 @@ export async function addAuditPage(
     y -= 20;
 
     // Hashes
-    page.drawText('INTEGRIDADE CRIPTOGRÁFICA', {
+    page.drawText('INTEGRIDADE CRIPTOGRÁFICA / CRYPTOGRAPHIC INTEGRITY', {
         x: margin,
         y,
-        size: 12,
+        size: 11,
         font: boldFont,
         color: rgb(0, 0.4, 1),
     });
     y -= 20;
 
-    drawField('Hash Original (SHA-256):', data.hashOriginal);
-    drawField('Hash Final (SHA-256):', data.hashFinal);
+    drawField('Hash Original / Original Hash:', data.hashOriginal);
+    drawField('Hash Final / Final Hash:', data.hashFinal);
 
     y -= 20;
 
     // Legal text
-    const legalText = [
+    const legalTextPt = [
         'Este documento foi assinado eletronicamente conforme Art. 10 da MP 2.200-2/2001.',
         'A assinatura eletrônica avançada vincula inequivocamente as credenciais de login',
         'do EmployeeHub, o registro de conexão (IP/Log) e a criptografia do arquivo,',
-        'formando um pacote auditável com força legal.',
-        '',
-        'Qualquer alteração no arquivo invalida o hash criptográfico acima,',
-        'comprovando que o sistema detecta fraudes ou adulterações.',
+        'formando um pacote auditável com força legal. Qualquer alteração no arquivo',
+        'invalida o hash criptográfico acima, comprovando que o sistema detecta fraudes.',
     ];
 
-    page.drawText('VALIDADE JURÍDICA', {
+    const legalTextEn = [
+        'This document was electronically signed in accordance with Brazilian Art. 10 of MP 2.200-2/2001.',
+        'The advanced electronic signature unequivocally binds the portal login credentials,',
+        'the connection logs (IP/Log), and the file cryptography, forming a legally binding',
+        'auditable package. Any tampering with the document invalidates the cryptographic',
+        'hash above, ensuring unauthorized changes are immediately detectable.',
+    ];
+
+    page.drawText('VALIDADE JURÍDICA / LEGAL VALIDITY', {
         x: margin,
         y,
-        size: 12,
+        size: 11,
         font: boldFont,
         color: rgb(0.3, 0.3, 0.3),
     });
     y -= 18;
 
-    for (const line of legalText) {
+    for (const line of legalTextPt) {
         page.drawText(line, {
             x: margin,
             y,
-            size: 9,
+            size: 8,
             font,
             color: rgb(0.4, 0.4, 0.4),
         });
-        y -= 14;
+        y -= 12;
+    }
+    
+    y -= 6;
+
+    for (const line of legalTextEn) {
+        page.drawText(line, {
+            x: margin,
+            y,
+            size: 8,
+            font,
+            color: rgb(0.5, 0.5, 0.5),
+        });
+        y -= 12;
     }
 
     // Footer
     y = margin + 20;
-    page.drawText(`Gerado automaticamente pelo Portal ABZ Group — ${new Date().toISOString()}`, {
+    page.drawText(`Gerado automaticamente pelo Portal ABZ Group / Generated automatically by ABZ Group Portal — ${new Date().toISOString()}`, {
         x: margin,
         y,
-        size: 7,
+        size: 6.5,
         font,
         color: rgb(0.6, 0.6, 0.6),
     });

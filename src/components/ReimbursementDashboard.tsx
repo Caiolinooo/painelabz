@@ -55,7 +55,7 @@ interface Reimbursement {
 
 // Simplified version of the component to fix chunk loading issues
 export default function ReimbursementDashboard() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user, profile } = useSupabaseAuth();
   const router = useRouter();
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
@@ -412,7 +412,7 @@ export default function ReimbursementDashboard() {
 
   // Função para formatar valor monetário
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
@@ -420,7 +420,7 @@ export default function ReimbursementDashboard() {
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    return new Date(dateString).toLocaleDateString(locale);
   };
 
   // Função para navegar para a página de criação de reembolso

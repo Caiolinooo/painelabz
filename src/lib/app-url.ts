@@ -39,6 +39,17 @@ export function getAppBaseUrl(requestHeaders?: HeaderLike): string {
     return normalizeBaseUrl(`${protocol}://${host}`);
   }
 
+  // 1. STRICT PRODUCTION OVERRIDE
+  // In production context (without requests, e.g. background tasks/CRONs), always prioritize the official primary domain
+  // over automatically populated Netlify 'URL' or 'DEPLOY_URL' variables which leak the netlify.app subdomain.
+  if (process.env.NODE_ENV === 'production') {
+    const explicitOverride = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL);
+    if (explicitOverride && !explicitOverride.includes('netlify.app')) {
+      return explicitOverride;
+    }
+    return 'https://portal.groupabz.com';
+  }
+
   for (const envKey of APP_URL_ENV_KEYS) {
     const baseUrl = normalizeBaseUrl(process.env[envKey]);
     if (baseUrl) {
@@ -46,9 +57,7 @@ export function getAppBaseUrl(requestHeaders?: HeaderLike): string {
     }
   }
 
-  return process.env.NODE_ENV === 'production'
-    ? 'https://portal.groupabz.com'
-    : 'http://localhost:3000';
+  return 'http://localhost:3000';
 }
 
 export function buildAppUrl(path = '', requestHeaders?: HeaderLike): string {
