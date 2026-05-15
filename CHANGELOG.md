@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.13.0] - 2026-05-15
+
+### Added
+- **Infraestrutura de Voz Local (Cluster L4/Xeon)**: Estabilização do servidor de áudio local (Piper/Whisper) com suporte a streaming real-time compatível com o protocolo OpenAI.
+- **Diagnóstico de Voz WebRTC**: Implementação de hooks de telemetria no `VoiceAssistantModal.tsx` para monitorar SID de participantes, estados de trilha de áudio e transições de estado do agente.
+
+### Changed
+- **Pipeline de Áudio PCM16**: Otimização do `audio_server.py` e `agent.py` para utilizar PCM raw de 24kHz. Isso reduz a latência de ponta a ponta ao eliminar a necessidade de decodificação MP3/AAC no agente LiveKit.
+- **Orquestração LiveKit SDK v1.0**: Atualização do `agent.py` para suportar a arquitetura `AgentSession` (v1.0+) mantendo fallback para `VoicePipelineAgent` (v0.x), garantindo compatibilidade em diferentes ambientes de deploy.
+
+### Fixed
+- **Bug de Estol "Thinking"**: Resolvida a falha onde o agente permanecia em loop de pensamento devido ao mismatch entre o formato SSE (Server-Sent Events) esperado pelo plugin default e os raw bytes enviados pelo servidor local. Forçado uso de `model="tts-1"` para stream binário direto.
+- **Validação de Parâmetros TTS**: Adicionado suporte aos campos `stream_format`, `speed` e `instructions` no `audio_server.py` para evitar erros de validação (422 Unprocessable Entity) disparados pelo plugin OpenAI.
+
 ## [5.12.0] - 2026-05-14
 
 ### Added
