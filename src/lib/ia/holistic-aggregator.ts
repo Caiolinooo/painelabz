@@ -113,7 +113,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
   if (!user) return null;
 
-  const teamIds = await getTeamMemberIds(userId, (user as any).role || 'USER');
+  const teamIds = await getTeamMemberIds(userId);
 
   return {
     id: user.id,
@@ -131,13 +131,13 @@ export async function collectHolisticData(
 ): Promise<HolisticDataResult> {
   const mergedOptions = options;
 
-  const targetUserId = mergedOptions.targetUserId || mergedOptions.userId;
+  const targetUserId = mergedOptions.targetUserId || mergedOptions.userId || '';
   const profile = await getUserProfile(targetUserId);
   if (!profile) throw new Error(`Usuário ${targetUserId} não encontrado`);
 
   const effectiveRole = normalizeRole(profile.role);
 
-  const fullOpts = getDefaultAggregationOptions(mergedOptions.userId || targetUserId, effectiveRole);
+  const fullOpts = getDefaultAggregationOptions(mergedOptions.userId || targetUserId || '', effectiveRole);
   const opts = { ...fullOpts, ...mergedOptions };
 
   const result: HolisticDataResult = {

@@ -8,7 +8,8 @@ import {
   useVoiceAssistant,
   BarVisualizer,
   useLocalParticipant,
-  useConnectionState
+  useConnectionState,
+  useRemoteParticipants
 } from '@livekit/components-react';
 import { Track, ConnectionState } from 'livekit-client';
 import { X, Mic, MicOff, PhoneOff, Loader2, Wifi, Volume2 } from 'lucide-react';
@@ -148,6 +149,30 @@ function VoiceAssistantInner({ onClose }: { onClose: () => void }) {
   const { state, audioTrack, agent } = useVoiceAssistant();
   const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
   const connectionState = useConnectionState();
+  const remoteParticipants = useRemoteParticipants();
+
+  // === DIAGNÓSTICO DETALHADO ===
+  useEffect(() => {
+    console.log('[Voice] === DIAGNÓSTICO ===');
+    console.log('[Voice] connectionState:', connectionState);
+    console.log('[Voice] agent detected:', !!agent, agent?.identity);
+    console.log('[Voice] audioTrack:', !!audioTrack, audioTrack?.source);
+    console.log('[Voice] state:', state);
+    console.log('[Voice] remoteParticipants:', remoteParticipants.length,
+      remoteParticipants.map(p => ({
+        identity: p.identity,
+        audioTracks: p.audioTrackPublications.size,
+        trackSIDs: Array.from(p.audioTrackPublications.values()).map(t => ({
+          sid: t.trackSid,
+          subscribed: t.isSubscribed,
+          enabled: t.isEnabled,
+          muted: t.isMuted,
+        }))
+      }))
+    );
+    console.log('[Voice] localParticipant mic:', isMicrophoneEnabled);
+    console.log('[Voice] ==================');
+  }, [connectionState, agent, audioTrack, state, remoteParticipants, isMicrophoneEnabled]);
   
   // Mapear estados para mensagens elegantes
   const getStatusText = () => {
@@ -335,7 +360,6 @@ function VoiceAssistantInner({ onClose }: { onClose: () => void }) {
           width: 6px !important;
           border-radius: 99px !important;
           transition: height 0.05s ease;
-        }
         }
       `}</style>
     </div>
