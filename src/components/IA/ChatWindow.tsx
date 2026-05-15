@@ -78,7 +78,7 @@ export default function ChatWindow({ token }: Props) {
     }
     const lastSidebarMsg = [...messages].reverse().find(m => m.metadata?.sidebarOpen !== undefined);
     if (lastSidebarMsg?.metadata?.sidebarOpen !== undefined) {
-      setSidebarOpen(lastSidebarMsg.metadata.sidebarOpen);
+      setSidebarOpen(!!lastSidebarMsg.metadata.sidebarOpen);
     }
   }, [streamingMetadata?.sidebarOpen, messages]);
 

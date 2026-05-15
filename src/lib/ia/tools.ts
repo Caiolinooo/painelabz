@@ -1364,7 +1364,7 @@ return JSON.stringify(data);
         if (tipo === 'ferias' || tipo === 'resumo' || tipo === 'todos') {
           const { data: ferias } = await supabaseAdmin
             .from('leave_requests')
-            .select('id, start_date, end_date, status, created_at')
+            .select('id, start_date, end_date, status, reason, created_at')
             .eq('user_id', targetUserId)
             .order('start_date', { ascending: false })
             .limit(20);

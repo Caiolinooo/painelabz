@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestToken } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, AgentDispatchClient, RoomServiceClient } from 'livekit-server-sdk';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,9 +27,10 @@ export async function GET(request: NextRequest) {
     // 3. Verificar variáveis de ambiente do LiveKit
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
+    const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
     
-    if (!apiKey || !apiSecret) {
-      console.error('[LiveKit API] LIVEKIT_API_KEY ou LIVEKIT_API_SECRET não configurado.');
+    if (!apiKey || !apiSecret || !livekitUrl) {
+      console.error('[LiveKit API] Variáveis LIVEKIT não configuradas.');
       return NextResponse.json({ error: 'Configuração do servidor de voz ausente.' }, { status: 500 });
     }
 
@@ -37,7 +38,6 @@ export async function GET(request: NextRequest) {
     const roomName = `abz_voice_${userId.slice(0, 8)}`;
 
     // 5. Criar Token de Acesso LiveKit
-    // Identidade do participante é seu ID ou nome para rastreamento no agente
     const at = new AccessToken(apiKey, apiSecret, {
       identity: `user_${userId.slice(0, 8)}_${Math.random().toString(36).substring(2, 7)}`,
       name: userName,
@@ -46,17 +46,36 @@ export async function GET(request: NextRequest) {
     at.addGrant({
       roomJoin: true,
       room: roomName,
-      canPublish: true,      // Permitir enviar áudio (microfone)
-      canSubscribe: true,    // Permitir ouvir áudio (agente)
-      canPublishData: true,  // Permitir mensagens de dados caso necessário
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true,
     });
 
     const token = await at.toJwt();
 
+    // 6. Garantir que a sala existe e despachar o agente explicitamente
+    //    Sem isso, o LiveKit Cloud não sabe que deve enviar o agente para a sala
+    const httpUrl = livekitUrl.replace('wss://', 'https://').replace('ws://', 'http://');
+    
+    try {
+      // Cria a sala se não existir (idempotente)
+      const roomSvc = new RoomServiceClient(httpUrl, apiKey, apiSecret);
+      await roomSvc.createRoom({ name: roomName, emptyTimeout: 300 });
+
+      // Despacha o agente para a sala
+      const dispatch = new AgentDispatchClient(httpUrl, apiKey, apiSecret);
+      await dispatch.createDispatch(roomName, '');
+      console.log(`[LiveKit] Agente despachado para sala: ${roomName}`);
+    } catch (dispatchErr: any) {
+      // Se falhar o dispatch (ex: agente offline), ainda retorna o token
+      // O frontend vai mostrar "Aguardando o Agente de IA conectar..."
+      console.warn(`[LiveKit] Falha ao despachar agente: ${dispatchErr.message}`);
+    }
+
     return NextResponse.json({
       token,
       roomName,
-      serverUrl: process.env.NEXT_PUBLIC_LIVEKIT_URL,
+      serverUrl: livekitUrl,
     });
 
   } catch (error: any) {
@@ -64,3 +83,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Falha ao gerar token de acesso em tempo real.' }, { status: 500 });
   }
 }
+
