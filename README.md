@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.12.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.13.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -25,7 +25,8 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ## ✨ Funcionalidades Atuais
 
-### 🤖 **Inteligência Artificial (v5.12)**
+### 🤖 **Inteligência Artificial (v5.13)**
+- **Infraestrutura de Voz Local (Cluster L4/Xeon)** - Pipeline de áudio ultra-low-latency com processamento local (Piper/Whisper) integrado ao LiveKit.
 - **Agente de Voz Real-Time (LiveKit)** - Canal WebRTC de áudio bidirecional para diálogo natural instantâneo com a IA sem digitação.
 - **Agente IA Autônomo para KPIs** - Ciclo contínuo de análise e otimização de metas com múltiplos níveis de autonomia, memória e decisões automatizadas.
 - **Agente Proativo** - Automação de tarefas diárias, análise de e-mails pendentes e acompanhamento de metas sem intervenção humana.
@@ -82,10 +83,16 @@ npm run dev
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
 
-## 🚀 Últimas Atualizações (v5.12.0)
+## 🚀 Últimas Atualizações (v5.13.0)
+
+- **Estabilização da Voz Local**: Implementação de pipeline PCM16 24kHz que reduz a latência e elimina erros de decodificação no cluster local (L4/Xeon).
+- **Orquestrador LiveKit v1.0**: Migração bem-sucedida para a nova API de Agentes do LiveKit, garantindo maior estabilidade e escalabilidade de conexões.
+- **Diagnóstico WebRTC**: Interface agora conta com telemetria ativa para monitoramento de saúde do canal de voz em tempo real.
+
+## 🚀 Destaques Recentes (v5.12.0)
 
 - **Agente de Voz Real-Time (LiveKit)**: Integração nativa de WebRTC de alto desempenho, garantindo processamento de voz bi-direcional para suporte interativo sem fricção.
-- **Auto-Recuperação e Resiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.
+- **Auto-Recuperação e Resiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.esiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.
 - **Otimização de Notificações (EPI)**: Restrição inteligente do envio de e-mails de estoque crítico unicamente aos IDs listados como responsáveis setoriais cadastrados.
 
 ## 🚀 Destaques Recentes (v5.11.0)
