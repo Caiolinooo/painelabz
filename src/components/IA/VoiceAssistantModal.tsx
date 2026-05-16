@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LiveKitRoom, 
@@ -12,7 +12,7 @@ import {
   useRemoteParticipants
 } from '@livekit/components-react';
 import { Track, ConnectionState } from 'livekit-client';
-import { X, Mic, MicOff, PhoneOff, Loader2, Wifi, Volume2 } from 'lucide-react';
+import { X, Mic, MicOff, PhoneOff, Loader2, Wifi, Volume2, ShieldAlert } from 'lucide-react';
 
 // Interface do token retornado pelo nosso backend
 interface LiveKitConnectionDetails {
@@ -27,46 +27,98 @@ interface Props {
   authToken: string; // Token do Portal ABZ
 }
 
+// ---------------------------------------------------------------------------
+// Estados de permissão do microfone
+// ---------------------------------------------------------------------------
+type MicPermission = 'pending' | 'requesting' | 'granted' | 'denied' | 'error';
+
 export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Props) {
   const [connDetails, setConnDetails] = useState<LiveKitConnectionDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [micPermission, setMicPermission] = useState<MicPermission>('pending');
 
-  // Busca o token do LiveKit ao abrir o modal
+  // Reset ao fechar
   useEffect(() => {
     if (!isOpen) {
       setConnDetails(null);
       setError(null);
+      setMicPermission('pending');
       return;
     }
 
-    async function getLiveKitToken() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/ia/voice/token', {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          }
-        });
-        
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || 'Erro ao obter autorização de voz.');
+    // Ao abrir, checar estado atual da permissão (sem solicitar)
+    checkMicPermission();
+  }, [isOpen]);
+
+  // Checa o estado da permissão sem disparar o prompt
+  const checkMicPermission = useCallback(async () => {
+    try {
+      // navigator.permissions.query não é suportado em todos os browsers mobile
+      // mas funciona em Chrome. Safari ignora — vai para 'pending'.
+      if (navigator.permissions && navigator.permissions.query) {
+        const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        if (result.state === 'granted') {
+          setMicPermission('granted');
+          fetchToken(); // já tem permissão, pega o token direto
+          return;
         }
-        
-        const data = await res.json();
-        setConnDetails(data);
-      } catch (err: any) {
-        console.error('[Voice Assistant] Token Fetch Error:', err);
-        setError(err.message || 'Não foi possível conectar ao servidor de voz.');
-      } finally {
-        setLoading(false);
+        if (result.state === 'denied') {
+          setMicPermission('denied');
+          return;
+        }
+      }
+      // state === 'prompt' ou API indisponível → ficar em 'pending'
+      setMicPermission('pending');
+    } catch {
+      // API não suportada (Safari iOS) → ficar em 'pending'
+      setMicPermission('pending');
+    }
+  }, [authToken]);
+
+  // Solicita permissão de microfone com getUserMedia (requer user gesture)
+  const requestMicPermission = useCallback(async () => {
+    setMicPermission('requesting');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Permissão concedida — liberar tracks para não manter o mic preso
+      stream.getTracks().forEach(t => t.stop());
+      setMicPermission('granted');
+      fetchToken();
+    } catch (err: any) {
+      console.error('[Voice] Mic permission denied:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setMicPermission('denied');
+      } else {
+        setMicPermission('error');
+        setError(`Erro ao acessar microfone: ${err.message}`);
       }
     }
+  }, [authToken]);
 
-    getLiveKitToken();
-  }, [isOpen, authToken]);
+  // Busca o token do LiveKit
+  const fetchToken = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/ia/voice/token', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao obter autorização de voz.');
+      }
+      
+      const data = await res.json();
+      setConnDetails(data);
+    } catch (err: any) {
+      console.error('[Voice Assistant] Token Fetch Error:', err);
+      setError(err.message || 'Não foi possível conectar ao servidor de voz.');
+    } finally {
+      setLoading(false);
+    }
+  }, [authToken]);
 
   if (!isOpen) return null;
 
@@ -88,7 +140,10 @@ export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Prop
           {/* Header do Modal */}
           <div className="absolute top-6 left-6 right-6 z-20 flex items-center justify-between text-slate-400">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                micPermission === 'granted' && connDetails ? 'bg-emerald-500' : 
+                micPermission === 'denied' ? 'bg-red-500' : 'bg-amber-500'
+              }`} />
               <span className="text-xs font-medium uppercase tracking-widest text-slate-400">ABZ Live Voice</span>
             </div>
             <button 
@@ -101,7 +156,67 @@ export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Prop
 
           {/* Conteúdo Principal */}
           <div className="flex-1 flex flex-col items-center justify-center pt-12 px-6 relative">
-            {loading ? (
+            {/* GATE 1: Permissão de microfone pendente — mostrar CTA */}
+            {micPermission === 'pending' || micPermission === 'requesting' ? (
+              <div className="text-center space-y-6 max-w-xs">
+                <div className="relative flex items-center justify-center">
+                  <div className="w-24 h-24 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-full flex items-center justify-center border border-blue-500/20">
+                    <Mic className="w-10 h-10 text-blue-400" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-white font-bold text-lg">Permissão de Microfone</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    Para conversar por voz com a ABZ, precisamos de acesso ao seu microfone.
+                  </p>
+                </div>
+                <button
+                  onClick={requestMicPermission}
+                  disabled={micPermission === 'requesting'}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:opacity-60 text-white rounded-2xl text-sm font-semibold transition-all flex items-center gap-2 mx-auto shadow-lg shadow-blue-500/20"
+                >
+                  {micPermission === 'requesting' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Aguardando permissão...
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-4 h-4" />
+                      Permitir Microfone
+                    </>
+                  )}
+                </button>
+              </div>
+
+            ) : micPermission === 'denied' ? (
+              /* GATE 2: Permissão negada — instrução ao usuário */
+              <div className="text-center space-y-4 max-w-xs">
+                <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto">
+                  <ShieldAlert className="w-8 h-8 text-red-400" />
+                </div>
+                <h3 className="text-white font-bold text-base">Microfone Bloqueado</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  O acesso ao microfone foi negado. Para usar o assistente de voz, permita o acesso nas configurações do navegador e tente novamente.
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => { setMicPermission('pending'); }}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors"
+                  >
+                    Tentar novamente
+                  </button>
+                  <button 
+                    onClick={onClose}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-xs font-semibold transition-colors"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+
+            ) : loading ? (
+              /* GATE 3: Buscando token */
               <div className="text-center space-y-4">
                 <div className="relative flex items-center justify-center">
                   <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
@@ -109,7 +224,9 @@ export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Prop
                 </div>
                 <p className="text-slate-400 text-sm font-medium animate-pulse">Iniciando conexão criptografada...</p>
               </div>
+
             ) : error ? (
+              /* GATE 4: Erro */
               <div className="text-center space-y-4 max-w-xs">
                 <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-2">
                   <X className="w-6 h-6 text-red-500" />
@@ -123,7 +240,9 @@ export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Prop
                   Fechar
                 </button>
               </div>
+
             ) : connDetails ? (
+              /* GATE 5: Tudo OK — montar LiveKitRoom */
               <LiveKitRoom
                 token={connDetails.token}
                 serverUrl={connDetails.serverUrl}
