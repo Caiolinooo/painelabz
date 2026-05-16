@@ -111,7 +111,23 @@ export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Prop
       }
       
       const data = await res.json();
-      setConnDetails(data);
+
+      // Validar serverUrl antes de montar o LiveKitRoom
+      const serverUrl = (data.serverUrl || '').trim();
+      console.log('[Voice] serverUrl recebida:', JSON.stringify(serverUrl));
+
+      if (!serverUrl) {
+        throw new Error('Servidor de voz não configurado (NEXT_PUBLIC_LIVEKIT_URL ausente no ambiente).');
+      }
+
+      // Tentar parsear para garantir que é uma URL válida
+      try {
+        new URL(serverUrl);
+      } catch {
+        throw new Error(`URL do servidor de voz inválida: "${serverUrl}". Verifique NEXT_PUBLIC_LIVEKIT_URL no Vercel.`);
+      }
+
+      setConnDetails({ ...data, serverUrl });
     } catch (err: any) {
       console.error('[Voice Assistant] Token Fetch Error:', err);
       setError(err.message || 'Não foi possível conectar ao servidor de voz.');

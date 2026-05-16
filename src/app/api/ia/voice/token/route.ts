@@ -27,12 +27,46 @@ export async function GET(request: NextRequest) {
     // 3. Verificar variáveis de ambiente do LiveKit
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
-    const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+    let livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || '';
     
+    console.log('[LiveKit API] Env check:', {
+      hasKey: !!apiKey,
+      hasSecret: !!apiSecret,
+      rawUrl: livekitUrl,
+      urlLength: livekitUrl.length,
+    });
+
     if (!apiKey || !apiSecret || !livekitUrl) {
       console.error('[LiveKit API] Variáveis LIVEKIT não configuradas.');
-      return NextResponse.json({ error: 'Configuração do servidor de voz ausente.' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Configuração do servidor de voz ausente.',
+        debug: {
+          hasKey: !!apiKey,
+          hasSecret: !!apiSecret,
+          hasUrl: !!livekitUrl,
+        }
+      }, { status: 500 });
     }
+
+    // Sanitizar URL — remover espaços, garantir protocolo wss://
+    livekitUrl = livekitUrl.trim();
+    if (!livekitUrl.startsWith('wss://') && !livekitUrl.startsWith('ws://')) {
+      livekitUrl = `wss://${livekitUrl}`;
+    }
+    // Remover trailing slash
+    livekitUrl = livekitUrl.replace(/\/+$/, '');
+
+    // Validar que a URL é parseable
+    try {
+      new URL(livekitUrl);
+    } catch {
+      console.error(`[LiveKit API] URL inválida após sanitização: "${livekitUrl}"`);
+      return NextResponse.json({ 
+        error: 'URL do servidor de voz mal formatada.',
+      }, { status: 500 });
+    }
+
+    console.log(`[LiveKit API] URL sanitizada: ${livekitUrl}`);
 
     // 4. Criar identificador de Sala único por usuário para conversa privada
     const roomName = `abz_voice_${userId.slice(0, 8)}`;
@@ -54,21 +88,16 @@ export async function GET(request: NextRequest) {
     const token = await at.toJwt();
 
     // 6. Garantir que a sala existe e despachar o agente explicitamente
-    //    Sem isso, o LiveKit Cloud não sabe que deve enviar o agente para a sala
     const httpUrl = livekitUrl.replace('wss://', 'https://').replace('ws://', 'http://');
     
     try {
-      // Cria a sala se não existir (idempotente)
       const roomSvc = new RoomServiceClient(httpUrl, apiKey, apiSecret);
       await roomSvc.createRoom({ name: roomName, emptyTimeout: 300 });
 
-      // Despacha o agente para a sala
       const dispatch = new AgentDispatchClient(httpUrl, apiKey, apiSecret);
       await dispatch.createDispatch(roomName, '');
       console.log(`[LiveKit] Agente despachado para sala: ${roomName}`);
     } catch (dispatchErr: any) {
-      // Se falhar o dispatch (ex: agente offline), ainda retorna o token
-      // O frontend vai mostrar "Aguardando o Agente de IA conectar..."
       console.warn(`[LiveKit] Falha ao despachar agente: ${dispatchErr.message}`);
     }
 
@@ -83,4 +112,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Falha ao gerar token de acesso em tempo real.' }, { status: 500 });
   }
 }
-
