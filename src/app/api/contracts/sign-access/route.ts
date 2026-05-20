@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
             } else {
                 console.error('[sign-access] Erro ao gerar URL assinada:', signedError);
                 return NextResponse.json({
-                    error: `Erro ao acessar documento: ${signedError.message}`,
+                    error: `Erro ao acessar documento: ${signedError?.message || 'Erro desconhecido'}`,
                     code: 'STORAGE_ERROR'
                 }, { status: 500 });
             }

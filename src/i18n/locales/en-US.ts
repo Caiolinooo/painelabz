@@ -6,7 +6,7 @@ export default {
     editMenu: 'Edit Menu',
     developedBy: 'Developed by',
     adminPanel: 'Admin Panel',
-    myProfile: 'My Profile',
+    myProfile: 'My Profile'
   },
   helpWidget: {
     greeting: 'Hello, {name}! 👋',
@@ -46,7 +46,6 @@ export default {
     contactSupportAction: 'Contact support',
     back: 'Back'
   },
-
   common: {
     time: {
       hour: 'hour',
@@ -151,7 +150,6 @@ export default {
     refresh: 'Refresh',
     redirecting: 'Redirecting...',
     seeAll: 'See all',
-
     tryAgain: 'Try Again',
     text: 'Text',
     logout: 'Logout',
@@ -190,7 +188,6 @@ export default {
     users: 'Users',
     accessDenied: 'Access denied',
     voltar: 'Back',
-
     saving: 'Saving...',
     processing: 'Processing...',
     saveSettings: 'Save Settings',
@@ -205,18 +202,13 @@ export default {
     notifications: 'Notifications',
     enabled: 'Enabled',
     professionalInfo: 'Professional Information',
-
     department: 'Department',
     systemRole: 'System Role',
     preferences: 'Preferences',
     administrator: 'Administrator',
     manager: 'Manager',
     user: 'User',
-    // Missing keys from Portuguese
     backToDashboard: 'Back to Dashboard',
-
-    // Main menu
-    // Main menu
     reimbursement: 'Reimbursement',
     evaluation: 'Evaluation',
     calendar: 'Calendar',
@@ -236,6 +228,7 @@ export default {
     page_short: 'Pg',
     add: 'Add',
     creating: 'Creating...',
+    dashboard: 'Dashboard'
   },
   auth: {
     biometricLogin: 'Sign in with Biometrics',
@@ -299,7 +292,6 @@ export default {
     phoneNumberHelp: 'Enter your phone number with country code, starting with + (e.g. +15551234567). The number must be in international format.',
     verificationCode: 'Verification Code',
     verificationCodeHelp: 'Enter the verification code sent to your phone',
-
     continue: 'Continue',
     sending: 'Sending...',
     verifying: 'Verifying...',
@@ -331,8 +323,6 @@ export default {
     setPasswordWithInvite: 'Set password with invite code',
     notRegistered: 'Not registered yet?',
     createAccount: 'Create account',
-
-    // Set/Update password flow
     setYourPassword: 'Set your password',
     createPasswordForAccount: 'Create a password for your account',
     updateYourPassword: 'Update your password',
@@ -393,7 +383,7 @@ export default {
     successMessageActive: 'Your registration has been completed successfully and your account is already active.',
     loginNow: 'You can now log in immediately with your email or phone.',
     checkEmail: 'Please check your email to activate your account.',
-    notRegisteredYet: 'This email/phone is not yet registered. Please complete your registration below.',
+    notRegisteredYet: 'This email/phone is not yet registered. Please complete your registration below.'
   },
   profile: {
     completeNameTitle: 'Complete your profile',
@@ -467,7 +457,6 @@ export default {
     module: 'Module',
     passkeys: 'Biometrics (Passkeys)',
     adminReimbursement: 'Reimbursement (Admin)',
-
     aguardandoCarregamentoDaAutenticacao: '🔄 Waiting for authentication loading...',
     usuarioNaoAutenticadoRedirecionandoParaLogin: '❌ User not authenticated, redirecting to login',
     vocePrecisaEstarLogadoParaAcessarEstaPagina: 'You need to be logged in to access this page.',
@@ -480,7 +469,7 @@ export default {
     perfilNaoEncontradoFacaLoginNovamente: 'Profile not found. Please log in again.',
     nomeESobrenomeSaoObrigatorios: 'First Name and Last Name are required',
     usuario: 'User',
-    naoInformado: 'Not informed',
+    naoInformado: 'Not informed'
   },
   validation: {
     suggestions: 'Suggestions',
@@ -511,11 +500,10 @@ export default {
     download: 'Download document',
     fullscreen: 'Fullscreen',
     exitFullscreen: 'Exit fullscreen',
-    close: 'Close viewer',
+    close: 'Close viewer'
   },
   dashboard: {
     hello: 'Hello, {{name}}!',
-
     searchPlaceholder: 'Search entire system...',
     quickLinks: 'Quick Links',
     registerPoint: 'Time Clock',
@@ -545,7 +533,6 @@ export default {
     accessAdminPanel: 'Access Admin Panel',
     access: 'Access',
     noCards: 'No cards available',
-
     cacheLocalInvalidoRemovendo: '⚠️ Invalid local cache, removing...',
     naoFoiPossivelSalvarNoCacheLocal: '⚠️ Could not save to local cache:',
     usandoCardsDoCacheLocalAposErro: '📦 Using local cache cards after error',
@@ -553,7 +540,6 @@ export default {
     erroCriticoUsandoCardsHardcoded: '⚠️ Critical error, using hardcoded cards',
     naoFoiPossivelCarregarOsCardsPersonalizadosUsandoC: 'Could not load custom cards. Using default configuration.',
     atualizandoTraducoesDosCardsEstaticosParaIdioma: 'Updating static cards translations to language:',
-
     addShortcut: 'Add Shortcut',
     selectModule: 'Select a module to add to your shortcuts',
     searchModules: 'Search modules...',
@@ -570,7 +556,6 @@ export default {
       unknownProvider: 'Unknown Provider'
     }
   },
-
   menu: {
     dashboard: 'Dashboard',
     manual: 'Employee Manual',
@@ -598,11 +583,11 @@ export default {
     biblioteca: 'Library',
     universidade: 'University',
     contratos: 'Contracts & E-Sign',
+    meuRH: 'My HR'
   },
   cards: {
     contratos: 'Contracts',
     contratosDesc: 'Document management and electronic signatures',
-    // Traduções padrão para os cards do menu
     wkradar: 'WK Radar',
     chat: 'Internal Chat',
     apiMobile: 'Mobile API',
@@ -618,7 +603,6 @@ export default {
     procedimentosLogisticaDesc: 'Check the standard procedures for the area.',
     politicas: 'Policies',
     politicasDesc: 'Check company policies.',
-
     procedimentosGeraisDesc: 'Check the company general procedures.',
     calendario: 'Calendar',
     calendarioDesc: 'View important events and dates.',
@@ -630,7 +614,9 @@ export default {
     contrachequeDesc: 'Access your payslips.',
     ponto: 'Time Clock',
     pontoDesc: 'Register your time and check your history.',
-    avaliacao: 'Performance Evaluation',
+    avaliacao: {
+      title: 'Evaluation'
+    },
     avaliacaoDesc: 'Manage employee performance evaluations.',
     folhaPagamento: 'Payroll',
     folhaPagamentoDesc: 'Complete payroll management and labor calculations.',
@@ -644,11 +630,8 @@ export default {
     avaliacoesAvancadasDesc: 'Metrics, analysis and detailed performance reports',
     relatoriosPdf: 'PDF Reports',
     relatoriosPdfDesc: 'Generate custom reports with charts and visualizations',
-
     universidade: 'University',
     universidadeDesc: 'Corporate learning platform',
-
-    // Translations for SYSTEM_MODULES (used in shortcuts and menu)
     compras: 'Purchase Orders',
     comprasDesc: 'Purchase management and approvals',
     dashboard: 'Dashboard',
@@ -670,13 +653,10 @@ export default {
     procedimentos: 'Procedures',
     procedimentosDesc: 'Standard Operating Procedures (SOPs)',
     wkradarDesc: 'Access to WKRadar system',
-
-
-    // Versão sem hífens (compatibilidade)
     '6377431f4afa448bb46a8321a5870f37': 'Manual',
     '6377431f4afa448bb46a8321a5870f37Desc': 'Access the company manual',
-    'c40a97fd70a543f1af4d960efabd340b': 'Procedures',
-    'c40a97fd70a543f1af4d960efabd340bDesc': 'Check company procedures',
+    c40a97fd70a543f1af4d960efabd340b: 'Procedures',
+    c40a97fd70a543f1af4d960efabd340bDesc: 'Check company procedures',
     '2285fcbd70244f9a91c3e0a87de27ba0': 'Policies',
     '2285fcbd70244f9a91c3e0a87de27ba0Desc': 'Check company policies',
     '90e09b57c23e41499770e35c2d66cf7a': 'Calendar',
@@ -691,19 +671,18 @@ export default {
     '515e6360431d43b69877a1d0ca23296cDesc': 'Register your time',
     '5b07e529830c43be8f75dff38053744c': 'Evaluation',
     '5b07e529830c43be8f75dff38053744cDesc': 'Access your evaluations',
-    'e460055d4b674350a0155317fc07e76a': 'Admin',
-    'e460055d4b674350a0155317fc07e76aDesc': 'Administrative panel',
-
-    // Dot notation keys fallback
-    'cards.noticias': 'News',
-    'cards.ponto': 'Time Clock',
-    'cards.reembolso': 'Reimbursement',
-    'cards.academy': 'University',
-    'cards.contracheque': 'Payslip',
-    'avaliacoes.title': 'Evaluations',
-    'avaliacao.title': 'Evaluation',
-
-    // Versão com hífens (formato original do DB, mantido por segurança)
+    e460055d4b674350a0155317fc07e76a: 'Admin',
+    e460055d4b674350a0155317fc07e76aDesc: 'Administrative panel',
+    cards: {
+      noticias: 'News',
+      ponto: 'Time Clock',
+      reembolso: 'Reimbursement',
+      academy: 'University',
+      contracheque: 'Payslip'
+    },
+    avaliacoes: {
+      title: 'Evaluations'
+    },
     '6377431f-4afa-448b-b46a-8321a5870f37': 'Manual',
     '6377431f-4afa-448b-b46a-8321a5870f37Desc': 'Access the company manual',
     'c40a97fd-70a5-43f1-af4d-960efabd340b': 'Procedures',
@@ -723,7 +702,7 @@ export default {
     '5b07e529-830c-43be-8f75-dff38053744c': 'Evaluation',
     '5b07e529-830c-43be-8f75-dff38053744cDesc': 'Access your evaluations',
     'e460055d-4b67-4350-a015-5317fc07e76a': 'Admin',
-    'e460055d-4b67-4350-a015-5317fc07e76aDesc': 'Administrative panel',
+    'e460055d-4b67-4350-a015-5317fc07e76aDesc': 'Administrative panel'
   },
   ponto: {
     title: 'Time Clock',
@@ -744,26 +723,23 @@ export default {
     webAccessDescription: 'You can also access the time clock system through your browser.',
     additionalResources: 'Additional Resources',
     manualDescription: 'Check the user manual for detailed instructions on how to use the Ahgora platforms.',
-    downloadManual: 'Download Manual (PDF)',
+    downloadManual: 'Download Manual (PDF)'
   },
-
   procedimentos: {
     title: 'General Procedures',
     pageTitle: 'General Procedures',
     comingSoon: 'Coming Soon',
     description: 'This section will host general procedures and guidelines from various departments.',
-    contentAvailable: 'Content will be added as soon as it becomes available.',
+    contentAvailable: 'Content will be added as soon as it becomes available.'
   },
-
   contracheque: {
     title: 'Payslip Consultation',
     pageTitle: 'Payslip Consultation',
     description: 'Access your payslips and salary information',
     accessSystem: 'Access External System',
     systemDescription: 'Click the button below to access the payslip consultation system.',
-    externalAccess: 'You will be redirected to an external system to view your payslips.',
+    externalAccess: 'You will be redirected to an external system to view your payslips.'
   },
-
   calendario: {
     title: 'Holiday Calendar',
     description: 'National and UK Bank Holidays',
@@ -776,7 +752,7 @@ export default {
     holidaysInMonth: 'Holidays in',
     failedToFetchBrasilApi: 'Failed to fetch from BrasilAPI',
     tryingAlternative: 'Trying alternative...',
-    failedToFetchFromAllSources: 'Failed to fetch holidays from all sources.',
+    failedToFetchFromAllSources: 'Failed to fetch holidays from all sources.'
   },
   reimbursement: {
     title: 'Reimbursement',
@@ -846,8 +822,21 @@ export default {
         loginRequiredMessage: 'You need to be logged in to send a reimbursement.',
         loginLink: 'Click here to login',
         authenticated: 'You are logged in and can send reimbursements',
-        redirectingToLogin: 'You need to be logged in to send a reimbursement. Redirecting to login...',
+        redirectingToLogin: 'You need to be logged in to send a reimbursement. Redirecting to login...'
       },
+      expenseInfo: 'Expense Information',
+      expenseValue: 'Expense Value',
+      expenseDescription: 'Expense Description',
+      attachments: 'Attachments',
+      addAttachment: 'Add Attachment',
+      removeAttachment: 'Remove Attachment',
+      accountType: 'Account Type',
+      checking: 'Checking Account',
+      savings: 'Savings Account',
+      cpfKey: 'CPF Key',
+      emailKey: 'Email Key',
+      phoneKey: 'Phone Key',
+      randomKey: 'Random Key'
     },
     policy: {
       title: 'Reimbursement Policy',
@@ -887,7 +876,7 @@ export default {
       restrictionDoc: 'Illegible or incomplete documents',
       finalTitle: 'Final Approval',
       finalText: 'All requests are subject to management approval and may be rejected if they do not meet established criteria.',
-      agreeButton: 'I Have Read and Agree',
+      agreeButton: 'I Have Read and Agree'
     },
     types: {
       alimentacao: 'Food',
@@ -947,14 +936,13 @@ export default {
       cancel: 'Cancel',
       close: 'Close'
     },
-
     verificandoPermissoesDeAprovacaoParaExibirAba: 'Checking approval permissions to display tab...',
     usuarioEAdministradorConcedendoPermissaoDeAprovaca: 'User is administrator, granting approval permission',
     usuarioEGerenteConcedendoPermissaoDeAprovacao: 'User is manager, granting approval permission',
     verificandoPermissoesDeAprovacao: 'Checking approval permissions:',
     nenhumaAbaValidaEncontradaNoUrlDefinindoPara: 'No valid tab found in URL, setting to ',
     protocoloNaoFornecido: 'Protocol not provided',
-    naoFoiPossivelBaixarOArquivoAposVariasTentativas: 'Could not download the file after several attempts',
+    naoFoiPossivelBaixarOArquivoAposVariasTentativas: 'Could not download the file after several attempts'
   },
   manual: {
     title: 'Employee Manual (Logistics)',
@@ -962,7 +950,7 @@ export default {
     download: 'Download (PDF)',
     view: 'View',
     noManuals: 'No manuals found',
-    mainDocument: 'Main Document',
+    mainDocument: 'Main Document'
   },
   procedures: {
     title: 'Logistics Procedures (Revised)',
@@ -970,7 +958,7 @@ export default {
     download: 'Download (PDF)',
     view: 'View',
     noProcedures: 'No procedures found',
-    mainDocument: 'Main Document',
+    mainDocument: 'Main Document'
   },
   policies: {
     title: 'Policies',
@@ -989,7 +977,7 @@ export default {
       titleEn: 'Quality Policy',
       descriptionEn: 'ABZ Group Quality Management Policy',
       category: 'Quality'
-    },
+    }
   },
   news: {
     title: 'ABZ News and Announcements',
@@ -1010,8 +998,6 @@ export default {
   locale: {
     code: 'en-US'
   },
-
-
   admin: {
     nenhumCertificadoAinda: 'No certificates yet',
     title: 'Administration',
@@ -1112,8 +1098,6 @@ export default {
     approveReimbursementsDesc: 'Approve or reject reimbursement requests',
     reimbursementSettingsDesc: 'Configure emails and reimbursement rules',
     fixPermissionsDesc: 'Fix administrator permissions',
-
-    // Reimbursement Email Settings
     reimbursementEmailSettings: 'Reimbursement Email Settings',
     enableDomainRule: 'Enable special rule for @groupabz.com domain emails',
     domainRuleDescription: 'When enabled, this rule will automatically send reimbursement forms to the additional emails below when the applicant has an email with the @groupabz.com domain.',
@@ -1127,7 +1111,6 @@ export default {
     addFinanceEmail: 'Add finance email',
     markAsPaid: 'Mark as Paid',
     pay: 'Pay',
-
     documents: {
       section: 'Documents',
       description: 'Manage documents, policies, and manuals.',
@@ -1161,7 +1144,6 @@ export default {
       errorLoadingMessage: 'An error occurred while loading the documents.',
       pickFromExplorer: 'Pick from Explorer'
     },
-
     salvarAlteracoesDoTemplateSelecionado: 'Save changes to selected template',
     lerUsuarios: 'Read Users',
     escreverUsuarios: 'Write Users',
@@ -1315,7 +1297,7 @@ export default {
     buscarUsuariosPorNomeTelefoneEmailDepartamento: 'Search users by name, phone, email, department...',
     verHistoricoDeAcesso: 'View access history',
     editarUsuario: 'Edit user',
-    excluirUsuario: 'Delete user',
+    excluirUsuario: 'Delete user'
   },
   fileUploader: {
     attachments: 'Attachments',
@@ -1329,7 +1311,7 @@ export default {
     errorReadingFile: 'Error reading file',
     fileStoredLocally: 'File stored locally due to storage issues. The file will be included in your submission, but may not be permanently stored.',
     uploadError: 'Upload error',
-    errorUploadingFile: 'Error uploading {fileName}: {error}',
+    errorUploadingFile: 'Error uploading {fileName}: {error}'
   },
   starRating: {
     ariaLabel: '{star} of {maxRating} stars',
@@ -1396,7 +1378,6 @@ export default {
     managerEvaluationSection: 'Manager Evaluation',
     managerEvaluationDesc: 'Evaluation performed by your manager',
     rating: 'Rating',
-
     commentsLabel: 'Comments',
     commentsPlaceholder: 'Enter your comments...',
     requiredField: 'Required field',
@@ -1429,7 +1410,6 @@ export default {
     approvedSuccess: 'Evaluation approved successfully!',
     errorSubmitting: 'Error submitting evaluation',
     sentForApproval: 'Evaluation sent for manager approval!',
-
     yourRole: 'Your role',
     managerEvaluator: 'Manager Evaluator',
     instructions: 'Instructions',
@@ -1448,15 +1428,14 @@ export default {
     finalizeNote: 'Upon finalizing, the evaluation will be marked as completed',
     sendNote: 'Upon sending, the evaluation will be sent to your manager for review',
     dashboard: {
-      title: 'Performance Evaluations',
+      title: 'Performance Evaluations'
     },
     status: {
       pending: 'Pending',
       inProgress: 'In Progress',
       completed: 'Completed',
-      cancelled: 'Cancelled',
+      cancelled: 'Cancelled'
     },
-    // Rating scale (same as starRating.scale for consistency)
     ratingScale: {
       level1: 'Frequently did not meet expectations',
       level2: 'Sometimes did not meet expectations',
@@ -1464,7 +1443,6 @@ export default {
       level4: 'Sometimes exceeded expectations',
       level5: 'Frequently exceeded expectations'
     },
-    // Performance levels for PDF reports
     performanceLevels: {
       exceptional: 'Exceptional',
       excellent: 'Excellent',
@@ -1472,7 +1450,6 @@ export default {
       regular: 'Regular',
       insufficient: 'Insufficient'
     },
-    // UI messages
     title: 'Performance Evaluation',
     evaluationNotFound: 'Evaluation not found.',
     collaborator: 'Collaborator',
@@ -1514,6 +1491,15 @@ export default {
     finalizeEvaluation: 'Finalize',
     loadingEvaluation: 'Loading evaluation...',
     errorLoadingEvaluation: 'Error loading evaluation',
+    confirmSubmit: 'Confirm Submit',
+    confirmSubmitTitle: 'Submit Evaluation?',
+    confirmSubmitMessage: 'Are you sure you want to submit your evaluation? You will not be able to edit it afterwards.',
+    confirmFinalizeTitle: 'Finalize Evaluation?',
+    confirmFinalizeMessage: 'Are you sure you want to finalize this evaluation? This action cannot be undone.',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    managerNoteLabel: 'Manager Note',
+    managerNoteDesc: 'Final notes and observations from the manager.'
   },
   userEditor: {
     newUser: 'New User',
@@ -1617,7 +1603,7 @@ export default {
       noHistory: 'No history found',
       permissions: 'Permissions',
       modules: 'Modules',
-      features: 'Features',
+      features: 'Features'
     },
     documents: {
       section: 'Documents',
@@ -1660,10 +1646,9 @@ export default {
       replaceFile: 'Replace file',
       enabled: 'Enabled',
       disabled: 'Disabled',
-
       createdAt: 'Created at',
-      updatedAt: 'Updated at',
-    },
+      updatedAt: 'Updated at'
+    }
   },
   contact: {
     title: 'Contact',
@@ -1679,7 +1664,7 @@ export default {
     needHelp: 'Need help?',
     helpMessage: 'If you have questions about the reimbursement form or need assistance, please contact us:',
     businessHours: 'Business Hours',
-    businessHoursTime: 'Monday to Friday, 9am to 6pm',
+    businessHoursTime: 'Monday to Friday, 9am to 6pm'
   },
   errors: {
     notFound: 'Page not found',
@@ -1696,13 +1681,13 @@ export default {
     pageNotFoundMessage: 'The page you are looking for does not exist or has been moved.',
     errorOccurred: 'An error occurred',
     somethingWentWrong: 'Something went wrong. Please try again.',
-    errorCode: 'Error code',
+    errorCode: 'Error code'
   },
   manager: {
     moduleTitle: 'Manager Module',
     moduleDescription: 'Special tools and features for managers',
     welcome: 'Welcome to the Manager Module',
-    moduleIntro: 'This module provides special tools and features designed specifically for managers. Here you can access advanced reports, team management tools, and other resources to help you manage your team effectively.',
+    moduleIntro: 'This module provides special tools and features designed specifically for managers. Here you can access advanced reports, team management tools, and other resources to help you manage your team effectively.'
   },
   avaliacao: {
     title: 'Performance Evaluation',
@@ -1766,7 +1751,19 @@ export default {
       pending: 'Pending',
       inProgress: 'In Progress',
       completed: 'Completed',
-      archived: 'Archived'
+      archived: 'Archived',
+      pending_response: 'Pending Response',
+      in_progress: 'In Progress',
+      em_andamento: 'In Progress',
+      concluida: 'Completed',
+      aguardando_aprovacao: 'Awaiting Approval',
+      aprovada_aguardando_comentario: 'Approved (Awaiting Comment)',
+      aguardando_finalizacao: 'Awaiting Finalization',
+      devolvida: 'Returned',
+      submitted: 'Submitted',
+      approved: 'Approved',
+      rejected: 'Rejected',
+      draft: 'Draft'
     },
     debug: {
       title: 'Evaluation Debugging',
@@ -1845,7 +1842,6 @@ export default {
     periodo: 'Period',
     dataInicio: 'Start Date',
     dataFim: 'End Date',
-
     criterios: 'Evaluation Criteria',
     semCriterios: 'No evaluation criteria available',
     historicoAvaliacoes: 'Evaluation History',
@@ -1876,6 +1872,83 @@ export default {
     clearFilters: 'Clear Filters',
     unknown: 'Unknown',
     managerNotAssigned: 'Manager not assigned',
+    startsIn: 'Starts in',
+    endsIn: 'Ends in',
+    day: 'day',
+    days: 'days',
+    activePeriod: 'Active Period',
+    evaluationPeriod: 'Evaluation Period',
+    performanceCycle: 'Performance Cycle',
+    selfEvaluationDeadline: 'Self-evaluation Deadline',
+    evaluationCompleted: 'Evaluation Completed',
+    awaitingManagerEvaluation: 'Awaiting Manager Evaluation',
+    continueEvaluation: 'Continue Evaluation',
+    startMyEvaluation: 'Start My Evaluation',
+    availableSoon: 'Available Soon',
+    loading: 'Loading...',
+    evaluationFinalizedByManager: 'Evaluation Finalized by Manager',
+    evaluationAlreadyStarted: 'Evaluation Already Started',
+    selfEvaluationSent: 'Self-evaluation Sent',
+    evaluatorCommentRequired: 'Evaluator Comment Required',
+    evaluatorCommentRequiredNote: 'Please provide a comment for the collaborator.',
+    finalEvaluatorComment: 'Final Evaluator Comment',
+    finalEvaluatorCommentDesc: 'Detailed comments from the evaluator regarding performance.',
+    finalEvaluatorCommentPlaceholder: 'Enter final evaluator comment...',
+    pdfTitle: 'Performance Evaluation Report',
+    selfEvaluation: 'Self-evaluation',
+    managerialEvaluation: 'Manager Evaluation',
+    question: 'Question',
+    score: 'Score',
+    comment: 'Comment',
+    noComment: 'No comment provided.',
+    generatedAt: 'Generated at',
+    finalGrade: 'Final Grade',
+    pdfExported: 'PDF exported successfully!',
+    errorExportingPDF: 'Error exporting PDF.',
+    exportingPDF: 'Exporting PDF...',
+    exportPDF: 'Export PDF',
+    managerQuestionsAnswered: 'Manager Questions Answered',
+    collaboratorAnswersIntro: 'Below are the answers provided by the collaborator during self-evaluation:',
+    employee: 'Employee',
+    employeeLabel: 'Employee',
+    employeeEmail: 'Employee Email',
+    periodLabel: 'Period',
+    date: 'Date',
+    noAnswer: 'No answer provided.',
+    executiveSummary: 'Executive Summary',
+    generalScore: 'General Score',
+    evaluationStats: 'Evaluation Statistics',
+    competenciesEvaluated: 'Competencies Evaluated',
+    progress: 'Progress',
+    strongPoints: 'Strong Points',
+    improvementAreas: 'Improvement Areas',
+    highlights: 'Highlights',
+    highestScore: 'Highest Score',
+    attentionRequired: 'Attention Required',
+    detailedAnalysis: 'Detailed Analysis',
+    id: 'ID',
+    competency: 'Competency',
+    grade: 'Grade',
+    level: 'Level',
+    evaluationInfo: 'Evaluation Information',
+    approvalDate: 'Approval Date',
+    selfEvaluationTitle: 'Self-evaluation Title',
+    competencyQuestion: 'Competency Question',
+    response: 'Response',
+    managerEvaluationTitle: 'Manager Evaluation',
+    commentsTitle: 'Comments',
+    employeeObservations: 'Employee Observations',
+    managerComments: 'Manager Comments',
+    finalEmployeeComment: 'Final Employee Comment',
+    chartsTitle: 'Evaluation Charts',
+    developmentPlanTitle: 'Individual Development Plan (IDP)',
+    developmentPlanIntro: 'Actions and recommendations for development:',
+    currentGrade: 'Current Grade',
+    recommendation: 'Recommendation',
+    recommendationText: 'Recommendation details...',
+    page: 'Page',
+    of: 'of',
+    confidential: 'Confidential'
   },
   payroll: {
     title: 'Payroll',
@@ -1899,13 +1972,11 @@ export default {
     totalMonthly: 'Monthly Total',
     employees: 'Employees',
     companies: 'Companies',
-    activeSheets: 'Active Sheets',
+    activeSheets: 'Active Sheets'
   },
   debug: {
-    noCodesFound: 'No active codes found.',
+    noCodesFound: 'No active codes found.'
   },
-
-  // News System
   newsSystem: {
     title: 'News Center',
     subtitle: 'Instagram-style system',
@@ -1979,8 +2050,6 @@ export default {
       justNow: 'Just now',
       postUpdated: 'Post updated'
     },
-
-
     eventCreator: {
       createEvent: 'Create Event',
       title: 'Event Title',
@@ -2005,6 +2074,50 @@ export default {
       fillRequired: 'Please fill in all required fields',
       errorCalendar: 'Error creating calendar event'
     },
+    highlight: {
+      createHighlight: 'Create Highlight',
+      clickToSelectMedia: 'Click to select media',
+      formatRecommended: 'Format (9:16) recommended',
+      highlightTitle: 'Highlight Title',
+      highlightTitlePlaceholder: 'Enter title...',
+      permanentHighlight: 'Permanent Highlight',
+      expiresIn: 'Expires in',
+      hoursDefault: '24 hours (default)',
+      tagsOptional: 'Tags (optional)',
+      addTagsPlaceholder: 'Add tags...',
+      create: 'Create',
+      creating: 'Creating...',
+      howHighlightsWork: 'How Highlights Work',
+      howHighlightsWorkItems: {
+        item1: 'Appear at the top of the feed',
+        item2: 'Can be temporary or permanent',
+        item3: 'Tracks views automatically',
+        item4: 'Vertical format recommended'
+      },
+      errorFillingFields: 'Please fill all required fields.',
+      errorUploadingMedia: 'Error uploading media file.',
+      successCreated: 'Highlight created successfully!',
+      errorCreating: 'Error creating highlight.',
+      yourHighlight: 'Your Highlight'
+    },
+    categories: {
+      comunicados: 'Announcements',
+      noticias: 'News',
+      eventos: 'Events',
+      treinamentos: 'Trainings',
+      beneficios: 'Benefits',
+      tecnologia: 'Technology'
+    },
+    filters: {
+      allCategories: 'All Categories',
+      featuredOnly: 'Featured Only'
+    },
+    stats: {
+      systemFunctional: 'System Functional',
+      tablesCreated: 'Tables Created',
+      aclPermissions: 'ACL Permissions Enabled',
+      notifications: 'Notifications Sent'
+    }
   },
   richTextEditor: {
     bold: 'Bold (Ctrl+B)',
@@ -2027,8 +2140,6 @@ export default {
     tips: 'Tips:',
     tipsDescription: 'Use toolbar buttons or keyboard shortcuts:'
   },
-
-  // ACL System
   acl: {
     title: 'ACL Management',
     subtitle: 'Advanced hierarchical access control',
@@ -2071,8 +2182,6 @@ export default {
       manage: 'Manage'
     }
   },
-
-  // Notifications System
   notifications: {
     title: 'Notifications',
     markAsRead: 'Mark as read',
@@ -2161,7 +2270,6 @@ export default {
         message: 'Your PO {poNumber} was rejected by {approverName}.'
       }
     },
-
     system: {
       welcome: {
         title: '👋 Welcome to the System',
@@ -2198,8 +2306,6 @@ export default {
     loading: 'Loading settings...',
     loaded: 'Loaded'
   },
-
-  // Reminders System
   reminders: {
     title: 'Reminders',
     create: 'Create Reminder',
@@ -2426,7 +2532,7 @@ export default {
     nenhumCursoAcessadoRecentemente: 'No recently accessed courses',
     atividadeRecente: 'Recent Activity',
     nenhumaAtividadeRecente: 'No recent activity',
-    certificadosDosCursosQueVoceConcluiu: 'Certificates from your completed courses',
+    certificadosDosCursosQueVoceConcluiu: 'Certificates from your completed courses'
   },
   components: {
     acessoRestrito: 'Restricted access',
@@ -2568,7 +2674,6 @@ export default {
     erroAoRemoverLider: 'Error removing leader:',
     nomeNaoEncontrado: 'Name not found',
     emailNaoEncontrado: 'Email not found',
-
     removerLideranca: 'Remove leadership',
     buscarUsuario: 'Search user...',
     liderDeEquipe: 'Team Leader',
@@ -2848,7 +2953,6 @@ export default {
     caminhoDoDocumentoNaoEspecificado: 'Document path not specified',
     avaliacoesCarregadas: 'Evaluations loaded:',
     dadosBinariosCapturadosParaFilenameDataurllengthCa: 'Binary data captured for ${file.name} (${dataUrl.length} characters)',
-
     noticias: 'News',
     avaliacoes: 'Evaluations',
     politicas: 'Policies',
@@ -3019,7 +3123,6 @@ export default {
     erroAoGerarRelatorio: 'Error generating report:',
     excluirRelatorio: 'Delete report:',
     tituloDoLembrete: 'Reminder title',
-
     escrevaUmComentario: 'Write a comment...',
     erroDeAutenticacao: 'Authentication error',
     noQueVoceEstaPensandoUserfirstname: 'What are you thinking, ${user?.first_name}?',
@@ -3028,22 +3131,19 @@ export default {
     buscandoConteudoDoArquivo: 'Fetching file content:',
     erroAoBuscarConteudoDoArquivo: 'Error fetching file content:',
     themeenforcerAplicandoConfiguracoesDeTemaComPriori: 'ThemeEnforcer: Applying theme settings with maximum priority',
-
     buscar: 'Search...',
     digiteparaBuscar: 'Type to search...',
     filtrarPor: 'Filter by:',
     todos: 'All',
     documentos: 'Documents',
-
     reembolsos: 'Reimbursements',
     contracheques: 'Paystubs',
     procedimentos: 'Procedures',
     cursos: 'Courses',
     digitePeloMenos2CaracteresBuscar: 'Type at least 2 characters to search',
     useCtrlKAbrirBuscaRapidamente: 'Use Ctrl+K to open search quickly',
+    cards: 'Cards'
   },
-
-  // Email Templates
   emailTemplates: {
     subjects: {
       accessApproved: 'Access Approved - ABZ Group',
@@ -3140,8 +3240,6 @@ export default {
       footer: 'This is a security measure to protect your account.'
     }
   },
-
-  // WKRadar / Guacamole Integration
   wkradar: {
     title: 'WKRadar',
     description: 'Access WKRadar system',
@@ -3166,10 +3264,8 @@ export default {
     cardNotCreated: 'WKRadar Card is not on Dashboard',
     cardActiveDesc: 'The card is visible to permitted users.',
     cardNotCreatedDesc: 'Click the button to add the WKRadar card to the dashboard.',
-    createCard: 'Create Card',
+    createCard: 'Create Card'
   },
-
-  // Poliweb Integration (New + Old)
   poliweb: {
     title: 'Poliweb',
     description: 'Occupational clinic and ASO management',
@@ -3196,21 +3292,19 @@ export default {
     credentialsNotConfigured: 'Credentials not configured',
     tabs: {
       novo: 'New',
-      antigo: 'Old',
+      antigo: 'Old'
     },
     loadingNovo: 'Logging in to New Poliweb...',
     loadingAntigo: 'Logging in to Old Poliweb...',
     erroNovo: 'Failed to login to New Poliweb.',
-    erroAntigo: 'Failed to login to Old Poliweb.',
+    erroAntigo: 'Failed to login to Old Poliweb.'
   },
-
   categories: {
     core: 'General',
     hr: 'My HR',
     content: 'Content & Knowledge',
     department: 'Department'
   },
-
   modules: {
     dashboard: 'Dashboard',
     noticias: 'News',
@@ -3250,9 +3344,6 @@ export default {
     metrics: 'General Metrics',
     engagement: 'Engagement (News)'
   },
-
-
-
   changelog: {
     title: 'What\'s New',
     historyTitle: 'Version History',
@@ -3268,7 +3359,6 @@ export default {
     newFeaturesDesc: 'Check out the improvements we prepared for you.',
     current: 'Current'
   },
-
   purchaseOrders: {
     title: 'Purchase Orders',
     adminView: 'Administrative View',
@@ -3911,5 +4001,317 @@ export default {
         biometric_failed: 'Failed to use biometrics. Please check if a Passkey is registered.'
       }
     }
+  },
+  avaliacoes: {
+    titulo_avancado: 'Advanced Evaluations',
+    descricao_avancado: 'Detailed performance metrics, analysis and reports.',
+    kpis_principais: 'Key KPIs',
+    periodo_atual: 'Current Period',
+    sem_kpis: 'No KPIs defined',
+    sem_kpis_descricao: 'There are no KPIs set for the selected period.',
+    meta: 'Goal',
+    resumo_performance: 'Performance Summary',
+    melhorando: 'improving',
+    estavel: 'stable',
+    piorando: 'worsening',
+    metas_atingidas: 'goals achieved',
+    graficos_performance: 'Performance Charts',
+    tendencias_tempo: 'Trends over Time',
+    performance_departamentos: 'Performance by Department',
+    performance_cargos: 'Performance by Role',
+    performance_criterios: 'Performance by Criteria',
+    sem_dados_tendencias: 'No trend data available.',
+    sem_dados_departamentos: 'No department data available.',
+    sem_dados_cargos: 'No role data available.',
+    sem_dados_criterios: 'No criteria data available.',
+    insights_automaticos: 'Automated Insights',
+    melhor_departamento: 'Top Department',
+    melhor_cargo: 'Top Role',
+    criterio_destaque: 'Highlight Criterion',
+    filtros_avancados: 'Advanced Filters',
+    funcionarios_especificos: 'Specific Employees',
+    filtros_aplicados: 'Filters Applied',
+    media_pontuacao: 'Average Score',
+    satisfacao_media: 'Average Satisfaction',
+    erro_carregar: 'Error loading evaluations data.',
+    sem_permissao_metricas: 'You do not have permission to view evaluation metrics.',
+    relatorio_exportado: 'Report exported successfully.',
+    erro_exportar: 'Error exporting report.'
+  },
+  api_mobile: {
+    titulo: 'Mobile API',
+    descricao: 'API Management and monitoring for mobile applications',
+    dashboard: 'Dashboard',
+    endpoints: 'Endpoints',
+    logs: 'Logs',
+    configuracoes: 'Settings',
+    metricas: 'Metrics',
+    usuarios_conectados: 'Connected Users',
+    requisicoes_hoje: 'Requests Today',
+    tempo_resposta: 'Response Time',
+    taxa_erro: 'Error Rate',
+    sem_permissao: 'No permission to access Mobile API',
+    sem_permissao_desc: 'You do not have permission to view or manage the Mobile API.'
+  },
+  integracao_erp: {
+    titulo: 'ERP Integration',
+    descricao: 'Connectors and synchronization with external ERP systems',
+    conexoes: 'Connections',
+    sincronizacao: 'Synchronization',
+    metricas: 'Metrics',
+    alertas: 'Alerts',
+    nova_conexao: 'New Connection',
+    testar_conexao: 'Test Connection',
+    sincronizar: 'Synchronize',
+    editar: 'Edit',
+    excluir: 'Delete',
+    status: {
+      connected: 'Connected',
+      disconnected: 'Disconnected',
+      error: 'Error',
+      testing: 'Testing'
+    },
+    jobs: {
+      pendente: 'Pending',
+      executando: 'Running',
+      concluido: 'Completed',
+      falhou: 'Failed',
+      cancelado: 'Cancelled'
+    },
+    modulos: {
+      funcionarios: 'Employees',
+      folha_pagamento: 'Payroll',
+      departamentos: 'Departments',
+      contabilidade: 'Accounting',
+      compras: 'Purchasing',
+      vendas: 'Sales'
+    },
+    sem_permissao: 'No permission to access ERP Integration',
+    sem_permissao_desc: 'You do not have permission to view or manage ERP integrations.'
+  },
+  dashboard_bi: {
+    titulo: 'BI Dashboard',
+    descricao: 'Advanced analytics and interactive data visualizations',
+    dashboards: 'Dashboards',
+    templates: 'Templates',
+    metricas: 'Metrics',
+    configuracoes: 'Settings',
+    novo_dashboard: 'New Dashboard',
+    duplicar: 'Duplicate',
+    excluir: 'Delete',
+    visualizar: 'View',
+    exportar: 'Export',
+    filtros: 'Filters',
+    tela_cheia: 'Full Screen',
+    sair_tela_cheia: 'Exit Full Screen',
+    widgets: 'Widgets',
+    acessos: 'Accesses',
+    atualizado: 'Updated',
+    sem_dashboard: 'No Dashboard',
+    criar_primeiro: 'Create First',
+    dashboard_vazio: 'Empty Dashboard',
+    sem_widgets: 'No widgets in this dashboard',
+    selecionar_dashboard: 'Select Dashboard',
+    escolher_dashboard: 'Choose Dashboard',
+    voltar_dashboards: 'Back to Dashboards',
+    meus_dashboards: 'My Dashboards',
+    gerenciar_visualizar: 'Manage and view dashboards',
+    dashboard_criado: 'Dashboard created successfully',
+    dashboard_duplicado: 'Dashboard duplicated successfully',
+    dashboard_excluido: 'Dashboard deleted successfully',
+    dashboard_exportado: 'Dashboard exported successfully',
+    confirmar_exclusao: 'Are you sure you want to delete this dashboard?',
+    tipos_widget: {
+      chart: 'Chart',
+      kpi: 'KPI',
+      table: 'Table',
+      text: 'Text',
+      image: 'Image',
+      gauge: 'Gauge',
+      map: 'Map'
+    },
+    formatos_export: {
+      pdf: 'PDF',
+      png: 'PNG',
+      excel: 'Excel',
+      csv: 'CSV'
+    },
+    sem_permissao: 'No permission to access BI Dashboards',
+    sem_permissao_desc: 'You do not have permission to view or manage BI Dashboards.'
+  },
+  workflows: {
+    titulo: 'Workflows',
+    descricao: 'Automation of business processes and approval flows',
+    workflows: 'Workflows',
+    execucoes: 'Executions',
+    templates: 'Templates',
+    configuracoes: 'Settings',
+    novo_workflow: 'New Workflow',
+    designer_visual: 'Visual Designer',
+    duplicar: 'Duplicate',
+    excluir: 'Delete',
+    executar: 'Run',
+    visualizar: 'View',
+    cancelar: 'Cancel',
+    pausar: 'Pause',
+    retomar: 'Resume',
+    meus_workflows: 'My Workflows',
+    gerenciar_executar: 'Manage and execute workflows',
+    workflow_criado: 'Workflow created successfully',
+    workflow_duplicado: 'Workflow duplicated successfully',
+    workflow_excluido: 'Workflow deleted successfully',
+    workflow_executado: 'Workflow executed successfully',
+    confirmar_exclusao: 'Are you sure you want to delete this workflow?',
+    sem_workflow: 'No Workflows',
+    criar_primeiro: 'Create First',
+    sem_execucoes: 'No executions',
+    execucoes_aparecerao: 'Executions will appear here as they run.',
+    monitorar_execucoes: 'Monitor executions',
+    atualizar: 'Update',
+    status: {
+      draft: 'Draft',
+      active: 'Active',
+      inactive: 'Inactive',
+      archived: 'Archived',
+      queued: 'Queued',
+      running: 'Running',
+      success: 'Success',
+      failed: 'Failed',
+      timeout: 'Timeout',
+      cancelled: 'Cancelled',
+      paused: 'Paused'
+    },
+    triggers: {
+      manual: 'Manual Trigger',
+      schedule: 'Schedule Trigger',
+      webhook: 'Webhook Trigger',
+      event: 'Event Trigger',
+      email: 'Email Trigger',
+      database: 'Database Trigger',
+      api: 'API Trigger',
+      file: 'File Trigger'
+    },
+    steps: {
+      action: 'Action',
+      condition: 'Condition',
+      loop: 'Loop',
+      parallel: 'Parallel',
+      delay: 'Delay',
+      approval: 'Approval',
+      notification: 'Notification',
+      integration: 'Integration'
+    },
+    actions: {
+      email: 'Send Email',
+      sms: 'Send SMS',
+      webhook: 'Call Webhook',
+      database: 'Database Query',
+      file: 'File Operation',
+      api: 'API Request',
+      script: 'Run Script',
+      notification: 'Send Notification'
+    },
+    tabela: {
+      workflow: 'Workflow',
+      status: 'Status',
+      duracao: 'Duration',
+      iniciado: 'Started',
+      executado_por: 'Executed By',
+      acoes: 'Actions'
+    },
+    campos: {
+      trigger: 'Trigger',
+      steps: 'Steps',
+      execucoes: 'Executions',
+      ultima_execucao: 'Last Execution',
+      nunca: 'Never'
+    },
+    sem_permissao: 'No permission to access Workflows',
+    sem_permissao_desc: 'You do not have permission to view or manage Workflows.'
+  },
+  chat: {
+    titulo: 'Chat',
+    descricao: 'Real-time communication and messaging between team members',
+    canais: 'Channels',
+    mensagens: 'Messages',
+    usuarios: 'Users',
+    configuracoes: 'Settings',
+    buscar_canais: 'Search channels...',
+    novo_canal: 'New Channel',
+    selecionar_canal: 'Select a channel',
+    escolher_canal: 'Choose a channel to start chatting',
+    digite_mensagem: 'Type a message...',
+    enviar: 'Send',
+    usuarios_online: 'Users Online',
+    online: 'Online',
+    membros: 'Members',
+    digitando: 'is typing...',
+    canal_criado: 'Channel created successfully',
+    mensagem_enviada: 'Message sent successfully',
+    arquivo_enviado: 'File uploaded successfully',
+    mensagem_deletada: 'Message deleted',
+    confirmar_exclusao_mensagem: 'Are you sure you want to delete this message?',
+    tipos_canal: {
+      public: 'Public Channel',
+      private: 'Private Channel',
+      direct: 'Direct Message',
+      department: 'Department Channel',
+      project: 'Project Channel'
+    },
+    status: {
+      online: 'Online',
+      away: 'Away',
+      busy: 'Do Not Disturb',
+      offline: 'Offline',
+      invisible: 'Invisible'
+    },
+    tipos_mensagem: {
+      text: 'Text',
+      file: 'File',
+      image: 'Image',
+      video: 'Video',
+      audio: 'Audio',
+      system: 'System',
+      poll: 'Poll',
+      event: 'Event'
+    },
+    acoes: {
+      responder: 'Reply',
+      editar: 'Edit',
+      excluir: 'Delete',
+      fixar: 'Pin',
+      copiar: 'Copy',
+      baixar: 'Download',
+      reagir: 'React',
+      mencionar: 'Mention',
+      compartilhar: 'Share'
+    },
+    notificacoes: {
+      nova_mensagem: 'New Message',
+      mencao: 'New Mention',
+      convite_canal: 'Channel Invitation',
+      mensagem_direta: 'New Direct Message'
+    },
+    configuracoes_canal: {
+      nome: 'Channel Name',
+      descricao: 'Description',
+      tipo: 'Type',
+      privacidade: 'Privacy',
+      membros: 'Members',
+      permissoes: 'Permissions',
+      integracao: 'Integration'
+    },
+    recursos: {
+      upload_arquivos: 'File Upload',
+      mensagens_voz: 'Voice Messages',
+      mensagens_video: 'Video Messages',
+      compartilhar_tela: 'Screen Sharing',
+      reacoes: 'Message Reactions',
+      threads: 'Threaded Replies',
+      mencoes: 'User Mentions',
+      bots: 'Chat Bots'
+    },
+    sem_permissao: 'No permission to access Chat',
+    sem_permissao_desc: 'You do not have permission to view or manage Chat.'
   }
 };

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { authenticateUser } from '@/lib/api-auth';
 import { generateSHA256, generateFinalHash } from '@/lib/services/CryptographyService';
-import { embedSignatureOnPdf, addAuditPage } from '@/lib/services/PdfEditorService';
+import { embedSignatureOnPdf, addAuditPage, embedFieldsAndSignaturesOnPdf, PdfFieldItem } from '@/lib/services/PdfEditorService';
 import { dispatchEnvelopeStage } from '@/lib/envelopeDispatcher';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
         const isPublicAccess = !user || authError;
 
         const body = await request.json();
-        const { solicitacao_id, signature_base64, signer_data, sign_method } = body;
+        const { solicitacao_id, signature_base64, signer_data, sign_method, field_values } = body;
 
         if (!solicitacao_id || !signature_base64) {
             return NextResponse.json({
@@ -162,16 +162,91 @@ export async function POST(request: NextRequest) {
             ? signer_data.email 
             : user?.email || '';
         
-        // 5b. Embed signature or rubrica on the PDF
+        // 5b. Fetch all other pending fields for the same signer in this document to sign/fill them in a single batch
+        let fieldsQuery = supabaseAdmin
+            .from('solicitacoes_assinatura')
+            .select('*')
+            .eq('documento_id', solicitacao.documento_id)
+            .eq('status', 'PENDING');
+
+        if (solicitacao.colaborador_id) {
+            fieldsQuery = fieldsQuery.eq('colaborador_id', solicitacao.colaborador_id);
+        } else {
+            fieldsQuery = fieldsQuery.eq('external_signer_email', solicitacao.external_signer_email);
+        }
+
+        const { data: siblingFields } = await fieldsQuery;
+        const siblingList = siblingFields || [];
+
+        // Update sibling fields in the database as completed
+        for (const sib of siblingList) {
+            if (sib.id === solicitacao.id) continue;
+
+            const updates: any = {
+                status: 'SIGNED',
+                updated_at: timestamp,
+            };
+
+            if (sib.tipo === 'texto' || sib.tipo === 'checkbox') {
+                const val = field_values && field_values[sib.id] !== undefined
+                    ? String(field_values[sib.id])
+                    : (sib.tipo === 'checkbox' ? 'false' : '');
+                updates.valor_preenchido = val;
+                sib.valor_preenchido = val; // Store locally for drawing
+            }
+
+            await supabaseAdmin
+                .from('solicitacoes_assinatura')
+                .update(updates)
+                .eq('id', sib.id);
+        }
+
+        // Gather all fields to draw
+        const fieldsToDraw: PdfFieldItem[] = [];
+
+        // Add primary signature field
         const isRubrica = solicitacao.tipo === 'rubrica';
-        let signedPdf = await embedSignatureOnPdf({
-            pdfBytes,
-            signatureBase64: signature_base64,
-            page: solicitacao.pagina_assinatura,
+        fieldsToDraw.push({
+            tipo: solicitacao.tipo as any,
             x: solicitacao.posicao_x,
             y: solicitacao.posicao_y,
             width: solicitacao.largura_assinatura || (isRubrica ? 100 : 150),
             height: solicitacao.altura_assinatura || (isRubrica ? 30 : 50),
+            page: solicitacao.pagina_assinatura,
+            signatureBase64: signature_base64
+        });
+
+        // Add other sibling fields
+        for (const sib of siblingList) {
+            if (sib.id === solicitacao.id) continue;
+
+            if (sib.tipo === 'assinatura' || sib.tipo === 'rubrica') {
+                fieldsToDraw.push({
+                    tipo: sib.tipo as any,
+                    x: sib.posicao_x,
+                    y: sib.posicao_y,
+                    width: sib.largura_assinatura || (sib.tipo === 'rubrica' ? 100 : 150),
+                    height: sib.altura_assinatura || (sib.tipo === 'rubrica' ? 30 : 50),
+                    page: sib.pagina_assinatura,
+                    signatureBase64: signature_base64
+                });
+            } else {
+                fieldsToDraw.push({
+                    tipo: sib.tipo as any,
+                    x: sib.posicao_x,
+                    y: sib.posicao_y,
+                    width: sib.largura_assinatura || (sib.tipo === 'checkbox' ? 12 : 150),
+                    height: sib.altura_assinatura || (sib.tipo === 'checkbox' ? 12 : 20),
+                    page: sib.pagina_assinatura,
+                    value: sib.valor_preenchido || ''
+                });
+            }
+        }
+
+        // Draw all onto PDF in one single pass
+        let signedPdf = await embedFieldsAndSignaturesOnPdf({
+            pdfBytes,
+            fields: fieldsToDraw
         });
 
         // 6. Generate final hash
@@ -189,7 +264,7 @@ export async function POST(request: NextRequest) {
             hashFinal,
             assinaturaTipo: isRubrica ? 'Rubrica' : 'Assinatura',
             metodoAssinatura: sign_method || (isPublicAccess ? 'dados_pessoais' : 'conta_portal'),
-            cpf: signer_data?.cpf || null,
+            colaboradorCpf: signer_data?.cpf || null,
             telefone: signer_data?.telefone || null,
         });
 

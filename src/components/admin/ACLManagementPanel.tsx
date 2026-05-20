@@ -38,6 +38,7 @@ const ACLManagementPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'permissions' | 'roles' | 'users'>('permissions');
   const [permissions, setPermissions] = useState<ACLPermission[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [userACLPermissions, setUserACLPermissions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const { users: hookUsers, loading: usersLoading } = useAllUsers();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -101,6 +102,27 @@ const ACLManagementPanel: React.FC = () => {
     loadPermissions();
     setLoading(false);
   }, []);
+
+  // Carregar permissões ACL de cada usuário
+  useEffect(() => {
+    const loadUserACLPermissions = async () => {
+      if (users.length === 0) return;
+      const permissionsMap: Record<string, any[]> = {};
+      for (const user of users) {
+        try {
+          const response = await fetch(`/api/acl/users/${user.id}/permissions`);
+          if (response.ok) {
+            const data = await response.json();
+            permissionsMap[user.id] = data.individual_permissions || [];
+          }
+        } catch (error) {
+          console.error(`Erro ao carregar permissões do usuário ${user.id}:`, error);
+        }
+      }
+      setUserACLPermissions(permissionsMap);
+    };
+    loadUserACLPermissions();
+  }, [users]);
 
   const tabs = [
     {
@@ -274,25 +296,63 @@ const ACLManagementPanel: React.FC = () => {
           <div className="p-6">
             <h3 className="text-lg font-medium mb-4">Permissões de Usuários</h3>
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <FiInfo className="w-5 h-5 text-blue-500 mr-2" />
-                <span className="text-blue-700">
-                  Use o editor de usuários no painel administrativo para gerenciar permissões individuais.
-                </span>
+            {users.length > 0 ? (
+              <div className="space-y-3">
+                {users.map((user: any) => {
+                  const individualPerms = userACLPermissions[user.id] || [];
+                  return (
+                    <div key={user.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                            {(user.first_name?.[0] || '') + (user.last_name?.[0] || '')}
+                          </div>
+                          <div className="ml-3">
+                            <h4 className="font-medium text-gray-900">
+                              {user.first_name} {user.last_name}
+                            </h4>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                              {user.role}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-sm text-gray-500">
+                            {individualPerms.length} permissão(ões) individual
+                          </span>
+                          <a
+                            href="/admin/users"
+                            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                          >
+                            Gerenciar
+                          </a>
+                        </div>
+                      </div>
+                      {individualPerms.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="flex flex-wrap gap-1">
+                            {individualPerms.map((perm: any) => (
+                              <span
+                                key={perm.permission.id}
+                                className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded"
+                              >
+                                {perm.permission.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-
-            <div className="text-center py-8">
-              <FiUsers className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Gerenciamento de Usuários</h3>
-              <p className="text-gray-500 mb-4">
-                Para gerenciar permissões individuais de usuários, acesse o painel de gerenciamento de usuários.
-              </p>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Ir para Gerenciamento de Usuários
-              </button>
-            </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FiUsers className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p>Nenhum usuário encontrado.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

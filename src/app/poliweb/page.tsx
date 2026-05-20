@@ -215,7 +215,10 @@ export default function PoliwebPage() {
             };
             const token = getToken();
             if (!token) {
-                setError('Sessão expirada. Faça login novamente.');
+                setTabStates(prev => ({
+                    ...prev,
+                    [activeTab]: { ...prev[activeTab], error: 'Sessão expirada. Faça login novamente.' }
+                }));
                 return;
             }
 
@@ -237,9 +240,10 @@ export default function PoliwebPage() {
             const data = await response.json();
             if (data.success) {
                 setShowCredentialModal(false);
-                setLoading(true);
-                setError(null);
-                setActiveTab(activeTab);
+                setTabStates(prev => ({
+                    ...prev,
+                    [activeTab]: { ...prev[activeTab], loading: true, error: null }
+                }));
                 const loginApi = activeTab === 'novo' ? '/api/poliweb/login' : '/api/poliweb-antigo/login';
                 const loginResponse = await fetch(loginApi, {
                     method: 'POST',
@@ -250,19 +254,30 @@ export default function PoliwebPage() {
                 });
                 const loginData = await loginResponse.json();
                 if (loginData.success) {
-                    setProxyReady(true);
+                    setTabStates(prev => ({
+                        ...prev,
+                        [activeTab]: { ...prev[activeTab], proxyReady: true, loading: false }
+                    }));
                 } else {
-                    setError(loginData.error || 'Falha ao conectar após atualização.');
+                    setTabStates(prev => ({
+                        ...prev,
+                        [activeTab]: { ...prev[activeTab], error: loginData.error || 'Falha ao conectar após atualização.', loading: false }
+                    }));
                 }
             } else {
-                setError(data.error || 'Erro ao salvar credenciais.');
+                setTabStates(prev => ({
+                    ...prev,
+                    [activeTab]: { ...prev[activeTab], error: data.error || 'Erro ao salvar credenciais.' }
+                }));
             }
         } catch (err) {
             console.error('Erro ao salvar credenciais:', err);
-            setError('Erro ao salvar credenciais.');
+            setTabStates(prev => ({
+                ...prev,
+                [activeTab]: { ...prev[activeTab], error: 'Erro ao salvar credenciais.' }
+            }));
         } finally {
             setSavingCredentials(false);
-            setLoading(false);
         }
     };
 

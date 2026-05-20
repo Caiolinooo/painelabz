@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestToken } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { chatCompletion, chatCompletionStream } from '@/lib/ia/client';
+import { chatCompletion, chatCompletionStream, invalidateConfigCache } from '@/lib/ia/client';
 import { buildChatMessages } from '@/lib/ia/context-builder';
 import type { IAChatMessage } from '@/types/ia';
 
@@ -79,68 +79,130 @@ export async function POST(request: NextRequest) {
     const userRole = profile?.role || 'USER';
 
     // =====================================================
-    // Streaming Simplificado: chatCompletion (que já processa tools) + fake streaming
+    // Streaming Real: chatCompletionStream (processa tools recursivamente)
     // =====================================================
     if (useStream) {
       try {
         const startTime = Date.now();
+        let finalContent = '';
+        let lastDashboard: any = null;
+        let saved = false;
         
-        // Usar chatCompletion (não-streaming) - que agora envia status em tempo real via ReadableStream
-        console.log('[IA Stream] Iniciando orquestração com status...');
+        console.log('[IA Stream] Iniciando streaming real com processamento de tools...');
         
-        const stream = new ReadableStream({
-          async start(controller) {
-            const encoder = new TextEncoder();
-            let finalContent = '';
+        const readableStream = await chatCompletionStream(
+          llmMessages,
+          { 
+            signal: request.signal,
+            onStatus: (status) => {
+              const encoder = new TextEncoder();
+              // Hack: we can't enqueue here, but we'll handle it in the transform
+            }
+          },
+          { role: userRole, userId }
+        );
+        
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const encoder = new TextEncoder();
+
+        // Transform stream to handle events and tracking
+        const transformer = new TransformStream({
+          async transform(chunk, controller) {
+            buffer += decoder.decode(chunk, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
             
-            try {
-              const result = await chatCompletion(
-                llmMessages, 
-                { 
-                  signal: request.signal,
-                  onStatus: (status) => {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status })}\n\n`));
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const dataStr = line.slice(6).trim();
+              if (dataStr === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(dataStr);
+                
+                // Handle status events
+                if (parsed.status) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: parsed.status })}\n\n`));
+                  continue;
+                }
+                
+                // Handle metadata events
+                if (parsed.metadata) {
+                  lastDashboard = parsed.metadata.dashboard || lastDashboard;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ metadata: parsed.metadata })}\n\n`));
+                  continue;
+                }
+                
+                // Handle content chunks
+                if (parsed.content !== undefined) {
+                  finalContent += parsed.content;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: parsed.content, done: false })}\n\n`));
+                }
+                
+                // Handle done event
+                if (parsed.done) {
+                  finalContent = parsed.fullContent || finalContent;
+                  lastDashboard = parsed.metadata?.dashboard || lastDashboard;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: finalContent, metadata: parsed.metadata })}\n\n`));
+                  
+                  // Save to DB after stream completes
+                  if (!saved) {
+                    saved = true;
+                    const responseTime = Date.now() - startTime;
+                    try {
+                      await supabaseAdmin.from('ia_chat_messages').insert({
+                        session_id: sessionId,
+                        role: 'assistant',
+                        content: finalContent,
+                        response_time_ms: responseTime,
+                        metadata: { orchestrated: true, streamed: true, dashboard: lastDashboard },
+                      });
+                    } catch (saveErr) {
+                      console.error('[IA Stream] Erro ao salvar resposta:', saveErr);
+                    }
                   }
-                }, 
-                { role: userRole, userId }
-              );
-
-              finalContent = result?.choices?.[0]?.message?.content || 'Erro ao processar resposta.';
-              const dashboard = result?.choices?.[0]?.message?.metadata?.dashboard;
-
-              console.log('[IA Stream] Orquestração finalizada, enviando conteúdo principal.');
-              
-              // Envia o conteúdo final e metadados
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: finalContent, metadata: { dashboard } })}\n\n`));
-              
-              // Evento final compatível com o frontend
-              const finalEvent = `data: ${JSON.stringify({ done: true, fullContent: finalContent, metadata: { dashboard } })}\n\n`;
-              controller.enqueue(encoder.encode(finalEvent));
-
-              // Salvar no banco (dentro da stream)
+                }
+              } catch (parseErr) {
+                // Skip unparseable lines
+              }
+            }
+          },
+          async flush(controller) {
+            // Handle remaining buffer
+            if (buffer && buffer.startsWith('data: ')) {
+              const dataStr = buffer.slice(6).trim();
+              if (dataStr && dataStr !== '[DONE]') {
+                try {
+                  const parsed = JSON.parse(dataStr);
+                  if (parsed.content) finalContent += parsed.content;
+                  if (parsed.done) {
+                    finalContent = parsed.fullContent || finalContent;
+                  }
+                } catch {}
+              }
+            }
+            if (!saved) {
+              saved = true;
               const responseTime = Date.now() - startTime;
-              await supabaseAdmin.from('ia_chat_messages').insert({
-                session_id: sessionId,
-                role: 'assistant',
-                content: finalContent,
-                response_time_ms: responseTime,
-                metadata: { orchestrated: true, streamed: true, dashboard },
-              });
-            } catch (err: any) {
-              console.error('[IA Stream] Erro durante orquestração:', err);
-              const errMsg = err.name === 'AbortError' 
-                ? 'A operação demorou muito e foi interrompida. Por favor, tente um comando mais simples.'
-                : `Ocorreu um erro: ${err.message}`;
-              
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: `\n\n**Erro:** ${errMsg}` })}\n\n`));
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
-            } finally {
-              controller.close();
+              try {
+                await supabaseAdmin.from('ia_chat_messages').insert({
+                  session_id: sessionId,
+                  role: 'assistant',
+                  content: finalContent,
+                  response_time_ms: responseTime,
+                  metadata: { orchestrated: true, streamed: true, dashboard: lastDashboard },
+                });
+              } catch (saveErr) {
+                console.error('[IA Stream] Erro ao salvar resposta:', saveErr);
+              }
             }
           }
         });
         
-        return new Response(stream, {
+        const stream = readableStream.pipeThrough(transformer);
+        
+        return new Response(stream as any, {
           headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',

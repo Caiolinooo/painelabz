@@ -90,3 +90,19 @@ next-env.d.ts
 
 # Windows reserved device filename accidentally created
 nul
+
+# Scratch / temporary development files
+scratch_*
+scratch_db.js
+scratch_query.ts
+scratch_sql.js
+scratch_users.js
+scratch_schema*
+scratch_migrate_*
+
+# Kilo AI agent workspace
+.kilo/
+
+# Python check scripts
+scripts/check_*.py
+scripts/output.txt

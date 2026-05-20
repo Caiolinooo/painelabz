@@ -177,7 +177,10 @@ function getResourceLabel(resource: string) {
     'reminders': 'Lembretes',
     'admin': 'Administração',
     'users': 'Usuários',
-    'reports': 'Relatórios'
+    'reports': 'Relatórios',
+    'ferias': 'Férias',
+    'contratos': 'Contratos',
+    'lista-presenca': 'Lista de Presença'
   };
   
   return labels[resource] || resource.charAt(0).toUpperCase() + resource.slice(1);

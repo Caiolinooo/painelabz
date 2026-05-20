@@ -11,8 +11,8 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
             return NextResponse.json({ error: 'Token não fornecido' }, { status: 400 });
         }
 
-        // 1. Fetch ALL requests associated with this access token
-        const { data: solicitacoes, error: solError } = await supabaseAdmin
+        // 1. Fetch the reference solicitation for this token
+        const { data: refSols, error: refError } = await supabaseAdmin
             .from('solicitacoes_assinatura')
             .select(`
                 *,
@@ -22,8 +22,35 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
             `)
             .eq('token_acesso', token);
 
-        if (solError || !solicitacoes || solicitacoes.length === 0) {
+        if (refError || !refSols || refSols.length === 0) {
             return NextResponse.json({ error: 'Link de assinatura inválido ou expirado' }, { status: 404 });
+        }
+
+        const refSol = refSols[0];
+
+        // 2. Fetch ALL solicitations for this envelope that belong to this signer (collaborator or external signer)
+        let query = supabaseAdmin
+            .from('solicitacoes_assinatura')
+            .select(`
+                *,
+                documento:documentos_trabalhistas (*),
+                colaborador:users_unified!colaborador_id (email, first_name, last_name, tax_id),
+                envelope:envelopes!envelope_id (id, titulo, remetente_id)
+            `)
+            .eq('envelope_id', refSol.envelope_id);
+
+        if (refSol.colaborador_id) {
+            query = query.eq('colaborador_id', refSol.colaborador_id);
+        } else if (refSol.external_signer_email) {
+            query = query.eq('external_signer_email', refSol.external_signer_email);
+        } else {
+            query = query.eq('id', refSol.id);
+        }
+
+        const { data: solicitacoes, error: solError } = await query;
+
+        if (solError || !solicitacoes || solicitacoes.length === 0) {
+            return NextResponse.json({ error: 'Erro ao buscar solicitações de assinatura' }, { status: 500 });
         }
 
         // 1.5. Track View & Notify Creator if not viewed before
@@ -140,6 +167,7 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
                 target_email: targetEmail,
                 target_name: targetName,
                 target_tax_id: sol.colaborador?.tax_id || null,
+                valor_preenchido: sol.valor_preenchido,
                 documento: {
                     id: doc?.id,
                     titulo: doc?.titulo,

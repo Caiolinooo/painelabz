@@ -1,70 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
+import { getFullPermissionsForRole } from '@/config/modules';
 
 export const dynamic = 'force-dynamic';
 
-// Default permissions by role
-const rolePermissions: Record<string, { modules: Record<string, boolean> }> = {
-    ADMIN: {
-        modules: {
-            dashboard: true,
-            manual: true,
-            procedimentos: true,
-            politicas: true,
-            calendario: true,
-            noticias: true,
-            reembolso: true,
-            contracheque: true,
-            ponto: true,
-            admin: true,
-            'compras': true,
-            'chat': true,
-            'wkradar': true,
-            'guia_offshore': true,
-            'epi': true,
-            'ferias_admin': true,
-            'contratos': true
-        }
-    },
-    MANAGER: {
-        modules: {
-            dashboard: true,
-            manual: true,
-            procedimentos: true,
-            politicas: true,
-            calendario: true,
-            noticias: true,
-            reembolso: true,
-            contracheque: true,
-            ponto: true,
-            admin: false,
-            'compras': true,
-            'chat': true,
-            'wkradar': true,
-            'guia_offshore': true,
-            'epi': true,
-            'ferias_admin': true,
-            'contratos': true
-        }
-    },
-    USER: {
-        modules: {
-            dashboard: true,
-            manual: true,
-            procedimentos: true,
-            politicas: true,
-            calendario: true,
-            noticias: true,
-            reembolso: true,
-            contracheque: true,
-            ponto: true,
-            admin: false,
-            'compras': true,
-            'contratos': true
-        }
-    }
-};
 
 /**
  * GET /api/user/effective-permissions
@@ -150,7 +90,9 @@ export async function GET(request: NextRequest) {
 
         // Layer 2 & 3: Role Override & Strict Sector Mode
         const userRole = (profile.role || 'USER').toUpperCase();
-        const roleDefaults = rolePermissions[userRole] || rolePermissions.USER;
+        const roleDefaults = {
+            modules: getFullPermissionsForRole(userRole)
+        };
 
         // Core modules that are ALWAYS enabled for everyone regardless of sector
         // dashboard is the only mandatory module.
@@ -246,7 +188,7 @@ export async function GET(request: NextRequest) {
                     role: userRole,
                     user_override: userPermissions ? 'applied' : 'none'
                 },
-                role_defaults_applied: rolePermissions[userRole] ? Object.keys(rolePermissions[userRole].modules) : [],
+                role_defaults_applied: Object.keys(roleDefaults.modules),
                 sector_modules_raw: sectorRawModules,
                 sector_modules_count: Object.keys(effectiveModules).length,
                 effective_modules_keys: Object.keys(effectiveModules)

@@ -76,6 +76,100 @@ export async function embedSignatureOnPdf(opts: SignatureEmbedOptions): Promise<
     return pdfDoc.save();
 }
 
+export interface PdfFieldItem {
+    tipo: 'assinatura' | 'rubrica' | 'texto' | 'checkbox';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    page: number; // 1-indexed
+    value?: string; // For text or checkbox ('true'/'false')
+    signatureBase64?: string; // For signature/rubrica
+}
+
+export interface EmbedFieldsOptions {
+    pdfBytes: Uint8Array;
+    fields: PdfFieldItem[];
+}
+
+/**
+ * Embed multiple fields (signatures, rubrics, text fields, checkboxes) in a single pass.
+ */
+export async function embedFieldsAndSignaturesOnPdf(opts: EmbedFieldsOptions): Promise<Uint8Array> {
+    const { pdfBytes, fields } = opts;
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const pages = pdfDoc.getPages();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    for (const field of fields) {
+        const pageIndex = field.page - 1;
+        if (pageIndex < 0 || pageIndex >= pages.length) {
+            console.warn(`Página ${field.page} não existe no documento. Pulando campo.`);
+            continue;
+        }
+
+        const targetPage = pages[pageIndex];
+        const pageHeight = targetPage.getHeight();
+        const flippedY = pageHeight - field.y - field.height;
+
+        if (field.tipo === 'assinatura' || field.tipo === 'rubrica') {
+            if (!field.signatureBase64) continue;
+            
+            const sigBytes = base64ToUint8Array(field.signatureBase64);
+            let sigImage;
+            
+            if (field.signatureBase64.includes('image/jpeg') || field.signatureBase64.includes('image/jpg')) {
+                sigImage = await pdfDoc.embedJpg(sigBytes);
+            } else {
+                sigImage = await pdfDoc.embedPng(sigBytes);
+            }
+
+            targetPage.drawImage(sigImage, {
+                x: field.x,
+                y: flippedY,
+                width: field.width,
+                height: field.height,
+            });
+        } else if (field.tipo === 'texto') {
+            const textValue = field.value || '';
+            // Draw text onto PDF page
+            targetPage.drawText(textValue, {
+                x: field.x + 4,
+                y: flippedY + 4, // Add padding inside coordinates
+                size: Math.min(10, field.height - 4),
+                font,
+                color: rgb(0, 0, 0),
+            });
+        } else if (field.tipo === 'checkbox') {
+            const isChecked = field.value === 'true';
+            
+            // Draw a neat border box
+            targetPage.drawRectangle({
+                x: field.x,
+                y: flippedY,
+                width: field.width || 12,
+                height: field.height || 12,
+                borderColor: rgb(0, 0, 0),
+                borderWidth: 1,
+            });
+
+            if (isChecked) {
+                // Draw checkmark X inside the box
+                targetPage.drawText('X', {
+                    x: field.x + 3,
+                    y: flippedY + 3,
+                    size: Math.min(9, (field.height || 12) - 3),
+                    font,
+                    color: rgb(0, 0, 0),
+                });
+            }
+        }
+    }
+
+    return pdfDoc.save();
+}
+
+
 /**
  * Add a full audit/certificate page at the end of the PDF.
  */

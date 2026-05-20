@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiSave, FiX, FiUser, FiMail, FiPhone, FiBriefcase, FiUsers, FiPlus, FiTrash2, FiDollarSign, FiShield } from 'react-icons/fi';
@@ -9,7 +9,7 @@ import ACLPermissionTreeSelector from './ACLPermissionTreeSelector';
 import { useI18n } from '@/contexts/I18nContext';
 import { supabase } from '@/lib/supabase';
 import { Sector } from '@/types/index';
-// import { useACLPermissions } from '@/hooks/useACLPermissions'; // Temporariamente desabilitado
+import { useACLPermissions } from '@/hooks/useACLPermissions';
 
 // Interface para o usuário no editor
 export interface UserEditorData {
@@ -56,17 +56,14 @@ const UserEditor: React.FC<UserEditorProps> = ({
     department: '',
     accessPermissions: {
       modules: {
-        dashboard: true,
-        manual: true,
-        procedimentos: true,
-        politicas: true,
-        calendario: true,
-        noticias: true,
-        reembolso: true,
-        contracheque: true,
-        ponto: true,
-        admin: false
-      }
+        dashboard: true, noticias: true, calendario: true, 'ia-assistant': true,
+        ponto: true, contracheque: true, reembolso: true, kpi: false,
+        avaliacao: false, epi: true, ferias: true, 'lista-presenca': true,
+        contratos: true, academy: true, biblioteca: true, ajuda: true,
+        compras: false, poliweb: true, 'man-schedule': false, chat: true,
+        wkradar: false, admin: false, 'integracao-erp': false
+      },
+      features: {}
     },
     reimbursement_email_settings: {
       enabled: false,
@@ -120,26 +117,21 @@ const UserEditor: React.FC<UserEditorProps> = ({
   const [availableModules, setAvailableModules] = useState<Array<{ id: string, label: string, description: string }>>([]);
   const [rolePermissions, setRolePermissions] = useState<any>({});
 
-  // Hook para gerenciar permissões ACL (temporariamente desabilitado)
-  // const {
-  //   permissions: userACLPermissions,
-  //   loading: loadingACL,
-  //   loadUserPermissions,
-  //   grantPermission,
-  //   revokePermission
-  // } = useACLPermissions(editedUser._id);
+  // Hook para gerenciar permissões ACL
+  const {
+    permissions: userACLPermissions,
+    loading: loadingACL,
+    loadUserPermissions,
+    grantPermission,
+    revokePermission
+  } = useACLPermissions(editedUser._id || '');
 
-  // Definir função loadUserACLPermissions primeiro (temporariamente desabilitada)
-  const loadUserACLPermissions = useCallback(async () => {
-    if (!editedUser._id) return;
-    console.log('ACL permissions loading disabled temporarily');
-    // try {
-    //   await loadUserPermissions(editedUser._id);
-    //   // ... resto do código ACL
-    // } catch (error) {
-    //   console.error('Erro ao carregar permissões ACL:', error);
-    // }
-  }, [editedUser._id]);
+  // Carregar permissões do usuário
+  useEffect(() => {
+    if (editedUser._id) {
+      loadUserPermissions(editedUser._id);
+    }
+  }, [editedUser._id, loadUserPermissions]);
 
   // Carregar módulos disponíveis e permissões por role
   useEffect(() => {
@@ -225,79 +217,64 @@ const UserEditor: React.FC<UserEditorProps> = ({
     setSelectedACLPermissions(permissionIds);
 
     try {
-      // Sistema ACL temporariamente desabilitado
-      console.log('ACL permission change disabled temporarily');
-      return;
+      // Obter permissões atuais
+      const currentPermissions = userACLPermissions?.individual_permissions
+        .filter((up: any) => !up.is_expired)
+        .map((up: any) => up.permission.id) || [];
 
-      // // Obter permissões atuais
-      // const currentPermissions = userACLPermissions?.individual_permissions
-      //   .filter((up: any) => !up.is_expired)
-      //   .map((up: any) => up.permission.id) || [];
+      // Encontrar permissões a adicionar
+      const toAdd = permissionIds.filter(id => !currentPermissions.includes(id));
 
-      // // Encontrar permissões a adicionar
-      // const toAdd = permissionIds.filter(id => !currentPermissions.includes(id));
+      // Encontrar permissões a remover
+      const toRemove = currentPermissions.filter(id => !permissionIds.includes(id));
 
-      // // Encontrar permissões a remover
-      // const toRemove = currentPermissions.filter(id => !permissionIds.includes(id));
+      // Adicionar novas permissões
+      for (const permissionId of toAdd) {
+        await grantPermission(editedUser._id, permissionId);
+      }
 
-      // // Adicionar novas permissões
-      // for (const permissionId of toAdd) {
-      //   await grantPermission(editedUser._id, permissionId);
-      // }
+      // Remover permissões desmarcadas
+      for (const permissionId of toRemove) {
+        await revokePermission(editedUser._id, permissionId);
+      }
 
-      // // Remover permissões desmarcadas
-      // for (const permissionId of toRemove) {
-      //   await revokePermission(editedUser._id, permissionId);
-      // }
-
-      console.log(t('components.permissoesAclAtualizadasComSucesso'));
+      await loadUserPermissions(editedUser._id);
+      console.log('[UserEditor] Permissões ACL atualizadas com sucesso');
     } catch (error) {
-      console.error(t('components.erroAoAtualizarPermissoesAcl'), error);
+      console.error('[UserEditor] Erro ao atualizar permissões ACL:', error);
     }
   };
 
-  // Permissões padrão para cada papel
-  const defaultPermissions = {
+  // Permissões padrão para cada papel — all 24 system modules
+  const defaultPermissions: Record<string, { modules: Record<string, boolean> }> = {
     ADMIN: {
       modules: {
-        dashboard: true,
-        manual: true,
-        procedimentos: true,
-        politicas: true,
-        calendario: true,
-        noticias: true,
-        reembolso: true,
-        contracheque: true,
-        ponto: true,
-        admin: true
+        dashboard: true, noticias: true, calendario: true, 'ia-assistant': true,
+        ponto: true, contracheque: true, reembolso: true, kpi: true,
+        avaliacao: true, epi: true, ferias: true, 'lista-presenca': true,
+        contratos: true, academy: true, biblioteca: true, ajuda: true,
+        compras: true, poliweb: true, 'man-schedule': true, chat: true,
+        wkradar: true, admin: true, 'integracao-erp': true
       }
     },
     MANAGER: {
       modules: {
-        dashboard: true,
-        manual: true,
-        procedimentos: true,
-        politicas: true,
-        calendario: true,
-        noticias: true,
-        reembolso: true,
-        contracheque: true,
-        ponto: true,
-        admin: false
+        dashboard: true, noticias: true, calendario: true, 'ia-assistant': true,
+        ponto: true, contracheque: true, reembolso: true, kpi: false,
+        avaliacao: true, epi: true, ferias: true, 'lista-presenca': true,
+        contratos: true, academy: true, biblioteca: true, ajuda: true,
+        compras: true, poliweb: true, 'man-schedule': false, chat: true,
+        wkradar: false, admin: false, 'integracao-erp': false
       }
     },
     USER: {
       modules: {
-        dashboard: true,
-        manual: true,
-        procedimentos: true,
-        politicas: true,
-        calendario: true,
-        noticias: true,
-        reembolso: true,
-        contracheque: true,
-        ponto: true,
-        admin: false
+        dashboard: true, noticias: true, calendario: true, 'ia-assistant': true,
+        ponto: true, contracheque: true, reembolso: true, kpi: false,
+        avaliacao: false, epi: true, ferias: true, 'lista-presenca': true,
+        contratos: true, academy: true, biblioteca: true, ajuda: true,
+        compras: false, poliweb: true, 'man-schedule': false, chat: true,
+        wkradar: false, admin: false, 'integracao-erp': false
       }
     }
   };
@@ -658,17 +635,26 @@ const UserEditor: React.FC<UserEditorProps> = ({
               {showPermissions ? t('components.ocultarPermissoes') : t('components.configurarPermissoesDeAcesso')}
             </button>
 
-            {/* Temporariamente desabilitado
-              <button
-                type="button"
-                onClick={() => setShowACLPermissions(!showACLPermissions)}
-                className="flex items-center text-green-600 hover:text-green-700 font-medium"
-              >
-                <FiShield className="mr-2" />
-                {showACLPermissions ? 'Ocultar ACL' : t('components.permissoesAclAvancadas')}
-              </button>
-              */}
+            <button
+              type="button"
+              onClick={() => setShowACLPermissions(!showACLPermissions)}
+              className="flex items-center text-green-600 hover:text-green-700 font-medium"
+            >
+              <FiShield className="mr-2" />
+              {showACLPermissions ? 'Ocultar ACL' : t('components.permissoesAclAvancadas')}
+            </button>
           </div>
+
+          {/* Temporariamente desabilitado
+            <button
+              type="button"
+              onClick={() => setShowACLPermissions(!showACLPermissions)}
+              className="flex items-center text-green-600 hover:text-green-700 font-medium"
+            >
+              <FiShield className="mr-2" />
+              {showACLPermissions ? 'Ocultar ACL' : t('components.permissoesAclAvancadas')}
+            </button>
+            */}
 
           {showPermissions && (
             <div className="mt-4 p-4 border border-gray-200 rounded-lg">
@@ -755,8 +741,8 @@ const UserEditor: React.FC<UserEditorProps> = ({
             </div>
           )}
 
-          {/* Permissões ACL Avançadas - Temporariamente desabilitado */}
-          {false && showACLPermissions && (
+          {/* Permissões ACL Avançadas */}
+          {showACLPermissions && (
             <div className="mt-6 p-4 border border-green-200 rounded-lg bg-green-50">
               <div className="flex items-center mb-4">
                 <FiShield className="h-5 w-5 text-green-600 mr-2" />
@@ -768,7 +754,7 @@ const UserEditor: React.FC<UserEditorProps> = ({
                 As permissões individuais têm prioridade sobre as permissões do role.
               </p>
 
-              {false ? (
+              {loadingACL ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
                   <span className="ml-2 text-green-700">Carregando permissões ACL...</span>

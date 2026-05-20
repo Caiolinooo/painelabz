@@ -1,5 +1,38 @@
 # Changelog
 
+## [5.14.0] - 2026-05-20
+
+### Added
+- **ACL Hierarchical System Overhaul**: Refactored permission system with modular architecture. New `getFullPermissionsForRole()` consolidates module access across ADMIN, MANAGER, and USER roles. Permissions now split into `modules` (access flags) and `features` (fine-grained actions) for each role.
+- **New Permission Categories**: Added granular permissions for `ferias` (read/create/approve/manage/admin), `lista-presenca` (read/create/manage/admin), and `contratos` (read/sign/manage) with full i18n descriptions.
+- **Contracts Templates System**: Complete template management with CRUD API, role-based signer mapping, and template-to-envelope workflow. Templates support predefined roles (e.g., Colaborador, Gestor, RH) with auto-assignment.
+- **Multi-Field Document Signing**: Contracts now support `texto` (text input), `checkbox` (boolean selection), `assinatura` (signature), and `rubrica` (initial) field types with visual position overlay. Batch signing processes all pending fields for a signer in a single transaction.
+- **PDF Editor Service Enhancement**: New `embedFieldsAndSignaturesOnPdf()` service handles batch embedding of signatures, rubrics, text fields, and checkboxes across multiple pages in a single PDF pass.
+- **Real IA Chat Streaming**: Migrated from simulated SSE streaming to real `chatCompletionStream` with recursive tool processing, dashboard metadata extraction, and content persistence.
+- **New System Modules**: Added `ferias` (vacation management), `biblioteca` (document library), `ajuda` (help center), `compras` (purchase orders), `poliweb` (occupational clinic), `man-schedule` (offshore crew management), `chat` (internal communication), `wkradar` (legacy system access), `integracao-erp` (ERP integration), and `ia-assistant` modules with dedicated permissions.
+- **Module Categories**: Extended module categorization with `department`, `core`, and `content` categories alongside existing `system`, `business`, and `hr`.
+- **i18n Expansion**: Added 636+ new translation entries in `en-US.ts` and 314+ in `pt-BR.ts` covering all new modules, permissions, contracts workflows, and ACL management UI.
+- **Signer Reuse**: Contract detail page now remembers the last used signer (internal or external), with toggle to reuse or reset between assignments.
+- **Email Templates**: Added 61 new email template variations for contracts, vacations, and attendance list notifications.
+
+### Changed
+- **Permissions Data Model**: `DEFAULT_PERMISSIONS_BY_ROLE` restructured from flat `Record<string, boolean>` to nested `{ modules: Record<string, boolean>, features: Partial<PermissionFeatures> }` for cleaner separation of module access vs. feature-level permissions.
+- **Available Modules API**: `GET /api/admin/available-modules` now sources from `SYSTEM_MODULES` config instead of hardcoded Supabase card fallback, ensuring single source of truth for module definitions.
+- **Effective Permissions Endpoint**: Simplified to delegate role defaults to `getFullPermissionsForRole()` from `@/config/modules`, removing duplicated inline permission maps.
+- **Signature Position Overlay**: Enhanced with dynamic tipo detection (auto-detects checkbox, rubric, text, or signature based on field dimensions/label). Updated visual status colors to amber/emerald/gray for pending/signed/rejected states.
+- **Document Upload Modal**: Complete UI overhaul with tabbed interface (Envelope / Templates), template selector inside envelope creation, and dedicated template management section with role-based signer configuration.
+- **Contracts Detail Page**: Added support for text/checkbox field input, collapsible signer groups, advanced signer search, and CC (carbon copy) email fields.
+- **Poliweb Page**: Refactored to use per-tab state management (`tabStates`) instead of shared state, fixing credential save flow across multiple tabs.
+- **Purchase Requests/Orders**: Enhanced approval workflow with improved error handling, stage tracking, and permission validation.
+- **Voice Server Scripts**: Updated `agent.py` and `audio_server.py` with improved SSE handling, TTS parameter validation, and LiveKit SDK compatibility.
+
+### Fixed
+- **IA Chat Streaming**: Resolved issue where streaming used fake chunking of non-streaming API response; now properly uses `chatCompletionStream` for genuine SSE streaming with tool calls.
+- **Effective Permissions**: Fixed missing modules in effective permissions by centralizing module definitions in `SYSTEM_MODULES`.
+- **Signature Overlay Colors**: Updated visual feedback colors to improve accessibility and clarity of field status (pending, signed, rejected).
+- **Contract Signing Flow**: Fixed batch signing to properly update all sibling fields for the same signer, including text/checkbox values alongside signature/rubric.
+- **Poliweb Credential Persistence**: Resolved bug where credential updates in one tab would reset state in another tab.
+
 ## [5.13.0] - 2026-05-15
 
 ### Added

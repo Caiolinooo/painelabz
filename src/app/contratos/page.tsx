@@ -5,7 +5,7 @@ import MainLayout from '@/components/Layout/MainLayout';
 import {
     FiUpload, FiFileText, FiSearch, FiFilter,
     FiClock, FiCheckCircle, FiXCircle, FiChevronRight,
-    FiCalendar, FiUser, FiRefreshCw
+    FiCalendar, FiUser, FiRefreshCw, FiSettings
 } from 'react-icons/fi';
 import Link from 'next/link';
 import { fetchWithAuth } from '@/lib/authUtils';
@@ -32,6 +32,7 @@ export default function ContratosPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
     const [isUploadOpen, setIsUploadOpen] = useState(false);
+    const [uploadModalTab, setUploadModalTab] = useState<'envelope' | 'templates'>('envelope');
 
     const fetchDocumentos = useCallback(async () => {
         try {
@@ -113,13 +114,28 @@ export default function ContratosPage() {
                             <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </button>
                         {isManager && (
-                            <button
-                                onClick={() => setIsUploadOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
-                            >
-                                <FiUpload className="w-4 h-4" />
-                                {t('contratos.btn_create', 'Criar Envelope')}
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => {
+                                        setUploadModalTab('templates');
+                                        setIsUploadOpen(true);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 bg-white rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+                                >
+                                    <FiSettings className="w-4 h-4 text-gray-500" />
+                                    {t('contratos.btn_templates', 'Configurar Templates')}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setUploadModalTab('envelope');
+                                        setIsUploadOpen(true);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+                                >
+                                    <FiUpload className="w-4 h-4" />
+                                    {t('contratos.btn_create', 'Criar Envelope')}
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
@@ -273,6 +289,7 @@ export default function ContratosPage() {
                 isOpen={isUploadOpen}
                 onClose={() => setIsUploadOpen(false)}
                 onSuccess={fetchDocumentos}
+                initialTab={uploadModalTab}
             />
         </MainLayout>
     );

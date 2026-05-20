@@ -52,6 +52,15 @@ export interface PermissionFeatures {
   'news_manager'?: boolean;
   'contracts.manage'?: boolean;
   'contracts.sign'?: boolean;
+  'ferias.read'?: boolean;
+  'ferias.create'?: boolean;
+  'ferias.approve'?: boolean;
+  'ferias.manage'?: boolean;
+  'ferias.admin'?: boolean;
+  'lista-presenca.read'?: boolean;
+  'lista-presenca.create'?: boolean;
+  'lista-presenca.manage'?: boolean;
+  'lista-presenca.admin'?: boolean;
   [key: string]: boolean | undefined;
 }
 
@@ -289,6 +298,19 @@ export const PERMISSIONS = {
   CONTRACTS: {
     MANAGE: 'contracts.manage',
     SIGN: 'contracts.sign'
+  },
+  FERIAS: {
+    READ: 'ferias.read',
+    CREATE: 'ferias.create',
+    APPROVE: 'ferias.approve',
+    MANAGE: 'ferias.manage',
+    ADMIN: 'ferias.admin'
+  },
+  LISTA_PRESENCA: {
+    READ: 'lista-presenca.read',
+    CREATE: 'lista-presenca.create',
+    MANAGE: 'lista-presenca.manage',
+    ADMIN: 'lista-presenca.admin'
   }
 } as const;
 
@@ -327,80 +349,146 @@ export const PERMISSION_DESCRIPTIONS = {
   'contracts.sign': {
     title: 'Assinatura de Contratos',
     description: 'Pode assinar documentos atribuídos eletronicamente'
+  },
+  'ferias.read': {
+    title: 'Visualizar Férias',
+    description: 'Pode visualizar seus próprios pedidos de férias e saldo'
+  },
+  'ferias.create': {
+    title: 'Solicitar Férias',
+    description: 'Pode submeter pedidos de férias para aprovação'
+  },
+  'ferias.approve': {
+    title: 'Aprovar Férias',
+    description: 'Pode aprovar ou rejeitar pedidos de férias de subordinados'
+  },
+  'ferias.manage': {
+    title: 'Gerenciar Férias',
+    description: 'Pode gerenciar períodos aquisitivos, saldos e regras de férias'
+  },
+  'ferias.admin': {
+    title: 'Administrador de Férias',
+    description: 'Acesso total e configurações do módulo de férias'
+  },
+  'lista-presenca.read': {
+    title: 'Visualizar Lista de Presença',
+    description: 'Pode visualizar listas de presença e seus registros'
+  },
+  'lista-presenca.create': {
+    title: 'Criar Lista de Presença',
+    description: 'Pode criar novas listas de presença'
+  },
+  'lista-presenca.manage': {
+    title: 'Gerenciar Lista de Presença',
+    description: 'Pode gerenciar, fechar e assinar listas de presença'
+  },
+  'lista-presenca.admin': {
+    title: 'Administrador de Listas',
+    description: 'Acesso total e configurações de listas de presença'
   }
 } as const;
 
 /**
- * Default permissions by role
+ * Default permissions by role - mapped to all system modules
+ * Modules: dashboard, noticias, calendario, ia-assistant, ponto, contracheque, reembolso, kpi, 
+ *          avaliacao, epi, ferias, lista-presenca, contratos, academy, biblioteca, ajuda, 
+ *          compras, poliweb, man-schedule, chat, wkradar, admin, integracao-erp
  */
-export const DEFAULT_PERMISSIONS_BY_ROLE = {
+export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
+  modules: Record<string, boolean>;
+  features: Partial<PermissionFeatures>;
+}> = {
   ADMIN: {
-    academy_editor: true,
-    academy_moderator: true,
-    social_editor: true,
-    social_moderator: true,
-    'avaliacoes.metricas.read': true,
-    'avaliacoes.metricas.admin': true,
-    'avaliacoes.relatorios.read': true,
-    'avaliacoes.relatorios.export': true,
-    'avaliacoes.dashboard.config': true,
-    'avaliacoes.alertas.manage': true,
-    'avaliacoes.analytics.advanced': true,
-    'relatorios.pdf.read': true,
-    'relatorios.pdf.generate': true,
-    'relatorios.pdf.admin': true,
-    'relatorios.templates.read': true,
-    'relatorios.templates.create': true,
-    'relatorios.templates.edit': true,
-    'relatorios.historico.read': true,
-    'relatorios.historico.manage': true,
-    'contracts.manage': true,
-    'contracts.sign': true
+    modules: {
+      dashboard: true, noticias: true, calendario: true, 'ia-assistant': true,
+      ponto: true, contracheque: true, reembolso: true, kpi: true,
+      avaliacao: true, epi: true, ferias: true, 'lista-presenca': true,
+      contratos: true, academy: true, biblioteca: true, ajuda: true,
+      compras: true, poliweb: true, 'man-schedule': true, chat: true,
+      wkradar: true, admin: true, 'integracao-erp': true
+    },
+    features: {
+      academy_editor: true, academy_moderator: true,
+      social_editor: true, social_moderator: true,
+      'avaliacoes.metricas.read': true, 'avaliacoes.metricas.admin': true,
+      'avaliacoes.relatorios.read': true, 'avaliacoes.relatorios.export': true,
+      'avaliacoes.dashboard.config': true, 'avaliacoes.alertas.manage': true,
+      'avaliacoes.analytics.advanced': true,
+      'relatorios.pdf.read': true, 'relatorios.pdf.generate': true, 'relatorios.pdf.admin': true,
+      'relatorios.templates.read': true, 'relatorios.templates.create': true, 'relatorios.templates.edit': true,
+      'relatorios.historico.read': true, 'relatorios.historico.manage': true,
+      'contracts.manage': true, 'contracts.sign': true,
+      'api.mobile.admin': true, 'api.mobile.view': true, 'api.mobile.devices': true,
+      'api.mobile.notifications': true, 'api.mobile.settings': true,
+      'erp.view': true, 'erp.manage': true, 'erp.sync': true, 'erp.connections': true, 'erp.jobs': true,
+      'bi.view': true, 'bi.create': true, 'bi.edit': true, 'bi.delete': true, 'bi.export': true, 'bi.admin': true,
+      'workflows.view': true, 'workflows.create': true, 'workflows.edit': true, 'workflows.delete': true,
+      'workflows.execute': true, 'workflows.admin': true,
+      'chat.view': true, 'chat.send': true, 'chat.create_channels': true, 'chat.manage_channels': true,
+      'chat.delete_messages': true, 'chat.admin': true,
+      news_editor: true, news_manager: true,
+      'ferias.read': true, 'ferias.create': true, 'ferias.approve': true, 'ferias.manage': true, 'ferias.admin': true,
+      'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': true
+    }
   },
   MANAGER: {
-    academy_editor: false,
-    academy_moderator: true,
-    social_editor: false,
-    social_moderator: true,
-    'avaliacoes.metricas.read': true,
-    'avaliacoes.metricas.admin': false,
-    'avaliacoes.relatorios.read': true,
-    'avaliacoes.relatorios.export': true,
-    'avaliacoes.dashboard.config': false,
-    'avaliacoes.alertas.manage': false,
-    'avaliacoes.analytics.advanced': true,
-    'relatorios.pdf.read': true,
-    'relatorios.pdf.generate': true,
-    'relatorios.pdf.admin': false,
-    'relatorios.templates.read': true,
-    'relatorios.templates.create': false,
-    'relatorios.templates.edit': false,
-    'relatorios.historico.read': true,
-    'relatorios.historico.manage': false,
-    'contracts.manage': true,
-    'contracts.sign': true
+    modules: {
+      dashboard: true, noticias: true, calendario: true, 'ia-assistant': true,
+      ponto: true, contracheque: true, reembolso: true, kpi: false,
+      avaliacao: true, epi: true, ferias: true, 'lista-presenca': true,
+      contratos: true, academy: true, biblioteca: true, ajuda: true,
+      compras: true, poliweb: true, 'man-schedule': false, chat: true,
+      wkradar: false, admin: false, 'integracao-erp': false
+    },
+    features: {
+      academy_editor: false, academy_moderator: true,
+      social_editor: false, social_moderator: true,
+      'avaliacoes.metricas.read': true, 'avaliacoes.metricas.admin': false,
+      'avaliacoes.relatorios.read': true, 'avaliacoes.relatorios.export': true,
+      'avaliacoes.dashboard.config': false, 'avaliacoes.alertas.manage': false,
+      'avaliacoes.analytics.advanced': true,
+      'relatorios.pdf.read': true, 'relatorios.pdf.generate': true, 'relatorios.pdf.admin': false,
+      'relatorios.templates.read': true, 'relatorios.templates.create': false, 'relatorios.templates.edit': false,
+      'relatorios.historico.read': true, 'relatorios.historico.manage': false,
+      'contracts.manage': true, 'contracts.sign': true,
+      'api.mobile.view': true,
+      'erp.view': true, 'erp.sync': true,
+      'bi.view': true,
+      'workflows.view': true, 'workflows.execute': true,
+      'chat.view': true, 'chat.send': true,
+      news_editor: false, news_manager: false,
+      'ferias.read': true, 'ferias.create': true, 'ferias.approve': true, 'ferias.manage': false, 'ferias.admin': false,
+      'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': false
+    }
   },
   USER: {
-    academy_editor: false,
-    academy_moderator: false,
-    social_editor: false,
-    social_moderator: false,
-    'avaliacoes.metricas.read': false,
-    'avaliacoes.metricas.admin': false,
-    'avaliacoes.relatorios.read': false,
-    'avaliacoes.relatorios.export': false,
-    'avaliacoes.dashboard.config': false,
-    'avaliacoes.alertas.manage': false,
-    'avaliacoes.analytics.advanced': false,
-    'relatorios.pdf.read': false,
-    'relatorios.pdf.generate': false,
-    'relatorios.pdf.admin': false,
-    'relatorios.templates.read': false,
-    'relatorios.templates.create': false,
-    'relatorios.templates.edit': false,
-    'relatorios.historico.read': false,
-    'relatorios.historico.manage': false,
-    'contracts.manage': false,
-    'contracts.sign': true
+    modules: {
+      dashboard: true, noticias: true, calendario: true, 'ia-assistant': true,
+      ponto: true, contracheque: true, reembolso: true, kpi: false,
+      avaliacao: false, epi: true, ferias: true, 'lista-presenca': true,
+      contratos: true, academy: true, biblioteca: true, ajuda: true,
+      compras: false, poliweb: true, 'man-schedule': false, chat: true,
+      wkradar: false, admin: false, 'integracao-erp': false
+    },
+    features: {
+      academy_editor: false, academy_moderator: false,
+      social_editor: false, social_moderator: false,
+      'avaliacoes.metricas.read': false, 'avaliacoes.metricas.admin': false,
+      'avaliacoes.relatorios.read': false, 'avaliacoes.relatorios.export': false,
+      'avaliacoes.dashboard.config': false, 'avaliacoes.alertas.manage': false,
+      'avaliacoes.analytics.advanced': false,
+      'relatorios.pdf.read': false, 'relatorios.pdf.generate': false, 'relatorios.pdf.admin': false,
+      'relatorios.templates.read': false, 'relatorios.templates.create': false, 'relatorios.templates.edit': false,
+      'relatorios.historico.read': false, 'relatorios.historico.manage': false,
+      'contracts.manage': false, 'contracts.sign': true,
+      'api.mobile.view': true,
+      'erp.view': false, 'erp.sync': false,
+      'bi.view': false,
+      'workflows.view': false, 'workflows.execute': false,
+      'chat.view': true, 'chat.send': true,
+      news_editor: false, news_manager: false,
+      'ferias.read': true, 'ferias.create': true, 'ferias.approve': false, 'ferias.manage': false, 'ferias.admin': false,
+      'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': false, 'lista-presenca.admin': false
+    }
   }
-} as const;
+};

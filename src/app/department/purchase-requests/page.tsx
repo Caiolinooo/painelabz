@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  FileCheck
+  FileCheck,
+  XCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
@@ -74,6 +75,35 @@ export default function PurchaseRequestsPage() {
         }
     };
 
+    const handleDelete = async (id: string) => {
+        if (!confirm('Deseja realmente excluir esta requisição?')) return;
+        try {
+            const token = localStorage.getItem('abzToken') || localStorage.getItem('token');
+            if (!token) {
+                toast.error('Erro de autenticação');
+                return;
+            }
+
+            const res = await fetch(`/api/purchase-requests/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Erro ao excluir requisição');
+            }
+
+            toast.success('Requisição excluída com sucesso');
+            fetchRequests();
+        } catch (error: any) {
+            console.error('Error deleting request:', error);
+            toast.error(error.message || 'Erro ao excluir requisição');
+        }
+    };
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         // Implement search functionality
@@ -92,12 +122,12 @@ export default function PurchaseRequestsPage() {
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'draft': return <FiFileText className="mr-2" />;
-            case 'submitted': return <FiClock className="mr-2" />;
-            case 'approved': return <FiCheckCircle className="mr-2 text-green-600" />;
-            case 'rejected': return <FiXCircle className="mr-2 text-red-600" />;
-            case 'cancelled': return <FiXCircle className="mr-2 text-gray-500" />;
-            default: return <FiFileText className="mr-2" />;
+            case 'draft': return <FileText className="mr-2 h-4 w-4 inline" />;
+            case 'submitted': return <Clock className="mr-2 h-4 w-4 inline" />;
+            case 'approved': return <CheckCircle2 className="mr-2 h-4 w-4 inline text-green-600" />;
+            case 'rejected': return <XCircle className="mr-2 h-4 w-4 inline text-red-600" />;
+            case 'cancelled': return <XCircle className="mr-2 h-4 w-4 inline text-gray-500" />;
+            default: return <FileText className="mr-2 h-4 w-4 inline" />;
         }
     };
 
@@ -112,7 +142,7 @@ export default function PurchaseRequestsPage() {
                     href="/department/purchase-requests/new"
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                 >
-                    <FiPlus /> Nova Requisição
+                    <Plus className="h-5 w-5" /> Nova Requisição
                 </Link>
             </div>
 
@@ -123,7 +153,7 @@ export default function PurchaseRequestsPage() {
                             Buscar
                         </label>
                         <div className="relative">
-                            <FiSearch className="absolute left-3 top-3 text-gray-400" />
+                            <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                             <input
                                 type="text"
                                 value={searchTerm}
@@ -139,9 +169,9 @@ export default function PurchaseRequestsPage() {
                             Status
                         </label>
                         <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                             value={statusFilter}
+                             onChange={(e) => setStatusFilter(e.target.value)}
+                             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="all">Todos os Status</option>
                             <option value="draft">Rascunho</option>
@@ -157,7 +187,7 @@ export default function PurchaseRequestsPage() {
                             type="submit"
                             className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
-                            <FiSearch /> Buscar
+                            <Search className="h-5 w-5" /> Buscar
                         </button>
                     </div>
                 </form>

@@ -244,6 +244,7 @@ export async function chatCompletionStream(
     maxTokens?: number;
     temperature?: number;
     signal?: AbortSignal;
+    onStatus?: (status: string) => void;
   },
   userContext?: { role: string; userId: string }
 ): Promise<ReadableStream<Uint8Array>> {
