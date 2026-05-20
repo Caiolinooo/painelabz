@@ -49,6 +49,7 @@ export default function AssinaturaExternaPage() {
     const [authData, setAuthData] = useState({ nome: '', cpf: '', email: '' });
     const [legalAccepted, setLegalAccepted] = useState(false);
     const [isSigning, setIsSigning] = useState(false);
+    const [filledValues, setFilledValues] = useState<{ [solicitacaoId: string]: string }>({});
 
     const handleConfirmLang = () => {
         sessionStorage.setItem('signature_lang_chosen', 'true');
@@ -107,17 +108,33 @@ export default function AssinaturaExternaPage() {
 
                 if (data.success && data.queue) {
                     // Filter only pending items for user progression
-                    const pendingItems = data.queue.filter((q: any) => q.status === 'PENDING');
+                    // Filter only pending items that require signing/action for user progression
+                    const pendingSignableItems = data.queue.filter((q: any) => q.status === 'PENDING' && (q.tipo === 'assinatura' || q.tipo === 'rubrica'));
+                    const pendingItems = pendingSignableItems.length > 0
+                        ? pendingSignableItems
+                        : data.queue.filter((q: any) => q.status === 'PENDING');
                     
                     if (pendingItems.length === 0) {
                         // Already signed everything in this queue
                         setStep('SIGNED');
                     } else {
+                        // Populate filledValues with any existing database values
+                        const initialValues: Record<string, string> = {};
+                        data.queue.forEach((q: any) => {
+                            if (q.valor_preenchido !== null && q.valor_preenchido !== undefined) {
+                                initialValues[q.id] = q.valor_preenchido;
+                            }
+                        });
+                        setFilledValues(initialValues);
+
                         setQueue(data.queue); // Keep full list for visual sequence context
-                        // Set initial active index to first pending
-                        const firstPendingIdx = data.queue.findIndex((q: any) => q.status === 'PENDING');
-                        const chosenIdx = firstPendingIdx !== -1 ? firstPendingIdx : 0;
-                        setActiveIndex(chosenIdx);
+                        // Set initial active index to first pending signature or fallback
+                        const firstPendingIdx = data.queue.findIndex((q: any) => q.status === 'PENDING' && (q.tipo === 'assinatura' || q.tipo === 'rubrica'));
+                        const chosenIdx = firstPendingIdx !== -1 
+                            ? firstPendingIdx 
+                            : data.queue.findIndex((q: any) => q.status === 'PENDING');
+                        const finalIdx = chosenIdx !== -1 ? chosenIdx : 0;
+                        setActiveIndex(finalIdx);
 
                         // Pre-fill data from queue item
                         const activeItem = data.queue[chosenIdx];
@@ -271,6 +288,7 @@ export default function AssinaturaExternaPage() {
                     signature_base64: signatureBase64,
                     signer_data: authData,
                     sign_method: 'externo_token',
+                    field_values: filledValues,
                 }),
             });
 
@@ -280,14 +298,23 @@ export default function AssinaturaExternaPage() {
                 toast.success(t('assinatura.externa.sucesso_assinatura', 'Documento assinado com sucesso!'));
                 
                 // Locate the next pending document in queue
-                const updatedQueue = [...queue];
-                updatedQueue[activeIndex].status = 'SIGNED';
+                // The API completes sibling fields (text, checkbox, etc.) for the current document,
+                // so we mark them all as SIGNED.
+                const updatedQueue = queue.map((q: any) => {
+                    if (q.documento?.id === currentItem.documento?.id && q.status === 'PENDING') {
+                        return { ...q, status: 'SIGNED' };
+                    }
+                    return q;
+                });
                 setQueue(updatedQueue);
                 
-                const nextPendingIndex = updatedQueue.findIndex((q, idx) => idx > activeIndex && q.status === 'PENDING');
+                const nextPendingIdx = updatedQueue.findIndex((q, idx) => idx > activeIndex && q.status === 'PENDING' && (q.tipo === 'assinatura' || q.tipo === 'rubrica'));
+                const fallbackPendingIdx = nextPendingIdx !== -1 
+                    ? nextPendingIdx 
+                    : updatedQueue.findIndex((q, idx) => idx > activeIndex && q.status === 'PENDING');
                 
-                if (nextPendingIndex !== -1) {
-                    setActiveIndex(nextPendingIndex);
+                if (fallbackPendingIdx !== -1) {
+                    setActiveIndex(fallbackPendingIdx);
                     setLegalAccepted(false); // Reset agreement for next document
                     toast.success(t('assinatura.externa.carregando_proximo', 'Carregando próximo documento da fila...'), { icon: '📄' });
                 } else {
@@ -382,7 +409,7 @@ export default function AssinaturaExternaPage() {
                 </div>
             )}
 
-            <main className="flex-1 flex flex-col md:flex-row overflow-hidden max-w-7xl mx-auto w-full p-4 gap-6">
+            <main className="flex-1 flex flex-col md:flex-row md:overflow-hidden max-w-7xl mx-auto w-full p-4 gap-6">
                 
                 {/* Left Panel - Document Viewer */}
                 <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-[70vh] md:h-auto relative">
@@ -458,7 +485,7 @@ export default function AssinaturaExternaPage() {
                                         }
                                         options={PDF_OPTIONS}
                                     >
-                                        <div className="relative bg-white">
+                                        <div className="relative inline-block bg-white">
                                             <Page
                                                 pageNumber={currentPage}
                                                 width={pdfWidth}
@@ -467,18 +494,17 @@ export default function AssinaturaExternaPage() {
                                                 renderAnnotationLayer={true}
                                                 onLoadSuccess={onPageLoadSuccess}
                                             />
-                                            
-                                            {/* Inject Floating Overlay for Current Item if it belongs to this page */}
-                                            {step !== 'AUTH' && currentItem?.pagina_assinatura === currentPage && (
-                                                (() => {
+                                            {/* Inject Floating Overlay */}
+                                            {step !== 'AUTH' && queue
+                                                .filter((q: any) => q.documento?.id === documento?.id && q.pagina_assinatura === currentPage)
+                                                .map((q: any) => {
                                                     // Compute display coordinates
-                                                    let displayX = currentItem.posicao_x;
-                                                    let displayY = currentItem.posicao_y;
-                                                    let displayW = currentItem.largura_assinatura || 150;
-                                                    let displayH = currentItem.altura_assinatura || 50;
+                                                    let displayX = q.posicao_x;
+                                                    let displayY = q.posicao_y;
+                                                    let displayW = q.largura_assinatura || (q.tipo === 'rubrica' ? 100 : (q.tipo === 'checkbox' ? 16 : 150));
+                                                    let displayH = q.altura_assinatura || (q.tipo === 'rubrica' ? 30 : (q.tipo === 'checkbox' ? 16 : (q.tipo === 'texto' ? 22 : 50)));
                                                     
                                                     if (originalPageSize) {
-                                                        // Apply PDF Scale multiplier as well
                                                         const baseScale = pdfWidth / originalPageSize.width;
                                                         const totalScale = baseScale * pdfScale;
                                                         
@@ -487,23 +513,125 @@ export default function AssinaturaExternaPage() {
                                                         displayW = displayW * totalScale;
                                                         displayH = displayH * totalScale;
                                                     }
-                                                    
+
+                                                    const isCurrent = q.id === currentItem.id;
+
+                                                    if (q.status === 'PENDING' && q.tipo === 'texto') {
+                                                        return (
+                                                            <div
+                                                                key={`ext-input-${q.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 40,
+                                                                    pointerEvents: 'auto',
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="text"
+                                                                    value={filledValues[q.id] ?? ''}
+                                                                    onChange={(e) => setFilledValues(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                                                    placeholder={t('assinatura.externa.preencha_aqui', 'Preencha aqui...')}
+                                                                    className="w-full h-full text-xs px-1 border-2 border-dashed border-blue-500 bg-blue-50/80 rounded focus:border-blue-600 focus:bg-white outline-none text-gray-900 shadow-sm"
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (q.status === 'PENDING' && q.tipo === 'checkbox') {
+                                                        return (
+                                                            <div
+                                                                key={`ext-checkbox-${q.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 40,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    pointerEvents: 'auto',
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={filledValues[q.id] === 'true'}
+                                                                    onChange={(e) => setFilledValues(prev => ({ ...prev, [q.id]: e.target.checked ? 'true' : 'false' }))}
+                                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer border-2 border-blue-500 bg-blue-50"
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (q.status === 'SIGNED' && q.tipo === 'texto') {
+                                                        return (
+                                                            <div
+                                                                key={`ext-input-signed-${q.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 40,
+                                                                }}
+                                                                className="flex items-center bg-gray-50 border border-gray-300 rounded px-1 text-xs text-gray-600 select-none overflow-hidden truncate"
+                                                            >
+                                                                {q.valor_preenchido || ''}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (q.status === 'SIGNED' && q.tipo === 'checkbox') {
+                                                        return (
+                                                            <div
+                                                                key={`ext-checkbox-signed-${q.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 40,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={q.valor_preenchido === 'true'}
+                                                                    disabled
+                                                                    className="w-4 h-4 rounded text-gray-500 border-gray-300 bg-gray-50 cursor-not-allowed"
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    const label = q.tipo === 'rubrica' 
+                                                        ? t('assinatura.externa.local_rubrica', 'Sua Rubrica') 
+                                                        : t('assinatura.externa.local_assinatura', 'Seu local de Assinatura');
+
                                                     return (
                                                         <SignaturePositionOverlay
-                                                            key={`ext-overlay-${currentItem.id}`}
+                                                            key={`ext-overlay-${q.id}`}
                                                             x={displayX}
                                                             y={displayY}
                                                             width={displayW}
                                                             height={displayH}
-                                                            label={t('assinatura.externa.local_assinatura', 'Seu local de Assinatura')}
-                                                            status="PENDING"
-                                                            interactive={true}
-                                                            pulse={true}
-                                                            colorClasses={getSignerColor(currentItem?.target_email || currentItem?.id)}
+                                                            label={label}
+                                                            status={q.status as any}
+                                                            interactive={isCurrent}
+                                                            pulse={isCurrent}
+                                                            colorClasses={getSignerColor(q?.target_email || q?.id)}
                                                         />
                                                     );
-                                                })()
-                                            )}
+                                                })}
                                         </div>
                                     </Document>
                                 </div>

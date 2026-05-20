@@ -74,9 +74,8 @@ export function useACLPermissions(userId?: string) {
         }
       });
       
-      data.effective_permissions = Array.from(effectivePermissions.values());
-      
-      setPermissions(data);
+      const result = { ...data, effective_permissions: Array.from(effectivePermissions.values()) };
+      setPermissions(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {

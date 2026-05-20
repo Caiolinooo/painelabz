@@ -189,3 +189,11 @@ error, success {
     ***REMOVED*** #6b7280;
   }
 }
+
+/* React PDF Text & Annotation layer adjustments for clickable signature inputs */
+.react-pdf__Page__textLayer,
+.react-pdf__Page__annotations,
+.react-pdf__Page__annotationLayer {
+  pointer-events: none !important;
+}
+

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
+import { buildAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,12 @@ export async function POST(
                     .eq('id', currentRequest.user_id)
                     .single();
 
+                const { data: approver } = await supabaseAdmin
+                    .from('users_unified')
+                    .select('name')
+                    .eq('id', userId)
+                    .single();
+
                 const { sendEmail } = await import('@/lib/email-exchange');
                 const { requestStatusUpdateTemplate } = await import('@/lib/emailTemplates');
                 const { getTranslation } = await import('@/i18n');
@@ -107,13 +114,15 @@ export async function POST(
                 const requestNumber = currentRequest.request_number || currentRequest.id;
                 const viewUrl = buildAppUrl(`/department/purchase-requests/${currentRequest.id}`, request.headers);
 
+                const approverName = approver?.name || 'Administrador';
+
                 if (owner?.email) {
                     const htmlUser = requestStatusUpdateTemplate(
                         owner.name || 'Colaborador',
                         requestNumber,
                         currentRequest.provider_name,
                         newStatus,
-                        payload.name || 'Administrador',
+                        approverName,
                         body.note,
                         viewUrl,
                         userLocale
@@ -121,8 +130,8 @@ export async function POST(
 
                     const subject = t('emails.purchaseRequest.statusUpdateSubject', userLocale, { requestNumber });
                     const message = newStatus === 'approved'
-                        ? t('emails.purchaseRequest.approvedMessage', userLocale, { number: requestNumber, provider: currentRequest.provider_name, approver: payload.name })
-                        : t('emails.purchaseRequest.rejectedMessage', userLocale, { number: requestNumber, provider: currentRequest.provider_name, approver: payload.name });
+                        ? t('emails.purchaseRequest.approvedMessage', userLocale, { number: requestNumber, provider: currentRequest.provider_name, approver: approverName })
+                        : t('emails.purchaseRequest.rejectedMessage', userLocale, { number: requestNumber, provider: currentRequest.provider_name, approver: approverName });
 
                     await sendEmail(
                         owner.email,
@@ -142,7 +151,7 @@ export async function POST(
                             user_id: currentRequest.user_id,
                             type: 'purchase_request',
                             title: `Requisição ${statusLabel}`,
-                            message: `Sua RQF ${requestNumber} foi ${statusLabel.toLowerCase()} por ${payload.name || 'Administrador'}.${body.note ? ` Nota: ${body.note}` : ''}`,
+                            message: `Sua RQF ${requestNumber} foi ${statusLabel.toLowerCase()} por ${approverName}.${body.note ? ` Nota: ${body.note}` : ''}`,
                             link: viewUrl,
                             resource_id: currentRequest.id,
                             actor_id: userId,

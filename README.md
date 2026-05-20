@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.13.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.14.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos e comunicação interna.**
 
@@ -83,16 +83,24 @@ npm run dev
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
 
-## 🚀 Últimas Atualizações (v5.13.0)
+## 🚀 Últimas Atualizações (v5.14.0)
 
-- **Estabilização da Voz Local**: Implementação de pipeline PCM16 24kHz que reduz a latência e elimina erros de decodificação no cluster local (L4/Xeon).
-- **Orquestrador LiveKit v1.0**: Migração bem-sucedida para a nova API de Agentes do LiveKit, garantindo maior estabilidade e escalabilidade de conexões.
-- **Diagnóstico WebRTC**: Interface agora conta com telemetria ativa para monitoramento de saúde do canal de voz em tempo real.
+- **ACL Hierárquico Refatorado**: Sistema de permissões completamente reestruturado com módulos separados por categoria, novas permissões para Férias, Lista de Presença e Contratos, e hierarquia de acesso refinada por papel (ADMIN/MANAGER/USER).
+- **Contratos com Templates e Campos Multi-Tipo**: Módulo de contratos agora suporta templates reutilizáveis, campos de texto, checkbox, assinatura e rubrica em lote, com editor visual de posicionamento e fluxo de assinatura em lote por signatário.
+- **Streaming Real na IA Chat**: Canal de IA migrado de streaming simulado para streaming real com processamento recursivo de tools, garantindo respostas mais rápidas e precisas.
+- **Expansão de Módulos do Sistema**: Adicionados módulos de Férias, Biblioteca, Ajuda, Compras, Poliweb, Man-Schedule, Chat Corporativo e Integração ERP com permissões dedicadas.
+- **i18n Ampliado**: Cobertura de tradução expandida para os novos módulos, contratos, assinaturas e novos fluxos de permissões.
+
+## 🚀 Destaques Recentes (v5.13.0)
+
+- **Estabilização da Voz Local**: Pipeline PCM16 24kHz que reduz latência e elimina erros de decodificação no cluster local.
+- **Orquestrador LiveKit v1.0**: Migração para nova API de Agentes com fallback para compatibilidade.
+- **Diagnóstico WebRTC**: Telemetria ativa para monitoramento de saúde do canal de voz em tempo real.
 
 ## 🚀 Destaques Recentes (v5.12.0)
 
 - **Agente de Voz Real-Time (LiveKit)**: Integração nativa de WebRTC de alto desempenho, garantindo processamento de voz bi-direcional para suporte interativo sem fricção.
-- **Auto-Recuperação e Resiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.esiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.
+- **Auto-Recuperação e Resiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.
 - **Otimização de Notificações (EPI)**: Restrição inteligente do envio de e-mails de estoque crítico unicamente aos IDs listados como responsáveis setoriais cadastrados.
 
 ## 🚀 Destaques Recentes (v5.11.0)

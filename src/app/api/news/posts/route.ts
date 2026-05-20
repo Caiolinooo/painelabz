@@ -293,19 +293,21 @@ export const POST = withPermission('news_editor', async (request: NextRequest) =
     }
 
     // Verificar se a categoria existe (se fornecida)
+    let category: any = null;
     if (category_id) {
-      const { data: category, error: categoryError } = await supabaseAdmin
+      const { data: catData, error: categoryError } = await supabaseAdmin
         .from('news_categories')
         .select('id, name')
         .eq('id', category_id)
         .single();
 
-      if (categoryError || !category) {
+      if (categoryError || !catData) {
         return NextResponse.json(
           { error: 'Categoria não encontrada' },
           { status: 404 }
         );
       }
+      category = catData;
     }
 
     // Preparar dados do post

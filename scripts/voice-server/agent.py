@@ -1,6 +1,37 @@
 """
-ABZ Voice Agent — Compatible with LiveKit Agents v0.x AND v1.0+
-Auto-detects the installed SDK version and uses the correct API.
+ABZ Voice Agent — livekit-agents v1.0 API (AgentSession + Agent)
+===============================================================
+Portugues:
+  Agente de voz migrado para livekit-agents v1.0 API.
+  AgentSession + Agent substituindo VoicePipelineAgent (deprecated).
+  
+  Pipeline: VAD (Silero) -> STT (OpenAI plugin -> local Whisper)
+            -> LLM (Qwen via openai.LLM) -> TTS (OpenAI plugin -> local Piper)
+  
+  A IA completa vem do Gateway /api/ia/voice/process (mesmo motor do texto).
+  O agente tem UMA tool: processar_texto() que chama o gateway.
+  
+  Zero duplicacao de ferramentas. Zero duplicacao de logica.
+
+English:
+  Voice agent migrated to livekit-agents v1.0 API.
+  AgentSession + Agent replacing VoicePipelineAgent (deprecated).
+  
+  Pipeline: VAD (Silero) -> STT (OpenAI plugin -> local Whisper)
+            -> LLM (Qwen via openai.LLM) -> TTS (OpenAI plugin -> local Piper)
+  
+  Full AI comes from Gateway /api/ia/voice/process (same engine as text chat).
+  The agent has ONE tool: processar_texto() that calls the gateway.
+  
+  Zero tool duplication. Zero logic duplication.
+
+Changes from v0.x:
+  - VoicePipelineAgent -> AgentSession + Agent
+  - cli.run_app(WorkerOptions) -> agents.cli.run_app(server) + @server.rtc_session
+  - allow_interruptions/min_interruption_seconds -> TurnHandlingOptions
+  - System prompt via Agent.instructions (not llm.ChatContext)
+  - Greeting via session.generate_reply() (not agent.say())
+  - Tools via @function_tool decorator + tools= in Agent (not FunctionContext class)
 """
 
 import asyncio
@@ -10,7 +41,7 @@ import sys
 import traceback
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
 logger = logging.getLogger("abz-voice")
@@ -22,169 +53,240 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "Caio@2122@")
 AUDIO_BASE_URL = os.getenv("AUDIO_BASE_URL", "http://127.0.0.1:8001/v1")
 
-SYSTEM_PROMPT = (
-    "Você é a ABZ, assistente virtual de voz do Portal ABZ. "
-    "Responda SEMPRE em português brasileiro. "
-    "Seja ágil e direto, como um atendente ao telefone. "
-    "Mantenha respostas curtas (máximo 2-3 frases). "
-    "Use linguagem profissional mas acessível."
+# Gateway to Portal ABZ AI engine (same engine as text chat)
+PORTAL_API_URL = os.getenv("PORTAL_API_URL", "http://localhost:3000")
+VOICE_AGENT_TOKEN = os.getenv("VOICE_AGENT_TOKEN", "")
+
+# System prompt — diz ao LLM para SEMPRE usar a tool processar_texto
+SYSTEM_INSTRUCTIONS = (
+    "Voce e a ABZ, assistente de IA por voz do Portal ABZ.\n"
+    "REGRAS IMPORTANTES:\n"
+    "1. SEMPRE use a ferramenta 'processar_texto' para responder qualquer pergunta.\n"
+    "2. NUNCA responda sem usar a ferramenta — mesmo para 'oi', 'obrigado', etc.\n"
+    "3. A ferramenta processar_texto retorna a resposta completa da IA.\n"
+    "4. Responda SEMPRE em portugues brasileiro.\n"
+    "5. Seja agil, direto e amigavel, como um atendente ao telefone.\n"
+    "6. Mantenha respostas curtas (maximo 2-3 frases) para voz.\n"
+    "7. Se a ferramenta retornar um erro, explique ao usuario o problema.\n"
 )
 
 # ---------------------------------------------------------------------------
 # Detect SDK version
 # ---------------------------------------------------------------------------
 SDK_VERSION = "unknown"
+
 try:
     import livekit.agents as _la
-    SDK_VERSION = getattr(_la, "__version__", "0.x")
+    SDK_VERSION = getattr(_la, "__version__", "1.x")
     logger.info(f"LiveKit Agents SDK version: {SDK_VERSION}")
 except ImportError:
-    logger.error("livekit-agents NÃO está instalado!")
+    logger.error("livekit-agents NOT installed!")
     sys.exit(1)
 
-try:
-    import livekit.plugins.openai as _po
-    logger.info(f"livekit-plugins-openai version: {getattr(_po, '__version__', 'unknown')}")
-except Exception:
-    pass
-try:
-    import livekit.plugins.silero as _ps
-    logger.info(f"livekit-plugins-silero version: {getattr(_ps, '__version__', 'unknown')}")
-except Exception:
-    pass
+# v1.x imports — tools usam @function_tool (nao FunctionContext class)
+from livekit import agents
+from livekit.agents import AgentServer, AgentSession, Agent, TurnHandlingOptions, function_tool, RunContext
+from livekit.plugins import silero, openai
 
-IS_V1 = False
+# Try to import turn detector (optional — falls back to VAD-only)
+_TURN_DETECTOR_AVAILABLE = False
 try:
-    from livekit.agents import Agent, AgentSession, function_tool, RunContext
-    IS_V1 = True
-    logger.info("✓ API v1.0+ detectada (AgentSession + Agent + @function_tool)")
+    from livekit.plugins.turn_detector.multilingual import MultilingualModel
+    _TURN_DETECTOR_AVAILABLE = True
+    logger.info("Turn detector (MultilingualModel) available")
 except ImportError:
-    logger.info("✗ API v1.0 não disponível, usando v0.x (VoicePipelineAgent)")
-
-from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli
-from livekit.plugins import openai, silero
-
-# ---------------------------------------------------------------------------
-# v0.x: FunctionContext + VoicePipelineAgent
-# ---------------------------------------------------------------------------
-if not IS_V1:
-    from livekit.agents.pipeline import VoicePipelineAgent
-    from livekit.agents import llm
-
-    class PortalABZTools(llm.FunctionContext):
-        @llm.ai_callable(description="Busca o status de um chamado no Portal ABZ")
-        async def verificar_status_chamado(self, numero_chamado: str):
-            logger.info(f"[TOOL] Consultando chamado #{numero_chamado}")
-            await asyncio.sleep(0.3)
-            return f"O chamado {numero_chamado} está em andamento com a equipe técnica."
-
-    async def entrypoint(ctx: JobContext):
-        try:
-            logger.info(">>> [v0.x] Job recebido. Conectando à sala...")
-            await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-            logger.info(f">>> Conectado à sala: {ctx.room.name}")
-
-            _vad = silero.VAD.load()
-            logger.info(">>> VAD carregado")
-
-            _stt = openai.STT(base_url=AUDIO_BASE_URL, api_key="local")
-            logger.info(">>> STT criado")
-
-            _llm = openai.LLM(
-                base_url=LLM_BASE_URL,
-                api_key=LLM_API_KEY,
-                model="qwen-coder",
-            )
-            logger.info(">>> LLM criado")
-
-            # CRÍTICO: model="tts-1" força AudioChunkedStream (streaming bytes)
-            # O default "gpt-4o-mini-tts" usa SSE que nosso server não suporta.
-            # response_format="pcm" entrega PCM16 24kHz direto, sem decodificação.
-            _tts = openai.TTS(
-                base_url=AUDIO_BASE_URL,
-                api_key="local",
-                model="tts-1",
-                response_format="pcm",
-            )
-            logger.info(">>> TTS criado (model=tts-1, format=pcm)")
-
-            agent = VoicePipelineAgent(
-                vad=_vad,
-                stt=_stt,
-                llm=_llm,
-                tts=_tts,
-                fnc_ctx=PortalABZTools(),
-                chat_ctx=llm.ChatContext().append(role="system", text=SYSTEM_PROMPT),
-            )
-
-            agent.start(ctx.room)
-            logger.info(">>> Pipeline de voz v0.x ativo!")
-            await agent.say("Olá! Em que posso ajudar?", allow_interruptions=True)
-
-        except Exception as e:
-            logger.error(f"!!! ERRO no entrypoint v0.x: {e}")
-            traceback.print_exc()
-
+    logger.warning(
+        "Turn detector not available (livekit-plugins-turn-detector not installed). "
+        "Falling back to VAD-only turn detection."
+    )
 
 # ---------------------------------------------------------------------------
-# v1.0+: Agent + AgentSession + @function_tool
+# Tools — A ferramenta processar_texto chama o gateway do portal
 # ---------------------------------------------------------------------------
-else:
-    class PortalABZAgent(Agent):
-        def __init__(self):
-            super().__init__(instructions=SYSTEM_PROMPT)
+@function_tool
+async def processar_texto(
+    context: RunContext,
+    texto: str,
+) -> str:
+    """
+    SEMPRE use esta ferramenta para responder qualquer pergunta do usuario.
+    Ela retorna a resposta da IA com dados reais (ferias, reembolsos, etc).
+    NUNCA responda sem usar esta ferramenta.
+    
+    Args:
+        texto: A pergunta ou comando do usuario
+    
+    Returns:
+        A resposta da IA (texto formatado)
+    """
+    if not texto or not texto.strip():
+        return "Nao entendi. Pode repetir, por favor?"
 
-        @function_tool()
-        async def verificar_status_chamado(self, context: RunContext, numero_chamado: str) -> str:
-            """Busca o status de um chamado no Portal ABZ.
-            Args:
-                numero_chamado: Número do chamado.
-            """
-            logger.info(f"[TOOL] Consultando chamado #{numero_chamado}")
-            await asyncio.sleep(0.3)
-            return f"O chamado {numero_chamado} está em andamento com a equipe técnica."
+    logger.info(f">>> [Gateway] processar_texto: {texto[:100]}...")
 
-    async def entrypoint(ctx: JobContext):
-        try:
-            logger.info(">>> [v1.0] Job recebido. Conectando à sala...")
-            await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-            logger.info(f">>> Conectado à sala: {ctx.room.name}")
+    try:
+        import aiohttp
 
-            _vad = silero.VAD.load()
-            logger.info(">>> VAD carregado")
+        headers = {"Content-Type": "application/json"}
+        if VOICE_AGENT_TOKEN:
+            headers["Authorization"] = f"Bearer {VOICE_AGENT_TOKEN}"
 
-            _stt = openai.STT(base_url=AUDIO_BASE_URL, api_key="local")
-            logger.info(">>> STT criado")
+        url = f"{PORTAL_API_URL}/api/ia/voice/process"
+        logger.info(f">>> Gateway URL: {url}")
 
-            _llm = openai.LLM(
-                base_url=LLM_BASE_URL,
-                api_key=LLM_API_KEY,
-                model="qwen-coder",
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url,
+                json={"text": texto.strip()},
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=120)
+            ) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    logger.error(f">>> Gateway erro: {resp.status} - {error_text[:200]}")
+                    return f"Erro ao processar: {error_text[:300]}"
+
+                data = await resp.json()
+                response = data.get("response", "Nao recebi resposta do gateway.")
+                metadata = data.get("metadata", {})
+
+                if metadata.get("dashboard"):
+                    logger.info(">>> Gateway: dashboard detectado — sera renderizado pelo frontend")
+
+                logger.info(f">>> Gateway response: {response[:100]}...")
+                return response
+
+    except aiohttp.TimeoutError:
+        logger.error(">>> Gateway TIMEOUT (120s)")
+        return "Desculpe, o sistema demorou muito para responder. Tente novamente."
+    except Exception as e:
+        logger.error(f">>> Gateway ERRO: {e}")
+        traceback.print_exc()
+        return "Ocorreu um erro ao processar sua pergunta. Tente novamente."
+
+
+# ---------------------------------------------------------------------------
+# Agent class — v1.x style
+# ---------------------------------------------------------------------------
+class ABZAgent(Agent):
+    """
+    Agente ABZ para voce.
+    
+    Agent em v1.x usa 'instructions' (nao system prompt em ChatContext).
+    As ferramentas sao passadas via tools=[...] no construtor do Agent.
+    """
+    def __init__(self):
+        super().__init__(
+            instructions=SYSTEM_INSTRUCTIONS,
+            tools=[processar_texto],
+        )
+
+
+# ---------------------------------------------------------------------------
+# Entry point — v1.x: @server.rtc_session + AgentSession
+# ---------------------------------------------------------------------------
+server = AgentServer()
+
+@server.rtc_session(agent_name="abz-voice")
+async def entrypoint(ctx: agents.JobContext):
+    """
+    Entry point — AgentSession (v1.x API).
+    
+    AgentSession e o equivalente modernizado de VoicePipelineAgent.
+    Diferencas de VoicePipelineAgent:
+    - VAD, STT, LLM, TTS sao passados ao construtor, nao montados internamente
+    - Interrupcao via TurnHandlingOptions (com turn_detection opcional)
+    - System prompt via Agent.instructions (nao llm.ChatContext)
+    - Saudacao via session.generate_reply() (nao agent.say())
+    - Ferramentas via tools= no Agent (nao functions= no AgentSession)
+    
+    English:
+    AgentSession is the modernized equivalent of VoicePipelineAgent.
+    - VAD, STT, LLM, TTS passed to constructor
+    - Interruption via TurnHandlingOptions (with optional turn_detection)
+    - System prompt via Agent.instructions (not llm.ChatContext)
+    - Greeting via session.generate_reply() (not agent.say())
+    - Tools via tools= in Agent (not functions= in AgentSession)
+    """
+    try:
+        logger.info(">>> [AgentSession v1.x] Job recebido. Conectando a sala...")
+        await ctx.connect()
+        logger.info(f">>> Conectado a sala: {ctx.room.name}")
+
+        # Carregar VAD
+        vad = silero.VAD.load()
+        logger.info(">>> VAD (Silero) carregado")
+
+        # Carregar STT (openai.STT suporta base_url customizada = audio_server local)
+        stt = openai.STT(
+            base_url=AUDIO_BASE_URL,
+            api_key="local",
+        )
+        logger.info(">>> STT (openai.STT) criado (base_url=%s)", AUDIO_BASE_URL)
+
+        # Carregar LLM (openai.LLM suporta base_url customizada = Llama.cpp local)
+        llm = openai.LLM(
+            base_url=LLM_BASE_URL,
+            api_key=LLM_API_KEY,
+            model="qwen-coder",
+        )
+        logger.info(">>> LLM (openai.LLM) criado (base_url=%s, model=qwen-coder)", LLM_BASE_URL)
+
+        # Carregar TTS (openai.TTS suporta base_url customizada = audio_server local)
+        # response_format="mp3" = JSON {"audio": "base64"} — compativel com audio_server
+        tts = openai.TTS(
+            base_url=AUDIO_BASE_URL,
+            api_key="local",
+            model="tts-1",
+            response_format="mp3",
+        )
+        logger.info(">>> TTS criado (base_url=%s, format=mp3)", AUDIO_BASE_URL)
+
+        # Configurar turn handling
+        turn_handling = None
+        if _TURN_DETECTOR_AVAILABLE:
+            turn_handling = TurnHandlingOptions(
+                turn_detection=MultilingualModel(),
             )
-            logger.info(">>> LLM criado")
-
-            # CRÍTICO: model="tts-1" força AudioChunkedStream (streaming bytes)
-            # O default "gpt-4o-mini-tts" usa SSEChunkedStream que nosso server
-            # NÃO suporta (espera Server-Sent Events com base64 audio).
-            _tts = openai.TTS(
-                base_url=AUDIO_BASE_URL,
-                api_key="local",
-                model="tts-1",
-                response_format="pcm",
+            logger.info(">>> Turn detector (MultilingualModel) ativo")
+        else:
+            # Fallback: VAD-only turn detection
+            turn_handling = TurnHandlingOptions(
+                allow_interruption=True,
+                min_silence_duration=0.0,
             )
-            logger.info(">>> TTS criado (model=tts-1, format=pcm)")
+            logger.info(">>> Turn handling: VAD-only (min_silence=0s, allow_interruption=True)")
 
-            session = AgentSession(
-                vad=_vad, stt=_stt, llm=_llm, tts=_tts,
-            )
+        # Criar session de voz (v1.x API) — tools vem do Agent, nao do AgentSession
+        session = AgentSession(
+            vad=vad,
+            stt=stt,
+            llm=llm,
+            tts=tts,
+            turn_handling=turn_handling,
+        )
+        logger.info(">>> AgentSession criado (tools via Agent)")
 
-            agent = PortalABZAgent()
-            await session.start(room=ctx.room, agent=agent)
-            logger.info(">>> Pipeline de voz v1.0 ativo!")
+        # Criar agente com tools
+        agent = ABZAgent()
+        logger.info(">>> ABZAgent criado com tools=[processar_texto]")
 
-        except Exception as e:
-            logger.error(f"!!! ERRO no entrypoint v1.0: {e}")
-            traceback.print_exc()
+        # Iniciar session na sala
+        await session.start(
+            room=ctx.room,
+            agent=agent,
+        )
+        logger.info(">>> Session iniciada na sala — aguardando fala!")
+
+        # Saudacao inicial
+        await session.generate_reply(
+            instructions="Olá! Eu sou a ABZ, assistente do Portal ABZ. Como posso ajudar?",
+        )
+        logger.info(">>> Saudacao enviada — aguardando pergunta do usuario...")
+
+    except Exception as e:
+        logger.error(f"!!! ERRO no entrypoint: {e}")
+        traceback.print_exc()
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +299,7 @@ if __name__ == "__main__":
 
     if not lk_url or not lk_key or not lk_secret:
         logger.error("=" * 60)
-        logger.error("ERRO: Variáveis de ambiente do LiveKit NÃO configuradas!")
+        logger.error("ERRO: Variaveis de ambiente do LiveKit NÃO configuradas!")
         logger.error(f"  LIVEKIT_URL:        {'OK' if lk_url else 'FALTANDO'}")
         logger.error(f"  LIVEKIT_API_KEY:    {'OK' if lk_key else 'FALTANDO'}")
         logger.error(f"  LIVEKIT_API_SECRET: {'OK' if lk_secret else 'FALTANDO'}")
@@ -207,10 +309,16 @@ if __name__ == "__main__":
 
     logger.info("=" * 60)
     logger.info(f"ABZ Voice Agent")
-    logger.info(f"SDK:   {SDK_VERSION} ({'v1.0 API' if IS_V1 else 'v0.x API'})")
+    logger.info(f"SDK:   {SDK_VERSION} (AgentSession v1.x)")
     logger.info(f"LK:    {lk_url}")
     logger.info(f"LLM:   {LLM_BASE_URL}")
     logger.info(f"Audio: {AUDIO_BASE_URL}")
+    logger.info(f"Portal: {PORTAL_API_URL}")
+    logger.info(f"Gateway: {'ON' if PORTAL_API_URL else 'OFF'}")
+    logger.info(f"STT:   PT-BR forced (default)")
+    logger.info(f"TTS:   MP3 format (OpenAI-compatible)")
+    logger.info(f"Agent: AgentSession + Agent (v1.x)")
+    logger.info(f"Turn:  {'MultilingualModel' if _TURN_DETECTOR_AVAILABLE else 'VAD-only'}")
     logger.info("=" * 60)
 
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    agents.cli.run_app(server)

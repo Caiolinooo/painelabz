@@ -13,20 +13,20 @@ DIR_AGENT="$HOME/Desktop/abz-voice-local"
 
 # Comando do Llama.cpp (LLM na GPU L4)
 # Host em 127.0.0.1 (mesma máquina)
-LLM_CMD="cd ~/Desktop/llama.cpp/build/bin && ./llama-server \
-  --host 0.0.0.0 \
-  --api-key Caio@2122@ \
-  --reasoning-effort auto \
-  --reasoning-budget 8950 \
-  --n-gpu-layers 999 \
-  --no-mmap \
-  --n-cpu-moe 6 \
-  -fa on \
-  --mlock \
-  --tools all \
-  --jinja \
-  -m /home/caio/.lmstudio/models/lmstudio-community/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-Q4_K_M.gguf \
-  --mmproj /home/caio/.lmstudio/models/lmstudio-community/Qwen3.6-35B-A3B-GGUF/mmproj-Qwen3.6-35B-A3B-BF16.gguf"
+#LLM_CMD="cd ~/Desktop/llama.cpp/build/bin && ./llama-server \
+ # --host 0.0.0.0 \
+ # --api-key Caio@2122@ \
+ # --reasoning-effort auto \
+ # --reasoning-budget 8950 \
+ # --n-gpu-layers 999 \
+ # --no-mmap \
+ # --n-cpu-moe 6 \
+ # -fa on \
+ # --mlock \
+ # --tools all \
+ # --jinja \
+ # -m /home/caio/.lmstudio/models/lmstudio-community/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-Q4_K_M.gguf \
+ # --mmproj /home/caio/.lmstudio/models/lmstudio-community/Qwen3.6-35B-A3B-GGUF/mmproj-Qwen3.6-35B-A3B-BF16.gguf"
 
 # Chaves do LiveKit (Portal ABZ)
 LIVEKIT_URL="wss://portal-abz-rdbjrm3k.livekit.cloud"
@@ -51,6 +51,9 @@ export LIVEKIT_API_SECRET="${LIVEKIT_API_SECRET}"
 export LLM_BASE_URL="http://127.0.0.1:8080/v1"
 export LLM_API_KEY="Caio@2122@"
 export AUDIO_BASE_URL="http://127.0.0.1:8001/v1"
+export PORTAL_API_URL="http://localhost:3000"
+export VOICE_DEFAULT_LANGUAGE="pt"
+export VOICE_AGENT_TOKEN=""
 ENVEOF
     echo -e "${GREEN}[OK]${NC} Arquivo .env gerado em $DIR_AGENT/.env"
 }
@@ -118,10 +121,13 @@ check_and_install() {
         "livekit-agents[openai,silero]>=1.0.0" \
         fastapi uvicorn python-multipart pydantic \
         faster-whisper piper-tts
+    # Turn detector para turn_detection natural no v1.0 (opcional mas recomendado)
+    pip install --upgrade livekit-plugins-turn-detector 2>/dev/null || true
 
-    # Baixa arquivos de modelo do Silero VAD
-    echo -e "\n${CYAN}Baixando modelos do Silero VAD...${NC}"
+    # Baixa arquivos de modelo do Silero VAD e turn detector
+    echo -e "\n${CYAN}Baixando modelos de IA...${NC}"
     python3 -c "from livekit.plugins import silero; silero.VAD.load()" 2>/dev/null || true
+    python3 -c "from livekit.plugins.turn_detector.multilingual import MultilingualModel; MultilingualModel().download_files()" 2>/dev/null || true
 
     echo -e "\n${CYAN}=== 5/5. Copiando Código do Agente e Audio Server ===${NC}"
 
@@ -189,7 +195,7 @@ start_services() {
     tmux new-window -t $SESSION_NAME:2 -n "livekit_agent"
     # CRÍTICO: Injeta as env vars do LiveKit via source .env
     tmux send-keys -t $SESSION_NAME:2 \
-        "cd $DIR_AGENT && source venv/bin/activate && source .env && python3 agent.py start" C-m
+        "cd $DIR_AGENT && source venv/bin/activate && source .env && python3 agent.py" C-m
 
     echo -e "\n${GREEN}========================================${NC}"
     echo -e "${GREEN}  TODOS OS SERVIÇOS INICIADOS!${NC}"

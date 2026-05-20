@@ -875,6 +875,67 @@ export const orderStatusUpdateTemplate = (
   return baseTemplate(content, locale);
 };
 
+// Template for Purchase Request Status Update (Approved/Rejected)
+export const requestStatusUpdateTemplate = (
+  userName: string,
+  requestId: string,
+  providerName: string,
+  newStatus: 'approved' | 'rejected',
+  updatedBy: string,
+  note?: string,
+  viewUrl?: string,
+  locale: string = 'pt-BR'
+) => {
+  const config = getEmailConfig();
+  const statusColors = {
+    approved: '#28a745', // Green
+    rejected: '#dc3545'  // Red
+  };
+
+  const statusColor = statusColors[newStatus];
+
+  const noteSection = note
+    ? `<div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+         <p style="margin: 0; font-weight: bold;">Observação:</p>
+         <p style="margin: 5px 0;">${note}</p>
+       </div>`
+    : '';
+
+  const viewButton = viewUrl
+    ? `<div style="text-align: center; margin: 30px 0;">
+         <a href="${viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+           Ver Requisição
+         </a>
+       </div>`
+    : '';
+
+  const statusText = newStatus === 'approved' ? 'Aprovada' : 'Rejeitada';
+  const title = `Requisição de Compra ${statusText}`;
+  const message = newStatus === 'approved'
+    ? `Sua requisição de compra nº ${requestId} para o fornecedor ${providerName} foi aprovada por ${updatedBy}.`
+    : `Sua requisição de compra nº ${requestId} para o fornecedor ${providerName} foi rejeitada por ${updatedBy}.`;
+
+  const content = `
+    <h2 style="text-align: center; color: ${statusColor};">${title}</h2>
+    <p>
+      Olá, <strong>${userName}</strong>!
+    </p>
+    <p>
+      ${message}
+    </p>
+    
+    ${noteSection}
+    
+    ${viewButton}
+    
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um e-mail automático enviado pelo sistema ABZ Group.
+    </p>
+  `;
+
+  return baseTemplate(content, locale);
+};
+
 // Template for Approval Request
 export const poApprovalRequestTemplate = (
   approverName: string,

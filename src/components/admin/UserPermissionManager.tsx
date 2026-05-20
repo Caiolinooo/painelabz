@@ -2,9 +2,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiShield, FiX, FiCheck, FiAlertTriangle, FiGrid } from 'react-icons/fi';
+import { FiShield, FiX, FiCheck, FiAlertTriangle, FiGrid, FiSearch } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
-import { SYSTEM_MODULES } from '@/config/modules';
+import { SYSTEM_MODULES } from '@/constants/modules';
 
 interface UserPermissionManagerProps {
     userId: string;
@@ -31,6 +31,18 @@ const UserPermissionManager: React.FC<UserPermissionManagerProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+    // Filter modules by search and category
+    const filteredModules = SYSTEM_MODULES.filter(module => {
+        const matchesSearch = !searchTerm || 
+            module.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            module.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            module.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = !selectedCategory || module.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
 
     const handleToggleModule = (moduleKey: string) => {
         setPermissions(prev => ({
@@ -114,39 +126,70 @@ const UserPermissionManager: React.FC<UserPermissionManagerProps> = ({
                             <p>Permissões atualizadas com sucesso!</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {SYSTEM_MODULES.map((module) => (
-                                <div
-                                    key={module.key}
-                                    className={`border rounded-lg p-3 cursor-pointer transition-all ${permissions[module.key]
-                                            ? 'border-green-500 bg-green-50'
-                                            : 'border-gray-200 hover:border-gray-300 bg-gray-50'
-                                        }`}
-                                    onClick={() => handleToggleModule(module.key)}
+                        <div className="space-y-4">
+                            {/* Search and filter */}
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar módulos..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => setSelectedCategory(null)}
+                                    className={`px-3 py-2 border rounded-md text-sm ${!selectedCategory ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
                                 >
-                                    <div className="flex items-start">
-                                        <div className={`mt-1 h-5 w-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${permissions[module.key] ? 'bg-green-500 border-green-500' : 'bg-white border-gray-300'
-                                            }`}>
-                                            {permissions[module.key] && <FiCheck className="text-white h-3 w-3" />}
-                                        </div>
-                                        <div className="ml-3">
-                                            <h3 className={`text-sm font-medium ${permissions[module.key] ? 'text-green-800' : 'text-gray-700'}`}>
-                                                {module.name}
-                                            </h3>
-                                            {module.description && (
-                                                <p className="text-xs text-gray-500 mt-0.5">{module.description}</p>
-                                            )}
-                                            <div className="mt-1 flex gap-1 flex-wrap">
-                                                {module.defaultRoles.map(role => (
-                                                    <span key={role} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-200 text-gray-800">
-                                                        {role}
-                                                    </span>
-                                                ))}
+                                    Todos
+                                </button>
+                                {['core', 'hr', 'content', 'department'].map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setSelectedCategory(cat)}
+                                        className={`px-3 py-2 border rounded-md text-sm ${selectedCategory === cat ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Modules grid */}
+                            {filteredModules.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {filteredModules.map((module) => (
+                                        <div
+                                            key={module.id}
+                                            className={`border rounded-lg p-3 cursor-pointer transition-all ${permissions[module.id]
+                                                    ? 'border-green-500 bg-green-50'
+                                                    : 'border-gray-200 hover:border-gray-300 bg-gray-50'
+                                                }`}
+                                            onClick={() => handleToggleModule(module.id)}
+                                        >
+                                            <div className="flex items-start">
+                                                <div className={`mt-1 h-5 w-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${permissions[module.id] ? 'bg-green-500 border-green-500' : 'bg-white border-gray-300'
+                                                    }`}>
+                                                    {permissions[module.id] && <FiCheck className="text-white h-3 w-3" />}
+                                                </div>
+                                                <div className="ml-3 flex-1">
+                                                    <h3 className={`text-sm font-medium ${permissions[module.id] ? 'text-green-800' : 'text-gray-700'}`}>
+                                                        {module.label}
+                                                    </h3>
+                                                    {module.description && (
+                                                        <p className="text-xs text-gray-500 mt-0.5">{module.description}</p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    Nenhum módulo encontrado.
+                                </div>
+                            )}
                         </div>
                     )}
                 </form>

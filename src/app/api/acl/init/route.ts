@@ -62,6 +62,23 @@ export async function POST(request: NextRequest) {
       { name: 'reimbursement.create', description: 'Criar reembolsos', resource: 'reimbursement', action: 'create', level: 0 },
       { name: 'reimbursement.approve', description: 'Aprovar reembolsos', resource: 'reimbursement', action: 'approve', level: 2 },
       { name: 'reimbursement.manage', description: 'Gerenciar reembolsos', resource: 'reimbursement', action: 'manage', level: 3 },
+
+      // Permissões de férias
+      { name: 'ferias.read', description: 'Visualizar férias e saldo', resource: 'ferias', action: 'read', level: 0 },
+      { name: 'ferias.create', description: 'Solicitar férias', resource: 'ferias', action: 'create', level: 1 },
+      { name: 'ferias.approve', description: 'Aprovar pedidos de férias', resource: 'ferias', action: 'approve', level: 2 },
+      { name: 'ferias.manage', description: 'Gerenciar saldos e períodos de férias', resource: 'ferias', action: 'manage', level: 3 },
+      { name: 'ferias.admin', description: 'Administrador de férias', resource: 'ferias', action: 'admin', level: 3 },
+
+      // Permissões de contratos
+      { name: 'contratos.read', description: 'Visualizar contratos atribuídos', resource: 'contratos', action: 'read', level: 0 },
+      { name: 'contratos.sign', description: 'Assinar contratos atribuídos', resource: 'contratos', action: 'sign', level: 1 },
+      { name: 'contratos.manage', description: 'Gerenciar uploads e assinaturas de contratos', resource: 'contratos', action: 'manage', level: 3 },
+
+      // Permissões de lista de presença
+      { name: 'lista-presenca.read', description: 'Visualizar listas de presença', resource: 'lista-presenca', action: 'read', level: 0 },
+      { name: 'lista-presenca.create', description: 'Criar listas de presença', resource: 'lista-presenca', action: 'create', level: 1 },
+      { name: 'lista-presenca.manage', description: 'Gerenciar e assinar listas de presença', resource: 'lista-presenca', action: 'manage', level: 3 },
       
       // Permissões administrativas
       { name: 'admin.users', description: 'Gerenciar usuários', resource: 'admin', action: 'users', level: 3 },
@@ -101,13 +118,19 @@ export async function POST(request: NextRequest) {
         'comments.create', 'comments.moderate',
         'notifications.send',
         'reminders.create', 'reminders.manage',
-        'reimbursement.create', 'reimbursement.approve'
+        'reimbursement.create', 'reimbursement.approve',
+        'ferias.read', 'ferias.create', 'ferias.approve',
+        'contratos.read', 'contratos.sign', 'contratos.manage',
+        'lista-presenca.read', 'lista-presenca.create', 'lista-presenca.manage'
       ],
       'USER': [
         'news.read',
         'comments.create',
         'reminders.create',
-        'reimbursement.create'
+        'reimbursement.create',
+        'ferias.read', 'ferias.create',
+        'contratos.read', 'contratos.sign',
+        'lista-presenca.read', 'lista-presenca.create'
       ]
     };
 

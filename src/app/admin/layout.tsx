@@ -383,7 +383,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Conteúdo principal */}
-        <div className="flex-1 flex flex-col min-h-screen" style={{ marginLeft: typeof window === 'undefined' ? undefined : (window.innerWidth >= 768 ? (isCollapsed ? 64 : 256) : 0) }}>
+        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
           {/* Notificações globais fixas (desktop) */}
           <div className="hidden md:block fixed top-4 right-4 z-50">
             {user && <NotificationHUD userId={user.id} position="top-right" evaluationPendingCount={pendingCount} />}

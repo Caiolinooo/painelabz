@@ -39,7 +39,7 @@ export default function NewManSchedulePage() {
         setSubmitting(true);
         try {
             // Clean empty dates to null
-            const payload = { ...formData };
+            const payload: any = { ...formData };
             if (!payload.original_start_date) delete payload.original_start_date;
             if (!payload.date_of_birth) delete payload.date_of_birth;
             if (!payload.next_crew_change_date) delete payload.next_crew_change_date;

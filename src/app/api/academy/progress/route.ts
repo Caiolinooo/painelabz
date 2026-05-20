@@ -381,6 +381,7 @@ export async function POST(request: NextRequest) {
             .single();
 
           if (!enrErr && enr) {
+            const userObj = (Array.isArray(enr.user) ? enr.user[0] : enr.user) as any;
             const gen = await generateAndStoreCertificate(targetEnrollmentId);
             if (!gen) return;
             const downloadUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/academy/certificates/download?issue_id=${gen.issueId}`;
@@ -402,13 +403,13 @@ export async function POST(request: NextRequest) {
               const { sendEmail } = await import('@/lib/email-sendgrid');
               const subject = `🎓 Certificado disponível - ${(enr.course as any)?.title || 'Curso'}`;
               const html = academyCertificateTemplate(
-                enr.user?.first_name || '',
+                userObj?.first_name || '',
                 (enr.course as any)?.title || '',
                 downloadUrl
               );
 
-              if ((enr.user as any)?.email) {
-                await sendEmail((enr.user as any).email, subject, subject, html, {
+              if (userObj?.email) {
+                await sendEmail(userObj.email, subject, subject, html, {
                   attachments: [
                     { filename: `certificado-${gen.issueId}.pdf`, content: Buffer.from(gen.pdfBytes), contentType: 'application/pdf' }
                   ]

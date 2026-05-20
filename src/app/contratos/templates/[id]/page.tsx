@@ -1,0 +1,545 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+const PDF_OPTIONS = {
+  cMapUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/cmaps/',
+  cMapPacked: true,
+  standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.8.69/standard_fonts/'
+};
+
+import {
+    FiArrowLeft, FiFileText, FiUsers, FiEdit3,
+    FiCheck, FiX, FiPlus, FiChevronLeft, FiChevronRight,
+    FiTrash2, FiSave, FiSettings
+} from 'react-icons/fi';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { fetchWithAuth } from '@/lib/authUtils';
+import SignaturePositionOverlay, { getSignerColor } from '@/components/contratos/SignaturePositionOverlay';
+import { useI18n } from '@/contexts/I18nContext';
+import toast from 'react-hot-toast';
+import MainLayout from '@/components/Layout/MainLayout';
+
+export default function TemplateFieldsEditorPage() {
+    const params = useParams();
+    const router = useRouter();
+    const templateId = params?.id as string;
+
+    const { t } = useI18n();
+
+    const [template, setTemplate] = useState<any>(null);
+    const [documentos, setDocumentos] = useState<any[]>([]);
+    const [activeDocIndex, setActiveDocIndex] = useState(0);
+    const [campos, setCampos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [pdfWidth, setPdfWidth] = useState(620);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [numPages, setNumPages] = useState<number>(0);
+    
+    // Placement state
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [selectedRole, setSelectedRole] = useState('');
+    const [fieldType, setFieldType] = useState<'assinatura' | 'rubrica' | 'texto' | 'checkbox'>('assinatura');
+    const [clickPos, setClickPos] = useState<{ x: number; y: number; page: number } | null>(null);
+
+    const [originalPageSize, setOriginalPageSize] = useState<{ width: number; height: number } | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const activeDoc = documentos[activeDocIndex];
+
+    const loadTemplateData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const res = await fetchWithAuth(`/api/contracts/templates?id=${templateId}`);
+            const data = await res.json();
+            if (data.success) {
+                setTemplate(data.template);
+                setDocumentos(data.documentos || []);
+                setCampos(data.campos || []);
+                if (data.template?.papeis?.length > 0) {
+                    setSelectedRole(data.template.papeis[0]);
+                }
+            } else {
+                toast.error(data.error || 'Erro ao carregar template');
+                router.push('/contratos');
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao conectar ao servidor');
+            router.push('/contratos');
+        } finally {
+            setLoading(false);
+        }
+    }, [templateId, router]);
+
+    useEffect(() => {
+        if (templateId) {
+            loadTemplateData();
+        }
+    }, [templateId, loadTemplateData]);
+
+    const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
+        setNumPages(n);
+        setCurrentPage(1);
+    };
+
+    const onPageLoadSuccess = (page: any) => {
+        const viewport = page.getViewport({ scale: 1.0 });
+        setOriginalPageSize({ width: viewport.width, height: viewport.height });
+    };
+
+    const handlePdfClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isAssigning) return;
+        if ((e.target as HTMLElement).closest('.cursor-grab')) return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        setClickPos({
+            x: clickX,
+            y: clickY,
+            page: currentPage
+        });
+    };
+
+    const handleSaveField = () => {
+        if (!clickPos || !activeDoc) return;
+
+        let finalX = clickPos.x;
+        let finalY = clickPos.y;
+        let finalW = fieldType === 'rubrica' ? 90 : (fieldType === 'checkbox' ? 18 : (fieldType === 'texto' ? 120 : 150));
+        let finalH = fieldType === 'rubrica' ? 24 : (fieldType === 'checkbox' ? 18 : (fieldType === 'texto' ? 24 : 28));
+
+        if (originalPageSize) {
+            const scaleFactor = originalPageSize.width / pdfWidth;
+            finalX = Math.round(clickPos.x * scaleFactor);
+            finalY = Math.round(clickPos.y * scaleFactor);
+            finalW = Math.round(finalW * scaleFactor);
+            finalH = Math.round(finalH * scaleFactor);
+        }
+
+        const newField = {
+            id: `temp-${Date.now()}`,
+            documento_id: activeDoc.id,
+            papel_nome: selectedRole,
+            pagina_assinatura: clickPos.page,
+            posicao_x: finalX,
+            posicao_y: finalY,
+            largura_assinatura: finalW,
+            altura_assinatura: finalH,
+            tipo: fieldType,
+            ordem: campos.filter(c => c.documento_id === activeDoc.id).length + 1
+        };
+
+        setCampos([...campos, newField]);
+        setClickPos(null);
+        toast.success('Campo inserido na página!');
+    };
+
+    const handleRemoveField = (id: string) => {
+        setCampos(campos.filter(c => c.id !== id));
+        toast.success('Campo removido do template');
+    };
+
+    const handleDragField = (id: string, newX: number, newY: number) => {
+        if (!originalPageSize) return;
+        const scaleFactor = originalPageSize.width / pdfWidth;
+        const finalX = Math.round(newX * scaleFactor);
+        const finalY = Math.round(newY * scaleFactor);
+
+        setCampos(campos.map(c => {
+            if (c.id === id) {
+                return {
+                    ...c,
+                    posicao_x: finalX,
+                    posicao_y: finalY
+                };
+            }
+            return c;
+        }));
+    };
+
+    const handleSaveTemplateFields = async () => {
+        try {
+            const res = await fetchWithAuth('/api/contracts/templates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: ***REMOVED***
+                    id: templateId,
+                    campos: campos.map(({ id, ...rest }) => ({
+                        ...rest,
+                        // Clean temp ids
+                        id: id.startsWith('temp-') ? undefined : id
+                    }))
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.success('Template de campos salvo com sucesso!');
+                loadTemplateData();
+            } else {
+                toast.error(data.error || 'Erro ao salvar template');
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao conectar ao servidor');
+        }
+    };
+
+    if (loading) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[70vh] text-gray-500">
+                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-sm font-medium">Carregando editor de template...</p>
+                </div>
+            </MainLayout>
+        );
+    }
+
+    return (
+        <MainLayout>
+            <div className="max-w-[1400px] mx-auto px-4 py-6">
+                
+                {/* Header */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                        <Link 
+                            href="/contratos"
+                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                        >
+                            <FiArrowLeft className="w-5 h-5" />
+                        </Link>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg uppercase">
+                                    Configurador de Template
+                                </span>
+                            </div>
+                            <h1 className="text-xl font-bold text-gray-900 mt-1">
+                                {template?.titulo}
+                            </h1>
+                            <p className="text-xs text-gray-500">
+                                Posicione as caixas de assinatura e campos de texto onde cada papel deve interagir.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleSaveTemplateFields}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors text-sm font-semibold shadow-sm"
+                        >
+                            <FiSave className="w-4 h-4" />
+                            {t('common.save', 'Salvar Template')}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    
+                    {/* Left Sidebar: Settings & Controls */}
+                    <div className="lg:col-span-4 space-y-6">
+                        
+                        {/* Documents selector */}
+                        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                            <h3 className="text-sm font-bold text-gray-950 mb-3 uppercase tracking-wider flex items-center gap-2">
+                                <FiFileText className="text-gray-400" /> Documentos do Template
+                            </h3>
+                            <div className="space-y-2">
+                                {documentos.map((doc, idx) => (
+                                    <button
+                                        key={doc.id}
+                                        onClick={() => {
+                                            setActiveDocIndex(idx);
+                                            setCurrentPage(1);
+                                        }}
+                                        className={`w-full flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
+                                            idx === activeDocIndex
+                                                ? 'border-blue-500 bg-blue-50/40  text-blue-700  font-semibold'
+                                                : 'border-gray-100  hover:bg-gray-50  text-gray-700 '
+                                        }`}
+                                    >
+                                        <FiFileText className="w-5 h-5 flex-shrink-0" />
+                                        <div className="overflow-hidden">
+                                            <p className="text-xs truncate font-medium">{doc.titulo}</p>
+                                            <p className="text-[10px] text-gray-400 mt-0.5">Ordem: {idx + 1}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Position Tool */}
+                        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                            <h3 className="text-sm font-bold text-gray-950 mb-3 uppercase tracking-wider flex items-center gap-2">
+                                <FiSettings className="text-gray-400" /> Ferramenta de Campos
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">1. Selecione o Papel</label>
+                                    <select
+                                        value={selectedRole}
+                                        onChange={e => setSelectedRole(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    >
+                                        {template?.papeis?.map((role: string) => (
+                                            <option key={role} value={role}>{role}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">2. Tipo de Campo</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { id: 'assinatura', name: 'Assinatura' },
+                                            { id: 'rubrica', name: 'Rúbrica' },
+                                            { id: 'texto', name: 'Texto por Extenso' },
+                                            { id: 'checkbox', name: 'Seleção (Checkbox)' }
+                                        ].map((t) => (
+                                            <button
+                                                key={t.id}
+                                                type="button"
+                                                onClick={() => setFieldType(t.id as any)}
+                                                className={`px-3 py-2.5 text-xs font-semibold rounded-lg border text-center transition-all ${
+                                                    fieldType === t.id
+                                                        ? 'border-blue-500 bg-blue-50 text-blue-600  '
+                                                        : 'border-gray-200  hover:bg-gray-50  text-gray-600 '
+                                                }`}
+                                            >
+                                                {t.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsAssigning(!isAssigning);
+                                            setClickPos(null);
+                                        }}
+                                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-sm ${
+                                            isAssigning 
+                                                ? 'bg-red-50 text-red-600 border border-red-200   '
+                                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        }`}
+                                    >
+                                        {isAssigning ? 'Cancelar Marcação' : 'Marcar Campo no PDF'}
+                                    </button>
+                                </div>
+
+                                {isAssigning && (
+                                    <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-xs text-blue-700 leading-relaxed">
+                                        <strong>Como posicionar:</strong> Clique na página do PDF à direita no local exato onde deseja posicionar o campo <strong>{fieldType}</strong> para o papel <strong>{selectedRole}</strong>.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* List of positioned fields for active document */}
+                        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                            <h3 className="text-sm font-bold text-gray-950 mb-3 uppercase tracking-wider flex items-center gap-2">
+                                <FiUsers className="text-gray-400" /> Campos no Documento
+                            </h3>
+                            
+                            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                                {campos.filter(c => c.documento_id === activeDoc?.id).length === 0 ? (
+                                    <p className="text-xs text-gray-400 text-center py-4">Nenhum campo posicionado neste documento.</p>
+                                ) : (
+                                    campos.filter(c => c.documento_id === activeDoc?.id).map((c) => {
+                                        const color = getSignerColor(c.papel_nome);
+                                        return (
+                                            <div 
+                                                key={c.id} 
+                                                className="flex items-center justify-between p-3 border border-gray-100 rounded-xl"
+                                            >
+                                                <div className="overflow-hidden">
+                                                    <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded uppercase ${color.bg} ${color.text} border ${color.border} mb-1`}>
+                                                        {c.papel_nome}
+                                                    </span>
+                                                    <p className="text-xs font-semibold text-gray-800 capitalize">
+                                                        {c.tipo} (Pág. {c.pagina_assinatura})
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleRemoveField(c.id)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <FiTrash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+
+                    </div>
+
+                    {/* Right Area: PDF Viewer */}
+                    <div className="lg:col-span-8 flex flex-col items-center">
+                        {activeDoc ? (
+                            <div className="w-full flex flex-col items-center">
+                                {/* Navigation / Zoom Bar */}
+                                <div className="w-full max-w-[640px] flex items-center justify-between bg-white border border-gray-100 px-4 py-2.5 rounded-2xl mb-4 shadow-sm">
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                            disabled={currentPage <= 1}
+                                            className="p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30 rounded-xl transition-all"
+                                        >
+                                            <FiChevronLeft className="w-5 h-5" />
+                                        </button>
+                                        <span className="text-xs font-bold text-gray-800 px-2">
+                                            Página {currentPage} de {numPages || '?'}
+                                        </span>
+                                        <button
+                                            onClick={() => setCurrentPage(prev => Math.min(numPages, prev + 1))}
+                                            disabled={currentPage >= numPages}
+                                            className="p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30 rounded-xl transition-all"
+                                        >
+                                            <FiChevronRight className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setPdfWidth(prev => Math.max(400, prev - 50))}
+                                            className="px-2.5 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 font-medium"
+                                        >
+                                            A-
+                                        </button>
+                                        <button
+                                            onClick={() => setPdfWidth(prev => Math.min(900, prev + 50))}
+                                            className="px-2.5 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 font-medium"
+                                        >
+                                            A+
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* PDF Container */}
+                                <div 
+                                    ref={containerRef}
+                                    onClick={handlePdfClick}
+                                    className="relative border border-gray-200 rounded-2xl overflow-hidden bg-gray-50 shadow-lg cursor-pointer p-1"
+                                    style={{ width: pdfWidth + 10 }}
+                                >
+                                    <Document
+                                        file={activeDoc.arquivo_url}
+                                        onLoadSuccess={onDocumentLoadSuccess}
+                                        onLoadError={t => {
+                                            console.error('PDF load error:', t);
+                                            toast.error('Erro ao abrir documento PDF.');
+                                        }}
+                                        options={PDF_OPTIONS}
+                                        loading={
+                                            <div className="flex flex-col items-center justify-center p-12 text-gray-400">
+                                                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
+                                                Renderizando PDF...
+                                            </div>
+                                        }
+                                    >
+                                        <Page
+                                            pageNumber={currentPage}
+                                            width={pdfWidth}
+                                            onLoadSuccess={onPageLoadSuccess}
+                                            renderTextLayer={false}
+                                            renderAnnotationLayer={false}
+                                        />
+                                    </Document>
+
+                                    {/* Position overlays for fields */}
+                                    {campos
+                                        .filter(c => c.documento_id === activeDoc.id && c.pagina_assinatura === currentPage)
+                                        .map((c) => {
+                                            const color = getSignerColor(c.papel_nome);
+                                            let displayX = c.posicao_x;
+                                            let displayY = c.posicao_y;
+                                            let displayW = c.largura_assinatura || 150;
+                                            let displayH = c.altura_assinatura || 50;
+
+                                            if (originalPageSize) {
+                                                const scaleFactor = pdfWidth / originalPageSize.width;
+                                                displayX = Math.round(c.posicao_x * scaleFactor);
+                                                displayY = Math.round(c.posicao_y * scaleFactor);
+                                                displayW = Math.round(displayW * scaleFactor);
+                                                displayH = Math.round(displayH * scaleFactor);
+                                            }
+
+                                            return (
+                                                <SignaturePositionOverlay
+                                                    key={c.id}
+                                                    x={displayX}
+                                                    y={displayY}
+                                                    width={displayW}
+                                                    height={displayH}
+                                                    label={`${c.tipo.toUpperCase()}: ${c.papel_nome}`}
+                                                    draggable={true}
+                                                    onDragEnd={(newX, newY) => handleDragField(c.id, newX, newY)}
+                                                    colorClasses={color}
+                                                />
+                                            );
+                                        })}
+
+                                    {/* Click setup position confirmation overlay */}
+                                    {clickPos && clickPos.page === currentPage && (
+                                        <div 
+                                            className="absolute bg-white/95 border border-gray-200 p-4 rounded-xl shadow-2xl z-40 flex flex-col gap-2 max-w-[260px]"
+                                            style={{ 
+                                                left: Math.max(10, Math.min(clickPos.x - 20, pdfWidth - 280)), 
+                                                top: Math.max(10, Math.min(clickPos.y - 20, (originalPageSize ? (pdfWidth / originalPageSize.width * originalPageSize.height) : 800) - 220)) 
+                                            }}
+                                            onClick={e => e.stopPropagation()} // Prevent resetting clicking position
+                                        >
+                                            <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Confirmar Campo</p>
+                                            <div className="text-[10px] text-gray-500 leading-normal space-y-1">
+                                                <p><strong>Papel:</strong> {selectedRole}</p>
+                                                <p><strong>Tipo:</strong> {fieldType.toUpperCase()}</p>
+                                                <p><strong>Pág:</strong> {clickPos.page}</p>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                                <button
+                                                    onClick={() => setClickPos(null)}
+                                                    className="flex-1 flex items-center justify-center gap-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-xs font-semibold"
+                                                >
+                                                    <FiX /> Cancelar
+                                                </button>
+                                                <button
+                                                    onClick={handleSaveField}
+                                                    className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-semibold"
+                                                >
+                                                    <FiCheck /> Confirmar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="py-24 text-center text-gray-400">
+                                Nenhum documento no template.
+                            </div>
+                        )}
+                    </div>
+
+                </div>
+
+            </div>
+        </MainLayout>
+    );
+}

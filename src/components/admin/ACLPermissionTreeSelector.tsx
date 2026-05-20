@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiChevronDown, FiChevronRight, FiCheck, FiMinus, FiPlus, FiInfo } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiCheck, FiX, FiShield, FiKey } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 
 interface ACLPermission {
@@ -12,174 +12,140 @@ interface ACLPermission {
   action: string;
   level: number;
   enabled: boolean;
-  children?: ACLPermission[];
-}
-
-interface PermissionResource {
-  resource: string;
-  label: string;
-  permissions: ACLPermission[];
 }
 
 interface ACLPermissionTreeSelectorProps {
-  selectedPermissions: string[]; // IDs das permissões selecionadas
+  selectedPermissions: string[];
   onPermissionChange: (permissionIds: string[]) => void;
-  userRole?: string;
+  userRole: string;
   showRolePermissions?: boolean;
-  rolePermissions?: string[]; // IDs das permissões do role
+  rolePermissions?: string[];
   disabled?: boolean;
+}
+
+interface PermissionTreeNode {
+  key: string;
+  name: string;
+  children: PermissionTreeNode[];
+  permissions: ACLPermission[];
 }
 
 const ACLPermissionTreeSelector: React.FC<ACLPermissionTreeSelectorProps> = ({
   selectedPermissions,
   onPermissionChange,
   userRole,
-  showRolePermissions = true,
+  showRolePermissions = false,
   rolePermissions = [],
   disabled = false
 }) => {
   const { t } = useI18n();
-  const [permissionTree, setPermissionTree] = useState<{ [key: string]: PermissionResource }>({});
-  const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set());
+  const [permissions, setPermissions] = useState<ACLPermission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set());
 
-  // Carregar árvore de permissões
+  // Carregar permissões ACL
   useEffect(() => {
-    loadPermissionTree();
+    const loadPermissions = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/acl/permissions');
+        if (response.ok) {
+          const data = await response.json();
+          setPermissions(data);
+        }
+      } catch (error) {
+        console.error('[ACLPermissionTreeSelector] Erro ao carregar permissões:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPermissions();
   }, []);
 
-  const loadPermissionTree = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/acl/permissions?format=tree');
-      const tree = await response.json();
-      setPermissionTree(tree);
-      
-      // Expandir todos os recursos por padrão
-      setExpandedResources(new Set(Object.keys(tree)));
-    } catch (error) {
-      console.error(t('components.erroAoCarregarArvoreDePermissoes'), error);
-    } finally {
-      setLoading(false);
-    }
+  // Construir árvore de permissões por recurso
+  const buildTree = (perms: ACLPermission[]): PermissionTreeNode[] => {
+    const resourceMap = new Map<string, PermissionTreeNode>();
+    const resourceLabels: Record<string, string> = {
+      'news': 'Notícias',
+      'comments': 'Comentários',
+      'notifications': 'Notificações',
+      'reminders': 'Lembretes',
+      'admin': 'Administração',
+      'users': 'Usuários',
+      'reports': 'Relatórios',
+      'ferias': 'Férias',
+      'contratos': 'Contratos',
+      'lista-presenca': 'Lista de Presença',
+      'reimbursement': 'Reembolso'
+    };
+
+    perms.forEach(perm => {
+      if (!resourceMap.has(perm.resource)) {
+        resourceMap.set(perm.resource, {
+          key: perm.resource,
+          name: resourceLabels[perm.resource] || (perm.resource.charAt(0).toUpperCase() + perm.resource.slice(1)),
+          children: [],
+          permissions: []
+        });
+      }
+      const node = resourceMap.get(perm.resource)!;
+      node.permissions.push(perm);
+    });
+
+    return Array.from(resourceMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  const toggleResource = (resource: string) => {
-    const newExpanded = new Set(expandedResources);
-    if (newExpanded.has(resource)) {
-      newExpanded.delete(resource);
-    } else {
-      newExpanded.add(resource);
-    }
-    setExpandedResources(newExpanded);
+  const tree = buildTree(permissions);
+
+  // Toggle resource expansion
+  const toggleResource = (resourceKey: string) => {
+    setExpandedResources(prev => {
+      const next = new Set(prev);
+      if (next.has(resourceKey)) {
+        next.delete(resourceKey);
+      } else {
+        next.add(resourceKey);
+      }
+      return next;
+    });
   };
 
-  const handlePermissionToggle = (permissionId: string) => {
+  // Check if permission is selected
+  const isSelected = (permId: string) => selectedPermissions.includes(permId);
+
+  // Check if permission is granted by role
+  const isGrantedByRole = (permId: string) => {
+    if (userRole === 'ADMIN') return true;
+    return rolePermissions.includes(permId);
+  };
+
+  // Toggle permission selection
+  const togglePermission = (permId: string) => {
     if (disabled) return;
-
-    const newSelected = new Set(selectedPermissions);
-    if (newSelected.has(permissionId)) {
-      newSelected.delete(permissionId);
-    } else {
-      newSelected.add(permissionId);
-    }
-    onPermissionChange(Array.from(newSelected));
-  };
-
-  const getPermissionState = (permissionId: string) => {
-    const isSelected = selectedPermissions.includes(permissionId);
-    const isFromRole = rolePermissions.includes(permissionId);
     
-    if (isSelected) return 'selected';
-    if (isFromRole && showRolePermissions) return 'role';
-    return 'none';
+    const current = selectedPermissions;
+    const updated = current.includes(permId)
+      ? current.filter(id => id !== permId)
+      : [...current, permId];
+    
+    onPermissionChange(updated);
   };
 
-  const renderPermission = (permission: ACLPermission, depth: number = 0) => {
-    const state = getPermissionState(permission.id);
-    const isSelected = state === 'selected';
-    const isFromRole = state === 'role';
-    const hasChildren = permission.children && permission.children.length > 0;
+  // Check if all permissions in a resource are selected
+  const isResourceFullySelected = (resourcePerms: ACLPermission[]) => {
+    return resourcePerms.length > 0 && resourcePerms.every(p => selectedPermissions.includes(p.id));
+  };
 
-    return (
-      <div key={permission.id} className="select-none">
-        <div 
-          className={`flex items-center py-2 px-3 rounded-lg cursor-pointer transition-colors ${
-            disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
-          } ${isSelected ? 'bg-blue-50 border border-blue-200' : ''} ${
-            isFromRole ? 'bg-green-50 border border-green-200' : ''
-          }`}
-          style={{ marginLeft: `${depth * 20}px` }}
-          onClick={() => handlePermissionToggle(permission.id)}
-        >
-          {/* Checkbox/Indicator */}
-          <div className="flex items-center justify-center w-5 h-5 mr-3">
-            {isSelected ? (
-              <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
-                <FiCheck className="w-3 h-3 text-white" />
-              </div>
-            ) : isFromRole ? (
-              <div className="w-4 h-4 bg-green-600 rounded flex items-center justify-center">
-                <FiCheck className="w-3 h-3 text-white" />
-              </div>
-            ) : (
-              <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
-            )}
-          </div>
-
-          {/* Permission Info */}
-          <div className="flex-1">
-            <div className="flex items-center">
-              <span className={`font-medium ${
-                isSelected ? 'text-blue-900' : isFromRole ? 'text-green-900' : 'text-gray-900'
-              }`}>
-                {permission.name}
-              </span>
-              
-              {/* Level Badge */}
-              <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                permission.level === 0 ? 'bg-gray-100 text-gray-600' :
-                permission.level === 1 ? 'bg-yellow-100 text-yellow-700' :
-                permission.level === 2 ? 'bg-orange-100 text-orange-700' :
-                'bg-red-100 text-red-700'
-              }`}>
-                Nível {permission.level}
-              </span>
-
-              {/* Role Badge */}
-              {isFromRole && (
-                <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
-                  Por Role
-                </span>
-              )}
-            </div>
-            
-            {permission.description && (
-              <p className="text-sm text-gray-500 mt-1">{permission.description}</p>
-            )}
-          </div>
-
-          {/* Info Icon */}
-          <div className="ml-2">
-            <FiInfo className="w-4 h-4 text-gray-400" title={`Recurso: ${permission.resource} | Ação: ${permission.action}`} />
-          </div>
-        </div>
-
-        {/* Children */}
-        {hasChildren && (
-          <div className="mt-1">
-            {permission.children!.map(child => renderPermission(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
+  // Check if any permission in a resource is selected
+  const isResourcePartiallySelected = (resourcePerms: ACLPermission[]) => {
+    return resourcePerms.some(p => selectedPermissions.includes(p.id));
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Carregando permissões...</span>
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+        <span className="ml-2 text-green-700 text-sm">Carregando permissões ACL...</span>
       </div>
     );
   }
@@ -188,69 +154,135 @@ const ACLPermissionTreeSelector: React.FC<ACLPermissionTreeSelectorProps> = ({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900">Permissões ACL</h3>
-        {showRolePermissions && userRole && (
-          <span className="text-sm text-gray-500">
-            Role: <span className="font-medium">{userRole}</span>
+        <div className="flex items-center text-green-800">
+          <FiKey className="mr-2" />
+          <span className="text-sm font-medium">
+            {selectedPermissions.length} permissão(ões) selecionada(s)
           </span>
-        )}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center space-x-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-        <div className="flex items-center">
-          <div className="w-4 h-4 bg-blue-600 rounded mr-2"></div>
-          <span>Permissão Individual</span>
         </div>
-        {showRolePermissions && (
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-green-600 rounded mr-2"></div>
-            <span>Permissão por Role</span>
-          </div>
+        {selectedPermissions.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onPermissionChange([]);
+            }}
+            className="text-xs text-green-700 hover:text-green-900 underline"
+          >
+            Limpar seleção
+          </button>
         )}
-        <div className="flex items-center">
-          <div className="w-4 h-4 border-2 border-gray-300 rounded mr-2"></div>
-          <span>Sem Permissão</span>
-        </div>
       </div>
 
       {/* Permission Tree */}
-      <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
-        {Object.entries(permissionTree).map(([resourceKey, resourceData]) => (
-          <div key={resourceKey} className="border-b border-gray-100 last:border-b-0">
+      <div className="border border-green-200 rounded-lg bg-white max-h-80 overflow-y-auto">
+        {tree.map((resource) => (
+          <div key={resource.key} className="border-b border-green-100 last:border-b-0">
             {/* Resource Header */}
-            <div 
-              className="flex items-center p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-              onClick={() => toggleResource(resourceKey)}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                toggleResource(resource.key);
+              }}
+              className={`w-full flex items-center justify-between p-3 text-left hover:bg-green-50 transition-colors ${
+                isResourcePartiallySelected(resource.permissions) ? 'bg-green-50' : ''
+              }`}
             >
-              {expandedResources.has(resourceKey) ? (
-                <FiChevronDown className="w-4 h-4 text-gray-500 mr-2" />
-              ) : (
-                <FiChevronRight className="w-4 h-4 text-gray-500 mr-2" />
-              )}
-              <h4 className="font-medium text-gray-900">{resourceData.label}</h4>
-              <span className="ml-2 text-sm text-gray-500">
-                ({resourceData.permissions.length} permissões)
-              </span>
-            </div>
+              <div className="flex items-center">
+                {expandedResources.has(resource.key) ? (
+                  <FiChevronDown className="w-4 h-4 text-green-600 mr-2" />
+                ) : (
+                  <FiChevronRight className="w-4 h-4 text-green-600 mr-2" />
+                )}
+                <FiShield className="w-4 h-4 text-green-600 mr-2" />
+                <span className="font-medium text-green-900">{resource.name}</span>
+                <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                  {resource.permissions.length}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {isResourceFullySelected(resource.permissions) && (
+                  <FiCheck className="w-4 h-4 text-green-600" />
+                )}
+                {!isResourceFullySelected(resource.permissions) && isResourcePartiallySelected(resource.permissions) && (
+                  <div className="w-4 h-4 border-2 border-green-600 rounded-sm bg-green-600" />
+                )}
+              </div>
+            </button>
 
-            {/* Resource Permissions */}
-            {expandedResources.has(resourceKey) && (
-              <div className="p-2">
-                {resourceData.permissions.map(permission => renderPermission(permission))}
+            {/* Permissions List */}
+            {expandedResources.has(resource.key) && (
+              <div className="pl-10 pr-3 pb-2 space-y-1">
+                {resource.permissions.map((perm) => (
+                  <label
+                    key={perm.id}
+                    className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                      isSelected(perm.id)
+                        ? 'bg-green-100 text-green-900'
+                        : isGrantedByRole(perm.id)
+                        ? 'hover:bg-gray-50 text-gray-700'
+                        : 'hover:bg-gray-50 text-gray-500'
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="flex items-center flex-1">
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePermission(perm.id);
+                        }}
+                        className={`w-4 h-4 border-2 rounded flex items-center justify-center mr-2 flex-shrink-0 cursor-pointer transition-colors ${
+                          isSelected(perm.id)
+                            ? 'bg-green-600 border-green-600'
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        {isSelected(perm.id) && <FiCheck className="w-3 h-3 text-white" />}
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">{perm.name}</span>
+                        {perm.description && (
+                          <p className="text-xs text-gray-500 mt-0.5">{perm.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        perm.level === 0 ? 'bg-blue-100 text-blue-800' :
+                        perm.level === 1 ? 'bg-yellow-100 text-yellow-800' :
+                        perm.level === 2 ? 'bg-orange-100 text-orange-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        Nível {perm.level}
+                      </span>
+                      {isGrantedByRole(perm.id) && !isSelected(perm.id) && (
+                        <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                          Por Role
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                ))}
               </div>
             )}
           </div>
         ))}
-      </div>
 
-      {/* Summary */}
-      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-        <strong>Resumo:</strong> {selectedPermissions.length} permissões individuais selecionadas
-        {showRolePermissions && rolePermissions.length > 0 && (
-          <span>, {rolePermissions.length} permissões herdadas do role {userRole}</span>
+        {/* Empty state */}
+        {tree.length === 0 && (
+          <div className="p-8 text-center text-gray-500">
+            Nenhuma permissão ACL configurada.
+          </div>
         )}
       </div>
+
+      {/* Role permissions info */}
+      {showRolePermissions && isGrantedByRole(permissions[0]?.id || '') && (
+        <div className="text-xs text-green-600 bg-green-50 p-3 rounded border border-green-200">
+          <strong>Nota:</strong> Você está visualizando permissões baseadas no role "{userRole}".
+          As permissões individuais são adicionais às permissões do role.
+        </div>
+      )}
     </div>
   );
 };

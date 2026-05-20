@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getFullPermissionsForRole } from '@/config/modules';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,93 +9,45 @@ export async function GET() {
   try {
     console.log('🔄 API Role Permissions - Buscando permissões por role...');
 
-    // Buscar configurações de permissões por role
-    const { data: rolePermissions, error } = await supabaseAdmin
+    // Obter permissões dinâmicas padrão para cada role
+    const roles = ['ADMIN', 'MANAGER', 'USER'] as const;
+    const formattedPermissions: any = {};
+    
+    roles.forEach(role => {
+      formattedPermissions[role] = {
+        modules: getFullPermissionsForRole(role),
+        features: {
+          reimbursement_approval: role === 'ADMIN' || role === 'MANAGER',
+          reimbursement_view: true,
+          reimbursement_edit: role === 'ADMIN' || role === 'MANAGER'
+        }
+      };
+    });
+
+    // Buscar configurações de permissões por role do Supabase
+    const { data: dbRolePermissions, error } = await supabaseAdmin
       .from('role_permissions')
       .select('*')
       .order('role');
 
-    if (error) {
-      console.error('Erro ao buscar permissões por role:', error);
-      
-      // Retornar permissões padrão hardcoded
-      const defaultRolePermissions = {
-        ADMIN: {
-          modules: {
-            dashboard: true,
-            manual: true,
-            procedimentos: true,
-            politicas: true,
-            calendario: true,
-            noticias: true,
-            reembolso: true,
-            contracheque: true,
-            ponto: true,
-            admin: true,
-            avaliacao: true,
-            contratos: true
-          },
-          features: {
-            reimbursement_approval: true,
-            reimbursement_edit: true,
-            reimbursement_view: true
-          }
-        },
-        MANAGER: {
-          modules: {
-            dashboard: true,
-            manual: true,
-            procedimentos: true,
-            politicas: true,
-            calendario: true,
-            noticias: true,
-            reembolso: true,
-            contracheque: true,
-            ponto: true,
-            admin: false,
-            avaliacao: true,
-            contratos: true
-          },
-          features: {
-            reimbursement_approval: true,
-            reimbursement_view: true,
-            reimbursement_edit: false
-          }
-        },
-        USER: {
-          modules: {
-            dashboard: true,
-            manual: true,
-            procedimentos: true,
-            politicas: true,
-            calendario: true,
-            noticias: true,
-            reembolso: true,
-            contracheque: true,
-            ponto: true,
-            admin: false,
-            avaliacao: false,
-            contratos: true
-          },
-          features: {
-            reimbursement_approval: false,
-            reimbursement_view: true,
-            reimbursement_edit: false
-          }
+    if (!error && dbRolePermissions) {
+      dbRolePermissions.forEach(rolePermission => {
+        const role = rolePermission.role as 'ADMIN' | 'MANAGER' | 'USER';
+        if (formattedPermissions[role]) {
+          // Mesclar as permissões do banco por cima dos defaults
+          formattedPermissions[role].modules = {
+            ...formattedPermissions[role].modules,
+            ...(rolePermission.modules || {})
+          };
+          formattedPermissions[role].features = {
+            ...formattedPermissions[role].features,
+            ...(rolePermission.features || {})
+          };
         }
-      };
-      
-      return NextResponse.json(defaultRolePermissions);
+      });
+    } else if (error) {
+      console.warn('Aviso: erro ao buscar permissões do banco, usando defaults:', error.message);
     }
-
-    // Converter dados do banco para o formato esperado
-    const formattedPermissions: any = {};
-    rolePermissions.forEach(rolePermission => {
-      formattedPermissions[rolePermission.role] = {
-        modules: rolePermission.modules || {},
-        features: rolePermission.features || {}
-      };
-    });
 
     return NextResponse.json(formattedPermissions);
 

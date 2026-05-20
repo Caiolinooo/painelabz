@@ -12,7 +12,7 @@ export default function NoticiasPage() {
   const { user, profile } = useSupabaseAuth();
   const userId = user?.id || profile?.id || '';
   const searchParams = useSearchParams();
-  const selectedPostId = searchParams.get('post_id') || undefined;
+  const selectedPostId = searchParams?.get('post_id') || undefined;
 
   const [searchQuery, setSearchQuery] = useState('');
 

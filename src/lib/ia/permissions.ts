@@ -212,24 +212,58 @@ export async function getAccessibleUserIdsForGlobal(
 }
 
 /**
- * Verifica se um usuário tem acesso a um módulo específico no painel
- * Integrado com o sistema de permissões do portal (RBAC / Módulos)
- */
+  * Verifica se um usuário tem acesso a um módulo específico no painel
+  * Integrado com o sistema de permissões do portal (RBAC / Módulos)
+  * Verifica tanto sys_modules quanto user_permissions.access_permissions
+  */
 export async function canAccessModule(userId: string, moduleName: string): Promise<boolean> {
   try {
-    const { data, error } = await supabaseAdmin
+    // Buscar dados do usuário
+    const { data: user, error: userError } = await supabaseAdmin
       .from('users_unified')
       .select('role, access_permissions')
       .eq('id', userId)
       .single();
 
-    if (error || !data) return false;
+    if (userError || !user) return false;
 
-    if (data.role === 'ADMIN') return true;
+    // Admin tem acesso a tudo
+    if (user.role === 'ADMIN') return true;
 
-    const accessPermissions = data.access_permissions as { modules?: Record<string, boolean> };
+    // Verificar access_permissions do usuário
+    const accessPermissions = user.access_permissions as { modules?: Record<string, boolean> };
     if (accessPermissions?.modules && accessPermissions.modules[moduleName] === true) {
       return true;
+    }
+
+    // Verificar sys_modules permissions (fallback)
+    try {
+      const { data: moduleData, error: moduleError } = await supabaseAdmin
+        .from('sys_modules')
+        .select('permissions')
+        .eq('key', moduleName)
+        .single();
+
+      if (!moduleError && moduleData?.permissions) {
+        const userRole = user.role?.toLowerCase() || 'user';
+        const allowedRoles = moduleData.permissions.read || [];
+        if (allowedRoles.includes(userRole) || allowedRoles.includes('*')) {
+          return true;
+        }
+      }
+    } catch {
+      // sys_modules não existe ou erro de query, ignorar
+    }
+
+    // Verificar SYSTEM_MODULES default roles
+    try {
+      const { SYSTEM_MODULES } = await import('@/config/modules');
+      const module = SYSTEM_MODULES.find(m => m.key === moduleName);
+      if (module && module.defaultRoles.includes(user.role as 'ADMIN' | 'MANAGER' | 'USER')) {
+        return true;
+      }
+    } catch {
+      // Ignorar erro de import
     }
 
     return false;

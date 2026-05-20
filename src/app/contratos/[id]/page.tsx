@@ -16,7 +16,7 @@ const PDF_OPTIONS = {
 import {
     FiArrowLeft, FiFileText, FiUsers, FiEdit3,
     FiDownload, FiCheck, FiX, FiPlus,
-    FiChevronLeft, FiChevronRight, FiTrash2, FiShield,
+    FiChevronLeft, FiChevronRight, FiChevronDown, FiTrash2, FiShield,
     FiMail, FiLink, FiPenTool, FiCheckCircle,
     FiTarget, FiEdit, FiUserPlus, FiPlusCircle, FiSearch, FiEye
 } from 'react-icons/fi';
@@ -59,8 +59,8 @@ export default function ContratoDetailPage() {
     const [isAssigning, setIsAssigning] = useState(false);
     const [selectedColaborador, setSelectedColaborador] = useState('');
     const [colaboradores, setColaboradores] = useState<any[]>([]);
-    const [clickPos, setClickPos] = useState<{ x: number; y: number; page: number; tipo: 'assinatura' | 'rubrica' | 'copia' } | null>(null);
-    const [signatureType, setSignatureType] = useState<'assinatura' | 'rubrica' | 'copia'>('assinatura');
+    const [clickPos, setClickPos] = useState<{ x: number; y: number; page: number; tipo: 'assinatura' | 'rubrica' | 'texto' | 'checkbox' | 'copia' } | null>(null);
+    const [signatureType, setSignatureType] = useState<'assinatura' | 'rubrica' | 'texto' | 'checkbox' | 'copia'>('assinatura');
     const [signatureOrder, setSignatureOrder] = useState<number>(1);
     
     // Advanced Search / External signer states
@@ -69,6 +69,13 @@ export default function ContratoDetailPage() {
     const [manualSignerEmail, setManualSignerEmail] = useState('');
     const [isExternalInput, setIsExternalInput] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
+    const [reuseSignerInfo, setReuseSignerInfo] = useState(true); // default true for convenience
+    const [lastSigner, setLastSigner] = useState<{
+        colaborador_id: string;
+        external_name: string;
+        external_email: string;
+        isExternal: boolean;
+    } | null>(null);
 
     // CC (Cópia) States
     const [ccEmail, setCcEmail] = useState('');
@@ -89,11 +96,18 @@ export default function ContratoDetailPage() {
     };
 
     const resetAssignState = () => {
-        setSelectedColaborador('');
+        if (reuseSignerInfo && lastSigner) {
+            setSelectedColaborador(lastSigner.colaborador_id);
+            setManualSignerName(lastSigner.external_name);
+            setManualSignerEmail(lastSigner.external_email);
+            setIsExternalInput(lastSigner.isExternal);
+        } else {
+            setSelectedColaborador('');
+            setManualSignerName('');
+            setManualSignerEmail('');
+            setIsExternalInput(false);
+        }
         setSearchQuery('');
-        setManualSignerName('');
-        setManualSignerEmail('');
-        setIsExternalInput(false);
         setClickPos(null);
     };
     
@@ -116,9 +130,11 @@ export default function ContratoDetailPage() {
 
     // Signed PDF URL (available after signing)
     const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
+    const [filledValues, setFilledValues] = useState<{ [solicitacaoId: string]: string }>({});
 
     // Audit data
     const [auditData, setAuditData] = useState<any>(null);
+    const [expandedSigners, setExpandedSigners] = useState<Record<string, boolean>>({});
 
     const pdfContainerRef = useRef<HTMLDivElement>(null);
 
@@ -141,14 +157,25 @@ export default function ContratoDetailPage() {
                 setDocumentos(data.documentos || []);
                 setSolicitacoes(data.solicitacoes || []);
 
+                // Populate filledValues with any existing database values
+                const initialValues: Record<string, string> = {};
+                (data.solicitacoes || []).forEach((s: any) => {
+                    if (s.valor_preenchido !== null && s.valor_preenchido !== undefined) {
+                        initialValues[s.id] = s.valor_preenchido;
+                    }
+                });
+                setFilledValues(prev => ({ ...initialValues, ...prev }));
+
                 // Reset page when docs load
                 setCurrentPage(1);
 
                 // Find my assignment in any document
+                // Find my assignment in any document (prioritize signature/rubric pending)
                 if (user?.id) {
-                    const mine = (data.solicitacoes || []).find(
-                        (s: any) => s.colaborador_id === user.id
-                    );
+                    const activeSols = data.solicitacoes || [];
+                    const mine = activeSols.find((s: any) => s.colaborador_id === user.id && s.status === 'PENDING' && (s.tipo === 'assinatura' || s.tipo === 'rubrica'))
+                        || activeSols.find((s: any) => s.colaborador_id === user.id && s.status === 'PENDING')
+                        || activeSols.find((s: any) => s.colaborador_id === user.id);
                     setMySolicitacao(mine || null);
                 }
             } else {
@@ -318,8 +345,8 @@ export default function ContratoDetailPage() {
         // CONVERSION: Scale pixel browser clicks to canonical PDF Points
         let finalX = posX;
         let finalY = posY;
-        let finalW = posTipo === 'rubrica' ? 100 : 150;
-        let finalH = posTipo === 'rubrica' ? 30 : 50;
+        let finalW = posTipo === 'rubrica' ? 100 : (posTipo === 'checkbox' ? 16 : 150);
+        let finalH = posTipo === 'rubrica' ? 30 : (posTipo === 'checkbox' ? 16 : (posTipo === 'texto' ? 22 : 50));
 
         if (originalPageSize) {
             const scaleFactor = originalPageSize.width / pdfWidth;
@@ -351,7 +378,27 @@ export default function ContratoDetailPage() {
 
             if (data.success) {
                 toast.success(t('contratos.detail.success_assigned', 'Assinatura posicionada com sucesso!'));
-                resetAssignState();
+                const newLastSigner = reuseSignerInfo ? {
+                    colaborador_id: selectedColaborador,
+                    external_name: manualSignerName,
+                    external_email: manualSignerEmail,
+                    isExternal: isExternalInput
+                } : null;
+                setLastSigner(newLastSigner);
+                
+                if (reuseSignerInfo && newLastSigner) {
+                    setSelectedColaborador(newLastSigner.colaborador_id);
+                    setManualSignerName(newLastSigner.external_name);
+                    setManualSignerEmail(newLastSigner.external_email);
+                    setIsExternalInput(newLastSigner.isExternal);
+                } else {
+                    setSelectedColaborador('');
+                    setManualSignerName('');
+                    setManualSignerEmail('');
+                    setIsExternalInput(false);
+                }
+                setSearchQuery('');
+                setClickPos(null);
                 fetchDocumento();
             } else {
                 toast.error(data.error || t('contratos.detail.error_assigning', 'Erro ao atribuir'));
@@ -412,6 +459,22 @@ export default function ContratoDetailPage() {
                 method: 'DELETE',
             });
             toast.success(t('contratos.detail.success_removed', 'Atribuição removida'));
+            fetchDocumento();
+        } catch {
+            toast.error(t('common.error_removing', 'Erro ao remover'));
+        }
+    };
+
+    const handleDeleteAllSignerAssignments = async (name: string, items: any[]) => {
+        if (!confirm(t('contratos.detail.confirm_delete_all_signer', 'Remover todas as atribuições de {name}?').replace('{name}', name))) return;
+
+        try {
+            await Promise.all(items.map(s => 
+                fetchWithAuth(`/api/contracts/${docId}/assign?solicitacao_id=${s.id}`, {
+                    method: 'DELETE',
+                })
+            ));
+            toast.success(t('contratos.detail.success_removed_all', 'Todas as atribuições removidas'));
             fetchDocumento();
         } catch {
             toast.error(t('common.error_removing', 'Erro ao remover'));
@@ -500,6 +563,7 @@ export default function ContratoDetailPage() {
                     body: ***REMOVED***
                         solicitacao_id: mySolicitacao.id,
                         signature_base64: signatureBase64,
+                        field_values: filledValues,
                     }),
                 });
 
@@ -693,16 +757,49 @@ export default function ContratoDetailPage() {
 
                         {/* Informative Banner when Assigning Mode Active */}
                         {isAssigning && (
-                            <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 duration-300">
+                            <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm animate-in slide-in-from-top-2 duration-300">
                                 <div className="flex items-center gap-3">
                                     <div className="bg-blue-100 p-2 rounded-lg">
                                         <FiTarget className="w-5 h-5 text-blue-600 animate-pulse" />
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-blue-900">{t('contratos.detail.assign_active', 'Modo de Posicionamento Ativo')}</p>
-                                        <p className="text-xs text-blue-700">{t('contratos.detail.assign_tip', 'Navegue até a página desejada e clique no local onde deseja a assinatura.')}</p>
+                                        <p className="text-xs text-blue-700">{t('contratos.detail.assign_tip', 'Selecione o tipo abaixo, navegue até a página e clique no local para posicionar.')}</p>
                                     </div>
                                 </div>
+                                
+                                {/* Field Type Selector */}
+                                <div className="flex bg-white border border-blue-200 rounded-lg p-0.5 shadow-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSignatureType('assinatura'); setClickPos(null); }}
+                                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${signatureType === 'assinatura' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        Assinatura
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSignatureType('rubrica'); setClickPos(null); }}
+                                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${signatureType === 'rubrica' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        Rubrica
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSignatureType('texto'); setClickPos(null); }}
+                                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${signatureType === 'texto' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        Texto
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSignatureType('checkbox'); setClickPos(null); }}
+                                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${signatureType === 'checkbox' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        Checkbox
+                                    </button>
+                                </div>
+
                                 <div className="flex items-center gap-2">
                                     {showTutorial === false && (
                                         <button onClick={() => setShowTutorial(true)} className="text-xs font-medium text-blue-600 hover:underline px-2">
@@ -821,32 +918,140 @@ export default function ContratoDetailPage() {
                                                     renderAnnotationLayer={true}
                                                     onLoadSuccess={onPageLoadSuccess}
                                                 />
-                                                
                                                 {/* Signature overlays specific to CURRENT DOCUMENT and current page */}
                                                 {currentSolicitacoes.filter((s: any) => s.pagina_assinatura === currentPage).map((s: any) => {
-                                                    // Inverse Conversion: Scale PDF Points back to UI pixels for display
                                                     let displayX = s.posicao_x;
                                                     let displayY = s.posicao_y;
-                                                    let displayW = s.largura_assinatura || 150;
-                                                    let displayH = s.altura_assinatura || 50;
+                                                    let displayW = s.largura_assinatura || (s.tipo === 'rubrica' ? 100 : (s.tipo === 'checkbox' ? 16 : 150));
+                                                    let displayH = s.altura_assinatura || (s.tipo === 'rubrica' ? 30 : (s.tipo === 'checkbox' ? 16 : (s.tipo === 'texto' ? 22 : 50)));
 
                                                     if (originalPageSize) {
-                                                        const scaleFactor = pdfWidth / originalPageSize.width;
-                                                        displayX = displayX * scaleFactor;
-                                                        displayY = displayY * scaleFactor;
-                                                        displayW = displayW * scaleFactor;
-                                                        displayH = displayH * scaleFactor;
+                                                        const baseScale = pdfWidth / originalPageSize.width;
+                                                        displayX = displayX * baseScale;
+                                                        displayY = displayY * baseScale;
+                                                        displayW = displayW * baseScale;
+                                                        displayH = displayH * baseScale;
+                                                    }
+
+                                                    const signerId = s.colaborador_id || s.external_signer_email || s.id;
+                                                    const isMyField = s.colaborador_id === user?.id;
+
+                                                    if (s.status === 'PENDING' && s.tipo === 'texto') {
+                                                        return (
+                                                            <div
+                                                                key={`input-overlay-${s.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 40,
+                                                                    pointerEvents: isMyField ? 'auto' : 'none',
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="text"
+                                                                    value={filledValues[s.id] ?? ''}
+                                                                    onChange={(e) => setFilledValues(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                                                    disabled={!isMyField}
+                                                                    placeholder={isMyField ? t('contratos.detail.fill_here', 'Preencha aqui...') : t('contratos.detail.pending_field', 'Pendente')}
+                                                                    className={`w-full h-full text-xs px-1 border-2 border-dashed rounded outline-none shadow-sm transition-colors ${
+                                                                        isMyField
+                                                                            ? 'border-blue-500 bg-blue-50/80 focus:border-blue-600 focus:bg-white text-gray-900'
+                                                                            : 'border-gray-300 bg-gray-50/50 text-gray-500 cursor-not-allowed'
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (s.status === 'PENDING' && s.tipo === 'checkbox') {
+                                                        return (
+                                                            <div
+                                                                key={`checkbox-overlay-${s.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 40,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    pointerEvents: isMyField ? 'auto' : 'none',
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={filledValues[s.id] === 'true'}
+                                                                    onChange={(e) => setFilledValues(prev => ({ ...prev, [s.id]: e.target.checked ? 'true' : 'false' }))}
+                                                                    disabled={!isMyField}
+                                                                    className={`w-4 h-4 rounded focus:ring-blue-500 border-2 transition-colors ${
+                                                                        isMyField
+                                                                            ? 'text-blue-600 border-blue-500 bg-blue-50 cursor-pointer'
+                                                                            : 'text-gray-400 border-gray-300 bg-gray-100 cursor-not-allowed'
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (s.status === 'SIGNED' && s.tipo === 'texto') {
+                                                        return (
+                                                            <div
+                                                                key={`text-val-overlay-${s.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 30,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                }}
+                                                                className="text-xs text-gray-800 font-medium px-1 bg-gray-100/50 border border-gray-300 rounded overflow-hidden select-none"
+                                                            >
+                                                                {s.valor_preenchido || ''}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (s.status === 'SIGNED' && s.tipo === 'checkbox') {
+                                                        return (
+                                                            <div
+                                                                key={`checkbox-val-overlay-${s.id}`}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${displayX}px`,
+                                                                    top: `${displayY}px`,
+                                                                    width: `${displayW}px`,
+                                                                    height: `${displayH}px`,
+                                                                    zIndex: 30,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    disabled
+                                                                    checked={s.valor_preenchido === 'true'}
+                                                                    className="w-4 h-4 text-gray-600 border-gray-300 bg-gray-100 rounded cursor-not-allowed"
+                                                                />
+                                                            </div>
+                                                        );
                                                     }
 
                                                     const displayName = s.colaborador?.first_name 
-                                                        ? `${s.colaborador.first_name} ${s.colaborador.last_name || ''}`
-                                                        : (s.external_signer_name || s.external_signer_email || t('common.guest', 'Convidado'));
-                                                    
-                                                    const signerId = s.colaborador_id || s.external_signer_email || s.id;
-                                                    
+                                                        ? `${s.colaborador.first_name}` 
+                                                        : (s.external_signer_name || s.external_signer_email || 'Convidado');
+
                                                     return (
                                                         <SignaturePositionOverlay
-                                                            key={`overlay-${s.id}`}
+                                                            key={s.id}
                                                             x={displayX}
                                                             y={displayY}
                                                             width={displayW}
@@ -858,15 +1063,14 @@ export default function ContratoDetailPage() {
                                                         />
                                                     );
                                                 })}
-
                                                 {/* Click position indicator AND Configuration Floating Card */}
                                                 {clickPos && clickPos.page === currentPage && signatureType !== 'copia' && (
                                                     <>
                                                         <SignaturePositionOverlay
                                                             x={clickPos.x}
                                                             y={clickPos.y}
-                                                            width={150}
-                                                            height={50}
+                                                            width={signatureType === 'rubrica' ? 90 : (signatureType === 'checkbox' ? 18 : (signatureType === 'texto' ? 120 : 150))}
+                                                            height={signatureType === 'rubrica' ? 24 : (signatureType === 'checkbox' ? 18 : (signatureType === 'texto' ? 24 : 28))}
                                                             label={selectedColaborador 
                                                                 ? (colaboradores.find(c => (c.id||c._id) === selectedColaborador)?.first_name || t('common.selected', 'Selecionado')) 
                                                                 : (manualSignerName || t('contratos.detail.new_position', 'Posição Nova'))}
@@ -1018,6 +1222,20 @@ export default function ContratoDetailPage() {
                                                                     )}
                                                                 </div>
 
+                                                                {/* Checkbox for reusing signer info */}
+                                                                <div className="flex items-center gap-2 py-1 px-1">
+                                                                    <input 
+                                                                        type="checkbox"
+                                                                        id="reuse-signer-chk"
+                                                                        checked={reuseSignerInfo}
+                                                                        onChange={(e) => setReuseSignerInfo(e.target.checked)}
+                                                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                                                                    />
+                                                                    <label htmlFor="reuse-signer-chk" className="text-[10px] text-gray-500 font-medium cursor-pointer select-none">
+                                                                        Lembrar este assinante para próximos campos
+                                                                    </label>
+                                                                </div>
+
                                                                 <div className="pt-1">
                                                                     <button 
                                                                         onClick={handleSaveAssignment}
@@ -1112,70 +1330,190 @@ export default function ContratoDetailPage() {
                             )}
                         </div>
 
-                        {/* Assignments for ALL DOCUMENTS grouped or simplified */}
+                        {/* Assignments for ALL DOCUMENTS grouped by UNIQUE SIGNER */}
                         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
                             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                                 <FiUsers className="w-4 h-4 text-gray-400" />
-                                {t('contratos.detail.general_signatures', 'Assinaturas Gerais')} ({solicitacoes.filter(s => s.tipo !== 'copia').length})
+                                {t('contratos.detail.general_signatures', 'Assinaturas Gerais')} ({(() => {
+                                    const activeSols = solicitacoes.filter(s => s.tipo !== 'copia');
+                                    const uniqueKeys = new Set(activeSols.map(s => s.colaborador_id 
+                                        ? `colab-${s.colaborador_id}` 
+                                        : `ext-${(s.external_signer_email || s.external_signer_name || 'unknown').toLowerCase()}`));
+                                    return uniqueKeys.size;
+                                })()})
                             </h3>
 
-                            {solicitacoes.filter(s => s.tipo !== 'copia').length === 0 ? (
-                                <p className="text-xs text-gray-400 py-2">{t('contratos.detail.no_signatures_assigned', 'Nenhuma assinatura atribuída no envelope')}</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {solicitacoes.filter((s: any) => s.tipo !== 'copia').map((s: any) => {
-                                        const docAssigned = documentos.find(d => d.id === s.documento_id);
-                                        return (
-                                        <div
-                                            key={s.id}
-                                            className={`flex flex-col p-3 rounded-lg border ${s.documento_id === currentDocumento?.id ? 'bg-blue-50/30 border-blue-100' : 'bg-gray-50 border-transparent'}`}
-                                        >
-                                            <div className="flex items-center justify-between mb-1">
-                                                <p className="text-sm font-medium text-gray-800">
-                                                    <span className="inline-flex items-center justify-center bg-gray-200 text-gray-700 text-[10px] font-bold h-4 w-4 rounded-full mr-1.5">
-                                                        {s.ordem}
-                                                    </span>
-                                                    {s.colaborador?.first_name 
-                                                        ? `${s.colaborador.first_name} ${s.colaborador.last_name || ''}`
-                                                        : (s.external_signer_name || s.external_signer_email || 'Externo')}
-                                                </p>
-                                                <DocumentStatusBadge status={s.status} />
-                                            </div>
-                                            {s.visualizado_em && s.status === 'PENDING' && (
-                                                <div className="flex items-center gap-1 mb-1.5 text-[10px] text-indigo-600 bg-indigo-50/60 px-2 py-0.5 rounded-md font-medium border border-indigo-100/30 w-fit shadow-xs">
-                                                    <FiEye className="w-2.5 h-2.5 text-indigo-500" /> 
-                                                    {t('contratos.detail.viewed_at', 'Visualizado às {time} ({date})').replace('{time}', new Date(s.visualizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })).replace('{date}', new Date(s.visualizado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }))}
+                            {(() => {
+                                const activeSols = solicitacoes.filter(s => s.tipo !== 'copia');
+                                if (activeSols.length === 0) {
+                                    return <p className="text-xs text-gray-400 py-2">{t('contratos.detail.no_signatures_assigned', 'Nenhuma assinatura atribuída no envelope')}</p>;
+                                }
+
+                                // Compute grouped signers
+                                const groupedSignersMap = new Map<string, {
+                                    key: string;
+                                    colaborador_id?: string;
+                                    colaborador?: any;
+                                    name: string;
+                                    email: string;
+                                    status: 'PENDING' | 'SIGNED' | 'REJECTED';
+                                    viewed_at?: string;
+                                    items: any[];
+                                }>();
+
+                                activeSols.forEach((s: any) => {
+                                    const key = s.colaborador_id 
+                                        ? `colab-${s.colaborador_id}` 
+                                        : `ext-${(s.external_signer_email || s.external_signer_name || 'unknown').toLowerCase()}`;
+                                    
+                                    const existing = groupedSignersMap.get(key);
+                                    if (existing) {
+                                        existing.items.push(s);
+                                        if (s.status === 'REJECTED') {
+                                            existing.status = 'REJECTED';
+                                        } else if (existing.status !== 'REJECTED' && s.status === 'PENDING') {
+                                            existing.status = 'PENDING';
+                                        }
+                                        if (s.visualizado_em && (!existing.viewed_at || new Date(s.visualizado_em) > new Date(existing.viewed_at))) {
+                                            existing.viewed_at = s.visualizado_em;
+                                        }
+                                    } else {
+                                        const name = s.colaborador?.first_name 
+                                            ? `${s.colaborador.first_name} ${s.colaborador.last_name || ''}`
+                                            : (s.external_signer_name || s.external_signer_email || 'Externo');
+                                        const email = s.colaborador?.email || s.external_signer_email || '';
+                                        
+                                        groupedSignersMap.set(key, {
+                                            key,
+                                            colaborador_id: s.colaborador_id,
+                                            colaborador: s.colaborador,
+                                            name,
+                                            email,
+                                            status: s.status,
+                                            viewed_at: s.visualizado_em || undefined,
+                                            items: [s]
+                                        });
+                                    }
+                                });
+
+                                const groupedList = Array.from(groupedSignersMap.values());
+
+                                return (
+                                    <div className="space-y-3">
+                                        {groupedList.map((signer) => {
+                                            const isExpanded = !!expandedSigners[signer.key];
+                                            const totalFields = signer.items.length;
+                                            const signedFields = signer.items.filter(item => item.status === 'SIGNED').length;
+                                            const hasActiveDocField = signer.items.some(item => item.documento_id === currentDocumento?.id);
+
+                                            return (
+                                                <div
+                                                    key={signer.key}
+                                                    className={`flex flex-col rounded-xl border transition-all duration-200 ${
+                                                        hasActiveDocField 
+                                                            ? 'border-blue-200 bg-blue-50/10 shadow-xs' 
+                                                            : 'border-gray-100 bg-gray-50/40 hover:bg-gray-50/80'
+                                                    }`}
+                                                >
+                                                    {/* Signer Header Info */}
+                                                    <div 
+                                                        onClick={() => setExpandedSigners(prev => ({ ...prev, [signer.key]: !isExpanded }))}
+                                                        className="flex items-center justify-between p-3.5 cursor-pointer select-none"
+                                                    >
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <div className="text-gray-400 hover:text-gray-600 transition-colors">
+                                                                {isExpanded ? <FiChevronDown className="w-4 h-4" /> : <FiChevronRight className="w-4 h-4" />}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-semibold text-gray-800 truncate">
+                                                                    {signer.name}
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                                                                    {signer.email || t('contratos.detail.no_email', 'Sem e-mail')}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2.5 shrink-0">
+                                                            <span className="text-[10.5px] font-medium text-gray-500 bg-white border border-gray-200/80 px-2 py-0.5 rounded-lg shadow-2xs">
+                                                                {signedFields}/{totalFields}
+                                                            </span>
+                                                            <DocumentStatusBadge status={signer.status} />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Expanded Fields List */}
+                                                    {isExpanded && (
+                                                        <div className="px-3.5 pb-3.5 pt-1 border-t border-gray-100 bg-white/70 rounded-b-xl space-y-2">
+                                                            {signer.viewed_at && signer.status === 'PENDING' && (
+                                                                <div className="flex items-center gap-1.5 text-[10px] text-indigo-600 bg-indigo-50/60 px-2.5 py-1 rounded-lg font-medium border border-indigo-100/30 w-full shadow-2xs">
+                                                                    <FiEye className="w-3 h-3 text-indigo-500" /> 
+                                                                    {t('contratos.detail.viewed_at', 'Visualizado às {time} ({date})').replace('{time}', new Date(signer.viewed_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })).replace('{date}', new Date(signer.viewed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }))}
+                                                                </div>
+                                                            )}
+
+                                                            <div className="space-y-1.5">
+                                                                {signer.items.map((item: any) => {
+                                                                    const docAssigned = documentos.find(d => d.id === item.documento_id);
+                                                                    return (
+                                                                        <div 
+                                                                            key={item.id} 
+                                                                            className="flex items-center justify-between text-xs py-1.5 px-2 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100/40"
+                                                                        >
+                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                                                                    item.status === 'SIGNED' ? 'bg-emerald-500' : item.status === 'REJECTED' ? 'bg-rose-400' : 'bg-amber-400 animate-pulse'
+                                                                                }`} />
+                                                                                <span className="text-gray-500 capitalize shrink-0 font-medium">
+                                                                                    [{item.tipo || 'campo'}]:
+                                                                                </span>
+                                                                                <span className="text-gray-700 truncate max-w-[120px]" title={docAssigned?.titulo}>
+                                                                                    {docAssigned?.titulo || 'Documento'}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {isManager && (
+                                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                                    {item.status === 'PENDING' && item.token_acesso && (
+                                                                                        <button
+                                                                                            onClick={() => handleCopyTokenLink(item.token_acesso)}
+                                                                                            className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                                                                                            title={t('contratos.detail.title_copy_unique', 'Copiar Link Único de Assinatura')}
+                                                                                        >
+                                                                                            <FiLink className="w-3.5 h-3.5" />
+                                                                                        </button>
+                                                                                    )}
+                                                                                    <button
+                                                                                        onClick={() => handleDeleteAssignment(item.id)}
+                                                                                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                                                        title={t('contratos.detail.title_remove_assign', 'Remover atribuição')}
+                                                                                    >
+                                                                                        <FiTrash2 className="w-3.5 h-3.5" />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            {isManager && signer.status === 'PENDING' && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleDeleteAllSignerAssignments(signer.name, signer.items)}
+                                                                    className="w-full mt-2 py-1.5 px-3 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                                                                >
+                                                                    <FiTrash2 className="w-3.5 h-3.5" />
+                                                                    {t('contratos.detail.remove_all_signer_fields', 'Remover Todas as Atribuições')}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            <div className="flex items-center justify-between text-xs text-gray-500">
-                                                <span className="truncate max-w-[120px]">📄 {docAssigned?.titulo || 'Doc'}</span>
-                                                <div className="flex items-center gap-1">
-                                                {isManager && s.status === 'PENDING' && (
-                                                    <>
-                                                        {s.token_acesso && (
-                                                            <button
-                                                                onClick={() => handleCopyTokenLink(s.token_acesso)}
-                                                                className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                                                                title={t('contratos.detail.title_copy_unique', 'Copiar Link Único de Assinatura')}
-                                                            >
-                                                                <FiLink className="w-3 h-3" />
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleDeleteAssignment(s.id)}
-                                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                            title={t('contratos.detail.title_remove_assign', 'Remover atribuição')}
-                                                        >
-                                                            <FiTrash2 className="w-3 h-3" />
-                                                        </button>
-                                                    </>
-                                                )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )})}
-                                </div>
-                            )}
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         {/* CC / Observers Management Panel */}
@@ -1260,7 +1598,7 @@ export default function ContratoDetailPage() {
                         )}
 
                         {/* Sign Button (Collaborator) */}
-                        {!isManager && mySolicitacao && mySolicitacao.status === 'PENDING' && (
+                        {mySolicitacao && mySolicitacao.status === 'PENDING' && (
                             <button
                                 onClick={() => setShowLegalConfirm(true)}
                                 disabled={isSigning}

@@ -58,7 +58,7 @@ async function main() {
       // Sort to find the best one to keep:
       // First, prefer those with completed_at !== null
       // Second, prefer those with the latest enrolled_at
-      userEnrollments.sort((a, b) => {
+      userEnrollments.sort((a: any, b: any) => {
         if (a.completed_at && !b.completed_at) return -1;
         if (!a.completed_at && b.completed_at) return 1;
         return new Date(b.enrolled_at).getTime() - new Date(a.enrolled_at).getTime();

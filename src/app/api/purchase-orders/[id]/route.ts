@@ -274,9 +274,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                             const { PurchaseOrderPdf } = await import('@/components/PurchaseOrder/PurchaseOrderPdf');
                             const { purchaseOrderToSupplierTemplate } = await import('@/lib/emailTemplates');
 
-                            // @ts-ignore
                             const pdfBuffer = await renderToBuffer(
-                                React.createElement(PurchaseOrderPdf, { data: currentOrder })
+                                React.createElement(PurchaseOrderPdf, { data: currentOrder }) as any
                             );
 
                             const rqfNumber = currentOrder.rqf_number || currentOrder.purchase_request_number || null;

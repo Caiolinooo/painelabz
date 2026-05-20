@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
                     status,
                     tipo,
                     token_acesso,
+                    valor_preenchido,
                     visualizado_em,
                     created_at,
                     colaborador:users_unified!colaborador_id (

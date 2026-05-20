@@ -6,7 +6,7 @@ export default {
     editMenu: 'Editar Menu',
     developedBy: 'Desenvolvido por',
     adminPanel: 'Painel Admin',
-    myProfile: 'Meu Perfil',
+    myProfile: 'Meu Perfil'
   },
   helpWidget: {
     greeting: 'Olá, {name}! 👋',
@@ -46,8 +46,6 @@ export default {
     contactSupportAction: 'Fale com o suporte',
     back: 'Voltar'
   },
-
-
   avaliacoes: {
     titulo_avancado: 'Avaliações Avançadas',
     descricao_avancado: 'Métricas, análises e relatórios detalhados de performance',
@@ -155,7 +153,6 @@ export default {
       aprovada_aguardando_comentario: 'Aprovada (Aguardando Comentário)',
       aguardando_finalizacao: 'Aguardando Finalização',
       devolvida: 'Devolvida para Ajustes',
-      // Novos status para compatibilidade com purchase orders
       submitted: 'Aguardando',
       approved: 'Aprovado',
       rejected: 'Rejeitado',
@@ -238,7 +235,6 @@ export default {
     periodo: 'Período',
     dataInicio: 'Data de Início',
     dataFim: 'Data de Fim',
-
     criterios: 'Critérios de Avaliação',
     semCriterios: 'Nenhum critério de avaliação disponível',
     historicoAvaliacoes: 'Histórico de Avaliações',
@@ -345,9 +341,8 @@ export default {
     recommendationText: 'Discutir estratégias de melhoria e definir metas específicas.',
     page: 'Página',
     of: 'de',
-    confidential: 'Documento Confidencial - Uso Interno',
+    confidential: 'Documento Confidencial - Uso Interno'
   },
-
   auth: {
     biometricLogin: 'Entrar com Biometria',
     biometricLoginDesc: 'Impressão digital, reconhecimento facial ou Windows Hello',
@@ -441,8 +436,6 @@ export default {
     setPasswordWithInvite: 'Definir senha com código de convite',
     notRegistered: 'Ainda não tem cadastro?',
     createAccount: 'Criar conta',
-
-    // Set/Update password flow
     setYourPassword: 'Defina sua senha',
     createPasswordForAccount: 'Crie uma senha para sua conta',
     updateYourPassword: 'Atualize sua senha',
@@ -577,7 +570,6 @@ export default {
     module: 'Módulo',
     passkeys: 'Biometria (Passkeys)',
     adminReimbursement: 'Reembolso (Admin)',
-
     aguardandoCarregamentoDaAutenticacao: '🔄 Aguardando carregamento da autenticação...',
     usuarioNaoAutenticadoRedirecionandoParaLogin: '❌ Usuário não autenticado, redirecionando para login',
     vocePrecisaEstarLogadoParaAcessarEstaPagina: 'Você precisa estar logado para acessar esta página.',
@@ -590,7 +582,7 @@ export default {
     perfilNaoEncontradoFacaLoginNovamente: 'Perfil não encontrado. Faça login novamente.',
     nomeESobrenomeSaoObrigatorios: 'Nome e sobrenome são obrigatórios',
     usuario: 'Usuário',
-    naoInformado: 'Não informado',
+    naoInformado: 'Não informado'
   },
   validation: {
     suggestions: 'Sugestões',
@@ -627,7 +619,6 @@ export default {
     accessAdminPanel: 'Acessar Painel de Administração',
     access: 'Acessar',
     noCards: 'Nenhum card disponível',
-
     cacheLocalInvalidoRemovendo: '⚠️ Cache local inválido, removendo...',
     naoFoiPossivelSalvarNoCacheLocal: '⚠️ Não foi possível salvar no cache local:',
     usandoCardsDoCacheLocalAposErro: '📦 Usando cards do cache local após erro',
@@ -635,8 +626,6 @@ export default {
     erroCriticoUsandoCardsHardcoded: '⚠️ Erro crítico, usando cards hardcoded',
     naoFoiPossivelCarregarOsCardsPersonalizadosUsandoC: 'Não foi possível carregar os cards personalizados. Usando configuração padrão.',
     atualizandoTraducoesDosCardsEstaticosParaIdioma: 'Atualizando traduções dos cards estáticos para idioma:',
-
-    // Novos campos para barra de atalhos e modal
     addShortcut: 'Adicionar Atalho',
     selectModule: 'Selecione um módulo para adicionar aos seus atalhos',
     searchModules: 'Buscar módulos...',
@@ -680,12 +669,11 @@ export default {
     folha: 'Folha de Pagamento',
     biblioteca: 'Biblioteca',
     universidade: 'Universidade',
-    contratos: 'Contratos e Assinaturas',
+    contratos: 'Contratos e Assinaturas'
   },
   cards: {
     contratos: 'Contratos',
     contratosDesc: 'Gerenciamento de documentos e assinaturas eletrônicas',
-    // Traduções padrão para os cards do menu
     wkradar: 'WK Radar',
     chat: 'Chat Interno',
     apiMobile: 'API Mobile',
@@ -712,7 +700,9 @@ export default {
     contrachequeDesc: 'Acesse seus contracheques.',
     ponto: 'Ponto',
     pontoDesc: 'Registre seu ponto e consulte seu histórico.',
-    avaliacao: 'Avaliação de Desempenho',
+    avaliacao: {
+      title: 'Avaliação'
+    },
     avaliacaoDesc: 'Gerencie avaliações de desempenho dos colaboradores.',
     folhaPagamento: 'Folha de Pagamento',
     folhaPagamentoDesc: 'Gestão completa de folha de pagamento e cálculos trabalhistas.',
@@ -726,12 +716,9 @@ export default {
     avaliacoesAvancadasDesc: 'Métricas, análises e relatórios detalhados de performance',
     relatoriosPdf: 'Relatórios PDF',
     relatoriosPdfDesc: 'Gere relatórios personalizados com gráficos e visualizações',
-
     wkradarDesc: 'Acesso ao sistema WKRadar',
     universidade: 'Universidade',
     universidadeDesc: 'Plataforma de ensino corporativo',
-
-    // Traduções para SYSTEM_MODULES (usadas em shortcuts e menu)
     compras: 'Ordens de Compra',
     comprasDesc: 'Gestão de compras e aprovações',
     dashboard: 'Dashboard',
@@ -752,13 +739,10 @@ export default {
     'integracao-erpDesc': 'Gestão de integração MIO',
     procedimentos: 'Procedimentos',
     procedimentosDesc: 'Procedimentos Operacionais Padrão (POPs)',
-
-    // Traduções para os cards do banco de dados (por ID)
-    // Versão sem hífens (compatibilidade) - Mantendo chaves existentes e adicionando se necessário
     '6377431f4afa448bb46a8321a5870f37': 'Manual',
     '6377431f4afa448bb46a8321a5870f37Desc': 'Acesse o manual da empresa',
-    'c40a97fd70a543f1af4d960efabd340b': 'Procedimentos',
-    'c40a97fd70a543f1af4d960efabd340bDesc': 'Consulte os procedimentos da empresa',
+    c40a97fd70a543f1af4d960efabd340b: 'Procedimentos',
+    c40a97fd70a543f1af4d960efabd340bDesc: 'Consulte os procedimentos da empresa',
     '2285fcbd70244f9a91c3e0a87de27ba0': 'Políticas',
     '2285fcbd70244f9a91c3e0a87de27ba0Desc': 'Consulte as políticas da empresa',
     '90e09b57c23e41499770e35c2d66cf7a': 'Calendário',
@@ -773,20 +757,18 @@ export default {
     '515e6360431d43b69877a1d0ca23296cDesc': 'Registre seu ponto',
     '5b07e529830c43be8f75dff38053744c': 'Avaliação',
     '5b07e529830c43be8f75dff38053744cDesc': 'Acesse suas avaliações',
-    'e460055d4b674350a0155317fc07e76a': 'Admin',
-    'e460055d4b674350a0155317fc07e76aDesc': 'Painel administrativo',
-
-    // Assegurando que chaves com pontos também existam se usadas como fallback
-    'cards.noticias': 'Notícias',
-    'cards.ponto': 'Ponto',
-    'cards.reembolso': 'Reembolso',
-    'cards.academy': 'Universidade',
-    'cards.contracheque': 'Contracheque',
-    'avaliacoes.title': 'Avaliações',
-    'avaliacao.title': 'Avaliação',
-
-    // Versão com hífens (formato original do DB, mantido por segurança)
-
+    e460055d4b674350a0155317fc07e76a: 'Admin',
+    e460055d4b674350a0155317fc07e76aDesc: 'Painel administrativo',
+    cards: {
+      noticias: 'Notícias',
+      ponto: 'Ponto',
+      reembolso: 'Reembolso',
+      academy: 'Universidade',
+      contracheque: 'Contracheque'
+    },
+    avaliacoes: {
+      title: 'Avaliações'
+    },
     '6377431f-4afa-448b-b46a-8321a5870f37': 'Manual',
     '6377431f-4afa-448b-b46a-8321a5870f37Desc': 'Acesse o manual da empresa',
     'c40a97fd-70a5-43f1-af4d-960efabd340b': 'Procedimentos',
@@ -806,7 +788,7 @@ export default {
     '5b07e529-830c-43be-8f75-dff38053744c': 'Avaliação',
     '5b07e529-830c-43be-8f75-dff38053744cDesc': 'Acesse suas avaliações',
     'e460055d-4b67-4350-a015-5317fc07e76a': 'Admin',
-    'e460055d-4b67-4350-a015-5317fc07e76aDesc': 'Painel administrativo',
+    'e460055d-4b67-4350-a015-5317fc07e76aDesc': 'Painel administrativo'
   },
   ponto: {
     title: 'Ponto',
@@ -827,26 +809,23 @@ export default {
     webAccessDescription: 'Você também pode acessar o sistema de ponto através do navegador.',
     additionalResources: 'Recursos Adicionais',
     manualDescription: 'Consulte o manual de uso para obter instruções detalhadas sobre como utilizar as plataformas Ahgora.',
-    downloadManual: 'Baixar Manual (PDF)',
+    downloadManual: 'Baixar Manual (PDF)'
   },
-
   procedimentos: {
     title: 'Procedimentos Gerais',
     pageTitle: 'Procedimentos Gerais',
     comingSoon: 'Em Breve',
     description: 'Esta seção abrigará procedimentos e diretrizes gerais de diversos departamentos.',
-    contentAvailable: 'O conteúdo será adicionado assim que estiver disponível.',
+    contentAvailable: 'O conteúdo será adicionado assim que estiver disponível.'
   },
-
   contracheque: {
     title: 'Consulta de Contracheque',
     pageTitle: 'Consulta de Contracheque',
     description: 'Acesse seus contracheques e informações salariais',
     accessSystem: 'Acessar Sistema Externo',
     systemDescription: 'Clique no botão abaixo para acessar o sistema de consulta de contracheques.',
-    externalAccess: 'Você será redirecionado para um sistema externo para visualizar seus contracheques.',
+    externalAccess: 'Você será redirecionado para um sistema externo para visualizar seus contracheques.'
   },
-
   calendario: {
     title: 'Calendário de Feriados',
     description: 'Feriados Nacionais e Municipais (Macaé, RJ)',
@@ -859,16 +838,15 @@ export default {
     holidaysInMonth: 'Feriados em',
     failedToFetchBrasilApi: 'Falha ao buscar na BrasilAPI',
     tryingAlternative: 'Tentando alternativa...',
-    failedToFetchFromAllSources: 'Falha ao buscar feriados de todas as fontes.',
+    failedToFetchFromAllSources: 'Falha ao buscar feriados de todas as fontes.'
   },
-
   manual: {
     title: 'Manual do Colaborador (Logística)',
     description: 'Guia completo com as diretrizes e informações sobre os processos logísticos.',
     download: 'Download (PDF)',
     view: 'Visualizar',
     noManuals: 'Nenhum manual encontrado',
-    mainDocument: 'Documento Principal',
+    mainDocument: 'Documento Principal'
   },
   procedures: {
     title: 'Procedimentos de Logística (Revisado)',
@@ -876,7 +854,7 @@ export default {
     download: 'Download (PDF)',
     view: 'Visualizar',
     noProcedures: 'Nenhum procedimento encontrado',
-    mainDocument: 'Documento Principal',
+    mainDocument: 'Documento Principal'
   },
   policies: {
     title: 'Políticas',
@@ -895,9 +873,8 @@ export default {
       titleEn: 'Quality Policy',
       descriptionEn: 'ABZ Group Quality Management Policy',
       category: 'Qualidade'
-    },
+    }
   },
-
   news: {
     title: 'ABZ News e Comunicados',
     description: 'Últimas notícias da empresa',
@@ -1017,10 +994,17 @@ export default {
         loginRequiredMessage: 'Você precisa estar logado para enviar um reembolso.',
         loginLink: 'Clique aqui para fazer login',
         authenticated: 'Você está logado e pode enviar reembolsos',
-        redirectingToLogin: 'Você precisa estar logado para enviar um reembolso. Redirecionando para login...',
+        redirectingToLogin: 'Você precisa estar logado para enviar um reembolso. Redirecionando para login...'
       },
+      date: 'Data',
+      reimbursementType: 'Tipo de Reembolso',
+      totalValue: 'Valor Total',
+      currency: 'Moeda',
+      paymentMethod: 'Forma de Pagamento',
+      pixType: 'Tipo de Chave PIX',
+      observations: 'Observações',
+      addReceipt: 'Adicionar Recibo'
     },
-
     policy: {
       title: 'Política de Reembolso - ABZ Group',
       introduction: 'Este documento estabelece as diretrizes e procedimentos para solicitação e processamento de reembolsos de despesas relacionadas às atividades profissionais dos colaboradores da ABZ Group.',
@@ -1098,7 +1082,6 @@ export default {
       cancel: 'Cancelar',
       close: 'Fechar'
     },
-
     verificandoPermissoesDeAprovacaoParaExibirAba: 'Verificando permissões de aprovação para exibir aba...',
     usuarioEAdministradorConcedendoPermissaoDeAprovaca: 'Usuário é administrador, concedendo permissão de aprovação',
     usuarioEGerenteConcedendoPermissaoDeAprovacao: 'Usuário é gerente, concedendo permissão de aprovação',
@@ -1106,6 +1089,27 @@ export default {
     nenhumaAbaValidaEncontradaNoUrlDefinindoPara: 'Nenhuma aba válida encontrada no URL, definindo para ',
     protocoloNaoFornecido: 'Protocolo não fornecido',
     naoFoiPossivelBaixarOArquivoAposVariasTentativas: 'Não foi possível baixar o arquivo após várias tentativas',
+    types: {
+      alimentacao: 'Alimentação',
+      transporte: 'Transporte',
+      hospedagem: 'Hospedagem',
+      combustivel: 'Combustível',
+      outros: 'Outros'
+    },
+    paymentMethods: {
+      deposito: 'Depósito Bancário',
+      pix: 'PIX'
+    },
+    pixTypes: {
+      cpf: 'CPF',
+      email: 'E-mail',
+      telefone: 'Telefone',
+      chaveAleatoria: 'Chave Aleatória'
+    },
+    costCenters: {
+      abz: 'ABZ',
+      ahn: 'AHN'
+    }
   },
   admin: {
     nenhumCertificadoAinda: 'Nenhum certificado ainda',
@@ -1207,8 +1211,6 @@ export default {
     approveReimbursementsDesc: 'Aprove ou rejeite solicitações de reembolso',
     reimbursementSettingsDesc: 'Configure emails e regras de reembolso',
     fixPermissionsDesc: 'Corrigir permissões de administrador',
-
-    // Configurações de Email de Reembolso
     reimbursementEmailSettings: 'Configurações de Email de Reembolso',
     enableDomainRule: 'Ativar regra especial para emails com domínio @groupabz.com',
     domainRuleDescription: 'Quando ativada, esta regra enviará automaticamente os formulários de reembolso para os emails adicionais abaixo quando o solicitante tiver um email com o domínio @groupabz.com.',
@@ -1222,7 +1224,6 @@ export default {
     addFinanceEmail: 'Adicionar email do financeiro',
     markAsPaid: 'Marcar como Pago',
     pay: 'Pagar',
-
     documents: {
       section: 'Documentos',
       description: 'Gerencie documentos, políticas e manuais.',
@@ -1256,7 +1257,6 @@ export default {
       errorLoadingMessage: 'Ocorreu um erro ao carregar os documentos.',
       pickFromExplorer: 'Escolher do Explorador'
     },
-
     salvarAlteracoesDoTemplateSelecionado: 'Salvar alterações do template selecionado',
     lerUsuarios: 'Ler Usuários',
     escreverUsuarios: 'Escrever Usuários',
@@ -1410,7 +1410,7 @@ export default {
     buscarUsuariosPorNomeTelefoneEmailDepartamento: 'Buscar usuários por nome, telefone, email, departamento...',
     verHistoricoDeAcesso: 'Ver histórico de acesso',
     editarUsuario: 'Editar usuário',
-    excluirUsuario: 'Excluir usuário',
+    excluirUsuario: 'Excluir usuário'
   },
   fileUploader: {
     attachments: 'Comprovantes',
@@ -1424,7 +1424,7 @@ export default {
     errorReadingFile: 'Erro ao ler o arquivo',
     fileStoredLocally: 'Arquivo armazenado localmente devido a problemas de armazenamento. O arquivo será incluído na sua solicitação, mas pode não ser armazenado permanentemente.',
     uploadError: 'Erro ao fazer upload',
-    errorUploadingFile: 'Erro ao fazer upload de {fileName}: {error}',
+    errorUploadingFile: 'Erro ao fazer upload de {fileName}: {error}'
   },
   starRating: {
     ariaLabel: '{star} de {maxRating} estrelas',
@@ -1514,15 +1514,14 @@ export default {
       level5: 'Frequentemente excedeu a expectativa'
     },
     dashboard: {
-      title: 'Avaliações de Desempenho',
+      title: 'Avaliações de Desempenho'
     },
     status: {
       pending: 'Pendente',
       inProgress: 'Em Andamento',
       completed: 'Concluída',
-      cancelled: 'Cancelada',
+      cancelled: 'Cancelada'
     },
-    // Performance levels for PDF reports
     performanceLevels: {
       exceptional: 'Excepcional',
       excellent: 'Excelente',
@@ -1530,7 +1529,6 @@ export default {
       regular: 'Regular',
       insufficient: 'Insuficiente'
     },
-    // UI messages
     title: 'Avaliação de Desempenho',
     evaluationNotFound: 'Avaliação não encontrada.',
     collaborator: 'Colaborador',
@@ -1572,6 +1570,49 @@ export default {
     finalizeEvaluation: 'Finalizar',
     loadingEvaluation: 'Carregando avaliação...',
     errorLoadingEvaluation: 'Erro ao carregar avaliação',
+    autoavaliacao: 'Autoavaliação',
+    pontosFortes: 'Pontos Fortes',
+    managerQuestionsAnswered: 'Perguntas do Gestor Respondidas',
+    collaboratorAnswersIntro: 'Abaixo estão as respostas fornecidas pelo colaborador na autoavaliação:',
+    employeeLabel: 'Colaborador',
+    employeeEmail: 'E-mail do Colaborador',
+    periodLabel: 'Período',
+    date: 'Data',
+    noAnswer: 'Sem resposta',
+    executiveSummary: 'Resumo Executivo',
+    generalScore: 'Nota Geral',
+    evaluationStats: 'Estatísticas da Avaliação',
+    competenciesEvaluated: 'Competências Avaliadas',
+    progress: 'Progresso',
+    strongPoints: 'Pontos Fortes',
+    improvementAreas: 'Áreas de Melhoria',
+    highlights: 'Destaques',
+    highestScore: 'Maior Nota',
+    attentionRequired: 'Atenção Necessária',
+    detailedAnalysis: 'Análise Detalhada',
+    id: 'ID',
+    competency: 'Competência',
+    grade: 'Nota',
+    level: 'Nível',
+    evaluationInfo: 'Informações da Avaliação',
+    approvalDate: 'Data de Aprovação',
+    selfEvaluationTitle: 'Autoavaliação',
+    competencyQuestion: 'Pergunta sobre Competência',
+    response: 'Resposta',
+    managerEvaluationTitle: 'Avaliação do Gestor',
+    commentsTitle: 'Comentários',
+    employeeObservations: 'Observações do Colaborador',
+    managerComments: 'Comentários do Gestor',
+    finalEmployeeComment: 'Comentário Final do Colaborador',
+    chartsTitle: 'Gráficos de Avaliação',
+    developmentPlanTitle: 'Plano de Desenvolvimento Individual (PDI)',
+    developmentPlanIntro: 'Ações e recomendações para o desenvolvimento do colaborador:',
+    currentGrade: 'Nota Atual',
+    recommendation: 'Recomendação',
+    recommendationText: 'Detalhes da recomendação...',
+    page: 'Página',
+    of: 'de',
+    confidential: 'Confidencial'
   },
   userEditor: {
     newUser: 'Novo Usuário',
@@ -1639,7 +1680,7 @@ export default {
       noHistory: 'Nenhum histórico encontrado',
       permissions: 'Permissões',
       modules: 'Módulos',
-      features: 'Funcionalidades',
+      features: 'Funcionalidades'
     },
     documents: {
       section: 'Documentos',
@@ -1655,7 +1696,6 @@ export default {
       docTitle: 'Título',
       category: 'Categoria',
       language: 'Idioma',
-
       file: 'Arquivo',
       filePlaceholder: 'Caminho do arquivo ou URL',
       select: 'Selecionar',
@@ -1683,10 +1723,45 @@ export default {
       replaceFile: 'Substituir arquivo',
       enabled: 'Habilitado',
       disabled: 'Desabilitado',
-
       createdAt: 'Criado em',
-      updatedAt: 'Atualizado em',
+      updatedAt: 'Atualizado em'
     },
+    permissions: 'Permissões',
+    adminOnly: 'Apenas Administradores',
+    managerOnly: 'Apenas Gerentes',
+    allowedRoles: 'Funções Permitidas',
+    allowedUsers: 'Usuários Permitidos',
+    addUser: 'Adicionar Usuário',
+    searchUsers: 'Buscar usuários...',
+    noUsersFound: 'Nenhum usuário encontrado',
+    roleUser: 'Colaborador',
+    roleManager: 'Gestor',
+    roleAdmin: 'Administrador',
+    newsTitle: 'Título da Notícia',
+    newsDescription: 'Descrição da Notícia',
+    newsContent: 'Conteúdo da Notícia',
+    category: 'Categoria',
+    categoryGeneral: 'Geral',
+    categoryAnnouncement: 'Comunicado',
+    categoryEvent: 'Evento',
+    categoryUpdate: 'Atualização',
+    author: 'Autor',
+    date: 'Data',
+    featured: 'Destaque',
+    enabled: 'Ativo',
+    thumbnail: 'Miniatura',
+    thumbnailDescription: 'Descrição da miniatura',
+    coverImage: 'Imagem de Capa',
+    coverImageDescription: 'Descrição da imagem de capa',
+    attachment: 'Anexo',
+    attachmentDescription: 'Descrição do anexo',
+    chooseImage: 'Escolher Imagem',
+    chooseFile: 'Escolher Arquivo',
+    tags: 'Tags',
+    addTag: 'Adicionar Tag',
+    editNews: 'Editar Notícia',
+    addNews: 'Adicionar Notícia',
+    fieldRequired: 'Campo obrigatório'
   },
   contact: {
     title: 'Contato',
@@ -1702,7 +1777,7 @@ export default {
     needHelp: 'Precisa de ajuda?',
     helpMessage: 'Se você tiver dúvidas sobre o formulário de reembolso ou precisar de assistência, entre em contato conosco:',
     businessHours: 'Horário de Atendimento',
-    businessHoursTime: 'Segunda a Sexta, das 9h às 18h',
+    businessHoursTime: 'Segunda a Sexta, das 9h às 18h'
   },
   errors: {
     notFound: 'Página não encontrada',
@@ -1719,7 +1794,7 @@ export default {
     pageNotFoundMessage: 'A página que você está procurando não existe ou foi movida.',
     errorOccurred: 'Ocorreu um erro',
     somethingWentWrong: 'Algo deu errado. Por favor, tente novamente.',
-    errorCode: 'Código de erro',
+    errorCode: 'Código de erro'
   },
   common: {
     time: {
@@ -1728,7 +1803,6 @@ export default {
       week: 'semana',
       weeks: 'semanas'
     },
-
     loading: 'Carregando...',
     error: 'Ocorreu um erro',
     success: 'Operação realizada com sucesso',
@@ -1805,7 +1879,6 @@ export default {
     chooseLanguage: 'Escolha seu idioma',
     portuguese: 'Português',
     english: 'Inglês',
-
     rights: 'os direitos',
     reserved: 'reservados',
     developedBy: 'Desenvolvido por',
@@ -1832,7 +1905,6 @@ export default {
     administrator: 'Administrador',
     manager: 'Gerente',
     user: 'Usuário',
-    // Missing keys from English
     allItems: 'Todos',
     text: 'Texto',
     register: 'Registrar',
@@ -1845,8 +1917,6 @@ export default {
     users: 'Usuários',
     voltar: 'Voltar',
     saving: 'Salvando...',
-
-    // Menu principal
     dashboard: 'Painel',
     reimbursement: 'Reembolso',
     evaluation: 'Avaliação',
@@ -1866,6 +1936,49 @@ export default {
     page_short: 'Pág',
     add: 'Adicionar',
     creating: 'Criando...',
+    nenhumResultadoEncontradoPara: 'Nenhum resultado encontrado para',
+    createPost: 'Criar Publicação',
+    choosePostContent: 'Escolha o tipo de conteúdo que deseja compartilhar',
+    postType: {
+      media: 'Foto/Vídeo',
+      mediaDescription: 'Compartilhe fotos ou vídeos',
+      event: 'Evento',
+      eventDescription: 'Crie um evento no calendário',
+      highlight: 'Destaque',
+      highlightDescription: 'Destaque fixo com foto ou vídeo',
+      text: 'Texto',
+      textDescription: 'Publicação apenas de texto'
+    },
+    highlight: {
+      createHighlight: 'Criar Destaque',
+      clickToSelectMedia: 'Clique para selecionar uma imagem ou vídeo',
+      formatRecommended: 'Formato vertical (9:16) recomendado',
+      highlightTitle: 'Título do Destaque',
+      highlightTitlePlaceholder: 'Ex: Notícias, Eventos, Conquistas...',
+      permanentHighlight: 'Destaque Permanente (não expira)',
+      expiresIn: 'Expira em (horas)',
+      hoursDefault: '24 horas (padrão)',
+      tagsOptional: 'Tags (opcional)',
+      addTagsPlaceholder: 'Adicionar tags...',
+      create: 'Criar Destaque',
+      creating: 'Criando...',
+      howHighlightsWork: 'Como Funcionam os Destaques?',
+      howHighlightsWorkItems: {
+        item1: 'Aparecem no topo do feed em círculos coloridos',
+        item2: 'Podem ser permanentes ou temporários',
+        item3: 'Os usuários podem ver quantas vezes foram visualizados',
+        item4: 'O formato vertical é recomendado (como os Stories do Instagram)'
+      },
+      errorFillingFields: 'Por favor, preencha todos os campos obrigatórios',
+      errorUploadingMedia: 'Erro ao fazer upload da mídia',
+      successCreated: 'Destaque criado com sucesso!',
+      errorCreating: 'Erro ao criar destaque'
+    },
+    crieUmEventoNoCalendario: 'Crie um evento no calendário',
+    publicacaoApenasComTexto: 'Publicação apenas de texto',
+    submittedOn: 'Enviado em',
+    review: 'Revisão',
+    meuRH: 'Meu RH'
   },
   payroll: {
     title: 'Folha de Pagamento',
@@ -1889,19 +2002,17 @@ export default {
     totalMonthly: 'Total Mensal',
     employees: 'Funcionários',
     companies: 'Empresas',
-    activeSheets: 'Folhas Ativas',
+    activeSheets: 'Folhas Ativas'
   },
   debug: {
-    noCodesFound: 'Nenhum código ativo encontrado.',
+    noCodesFound: 'Nenhum código ativo encontrado.'
   },
   manager: {
     moduleTitle: 'Módulo Gerencial',
     moduleDescription: 'Ferramentas e recursos especiais para gerentes',
     welcome: 'Bem-vindo ao Módulo Gerencial',
-    moduleIntro: 'Este módulo fornece ferramentas e recursos especiais projetados especificamente para gerentes. Aqui você pode acessar relatórios avançados, ferramentas de gestão de equipe e outros recursos para ajudá-lo a gerenciar sua equipe de forma eficaz.',
+    moduleIntro: 'Este módulo fornece ferramentas e recursos especiais projetados especificamente para gerentes. Aqui você pode acessar relatórios avançados, ferramentas de gestão de equipe e outros recursos para ajudá-lo a gerenciar sua equipe de forma eficaz.'
   },
-
-  // Sistema de Notícias
   newsSystem: {
     highlight: {
       createHighlight: 'Criar Destaque',
@@ -2019,7 +2130,6 @@ export default {
       justNow: 'Agora há pouco',
       postUpdated: 'Post atualizado'
     },
-
     eventCreator: {
       createEvent: 'Criar Evento',
       title: 'Título do Evento',
@@ -2045,7 +2155,6 @@ export default {
       errorCalendar: 'Erro ao criar evento no calendário'
     }
   },
-
   richTextEditor: {
     bold: 'Negrito (Ctrl+B)',
     italic: 'Itálico (Ctrl+I)',
@@ -2067,8 +2176,6 @@ export default {
     tips: 'Dicas:',
     tipsDescription: 'Use os botões da barra de ferramentas ou atalhos do teclado:'
   },
-
-  // Sistema ACL
   acl: {
     title: 'Gerenciamento ACL',
     subtitle: 'Controle de acesso hierárquico avançado',
@@ -2111,8 +2218,6 @@ export default {
       manage: 'Gerenciar'
     }
   },
-
-  // Sistema de Notificações
   notifications: {
     title: 'Notificações',
     markAsRead: 'Marcar como lida',
@@ -2201,7 +2306,6 @@ export default {
         message: 'Sua OC {poNumber} foi rejeitada por {approverName}.'
       }
     },
-
     system: {
       welcome: {
         title: '👋 Bem-vindo ao Sistema',
@@ -2238,8 +2342,6 @@ export default {
     loading: 'Carregando configurações...',
     loaded: 'Carregado'
   },
-
-  // Sistema de Lembretes
   reminders: {
     title: 'Lembretes',
     create: 'Criar Lembrete',
@@ -2256,8 +2358,6 @@ export default {
     processing: 'Processando lembretes...',
     statistics: 'Estatísticas de Processamento'
   },
-
-  // API Mobile
   api_mobile: {
     titulo: 'API Mobile',
     descricao: 'Gerenciamento e monitoramento da API para aplicativos móveis',
@@ -2273,8 +2373,6 @@ export default {
     sem_permissao: 'Sem permissão para acessar a API Mobile',
     sem_permissao_desc: 'Você não tem permissão para visualizar ou gerenciar a API Mobile.'
   },
-
-  // Integração ERP
   integracao_erp: {
     titulo: 'Integração ERP',
     descricao: 'Conectores e sincronização com sistemas ERP externos',
@@ -2311,8 +2409,6 @@ export default {
     sem_permissao: 'Sem permissão para acessar a integração ERP',
     sem_permissao_desc: 'Você não tem permissão para visualizar ou gerenciar integrações ERP.'
   },
-
-  // Dashboard de BI
   dashboard_bi: {
     titulo: 'Dashboard de BI',
     descricao: 'Analytics avançados e visualizações interativas de dados',
@@ -2363,8 +2459,6 @@ export default {
     sem_permissao: 'Sem permissão para acessar o Dashboard de BI',
     sem_permissao_desc: 'Você não tem permissão para visualizar ou gerenciar dashboards de BI.'
   },
-
-  // Workflows Automatizados
   workflows: {
     titulo: 'Workflows Automatizados',
     descricao: 'Automatize processos empresariais com workflows inteligentes',
@@ -2455,8 +2549,6 @@ export default {
     sem_permissao: 'Sem permissão para acessar os workflows',
     sem_permissao_desc: 'Você não tem permissão para visualizar ou gerenciar workflows.'
   },
-
-  // Chat Interno em Tempo Real
   chat: {
     titulo: 'Chat Interno',
     descricao: 'Comunicação em tempo real com canais e mensagens diretas',
@@ -3348,7 +3440,6 @@ export default {
     themeenforcerAplicandoConfiguracoesDeTemaComPriori: 'ThemeEnforcer: Aplicando configurações de tema com prioridade máxima',
     buscando: 'Buscando...',
     nenhumResultadoEncontradoPara: 'Nenhum resultado encontrado para',
-
     tenteUsarTermosDiferentesOuRemoverFiltros: 'Tente usar termos diferentes ou remover filtros',
     resultado: 'resultado',
     encontrado: 'encontrado',
@@ -3363,10 +3454,8 @@ export default {
     procedimentos: 'Procedimentos',
     cursos: 'Cursos',
     digitePeloMenos2CaracteresBuscar: 'Digite pelo menos 2 caracteres para buscar',
-    useCtrlKAbrirBuscaRapidamente: 'Use Ctrl+K para abrir a busca rapidamente',
+    useCtrlKAbrirBuscaRapidamente: 'Use Ctrl+K para abrir a busca rapidamente'
   },
-
-  // Templates de Email
   emailTemplates: {
     subjects: {
       accessApproved: 'Acesso Aprovado - ABZ Group',
@@ -3463,8 +3552,6 @@ export default {
       footer: 'Esta é uma medida de segurança para proteger sua conta.'
     }
   },
-
-  // WKRadar / Guacamole Integration
   wkradar: {
     title: 'WKRadar',
     description: 'Acesso ao sistema WKRadar',
@@ -3489,10 +3576,8 @@ export default {
     cardNotCreated: 'Card WKRadar não está no Dashboard',
     cardActiveDesc: 'O card está visível para usuários com permissão.',
     cardNotCreatedDesc: 'Clique no botão para adicionar o card WKRadar ao dashboard.',
-    createCard: 'Criar Card',
+    createCard: 'Criar Card'
   },
-
-  // Poliweb Integration (Novo + Antigo)
   poliweb: {
     title: 'Poliweb',
     description: 'Clínica ocupacional e gestão de ASO',
@@ -3519,22 +3604,19 @@ export default {
     credentialsNotConfigured: 'Credenciais não configuradas',
     tabs: {
       novo: 'Novo',
-      antigo: 'Antigo',
+      antigo: 'Antigo'
     },
     loadingNovo: 'Realizando login no Novo Poliweb...',
     loadingAntigo: 'Realizando login no Poliweb Antigo...',
     erroNovo: 'Falha ao realizar login no Novo Poliweb.',
-    erroAntigo: 'Falha ao realizar login no Poliweb Antigo.',
+    erroAntigo: 'Falha ao realizar login no Poliweb Antigo.'
   },
-
-
   categories: {
     core: 'Geral',
     hr: 'Meu RH',
     content: 'Conteúdo e Conhecimento',
     department: 'Departamento'
   },
-
   modules: {
     dashboard: 'Dashboard',
     noticias: 'Notícias',
@@ -3574,9 +3656,6 @@ export default {
     metrics: 'Métricas Gerais',
     engagement: 'Engajamento (Notícias)'
   },
-
-
-
   changelog: {
     title: 'Novidades',
     historyTitle: 'Histórico de Versões',
@@ -4236,4 +4315,3 @@ export default {
     }
   }
 };
-
