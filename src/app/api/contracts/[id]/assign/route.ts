@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { authenticateUser, checkPermissions } from '@/lib/api-auth';
+import { normalizeCpf } from '@/lib/utils/identity';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +27,8 @@ export async function POST(
             colaborador_id, 
             external_signer_name,
             external_signer_email,
+            external_signer_tax_id,
+            external_signer_birth_date,
             pagina_assinatura, 
             posicao_x, 
             posicao_y, 
@@ -32,6 +36,7 @@ export async function POST(
             altura_assinatura, 
             tipo 
         } = body;
+
 
         const isCC = tipo === 'copia';
 
@@ -68,7 +73,7 @@ export async function POST(
         if (colaborador_id) {
             const { data: collaborator } = await supabaseAdmin
                 .from('users_unified')
-                .select('id, first_name, last_name, email')
+                .select('id, first_name, last_name, email, tax_id, birth_date')
                 .eq('id', colaborador_id)
                 .single();
 
@@ -76,6 +81,10 @@ export async function POST(
                 return NextResponse.json({ error: 'Colaborador não encontrado' }, { status: 404 });
             }
         }
+
+        // Normalize CPF if provided for external signer
+        const normalizedTaxId = external_signer_tax_id ? normalizeCpf(external_signer_tax_id) : null;
+
 
         // Insert assignment with envelope link
         const { data: solicitacao, error: insertError } = await supabaseAdmin
@@ -85,7 +94,9 @@ export async function POST(
                 envelope_id: envelopeId,
                 colaborador_id: colaborador_id || null,
                 external_signer_name: external_signer_name || null,
-                external_signer_email: external_signer_email || null,
+                external_signer_email: external_signer_email ? external_signer_email.toLowerCase().trim() : null,
+                external_signer_tax_id: normalizedTaxId || null,
+                external_signer_birth_date: external_signer_birth_date || null,
                 pagina_assinatura: isCC ? null : (pagina_assinatura || 1),
                 posicao_x: isCC ? null : posicao_x,
                 posicao_y: isCC ? null : posicao_y,

@@ -12,6 +12,8 @@ import SignaturePositionOverlay, { getSignerColor } from '@/components/contratos
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { getToken } from '@/lib/tokenStorage';
 import { useI18n } from '@/contexts/I18nContext';
+import { normalizeCpf, formatCpf, isValidCpf, namesMatch, birthDatesMatch } from '@/lib/utils/identity';
+
 
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -46,10 +48,14 @@ export default function AssinaturaExternaPage() {
     
     // Auth & Legal steps
     const [step, setStep] = useState<'AUTH' | 'REVIEW' | 'SIGNED'>('AUTH');
-    const [authData, setAuthData] = useState({ nome: '', cpf: '', email: '' });
+    const [authData, setAuthData] = useState({ nome: '', cpf: '', email: '', dataNascimento: '' });
+    const [fieldErrors, setFieldErrors] = useState<{
+        nome?: string; cpf?: string; email?: string; dataNascimento?: string;
+    }>({});
     const [legalAccepted, setLegalAccepted] = useState(false);
     const [isSigning, setIsSigning] = useState(false);
     const [filledValues, setFilledValues] = useState<{ [solicitacaoId: string]: string }>({});
+
 
     const handleConfirmLang = () => {
         sessionStorage.setItem('signature_lang_chosen', 'true');
@@ -142,7 +148,8 @@ export default function AssinaturaExternaPage() {
                             const initialAuthData = {
                                 nome: activeItem.target_name || '',
                                 email: activeItem.target_email || '',
-                                cpf: activeItem.target_tax_id || ''
+                                cpf: activeItem.target_tax_id ? formatCpf(activeItem.target_tax_id) : '',
+                                dataNascimento: activeItem.target_birth_date || ''
                             };
                             setAuthData(initialAuthData);
 
@@ -155,6 +162,7 @@ export default function AssinaturaExternaPage() {
                                 });
                             }
                         }
+
                     }
                 } else {
                     toast.error(data.error || t('assinatura.externa.erro_token_invalido', 'Token inválido ou expirado'));
@@ -196,8 +204,10 @@ export default function AssinaturaExternaPage() {
                 setAuthData({
                     nome: name || 'Usuário Autenticado',
                     email: email,
-                    cpf: taxId || 'Não Informado'
+                    cpf: taxId ? formatCpf(taxId) : '',
+                    dataNascimento: (authProfile as any)?.birth_date || ''
                 });
+
                 setStep('REVIEW');
                 toast.success(t('assinatura.externa.sucesso_autenticado', 'Bem-vindo de volta! Carregamos seus dados do portal.'), {
                     icon: '👤',
@@ -224,25 +234,69 @@ export default function AssinaturaExternaPage() {
 
     const handleAuthSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!authData.nome || !authData.cpf || !authData.email) {
+        const errors: { nome?: string; cpf?: string; email?: string; dataNascimento?: string } = {};
+
+        // Layer 1: required field presence
+        if (!authData.nome.trim()) errors.nome = t('assinatura.externa.erro_nome_obrigatorio', 'Nome é obrigatório');
+        if (!authData.cpf.trim()) errors.cpf = t('assinatura.externa.erro_cpf_obrigatorio', 'CPF é obrigatório');
+        if (!authData.email.trim()) errors.email = t('assinatura.externa.erro_email_obrigatorio', 'E-mail é obrigatório');
+
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
             toast.error(t('assinatura.externa.erro_preencher_campos', 'Preencha todos os campos para continuar'));
             return;
         }
 
-        // Check against the expected target email to recognize/verify the user
-        const expectedEmail = currentItem?.target_email?.toLowerCase()?.trim();
-        const typedEmail = authData.email.toLowerCase().trim();
-
-        if (expectedEmail && typedEmail !== expectedEmail) {
-            toast.error(t('assinatura.externa.erro_email_incorreto', 'Identidade não reconhecida: O e-mail informado não é o destinatário oficial deste documento.'), {
-                icon: '🔒',
-                duration: 5000
-            });
+        // Layer 2: CPF format validity
+        const normalizedCpf = normalizeCpf(authData.cpf);
+        if (!isValidCpf(normalizedCpf)) {
+            setFieldErrors({ cpf: t('assinatura.externa.erro_cpf_invalido', 'CPF inválido — verifique o formato (000.000.000-00)') });
             return;
         }
 
+        const expectedEmail = currentItem?.target_email?.toLowerCase()?.trim();
+        const typedEmail = authData.email.toLowerCase().trim();
+        const expectedTaxId = currentItem?.target_tax_id;
+        const expectedBirthDate = currentItem?.target_birth_date;
+        const expectedName = currentItem?.target_name;
+
+        // Layer 3: email match
+        if (expectedEmail && typedEmail !== expectedEmail) {
+            setFieldErrors({ email: t('assinatura.externa.erro_email_incorreto', 'E-mail não reconhecido para este documento') });
+            toast.error(t('assinatura.externa.erro_email_incorreto', 'E-mail não reconhecido para este documento'), { icon: '🔒', duration: 5000 });
+            return;
+        }
+
+        // Layer 4: CPF match (only if target has a tax_id registered)
+        if (expectedTaxId) {
+            const normalizedExpected = normalizeCpf(expectedTaxId);
+            if (normalizedCpf !== normalizedExpected) {
+                setFieldErrors({ cpf: t('assinatura.externa.erro_cpf_nao_confere', 'CPF não confere com o cadastro deste signatário') });
+                toast.error(t('assinatura.externa.erro_cpf_nao_confere', 'CPF não confere com o cadastro deste signatário'), { icon: '🔒', duration: 5000 });
+                return;
+            }
+        }
+
+        // Layer 5: birth date match (only if registered)
+        if (expectedBirthDate && authData.dataNascimento) {
+            if (!birthDatesMatch(authData.dataNascimento, expectedBirthDate)) {
+                setFieldErrors({ dataNascimento: t('assinatura.externa.erro_nascimento_nao_confere', 'Data de nascimento não confere') });
+                toast.error(t('assinatura.externa.erro_nascimento_nao_confere', 'Data de nascimento não confere'), { icon: '🔒', duration: 5000 });
+                return;
+            }
+        }
+
+        // Layer 6: fuzzy name match
+        if (expectedName && !namesMatch(authData.nome, expectedName)) {
+            setFieldErrors({ nome: t('assinatura.externa.erro_nome_nao_confere', 'Nome não corresponde ao destinatário deste documento') });
+            toast.error(t('assinatura.externa.erro_nome_nao_confere', 'Nome não corresponde ao destinatário deste documento'), { icon: '🔒', duration: 5000 });
+            return;
+        }
+
+        setFieldErrors({});
         setStep('REVIEW');
     };
+
 
     const handleSign = async () => {
         if (!legalAccepted || !currentItem) {
@@ -286,11 +340,17 @@ export default function AssinaturaExternaPage() {
                 body: JSON.stringify({
                     solicitacao_id: currentItem.id,
                     signature_base64: signatureBase64,
-                    signer_data: authData,
+                    signer_data: {
+                        nome: authData.nome,
+                        email: authData.email,
+                        cpf: normalizeCpf(authData.cpf),
+                        data_nascimento: authData.dataNascimento || null,
+                    },
                     sign_method: 'externo_token',
                     field_values: filledValues,
                 }),
             });
+
 
             const data = await res.json();
 
@@ -372,6 +432,17 @@ export default function AssinaturaExternaPage() {
     const totalDocs = queue.length;
     const completedCount = queue.filter(q => q.status === 'SIGNED').length;
     const pendingCount = totalDocs - completedCount;
+
+    // Calculate pending text/checkbox fields for the current document that are still empty
+    const currentDocId = currentItem?.documento?.id;
+    const pendingTextFields = step === 'REVIEW' ? queue.filter((q: any) =>
+        q.documento?.id === currentDocId &&
+        q.status === 'PENDING' &&
+        (q.tipo === 'texto' || q.tipo === 'checkbox') &&
+        !filledValues[q.id]?.trim()
+    ) : [];
+    const pendingPages = [...new Set(pendingTextFields.map((q: any) => q.pagina_assinatura))].sort((a, b) => a - b);
+
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -667,33 +738,55 @@ export default function AssinaturaExternaPage() {
                                     <input 
                                         type="text" 
                                         required
-                                        className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm text-gray-900"
+                                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-gray-900 ${
+                                            fieldErrors.nome ? 'border-red-400 bg-red-50 focus:border-red-400' : 'border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500'
+                                        }`}
                                         placeholder="Ex: João da Silva"
                                         value={authData.nome}
-                                        onChange={e => setAuthData({...authData, nome: e.target.value})}
+                                        onChange={e => { setAuthData({...authData, nome: e.target.value}); setFieldErrors(p => ({...p, nome: undefined})); }}
                                     />
+                                    {fieldErrors.nome && <p className="text-xs text-red-600 mt-1 font-medium">{fieldErrors.nome}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">{t('assinatura.externa.cpf_label', 'CPF')}</label>
                                     <input 
                                         type="text" 
                                         required
-                                        className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm text-gray-900"
+                                        maxLength={14}
+                                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-gray-900 ${
+                                            fieldErrors.cpf ? 'border-red-400 bg-red-50 focus:border-red-400' : 'border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500'
+                                        }`}
                                         placeholder="000.000.000-00"
                                         value={authData.cpf}
-                                        onChange={e => setAuthData({...authData, cpf: e.target.value})}
+                                        onChange={e => { setAuthData({...authData, cpf: formatCpf(e.target.value)}); setFieldErrors(p => ({...p, cpf: undefined})); }}
                                     />
+                                    {fieldErrors.cpf && <p className="text-xs text-red-600 mt-1 font-medium">{fieldErrors.cpf}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">{t('assinatura.externa.email_label', 'E-mail')}</label>
                                     <input 
                                         type="email" 
                                         required
-                                        className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm text-gray-900"
+                                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-gray-900 ${
+                                            fieldErrors.email ? 'border-red-400 bg-red-50 focus:border-red-400' : 'border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500'
+                                        }`}
                                         placeholder="joao@exemplo.com"
                                         value={authData.email}
-                                        onChange={e => setAuthData({...authData, email: e.target.value})}
+                                        onChange={e => { setAuthData({...authData, email: e.target.value}); setFieldErrors(p => ({...p, email: undefined})); }}
                                     />
+                                    {fieldErrors.email && <p className="text-xs text-red-600 mt-1 font-medium">{fieldErrors.email}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">{t('assinatura.externa.nascimento_label', 'Data de Nascimento')}</label>
+                                    <input
+                                        type="date"
+                                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-gray-900 ${
+                                            fieldErrors.dataNascimento ? 'border-red-400 bg-red-50 focus:border-red-400' : 'border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500'
+                                        }`}
+                                        value={authData.dataNascimento}
+                                        onChange={e => { setAuthData({...authData, dataNascimento: e.target.value}); setFieldErrors(p => ({...p, dataNascimento: undefined})); }}
+                                    />
+                                    {fieldErrors.dataNascimento && <p className="text-xs text-red-600 mt-1 font-medium">{fieldErrors.dataNascimento}</p>}
                                 </div>
                                 
                                 <button 
@@ -704,6 +797,7 @@ export default function AssinaturaExternaPage() {
                                     <FiArrowRight className="w-4 h-4" />
                                 </button>
                             </form>
+
                             
                             <div className="flex items-start gap-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
                                 <FiShield className="text-blue-600 mt-0.5 shrink-0 w-4 h-4" />
@@ -767,15 +861,44 @@ export default function AssinaturaExternaPage() {
                                     </label>
                                 </div>
                                 
+                                {/* Pending fields warning banner */}
+                                {pendingTextFields.length > 0 && (
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed">
+                                        <div className="flex items-start gap-2">
+                                            <FiAlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="font-bold mb-1">
+                                                    {t('assinatura.externa.campos_pendentes', { count: pendingTextFields.length }, `Preencha ${pendingTextFields.length} campo(s) obrigatório(s) antes de assinar`)}
+                                                </p>
+                                                <p className="text-amber-700">
+                                                    {t('assinatura.externa.paginas_pendentes', 'Páginas com campos pendentes:')}{' '}
+                                                    {pendingPages.map((pg, i) => (
+                                                        <button
+                                                            key={pg}
+                                                            type="button"
+                                                            onClick={() => setCurrentPage(pg)}
+                                                            className="font-bold underline underline-offset-2 hover:text-amber-900 transition-colors"
+                                                        >
+                                                            {i > 0 ? ', ' : ''}{t('assinatura.externa.pagina_label', 'pág.')} {pg}
+                                                        </button>
+                                                    ))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <button 
                                     onClick={handleSign}
-                                    disabled={!legalAccepted || isSigning}
+                                    disabled={!legalAccepted || isSigning || pendingTextFields.length > 0}
+                                    title={pendingTextFields.length > 0 ? t('assinatura.externa.campos_pendentes_tooltip', 'Preencha todos os campos antes de assinar') : ''}
                                     className={`w-full flex items-center justify-center gap-3 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] ${
-                                        !legalAccepted || isSigning 
+                                        !legalAccepted || isSigning || pendingTextFields.length > 0
                                         ? 'bg-gray-300 shadow-none cursor-not-allowed' 
                                         : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                                     }`}
                                 >
+
                                     {isSigning ? (
                                         <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
                                     ) : (
