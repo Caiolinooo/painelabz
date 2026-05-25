@@ -133,7 +133,7 @@
     "livekit-client": "^2.19.0",
     "livekit-server-sdk": "^2.15.3",
     "lucide-react": "^0.363.0",
-    "next": "14.2.33",
+    "next": "16.2.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
     "node-forge": "^1.4.0",
