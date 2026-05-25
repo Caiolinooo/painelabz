@@ -147,6 +147,24 @@ class MioClient {
         }
     }
 
+    public async post<T>(url: string, data: any, config?: AxiosRequestConfig): Promise<T | null> {
+        return this.request<T>({
+            method: 'POST',
+            url,
+            data,
+            ...config
+        });
+    }
+
+    public async put<T>(url: string, data: any, config?: AxiosRequestConfig): Promise<T | null> {
+        return this.request<T>({
+            method: 'PUT',
+            url,
+            data,
+            ...config
+        });
+    }
+
     // --- Endpoints de Integração ---
 
     // 1. Integrantes
@@ -156,7 +174,13 @@ class MioClient {
             url: '/int-integrante-get',
             data: {}
         });
-        const list = this.normalizeResponse<any>(result, 'integrante');
+        let list = this.normalizeResponse<any>(result, 'integrante');
+
+        // A API pode retornar em estrutura aninhada
+        if (list.length === 0 && Array.isArray(result?.integrante)) {
+            list = result.integrante;
+        }
+
         return list.map(item => ({
             ...item,
             cpf: item.cpf || item.cpf_numero || '',
@@ -234,28 +258,61 @@ class MioClient {
 
     // 3. Treinamentos (SMS)
     async getTreinamentos(cpfOrAll: string): Promise<MIOTreinamento[]> {
-        // A doc diz /sms-treinamento-registro-get/<cpf ou all>
-        // Assumindo GET
         const result = await this.request<any>({
             method: 'GET',
             url: `/sms-treinamento-registro-get/${cpfOrAll}`
         });
-        return this.normalizeResponse<MIOTreinamento>(result);
+        const list = this.normalizeResponse<any>(result, 'fornecedor');
+        return list.map(item => ({
+            id: item.ID || item.id || '',
+            cpf: item.CPF || item.cpf || '',
+            nome: item.Nome || item.nome || '',
+            matricula: item.Matrícula || item.matricula,
+            centro_custo: item['Centro de Custo'] || item.centro_custo,
+            uo_plataforma: item['UO/Plat.'] || item.uo_plataforma,
+            funcao: item.Função || item.funcao,
+            id_treinamento: item['ID Treinamento'] || item.id_treinamento,
+            codigo_treinamento: item['Código Treinamento'] || item.codigo_treinamento,
+            codigo_treinamento_externo: item['Código Treinamento Externo'] || item.codigo_treinamento_externo,
+            nome_curso: item.Descrição || item.nome_curso || item.descricao || '',
+            descricao: item.Descrição || item.descricao,
+            area: item.Área || item.area,
+            local: item.Local || item.local,
+            instituicao: item['Local de Realização'] || item.instituicao,
+            data_realizacao: item['Concluído Em'] || item.concluido_em || item.data_realizacao || '',
+            data_validade: item['Vencimento Em'] || item.vencimento_em || item.data_validade,
+            status: item.Status || item.status || 'n_a',
+            carga_horaria: item['Carga Horária'] ? Math.round(Number(item['Carga Horária'])) : item.carga_horaria,
+            validade_dias: item['Validade (Dias)'] ? Number(item['Validade (Dias)']) : item.validade_dias,
+            bloqueio_embarque: item['Bloqueio Embarque'] || item.bloqueio_embarque,
+            treinamento_ativo: item['Treinamento Ativo'] || item.treinamento_ativo,
+            cadastrado_em: item['Cadastrado Em'] || item.cadastrado_em,
+            cadastrado_por: item['Cadastrado Por'] || item.cadastrado_por,
+            agendamento_inicio: item['Agendamento Início'] || item.agendamento_inicio,
+            agendamento_fim: item['Agendamento Fim'] || item.agendamento_fim,
+            concluido_em: item['Concluído Em'] || item.concluido_em,
+            vencimento_em: item['Vencimento Em'] || item.vencimento_em,
+            local_realizacao: item['Local de Realização'] || item.local_realizacao,
+            numero_documento: item['Nº Documento'] || item.numero_documento,
+            tipo_documento: item['Tipo de Documento'] || item.tipo_documento,
+            observacoes: item.Observações || item.observacoes,
+            contem_anexo: item['Contém Anexo?'] || item.contem_anexo,
+        }));
     }
 
-    // 4. ASO (SMS) - O endpoint documentado é POST /sms-aso (Criação).
-    // Se não houver GET para ASO, não conseguiremos listar. 
-    // Vou deixar o método mas retornar vazio se falhar, ou tentar um padrão.
+    // 4. ASO (SMS) - Endpoint é apenas para criação, não há GET para listar
+    // Para listar ASOs, usar o endpoint de documentos do colaborador
     async getASOs(cpf?: string): Promise<MIOASO[]> {
-        // Placeholder até descobrir o endpoint GET de ASO (não estava claro na lista)
+        // Sem endpoint de listagem disponível na API MIO
+        // ASOs devem ser sincronizados via upload manual ou PoliWeb
         return [];
     }
 
     // 5. Embarques (LGP)
     async getEmbarques(cpf?: string): Promise<MIOEmbarque[]> {
         const agora = new Date();
-        const inicio = new Date(agora.getFullYear() - 1, 0, 1).toISOString().split('T')[0]; // Ano passado
-        const fim = new Date(agora.getFullYear() + 1, 11, 31).toISOString().split('T')[0]; // Ano que vem
+        const inicio = new Date(agora.getFullYear() - 1, 0, 1).toISOString().split('T')[0];
+        const fim = new Date(agora.getFullYear() + 1, 11, 31).toISOString().split('T')[0];
 
         const requestData: any = {
             tipo: 'embarques',
@@ -270,7 +327,6 @@ class MioClient {
             data: requestData
         });
 
-        // lgp-reports uses a 'history' key and Portuguese capitalized keys
         const historyData = result?.history || [];
         
         return historyData.map((raw: any, index: number) => {
@@ -281,12 +337,27 @@ class MioClient {
             const embarque: MIOEmbarque = {
                 id: raw['Matrícula'] || index.toString(),
                 cpf: raw['CPF'] || '',
+                nome: raw['Nome'] || '',
+                funcao_cargo: raw['Função/Cargo'] || '',
+                regime: raw['Regime'] || '',
                 data_embarque: raw['Embarque Real'] || raw['Prev. de Emb.'] || '',
                 data_desembarque_prevista: raw['Prev. Desemb.'] || raw['Prev. Desemb. RTPD'] || '',
                 data_desembarque_real: raw['Desembarque Real'] || '',
                 local_embarque: raw['Origem'] || '',
                 plataforma_unidade: raw['Destino'] || '',
-                status: status
+                destino: raw['Destino'] || '',
+                origem: raw['Origem'] || '',
+                status: status,
+                rtpe_status: raw['RTPE Status'] || '',
+                rtpd_status: raw['RTPD Status'] || '',
+                qtd_dias: raw['Qtd. de Dias'] ? Number(raw['Qtd. de Dias']) : undefined,
+                folga_inicio: raw['Folga Início'] || '',
+                folga_fim: raw['Folga Fim'] || '',
+                centro_custo_integrante: raw['Centro de Custo do Integrante'] || '',
+                centro_custo_rtpe: raw['Centro de Custo da RTPE'] || '',
+                nr_rtpe: raw['Nº RTPE'] || '',
+                nr_rtpd: raw['Nº RTPD'] || '',
+                nr_projeto: raw['Nº do Projeto'] || '',
             };
             return embarque;
         });
@@ -312,6 +383,65 @@ class MioClient {
         });
 
         return result?.history || [];
+    }
+
+    // 5c. Get all trainings (full sync)
+    async getAllTreinamentos(): Promise<MIOTreinamento[]> {
+        return this.getTreinamentos('all');
+    }
+
+    // 5d. Get all embarkations for current year range
+    async getAllEmbarques(periodoInicio?: string, periodoFim?: string): Promise<MIOEmbarque[]> {
+        const agora = new Date();
+        const inicio = periodoInicio || new Date(agora.getFullYear() - 1, 0, 1).toISOString().split('T')[0];
+        const fim = periodoFim || new Date(agora.getFullYear() + 1, 11, 31).toISOString().split('T')[0];
+
+        const requestData: any = {
+            tipo: 'embarques',
+            periodo_inicio: inicio,
+            periodo_fim: fim
+        };
+        if (process.env.MIO_CNPJ) requestData.cnpj = process.env.MIO_CNPJ;
+
+        const result = await this.request<any>({
+            method: 'POST',
+            url: '/lgp-reports',
+            data: requestData
+        });
+
+        const historyData = result?.history || [];
+        
+        return historyData.map((raw: any, index: number) => {
+            let status: 'programado' | 'embarcado' | 'desembarcado' | 'cancelado' = 'programado';
+            if (raw['Desembarque Real']) status = 'desembarcado';
+            else if (raw['Embarque Real']) status = 'embarcado';
+
+            return {
+                id: raw['Matrícula'] || index.toString(),
+                cpf: raw['CPF'] || '',
+                nome: raw['Nome'] || '',
+                funcao_cargo: raw['Função/Cargo'] || '',
+                regime: raw['Regime'] || '',
+                data_embarque: raw['Embarque Real'] || raw['Prev. de Emb.'] || '',
+                data_desembarque_prevista: raw['Prev. Desemb.'] || raw['Prev. Desemb. RTPD'] || '',
+                data_desembarque_real: raw['Desembarque Real'] || '',
+                local_embarque: raw['Origem'] || '',
+                plataforma_unidade: raw['Destino'] || '',
+                destino: raw['Destino'] || '',
+                origem: raw['Origem'] || '',
+                status,
+                rtpe_status: raw['RTPE Status'] || '',
+                rtpd_status: raw['RTPD Status'] || '',
+                qtd_dias: raw['Qtd. de Dias'] ? Number(raw['Qtd. de Dias']) : undefined,
+                folga_inicio: raw['Folga Início'] || '',
+                folga_fim: raw['Folga Fim'] || '',
+                centro_custo_integrante: raw['Centro de Custo do Integrante'] || '',
+                centro_custo_rtpe: raw['Centro de Custo da RTPE'] || '',
+                nr_rtpe: raw['Nº RTPE'] || '',
+                nr_rtpd: raw['Nº RTPD'] || '',
+                nr_projeto: raw['Nº do Projeto'] || '',
+            } as MIOEmbarque;
+        });
     }
 
     // Testar conexão (para o Admin Panel)
