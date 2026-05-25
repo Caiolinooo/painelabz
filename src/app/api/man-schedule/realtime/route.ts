@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mioClient } from '@/lib/mio/client';
+import { supabaseAdmin } from '@/lib/supabase';
 
-export const revalidate = 60;
+export const revalidate = 10;
 
 interface RawLGPRecord {
     'Matrícula': string;
@@ -150,11 +150,24 @@ function detectRotationType(
 
 export async function GET(request: NextRequest) {
     try {
-        console.log('[ManSchedule] Buscando integrantes do MIO...');
-        const integrantes = await mioClient.getIntegrantes();
+        console.log('[ManSchedule] Buscando dados do cache MIO...');
 
-        console.log('[ManSchedule] Buscando dados LGP do MIO...');
-        const lgpRecords = await mioClient.getLGPReportsRaw();
+        const { data: cacheData, error: cacheError } = await supabaseAdmin
+            .from('mio_cache')
+            .select('tipo, dados')
+            .in('tipo', ['integrantes', 'lgp_reports']);
+
+        if (cacheError || !cacheData || cacheData.length < 2) {
+            return NextResponse.json({
+                success: false,
+                error: 'Cache MIO indisponível. Execute /api/mio/cache/atualizar primeiro.',
+            }, { status: 503 });
+        }
+
+        const integrantes = cacheData.find(c => c.tipo === 'integrantes')?.dados as any[] || [];
+        const lgpRecords = cacheData.find(c => c.tipo === 'lgp_reports')?.dados as any[] || [];
+
+        console.log(`[ManSchedule] Cache carregado: ${integrantes.length} integrantes, ${lgpRecords.length} registros LGP`);
 
         const schedules: ScheduleEntry[] = [];
 

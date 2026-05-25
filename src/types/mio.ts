@@ -75,14 +75,80 @@ export interface MIOIntegrante {
 
 export interface MIOTreinamento {
     id: string | number;
-    cpf: string; // Chave de vínculo
+    cpf: string;
+    nome: string;
+    matricula?: string;
+    centro_custo?: string;
+    uo_plataforma?: string;
+    funcao?: string;
+    id_treinamento?: string;
+    codigo_treinamento?: string;
+    codigo_treinamento_externo?: string;
     nome_curso: string;
+    descricao?: string;
+    area?: string;
+    local?: string;
     instituicao?: string;
     data_realizacao: string;
     data_validade?: string;
-    status: 'valido' | 'vencido' | 'a_vencer' | 'n_a';
+    status: 'valido' | 'vencido' | 'a_vencer' | 'n_a' | string;
     carga_horaria?: number;
-    anexo_url?: string; // URL do certificado
+    validade_dias?: number;
+    bloqueio_embarque?: string;
+    treinamento_ativo?: string;
+    cadastrado_em?: string;
+    cadastrado_por?: string;
+    agendamento_inicio?: string;
+    agendamento_fim?: string;
+    concluido_em?: string;
+    vencimento_em?: string;
+    local_realizacao?: string;
+    numero_documento?: string;
+    tipo_documento?: string;
+    observacoes?: string;
+    contem_anexo?: string;
+    anexo_url?: string;
+}
+
+export interface MIOASO {
+    id: string | number;
+    cpf: string;
+    tipo_exame: 'admissional' | 'periodico' | 'demissional' | 'retorno_trabalho' | 'mudanca_funcao';
+    data_realizacao: string;
+    data_validade: string;
+    resultado: 'apto' | 'inapto';
+    medico?: string;
+    crm?: string;
+    observacoes?: string;
+    status: 'valido' | 'vencido' | 'a_vencer';
+}
+
+export interface MIOEmbarque {
+    id: string | number;
+    cpf: string;
+    nome?: string;
+    funcao_cargo?: string;
+    regime?: string;
+    data_embarque: string;
+    data_desembarque_prevista?: string;
+    data_desembarque_real?: string;
+    local_embarque?: string;
+    plataforma_unidade?: string;
+    destino?: string;
+    origem?: string;
+    status: 'programado' | 'embarcado' | 'desembarcado' | 'cancelado';
+    voo_ida?: string;
+    voo_volta?: string;
+    rtpe_status?: string;
+    rtpd_status?: string;
+    qtd_dias?: number;
+    folga_inicio?: string;
+    folga_fim?: string;
+    centro_custo_integrante?: string;
+    centro_custo_rtpe?: string;
+    nr_rtpe?: string;
+    nr_rtpd?: string;
+    nr_projeto?: string;
 }
 
 export interface MIOASO {
