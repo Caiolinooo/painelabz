@@ -61,6 +61,21 @@ export interface PermissionFeatures {
   'lista-presenca.create'?: boolean;
   'lista-presenca.manage'?: boolean;
   'lista-presenca.admin'?: boolean;
+  // Gestão de Tripulantes
+  'gestao-tripulantes.view'?: boolean;
+  'gestao-tripulantes.manage'?: boolean;
+  'gestao-tripulantes.admin'?: boolean;
+  'gestao-tripulantes.documents.edit'?: boolean;
+  'gestao-tripulantes.documents.ocr'?: boolean;
+  'gestao-tripulantes.back.suggest'?: boolean;
+  'gestao-tripulantes.poliweb.scrape'?: boolean;
+  'gestao-tripulantes.notifications.manage'?: boolean;
+  // E-Social
+  'esocial.view'?: boolean;
+  'esocial.prepare'?: boolean;
+  'esocial.review'?: boolean;
+  'esocial.send'?: boolean;
+  'esocial.admin'?: boolean;
   [key: string]: boolean | undefined;
 }
 
@@ -311,6 +326,23 @@ export const PERMISSIONS = {
     CREATE: 'lista-presenca.create',
     MANAGE: 'lista-presenca.manage',
     ADMIN: 'lista-presenca.admin'
+  },
+  GESTAO_TRIPULANTES: {
+    VIEW: 'gestao-tripulantes.view',
+    MANAGE: 'gestao-tripulantes.manage',
+    ADMIN: 'gestao-tripulantes.admin',
+    DOCUMENTS_EDIT: 'gestao-tripulantes.documents.edit',
+    DOCUMENTS_OCR: 'gestao-tripulantes.documents.ocr',
+    BACK_SUGGEST: 'gestao-tripulantes.back.suggest',
+    POLIWEB_SCRAPE: 'gestao-tripulantes.poliweb.scrape',
+    NOTIFICATIONS_MANAGE: 'gestao-tripulantes.notifications.manage'
+  },
+  ESOCIAL: {
+    VIEW: 'esocial.view',
+    PREPARE: 'esocial.prepare',
+    REVIEW: 'esocial.review',
+    SEND: 'esocial.send',
+    ADMIN: 'esocial.admin'
   }
 } as const;
 
@@ -385,6 +417,60 @@ export const PERMISSION_DESCRIPTIONS = {
   'lista-presenca.admin': {
     title: 'Administrador de Listas',
     description: 'Acesso total e configurações de listas de presença'
+  },
+  // Gestão de Tripulantes
+  'gestao-tripulantes.view': {
+    title: 'Visualizar Gestão de Tripulantes',
+    description: 'Pode visualizar o dashboard e tripulantes'
+  },
+  'gestao-tripulantes.manage': {
+    title: 'Gerenciar Tripulantes',
+    description: 'Pode gerenciar tripulantes e documentos'
+  },
+  'gestao-tripulantes.admin': {
+    title: 'Admin Gestão de Tripulantes',
+    description: 'Acesso total ao módulo de tripulantes'
+  },
+  'gestao-tripulantes.documents.edit': {
+    title: 'Editar Documentos',
+    description: 'Pode fazer upload e editar documentos'
+  },
+  'gestao-tripulantes.documents.ocr': {
+    title: 'Executar OCR',
+    description: 'Pode executar OCR em documentos'
+  },
+  'gestao-tripulantes.back.suggest': {
+    title: 'Sugerir Back',
+    description: 'Pode usar algoritmo de sugestão de back'
+  },
+  'gestao-tripulantes.poliweb.scrape': {
+    title: 'Scraping PoliWeb',
+    description: 'Pode executar scraping no PoliWeb'
+  },
+  'gestao-tripulantes.notifications.manage': {
+    title: 'Gerenciar Notificações',
+    description: 'Pode enviar notificações para tripulantes'
+  },
+  // E-Social
+  'esocial.view': {
+    title: 'Visualizar Eventos',
+    description: 'Pode visualizar eventos do E-Social'
+  },
+  'esocial.prepare': {
+    title: 'Preparar Eventos',
+    description: 'Pode preparar eventos para envio'
+  },
+  'esocial.review': {
+    title: 'Revisar Eventos',
+    description: 'Pode revisar e aprovar/rejeitar eventos'
+  },
+  'esocial.send': {
+    title: 'Enviar Eventos',
+    description: 'Pode enviar eventos para o E-Social'
+  },
+  'esocial.admin': {
+    title: 'Admin E-Social',
+    description: 'Acesso total ao módulo E-Social'
   }
 } as const;
 
@@ -392,7 +478,8 @@ export const PERMISSION_DESCRIPTIONS = {
  * Default permissions by role - mapped to all system modules
  * Modules: dashboard, noticias, calendario, ia-assistant, ponto, contracheque, reembolso, kpi, 
  *          avaliacao, epi, ferias, lista-presenca, contratos, academy, biblioteca, ajuda, 
- *          compras, poliweb, man-schedule, chat, wkradar, admin, integracao-erp
+ *          compras, poliweb, man-schedule, chat, wkradar, admin, integracao-erp,
+ *          gestao-tripulantes, e-social
  */
 export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
   modules: Record<string, boolean>;
@@ -405,7 +492,8 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
       avaliacao: true, epi: true, ferias: true, 'lista-presenca': true,
       contratos: true, academy: true, biblioteca: true, ajuda: true,
       compras: true, poliweb: true, 'man-schedule': true, chat: true,
-      wkradar: true, admin: true, 'integracao-erp': true
+      wkradar: true, admin: true, 'integracao-erp': true,
+      'gestao-tripulantes': true, 'e-social': true
     },
     features: {
       academy_editor: true, academy_moderator: true,
@@ -428,7 +516,12 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
       'chat.delete_messages': true, 'chat.admin': true,
       news_editor: true, news_manager: true,
       'ferias.read': true, 'ferias.create': true, 'ferias.approve': true, 'ferias.manage': true, 'ferias.admin': true,
-      'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': true
+      'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': true,
+      'gestao-tripulantes.view': true, 'gestao-tripulantes.manage': true, 'gestao-tripulantes.admin': true,
+      'gestao-tripulantes.documents.edit': true, 'gestao-tripulantes.documents.ocr': true,
+      'gestao-tripulantes.back.suggest': true, 'gestao-tripulantes.poliweb.scrape': true,
+      'gestao-tripulantes.notifications.manage': true,
+      'esocial.view': true, 'esocial.prepare': true, 'esocial.review': true, 'esocial.send': true, 'esocial.admin': true
     }
   },
   MANAGER: {
@@ -438,7 +531,8 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
       avaliacao: true, epi: true, ferias: true, 'lista-presenca': true,
       contratos: true, academy: true, biblioteca: true, ajuda: true,
       compras: true, poliweb: true, 'man-schedule': false, chat: true,
-      wkradar: false, admin: false, 'integracao-erp': false
+      wkradar: false, admin: false, 'integracao-erp': false,
+      'gestao-tripulantes': true, 'e-social': false
     },
     features: {
       academy_editor: false, academy_moderator: true,
@@ -458,7 +552,10 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
       'chat.view': true, 'chat.send': true,
       news_editor: false, news_manager: false,
       'ferias.read': true, 'ferias.create': true, 'ferias.approve': true, 'ferias.manage': false, 'ferias.admin': false,
-      'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': false
+      'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': false,
+      'gestao-tripulantes.view': true, 'gestao-tripulantes.manage': true,
+      'gestao-tripulantes.documents.edit': true, 'gestao-tripulantes.back.suggest': true,
+      'esocial.view': true
     }
   },
   USER: {
@@ -468,7 +565,8 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
       avaliacao: false, epi: true, ferias: true, 'lista-presenca': true,
       contratos: true, academy: true, biblioteca: true, ajuda: true,
       compras: false, poliweb: true, 'man-schedule': false, chat: true,
-      wkradar: false, admin: false, 'integracao-erp': false
+      wkradar: false, admin: false, 'integracao-erp': false,
+      'gestao-tripulantes': false, 'e-social': false
     },
     features: {
       academy_editor: false, academy_moderator: false,

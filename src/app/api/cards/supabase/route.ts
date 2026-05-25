@@ -30,7 +30,9 @@ const ICON_MAP: Record<string, string> = {
   'emergencia': 'FiAlertTriangle',
   'guia_offshore': 'FiCompass',
   'integracao-erp': 'FiDatabase',
-  'contratos': 'FiFileText'
+  'contratos': 'FiFileText',
+  'gestao-tripulantes': 'FiUsers',
+  'e-social': 'FiBriefcase'
 };
 
 // Helper to merge cards

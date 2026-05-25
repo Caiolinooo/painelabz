@@ -1,6 +1,174 @@
 # Changelog
 
-## [5.14.0] - 2026-05-20
+## [5.20.0] - 2026-05-25
+
+### Added
+- **Enhanced Contract Signing Identity Validation**: New multi-factor identity verification layer for electronic signatures. Server-side validation now checks CPF format, email match, CPF match, and birth date match before allowing signature. Returns distinct error codes for each validation failure (EMAIL_MISMATCH, CPF_MISMATCH, BIRTH_DATE_MISMATCH).
+- **Centralized Identity Utility (`src/lib/utils/identity.ts`)**: New shared identity helper library providing `normalizeCpf()`, `formatCpf()`, `isValidCpf()`, `maskCpf()`, `namesMatch()` (fuzzy name comparison), `formatBirthDate()`, and `birthDatesMatch()` for consistent identity handling across frontend and backend.
+- **Signer Identity Fields in Database**: Added `birth_date` to `users_unified`, `external_signer_tax_id` and `external_signer_birth_date` to `solicitacoes_assinatura` with proper indexes for strong identity verification.
+- **Enhanced Signature Auth Page**: 6-layer frontend validation (required fields, CPF format, email match, CPF match, birth date match, fuzzy name match) with per-field error styling and progressive validation feedback.
+- **Pending Fields Blocker**: Signature page now blocks submission until all text/checkbox fields are filled, with warning banner listing unfilled fields and direct links.
+- **Profile Page Identity Fields**: New CPF (auto-masked) and birth date fields on the profile page for self-registration of identity data used in electronic signatures.
+- **Contract Detail Signer Identity**: Added CPF (auto-formatting) and birth date inputs for external signer assignment with identity reinforcement.
+
+### Changed
+- **Contract Assign API**: Now accepts `external_signer_tax_id` and `external_signer_birth_date`, normalizes CPF and email before storage.
+- **Contract Sign API**: Extended audit metadata to store `assinante_data_nascimento` alongside CPF.
+- **Sign Access Token API**: Response now includes `target_birth_date` for frontend validation.
+
+### Fixed
+- **News Post Editor**: Protected against downgrading published posts to draft status — published posts can no longer be accidentally reverted to draft.
+
+## [5.19.0] - 2026-05-25
+
+### Added
+- **E-Social Compliance Module**: Complete integration with Brazilian government's e-Social system for digital transmission of labor, tax, and social security obligations.
+  - **Event Management**: Full CRUD for e-Social events (S-2200, S-2205, S-2206, S-2210, S-2220, S-2230, S-2240, S-2298, S-2299, S-2300, S-2399, S-2400, S-3000).
+  - **XML Generation**: Automatic XML generation for supported events with proper headers, namespaces, and event IDs following official e-Social layouts (v1.3).
+  - **Digital Signing**: Enveloped XML digital signing using `xml-crypto` with RSA-SHA256 algorithm and X509 certificates.
+  - **SOAP Web Service Integration**: Mutual TLS communication with e-Social production/homologation environments using PFX digital certificates.
+  - **Certificate Management**: Upload, activate/deactivate, and manage A1/A3 digital certificates with AES-256-CBC encrypted password storage in Supabase.
+  - **Event Lifecycle**: Complete status flow (draft → pending review → approved/rejected → queued → sending → sent → processed/error/returned).
+  - **Review Workflow**: Approval/rejection queue with detailed error processing.
+  - **Dashboard**: Summary metrics with real-time event counts by status.
+  - **Configuration**: Environment selection (homologation/production), web service URLs, timeout settings, and autonomy controls.
+  - **ASO Import Pipeline**: Multi-step import with PDF upload, OCR extraction, data review, and S-2220 event generation.
+  - **Official Tables**: Import and lookup of Tabela 27 (medical exam codes) and Tabela 50 (CBO occupation codes) from CSV.
+  - **Risk Factors**: Seeded database of 22 occupational risk factors for S-2240 events.
+  - **Auto-Generation Service**: Automatic S-2200 and S-2240 event generation when collaborators are registered, with MIO enrichment.
+
+- **Global OCR Module**: New document processing pipeline for text extraction and structured field parsing.
+  - **Multi-format Support**: PDF (digital and scanned via Tesseract.js), DOCX, XLSX, TXT/CSV, and images (PNG/JPG/WebP/GIF).
+  - **Field Extraction**: Intelligent extraction of CPF, RG, name, birth date, CTPS, CNH, PIS/PASEP, address, CEP by document type.
+  - **ASO-specific Extraction**: Type of exam, result (apto/inapto/apto_condicional), exam date, physician data (name, CRM, UF), clinic data (CNPJ, name), and complementary exam codes.
+  - **Configurable Pipeline**: Quality settings, language selection (default: Portuguese), and external fallback API support.
+
+- **New Dependencies**: `node-forge` (certificate crypto), `tesseract.js` (OCR engine), `xml-crypto` (XML signing).
+
+### Changed
+- **Admin Layout**: Added E-Social and Gestão de Tripulantes entries to admin menu navigation.
+- **Cards API**: Added icon mappings for `gestao-tripulantes` (FiUsers) and `e-social` (FiBriefcase).
+
+### Database
+- **e-Social Tables**: `esocial_eventos_catalogo`, `esocial_eventos`, `esocial_certificados`, `esocial_configuracoes`, `esocial_envios_log`, `esocial_fatores_risco`, `esocial_tabela_27`, `esocial_tabela_50` with RLS policies.
+- **OCR Config**: `settings` table seeded with global OCR configuration.
+- **Storage Bucket**: `esocial-certificados` for encrypted PFX certificate storage.
+
+## [5.18.0] - 2026-05-25
+
+### Added
+- **Gestão de Tripulantes Module (Crew Management)**: Complete offshore crew management system with comprehensive data model and workflows.
+  - **Collaborator Management**: Full CRUD with 7-tab registration form (Personal Data, Documents, Address, Contact, Banking, Employment Bond, e-Social).
+  - **Employee Matrix**: Interactive table (`GTMatrix`) with filters (company, vessel, position, cost center, status, standby, expiring documents), color-coded status badges, and real-time search.
+  - **Document Management**: Upload, OCR, and validation for 14 document types (ASO, training, passport, CNH, birth/marriage certificates, CTPS, etc.) with automatic validity calculation and expiry notifications.
+  - **ASO Pipeline**: Import ASO documents via PDF upload + OCR → data review → e-Social S-2220 event generation.
+  - **Embarkation History**: Complete timeline with vessel, type (normal/substitution/double rotation/standby/training), dates, flights, and statistics.
+  - **Back-Substitution Algorithm**: Intelligent replacement suggestion system with 8 weighted criteria (30pts cost center, 20pts company, 15pts vessel, 10pts position, 35pts standby, etc.).
+  - **Dashboard**: Real-time metrics (total collaborators, onboard, available, expiring documents).
+  - **MIO Bidirectional Sync**: Full integration with MIO ERP — import collaborators, training records, embarkations; export manually created collaborators; auto-link by CPF.
+  - **PoliWeb Scraper**: Automated ASO import from PoliWeb occupational clinic system with deduplication and e-Social event generation.
+  - **Notifications**: Automated expiry warnings (configurable days in advance), embarkation alerts, and substitution notifications via in-app, email, and push channels.
+  - **Admin Configuration**: 8-tab admin panel (General, MIO Integration, PoliWeb, Notifications, OCR, Back Algorithm, Autonomy, Dashboard).
+  - **Permission System**: 8 granular features (view, manage, admin, documents.edit, documents.ocr, back.suggest, poliweb.scrape, notifications.manage).
+
+### Database
+- **Crew Management Tables**: 13 tables with `gt_` prefix — `gt_centros_custo`, `gt_empresas`, `gt_embarcacoes`, `gt_cargos`, `gt_colaboradores` (50+ columns), `gt_documentos`, `gt_documentos_aso`, `gt_documentos_treinamento`, `gt_historico_embarques`, `gt_historico_substituicoes`, `gt_notificacoes_log`, `gt_cron_log`, `gt_configuracoes`.
+- **Views**: `gt_vw_colaboradores_completo` (with JOINs to all related tables + subqueries for document counts), `gt_vw_dashboard_resumo` (aggregated metrics).
+- **Storage Bucket**: `gestao-tripulantes-documentos` for document file storage.
+- **Additional Columns**: 50+ cadastro fields added to `gt_colaboradores` (RG, CTPS, CNH, PIS/PASEP, voter registration, certificates, salary, contract type, shift patterns).
+- **PCMSO Fields**: Medical coordinator and UF columns added to `gt_documentos_aso`.
+
+### API
+- **18 REST Endpoints**: Health check, CRUD for cargos/centros_custo/empresas/embarcacoes/colaboradores, documents (upload/CRUD/OCR/e-Social), dashboard, configurations, PoliWeb integration, back suggestion algorithm, notifications, and cron jobs.
+
+## [5.17.0] - 2026-05-25
+
+### Added
+- **MIO Cache System**: Unified caching layer that replaces direct MIO API calls with a Supabase-backed cache, polled every 15 seconds for real-time data availability.
+  - **Cache Architecture**: `mio_cache` Supabase table with 4 data rows (`integrantes`, `treinamentos`, `embarques`, `lgp_reports`) + `__meta__` row for sync tracking.
+  - **Update Endpoint (`POST /api/mio/cache/atualizar`)**: Fetches all MIO data in parallel (4 simultaneous requests), respects 10-second rate limit, requires ADMIN/MANAGER auth.
+  - **Read Endpoint (`GET /api/mio/cache`)**: Serves cached data by tipo(s), supports role-based filtering (ADMIN full, USER filtered by CPF), single or multi-tipo response.
+  - **Frontend Hook (`useMIOData`)**: React hook with 15s polling interval using SWR pattern for reactive data consumption.
+  - **Module Integration**: Man Schedule route (`/api/man-schedule/realtime`) migrated from direct MIO calls to cache reads; `revalidate` reduced from 60s to 10s.
+  - **RLS Policies**: SELECT allowed for all roles; INSERT/UPDATE/DELETE restricted to service_role only.
+
+- **MIO Client Enhancements**:
+  - Added generic `post()` and `put()` HTTP methods for full REST support.
+  - `getTreinamentos()` completely rewritten with full Portuguese-to-English field mapping (34 fields).
+  - `getEmbarques()` enhanced with rich field mapping (20+ fields: RT{P,E} status, flight info, cost centers, project numbers).
+  - New `getAllTreinamentos()` and `getAllEmbarques()` methods for bulk cache sync.
+  - New `MIOEmbarque` and `MIOASO` TypeScript interfaces with comprehensive field definitions.
+
+- **MIO Sync Rewrite (`src/lib/mio/sync.ts`)**: Complete employee provisioning pipeline.
+  - Creates Supabase Auth users and `users_unified` records for MIO employees not in the database.
+  - Auto-creates default permissions for 9 modules (dashboard, manual, procedimentos, politicas, calendario, noticias, reembolso, contracheque, ponto).
+  - Logs access history with REGISTERED action and protocol tracking.
+  - Sends email verification links for users with valid email addresses.
+  - Deduplication logic prevents duplicate user creation.
+  - Active/inactive status synced from MIO `situacao` field.
+
+### Changed
+- **MIO Types**: `MIOTreinamento` expanded from 8 to 34 fields; new `MIOEmbarque` (20+ fields) and `MIOASO` interfaces added.
+- **Man Schedule**: Now reads from `mio_cache` instead of direct MIO API calls; faster refresh (10s revalidate).
+
+## [5.16.0] - 2026-05-25
+
+### Added
+- **ACL Hierarchical System Extension**: Enhanced permission system with new module support for Gestão de Tripulantes and E-Social.
+  - **8 Gestão de Tripulantes Permissions**: `view`, `manage`, `admin`, `documents.edit`, `documents.ocr`, `back.suggest`, `poliweb.scrape`, `notifications.manage`.
+  - **5 E-Social Permissions**: `view`, `prepare`, `review`, `send`, `admin`.
+  - **Role Defaults**: ADMIN gets all permissions for both modules; MANAGER gets selective GT permissions + esocial.view; USER gets none.
+  - **Layer 4 ACL in Effective Permissions**: New permission layer reads from `user_acl_permissions` + `role_acl_permissions` tables, maps to `acl_permissions` resources, and enables modules accordingly. Graceful fallback if ACL tables don't exist.
+  - **Reactive ACL Loading**: Auth context now loads ACL modules on mount, listens for `permissions-updated` window events, and re-fetches on profile updates.
+  - **Permission Change Events**: `useACLPermissions` hook dispatches custom `permissions-updated` event after successful permission mutations.
+
+- **i18n Localization**: Complete Portuguese and English translations for both new modules.
+  - **`gestaoTripulantes` namespace**: ~233 entries covering all UI text (filters, table, legend, status, profile tabs, documents, OCR, embarkations, substitutions, back algorithm, notifications).
+  - **`eSocial` namespace**: ~233 entries covering event management, review, certificates, configuration, and dashboard.
+  - **Menu and module list entries**: `menu.gestaoTripulantes`, `modules.gestao-tripulantes`, `modules.e-social`.
+
+### Changed
+- **Permissions Type System**: `PermissionFeatures` interface extended with 13 new optional fields for both modules.
+- **`PERMISSIONS` constant**: Added `GESTAO_TRIPULANTES` (8 keys) and `ESOCIAL` (5 keys) permission groups.
+- **`PERMISSION_DESCRIPTIONS`**: 13 new Portuguese descriptions for permission tooltips and admin UI.
+- **`DEFAULT_PERMISSIONS_BY_ROLE`**: Updated for all three roles (ADMIN, MANAGER, USER) with new module and feature entries.
+- **Admin Layout Menu**: Added navigation entries for Gestão de Tripulantes (FiAnchor) and E-Social (FiSend) in the admin sidebar.
+- **Cards API**: Added icon mappings for both new modules in dashboard card system.
+- **Effective Permissions API**: Extended debug output with `_debug.acl` source info and `_debug.acl_modules_applied` array.
+- **Auth Context**: `UserProfile` interface extended with `tax_id`, `bio`, `birth_date`, and `cover_url` fields.
+
+### Infrastructure
+- **Module Registration**: Both `gestao-tripulantes` and `e-social` registered in `src/config/modules.ts` and `src/constants/modules.ts` with proper roles and categories.
+- **ACL Init**: ACL system seeded with all 13 new permissions for both modules.
+- **Unified Data Hook**: Admin users now bypass sector restrictions in `useUnifiedData`.
+
+## [5.15.0] - 2026-05-25
+
+### Added
+- **New Dependencies**:
+  - `node-forge` (^1.4.0) — Certificate cryptography and PFX/P12 decoding for E-Social digital signatures.
+  - `tesseract.js` (^7.0.0) — OCR engine for document text recognition (ASOs, passports, certificates).
+  - `xml-crypto` (^6.1.2) — XML digital signing for E-Social event transmission.
+  - `@types/node-forge` (^1.3.14) and `@types/xml-crypto` (^1.4.6) for TypeScript support.
+
+- **Database Schema Extension**: Added `birth_date` column to `users_unified` table (DATE, nullable) with index for identity validation in electronic signatures.
+
+### Changed
+- **Next.js Configuration**: Added `serverComponentsExternalPackages: ['tesseract.js']` to enable native Node.js module loading for OCR in server components.
+- **TypeScript Configuration**: Added `baseUrl: "."` for root-based imports complementing existing `@/` path aliases.
+- **package.json Scripts**: Added 6 new database setup scripts:
+  - `db:setup-esocial` — Storage bucket creation for E-Social certificates
+  - `db:seed-esocial-riscos` — Risk factors seeding
+  - `db:setup-mio-cache` — MIO cache table setup
+  - `db:cadastro-fields` — Cadastro migration for GT module
+  - `db:setup-gestao-tripulantes` — Main GT module migration
+  - `npm run db:setup-gestao-tripulantes`
+
+### Infrastructure
+- **Supabase Types**: `birth_date` field added to `users_unified` Row, Insert, and Update types.
+- **Centralized Identity Utility**: New `src/lib/utils/identity.ts` for CPF normalization, formatting, validation, and masking — shared across frontend and backend for electronic signature identity verification.
+- **CSS**: Global stylesheet updates for new UI components.
+- **Gitignore**: Updated to exclude temporary and environment-specific files.
 
 ### Added
 - **ACL Hierarchical System Overhaul**: Refactored permission system with modular architecture. New `getFullPermissionsForRole()` consolidates module access across ADMIN, MANAGER, and USER roles. Permissions now split into `modules` (access flags) and `features` (fine-grained actions) for each role.

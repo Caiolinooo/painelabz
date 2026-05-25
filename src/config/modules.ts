@@ -177,6 +177,20 @@ export const SYSTEM_MODULES: ModuleDefinition[] = [
         description: 'Gestão de integração MIO',
         defaultRoles: ['ADMIN'],
         category: 'department'
+    },
+    {
+        key: 'gestao-tripulantes',
+        name: 'Gestão de Tripulantes',
+        description: 'Gestão inteligente de tripulantes, documentos e escala offshore',
+        defaultRoles: ['ADMIN', 'MANAGER'],
+        category: 'department'
+    },
+    {
+        key: 'e-social',
+        name: 'E-Social',
+        description: 'Envio de eventos trabalhistas ao sistema E-Social do governo',
+        defaultRoles: ['ADMIN', 'MANAGER', 'USER'],
+        category: 'department'
     }
 ];
 

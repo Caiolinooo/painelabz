@@ -83,7 +83,24 @@ export async function POST(request: NextRequest) {
       // Permissões administrativas
       { name: 'admin.users', description: 'Gerenciar usuários', resource: 'admin', action: 'users', level: 3 },
       { name: 'admin.settings', description: 'Gerenciar configurações', resource: 'admin', action: 'settings', level: 3 },
-      { name: 'admin.acl', description: 'Gerenciar permissões ACL', resource: 'admin', action: 'acl', level: 3 }
+      { name: 'admin.acl', description: 'Gerenciar permissões ACL', resource: 'admin', action: 'acl', level: 3 },
+
+      // Permissões Gestão de Tripulantes
+      { name: 'gestao-tripulantes.view', description: 'Visualizar dashboard', resource: 'gestao-tripulantes', action: 'view', level: 0 },
+      { name: 'gestao-tripulantes.manage', description: 'Gerenciar tripulantes', resource: 'gestao-tripulantes', action: 'manage', level: 2 },
+      { name: 'gestao-tripulantes.admin', description: 'Admin total', resource: 'gestao-tripulantes', action: 'admin', level: 3 },
+      { name: 'gestao-tripulantes.documents.upload', description: 'Upload documentos', resource: 'gestao-tripulantes', action: 'documents.upload', level: 1 },
+      { name: 'gestao-tripulantes.documents.ocr', description: 'Executar OCR', resource: 'gestao-tripulantes', action: 'documents.ocr', level: 2 },
+      { name: 'gestao-tripulantes.back.suggest', description: 'Sugerir back', resource: 'gestao-tripulantes', action: 'back.suggest', level: 2 },
+      { name: 'gestao-tripulantes.poliweb.scrape', description: 'Scraping PoliWeb', resource: 'gestao-tripulantes', action: 'poliweb.scrape', level: 3 },
+      { name: 'gestao-tripulantes.notifications.send', description: 'Enviar notificações', resource: 'gestao-tripulantes', action: 'notifications.send', level: 2 },
+
+      // Permissões E-Social
+      { name: 'e-social.view', description: 'Visualizar eventos', resource: 'e-social', action: 'view', level: 1 },
+      { name: 'e-social.prepare', description: 'Preparar eventos', resource: 'e-social', action: 'prepare', level: 2 },
+      { name: 'e-social.review', description: 'Revisar eventos', resource: 'e-social', action: 'review', level: 2 },
+      { name: 'e-social.send', description: 'Enviar para E-Social', resource: 'e-social', action: 'send', level: 3 },
+      { name: 'e-social.admin', description: 'Admin total', resource: 'e-social', action: 'admin', level: 3 }
     ];
 
     // Inserir permissões básicas
@@ -121,7 +138,9 @@ export async function POST(request: NextRequest) {
         'reimbursement.create', 'reimbursement.approve',
         'ferias.read', 'ferias.create', 'ferias.approve',
         'contratos.read', 'contratos.sign', 'contratos.manage',
-        'lista-presenca.read', 'lista-presenca.create', 'lista-presenca.manage'
+        'lista-presenca.read', 'lista-presenca.create', 'lista-presenca.manage',
+        'gestao-tripulantes.view', 'gestao-tripulantes.manage',
+        'gestao-tripulantes.documents.upload', 'gestao-tripulantes.back.suggest'
       ],
       'USER': [
         'news.read',
