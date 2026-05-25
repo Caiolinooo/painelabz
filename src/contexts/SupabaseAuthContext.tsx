@@ -73,6 +73,10 @@ export interface UserProfile {
   verification_code?: string | null;
   verification_code_expires?: string | null;
   drive_photo_url?: string | null;
+  tax_id?: string | null;
+  bio?: string | null;
+  birth_date?: string | null;
+  cover_url?: string | null;
   accessPermissions?: {
     modules?: {
       [key: string]: boolean;
@@ -150,6 +154,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [hasPassword, setHasPassword] = useState(false);
   const [authStatus, setAuthStatus] = useState<string | undefined>(undefined);
   const [rolePermissions, setRolePermissions] = useState<any>({});
+  const [aclEnabledModules, setAclEnabledModules] = useState<string[]>([]);
   const router = useRouter();
 
   // Carregar permissões por role
@@ -166,6 +171,47 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     loadRolePermissions();
   }, []);
+
+  // Carregar módulos habilitados via ACL (após perfil do usuário estar disponível)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadAclModules = async () => {
+      try {
+        const res = await fetch('/api/user/effective-permissions');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.effective_modules) {
+            // Extrair módulos que ficaram ativos especificamente via ACL
+            // A API já inclui ACL na composição, então usamos os effective_modules
+            const modules = Object.entries(data.effective_modules)
+              .filter(([_, v]) => v === true)
+              .map(([k]) => k);
+            setAclEnabledModules(modules);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar módulos ACL:', error);
+      }
+    };
+
+    loadAclModules();
+
+    // Reagir a eventos de atualização de permissões
+    const handlePermissionsUpdate = () => {
+      loadAclModules();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('permissions-updated', handlePermissionsUpdate);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('permissions-updated', handlePermissionsUpdate);
+      }
+    };
+  }, [user?.id]);
 
   // Função para renovar o token JWT personalizado
   const refreshCustomToken = async () => {
@@ -2036,6 +2082,14 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             return hasIndividualAccess;
           }
 
+          // 1b. ACL Permissions (via effective-permissions API)
+          // Se o effective-permissions API (que inclui user_acl_permissions + role_acl_permissions)
+          // já retornou os módulos, usar como camada intermediária
+          if (aclEnabledModules.includes(module)) {
+            debugLog(`🔐 Acesso ao módulo ${module} concedido via ACL do usuário`);
+            return true;
+          }
+
           // 2. Permissões de Setor (Strict Sector Mode)
           // Se o usuário tem um setor definido, ele SÓ deve acessar o que o setor permite (além dos módulos core)
           // Isso substitui os defaults do Role "USER".
@@ -2107,6 +2161,18 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
               setProfile(profileData);
               console.log('Perfil do usuário atualizado com sucesso');
+
+              // Re-carregar módulos ACL
+              const aclRes = await fetch('/api/user/effective-permissions');
+              if (aclRes.ok) {
+                const aclData = await aclRes.json();
+                if (aclData.effective_modules) {
+                  const modules = Object.entries(aclData.effective_modules)
+                    .filter(([_, v]) => v === true)
+                    .map(([k]) => k);
+                  setAclEnabledModules(modules);
+                }
+              }
             }
           } catch (error) {
             console.error('Erro ao atualizar perfil:', error);

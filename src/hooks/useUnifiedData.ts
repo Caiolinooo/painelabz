@@ -79,8 +79,8 @@ export function useUnifiedData(options: UseUnifiedDataOptions): UseUnifiedDataRe
                 .filter((c: any) => {
                   if (!c.href || c.href.trim() === '' || c.adminOnly) return false;
 
-                  // Filtro de setor
-                  if (sectorId && allowedSectorModules.length > 0) {
+                  // Filtro de setor (administradores ignoram a restrição de setor)
+                  if (userRole !== 'admin' && sectorId && allowedSectorModules.length > 0) {
                     // Dashboard é sempre permitido
                     if (c.id !== 'dashboard' && !allowedSectorModules.includes(c.id)) {
                       return false;

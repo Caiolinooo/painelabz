@@ -140,6 +140,11 @@ export function useACLPermissions(userId?: string) {
         await loadUserPermissions(targetUserId);
       }
 
+      // Notificar outros componentes que permissões foram alteradas
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('permissions-updated'));
+      }
+
       return true;
     } catch (err) {
       console.error('Erro ao atribuir permissão:', err);
@@ -167,6 +172,11 @@ export function useACLPermissions(userId?: string) {
       // Recarregar permissões do usuário
       if (targetUserId === userId) {
         await loadUserPermissions(targetUserId);
+      }
+
+      // Notificar outros componentes que permissões foram alteradas
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('permissions-updated'));
       }
 
       return true;

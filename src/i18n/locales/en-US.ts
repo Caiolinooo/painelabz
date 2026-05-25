@@ -583,7 +583,8 @@ export default {
     biblioteca: 'Library',
     universidade: 'University',
     contratos: 'Contracts & E-Sign',
-    meuRH: 'My HR'
+    meuRH: 'My HR',
+    gestaoTripulantes: 'Crew Management'
   },
   cards: {
     contratos: 'Contracts',
@@ -3339,6 +3340,8 @@ export default {
     'lista-presenca': 'Attendance List',
     contratos: 'Contracts',
     'man-schedule': 'Man Schedule',
+    'gestao-tripulantes': 'Crew Management',
+    'e-social': 'E-Social',
     notifications: 'Notifications',
     feedback: 'Feedback',
     metrics: 'General Metrics',
@@ -4313,5 +4316,233 @@ export default {
     },
     sem_permissao: 'No permission to access Chat',
     sem_permissao_desc: 'You do not have permission to view or manage Chat.'
+  },
+  gestaoTripulantes: {
+    title: 'Crew Management',
+    subtitle: 'Intelligent crew management and offshore scale dashboard',
+    colaboradores: 'Crew Members',
+    colaborador: 'Crew Member',
+    filters: {
+      search: 'Search crew...',
+      searchLabel: 'Search',
+      companyLabel: 'Company',
+      vesselLabel: 'Vessel',
+      positionLabel: 'Position',
+      costCenterLabel: 'Cost Center',
+      statusLabel: 'Status',
+      allCompanies: 'All Companies',
+      allVessels: 'All Vessels',
+      allPositions: 'All Positions',
+      allStatus: 'All Status',
+      allCostCenters: 'All Cost Centers',
+      dateStart: 'Start Date',
+      dateEnd: 'End Date',
+      onlyStandby: 'Standby Only',
+      onlyVencidos: 'Expired Docs',
+      empty: 'No records found'
+    },
+    table: {
+      name: 'NAME', photo: 'PHOTO', rank: 'POSITION', company: 'COMPANY',
+      vessel: 'VESSEL', status: 'STATUS', documents: 'DOCUMENTS',
+      nextEmbark: 'NEXT EMBARK', qtdEmbarc: 'QTY', actions: 'ACTIONS'
+    },
+    legend: {
+      onboard: 'Onboard', standby: 'StandBy', off: 'Off',
+      crewChange: 'Crew Change', indemnifiedLeave: 'Indemnified Leave',
+      doubleRotation: 'Double Rotation', training: 'Training', onLeave: 'On Leave'
+    },
+    status: {
+      embarcado: 'Onboard', standby: 'StandBy', folga: 'Off',
+      desembarcado: 'Disembarked', afastado: 'On Leave',
+      ferias: 'Vacation', treinamento: 'Training'
+    },
+    profile: {
+      title: 'Crew Member Profile', personalData: 'Personal Data',
+      trainings: 'Training', aso: 'ASO', passports: 'Passports',
+      documents: 'Documents', embarkations: 'Embarkation History',
+      substitutions: 'Substitutions', close: 'Close', edit: 'Edit',
+      save: 'Save', cancel: 'Cancel', suggestBack: 'Suggest Backup',
+      uploadDocument: 'Upload Document', notify: 'Notify',
+      loading: 'Loading profile...', notFound: 'Crew member not found'
+    },
+    personalData: {
+      fullName: 'Full Name', cpf: 'CPF', rg: 'ID', birthDate: 'Birth Date',
+      email: 'Email', phone: 'Phone', nationality: 'Nationality',
+      birthplace: 'Place of Birth', motherName: "Mother's Name", fatherName: "Father's Name",
+      maritalStatus: 'Marital Status', address: 'Address', bankData: 'Bank Data',
+      company: 'Company', costCenter: 'Cost Center', vessel: 'Vessel',
+      position: 'Position', admissionDate: 'Admission Date', resignationDate: 'Resignation Date',
+      registrationNumber: 'Registration #'
+    },
+    trainings: {
+      title: 'Training', courseName: 'Course Name', institution: 'Institution',
+      date: 'Completion Date', validity: 'Validity', workload: 'Workload',
+      status: 'Status', certificate: 'Certificate', uploadCertificate: 'Upload Certificate',
+      noTrainings: 'No training records'
+    },
+    aso: {
+      title: 'ASO', examType: 'Exam Type', admission: 'Admission',
+      periodic: 'Periodic', dismissal: 'Dismissal',
+      returnToWork: 'Return to Work', functionChange: 'Function Change',
+      examDate: 'Exam Date', validity: 'Validity', result: 'Result',
+      fit: 'Fit', unfit: 'Unfit', conditionalFit: 'Conditionally Fit',
+      doctor: 'Doctor', clinic: 'Clinic', pdf: 'Download PDF',
+      uploadAso: 'Upload ASO', sendESocial: 'Send to E-Social',
+      eSocialStatus: 'E-Social Status', pendingReview: 'Pending Review',
+      reviewed: 'Reviewed', noAso: 'No ASO records'
+    },
+    passports: {
+      title: 'Passports', number: 'Number', country: 'Country',
+      issueDate: 'Issue Date', expiryDate: 'Expiry Date',
+      scan: 'Passport Scan', uploadPassport: 'Upload Passport',
+      noPassports: 'No passports registered'
+    },
+    documents: {
+      title: 'Documents', type: 'Type', title_label: 'Title', number: 'Number',
+      issueDate: 'Issue', expiryDate: 'Expiry', status: 'Status',
+      ocr: 'OCR', uploadDate: 'Upload', download: 'Download', delete: 'Delete',
+      uploadDocument: 'Upload Document', confirmDelete: 'Confirm deletion?',
+      dragAndDrop: 'Drag and drop files or click to select',
+      acceptedFormats: 'Accepted formats: PDF, PNG, JPG'
+    },
+    documentStatus: {
+      valid: 'Valid', expiring: 'Expiring', expired: 'Expired',
+      pending: 'Pending', disapproved: 'Rejected', cancelled: 'Cancelled',
+      daysRemaining: '{{days}} days left', expiredDays: 'Expired {{days}} days ago'
+    },
+    ocr: {
+      processing: 'Processing OCR...', completed: 'OCR Completed',
+      error: 'OCR Error', notApplicable: 'N/A', extractedData: 'Extracted Data',
+      runOcr: 'Run OCR', confidence: 'Confidence: {{percent}}%'
+    },
+    embarkations: {
+      title: 'Embarkation History', embarkDate: 'Embark',
+      disembarkDate: 'Disembark', predictedDisembark: 'Pred. Disembark',
+      vessel: 'Vessel', type: 'Type', location: 'Location',
+      flight: 'Flight', substitution: 'Substituting',
+      registerNew: 'Register Embarkation', noHistory: 'No embarkation history',
+      types: {
+        normal: 'Normal', dobra: 'Double', folgaIndenizada: 'Indemnified Leave',
+        standby: 'StandBy', substituicao: 'Substitution', treinamento: 'Training'
+      }
+    },
+    substitutions: {
+      title: 'Substitution History', substituted: 'Substituted',
+      substitutedBy: 'Was Substituted By', period: 'Period',
+      position: 'Position', noSubstitutions: 'No substitution history'
+    },
+    back: {
+      title: 'Backup Suggestion', subtitle: 'Best candidates to replace {{name}}',
+      noCandidates: 'No candidates found', score: 'Score',
+      justification: 'Justifications', substituteNow: 'Replace Now',
+      loading: 'Calculating best options...',
+      criteria: {
+        sameCostCenter: 'Same cost center', sameCompany: 'Same company',
+        sameVessel: 'Same vessel', samePosition: 'Same position',
+        standby: 'On standby', substitutedBefore: 'Has substituted this person before',
+        similarPosition: 'Has worked in this position', compatibleLeave: 'Compatible leave',
+        similarSeniority: 'Similar seniority', validDocuments: 'Valid documents'
+      }
+    },
+    notifications: {
+      title: 'Notification Center', sendNotification: 'Send Notification',
+      type: 'Type', message: 'Message', sendTo: 'Send To',
+      collaborator: 'Collaborator', allStandby: 'All Standby',
+      custom: 'Custom', sent: 'Notification sent successfully',
+      sendError: 'Error sending notification', history: 'Notification History'
+    },
+    dashboard: {
+      totalCollaborators: 'Total Crew', onboardNow: 'Onboard Now',
+      availableBackup: 'Available for Backup', expiredDocs: 'Expired Documents'
+    },
+    upload: {
+      uploading: 'Uploading...', success: 'File uploaded successfully',
+      error: 'Upload error', tooLarge: 'File too large (max 20MB)',
+      invalidType: 'File type not allowed'
+    },
+    common: {
+      exportXLSX: 'Export Spreadsheet (XLSX)', refresh: 'Refresh',
+      loading: 'Loading...', save: 'Save', cancel: 'Cancel',
+      confirm: 'Confirm', delete: 'Delete', edit: 'Edit',
+      create: 'New', search: 'Search', clear: 'Clear',
+      noResults: 'No records found', exportedSuccess: 'Exported successfully!'
+    },
+    errors: {
+      notFound: 'Page not found', unauthorized: 'Not authorized',
+      loadError: 'Error loading data', saveError: 'Error saving',
+      deleteError: 'Error deleting', networkError: 'Network error'
+    }
+  },
+  eSocial: {
+    title: 'E-Social',
+    subtitle: 'E-Social labor event management',
+    dashboardTitle: 'Dashboard',
+    eventos: 'Events',
+    revisaoTitle: 'Event Review',
+    certificadosTitle: 'Digital Certificates',
+    configuracoes: 'Settings',
+    eventStatus: {
+      draft: 'Draft', pendingReview: 'Pending Review',
+      approved: 'Approved', rejected: 'Rejected',
+      queued: 'Send Queue', sending: 'Sending',
+      sent: 'Sent', processed: 'Processed',
+      error: 'Error', returned: 'Returned'
+    },
+    eventosList: {
+      title: 'All Events', newEvent: 'New Event',
+      code: 'Code', name: 'Event Name', worker: 'Worker',
+      status: 'Status', createdAt: 'Created', sentAt: 'Sent',
+      protocol: 'Protocol', receipt: 'Receipt', actions: 'Actions',
+      view: 'View', delete: 'Delete', noEvents: 'No events found'
+    },
+    revisao: {
+      title: 'Pending Review Events',
+      approve: 'Approve', reject: 'Reject',
+      approveConfirm: 'Confirm event approval?',
+      rejectConfirm: 'Confirm event rejection?',
+      comment: 'Review Comment',
+      commentPlaceholder: 'Add a comment...',
+      approved: 'Event approved successfully',
+      rejected: 'Event rejected',
+      noPending: 'No events pending review'
+    },
+    envio: {
+      title: 'Send Event', sendNow: 'Send Now',
+      sending: 'Sending...', sentSuccess: 'Event sent successfully',
+      sendError: 'Error sending event', protocol: 'Send Protocol',
+      receipt: 'Receipt Number', consultNow: 'Check Status',
+      lastTry: 'Last Attempt', attempts: 'Attempts'
+    },
+    certificados: {
+      title: 'Digital Certificates', upload: 'Upload Certificate',
+      uploadNew: 'Add New Certificate', name: 'Name',
+      issuer: 'Issuer', validUntil: 'Valid Until', status: 'Status',
+      active: 'Active', setActive: 'Set as Active',
+      delete: 'Remove', noCertificates: 'No certificates registered',
+      password: 'Certificate Password',
+      onlyPfx: 'Only .pfx or .p12 files accepted'
+    },
+    dashboard: {
+      totalEvents: 'Total Events', pendingReview: 'Pending Review',
+      queued: 'Send Queue', sent: 'Sent',
+      processed: 'Processed', errors: 'With Error'
+    },
+    config: {
+      title: 'Settings', ambiente: 'Environment',
+      homologacao: 'Test', producao: 'Production',
+      autonomiaEnvio: 'Send Autonomy',
+      autonomiaEnvioDesc: 'When enabled, sends events without manual review',
+      consultarAutomatico: 'Auto Check Status',
+      timeout: 'Timeout (seconds)', maxTentativas: 'Max Retries',
+      urlHomologacao: 'Test URL', urlProducao: 'Production URL',
+      saved: 'Settings saved successfully',
+      saveError: 'Error saving settings'
+    },
+    errors: {
+      loadError: 'Error loading events', prepareError: 'Error preparing event',
+      sendError: 'Error sending event', xmlError: 'Error generating XML',
+      certError: 'Digital certificate error', notFound: 'Event not found',
+      unauthorized: 'Not authorized for this action'
+    }
   }
 };

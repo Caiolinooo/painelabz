@@ -55,6 +55,12 @@ export const SYSTEM_MODULES: SystemModule[] = [
 
     // Admin / Integrations (Visible if permitted)
     { id: 'integracao-erp', label: 'Integração ERP', description: 'Gestão de integração MIO', category: 'department', href: '/admin/integracao-erp' },
+
+    // Gestão de Tripulantes
+    { id: 'gestao-tripulantes', label: 'Gestão de Tripulantes', description: 'Gestão inteligente de tripulantes e documentos', category: 'department', href: '/department/gestao-tripulantes', visible: true },
+
+    // E-Social
+    { id: 'e-social', label: 'E-Social', description: 'Envio de eventos trabalhistas ao E-Social', category: 'department', href: '/department/e-social', visible: true },
 ];
 
 export const MODULE_CATEGORIES = {

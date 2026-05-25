@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic';
  * Calculates the effective permissions for the current user based on:
  * 1. Sector defaults (base layer)
  * 2. Role defaults (override layer 1 - ADMIN/MANAGER override sector)
- * 3. User individual permissions (override layer 2 - final override)
+ * 3. User individual permissions (override layer 2)
+ * 4. ACL permissions (override layer 3 - from user_acl_permissions + role_acl_permissions)
  */
 export async function GET(request: NextRequest) {
     try {
@@ -174,6 +175,51 @@ export async function GET(request: NextRequest) {
             effectiveModules = { ...effectiveModules, ...userPermissions.modules };
         }
 
+        // Layer 4: ACL Permissions (from user_acl_permissions + role_acl_permissions)
+        // If user has ANY ACL permission for a resource (e.g. ferias.read), enable that module
+        let aclModulesApplied: string[] = [];
+        try {
+            const userAclPromise = supabaseAdmin
+                .from('user_acl_permissions')
+                .select('permission_id')
+                .eq('user_id', userId);
+
+            const roleAclPromise = supabaseAdmin
+                .from('role_acl_permissions')
+                .select('permission_id')
+                .eq('role', userRole);
+
+            const [userAclResult, roleAclResult] = await Promise.all([
+                userAclPromise,
+                roleAclPromise
+            ]);
+
+            const userAclPermIds = (userAclResult.data || []).map(p => p.permission_id);
+            const roleAclPermIds = (roleAclResult.data || []).map(p => p.permission_id);
+            const allAclPermIds = [...new Set([...userAclPermIds, ...roleAclPermIds])];
+
+            if (allAclPermIds.length > 0) {
+                const { data: aclPerms } = await supabaseAdmin
+                    .from('acl_permissions')
+                    .select('resource')
+                    .in('id', allAclPermIds)
+                    .eq('enabled', true);
+
+                if (aclPerms) {
+                    const uniqueResources = [...new Set(aclPerms.map(p => p.resource))];
+                    uniqueResources.forEach(resource => {
+                        if (!effectiveModules[resource]) {
+                            effectiveModules[resource] = true;
+                            aclModulesApplied.push(resource);
+                        }
+                    });
+                }
+            }
+        } catch (aclError) {
+            // ACL tables may not exist (migration not run) - non-fatal
+            console.warn('[effective-permissions] ACL tables not available, skipping Layer 4:', aclError);
+        }
+
         // Build final response
         const response = {
             user_id: userId,
@@ -186,12 +232,14 @@ export async function GET(request: NextRequest) {
                 source: {
                     sector: profile.sector_id ? 'applied' : 'none',
                     role: userRole,
-                    user_override: userPermissions ? 'applied' : 'none'
+                    user_override: userPermissions ? 'applied' : 'none',
+                    acl: aclModulesApplied.length > 0 ? 'applied' : 'none'
                 },
                 role_defaults_applied: Object.keys(roleDefaults.modules),
                 sector_modules_raw: sectorRawModules,
                 sector_modules_count: Object.keys(effectiveModules).length,
-                effective_modules_keys: Object.keys(effectiveModules)
+                effective_modules_keys: Object.keys(effectiveModules),
+                acl_modules_applied: aclModulesApplied
             }
         };
 

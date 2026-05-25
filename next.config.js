@@ -38,6 +38,7 @@ const nextConfig = {
   // Configurações experimentais
   experimental: {
     optimizeCss: true,
+    serverComponentsExternalPackages: ['tesseract.js'],
   },
 
   // Configurações do webpack para polyfill de módulos Node.js

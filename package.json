@@ -1,6 +1,6 @@
 {
   "name": "painel-abz",
-  "version": "5.14.0",
+  "version": "5.15.0",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -28,6 +28,10 @@
     "db:create-users-unified": "node scripts/run-create-users-unified.js",
     "db:setup-avaliacao": "node scripts/setup-avaliacao-module.js",
     "db:setup-reimbursement": "node scripts/setup-reimbursement-settings.js",
+    "db:setup-esocial": "node scripts/setup-esocial-bucket.js",
+    "db:seed-esocial-riscos": "node scripts/seed-esocial-fatores-risco.js",
+    "db:setup-mio-cache": "node scripts/setup-mio-cache.js",
+    "db:cadastro-fields": "node scripts/run-cadastro-migration.js",
     "db:add-access-history": "node scripts/add-access-history-to-all-users.js",
     "db:fix-avaliacoes": "node scripts/fix-all.js",
     "db:check-avaliacoes": "node scripts/check-database.js",
@@ -69,7 +73,8 @@
     "setup:vapid": "node scripts/setup-vapid.js",
     "test:push": "node scripts/test-push-notifications.js",
     "test:evaluation-workflow": "node scripts/test-evaluation-workflow.js",
-    "generate:vapid": "npx web-push generate-vapid-keys"
+    "generate:vapid": "npx web-push generate-vapid-keys",
+    "db:setup-gestao-tripulantes": "node scripts/run-gestao-tripulantes-migration.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -131,6 +136,7 @@
     "next": "14.2.33",
     "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
+    "node-forge": "^1.4.0",
     "node-ssh": "^13.2.1",
     "nodemailer": "7.0.10",
     "papaparse": "^5.5.2",
@@ -160,11 +166,13 @@
     "socket.io": "^4.8.1",
     "speakeasy": "^2.0.0",
     "tailwind-merge": "^3.3.0",
+    "tesseract.js": "^7.0.0",
     "twilio": "^5.5.1",
     "uuid": "^11.1.0",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "xlsx-js-style": "^1.2.0",
+    "xml-crypto": "^6.1.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -176,12 +184,14 @@
     "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
     "@types/node-fetch": "^2.6.13",
+    "@types/node-forge": "^1.3.14",
     "@types/nodemailer": "^6.4.17",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/react-signature-canvas": "^1.0.7",
     "@types/speakeasy": "^2.0.10",
+    "@types/xml-crypto": "^1.4.6",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.35.0",
     "autoprefixer": "^10.0.1",
