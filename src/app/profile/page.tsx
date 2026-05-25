@@ -1,5 +1,7 @@
 'use client';
 
+import { normalizeCpf, formatCpf, maskCpf, formatBirthDate } from '@/lib/utils/identity';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiPhone, FiSettings, FiUpload, FiImage, FiTrash2, FiEdit, FiSave, FiLock, FiDollarSign, FiKey } from 'react-icons/fi';
@@ -36,7 +38,10 @@ export default function ProfilePage() {
     position: '',
     department: '',
     bio: '',
+    taxId: '',
+    birthDate: '',
   });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,7 +82,11 @@ export default function ProfilePage() {
       department: profile.department || '',
       // @ts-ignore
       bio: profile.bio || '',
+      taxId: profile.tax_id ? formatCpf(profile.tax_id) : '',
+      // @ts-ignore
+      birthDate: (profile as any).birth_date || '',
     });
+
   }, [profile, isLoading, user, router, refreshProfile]);
 
   const handleUpdateProfile = async () => {
@@ -93,8 +102,11 @@ export default function ProfilePage() {
           position: formData.position,
           department: formData.department,
           bio: formData.bio,
+          tax_id: formData.taxId ? normalizeCpf(formData.taxId) : null,
+          birth_date: formData.birthDate || null,
         } as any)
         .eq('id', user.id);
+
 
       if (error) throw error;
 
@@ -310,6 +322,29 @@ export default function ProfilePage() {
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                />
+              </div>
+
+              {/* CPF and birth date — used for contract signing identity validation */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">{t('profile.cpf', 'CPF')}</label>
+                <input
+                  type="text"
+                  maxLength={14}
+                  placeholder="000.000.000-00"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  value={formData.taxId}
+                  onChange={(e) => setFormData({ ...formData, taxId: formatCpf(e.target.value) })}
+                />
+                <p className="text-xs text-gray-400">{t('profile.cpf_hint', 'Utilizado para validação de identidade em assinaturas eletrônicas.')}</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">{t('profile.birth_date', 'Data de Nascimento')}</label>
+                <input
+                  type="date"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  value={formData.birthDate}
+                  onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                 />
               </div>
 

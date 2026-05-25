@@ -4,6 +4,8 @@ import { authenticateUser } from '@/lib/api-auth';
 import { generateSHA256, generateFinalHash } from '@/lib/services/CryptographyService';
 import { embedSignatureOnPdf, addAuditPage, embedFieldsAndSignaturesOnPdf, PdfFieldItem } from '@/lib/services/PdfEditorService';
 import { dispatchEnvelopeStage } from '@/lib/envelopeDispatcher';
+import { normalizeCpf, birthDatesMatch } from '@/lib/utils/identity';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +59,46 @@ export async function POST(request: NextRequest) {
         }
 
         const documento = solicitacao.documento as any;
+
+        // IDENTITY VALIDATION for public/external access
+        // This is the server-side guard — even if the frontend is bypassed,
+        // the signature will be rejected if identity data doesn't match.
+        if (isPublicAccess && signer_data) {
+            const expectedEmail = solicitacao.external_signer_email?.toLowerCase()?.trim();
+            const providedEmail = signer_data.email?.toLowerCase()?.trim();
+
+            // 1. Validate email
+            if (expectedEmail && providedEmail !== expectedEmail) {
+                return NextResponse.json({
+                    error: 'E-mail não autorizado para este documento.',
+                    code: 'EMAIL_MISMATCH'
+                }, { status: 403 });
+            }
+
+            // 2. Validate CPF (if registered for this signer)
+            const expectedTaxId = (solicitacao as any).external_signer_tax_id;
+            if (expectedTaxId) {
+                const normalizedProvided = normalizeCpf(signer_data.cpf || '');
+                const normalizedExpected = normalizeCpf(expectedTaxId);
+                if (normalizedProvided !== normalizedExpected) {
+                    return NextResponse.json({
+                        error: 'CPF não confere com o registro do signatário.',
+                        code: 'CPF_MISMATCH'
+                    }, { status: 403 });
+                }
+            }
+
+            // 3. Validate birth date (if registered for this signer)
+            const expectedBirthDate = (solicitacao as any).external_signer_birth_date;
+            if (expectedBirthDate && signer_data.data_nascimento) {
+                if (!birthDatesMatch(signer_data.data_nascimento, expectedBirthDate)) {
+                    return NextResponse.json({
+                        error: 'Data de nascimento não confere com o registro do signatário.',
+                        code: 'BIRTH_DATE_MISMATCH'
+                    }, { status: 403 });
+                }
+            }
+        }
 
         // 1b. Verify sequential order (Enforce globally across the entire Envelope)
         const currentOrdem = solicitacao.ordem || 1;
@@ -313,7 +355,8 @@ const { data: signedUrlData } = await supabaseAdmin
                     posicao: { x: solicitacao.posicao_x, y: solicitacao.posicao_y },
                     assinante_nome: signerName,
                     assinante_email: signerEmail,
-                    assinante_cpf: signer_data?.cpf || null
+                    assinante_cpf: signer_data?.cpf || null,
+                    assinante_data_nascimento: signer_data?.data_nascimento || null
                 },
             });
 

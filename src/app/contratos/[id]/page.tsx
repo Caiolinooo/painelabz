@@ -1,5 +1,7 @@
 'use client';
 
+import { normalizeCpf, formatCpf } from '@/lib/utils/identity';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -67,6 +69,8 @@ export default function ContratoDetailPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [manualSignerName, setManualSignerName] = useState('');
     const [manualSignerEmail, setManualSignerEmail] = useState('');
+    const [manualSignerTaxId, setManualSignerTaxId] = useState('');
+    const [manualSignerBirthDate, setManualSignerBirthDate] = useState('');
     const [isExternalInput, setIsExternalInput] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
     const [reuseSignerInfo, setReuseSignerInfo] = useState(true); // default true for convenience
@@ -105,6 +109,8 @@ export default function ContratoDetailPage() {
             setSelectedColaborador('');
             setManualSignerName('');
             setManualSignerEmail('');
+            setManualSignerTaxId('');
+            setManualSignerBirthDate('');
             setIsExternalInput(false);
         }
         setSearchQuery('');
@@ -364,6 +370,8 @@ export default function ContratoDetailPage() {
                     colaborador_id: selectedColaborador || null,
                     external_signer_name: manualSignerName || null,
                     external_signer_email: manualSignerEmail || null,
+                    external_signer_tax_id: manualSignerTaxId ? normalizeCpf(manualSignerTaxId) : null,
+                    external_signer_birth_date: manualSignerBirthDate || null,
                     pagina_assinatura: posPage,
                     posicao_x: finalX,
                     posicao_y: finalY,
@@ -1211,9 +1219,30 @@ export default function ContratoDetailPage() {
                                                                                 onChange={(e) => setManualSignerName(e.target.value)}
                                                                                 className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                                                             />
+                                                                            {/* Optional identity fields for validation during mobile signing */}
+                                                                            <div className="pt-1 border-t border-dashed border-gray-200">
+                                                                                <p className="text-[9px] text-gray-400 uppercase tracking-wide font-semibold mb-1.5">
+                                                                                    {t('contratos.detail.identity_optional', 'Dados de identidade (opcional — reforça validação)')}
+                                                                                </p>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="CPF (000.000.000-00)"
+                                                                                    value={manualSignerTaxId}
+                                                                                    onChange={(e) => setManualSignerTaxId(formatCpf(e.target.value))}
+                                                                                    maxLength={14}
+                                                                                    className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none mb-2"
+                                                                                />
+                                                                                <input
+                                                                                    type="date"
+                                                                                    placeholder={t('contratos.detail.birth_date', 'Data de Nascimento')}
+                                                                                    value={manualSignerBirthDate}
+                                                                                    onChange={(e) => setManualSignerBirthDate(e.target.value)}
+                                                                                    className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                                                />
+                                                                            </div>
                                                                             <button 
                                                                                 type="button" 
-                                                                                onClick={() => { setIsExternalInput(false); setManualSignerName(''); setManualSignerEmail(''); }}
+                                                                                onClick={() => { setIsExternalInput(false); setManualSignerName(''); setManualSignerEmail(''); setManualSignerTaxId(''); setManualSignerBirthDate(''); }}
                                                                                 className="text-[10px] text-gray-500 font-medium flex items-center gap-1 hover:text-gray-800"
                                                                             >
                                                                                 <FiArrowLeft className="w-2.5 h-2.5" /> {t('contratos.detail.back_to_search', 'Voltar para busca')}

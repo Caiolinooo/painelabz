@@ -1,6 +1,6 @@
 # Changelog
 
-## [5.20.0] - 2026-05-25
+## [5.19.0] - 2026-05-25
 
 ### Added
 - **Enhanced Contract Signing Identity Validation**: New multi-factor identity verification layer for electronic signatures. Server-side validation now checks CPF format, email match, CPF match, and birth date match before allowing signature. Returns distinct error codes for each validation failure (EMAIL_MISMATCH, CPF_MISMATCH, BIRTH_DATE_MISMATCH).
@@ -19,7 +19,7 @@
 ### Fixed
 - **News Post Editor**: Protected against downgrading published posts to draft status — published posts can no longer be accidentally reverted to draft.
 
-## [5.19.0] - 2026-05-25
+## [5.18.0] - 2026-05-25
 
 ### Added
 - **E-Social Compliance Module**: Complete integration with Brazilian government's e-Social system for digital transmission of labor, tax, and social security obligations.
@@ -54,7 +54,7 @@
 - **OCR Config**: `settings` table seeded with global OCR configuration.
 - **Storage Bucket**: `esocial-certificados` for encrypted PFX certificate storage.
 
-## [5.18.0] - 2026-05-25
+## [5.17.0] - 2026-05-25
 
 ### Added
 - **Gestão de Tripulantes Module (Crew Management)**: Complete offshore crew management system with comprehensive data model and workflows.
@@ -81,7 +81,7 @@
 ### API
 - **18 REST Endpoints**: Health check, CRUD for cargos/centros_custo/empresas/embarcacoes/colaboradores, documents (upload/CRUD/OCR/e-Social), dashboard, configurations, PoliWeb integration, back suggestion algorithm, notifications, and cron jobs.
 
-## [5.17.0] - 2026-05-25
+## [5.16.0] - 2026-05-25
 
 ### Added
 - **MIO Cache System**: Unified caching layer that replaces direct MIO API calls with a Supabase-backed cache, polled every 15 seconds for real-time data availability.
@@ -111,9 +111,15 @@
 - **MIO Types**: `MIOTreinamento` expanded from 8 to 34 fields; new `MIOEmbarque` (20+ fields) and `MIOASO` interfaces added.
 - **Man Schedule**: Now reads from `mio_cache` instead of direct MIO API calls; faster refresh (10s revalidate).
 
-## [5.16.0] - 2026-05-25
+## [5.15.0] - 2026-05-25
 
 ### Added
+- **New Dependencies**:
+  - `node-forge` (^1.4.0) — Certificate cryptography and PFX/P12 decoding for E-Social digital signatures.
+  - `tesseract.js` (^7.0.0) — OCR engine for document text recognition (ASOs, passports, certificates).
+  - `xml-crypto` (^6.1.2) — XML digital signing for E-Social event transmission.
+  - `@types/node-forge` (^1.3.14) and `@types/xml-crypto` (^1.4.6) for TypeScript support.
+
 - **ACL Hierarchical System Extension**: Enhanced permission system with new module support for Gestão de Tripulantes and E-Social.
   - **8 Gestão de Tripulantes Permissions**: `view`, `manage`, `admin`, `documents.edit`, `documents.ocr`, `back.suggest`, `poliweb.scrape`, `notifications.manage`.
   - **5 E-Social Permissions**: `view`, `prepare`, `review`, `send`, `admin`.
@@ -127,7 +133,11 @@
   - **`eSocial` namespace**: ~233 entries covering event management, review, certificates, configuration, and dashboard.
   - **Menu and module list entries**: `menu.gestaoTripulantes`, `modules.gestao-tripulantes`, `modules.e-social`.
 
+- **Database Schema Extension**: Added `birth_date` column to `users_unified` table (DATE, nullable) with index for identity validation in electronic signatures.
+
 ### Changed
+- **Next.js Configuration**: Added `serverComponentsExternalPackages: ['tesseract.js']` to enable native Node.js module loading for OCR in server components.
+- **TypeScript Configuration**: Added `baseUrl: "."` for root-based imports complementing existing `@/` path aliases.
 - **Permissions Type System**: `PermissionFeatures` interface extended with 13 new optional fields for both modules.
 - **`PERMISSIONS` constant**: Added `GESTAO_TRIPULANTES` (8 keys) and `ESOCIAL` (5 keys) permission groups.
 - **`PERMISSION_DESCRIPTIONS`**: 13 new Portuguese descriptions for permission tooltips and admin UI.
@@ -136,41 +146,23 @@
 - **Cards API**: Added icon mappings for both new modules in dashboard card system.
 - **Effective Permissions API**: Extended debug output with `_debug.acl` source info and `_debug.acl_modules_applied` array.
 - **Auth Context**: `UserProfile` interface extended with `tax_id`, `bio`, `birth_date`, and `cover_url` fields.
-
-### Infrastructure
-- **Module Registration**: Both `gestao-tripulantes` and `e-social` registered in `src/config/modules.ts` and `src/constants/modules.ts` with proper roles and categories.
-- **ACL Init**: ACL system seeded with all 13 new permissions for both modules.
-- **Unified Data Hook**: Admin users now bypass sector restrictions in `useUnifiedData`.
-
-## [5.15.0] - 2026-05-25
-
-### Added
-- **New Dependencies**:
-  - `node-forge` (^1.4.0) — Certificate cryptography and PFX/P12 decoding for E-Social digital signatures.
-  - `tesseract.js` (^7.0.0) — OCR engine for document text recognition (ASOs, passports, certificates).
-  - `xml-crypto` (^6.1.2) — XML digital signing for E-Social event transmission.
-  - `@types/node-forge` (^1.3.14) and `@types/xml-crypto` (^1.4.6) for TypeScript support.
-
-- **Database Schema Extension**: Added `birth_date` column to `users_unified` table (DATE, nullable) with index for identity validation in electronic signatures.
-
-### Changed
-- **Next.js Configuration**: Added `serverComponentsExternalPackages: ['tesseract.js']` to enable native Node.js module loading for OCR in server components.
-- **TypeScript Configuration**: Added `baseUrl: "."` for root-based imports complementing existing `@/` path aliases.
 - **package.json Scripts**: Added 6 new database setup scripts:
   - `db:setup-esocial` — Storage bucket creation for E-Social certificates
   - `db:seed-esocial-riscos` — Risk factors seeding
   - `db:setup-mio-cache` — MIO cache table setup
   - `db:cadastro-fields` — Cadastro migration for GT module
   - `db:setup-gestao-tripulantes` — Main GT module migration
-  - `npm run db:setup-gestao-tripulantes`
 
 ### Infrastructure
+- **Module Registration**: Both `gestao-tripulantes` and `e-social` registered in `src/config/modules.ts` and `src/constants/modules.ts` with proper roles and categories.
+- **ACL Init**: ACL system seeded with all 13 new permissions for both modules.
+- **Unified Data Hook**: Admin users now bypass sector restrictions in `useUnifiedData`.
 - **Supabase Types**: `birth_date` field added to `users_unified` Row, Insert, and Update types.
 - **Centralized Identity Utility**: New `src/lib/utils/identity.ts` for CPF normalization, formatting, validation, and masking — shared across frontend and backend for electronic signature identity verification.
 - **CSS**: Global stylesheet updates for new UI components.
 - **Gitignore**: Updated to exclude temporary and environment-specific files.
 
-### Added
+## [5.14.0] - 2026-05-20
 - **ACL Hierarchical System Overhaul**: Refactored permission system with modular architecture. New `getFullPermissionsForRole()` consolidates module access across ADMIN, MANAGER, and USER roles. Permissions now split into `modules` (access flags) and `features` (fine-grained actions) for each role.
 - **New Permission Categories**: Added granular permissions for `ferias` (read/create/approve/manage/admin), `lista-presenca` (read/create/manage/admin), and `contratos` (read/sign/manage) with full i18n descriptions.
 - **Contracts Templates System**: Complete template management with CRUD API, role-based signer mapping, and template-to-envelope workflow. Templates support predefined roles (e.g., Colaborador, Gestor, RH) with auto-assignment.

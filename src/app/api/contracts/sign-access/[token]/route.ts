@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
             .select(`
                 *,
                 documento:documentos_trabalhistas (*),
-                colaborador:users_unified!colaborador_id (email, first_name, last_name, tax_id),
+                colaborador:users_unified!colaborador_id (email, first_name, last_name, tax_id, birth_date),
                 envelope:envelopes!envelope_id (id, titulo, remetente_id)
             `)
             .eq('token_acesso', token);
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
             .select(`
                 *,
                 documento:documentos_trabalhistas (*),
-                colaborador:users_unified!colaborador_id (email, first_name, last_name, tax_id),
+                colaborador:users_unified!colaborador_id (email, first_name, last_name, tax_id, birth_date),
                 envelope:envelopes!envelope_id (id, titulo, remetente_id)
             `)
             .eq('envelope_id', refSol.envelope_id);
@@ -153,6 +153,8 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
             const targetName = sol.colaborador 
                 ? `${sol.colaborador.first_name} ${sol.colaborador.last_name || ''}`.trim() 
                 : sol.external_signer_name;
+            const targetTaxId = sol.colaborador?.tax_id || sol.external_signer_tax_id || null;
+            const targetBirthDate = sol.colaborador?.birth_date || sol.external_signer_birth_date || null;
 
             return {
                 id: sol.id,
@@ -166,7 +168,8 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
                 altura_assinatura: sol.altura_assinatura,
                 target_email: targetEmail,
                 target_name: targetName,
-                target_tax_id: sol.colaborador?.tax_id || null,
+                target_tax_id: targetTaxId,
+                target_birth_date: targetBirthDate,
                 valor_preenchido: sol.valor_preenchido,
                 documento: {
                     id: doc?.id,

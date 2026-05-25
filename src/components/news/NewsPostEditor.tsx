@@ -150,9 +150,15 @@ const NewsPostEditor: React.FC<NewsPostEditorProps> = ({
       setSaving(true);
       setError(null);
 
+      // Não permitir mudar post publicado para rascunho
+      let finalStatus = status;
+      if (status === 'draft' && postId && post.status === 'published') {
+        finalStatus = undefined;
+      }
+
       const postData = {
         ...post,
-        status: status || post.status
+        status: finalStatus || (postId && post.status !== 'draft' ? post.status : 'draft')
       };
 
       const url = postId ? `/api/news/posts/${postId}` : '/api/news/posts';
