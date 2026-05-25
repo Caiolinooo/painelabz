@@ -1,0 +1,159 @@
+'use client';
+
+import React from 'react';
+import { useI18n } from '@/contexts/I18nContext';
+
+interface Collaborator {
+  id: string;
+  nome_completo: string;
+  cpf: string;
+  email: string;
+  matricula: string;
+  foto_url: string;
+  cargo_nome: string;
+  empresa_nome: string;
+  embarcacao_nome: string;
+  centro_custo_nome: string;
+  status_embarque: string;
+  standby: boolean;
+  data_proximo_embarque: string;
+  qtd_docs_vencidos: number;
+  qtd_docs_vencendo: number;
+  qtd_docs_validos: number;
+}
+
+interface GTMatrixProps {
+  colaboradores: Collaborator[];
+  loading: boolean;
+  onRowClick: (colaborador: Collaborator) => void;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  embarcado: 'bg-green-100 text-green-700 border-green-300',
+  standby: 'bg-orange-100 text-orange-700 border-orange-300',
+  folga: 'bg-blue-100 text-blue-700 border-blue-300',
+  desembarcado: 'bg-gray-100 text-gray-600 border-gray-300',
+  afastado: 'bg-red-100 text-red-700 border-red-300',
+  ferias: 'bg-purple-100 text-purple-700 border-purple-300',
+  treinamento: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+};
+
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  embarcado: 'gestaoTripulantes.status.embarcado',
+  standby: 'gestaoTripulantes.status.standby',
+  folga: 'gestaoTripulantes.status.folga',
+  desembarcado: 'gestaoTripulantes.status.desembarcado',
+  afastado: 'gestaoTripulantes.status.afastado',
+  ferias: 'gestaoTripulantes.status.ferias',
+  treinamento: 'gestaoTripulantes.status.treinamento',
+};
+
+function SkeletonRows() {
+  return (
+    <>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <tr key={i} className="animate-pulse">
+          <td className="px-4 py-3"><div className="w-9 h-9 bg-gray-200 rounded-full" /></td>
+          <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-36" /></td>
+          <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-24" /></td>
+          <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-20" /></td>
+          <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-20" /></td>
+          <td className="px-4 py-3"><div className="h-5 bg-gray-200 rounded-full w-20" /></td>
+          <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-16" /></td>
+          <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-24" /></td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export default function GTMatrix({ colaboradores, loading, onRowClick }: GTMatrixProps) {
+  const { t } = useI18n();
+
+  const getStatusBadge = (status: string, standby: boolean) => {
+    const color = STATUS_COLORS[status] || 'bg-gray-100 text-gray-600 border-gray-300';
+    const label = t(STATUS_LABEL_KEYS[status] || status);
+    return (
+      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${color}`}>
+        {standby ? `${label} (SB)` : label}
+      </span>
+    );
+  };
+
+  const getDocIndicator = (vencidos: number, vencendo: number) => {
+    if (vencidos > 0) {
+      return <span className="text-red-600 font-semibold text-xs">{vencidos} {t('gestaoTripulantes.documentStatus.expired', { days: vencidos })}</span>;
+    }
+    if (vencendo > 0) {
+      return <span className="text-orange-500 font-semibold text-xs">{vencendo} {t('gestaoTripulantes.documentStatus.expiring', { days: vencendo })}</span>;
+    }
+    return <span className="text-green-600 text-xs">{t('gestaoTripulantes.documentStatus.valid')}</span>;
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('pt-BR');
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+            <tr>
+              <th className="px-4 py-3 w-12">{t('gestaoTripulantes.table.photo')}</th>
+              <th className="px-4 py-3">{t('gestaoTripulantes.table.name')}</th>
+              <th className="px-4 py-3">{t('gestaoTripulantes.table.rank')}</th>
+              <th className="px-4 py-3">{t('gestaoTripulantes.table.company')}</th>
+              <th className="px-4 py-3">{t('gestaoTripulantes.table.vessel')}</th>
+              <th className="px-4 py-3">{t('gestaoTripulantes.table.status')}</th>
+              <th className="px-4 py-3">{t('gestaoTripulantes.table.documents')}</th>
+              <th className="px-4 py-3">{t('gestaoTripulantes.table.nextEmbark')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {loading ? (
+              <SkeletonRows />
+            ) : colaboradores.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                  {t('gestaoTripulantes.common.noResults')}
+                </td>
+              </tr>
+            ) : (
+              colaboradores.map(col => (
+                <tr
+                  key={col.id}
+                  className="hover:bg-blue-50 transition-colors cursor-pointer"
+                  onClick={() => onRowClick(col)}
+                >
+                  <td className="px-4 py-3">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                      {col.foto_url ? (
+                        <img src={col.foto_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-sm">
+                          {col.nome_completo?.charAt(0) || '?'}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                    <div>{col.nome_completo}</div>
+                    <div className="text-xs text-gray-400">{col.matricula || col.cpf || ''}</div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{col.cargo_nome || '-'}</td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{col.empresa_nome || '-'}</td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{col.embarcacao_nome || '-'}</td>
+                  <td className="px-4 py-3">{getStatusBadge(col.status_embarque, col.standby)}</td>
+                  <td className="px-4 py-3">{getDocIndicator(col.qtd_docs_vencidos, col.qtd_docs_vencendo)}</td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(col.data_proximo_embarque)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
