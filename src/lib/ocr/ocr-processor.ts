@@ -248,18 +248,8 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     const pdfjs = (pdfjsModule as any).getDocument ? pdfjsModule : ((pdfjsModule as any).default || pdfjsModule);
     
     if (typeof window === 'undefined') {
-      try {
-        const { pathToFileURL } = await import('url');
-        const path = await import('path');
-        const workerPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.mjs');
-        if (fs.existsSync(workerPath)) {
-          pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
-        } else {
-          console.log('[OCR/PDF] Worker local não encontrado (ambiente serverless/Vercel). Utilizando fake worker padrão.');
-        }
-      } catch (workerError: any) {
-        console.warn('[OCR/PDF] Falha ao configurar o workerSrc do PDF.js:', workerError.message);
-      }
+      // No ambiente Node.js (Server/Vercel), deixamos o pdfjs-dist resolver o fake worker internamente.
+      // O Next.js foi configurado (outputFileTracingIncludes) para garantir que o pdf.worker.mjs esteja na pasta.
     }
     
     class CustomCanvasFactory {

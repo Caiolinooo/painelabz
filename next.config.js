@@ -39,6 +39,10 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     serverComponentsExternalPackages: ['tesseract.js', 'pdfjs-dist', 'canvas'],
+    outputFileTracingIncludes: {
+      '/*': ['./node_modules/pdfjs-dist/build/**/*'],
+      '/api/**/*': ['./node_modules/pdfjs-dist/build/**/*'],
+    },
   },
 
   // Configurações do webpack para polyfill de módulos Node.js
