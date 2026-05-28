@@ -101,6 +101,7 @@ export async function POST(
     });
   } catch (error) {
     console.error('[OCR Document Process] Erro:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : 'Erro interno do servidor';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

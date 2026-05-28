@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[OCR Extract] Erro:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : 'Erro interno do servidor';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
