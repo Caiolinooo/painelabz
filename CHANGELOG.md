@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.21.2] - 2026-05-28
+
+### Changed
+- **Next.js Output File Tracing**: Added `outputFileTracingIncludes` for `pdfjs-dist` build files in `next.config.js`. Ensures PDF.js worker (`pdf.worker.mjs`) is properly bundled for serverless/Vercel deployments.
+- **OCR PDF Worker Configuration**: Removed manual `GlobalWorkerOptions.workerSrc` setup in `ocr-processor.ts`. PDF.js now resolves its fake worker internally, relying on Next.js output tracing to include the correct files.
+
 ## [5.21.1] - 2026-05-28
 
 ### Changed
