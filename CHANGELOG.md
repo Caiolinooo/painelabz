@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.21.1] - 2026-05-28
+
+### Changed
+- **OCR LLM Prompt Refinement**: Enhanced ASO extraction prompt with 9 business rules. Added "Empresa x Clinica" rule to prevent contractor company (ABZ/aguas) from being misidentified as the clinic. CNPJ field marked as optional. Medical examiner vs PCMSO coordinator distinction clarified.
+- **Next.js Server External Packages**: Added `pdfjs-dist` and `canvas` to `serverComponentsExternalPackages` alongside existing `tesseract.js` for proper server-side rendering of PDF and image processing modules.
+
 ## [5.21.0] - 2026-05-28
 
 ### Added

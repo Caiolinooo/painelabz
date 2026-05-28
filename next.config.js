@@ -38,7 +38,7 @@ const nextConfig = {
   // Configurações experimentais
   experimental: {
     optimizeCss: true,
-    serverComponentsExternalPackages: ['tesseract.js'],
+    serverComponentsExternalPackages: ['tesseract.js', 'pdfjs-dist', 'canvas'],
   },
 
   // Configurações do webpack para polyfill de módulos Node.js
