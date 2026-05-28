@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createLeaveRequest, getUserLeaveRequests } from '@/services/leaveService';
 import { supabaseAdmin } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
 import { sendGlobalNotification } from '@/lib/global-notifications';
 import { sendEmail } from '@/lib/email-service';
 import { notifyLeaveRequestCreated } from '@/services/leaveNotifications';

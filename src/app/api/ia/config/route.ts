@@ -9,6 +9,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { invalidateConfigCache } from '@/lib/ia/client';
 import type { IAConfig, IAConfigPublic } from '@/types/ia';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const tokenResult = verifyRequestToken(request);
