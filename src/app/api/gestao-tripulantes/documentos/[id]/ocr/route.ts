@@ -6,6 +6,7 @@ import { extrairDadosASODoTexto } from '@/lib/gestao-tripulantes/ocr-processor';
 import type { OCRTipoDocumento } from '@/types/ocr';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 
 export async function POST(
   request: NextRequest,
@@ -103,6 +104,7 @@ export async function POST(
     });
   } catch (error) {
     console.error('Erro na API OCR:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : 'Erro interno do servidor';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.23.1] - 2026-05-28
+
+### Changed
+- **OCR API Error Responses**: All 4 OCR API routes (`gestao-tripulantes/ocr`, `gestao-tripulantes/ocr/extract`, `ocr/document/process`, `ocr/extract`) now return the actual error message instead of generic "Erro interno do servidor".
+- **OCR Route Timeout**: Added `maxDuration = 120` to gestão de tripulantes OCR route for extended processing on large documents.
+
+### Fixed
+- **pdf-parse Import Path**: Fixed import from `pdf-parse/lib/pdf-parse.js` to `pdf-parse` (2 locations in `ocr-processor.ts`).
+- **Supabase Storage Auth**: `obterConteudoArquivo()` now sends `Authorization: Bearer <service_role_key>` header when downloading files from `supabase.co/storage/` URLs, preventing 403 errors on private buckets.
+
 ## [5.23.0] - 2026-05-28
 
 ### Added

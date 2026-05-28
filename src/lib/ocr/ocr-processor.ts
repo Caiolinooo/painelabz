@@ -157,7 +157,14 @@ async function obterConteudoArquivo(arquivoUrl: string): Promise<{ buffer: Buffe
   }
 
   if (arquivoUrl.startsWith('http://') || arquivoUrl.startsWith('https://')) {
-    const response = await fetch(arquivoUrl);
+    const headers: Record<string, string> = {};
+    if (arquivoUrl.includes('supabase.co/storage/')) {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+      if (serviceKey) {
+        headers['Authorization'] = `Bearer ${serviceKey}`;
+      }
+    }
+    const response = await fetch(arquivoUrl, { headers });
     if (!response.ok) {
       throw new Error(`Falha ao baixar arquivo da URL: ${response.status} ${response.statusText}`);
     }
@@ -317,7 +324,7 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
   // 1) Tentar pdf-parse com render customizado para capturar mais texto
   try {
     // @ts-ignore
-    const pdfParseModule = await import('pdf-parse/lib/pdf-parse.js');
+    const pdfParseModule = await import('pdf-parse');
     const pdfParse = typeof pdfParseModule === 'function' ? pdfParseModule : (pdfParseModule.default || pdfParseModule);
     
     const customRenderPage = (pageData: any) => {
@@ -445,7 +452,7 @@ async function processarPDF(buffer: Buffer, idioma: string = 'por'): Promise<{ t
   let digitalTexto = '';
   try {
     // @ts-ignore
-    const pdfParseModule = await import('pdf-parse/lib/pdf-parse.js');
+    const pdfParseModule = await import('pdf-parse');
     const pdfParse = typeof pdfParseModule === 'function' ? pdfParseModule : (pdfParseModule.default || pdfParseModule);
     const data = await pdfParse(buffer);
     digitalTexto = data.text || '';
