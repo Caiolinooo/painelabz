@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.23.6] - 2026-05-28
+
+### Changed
+- **OCR LLM Vision — Multi-Format Support**: `extrairTextoViaLLMVisao()` now accepts a `mimeType` parameter, enabling LLM Vision to process not only PDFs but also images (PNG, JPG, WebP, GIF). Images are now processed via LLM Vision first (90% confidence) with Tesseract as fallback, significantly improving OCR accuracy on image-based documents.
+- **OCR PDF Pipeline — Per-Page LLM Vision**: Each rendered PDF page is now processed by LLM Vision first before falling back to Tesseract. This replaces the previous Tesseract-only approach for pdfjs-dist rendered pages, combining the best of both worlds: LLM understanding for complex layouts and Tesseract for reliable fallback.
+- **Gestão de Tripulantes — ASO Data in Documents API**: The `GET /api/gestao-tripulantes/colaboradores/[id]` endpoint now enriches ASO documents with structured data from `gt_documentos_aso`. Clients receive `aso_data` field populated with exam details (type, result, physician, clinic) directly in the documents list.
+- **OCR Extract Route — Extended Timeout**: `maxDuration` increased from 60s to 300s for the OCR extract endpoint, supporting larger scanned documents that require more processing time for multi-strategy extraction.
+
 ## [5.23.5] - 2026-05-28
 
 ### Fixed
