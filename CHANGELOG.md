@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.23.5] - 2026-05-28
+
+### Fixed
+- **OCR LLM Vision — llama.cpp mmproj Support**: Removed model-name-based vision detection that incorrectly skipped vision for llama.cpp providers. Now when `provider === 'llamacpp'`, LLM Vision is always attempted (users who configure llama.cpp with mmproj intend to use vision). Cloud/lmstudio providers still use model-name detection as fallback. This fixes the "Modelo não parece suportar visão" false negative for custom llama.cpp setups with multi-modal projection.
+
 ## [5.23.4] - 2026-05-28
 
 ### Fixed

@@ -260,13 +260,16 @@ async function extrairTextoViaLLMVisao(pdfBuffer: Buffer): Promise<string | null
     throw new Error('IA não está configurada ou inativa');
   }
 
-  // Verificar se o modelo provavelmente suporta visão
+  // Determinar se o LLM suporta visão:
+  // - llamacpp: SEMPRE tentar (quem configura com mmproj quer visão)
+  // - lmstudio/cloud: verificar nome do modelo
+  const isLlamaCpp = config.provider === 'llamacpp';
   const modelLower = (config.model_default || '').toLowerCase();
   const visionModels = ['gpt-4o', 'gpt-4v', 'gpt-4-turbo', 'claude-3', 'claude-4', 'sonnet', 'haiku', 'opus', 'gemini', 'llava', 'bakllava', 'moondream', 'minicpm-v', 'qwen-vl', 'internvl'];
-  const isLikelyVision = visionModels.some(m => modelLower.includes(m));
+  const isLikelyVision = isLlamaCpp || visionModels.some(m => modelLower.includes(m));
 
   if (!isLikelyVision) {
-    console.log(`[OCR/LLM-Visão] Modelo "${config.model_default}" não parece suportar visão. Pulando LLM Vision.`);
+    console.log(`[OCR/LLM-Visão] Modelo "${config.model_default}" (provider: ${config.provider}) não parece suportar visão. Pulando.`);
     return null;
   }
 
@@ -280,20 +283,31 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
 
   const userText = 'Extraia todo o texto deste documento PDF digitalizado:';
 
-  // Formatos ordenados por compatibilidade (mais suportado primeiro)
-  const formats = [
-    {
-      name: 'image_url_pdf',
-      content: [
-        { type: 'text' as const, text: userText },
-        { type: 'image_url' as const, image_url: { url: dataUriPdf } },
-      ],
-    },
-  ];
+  // Formatos ordenados por compatibilidade
+  // llama.cpp com mmproj aceita image_url com image_url.url (data URI ou URL pública)
+  const formats = isLlamaCpp
+    ? [
+        {
+          name: 'llamacpp_image_url',
+          content: [
+            { type: 'text' as const, text: userText },
+            { type: 'image_url' as const, image_url: { url: dataUriPdf } },
+          ],
+        },
+      ]
+    : [
+        {
+          name: 'image_url_pdf',
+          content: [
+            { type: 'text' as const, text: userText },
+            { type: 'image_url' as const, image_url: { url: dataUriPdf } },
+          ],
+        },
+      ];
 
   for (const format of formats) {
     try {
-      console.log(`[OCR/LLM-Visão] Tentando formato "${format.name}" com modelo "${config.model_default}"...`);
+      console.log(`[OCR/LLM-Visão] Tentando formato "${format.name}" com modelo "${config.model_default}" (provider: ${config.provider})...`);
 
       const messages = [
         { role: 'system' as const, content: systemPrompt },
@@ -339,7 +353,7 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
     }
   }
 
-  console.log('[OCR/LLM-Visão] Nenhum formato funcionou. O LLM pode não suportar visão/PDF.');
+  console.log('[OCR/LLM-Visão] Nenhum formato funcionou.');
   return null;
 }
 
