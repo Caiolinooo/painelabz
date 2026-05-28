@@ -249,15 +249,25 @@ async function detectarExtensao(buffer: Buffer, extIndicada: string): Promise<st
 /**
  * Extrai texto de um PDF digitalizado enviando-o ao LLM com visão.
  * Tenta múltiplos formatos de API para máxima compatibilidade:
- *   1) type:"file" com file_data (OpenAI, Claude, etc.)
- *   2) type:"image_url" com data:application/pdf (compatibilidade ampla)
- *   3) type:"image_url" com data:image/png (se converter para imagem)
+ *   1) type:"image_url" com data:application/pdf (OpenAI GPT-4o, Claude, etc.)
+ *   2) type:"image_url" com data:image/png (se PDF convertido para imagem)
+ * Retorna null se o LLM não suportar visão/PDF.
  */
 async function extrairTextoViaLLMVisao(pdfBuffer: Buffer): Promise<string | null> {
   const { getIAConfig } = await import('@/lib/ia/client');
   const config = await getIAConfig();
   if (!config || !config.ativo) {
     throw new Error('IA não está configurada ou inativa');
+  }
+
+  // Verificar se o modelo provavelmente suporta visão
+  const modelLower = (config.model_default || '').toLowerCase();
+  const visionModels = ['gpt-4o', 'gpt-4v', 'gpt-4-turbo', 'claude-3', 'claude-4', 'sonnet', 'haiku', 'opus', 'gemini', 'llava', 'bakllava', 'moondream', 'minicpm-v', 'qwen-vl', 'internvl'];
+  const isLikelyVision = visionModels.some(m => modelLower.includes(m));
+
+  if (!isLikelyVision) {
+    console.log(`[OCR/LLM-Visão] Modelo "${config.model_default}" não parece suportar visão. Pulando LLM Vision.`);
+    return null;
   }
 
   const base64Pdf = pdfBuffer.toString('base64');
@@ -270,14 +280,8 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
 
   const userText = 'Extraia todo o texto deste documento PDF digitalizado:';
 
+  // Formatos ordenados por compatibilidade (mais suportado primeiro)
   const formats = [
-    {
-      name: 'file_api',
-      content: [
-        { type: 'text' as const, text: userText },
-        { type: 'file' as const, file: { filename: 'aso.pdf', file_data: dataUriPdf } } as any,
-      ],
-    },
     {
       name: 'image_url_pdf',
       content: [
@@ -289,7 +293,7 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
 
   for (const format of formats) {
     try {
-      console.log(`[OCR/LLM-Visão] Tentando formato "${format.name}"...`);
+      console.log(`[OCR/LLM-Visão] Tentando formato "${format.name}" com modelo "${config.model_default}"...`);
 
       const messages = [
         { role: 'system' as const, content: systemPrompt },
@@ -312,7 +316,7 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Sem detalhes');
-        console.warn(`[OCR/LLM-Visão] Formato "${format.name}" retornou ${response.status}: ${errorText.substring(0, 200)}`);
+        console.warn(`[OCR/LLM-Visão] Formato "${format.name}" retornou ${response.status}: ${errorText.substring(0, 300)}`);
         continue;
       }
 
@@ -335,6 +339,7 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
     }
   }
 
+  console.log('[OCR/LLM-Visão] Nenhum formato funcionou. O LLM pode não suportar visão/PDF.');
   return null;
 }
 
