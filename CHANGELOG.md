@@ -1,5 +1,35 @@
 # Changelog
 
+## [5.21.0] - 2026-05-28
+
+### Added
+- **Authentication Hardening for Leave APIs**: All vacation/leave API endpoints now require JWT token authentication via `Authorization: Bearer` header. Endpoints validate caller identity and ACL permissions before processing requests. Affected routes: `leave-approvals`, `leave-requests`, `leave-settings`, `ferias/admin-access`, `leave/requests`.
+- **`checkAclPermission()` Function**: New centralized ACL permission checker in `src/lib/auth.ts`. Queries PostgreSQL with JOINs across `acl_permissions`, `user_acl_permissions`, and `role_acl_permissions` tables. Supports both individual (with expiration) and role-based permissions. Admins always return `true`.
+- **Global Leave Access**: `leaveService.ts` now accepts `hasGlobalAccess` parameter. When `true`, admins/managers see all pending requests across all sectors without sector-specific configuration. Self-approval protection remains enforced.
+- **ACL → `ferias_admin` Mapping**: Effective permissions endpoint now auto-grants `ferias_admin = true` to ADMIN users and maps ACL `ferias:admin/manage` permissions to the `ferias_admin` module.
+- **IA Feedback Module**: New feedback tools system for the AI assistant — `buscar_feedbacks`, `atualizar_status_feedback`, `excluir_feedback` (ADMIN only). Module registered in IA config manager with 💬 icon. Context builder injects pending feedback count for admin users.
+- **IA Contract/Attendance Tools**: New tools `obter_link_contracheque` (external WK Radar WebNet link), `buscar_contratos` (contract documents with role-based filtering), `buscar_ponto` (employee attendance records), `buscar_lista_presenca` (available attendance lists).
+- **OCR LLM Extraction**: `ocr-processor.ts` now supports intelligent ASO data extraction via LLM (DeepSeek/Qwen). Sends raw OCR text with structured prompt, parses JSON response, and merges with regex results (LLM takes priority). Handles thinking blocks and markdown formatting.
+- **3 New IA Module Configs**: `feedback`, `contratos`, and `lista-presenca` modules added to default IA configuration with appropriate read/write role assignments.
+
+### Changed
+- **OCR Processor Priority**: In `gestao-tripulantes/ocr-processor.ts`, LLM-extracted data now takes priority over regex extraction for exam type, result, date, physician data, clinic name, and exam list. Regex serves as fallback only.
+- **Auth Context Resilience**: `SupabaseAuthContext.tsx` now implements 5-layer try/catch fallback pattern for profile queries. If `sectors` table join fails, falls back to plain `select('*')`. Prevents authentication failures due to missing tables or RLS issues. `sessionStorage.clear()` added on logout.
+- **UserEditor ACL Persistence**: ACL permission changes are now batched and persisted on form submit instead of per-click. Reduces database calls from N (one per toggle) to 1 (on save). Includes diff-based add/remove logic.
+- **IA Context Builder**: Enhanced with feedback data injection for admins, updated tool usage instructions for contracts, attendance, and paystub access. Simplified pendencias instructions to use `buscar_dados_usuario` with "resumo" type.
+- **Leave Requests API**: Now validates JWT token, checks ADMIN role or ACL `ferias:admin/manage` permission for listing/deleting all requests.
+- **Leave Settings API**: Now requires ADMIN role for reading/modifying vacation settings.
+- **Leave Approvals API**: Validates that the caller is the actual approver (not just any admin) and checks ACL permissions.
+
+### Fixed
+- **`requireModule` Corrections**: Fixed wrong module names in IA tools — `reembolsos` → `reembolso`, `avaliacoes_desempenho` → `avaliacao`, `suprimentos` → `compras` (3 tools).
+- **OCR RG/CPF False Positive**: `ocr-processor.ts` now cleans both RG and CPF (removes dots, spaces, dashes) and checks if extracted RG is contained within CPF — discards false matches.
+- **OCR Birth Date Extraction**: Now uses prefix-specific regex (`DN`, `NASC`, `NASCIMENTO`, etc.) first, then falls back to generic date regex with year < 2015 filter to prevent exam dates from being mistaken for birth dates.
+- **PDF.js Worker Check**: Added `fs.existsSync(workerPath)` verification before configuring PDF.js worker. Uses fake worker fallback in serverless/Vercel environments.
+
+### Removed
+- **`analisar_kpis_negocio` Tool**: Removed from IA tools (feature toggle `kpi_analysis` removed).
+
 ## [5.19.0] - 2026-05-25
 
 ### Added

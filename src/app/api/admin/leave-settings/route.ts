@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server';
 import { getLeaveSectorConfigs, upsertLeaveSectorConfig } from '@/services/leaveService';
 import { supabaseAdmin } from '@/lib/db';
+import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 
-export async function GET() {
+function getAuthPayload(request: Request) {
+    const authHeader = request.headers.get('authorization') || undefined;
+    const token = extractTokenFromHeader(authHeader);
+    if (!token) return null;
+    const payload = verifyToken(token);
+    if (!payload) return null;
+    return payload;
+}
+
+export async function GET(request: Request) {
+    const payload = getAuthPayload(request);
+    if (!payload) {
+        return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
+    }
+    if (payload.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Apenas administradores podem acessar configurações de férias' }, { status: 403 });
+    }
+
     try {
         const configs = await getLeaveSectorConfigs();
 
@@ -45,6 +63,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    const payload = getAuthPayload(request);
+    if (!payload) {
+        return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
+    }
+    if (payload.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Apenas administradores podem modificar configurações de férias' }, { status: 403 });
+    }
+
     try {
         const body = await request.json();
         const { sector_id, leader_id, manager_id, hrEmail } = body;

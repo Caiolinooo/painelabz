@@ -304,4 +304,8 @@ export interface IAUserContext {
   teamMemberIds?: string[];
   /** Ferramentas disponíveis para o usuário (baseadas em RBAC e Módulos) */
   availableTools?: Array<{name: string; description: string}>;
+  /** Feedbacks pendentes (apenas para administradores) */
+  feedbacks?: {
+    pending: number;
+  };
 }

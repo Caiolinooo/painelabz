@@ -211,6 +211,20 @@ export async function buildUserContext(userId: string): Promise<IAUserContext | 
 
   const effectiveRole = await getEffectiveRole(userId, profile.role);
 
+  // Buscar contagem de feedbacks apenas para administradores
+  let feedbackPendingCount = 0;
+  if (effectiveRole === 'ADMIN') {
+    try {
+      const { count } = await supabaseAdmin
+        .from('user_feedback')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'open');
+      feedbackPendingCount = count || 0;
+    } catch (e) {
+      console.warn('Erro ao carregar contagem de feedbacks:', e);
+    }
+  }
+
   const [evaluations, vacations, reimbursements, recentEmails, availableToolsData] = await Promise.all([
     getUserEvaluations(userId),
     getUserVacations(userId),
@@ -239,6 +253,7 @@ export async function buildUserContext(userId: string): Promise<IAUserContext | 
     reimbursements,
     recentEmails,
     availableTools,
+    feedbacks: effectiveRole === 'ADMIN' ? { pending: feedbackPendingCount } : undefined,
   };
 
   if (effectiveRole === 'GERENTE') {
@@ -297,9 +312,13 @@ Voce: (executa ferramenta) -> resultado -> (executa mesma ferramenta novamente) 
 
 QUANDO O USUARIO PERGUNTAR:
 - Sobre solicitações DELE (ex: "minhas ferias", "meus reembolsos", "meus eventos", "meus EPIs", "minhas avaliacoes", "meu resumo") → use a ferramenta buscar_dados_usuario com usuario: "meu"
-- Sobre o que ELE PRECISA APROVAR (ex: "o que tenho pendente para aprovar?", "quais as pendencias da equipe?", "pendencias do sistema") → use as ferramentas específicas: buscar_pendencias_ferias, buscar_pendencias_reembolso, buscar_pendencias_aprovacao.
-- Sobre "minhas pendencias", "pendencias" → SE ELE FOR GERENTE OU ADMIN, assuma que ele quer saber de TUDO (suas próprias e as de terceiros para aprovar). Execute as ferramentas de pendências de aprovação e também a buscar_dados_usuario (tipo resumo). SE ELE FOR USER, use apenas buscar_dados_usuario (tipo resumo).
+- Sobre o que ELE PRECISA APROVAR (ex: "o que tenho pendente para aprovar?", "quais as pendencias da equipe?", "pendencias do sistema") → use as ferramentas de busca global correspondentes (ex: buscar_ferias_global, buscar_reembolsos_global, etc.) ou buscar_dados_usuario com tipo "resumo".
+- Sobre "minhas pendencias", "pendencias" → use buscar_dados_usuario com tipo "resumo".
 - Para ver dados de OUTRA pessoa → use o email ou nome dessa pessoa
+- Sobre feedbacks (ex: "quais feedbacks recebemos?", "feedbacks em aberto") → apenas se for ADMIN, use as ferramentas de feedback: buscar_feedbacks, atualizar_status_feedback, excluir_feedback.
+- Sobre contracheques ou holerites (ex: "quero ver meu contracheque", "link do holerite") → use obter_link_contracheque.
+- Sobre contratos trabalhistas (ex: "meus contratos", "tenho contratos pendentes?", "envelopes de contratos") → use buscar_contratos.
+- Sobre ponto ou presença (ex: "meu ponto", "registros de presença", "listas de presença") → use buscar_ponto para registros individuais, ou buscar_lista_presenca para ver as listas disponíveis no sistema.
 
 O sistema ja verifica permissões automaticamente:
 - USER: só vê próprios dados
@@ -355,6 +374,11 @@ Exemplo: Se o usuario perguntar "Como estao minhas pendencias?", voce deve:
       if (pending > 0) prompt += `\n- Pendentes: ${pending}`;
       if (totalApproved > 0) prompt += `\n- Total aprovado recente: R$ ${totalApproved.toLocaleString('pt-BR')}`;
     }
+  }
+
+  if (userContext.role === 'ADMIN' && userContext.feedbacks) {
+    prompt += `\n\n## Feedbacks de Usuários
+- Feedbacks pendentes/abertos no sistema: ${userContext.feedbacks.pending}`;
   }
 
   if (userContext.recentEmails && userContext.recentEmails.length > 0) {

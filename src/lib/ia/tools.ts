@@ -381,7 +381,7 @@ export const IA_TOOLS_DEFINITION = [
         required: ['funcionario_id'],
       },
     },
-    requireModule: 'reembolsos',
+    requireModule: 'reembolso',
   },
   {
     type: 'function',
@@ -471,7 +471,7 @@ export const IA_TOOLS_DEFINITION = [
         required: ['funcionario_id'],
       },
     },
-    requireModule: 'avaliacoes_desempenho',
+    requireModule: 'avaliacao',
   },
   {
     type: 'function',
@@ -581,7 +581,7 @@ export const IA_TOOLS_DEFINITION = [
         required: [],
       },
     },
-    requireModule: 'suprimentos',
+    requireModule: 'compras',
   },
   {
     type: 'function',
@@ -599,7 +599,7 @@ export const IA_TOOLS_DEFINITION = [
         required: [],
       },
     },
-    requireModule: 'suprimentos',
+    requireModule: 'compras',
   },
   {
     type: 'function',
@@ -617,7 +617,7 @@ export const IA_TOOLS_DEFINITION = [
         required: ['termo'],
       },
     },
-    requireModule: 'suprimentos',
+    requireModule: 'compras',
   },
   {
     type: 'function',
@@ -1060,23 +1060,7 @@ export const IA_TOOLS_DEFINITION = [
       adminOnly: false,
       featureToggle: 'autonomous_agent',
     },
-    {
-      type: 'function',
-      function: {
-        name: 'analisar_kpis_negocio',
-        description: 'Analisa os KPIs de performance e soluções do portal, comparando valores atuais com metas definidas. Identifica anomalias e sugere ações. Dados incluem: avaliações, férias, reembolsos, EPIs.',
-        parameters: {
-          type: 'object',
-          properties: {
-            departamento: { type: 'string', description: 'Filtrar análise por departamento específico (opcional)' },
-            tipo_kpi: { type: 'string', enum: ['performance', 'solucoes', 'todos'], description: 'Tipo de KPI: performance (avaliações), solucoes (ações/entregas), todos' },
-          },
-          required: [],
-        },
-      },
-  adminOnly: false,
-  featureToggle: 'kpi_analysis',
-  },
+
   {
     type: 'function',
     function: {
@@ -1151,6 +1135,125 @@ export const IA_TOOLS_DEFINITION = [
       },
     },
     adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_feedbacks',
+      description: 'Busca feedbacks enviados pelos usuários do portal. Permite filtrar por tipo, status e período. Apenas ADMIN.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: { type: 'string', enum: ['doubt', 'bug', 'suggestion', 'other'], description: 'Tipo de feedback' },
+          status: { type: 'string', enum: ['open', 'in_progress', 'resolved', 'dismissed'], description: 'Status do feedback' },
+          limite: { type: 'number', description: 'Quantidade máxima de resultados (padrão: 20)' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: true,
+    requireModule: 'feedback',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'atualizar_status_feedback',
+      description: 'Atualiza o status de um feedback do usuário. Apenas ADMIN.',
+      parameters: {
+        type: 'object',
+        properties: {
+          feedback_id: { type: 'string', description: 'ID do feedback (UUID)' },
+          status: { type: 'string', enum: ['open', 'in_progress', 'resolved', 'dismissed'], description: 'Novo status' },
+        },
+        required: ['feedback_id', 'status'],
+      },
+    },
+    adminOnly: true,
+    requireModule: 'feedback',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'excluir_feedback',
+      description: 'Exclui um feedback do usuário do portal. Apenas ADMIN.',
+      parameters: {
+        type: 'object',
+        properties: {
+          feedback_id: { type: 'string', description: 'ID do feedback (UUID) a ser excluído' },
+        },
+        required: ['feedback_id'],
+      },
+    },
+    adminOnly: true,
+    requireModule: 'feedback',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'obter_link_contracheque',
+      description: 'Obtém as instruções e o link de acesso para o sistema externo de contracheques.',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    adminOnly: false,
+    requireModule: 'contracheque',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_contratos',
+      description: 'Busca os documentos/contratos trabalhistas e solicitações de assinatura. ADMIN/GERENTE vêem todos os envelopes e status de assinatura. USER vê apenas suas próprias solicitações de assinatura pendentes ou assinadas.',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['PENDING', 'SIGNED', 'RETRIEVED', 'DELETED'], description: 'Status da assinatura/envelope' },
+          busca: { type: 'string', description: 'Termo de busca para título ou colaborador' },
+          limite: { type: 'number', description: 'Limite de resultados' }
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+    requireModule: 'contratos',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_ponto',
+      description: 'Busca os registros de ponto (presenças em listas corporativas) de um funcionário específico. USER vê os próprios, ADMIN/GERENTE vêem os de qualquer funcionário.',
+      parameters: {
+        type: 'object',
+        properties: {
+          funcionario_id: { type: 'string', description: 'ID (UUID) do funcionário' },
+          data_inicio: { type: 'string', description: 'Data de início (YYYY-MM-DD)' },
+          data_fim: { type: 'string', description: 'Data de fim (YYYY-MM-DD)' },
+          limite: { type: 'number', description: 'Limite de resultados' }
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+    requireModule: 'ponto',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_lista_presenca',
+      description: 'Busca listas de presença disponíveis e seus detalhes (status, data, local, etc.).',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['aberta', 'fechada'], description: 'Status da lista' },
+          busca: { type: 'string', description: 'Termo de busca para título ou local' },
+          limite: { type: 'number', description: 'Limite de resultados' }
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+    requireModule: 'lista-presenca',
   },
 ];
 
@@ -3142,6 +3245,158 @@ case 'coletar_dados_holisticos': {
            ? `Erro ao configurar alerta: ${error.message}`
            : `Alerta configurado para KPI "${kpi_key}": notificar quando abaixo de ${threshold}% da meta. Canais: ${channels || 'push,portal'}.`;
        }
+
+      case 'buscar_feedbacks': {
+        const { tipo, status, limite = 20 } = args;
+        
+        let query = supabaseAdmin
+          .from('user_feedback')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limite);
+          
+        if (tipo) query = query.eq('type', tipo);
+        if (status) query = query.eq('status', status);
+        
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar feedbacks: ${error.message}`;
+        if (!data || data.length === 0) return 'Nenhum feedback encontrado.';
+        
+        return JSON.stringify(data);
+      }
+
+      case 'atualizar_status_feedback': {
+        const { feedback_id, status } = args;
+        if (!feedback_id || !status) return 'ID e status são obrigatórios.';
+        
+        const { error } = await supabaseAdmin
+          .from('user_feedback')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', feedback_id);
+          
+        if (error) return `Erro ao atualizar feedback: ${error.message}`;
+        return `Status do feedback ${feedback_id} atualizado para ${status} com sucesso.`;
+      }
+
+      case 'excluir_feedback': {
+        const { feedback_id } = args;
+        if (!feedback_id) return 'ID do feedback é obrigatório.';
+        
+        const { error } = await supabaseAdmin
+          .from('user_feedback')
+          .delete()
+          .eq('id', feedback_id);
+          
+        if (error) return `Erro ao excluir feedback: ${error.message}`;
+        return `Feedback ${feedback_id} excluído com sucesso.`;
+      }
+
+      case 'obter_link_contracheque': {
+        return JSON.stringify({
+          sistema: 'WK Radar WebNet',
+          url: 'http://wk.groupabz.com/radarwebnet',
+          instrucoes: 'Os contracheques e holerites do ABZ Group são gerenciados no sistema externo WK Radar. Acesse o sistema pelo link acima usando suas credenciais.'
+        });
+      }
+
+      case 'buscar_contratos': {
+        const { status, busca, limite = 20 } = args;
+        
+        const isManager = userRole === 'ADMIN' || userRole === 'GERENTE';
+        
+        if (isManager) {
+          let query = supabaseAdmin
+            .from('vw_envelopes_completo')
+            .select('*')
+            .neq('status', 'DELETED')
+            .order('data_criacao', { ascending: false })
+            .limit(limite);
+            
+          if (status) query = query.eq('status', status);
+          if (busca) query = query.ilike('titulo', `%${busca}%`);
+          
+          const { data, error } = await query;
+          if (error) return `Erro ao buscar envelopes de contratos: ${error.message}`;
+          return JSON.stringify(data || []);
+        } else {
+          let query = supabaseAdmin
+            .from('solicitacoes_assinatura')
+            .select(`
+              id,
+              status,
+              created_at,
+              documento:documentos_trabalhistas!documento_id (
+                id,
+                titulo,
+                descricao,
+                arquivo_nome,
+                data_criacao
+              )
+            `)
+            .eq('colaborador_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(limite);
+            
+          if (status) query = query.eq('status', status);
+          
+          const { data, error } = await query;
+          if (error) return `Erro ao buscar suas solicitações de contrato: ${error.message}`;
+          return JSON.stringify(data || []);
+        }
+      }
+
+      case 'buscar_ponto': {
+        const { funcionario_id, data_inicio, data_fim, limite = 100 } = args;
+        
+        let targetUserId = funcionario_id || userId;
+        if (userRole !== 'ADMIN' && userRole !== 'GERENTE' && targetUserId !== userId) {
+          return 'Acesso negado: Você só pode buscar seus próprios registros de ponto.';
+        }
+        
+        let query = supabaseAdmin
+          .from('registros_presenca')
+          .select('id, user_id, nome_completo, funcao, empresa, created_at, lista_presenca(titulo, local, data_evento)')
+          .eq('user_id', targetUserId)
+          .order('created_at', { ascending: false })
+          .limit(limite);
+          
+        if (data_inicio) query = query.gte('created_at', data_inicio);
+        if (data_fim) query = query.lte('created_at', data_fim);
+        
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar registros de ponto: ${error.message}`;
+        if (!data || data.length === 0) return 'Nenhum registro de ponto encontrado para este período.';
+        
+        const formattedData = data.map((r: any) => ({
+          id: r.id,
+          usuario: r.nome_completo || 'N/A',
+          funcao: r.funcao || 'N/A',
+          empresa: r.empresa || 'N/A',
+          evento: r.lista_presenca?.titulo || 'Presença Manual',
+          local: r.lista_presenca?.local || '-',
+          data_evento: r.lista_presenca?.data_evento || r.created_at,
+          registrado_em: r.created_at,
+        }));
+        
+        return JSON.stringify(formattedData);
+      }
+
+      case 'buscar_lista_presenca': {
+        const { status, busca, limite = 50 } = args;
+        
+        let query = supabaseAdmin
+          .from('vw_listas_presenca_completo')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limite);
+          
+        if (status) query = query.eq('status', status);
+        if (busca) query = query.or(`titulo.ilike.%${busca}%,local.ilike.%${busca}%`);
+        
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar listas de presença: ${error.message}`;
+        return JSON.stringify(data || []);
+      }
 
        default:
          return `Ferramenta desconhecida: ${name}`;

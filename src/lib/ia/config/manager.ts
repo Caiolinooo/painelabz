@@ -138,6 +138,33 @@ const DEFAULT_MODULE_CONFIGS: Record<string, Omit<IAModuleConfig, 'key'>> = {
     writeRoles: ['ADMIN'],
     enabled: true,
   },
+  feedback: {
+    name: 'Feedback',
+    description: 'Feedbacks e sugestões dos usuários',
+    icon: '💬',
+    allowRead: true,
+    allowWrite: true,
+    writeRoles: ['ADMIN'],
+    enabled: true,
+  },
+  contratos: {
+    name: 'Contratos',
+    description: 'Gestão de documentos e assinaturas digitais',
+    icon: '✍️',
+    allowRead: true,
+    allowWrite: true,
+    writeRoles: ['ADMIN', 'GERENTE'],
+    enabled: true,
+  },
+  'lista-presenca': {
+    name: 'Lista de Presença',
+    description: 'Controle de presença e assinaturas',
+    icon: '📋',
+    allowRead: true,
+    allowWrite: true,
+    writeRoles: ['ADMIN', 'GERENTE', 'USER'],
+    enabled: true,
+  },
 };
 
 /**

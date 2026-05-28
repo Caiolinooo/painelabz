@@ -133,6 +133,24 @@ const UserEditor: React.FC<UserEditorProps> = ({
     }
   }, [editedUser._id, loadUserPermissions]);
 
+  // Sincronizar as permissões carregadas com o estado local para edição offline
+  useEffect(() => {
+    if (userACLPermissions) {
+      const individualIds = userACLPermissions.individual_permissions
+        .filter((up: any) => !up.is_expired)
+        .map((up: any) => up.permission.id) || [];
+      setSelectedACLPermissions(individualIds);
+
+      const roleIds = userACLPermissions.role_permissions
+        .map((rp: any) => rp.permission.id) || [];
+      setRoleACLPermissions(roleIds);
+      console.log('[UserEditor] Loaded ACL permissions into state:', {
+        individualCount: individualIds.length,
+        roleCount: roleIds.length
+      });
+    }
+  }, [userACLPermissions]);
+
   // Carregar módulos disponíveis e permissões por role
   useEffect(() => {
     const loadModulesAndPermissions = async () => {
@@ -211,38 +229,8 @@ const UserEditor: React.FC<UserEditorProps> = ({
 
 
 
-  const handleACLPermissionChange = async (permissionIds: string[]) => {
-    if (!editedUser._id) return;
-
+  const handleACLPermissionChange = (permissionIds: string[]) => {
     setSelectedACLPermissions(permissionIds);
-
-    try {
-      // Obter permissões atuais
-      const currentPermissions = userACLPermissions?.individual_permissions
-        .filter((up: any) => !up.is_expired)
-        .map((up: any) => up.permission.id) || [];
-
-      // Encontrar permissões a adicionar
-      const toAdd = permissionIds.filter(id => !currentPermissions.includes(id));
-
-      // Encontrar permissões a remover
-      const toRemove = currentPermissions.filter(id => !permissionIds.includes(id));
-
-      // Adicionar novas permissões
-      for (const permissionId of toAdd) {
-        await grantPermission(editedUser._id, permissionId);
-      }
-
-      // Remover permissões desmarcadas
-      for (const permissionId of toRemove) {
-        await revokePermission(editedUser._id, permissionId);
-      }
-
-      await loadUserPermissions(editedUser._id);
-      console.log('[UserEditor] Permissões ACL atualizadas com sucesso');
-    } catch (error) {
-      console.error('[UserEditor] Erro ao atualizar permissões ACL:', error);
-    }
   };
 
   // Permissões padrão para cada papel — all 24 system modules
@@ -377,7 +365,7 @@ const UserEditor: React.FC<UserEditorProps> = ({
     return re.test(email);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validar campos obrigatórios
@@ -396,6 +384,37 @@ const UserEditor: React.FC<UserEditorProps> = ({
     if (password && password !== confirmPassword) {
       setPasswordError(t('userEditor.passwordMismatch', 'Passwords do not match'));
       return;
+    }
+
+    // Se for edição, persistir as alterações ACL antes de salvar o perfil do usuário
+    if (!isNewUser && editedUser._id) {
+      try {
+        console.log('[UserEditor] Iniciando salvamento das permissões ACL...');
+        // Obter permissões atuais
+        const currentPermissions = userACLPermissions?.individual_permissions
+          .filter((up: any) => !up.is_expired)
+          .map((up: any) => up.permission.id) || [];
+
+        // Encontrar permissões a adicionar
+        const toAdd = selectedACLPermissions.filter(id => !currentPermissions.includes(id));
+
+        // Encontrar permissões a remover
+        const toRemove = currentPermissions.filter(id => !selectedACLPermissions.includes(id));
+
+        // Adicionar novas permissões
+        for (const permissionId of toAdd) {
+          await grantPermission(editedUser._id, permissionId);
+        }
+
+        // Remover permissões desmarcadas
+        for (const permissionId of toRemove) {
+          await revokePermission(editedUser._id, permissionId);
+        }
+
+        console.log('[UserEditor] Permissões ACL salvas com sucesso no submit');
+      } catch (error) {
+        console.error('[UserEditor] Erro ao persistir permissões ACL no submit:', error);
+      }
     }
 
     // Debug: Log dos dados antes de enviar

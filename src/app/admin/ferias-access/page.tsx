@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiUsers, FiBriefcase, FiToggleLeft, FiToggleRight, FiShield, FiAlertCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { getToken } from '@/lib/tokenStorage';
 
 interface SectorAccess {
     id: string;
@@ -38,7 +39,10 @@ export default function FeriasAccessPage() {
     const loadAccess = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/ferias/admin-access');
+            const token = getToken();
+            const res = await fetch('/api/ferias/admin-access', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error('Failed to load access config');
             const data = await res.json();
             setSectors(data.sectors || []);
@@ -54,9 +58,13 @@ export default function FeriasAccessPage() {
     const toggleSectorAccess = async (sectorId: string, enabled: boolean) => {
         try {
             setSaving(`sector-${sectorId}`);
+            const token = getToken();
             const res = await fetch('/api/ferias/admin-access', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({ type: 'sector', targetId: sectorId, enabled })
             });
             if (!res.ok) throw new Error('Failed to update');
@@ -72,9 +80,13 @@ export default function FeriasAccessPage() {
     const toggleUserAccess = async (userId: string, enabled: boolean) => {
         try {
             setSaving(`user-${userId}`);
+            const token = getToken();
             const res = await fetch('/api/ferias/admin-access', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({ type: 'user', targetId: userId, enabled })
             });
             if (!res.ok) throw new Error('Failed to update');
@@ -90,9 +102,13 @@ export default function FeriasAccessPage() {
     const removeUserOverride = async (userId: string) => {
         try {
             setSaving(`user-${userId}`);
+            const token = getToken();
             const res = await fetch('/api/ferias/admin-access', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({ type: 'user', targetId: userId, enabled: null })
             });
             if (!res.ok) throw new Error('Failed to remove override');

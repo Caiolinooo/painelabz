@@ -947,6 +947,7 @@ export function getDefaultPermissions(role: string): any {
       reembolso: true,
       contracheque: true,
       ponto: true,
+      ferias: true,
       admin: isAdmin
     },
     features: {
@@ -2244,6 +2245,48 @@ export async function isPasswordExpired(userId: string): Promise<boolean> {
     }
   } catch (error) {
     console.error('Erro ao criar pool de conexão:', error);
+    return false;
+  }
+}
+
+// Função para verificar permissão ACL de um usuário no banco de dados
+export async function checkAclPermission(userId: string, userRole: string, resource: string, action: string): Promise<boolean> {
+  // Administradores sempre têm acesso a tudo
+  if (userRole === 'ADMIN') {
+    return true;
+  }
+
+  try {
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
+
+    try {
+      const result = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 
+          FROM acl_permissions ap
+          LEFT JOIN user_acl_permissions uap ON uap.permission_id = ap.id AND uap.user_id = $1
+          LEFT JOIN role_acl_permissions rap ON rap.permission_id = ap.id AND rap.role = $2
+          WHERE ap.resource = $3 
+            AND ap.action = $4 
+            AND ap.enabled = true
+            AND (
+              rap.id IS NOT NULL 
+              OR (uap.id IS NOT NULL AND (uap.expires_at IS NULL OR uap.expires_at > CURRENT_TIMESTAMP))
+            )
+        ) as has_permission;
+      `, [userId, userRole, resource, action]);
+
+      await pool.end();
+      return result.rows[0]?.has_permission === true;
+    } catch (queryError) {
+      console.error('Erro ao executar query de permissão ACL no PostgreSQL:', queryError);
+      try { await pool.end(); } catch {}
+      return false;
+    }
+  } catch (error) {
+    console.error('Erro ao criar pool para verificação de permissão ACL:', error);
     return false;
   }
 }

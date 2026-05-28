@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { LeaveRequest } from '@/services/leaveService';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getToken } from '@/lib/tokenStorage';
 
 interface UnifiedUser {
     id: string;
@@ -42,7 +43,10 @@ export default function AdminLeaveRequestsPage() {
             const queryParams = new URLSearchParams();
             if (filterStatus !== 'ALL') queryParams.append('status', filterStatus);
 
-            const res = await fetch(`/api/admin/leave-requests?${queryParams.toString()}`);
+            const token = getToken();
+            const res = await fetch(`/api/admin/leave-requests?${queryParams.toString()}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error('Failed to fetch requests');
 
             const data = await res.json();
@@ -108,9 +112,13 @@ export default function AdminLeaveRequestsPage() {
 
         try {
             setIsProcessing(true);
+            const token = getToken();
             const response = await fetch('/api/admin/leave-approvals', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({
                     request_id: requestId,
                     action,
@@ -143,8 +151,10 @@ export default function AdminLeaveRequestsPage() {
 
         try {
             setIsProcessing(true);
+            const token = getToken();
             const response = await fetch(`/api/admin/leave-requests?id=${requestId}`, {
                 method: 'DELETE',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
 
             if (!response.ok) {
