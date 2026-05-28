@@ -239,17 +239,87 @@ async function detectarExtensao(buffer: Buffer, extIndicada: string): Promise<st
   return extIndicada || 'txt';
 }
 
-async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promise<{ texto: string; confianca: number }> {
-  // Estratégia serverless-safe: não depender de pdfjs-dist (worker não funciona na Vercel).
-  // Em vez disso, tentamos múltiplas abordagens em cascata:
+/**
+ * Extrai texto de um PDF digitalizado enviando-o como imagem base64 ao LLM com visão.
+ * Funciona em qualquer ambiente (Vercel, local, etc.) — é apenas uma chamada HTTP.
+ */
+async function extrairTextoViaLLMVisao(pdfBuffer: Buffer): Promise<string | null> {
+  const { getIAConfig } = await import('@/lib/ia/client');
+  const config = await getIAConfig();
+  if (!config || !config.ativo) {
+    throw new Error('IA não está configurada ou inativa');
+  }
 
-  // 1) Tentar pdf-parse com opções de render customizadas para capturar mais texto
+  const base64Pdf = pdfBuffer.toString('base64');
+  const dataUri = `data:application/pdf;base64,${base64Pdf}`;
+
+  const systemPrompt = `Você é um sistema de OCR. Extraia TODO o texto visível do documento PDF/imagem fornecido.
+Transcreva o conteúdo exatamente como aparece, preservando a estrutura e quebras de linha.
+Inclua cabeçalhos, rodapés, carimbos, assinaturas legíveis, tabelas, e qualquer informação visível.
+Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`;
+
+  const messages = [
+    { role: 'system' as const, content: systemPrompt },
+    {
+      role: 'user' as const,
+      content: [
+        {
+          type: 'text',
+          text: 'Extraia todo o texto deste documento PDF digitalizado:'
+        },
+        {
+          type: 'image_url',
+          image_url: { url: dataUri }
+        }
+      ]
+    }
+  ];
+
+  console.log('[OCR/LLM-Visão] Enviando PDF digitalizado ao LLM com visão...');
+
+  const response = await fetch(`${config.endpoint}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.api_key}`,
+    },
+    body: ***REMOVED***
+      model: config.model_default,
+      messages,
+      max_tokens: config.max_tokens || 4096,
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Sem detalhes');
+    throw new Error(`LLM retornou ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  let content = data.choices?.[0]?.message?.content || '';
+
+  // Remover blocos de raciocínio (DeepSeek/Qwen)
+  if (content.includes('</think>')) {
+    content = content.substring(content.indexOf('</think>') + 8).trim();
+  }
+  content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+  console.log(`[OCR/LLM-Visão] LLM extraiu ${content.length} caracteres do PDF.`);
+  return content || null;
+}
+
+async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promise<{ texto: string; confianca: number }> {
+  // Estratégia serverless-safe (Vercel): pdfjs-dist e tesseract.js NÃO funcionam na Vercel
+  // porque seus binários (.wasm, .mjs worker) não são incluídos no bundle serverless.
+  // Usamos uma cascata de abordagens que funcionam em qualquer ambiente:
+
+  // 1) Tentar pdf-parse com render customizado para capturar mais texto
   try {
     // @ts-ignore
     const pdfParseModule = await import('pdf-parse/lib/pdf-parse.js');
     const pdfParse = typeof pdfParseModule === 'function' ? pdfParseModule : (pdfParseModule.default || pdfParseModule);
     
-    // Usar o render personalizado que captura todos os itens de texto do PDF
     const customRenderPage = (pageData: any) => {
       return pageData.getTextContent({ normalizeWhitespace: true }).then((textContent: any) => {
         let lastY: number | null = null;
@@ -278,19 +348,27 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     console.warn(`[OCR/PDF] Falha no pdf-parse customizado: ${error.message}`);
   }
 
-  // 2) Último recurso: converter buffer PDF para imagem via canvas (se disponível) e OCR via Tesseract
-  //    Tentamos usar pdfjs-dist somente se o worker existir localmente (ambiente dev/node)
+  // 2) PDF sem texto embutido → enviar como imagem base64 ao LLM com visão
+  //    Funciona em qualquer ambiente (Vercel, local, etc.) desde que a IA esteja configurada
   try {
-    // Verificar se o worker existe ANTES de importar pdfjs-dist (o import já tenta carregar o worker)
+    const texto = await extrairTextoViaLLMVisao(buffer);
+    if (texto && texto.trim().length >= 10) {
+      console.log(`[OCR/PDF] LLM visão extraiu ${texto.length} caracteres do PDF digitalizado.`);
+      return { texto, confianca: 90 };
+    }
+  } catch (llmError: any) {
+    console.warn(`[OCR/PDF] LLM visão falhou: ${llmError.message}`);
+  }
+
+  // 3) Fallback local: pdfjs-dist + canvas + Tesseract (funciona apenas em dev/node, não na Vercel)
+  try {
     const workerPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.mjs');
     if (!fs.existsSync(workerPath)) {
-      throw new Error('pdf.worker.mjs não encontrado - ambiente serverless detectado, pulando pdfjs-dist');
+      throw new Error('pdfjs-dist worker não encontrado (serverless)');
     }
 
-    // Importar pdfjs-dist somente se o worker estiver presente
     const pdfjsModule = await import('pdfjs-dist');
     const pdfjs = (pdfjsModule as any).getDocument ? pdfjsModule : ((pdfjsModule as any).default || pdfjsModule);
-
     const { pathToFileURL } = await import('url');
     pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
 
@@ -300,8 +378,7 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     class CustomCanvasFactory {
       create(width: number, height: number) {
         const _canvas = canvas.createCanvas(width, height);
-        const _context = _canvas.getContext('2d');
-        return { canvas: _canvas, context: _context };
+        return { canvas: _canvas, context: _canvas.getContext('2d') };
       }
       reset(canvasAndContext: any, width: number, height: number) {
         canvasAndContext.canvas.width = width;
@@ -319,44 +396,31 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     }
 
     const docData = new Uint8Array(buffer);
-    const loadingTask = pdfjs.getDocument({
-      data: docData,
-      CanvasFactory: CustomCanvasFactory,
-    });
-    const pdfDoc = await loadingTask.promise;
+    const pdfDoc = await pdfjs.getDocument({ data: docData, CanvasFactory: CustomCanvasFactory }).promise;
     
-    const totalPages = pdfDoc.numPages;
     const textPages: string[] = [];
     let totalConfidence = 0;
     let confidenceCount = 0;
     
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i);
       const viewport = page.getViewport({ scale: 2.5 });
       const nodeCanvas = canvas.createCanvas(viewport.width, viewport.height);
       const context = nodeCanvas.getContext('2d');
       context.imageSmoothingEnabled = true;
 
-      await page.render({
-        canvasContext: context as any,
-        viewport: viewport,
-        CanvasFactory: CustomCanvasFactory,
-      }).promise;
+      await page.render({ canvasContext: context as any, viewport, CanvasFactory: CustomCanvasFactory }).promise;
 
-      // Binarização para melhorar OCR
       const imageData = context.getImageData(0, 0, viewport.width, viewport.height);
       const pixels = imageData.data;
       for (let j = 0; j < pixels.length; j += 4) {
         const gray = 0.299 * pixels[j] + 0.587 * pixels[j + 1] + 0.114 * pixels[j + 2];
-        const threshold = gray > 128 ? 255 : 0;
-        pixels[j] = threshold;
-        pixels[j + 1] = threshold;
-        pixels[j + 2] = threshold;
+        const val = gray > 128 ? 255 : 0;
+        pixels[j] = val; pixels[j + 1] = val; pixels[j + 2] = val;
       }
       context.putImageData(imageData, 0, 0);
-      const pngBuffer = nodeCanvas.toBuffer('image/png');
 
-      const pageOcr = await processarComTesseract(pngBuffer, idioma);
+      const pageOcr = await processarComTesseract(nodeCanvas.toBuffer('image/png'), idioma);
       if (pageOcr) {
         textPages.push(pageOcr.texto);
         totalConfidence += pageOcr.confianca;
@@ -364,21 +428,17 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
       }
     }
     
-    const avgConfidence = confidenceCount > 0 ? Math.round(totalConfidence / confidenceCount) : 0;
-    return { texto: textPages.join('\n\n'), confianca: avgConfidence };
-  } catch (pdfjsError: any) {
-    console.warn(`[OCR/PDF] pdfjs-dist indisponível (${pdfjsError.message}). Tentando Tesseract direto no PDF...`);
+    if (confidenceCount > 0) {
+      return { texto: textPages.join('\n\n'), confianca: Math.round(totalConfidence / confidenceCount) };
+    }
+  } catch (localError: any) {
+    console.warn(`[OCR/PDF] Fallback local (pdfjs+tesseract) falhou: ${localError.message}`);
   }
 
-  // 3) Fallback final: enviar o buffer inteiro do PDF ao Tesseract.js
-  //    Tesseract v5+ consegue processar imagens, tentamos converter as primeiras páginas
-  const ocrResult = await processarComTesseract(buffer, idioma);
-  if (ocrResult && ocrResult.texto.trim().length >= 5) {
-    console.log(`[OCR/PDF] Tesseract direto extraiu ${ocrResult.texto.length} caracteres.`);
-    return ocrResult;
-  }
-
-  throw new Error('Não foi possível extrair texto do PDF digitalizado. O documento pode estar protegido ou corrompido.');
+  throw new Error(
+    'Não foi possível extrair texto do PDF digitalizado. ' +
+    'Verifique se a IA (LLM com visão) está configurada no painel ou envie um PDF com texto selecionável.'
+  );
 }
 
 async function processarPDF(buffer: Buffer, idioma: string = 'por'): Promise<{ texto: string; confianca: number }> {

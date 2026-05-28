@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.23.0] - 2026-05-28
+
+### Added
+- **LLM Vision OCR Strategy**: New `extrairTextoViaLLMVisao()` function sends PDF as base64 image to a vision-capable LLM (DeepSeek/Qwen/etc.) for text extraction. Works in any environment (Vercel, local, serverless) — requires only an HTTP call. Handles `<think>` block removal and returns extracted text.
+
+### Changed
+- **OCR PDF Pipeline Restructured**: 3-strategy cascade updated:
+  1. **pdf-parse custom render** — Primary, serverless-safe text extraction
+  2. **LLM Vision** — New middle tier, sends PDF as base64 to vision model, 90% confidence
+  3. **pdfjs-dist + canvas + Tesseract** — Local-only fallback (dev/Node environments)
+- Removed direct Tesseract.js fallback on raw PDF buffer (unreliable). Error message now suggests configuring LLM vision or using selectable-text PDFs.
+
 ## [5.22.0] - 2026-05-28
 
 ### Changed
