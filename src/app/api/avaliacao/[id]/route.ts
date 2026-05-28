@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
 import { verifyToken } from '@/lib/auth';
 import { EvaluationSettingsService } from '@/lib/services/evaluation-settings';
 import {

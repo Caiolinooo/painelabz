@@ -3,6 +3,8 @@ import { verifyRequestToken } from '@/lib/auth';
 import { getAvailableTools, executeToolCall } from '@/lib/ia/tools';
 import { isFeatureEnabled } from '@/lib/ia/agent-service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/ia/autonomous/control
  * Controla o agente autônomo (iniciar, parar, status, etc.)

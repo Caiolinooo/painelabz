@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getPendingLeaveRequestsForApprover, updateLeaveRequestStatus } from '@/services/leaveService';
 import { supabaseAdmin, supabase } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
 import { sendGlobalNotification } from '@/lib/global-notifications';
 import { triggerLeaveNotifications } from '@/services/leaveNotifications';
 import { extractTokenFromHeader, verifyToken, checkAclPermission } from '@/lib/auth';

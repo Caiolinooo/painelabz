@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getLeaveSectorConfigs, upsertLeaveSectorConfig } from '@/services/leaveService';
 import { supabaseAdmin } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 
 function getAuthPayload(request: Request) {

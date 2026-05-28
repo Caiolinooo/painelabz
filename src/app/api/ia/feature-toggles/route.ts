@@ -7,6 +7,8 @@ import { verifyRequestToken } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAllFeatureToggles, updateFeatureToggle } from '@/lib/ia/agent-service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET — Listar todos os toggles
  */

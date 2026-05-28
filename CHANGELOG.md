@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.23.2] - 2026-05-28
+
+### Changed
+- **API Routes Dynamic Rendering**: Added `export const dynamic = 'force-dynamic'` to 15 API routes (leave-approvals, leave-settings, leave-requests, auth/exchange, avaliacao/[id], avaliacao/settings, ia/autonomous/control, ia/chat, ia/config, ia/dashboard, ia/feature-toggles, ia/knowledge-base, ia/models, ia/sessions, user/integrations). Prevents Next.js from caching responses and ensures fresh data on every request.
+
 ## [5.23.1] - 2026-05-28
 
 ### Changed

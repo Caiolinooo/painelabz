@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestToken } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // Substitua pelas variáveis do seu .env
 const MS_CLIENT_ID = process.env.MS_GRAPH_CLIENT_ID || '';
 const MS_CLIENT_SECRET = process.env.MS_GRAPH_CLIENT_SECRET || '';

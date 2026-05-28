@@ -10,6 +10,7 @@ import { chatCompletion, chatCompletionStream, invalidateConfigCache } from '@/l
 import { buildChatMessages } from '@/lib/ia/context-builder';
 import type { IAChatMessage } from '@/types/ia';
 
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutos para permitir execução de tools
 
 export async function POST(request: NextRequest) {
