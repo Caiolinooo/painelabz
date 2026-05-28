@@ -38,15 +38,19 @@ const nextConfig = {
   // Configurações experimentais
   experimental: {
     optimizeCss: true,
-    serverComponentsExternalPackages: ['tesseract.js', 'pdfjs-dist', 'canvas'],
-    outputFileTracingIncludes: {
-      '/*': ['./node_modules/pdfjs-dist/build/**/*'],
-      '/api/**/*': ['./node_modules/pdfjs-dist/build/**/*'],
-    },
+    serverComponentsExternalPackages: ['tesseract.js', 'pdfjs-dist', 'canvas', 'pdf-parse'],
   },
 
   // Configurações do webpack para polyfill de módulos Node.js
   webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Não empacotar essas dependências nativas/pesadas no bundle do servidor
+      config.externals = config.externals || [];
+      config.externals.push({
+        'canvas': 'commonjs canvas',
+        'pdfjs-dist': 'commonjs pdfjs-dist',
+      });
+    }
     if (!isServer) {
       // Polyfill para módulos Node.js no cliente
       config.resolve.fallback = {
