@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.22.0] - 2026-05-28
+
+### Changed
+- **OCR PDF Pipeline Complete Rewrite**: `ocrPdfDigitalizado()` now uses a 3-strategy cascade for maximum compatibility across environments:
+  1. **pdf-parse with custom render**: Primary strategy using `pdf-parse/lib/pdf-parse.js` with a custom `pagerender` function that captures all text items with Y-coordinate-aware line breaking. Serverless-safe, no worker dependency.
+  2. **pdfjs-dist + canvas**: Fallback for local/Node environments only. Checks `pdf.worker.mjs` existence before importing pdfjs-dist. Includes binarization (threshold=128) for improved OCR accuracy on scanned pages.
+  3. **Tesseract.js direct**: Last-resort fallback processes the raw PDF buffer through Tesseract when both pdf-parse and pdfjs-dist fail.
+- **Next.js Server Configuration**: Removed `outputFileTracingIncludes` for pdfjs-dist. Added `pdf-parse` to `serverComponentsExternalPackages`. Added webpack externals for `canvas` and `pdfjs-dist` on server side to prevent bundling issues.
+
 ## [5.21.2] - 2026-05-28
 
 ### Changed

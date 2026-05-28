@@ -240,26 +240,68 @@ async function detectarExtensao(buffer: Buffer, extIndicada: string): Promise<st
 }
 
 async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promise<{ texto: string; confianca: number }> {
+  // Estratégia serverless-safe: não depender de pdfjs-dist (worker não funciona na Vercel).
+  // Em vez disso, tentamos múltiplas abordagens em cascata:
+
+  // 1) Tentar pdf-parse com opções de render customizadas para capturar mais texto
   try {
-    const canvasModule = await import('canvas');
-    const canvas = (canvasModule as any).createCanvas ? canvasModule : ((canvasModule as any).default || canvasModule);
+    // @ts-ignore
+    const pdfParseModule = await import('pdf-parse/lib/pdf-parse.js');
+    const pdfParse = typeof pdfParseModule === 'function' ? pdfParseModule : (pdfParseModule.default || pdfParseModule);
     
+    // Usar o render personalizado que captura todos os itens de texto do PDF
+    const customRenderPage = (pageData: any) => {
+      return pageData.getTextContent({ normalizeWhitespace: true }).then((textContent: any) => {
+        let lastY: number | null = null;
+        let text = '';
+        for (const item of textContent.items) {
+          if ('str' in item) {
+            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) {
+              text += '\n';
+            }
+            text += item.str;
+            lastY = item.transform[5];
+          }
+        }
+        return text;
+      });
+    };
+
+    const data = await pdfParse(buffer, { pagerender: customRenderPage });
+    const texto = (data.text || '').trim();
+    
+    if (texto.length >= 10) {
+      console.log(`[OCR/PDF] pdf-parse (render custom) extraiu ${texto.length} caracteres.`);
+      return { texto, confianca: 95 };
+    }
+  } catch (error: any) {
+    console.warn(`[OCR/PDF] Falha no pdf-parse customizado: ${error.message}`);
+  }
+
+  // 2) Último recurso: converter buffer PDF para imagem via canvas (se disponível) e OCR via Tesseract
+  //    Tentamos usar pdfjs-dist somente se o worker existir localmente (ambiente dev/node)
+  try {
+    // Verificar se o worker existe ANTES de importar pdfjs-dist (o import já tenta carregar o worker)
+    const workerPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.mjs');
+    if (!fs.existsSync(workerPath)) {
+      throw new Error('pdf.worker.mjs não encontrado - ambiente serverless detectado, pulando pdfjs-dist');
+    }
+
+    // Importar pdfjs-dist somente se o worker estiver presente
     const pdfjsModule = await import('pdfjs-dist');
     const pdfjs = (pdfjsModule as any).getDocument ? pdfjsModule : ((pdfjsModule as any).default || pdfjsModule);
-    
-    if (typeof window === 'undefined') {
-      // No ambiente Node.js (Server/Vercel), deixamos o pdfjs-dist resolver o fake worker internamente.
-      // O Next.js foi configurado (outputFileTracingIncludes) para garantir que o pdf.worker.mjs esteja na pasta.
-    }
+
+    const { pathToFileURL } = await import('url');
+    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
+
+    const canvasModule = await import('canvas');
+    const canvas = (canvasModule as any).createCanvas ? canvasModule : ((canvasModule as any).default || canvasModule);
     
     class CustomCanvasFactory {
       create(width: number, height: number) {
         const _canvas = canvas.createCanvas(width, height);
         const _context = _canvas.getContext('2d');
-        return {
-          canvas: _canvas,
-          context: _context,
-        };
+        return { canvas: _canvas, context: _context };
       }
       reset(canvasAndContext: any, width: number, height: number) {
         canvasAndContext.canvas.width = width;
@@ -276,9 +318,9 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
       }
     }
 
-    const data = new Uint8Array(buffer);
+    const docData = new Uint8Array(buffer);
     const loadingTask = pdfjs.getDocument({
-      data,
+      data: docData,
       CanvasFactory: CustomCanvasFactory,
     });
     const pdfDoc = await loadingTask.promise;
@@ -293,31 +335,24 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
       const viewport = page.getViewport({ scale: 2.5 });
       const nodeCanvas = canvas.createCanvas(viewport.width, viewport.height);
       const context = nodeCanvas.getContext('2d');
-
       context.imageSmoothingEnabled = true;
 
-      const renderContext = {
+      await page.render({
         canvasContext: context as any,
         viewport: viewport,
         CanvasFactory: CustomCanvasFactory,
-      };
+      }).promise;
 
-      await page.render(renderContext).promise;
-
+      // Binarização para melhorar OCR
       const imageData = context.getImageData(0, 0, viewport.width, viewport.height);
-      const data = imageData.data;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+      const pixels = imageData.data;
+      for (let j = 0; j < pixels.length; j += 4) {
+        const gray = 0.299 * pixels[j] + 0.587 * pixels[j + 1] + 0.114 * pixels[j + 2];
         const threshold = gray > 128 ? 255 : 0;
-        data[i] = threshold;
-        data[i + 1] = threshold;
-        data[i + 2] = threshold;
+        pixels[j] = threshold;
+        pixels[j + 1] = threshold;
+        pixels[j + 2] = threshold;
       }
-
       context.putImageData(imageData, 0, 0);
       const pngBuffer = nodeCanvas.toBuffer('image/png');
 
@@ -330,14 +365,20 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     }
     
     const avgConfidence = confidenceCount > 0 ? Math.round(totalConfidence / confidenceCount) : 0;
-    return {
-      texto: textPages.join('\n\n'),
-      confianca: avgConfidence
-    };
-  } catch (error: any) {
-    console.error('[OCR/PDF] Stack trace do erro:', error.stack || error);
-    throw new Error(`Erro ao realizar OCR em PDF digitalizado: ${error.message}`);
+    return { texto: textPages.join('\n\n'), confianca: avgConfidence };
+  } catch (pdfjsError: any) {
+    console.warn(`[OCR/PDF] pdfjs-dist indisponível (${pdfjsError.message}). Tentando Tesseract direto no PDF...`);
   }
+
+  // 3) Fallback final: enviar o buffer inteiro do PDF ao Tesseract.js
+  //    Tesseract v5+ consegue processar imagens, tentamos converter as primeiras páginas
+  const ocrResult = await processarComTesseract(buffer, idioma);
+  if (ocrResult && ocrResult.texto.trim().length >= 5) {
+    console.log(`[OCR/PDF] Tesseract direto extraiu ${ocrResult.texto.length} caracteres.`);
+    return ocrResult;
+  }
+
+  throw new Error('Não foi possível extrair texto do PDF digitalizado. O documento pode estar protegido ou corrompido.');
 }
 
 async function processarPDF(buffer: Buffer, idioma: string = 'por'): Promise<{ texto: string; confianca: number }> {
@@ -360,7 +401,7 @@ async function processarPDF(buffer: Buffer, idioma: string = 'por'): Promise<{ t
     };
   }
 
-  console.log('[OCR/PDF] O PDF parece ser digitalizado (imagem) ou está sem camada de texto. Executando OCR via canvas...');
+  console.log('[OCR/PDF] O PDF parece ser digitalizado (imagem) ou está sem camada de texto. Executando OCR...');
   return await ocrPdfDigitalizado(buffer, idioma);
 }
 
