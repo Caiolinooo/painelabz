@@ -501,7 +501,7 @@ Dada a extração bruta de texto (OCR) de um ASO, seu trabalho é identificar co
   "medico_pcmso_nome": "Nome do médico coordenador do PCMSO",
   "medico_pcmso_crm": "Apenas números do CRM do médico coordenador",
   "medico_pcmso_uf": "UF do CRM do médico coordenador (ex: RJ, SP, etc)",
-  "cnpj_clinica": "Apenas números do CNPJ da clínica",
+  "cnpj_clinica": "Apenas números do CNPJ da clínica (se disponível)",
   "nome_clinica": "Nome da clínica ou laboratório",
   "exames_realizados": [
     {
@@ -511,14 +511,16 @@ Dada a extração bruta de texto (OCR) de um ASO, seu trabalho é identificar co
   ]
 }
 
-Atenção especial:
-1. RG e CPF: Nunca confunda o CPF do colaborador com o RG dele.
-2. Nome Completo: Certifique-se de retornar apenas o nome da pessoa e ignorar textos subsequentes de empresas/linhas adicionais.
-3. Resultado: Se o documento contiver tanto "APTO" quanto "INAPTO" (como em formulários com caixa de seleção), avalie o contexto ou qual caixa/marcação está selecionada (como "(X) APTO" ou "to) APTO" vs "( ) INAPTO").
-4. Data de nascimento: Procure especificamente por rótulos como DN, DATA NASCIMENTO, NASCIMENTO, NASC:, etc. Não retorne a data de realização do exame como data de nascimento.
-5. Diferencie o Médico Examinador (quem realizou o exame e assinou) do Médico Coordenador (responsável pelo PCMSO).
-6. Exames: Liste TODOS os procedimentos/exames clínicos realizados no paciente, com suas respectivas datas. Se houver "EXAME CLINICO - ASO", adicione na lista.
-7. Datas: Retorne todas as datas estritamente no formato YYYY-MM-DD.
+Atenção especial (Regras de Negócio):
+1. EMPRESA X CLÍNICA: A empresa "Águas", "Águas do Brasil", "Grupo Águas" ou "ABZ" é a EMPRESA CONTRATANTE (Empregador). NUNCA defina esses nomes como "nome_clinica". A clínica será um laboratório ou centro de saúde ocupacional emitente do laudo.
+2. RG e CPF: Nunca confunda o CPF do colaborador com o RG dele. CPF tem formato XXX.XXX.XXX-XX. RG varia e costuma ser menor.
+3. Nome Completo: Certifique-se de retornar apenas o nome da pessoa e ignorar textos subsequentes de empresas/linhas adicionais.
+4. Resultado: Se o documento contiver tanto "APTO" quanto "INAPTO" (como em formulários com caixa de seleção), avalie o contexto ou qual caixa/marcação está selecionada (como "(X) APTO" ou "to) APTO" vs "( ) INAPTO").
+5. Data de nascimento: Procure especificamente por rótulos como DN, DATA NASCIMENTO, NASCIMENTO, NASC:, etc. Não retorne a data de realização do exame como data de nascimento.
+6. Diferencie o Médico Examinador (quem assina/carimba o exame atual) do Médico Coordenador (responsável pelo PCMSO).
+7. Exames: Liste TODOS os procedimentos/exames clínicos realizados no paciente, com suas respectivas datas. Se houver "EXAME CLINICO - ASO", adicione na lista.
+8. Datas: Retorne todas as datas estritamente no formato YYYY-MM-DD.
+9. Evite deduções incertas. Não duplique dados e não preencha campos de clínica com informações da empresa contratante.
 
 Retorne APENAS o objeto JSON válido, sem explicações, sem blocos de código markdown.`;
 
