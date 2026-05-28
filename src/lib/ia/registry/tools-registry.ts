@@ -189,6 +189,7 @@ export async function initializeTools(): Promise<void> {
     await import('./definitions/news.tools'),
     await import('./definitions/admin.tools'),
     await import('./definitions/microsoft.tools'),
+    await import('./definitions/feedback.tools'),
   ];
 
   for (const module of toolModules) {

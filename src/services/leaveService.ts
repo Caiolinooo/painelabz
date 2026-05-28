@@ -122,24 +122,29 @@ export async function getUserLeaveRequests(userId: string): Promise<LeaveRequest
     return data as LeaveRequest[];
 }
 
-export async function getPendingLeaveRequestsForApprover(approverId: string): Promise<LeaveRequest[]> {
-    // Busca configs onde o approverId é líder ou gerente
-    const { data: configs, error: configError } = await supabaseAdmin
-        .from('leave_sector_configs')
-        .select('*')
-        .or(`leader_id.eq.${approverId},manager_id.eq.${approverId}`);
+export async function getPendingLeaveRequestsForApprover(approverId: string, hasGlobalAccess: boolean = false): Promise<LeaveRequest[]> {
+    let sectorIdsWhereLeader: string[] = [];
+    let sectorIdsWhereManager: string[] = [];
 
-    if (configError) {
-        console.error('Error fetching configs for approver:', configError);
-        return [];
+    if (!hasGlobalAccess) {
+        // Busca configs onde o approverId é líder ou gerente
+        const { data: configs, error: configError } = await supabaseAdmin
+            .from('leave_sector_configs')
+            .select('*')
+            .or(`leader_id.eq.${approverId},manager_id.eq.${approverId}`);
+
+        if (configError) {
+            console.error('Error fetching configs for approver:', configError);
+            return [];
+        }
+
+        if (!configs || configs.length === 0) {
+            return []; // Not an approver for any sector
+        }
+
+        sectorIdsWhereLeader = configs.filter(c => c.leader_id === approverId).map(c => c.sector_id);
+        sectorIdsWhereManager = configs.filter(c => c.manager_id === approverId).map(c => c.sector_id);
     }
-
-    if (!configs || configs.length === 0) {
-        return []; // Not an approver for any sector
-    }
-
-    const sectorIdsWhereLeader = configs.filter(c => c.leader_id === approverId).map(c => c.sector_id);
-    const sectorIdsWhereManager = configs.filter(c => c.manager_id === approverId).map(c => c.sector_id);
 
     // Precisamos buscar as requests dos usuários que pertencem a esses setores
     // E filtrar pelo status apropriado
@@ -167,6 +172,8 @@ export async function getPendingLeaveRequestsForApprover(approverId: string): Pr
     const filteredRequests = (requests as any[]).filter(req => {
         // Prevent users from approving their own request
         if (req.user_id === approverId) return false;
+
+        if (hasGlobalAccess) return true;
 
         const userSectorId = req.user.sector_id;
 

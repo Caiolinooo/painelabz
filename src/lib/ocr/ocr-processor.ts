@@ -39,14 +39,33 @@ function extrairDadosTexto(texto: string, tipoDocumento?: OCRTipoDocumento): Rec
     dados.rg = rgLabeled[1].replace(/[.\s-]/g, '');
   } else {
     const rgPlain = texto.match(/(\d{1,2})[.\s]?(\d{3})[.\s]?(\d{3})[.\s-]?(\d{0,2})/);
-    if (rgPlain && rgPlain[0] !== dados.cpf) dados.rg = rgPlain[0];
+    if (rgPlain) {
+      const cleanedRg = rgPlain[0].replace(/[.\s-]/g, '');
+      const cleanedCpf = dados.cpf ? dados.cpf.replace(/[.\s-]/g, '') : '';
+      if (!cleanedCpf || !cleanedCpf.includes(cleanedRg)) {
+        dados.rg = cleanedRg;
+      }
+    }
   }
 
-  const nomeMatch = upper.match(/(?:NOME|NOME\s*COMPLETO)[:\s]*([A-ZÀ-Ú\s]+)/);
+  const nomeMatch = upper.match(/(?:NOME|NOME\s*COMPLETO)[:\s]*([A-ZÀ-Ú\x20\t]+)/);
   if (nomeMatch) dados.nome_completo = nomeMatch[1].trim();
 
-  const dataNasc = texto.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
-  if (dataNasc) dados.data_nascimento = `${dataNasc[3]}-${dataNasc[2]}-${dataNasc[1]}`;
+  // Try targeted match for date of birth first (DN or NASCIMENTO prefixes)
+  const dnMatch = texto.match(/(?:DN|NASC|NASCIMENTO|NASC\.?|NASCIDO\s*EM)[:\s-]*(\d{2})[\/\-](\d{2})[\/\-](\d{4})/i);
+  if (dnMatch) {
+    dados.data_nascimento = `${dnMatch[3]}-${dnMatch[2]}-${dnMatch[1]}`;
+  } else {
+    // Non-prefix fallback, but verify it doesn't match common exam years like 2024 if it's birthday
+    const dataNasc = texto.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+    if (dataNasc) {
+      const year = parseInt(dataNasc[3]);
+      // A birthday should be earlier than 2015 for active workers
+      if (year < 2015) {
+        dados.data_nascimento = `${dataNasc[3]}-${dataNasc[2]}-${dataNasc[1]}`;
+      }
+    }
+  }
 
   const maeMatch = upper.match(/(?:FILIAÇÃO|MÃE|MAE)[:\s]*([A-ZÀ-Ú\s]+)/);
   if (maeMatch) dados.nome_mae = maeMatch[1].trim();
@@ -233,7 +252,11 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
         const { pathToFileURL } = await import('url');
         const path = await import('path');
         const workerPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.mjs');
-        pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
+        if (fs.existsSync(workerPath)) {
+          pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
+        } else {
+          console.log('[OCR/PDF] Worker local não encontrado (ambiente serverless/Vercel). Utilizando fake worker padrão.');
+        }
       } catch (workerError: any) {
         console.warn('[OCR/PDF] Falha ao configurar o workerSrc do PDF.js:', workerError.message);
       }
@@ -453,6 +476,92 @@ async function processarComTesseract(
   }
 }
 
+async function extrairDadosComLLM(texto: string, tipoDocumento: OCRTipoDocumento): Promise<Record<string, any> | null> {
+  try {
+    const { getIAConfig, chatCompletion } = await import('@/lib/ia/client');
+    const config = await getIAConfig();
+    if (!config || !config.ativo) {
+      console.log('[OCR/LLM] Nenhuma configuração ativa de IA encontrada no banco.');
+      return null;
+    }
+
+    const systemPrompt = `Você é um extrator de dados estruturados especializado em Atestados de Saúde Ocupacional (ASO) no padrão brasileiro e-Social.
+Dada a extração bruta de texto (OCR) de um ASO, seu trabalho é identificar com máxima precisão os seguintes campos em formato JSON:
+{
+  "cpf": "somente números do CPF do colaborador",
+  "rg": "somente números do RG do colaborador (não confunda com CPF!)",
+  "nome_completo": "Nome completo do colaborador (apenas o nome, em maiúsculas)",
+  "data_nascimento": "Data de nascimento do colaborador no formato YYYY-MM-DD",
+  "tipo_exame": "Selecione estritamente uma das opções: 'admissional', 'periodico', 'demissional', 'retorno', 'mudanca_funcao'",
+  "resultado": "Selecione estritamente uma das opções: 'apto', 'inapto', 'apto_condicional'",
+  "data_realizacao": "Data de emissão/conclusão do ASO no formato YYYY-MM-DD",
+  "medico_examinador_nome": "Nome do médico que assina/examina",
+  "medico_examinador_crm": "Apenas números do CRM do médico examinador",
+  "medico_examinador_uf": "UF do CRM do médico examinador (ex: RJ, SP, etc)",
+  "medico_pcmso_nome": "Nome do médico coordenador do PCMSO",
+  "medico_pcmso_crm": "Apenas números do CRM do médico coordenador",
+  "medico_pcmso_uf": "UF do CRM do médico coordenador (ex: RJ, SP, etc)",
+  "cnpj_clinica": "Apenas números do CNPJ da clínica",
+  "nome_clinica": "Nome da clínica ou laboratório",
+  "exames_realizados": [
+    {
+      "nome": "Nome do exame (ex: ELETROCARDIOGRAMA, GLICOSE, etc)",
+      "data": "Data do exame no formato YYYY-MM-DD"
+    }
+  ]
+}
+
+Atenção especial:
+1. RG e CPF: Nunca confunda o CPF do colaborador com o RG dele.
+2. Nome Completo: Certifique-se de retornar apenas o nome da pessoa e ignorar textos subsequentes de empresas/linhas adicionais.
+3. Resultado: Se o documento contiver tanto "APTO" quanto "INAPTO" (como em formulários com caixa de seleção), avalie o contexto ou qual caixa/marcação está selecionada (como "(X) APTO" ou "to) APTO" vs "( ) INAPTO").
+4. Data de nascimento: Procure especificamente por rótulos como DN, DATA NASCIMENTO, NASCIMENTO, NASC:, etc. Não retorne a data de realização do exame como data de nascimento.
+5. Diferencie o Médico Examinador (quem realizou o exame e assinou) do Médico Coordenador (responsável pelo PCMSO).
+6. Exames: Liste TODOS os procedimentos/exames clínicos realizados no paciente, com suas respectivas datas. Se houver "EXAME CLINICO - ASO", adicione na lista.
+7. Datas: Retorne todas as datas estritamente no formato YYYY-MM-DD.
+
+Retorne APENAS o objeto JSON válido, sem explicações, sem blocos de código markdown.`;
+
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: texto }
+    ];
+
+    console.log('[OCR/LLM] Enviando texto ao LLM para extração inteligente do ASO...');
+    const response = await chatCompletion(messages, { temperature: 0.1 });
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) {
+      console.warn('[OCR/LLM] Resposta do LLM veio vazia.');
+      return null;
+    }
+
+    let jsonText = content.trim();
+
+    // Remover blocos de raciocínio (como <think>...</think> do DeepSeek/Qwen)
+    if (jsonText.includes('</think>')) {
+      const index = jsonText.indexOf('</think>');
+      jsonText = jsonText.substring(index + 8).trim();
+    }
+    if (jsonText.includes('<think>')) {
+      jsonText = jsonText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    }
+
+    if (jsonText.startsWith('```')) {
+      const match = jsonText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (match) {
+        jsonText = match[1];
+      }
+    }
+
+    const parsed = JSON.parse(jsonText);
+    console.log('[OCR/LLM] Dados extraídos via LLM com sucesso:', parsed);
+    return parsed;
+  } catch (err: any) {
+    console.warn('[OCR/LLM] Falha ao extrair dados do ASO via LLM, usando fallback de regex:', err.message);
+    return null;
+  }
+}
+
 export async function processarDocumentoOCR(
   arquivoUrl: string,
   tipoDocumento?: OCRTipoDocumento
@@ -529,8 +638,25 @@ export async function processarDocumentoOCR(
       };
     }
 
+    // Tentar extração inteligente via LLM se for ASO e a IA estiver configurada
+    let dadosIa: Record<string, any> | null = null;
+    if (tipoDocumento === 'aso') {
+      dadosIa = await extrairDadosComLLM(resultado.texto, tipoDocumento);
+    }
+
+    // Filtra chaves nulas ou vazias da IA para não sobrescrever o fallback de regex
+    const dadosIaLimpos: Record<string, any> = {};
+    if (dadosIa) {
+      Object.keys(dadosIa).forEach(key => {
+        if (dadosIa[key] !== null && dadosIa[key] !== undefined && dadosIa[key] !== '') {
+          dadosIaLimpos[key] = dadosIa[key];
+        }
+      });
+    }
+
     resultado.dadosExtraidos = {
       ...extrairDadosTexto(resultado.texto, tipoDocumento),
+      ...dadosIaLimpos,
       ...resultado.dadosExtraidos,
     };
 

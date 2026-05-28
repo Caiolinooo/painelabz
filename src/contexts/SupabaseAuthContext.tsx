@@ -265,11 +265,32 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
             // Buscar o perfil completo do usuário no Supabase
             try {
-              const { data, error } = await supabase
-                .from('users_unified')
-                .select('*')
-                .eq('id', refreshData.user.id)
-                .single();
+              console.log('Atualizando perfil do usuário após renovação de token...');
+              let data = null;
+              let error = null;
+              try {
+                const result = await supabase
+                  .from('users_unified')
+                  .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
+                  .eq('id', refreshData.user.id)
+                  .single();
+                data = result.data;
+                error = result.error;
+              } catch (err) {
+                console.warn('Exceção ao buscar perfil com join de setor após renovação:', err);
+                error = err;
+              }
+
+              if (error || !data) {
+                console.warn('⚠️ Erro ao buscar perfil com join de setor, tentando fallback sem join...', error);
+                const fallbackResult = await supabase
+                  .from('users_unified')
+                  .select('*')
+                  .eq('id', refreshData.user.id)
+                  .single();
+                data = fallbackResult.data;
+                error = fallbackResult.error;
+              }
 
               if (!error && data) {
                 // Converter para o formato de perfil
@@ -491,16 +512,36 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       console.log('Buscando usuário no Supabase com ID:', verifyData.userId);
 
       // Buscar o usuário na tabela users_unified
-      const { data: userData, error: userError } = await supabase
-        .from('users_unified')
-        .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
-        .eq('id', verifyData.userId)
-        .single();
+      let userData = null;
+      let userError = null;
 
-      if (userError) {
-        console.error('Erro ao buscar usuário pelo ID do token:', userError);
-        setIsLoading(false);
-        return false;
+      try {
+        const result = await supabase
+          .from('users_unified')
+          .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
+          .eq('id', verifyData.userId)
+          .single();
+        userData = result.data;
+        userError = result.error;
+      } catch (err) {
+        console.warn('Exceção ao buscar usuário com join de setor:', err);
+        userError = err;
+      }
+
+      if (userError || !userData) {
+        console.warn('⚠️ Erro ou falha ao buscar usuário com join de setor, tentando fallback sem join...', userError);
+        const fallbackResult = await supabase
+          .from('users_unified')
+          .select('*')
+          .eq('id', verifyData.userId)
+          .single();
+        
+        if (fallbackResult.error) {
+          console.error('❌ Erro crítico ao buscar usuário pelo ID do token (fallback sem join):', fallbackResult.error);
+          setIsLoading(false);
+          return false;
+        }
+        userData = fallbackResult.data;
       }
 
       if (!userData) {
@@ -1134,6 +1175,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       removeToken();
       removeRefreshToken();
 
+      // Limpar sessionStorage para invalidar caches de permissões
+      if (typeof window !== 'undefined') {
+        sessionStorage.clear();
+      }
+
       // Remover TODOS os dados de autenticação do localStorage
       const keysToRemove = ['auth', 'token', 'abzToken', 'user', 'rememberMe', 'sb-access-token', 'sb-refresh-token'];
       keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -1167,6 +1213,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         // Remover tokens
         removeToken();
         removeRefreshToken();
+
+        // Limpar sessionStorage
+        if (typeof window !== 'undefined') {
+          sessionStorage.clear();
+        }
 
         // Limpar TUDO do localStorage (exceto configurações do usuário que não são sensíveis)
         const keysToKeep = ['i18nextLng', 'theme', 'NEXT_LOCALE'];
@@ -1477,12 +1528,35 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         // Buscar o perfil do usuário na tabela users_unified
         let profileData;
         try {
-          // Primeiro tentar buscar na tabela users_unified
-          const { data: unifiedData, error: unifiedError } = await supabase
-            .from('users_unified')
-            .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
-            .eq('id', session.user.id)
-            .single();
+          // Primeiro tentar buscar na tabela users_unified com join de setor
+          let unifiedData = null;
+          let unifiedError: any = null;
+          try {
+            const { data, error } = await supabase
+              .from('users_unified')
+              .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
+              .eq('id', session.user.id)
+              .single();
+            unifiedData = data;
+            unifiedError = error;
+          } catch (err) {
+            console.warn('Exceção ao buscar perfil com join de setor em onAuthStateChange:', err);
+            unifiedError = err;
+          }
+
+          if (unifiedError || !unifiedData) {
+            console.warn('⚠️ Erro ao buscar perfil com join de setor em onAuthStateChange, tentando fallback sem join...', unifiedError);
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('users_unified')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (!fallbackError && fallbackData) {
+              unifiedData = fallbackData;
+              unifiedError = null;
+            }
+          }
 
           if (!unifiedError && unifiedData) {
             console.log('Perfil encontrado na tabela users_unified:', unifiedData.id);
@@ -2140,16 +2214,35 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
             console.log('Atualizando perfil do usuário...');
 
-            // Buscar o perfil atualizado no Supabase
-            const { data, error } = await supabase
-              .from('users_unified')
-              .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
-              .eq('id', user.id)
-              .single();
+            // Buscar o perfil atualizado no Supabase com join de setor
+            let data = null;
+            let error = null;
+            try {
+              const result = await supabase
+                .from('users_unified')
+                .select('*, sector:sectors(id, name, allowed_modules, allowed_cards)')
+                .eq('id', user.id)
+                .single();
+              data = result.data;
+              error = result.error;
+            } catch (err) {
+              console.warn('Exceção ao atualizar perfil com join de setor:', err);
+              error = err;
+            }
 
-            if (error) {
-              console.error('Erro ao atualizar perfil:', error);
-              return;
+            if (error || !data) {
+              console.warn('⚠️ Erro ao buscar perfil atualizado com join de setor, tentando fallback sem join...', error);
+              const fallbackResult = await supabase
+                .from('users_unified')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+              
+              if (fallbackResult.error) {
+                console.error('Erro ao atualizar perfil (fallback sem join):', fallbackResult.error);
+                return;
+              }
+              data = fallbackResult.data;
             }
 
             if (data) {

@@ -25,7 +25,7 @@ interface RequestWithUser extends LeaveRequest {
 }
 
 export default function FeriasPage() {
-    const { user } = useSupabaseAuth();
+    const { user, getToken } = useSupabaseAuth();
     const [activeTab, setActiveTab] = useState<'my_leaves' | 'approvals' | 'all_requests'>('my_leaves');
     const [isApprover, setIsApprover] = useState(false);
     const [hasFeriasAdmin, setHasFeriasAdmin] = useState(false);
@@ -92,7 +92,10 @@ export default function FeriasPage() {
 
     const loadPermissions = async () => {
         try {
-            const res = await fetch('/api/user/effective-permissions');
+            const token = getToken();
+            const res = await fetch('/api/user/effective-permissions', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (res.ok) {
                 const data = await res.json();
                 setHasFeriasAdmin(!!data.effective_modules?.ferias_admin);
@@ -108,7 +111,10 @@ export default function FeriasPage() {
     const loadRequests = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/leave/requests?userId=${user?.id}`);
+            const token = getToken();
+            const res = await fetch(`/api/leave/requests?userId=${user?.id}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error('Failed to load my requests');
             const data = await res.json();
             setRequests(data);
@@ -123,7 +129,10 @@ export default function FeriasPage() {
     const loadApprovals = async () => {
         try {
             setLoadingApprovals(true);
-            const res = await fetch(`/api/admin/leave-approvals?approverId=${user?.id}`);
+            const token = getToken();
+            const res = await fetch(`/api/admin/leave-approvals?approverId=${user?.id}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error('Failed to load pending approvals');
             const data = await res.json();
             setIsApprover(data.isApprover);
@@ -140,7 +149,10 @@ export default function FeriasPage() {
             setLoadingAllRequests(true);
             const queryParams = new URLSearchParams();
             if (allRequestsFilter !== 'ALL') queryParams.append('status', allRequestsFilter);
-            const res = await fetch(`/api/admin/leave-requests?${queryParams.toString()}`);
+            const token = getToken();
+            const res = await fetch(`/api/admin/leave-requests?${queryParams.toString()}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error('Failed to fetch requests');
             const data = await res.json();
             setAllRequests(data.requests || []);
@@ -216,9 +228,13 @@ export default function FeriasPage() {
 
         try {
             setSubmitting(true);
+            const token = getToken();
             const res = await fetch('/api/leave/requests', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: ***REMOVED***
                     user_id: user.id,
                     start_date: formData.periods[0].startDate, // Keep for backward comp / boundary tracking
@@ -251,9 +267,13 @@ export default function FeriasPage() {
         if (!user?.id) return;
         try {
             setProcessingId(req.id);
+            const token = getToken();
             const res = await fetch('/api/admin/leave-approvals', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: ***REMOVED***
                     request_id: req.id,
                     approver_id: user.id,
@@ -289,9 +309,13 @@ export default function FeriasPage() {
 
         try {
             setProcessingId(rejectingRequest.id);
+            const token = getToken();
             const res = await fetch('/api/admin/leave-approvals', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: ***REMOVED***
                     request_id: rejectingRequest.id,
                     approver_id: user.id,
@@ -326,9 +350,13 @@ export default function FeriasPage() {
         }
         try {
             setAllReqModalProcessing(true);
+            const token = getToken();
             const response = await fetch('/api/admin/leave-approvals', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: ***REMOVED***
                     request_id: requestId,
                     action,
@@ -354,7 +382,11 @@ export default function FeriasPage() {
         if (!confirm('Tem certeza que deseja excluir esta solicitação?')) return;
         try {
             setAllReqModalProcessing(true);
-            const response = await fetch(`/api/admin/leave-requests?id=${requestId}`, { method: 'DELETE' });
+            const token = getToken();
+            const response = await fetch(`/api/admin/leave-requests?id=${requestId}`, {
+                method: 'DELETE',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!response.ok) {
                 const data = await response.json();
                 throw new Error(data.error || 'Falha ao excluir');

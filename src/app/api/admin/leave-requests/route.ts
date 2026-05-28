@@ -1,9 +1,29 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
+import { extractTokenFromHeader, verifyToken, checkAclPermission } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+function getAuthPayload(request: Request) {
+    const authHeader = request.headers.get('authorization') || undefined;
+    const token = extractTokenFromHeader(authHeader);
+    if (!token) return null;
+    const payload = verifyToken(token);
+    if (!payload) return null;
+    return payload;
+}
+
 export async function GET(request: Request) {
+    const payload = getAuthPayload(request);
+    if (!payload) {
+        return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
+    }
+    const hasAcl = await checkAclPermission(payload.userId, payload.role, 'ferias', 'admin') ||
+                   await checkAclPermission(payload.userId, payload.role, 'ferias', 'manage') ||
+                   await checkAclPermission(payload.userId, payload.role, 'ferias', 'read');
+    if (payload.role !== 'ADMIN' && !hasAcl) {
+        return NextResponse.json({ error: 'Apenas administradores ou usuários autorizados via ACL podem listar todas as solicitações' }, { status: 403 });
+    }
     try {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
@@ -54,6 +74,16 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+    const payload = getAuthPayload(request);
+    if (!payload) {
+        return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
+    }
+    const hasAcl = await checkAclPermission(payload.userId, payload.role, 'ferias', 'admin') ||
+                   await checkAclPermission(payload.userId, payload.role, 'ferias', 'manage');
+    if (payload.role !== 'ADMIN' && !hasAcl) {
+        return NextResponse.json({ error: 'Apenas administradores ou usuários autorizados via ACL podem excluir solicitações' }, { status: 403 });
+    }
+
     try {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');

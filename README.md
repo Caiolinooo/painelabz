@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.19.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.21.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,13 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.21.0 - Hardening de Autenticacao, IA Expandida e OCR com LLM
+- Autenticacao JWT obrigatoria em todas as APIs de ferias com verificacao ACL
+- Novas ferramentas de IA: contracheque, contratos, ponto, lista de presenca e feedbacks
+- Extracao inteligente de ASO via LLM com prioridade sobre regex
+- Acesso global a solicitacoes de ferias para admins
+- Corrigidos falsos positivos RG/CPF e extracao de data de nascimento no OCR
 
 ### v5.19.0 - Validacao de Identidade em Assinaturas
 - Validacao multi-fator para assinaturas eletronicas (CPF, email, data de nascimento)

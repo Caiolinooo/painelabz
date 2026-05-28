@@ -5,6 +5,7 @@ import { FiUsers, FiSave, FiSearch, FiAlertCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { LeaveSectorConfig } from '@/services/leaveService';
+import { getToken } from '@/lib/tokenStorage';
 
 interface UnifiedUser {
     id: string;
@@ -42,7 +43,10 @@ export default function AdminLeaveSettingsPage() {
             setLoading(true);
 
             // Load settings and dropdown data from API (Bypasses RLS)
-            const res = await fetch('/api/admin/leave-settings');
+            const token = getToken();
+            const res = await fetch('/api/admin/leave-settings', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error('Failed to load configs');
             const data = await res.json();
 
@@ -82,9 +86,13 @@ export default function AdminLeaveSettingsPage() {
             setSaving(sectorId);
             const dataToSave = editedConfigs[sectorId];
 
+            const token = getToken();
             const res = await fetch('/api/admin/leave-settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: ***REMOVED***
                     sector_id: sectorId,
                     leader_id: dataToSave.leader_id,
@@ -105,7 +113,10 @@ export default function AdminLeaveSettingsPage() {
             });
 
             // Reload configs to get full populated objects from server
-            const reloadRes = await fetch('/api/admin/leave-settings');
+            const reloadToken = getToken();
+            const reloadRes = await fetch('/api/admin/leave-settings', {
+                headers: reloadToken ? { 'Authorization': `Bearer ${reloadToken}` } : {}
+            });
             if (reloadRes.ok) {
                 const refreshed = await reloadRes.json();
                 setConfigs(refreshed.configs || []);
@@ -127,9 +138,13 @@ export default function AdminLeaveSettingsPage() {
 
         try {
             setSavingHr(true);
+            const token = getToken();
             const res = await fetch('/api/admin/leave-settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: ***REMOVED*** hrEmail })
             });
 

@@ -531,4 +531,58 @@ SELECT * FROM avaliacao_cron_log WHERE status = 'error';
 - Cron job uses service role key to bypass RLS
 
 This architecture supports rapid development while maintaining security and scalability for enterprise use.
-- Ultima movimentação no projeto 12-11-25 17hrs
+
+## MIO Cache System (2026-05-21)
+
+### Overview
+Unified cache layer for MIO API data. Replaces direct MIO API calls with a Supabase-backed cache that polls every 15s. All modules consume from cache instead of hitting MIO directly.
+
+### Architecture
+
+**Flow:**
+```
+MIO API → POST /api/mio/cache/atualizar (poll 15s) → mio_cache table → GET /api/mio/cache → Modules
+```
+
+### Database
+- **Table**: `mio_cache` — 4 rows (tipos: `integrantes`, `treinamentos`, `embarques`, `lgp_reports`) + `__meta__`
+- **Columns**: `tipo (PK)`, `dados (JSONB)`, `total_registros (INT)`, `atualizado_em (TIMESTAMPTZ)`
+- **RLS**: SELECT liberado para todos, INSERT/UPDATE/DELETE apenas service_role
+- **Setup**: `npm run db:setup-mio-cache`
+
+### API Endpoints
+
+**POST /api/mio/cache/atualizar**
+- Busca TUDO do MIO em paralelo (integrantes + treinamentos + embarques + lgp_reports)
+- Rate-limit: 10s mínimo entre chamadas (via `__meta__.atualizado_em`)
+- Auth: token ADMIN/MANAGER ou `NODE_ENV=development`
+- Retorno: `{ data: { integrantes: N, treinamentos: N, embarques: N, lgp_reports: N } }`
+
+**GET /api/mio/cache?tipo=integrantes**
+- Lê dados do cache
+- Suporta múltiplos tipos: `?tipo=integrantes,lgp_reports`
+- Um tipo → retorno plano `{ data: [...], total_registros: N }`
+- Múltiplos tipos → retorno agrupado `{ data: { integrantes: {...}, lgp_reports: {...} } }`
+
+### Module Integration
+- **Man Schedule** (`/api/man-schedule/realtime`): lê de `mio_cache` em vez de chamar MIO direto
+- **Logística / E-social**: continuam usando `gt_vw_colaboradores_completo` (alimentado pelo `syncFromMIO`)
+- Novos módulos: ler do cache via `GET /api/mio/cache`
+
+### Frontend Polling
+- Hook `useMIOData(tipo)` com SWR + `refreshInterval: 15000`
+- Módulos reagem automaticamente aos dados atualizados
+- Cache HTTP 10s (`revalidate = 10`)
+
+### Rate Limiting
+- Mínimo 10s entre chamadas ao MIO (controlado pelo `__meta__` row)
+- Se chamar antes, retorna `{ cached: true, message: "Cache ainda recente (Xs atrás)" }`
+
+### Key Files
+- `supabase/migrations/20260521_000002_create_mio_cache.sql` — table + RLS
+- `src/app/api/mio/cache/atualizar/route.ts` — POST: fetch all + upsert
+- `src/app/api/mio/cache/route.ts` — GET: read by tipo
+- `src/app/api/man-schedule/realtime/route.ts` — lê do cache
+- `scripts/setup-mio-cache.js` — migration executor
+
+- Ultima movimentação no projeto 21-05-26

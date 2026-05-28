@@ -466,20 +466,22 @@ export async function extrairDadosASODoTexto(
   dataEmissao?: string | null
 ): Promise<void> {
   // 1. Type of exam
-  let tipo_exame = 'periodico';
-  if (/admissional/i.test(texto)) tipo_exame = 'admissional';
-  else if (/demissional/i.test(texto)) tipo_exame = 'demissional';
-  else if (/retorno/i.test(texto)) tipo_exame = 'retorno';
-  else if (/mudança\s+de\s+função|mudanca\s+de\s+funcao/i.test(texto)) tipo_exame = 'mudanca_funcao';
+  let tipo_exame = dadosExtraidos?.tipo_exame || 'periodico';
+  if (!dadosExtraidos?.tipo_exame) {
+    if (/admissional/i.test(texto)) tipo_exame = 'admissional';
+    else if (/demissional/i.test(texto)) tipo_exame = 'demissional';
+    else if (/retorno/i.test(texto)) tipo_exame = 'retorno';
+    else if (/mudança\s+de\s+função|mudanca\s+de\s+funcao/i.test(texto)) tipo_exame = 'mudanca_funcao';
+  }
 
   // 2. Result
-  const resultado = extrairResultado(texto);
+  const resultado = dadosExtraidos?.resultado || extrairResultado(texto);
 
   // 3. Date
-  let data_realizacao: string | null = null;
+  let data_realizacao: string | null = dadosExtraidos?.data_realizacao || null;
 
-  if (dadosExtraidos?.data_realizacao) {
-    const parts = dadosExtraidos.data_realizacao.split('/');
+  if (data_realizacao && data_realizacao.includes('/')) {
+    const parts = data_realizacao.split('/');
     if (parts.length === 3) {
       data_realizacao = `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
@@ -497,13 +499,13 @@ export async function extrairDadosASODoTexto(
   const crmsEncontrados = extrairCRMsDoTexto(texto);
   const dadosMedicos = extrairDadosDosMedicos(texto, crmsEncontrados);
 
-  let medico_nome = dadosExtraidos?.medico || dadosMedicos.medico_nome || '';
-  let medico_crm = dadosMedicos.medico_crm || '';
-  let medico_uf = dadosMedicos.medico_uf || 'RJ';
+  let medico_nome = dadosExtraidos?.medico_examinador_nome || dadosExtraidos?.medico || dadosMedicos.medico_nome || '';
+  let medico_crm = dadosExtraidos?.medico_examinador_crm || dadosExtraidos?.medico_crm || dadosMedicos.medico_crm || '';
+  let medico_uf = dadosExtraidos?.medico_examinador_uf || dadosMedicos.medico_uf || 'RJ';
   
   let medico_pcmso_nome = dadosExtraidos?.medico_pcmso_nome || dadosMedicos.medico_pcmso_nome || '';
-  let medico_pcmso_crm = dadosMedicos.medico_pcmso_crm || '';
-  let medico_pcmso_uf = dadosMedicos.medico_pcmso_uf || 'RJ';
+  let medico_pcmso_crm = dadosExtraidos?.medico_pcmso_crm || dadosMedicos.medico_pcmso_crm || '';
+  let medico_pcmso_uf = dadosExtraidos?.medico_pcmso_uf || dadosMedicos.medico_pcmso_uf || 'RJ';
 
   // 5. Clinic info
   let cnpj_clinica = dadosExtraidos?.cnpj_clinica || '';
@@ -516,17 +518,23 @@ export async function extrairDadosASODoTexto(
     }
   }
 
-  if (/policlínica|policlinica/i.test(texto)) {
-    nome_clinica = 'Policlínica';
-  } else if (!nome_clinica) {
-    const clinicaMatch = texto.match(/(?:Clínica|Clinica|Centro\s+Médico|Laboratório|Laboratorio)\s*:?\s*([A-Za-zÀ-ÖØ-öø-ÿ\s]+)/i);
-    if (clinicaMatch) {
-      nome_clinica = clinicaMatch[1].trim().split('\n')[0];
+  if (!nome_clinica) {
+    if (/policlínica|policlinica/i.test(texto)) {
+      nome_clinica = 'Policlínica';
+    } else {
+      const clinicaMatch = texto.match(/(?:Clínica|Clinica|Centro\s+Médico|Laboratório|Laboratorio)\s*:?\s*([A-Za-zÀ-ÖØ-öø-ÿ\s]+)/i);
+      if (clinicaMatch) {
+        nome_clinica = clinicaMatch[1].trim().split('\n')[0];
+      }
     }
   }
 
   // 6. Complementary exams
-  const exames_realizados = extrairExamesDoTexto(texto, data_realizacao);
+  let exames_realizados = dadosExtraidos?.exames_realizados;
+  if (!exames_realizados || !Array.isArray(exames_realizados) || exames_realizados.length === 0) {
+    exames_realizados = extrairExamesDoTexto(texto, data_realizacao);
+  }
+
   const examesComCodigos = [];
   if (Array.isArray(exames_realizados)) {
     for (const ex of exames_realizados) {

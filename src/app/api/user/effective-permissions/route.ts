@@ -128,6 +128,9 @@ export async function GET(request: NextRequest) {
         // ADMIN and MANAGER roles ALWAYS get their defined modules, overriding sector
         if (userRole === 'ADMIN' || userRole === 'MANAGER') {
             effectiveModules = { ...effectiveModules, ...roleDefaults.modules };
+            if (userRole === 'ADMIN') {
+                effectiveModules['ferias_admin'] = true;
+            }
         } else {
             // USER Role Logic
             if (profile.sector_id) {
@@ -201,7 +204,7 @@ export async function GET(request: NextRequest) {
             if (allAclPermIds.length > 0) {
                 const { data: aclPerms } = await supabaseAdmin
                     .from('acl_permissions')
-                    .select('resource')
+                    .select('resource, name, action')
                     .in('id', allAclPermIds)
                     .eq('enabled', true);
 
@@ -211,6 +214,16 @@ export async function GET(request: NextRequest) {
                         if (!effectiveModules[resource]) {
                             effectiveModules[resource] = true;
                             aclModulesApplied.push(resource);
+                        }
+                    });
+
+                    // Mapeamento especial de ACLs de férias para ferias_admin
+                    aclPerms.forEach(perm => {
+                        if (perm.resource === 'ferias' && (perm.action === 'admin' || perm.action === 'manage')) {
+                            if (!effectiveModules['ferias_admin']) {
+                                effectiveModules['ferias_admin'] = true;
+                                aclModulesApplied.push('ferias_admin');
+                            }
                         }
                     });
                 }

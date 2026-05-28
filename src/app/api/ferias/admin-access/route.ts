@@ -1,26 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
+import { extractTokenFromHeader, verifyToken, checkAclPermission, TokenPayload } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-async function verifyAdmin(request: NextRequest) {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    if (!token) return false;
-
-    try {
-        const { data } = await supabaseAdmin
-            .from('users_unified')
-            .select('role')
-            .eq('id', (await import('@/lib/auth').then(m => m.verifyToken(token as string)))?.userId)
-            .single();
-        return data?.role === 'ADMIN';
-    } catch {
-        return false;
+function getAuthPayload(request: NextRequest): { payload: TokenPayload; error?: NextResponse } {
+    const authHeader = request.headers.get('authorization') || undefined;
+    const token = extractTokenFromHeader(authHeader);
+    if (!token) {
+        return { payload: null as any, error: NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 }) };
     }
+    const payload = verifyToken(token);
+    if (!payload) {
+        return { payload: null as any, error: NextResponse.json({ error: 'Token inválido' }, { status: 401 }) };
+    }
+    return { payload };
 }
 
 export async function GET(request: NextRequest) {
+    const { payload, error } = getAuthPayload(request);
+    if (error) return error;
+    
+    const hasAcl = await checkAclPermission(payload.userId, payload.role, 'ferias', 'admin') ||
+                   await checkAclPermission(payload.userId, payload.role, 'ferias', 'manage');
+    if (payload.role !== 'ADMIN' && !hasAcl) {
+        return NextResponse.json({ error: 'Apenas administradores ou usuários autorizados via ACL podem acessar esta configuração' }, { status: 403 });
+    }
     try {
         const { data: sectors } = await supabaseAdmin
             .from('sectors')
@@ -74,6 +79,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    const { payload, error } = getAuthPayload(request);
+    if (error) return error;
+
+    const hasAcl = await checkAclPermission(payload.userId, payload.role, 'ferias', 'admin') ||
+                   await checkAclPermission(payload.userId, payload.role, 'ferias', 'manage');
+    if (payload.role !== 'ADMIN' && !hasAcl) {
+        return NextResponse.json({ error: 'Apenas administradores ou autorizados via ACL podem modificar esta configuração' }, { status: 403 });
+    }
+
     try {
         const body = await request.json();
         const { type, targetId, enabled } = body;
