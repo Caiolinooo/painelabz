@@ -253,16 +253,13 @@ async function detectarExtensao(buffer: Buffer, extIndicada: string): Promise<st
  *   2) type:"image_url" com data:image/png (se PDF convertido para imagem)
  * Retorna null se o LLM não suportar visão/PDF.
  */
-async function extrairTextoViaLLMVisao(pdfBuffer: Buffer): Promise<string | null> {
+async function extrairTextoViaLLMVisao(buffer: Buffer, mimeType: string = 'application/pdf'): Promise<string | null> {
   const { getIAConfig } = await import('@/lib/ia/client');
   const config = await getIAConfig();
   if (!config || !config.ativo) {
     throw new Error('IA não está configurada ou inativa');
   }
 
-  // Determinar se o LLM suporta visão:
-  // - llamacpp: SEMPRE tentar (quem configura com mmproj quer visão)
-  // - lmstudio/cloud: verificar nome do modelo
   const isLlamaCpp = config.provider === 'llamacpp';
   const modelLower = (config.model_default || '').toLowerCase();
   const visionModels = ['gpt-4o', 'gpt-4v', 'gpt-4-turbo', 'claude-3', 'claude-4', 'sonnet', 'haiku', 'opus', 'gemini', 'llava', 'bakllava', 'moondream', 'minicpm-v', 'qwen-vl', 'internvl'];
@@ -273,34 +270,32 @@ async function extrairTextoViaLLMVisao(pdfBuffer: Buffer): Promise<string | null
     return null;
   }
 
-  const base64Pdf = pdfBuffer.toString('base64');
-  const dataUriPdf = `data:application/pdf;base64,${base64Pdf}`;
+  const base64Data = buffer.toString('base64');
+  const dataUri = `data:${mimeType};base64,${base64Data}`;
 
-  const systemPrompt = `Você é um sistema de OCR. Extraia TODO o texto visível do documento PDF/imagem fornecido.
+  const systemPrompt = `Você é um sistema de OCR. Extraia TODO o texto visível do documento fornecido.
 Transcreva o conteúdo exatamente como aparece, preservando a estrutura e quebras de linha.
 Inclua cabeçalhos, rodapés, carimbos, assinaturas legíveis, tabelas, e qualquer informação visível.
 Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`;
 
-  const userText = 'Extraia todo o texto deste documento PDF digitalizado:';
+  const userText = 'Extraia todo o texto deste documento:';
 
-  // Formatos ordenados por compatibilidade
-  // llama.cpp com mmproj aceita image_url com image_url.url (data URI ou URL pública)
   const formats = isLlamaCpp
     ? [
         {
           name: 'llamacpp_image_url',
           content: [
             { type: 'text' as const, text: userText },
-            { type: 'image_url' as const, image_url: { url: dataUriPdf } },
+            { type: 'image_url' as const, image_url: { url: dataUri } },
           ],
         },
       ]
     : [
         {
-          name: 'image_url_pdf',
+          name: 'image_url_doc',
           content: [
             { type: 'text' as const, text: userText },
-            { type: 'image_url' as const, image_url: { url: dataUriPdf } },
+            { type: 'image_url' as const, image_url: { url: dataUri } },
           ],
         },
       ];
@@ -470,10 +465,34 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
       }
       context.putImageData(imageData, 0, 0);
 
-      const pageOcr = await processarComTesseract(nodeCanvas.toBuffer('image/png'), idioma);
-      if (pageOcr) {
-        textPages.push(pageOcr.texto);
-        totalConfidence += pageOcr.confianca;
+      const pageBuffer = nodeCanvas.toBuffer('image/png');
+      let pageTexto = '';
+      let pageConfianca = 0;
+
+      // Try LLM Vision first on the rendered page
+      try {
+        const llmTexto = await extrairTextoViaLLMVisao(pageBuffer, 'image/png');
+        if (llmTexto && llmTexto.trim().length >= 10) {
+          pageTexto = llmTexto;
+          pageConfianca = 90;
+          console.log(`[OCR/PDF] LLM visão extraiu ${pageTexto.length} caracteres da página ${i}.`);
+        }
+      } catch (err: any) {
+        console.warn(`[OCR/PDF] LLM visão falhou para página ${i}:`, err.message);
+      }
+
+      // Fallback to Tesseract
+      if (!pageTexto) {
+        const pageOcr = await processarComTesseract(pageBuffer, idioma);
+        if (pageOcr && pageOcr.texto.length >= 5) {
+          pageTexto = pageOcr.texto;
+          pageConfianca = pageOcr.confianca;
+        }
+      }
+
+      if (pageTexto) {
+        textPages.push(pageTexto);
+        totalConfidence += pageConfianca;
         confidenceCount++;
       }
     }
@@ -773,7 +792,22 @@ export async function processarDocumentoOCR(
       } else if (ext === 'txt' || ext === 'csv') {
         parseResult = await processarTXT(buffer);
       } else if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
-        parseResult = await processarComTesseract(buffer, config.idioma);
+        try {
+          const mime = ext === 'jpg' ? 'jpeg' : ext;
+          const texto = await extrairTextoViaLLMVisao(buffer, `image/${mime}`);
+          if (texto && texto.trim().length >= 10) {
+            parseResult = { texto, confianca: 90 };
+          }
+        } catch (err: any) {
+          console.warn('[OCR/Image] LLM visão falhou:', err.message);
+        }
+        if (!parseResult) {
+          try {
+            parseResult = await processarComTesseract(buffer, config.idioma);
+          } catch {
+            parseResult = await processarTXT(buffer);
+          }
+        }
       } else {
         // Fallback genérico: Tenta Tesseract, senão lê como texto bruto
         try {

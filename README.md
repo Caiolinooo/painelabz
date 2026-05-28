@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.23.5-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.23.6-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,12 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.23.6 - OCR LLM Vision Multi-Formato e Enriquecimento ASO
+- LLM Vision agora processa imagens (PNG, JPG, WebP) alem de PDFs, com fallback para Tesseract
+- Pipeline de OCR por pagina: cada pagina renderizada usa LLM Vision primeiro, depois Tesseract
+- API de colaboradores enriquece documentos ASO com dados estruturados do `gt_documentos_aso`
+- Timeout do endpoint OCR estendido de 60s para 300s para documentos grandes
 
 ### v5.21.0 - Hardening de Autenticacao, IA Expandida e OCR com LLM
 - Autenticacao JWT obrigatoria em todas as APIs de ferias com verificacao ACL

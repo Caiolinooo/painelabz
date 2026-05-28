@@ -45,9 +45,31 @@ export async function GET(
       .is('deleted_at', null)
       .order('data_validade', { ascending: false, nullsFirst: false });
 
+    let documentos = allDocs || [];
+    
+    // Populate aso_data for ASO documents
+    const asoDocIds = documentos.filter(d => d.tipo_documento === 'aso').map(d => d.id);
+    if (asoDocIds.length > 0) {
+      const { data: asoRecords } = await supabaseAdmin
+        .from('gt_documentos_aso')
+        .select('*')
+        .in('documento_id', asoDocIds);
+        
+      if (asoRecords) {
+        const asoDataMap: Record<string, any> = {};
+        asoRecords.forEach(rec => { asoDataMap[rec.documento_id] = rec; });
+        documentos = documentos.map(doc => {
+          if (doc.tipo_documento === 'aso') {
+            return { ...doc, aso_data: asoDataMap[doc.id] || null };
+          }
+          return doc;
+        });
+      }
+    }
+
     // Dedup treinamentos: mantém só o mais recente por título
     const seenTitles = new Set<string>();
-    const documentos = (allDocs || []).filter(d => {
+    documentos = documentos.filter(d => {
       if (d.tipo_documento !== 'treinamento') return true;
       if (!d.titulo) return true;
       const key = d.titulo.toLowerCase().trim();
