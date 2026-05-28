@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.23.4] - 2026-05-28
+
+### Fixed
+- **OCR LLM Vision — Non-Vision Model Detection**: `extrairTextoViaLLMVisao()` now detects whether the configured LLM model likely supports vision before attempting to send images. Checks model name against known vision models (GPT-4o, Claude 3/4, Gemini, LLaVA, etc.). Non-vision models (llama.cpp text-only, DeepSeek-V3, etc.) are skipped early with a clear log message, avoiding unnecessary 400/500 errors from the LLM server. Removed unsupported `type: "file"` content format that caused "unsupported content[].type" errors with most providers.
+- **PoliWeb ASOs Pendentes — Config Error Handling**: Changed HTTP status from 500 to 503 (Service Unavailable) when PoliWeb is not configured. Added `configured: false` flag and `hint` field in response with setup instructions. Added `maxDuration = 120` for longer processing. Improved error message in catch block.
+
 ## [5.23.3] - 2026-05-28
 
 ### Fixed

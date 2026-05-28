@@ -4,6 +4,7 @@ import { buscarASOsPendentes } from '@/lib/gestao-tripulantes/poliweb-scraper';
 import { importarEProcessarASOs } from '@/lib/gestao-tripulantes/poliweb-service';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,15 @@ export async function GET(request: NextRequest) {
 
     const result = await buscarASOsPendentes();
     if (!result.success) {
-      return NextResponse.json({ error: result.error || 'Erro ao buscar ASOs pendentes' }, { status: 500 });
+      const isConfigError = result.error?.includes('configurado') || result.error?.includes('habilitado') || result.error?.includes('Credenciais');
+      return NextResponse.json(
+        {
+          error: result.error || 'Erro ao buscar ASOs pendentes',
+          configured: false,
+          hint: isConfigError ? 'Configure o PoliWeb no painel admin > Gestão de Tripulantes > Configurações > Aba PoliWeb' : undefined,
+        },
+        { status: isConfigError ? 503 : 500 }
+      );
     }
 
     if (!result.data || result.data.length === 0) {
@@ -51,6 +60,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Erro na API PoliWeb ASOs pendentes:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : 'Erro interno do servidor';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
