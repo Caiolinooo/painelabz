@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.23.3] - 2026-05-28
+
+### Fixed
+- **OCR PDF Pipeline — Scanned PDF Fix**: Complete rewrite of `ocrPdfDigitalizado()` to fix failure on scanned PDFs (no text layer) in Vercel/serverless environments.
+  - **LLM Vision Multi-Format**: `extrairTextoViaLLMVisao()` now tries multiple API formats for maximum provider compatibility: first `type:"file"` with `file_data` (OpenAI/Claude format), then `type:"image_url"` with PDF data URI. Each format is tried independently with proper error handling.
+  - **CDN Worker for pdfjs-dist**: Strategy 3 now uses CDN-hosted worker URL (`cdnjs.cloudflare.com`) instead of local file path, enabling pdfjs-dist to work on Vercel where local worker files are not included in the serverless bundle.
+  - **Direct Tesseract Fallback**: Added strategy 4 — sends raw PDF buffer directly to Tesseract.js as last resort before throwing error.
+  - **Improved Error Messages**: Error message now distinguishes between "scanned document without selectable text" and "LLM not configured", guiding users to the correct fix.
+  - **Better Logging**: Each strategy logs its attempt and result, making it easier to diagnose which step fails in production.
+
 ## [5.23.2] - 2026-05-28
 
 ### Changed

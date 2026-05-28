@@ -247,8 +247,11 @@ async function detectarExtensao(buffer: Buffer, extIndicada: string): Promise<st
 }
 
 /**
- * Extrai texto de um PDF digitalizado enviando-o como imagem base64 ao LLM com visão.
- * Funciona em qualquer ambiente (Vercel, local, etc.) — é apenas uma chamada HTTP.
+ * Extrai texto de um PDF digitalizado enviando-o ao LLM com visão.
+ * Tenta múltiplos formatos de API para máxima compatibilidade:
+ *   1) type:"file" com file_data (OpenAI, Claude, etc.)
+ *   2) type:"image_url" com data:application/pdf (compatibilidade ampla)
+ *   3) type:"image_url" com data:image/png (se converter para imagem)
  */
 async function extrairTextoViaLLMVisao(pdfBuffer: Buffer): Promise<string | null> {
   const { getIAConfig } = await import('@/lib/ia/client');
@@ -258,75 +261,93 @@ async function extrairTextoViaLLMVisao(pdfBuffer: Buffer): Promise<string | null
   }
 
   const base64Pdf = pdfBuffer.toString('base64');
-  const dataUri = `data:application/pdf;base64,${base64Pdf}`;
+  const dataUriPdf = `data:application/pdf;base64,${base64Pdf}`;
 
   const systemPrompt = `Você é um sistema de OCR. Extraia TODO o texto visível do documento PDF/imagem fornecido.
 Transcreva o conteúdo exatamente como aparece, preservando a estrutura e quebras de linha.
 Inclua cabeçalhos, rodapés, carimbos, assinaturas legíveis, tabelas, e qualquer informação visível.
 Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`;
 
-  const messages = [
-    { role: 'system' as const, content: systemPrompt },
+  const userText = 'Extraia todo o texto deste documento PDF digitalizado:';
+
+  const formats = [
     {
-      role: 'user' as const,
+      name: 'file_api',
       content: [
-        {
-          type: 'text',
-          text: 'Extraia todo o texto deste documento PDF digitalizado:'
-        },
-        {
-          type: 'image_url',
-          image_url: { url: dataUri }
-        }
-      ]
-    }
+        { type: 'text' as const, text: userText },
+        { type: 'file' as const, file: { filename: 'aso.pdf', file_data: dataUriPdf } } as any,
+      ],
+    },
+    {
+      name: 'image_url_pdf',
+      content: [
+        { type: 'text' as const, text: userText },
+        { type: 'image_url' as const, image_url: { url: dataUriPdf } },
+      ],
+    },
   ];
 
-  console.log('[OCR/LLM-Visão] Enviando PDF digitalizado ao LLM com visão...');
+  for (const format of formats) {
+    try {
+      console.log(`[OCR/LLM-Visão] Tentando formato "${format.name}"...`);
 
-  const response = await fetch(`${config.endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.api_key}`,
-    },
-    body: ***REMOVED***
-      model: config.model_default,
-      messages,
-      max_tokens: config.max_tokens || 4096,
-      temperature: 0.1,
-    }),
-  });
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: format.content },
+      ];
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Sem detalhes');
-    throw new Error(`LLM retornou ${response.status}: ${errorText}`);
+      const response = await fetch(`${config.endpoint}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.api_key}`,
+        },
+        body: ***REMOVED***
+          model: config.model_default,
+          messages,
+          max_tokens: config.max_tokens || 4096,
+          temperature: 0.1,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Sem detalhes');
+        console.warn(`[OCR/LLM-Visão] Formato "${format.name}" retornou ${response.status}: ${errorText.substring(0, 200)}`);
+        continue;
+      }
+
+      const data = await response.json();
+      let content = data.choices?.[0]?.message?.content || '';
+
+      // Remover blocos de raciocínio (DeepSeek/Qwen)
+      if (content.includes('<think>')) {
+        content = content.substring(content.indexOf('</think>') + 8).trim();
+      }
+      content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+      if (content.length >= 10) {
+        console.log(`[OCR/LLM-Visão] Formato "${format.name}" extraiu ${content.length} caracteres.`);
+        return content;
+      }
+      console.warn(`[OCR/LLM-Visão] Formato "${format.name}" retornou texto muito curto (${content.length} chars).`);
+    } catch (err: any) {
+      console.warn(`[OCR/LLM-Visão] Formato "${format.name}" falhou: ${err.message}`);
+    }
   }
 
-  const data = await response.json();
-  let content = data.choices?.[0]?.message?.content || '';
-
-  // Remover blocos de raciocínio (DeepSeek/Qwen)
-  if (content.includes('</think>')) {
-    content = content.substring(content.indexOf('</think>') + 8).trim();
-  }
-  content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-
-  console.log(`[OCR/LLM-Visão] LLM extraiu ${content.length} caracteres do PDF.`);
-  return content || null;
+  return null;
 }
 
 async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promise<{ texto: string; confianca: number }> {
-  // Estratégia serverless-safe (Vercel): pdfjs-dist e tesseract.js NÃO funcionam na Vercel
-  // porque seus binários (.wasm, .mjs worker) não são incluídos no bundle serverless.
-  // Usamos uma cascata de abordagens que funcionam em qualquer ambiente:
+  // Estratégia serverless-safe (Vercel): módulos nativos como canvas NÃO funcionam na Vercel.
+  // Usamos uma cascata de abordagens que maximizam compatibilidade:
 
-  // 1) Tentar pdf-parse com render customizado para capturar mais texto
+  // 1) pdf-parse com render customizado — funciona em qualquer ambiente
   try {
     // @ts-ignore
     const pdfParseModule = await import('pdf-parse');
     const pdfParse = typeof pdfParseModule === 'function' ? pdfParseModule : (pdfParseModule.default || pdfParseModule);
-    
+
     const customRenderPage = (pageData: any) => {
       return pageData.getTextContent({ normalizeWhitespace: true }).then((textContent: any) => {
         let lastY: number | null = null;
@@ -346,17 +367,17 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
 
     const data = await pdfParse(buffer, { pagerender: customRenderPage });
     const texto = (data.text || '').trim();
-    
+
     if (texto.length >= 10) {
       console.log(`[OCR/PDF] pdf-parse (render custom) extraiu ${texto.length} caracteres.`);
       return { texto, confianca: 95 };
     }
+    console.log('[OCR/PDF] pdf-parse retornou texto insuficiente (' + texto.length + ' chars), tentando próxima estratégia...');
   } catch (error: any) {
     console.warn(`[OCR/PDF] Falha no pdf-parse customizado: ${error.message}`);
   }
 
-  // 2) PDF sem texto embutido → enviar como imagem base64 ao LLM com visão
-  //    Funciona em qualquer ambiente (Vercel, local, etc.) desde que a IA esteja configurada
+  // 2) LLM com visão — enviar PDF ao LLM (funciona em qualquer ambiente com IA configurada)
   try {
     const texto = await extrairTextoViaLLMVisao(buffer);
     if (texto && texto.trim().length >= 10) {
@@ -367,25 +388,28 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     console.warn(`[OCR/PDF] LLM visão falhou: ${llmError.message}`);
   }
 
-  // 3) Fallback local: pdfjs-dist + canvas + Tesseract (funciona apenas em dev/node, não na Vercel)
+  // 3) pdfjs-dist com CDN worker + canvas (funciona em dev/node e em Vercel com worker remoto)
   try {
-    const workerPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.mjs');
-    if (!fs.existsSync(workerPath)) {
-      throw new Error('pdfjs-dist worker não encontrado (serverless)');
-    }
+    const pdfjsVersion = '4.4.168';
+    const cdnWorkerUrl = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.mjs`;
 
     const pdfjsModule = await import('pdfjs-dist');
     const pdfjs = (pdfjsModule as any).getDocument ? pdfjsModule : ((pdfjsModule as any).default || pdfjsModule);
-    const { pathToFileURL } = await import('url');
-    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
+    pdfjs.GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
 
-    const canvasModule = await import('canvas');
-    const canvas = (canvasModule as any).createCanvas ? canvasModule : ((canvasModule as any).default || canvasModule);
-    
-    class CustomCanvasFactory {
+    // Tentar importar canvas (pode não estar disponível no Vercel)
+    let canvas: any = null;
+    try {
+      const canvasModule = await import('canvas');
+      canvas = (canvasModule as any).createCanvas ? canvasModule : ((canvasModule as any).default || canvasModule);
+    } catch {
+      throw new Error('Módulo canvas não disponível neste ambiente');
+    }
+
+    class SimpleCanvasFactory {
       create(width: number, height: number) {
-        const _canvas = canvas.createCanvas(width, height);
-        return { canvas: _canvas, context: _canvas.getContext('2d') };
+        const c = canvas.createCanvas(width, height);
+        return { canvas: c, context: c.getContext('2d') };
       }
       reset(canvasAndContext: any, width: number, height: number) {
         canvasAndContext.canvas.width = width;
@@ -403,20 +427,20 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     }
 
     const docData = new Uint8Array(buffer);
-    const pdfDoc = await pdfjs.getDocument({ data: docData, CanvasFactory: CustomCanvasFactory }).promise;
-    
+    const pdfDoc = await pdfjs.getDocument({ data: docData, CanvasFactory: SimpleCanvasFactory, workerSrc: cdnWorkerUrl }).promise;
+
     const textPages: string[] = [];
     let totalConfidence = 0;
     let confidenceCount = 0;
-    
+
     for (let i = 1; i <= pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i);
-      const viewport = page.getViewport({ scale: 2.5 });
+      const viewport = page.getViewport({ scale: 2.0 });
       const nodeCanvas = canvas.createCanvas(viewport.width, viewport.height);
       const context = nodeCanvas.getContext('2d');
       context.imageSmoothingEnabled = true;
 
-      await page.render({ canvasContext: context as any, viewport, CanvasFactory: CustomCanvasFactory }).promise;
+      await page.render({ canvasContext: context as any, viewport, CanvasFactory: SimpleCanvasFactory }).promise;
 
       const imageData = context.getImageData(0, 0, viewport.width, viewport.height);
       const pixels = imageData.data;
@@ -434,7 +458,7 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
         confidenceCount++;
       }
     }
-    
+
     if (confidenceCount > 0) {
       return { texto: textPages.join('\n\n'), confianca: Math.round(totalConfidence / confidenceCount) };
     }
@@ -442,9 +466,22 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
     console.warn(`[OCR/PDF] Fallback local (pdfjs+tesseract) falhou: ${localError.message}`);
   }
 
+  // 4) Último recurso: enviar buffer ao Tesseract diretamente (pode funcionar para PDFs simples)
+  try {
+    const ocrResult = await processarComTesseract(buffer, idioma);
+    if (ocrResult && ocrResult.texto.trim().length >= 5) {
+      console.log(`[OCR/PDF] Tesseract direto no buffer extraiu ${ocrResult.texto.length} caracteres.`);
+      return ocrResult;
+    }
+  } catch (tessError: any) {
+    console.warn(`[OCR/PDF] Tesseract direto falhou: ${tessError.message}`);
+  }
+
   throw new Error(
     'Não foi possível extrair texto do PDF digitalizado. ' +
-    'Verifique se a IA (LLM com visão) está configurada no painel ou envie um PDF com texto selecionável.'
+    'O documento pode ser uma imagem escaneada sem texto selecionável. ' +
+    'Verifique se a IA (LLM com visão) está configurada no painel admin, ' +
+    'ou envie um PDF com camada de texto selecionável.'
   );
 }
 
