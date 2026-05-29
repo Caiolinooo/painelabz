@@ -70,11 +70,56 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/**
+ * Renderiza PDF→imagens no navegador e envia ao servidor.
+ * Resolve o problema do Vercel serverless sem suporte a canvas/tesseract.
+ */
+async function renderizarEEnviarOCR(docId: string, arquivoUrl: string): Promise<Response> {
+  const isPdf = arquivoUrl.split('?')[0].toLowerCase().endsWith('.pdf');
+  const isImage = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(arquivoUrl.split('?')[0]);
+
+  let images: string[] = [];
+
+  if (isPdf) {
+    // Renderizar PDF → JPEG no navegador usando Canvas API
+    toast('Renderizando PDF no navegador...', { icon: '🔄', duration: 3000 });
+
+    const { renderPdfToImages } = await import('@/lib/ocr/pdf-to-images-client');
+    images = await renderPdfToImages(arquivoUrl, { maxPages: 5, scale: 1.5, quality: 0.82 });
+
+    if (images.length === 0) {
+      throw new Error('Não foi possível renderizar o PDF');
+    }
+    toast(`${images.length} página(s) renderizada(s). Enviando para IA...`, { icon: '🧠', duration: 5000 });
+  } else if (isImage) {
+    // Converter imagem para base64
+    const { imageUrlToDataUri } = await import('@/lib/ocr/pdf-to-images-client');
+    const dataUri = await imageUrlToDataUri(arquivoUrl);
+    images = [dataUri];
+    toast('Enviando imagem para IA...', { icon: '🧠', duration: 3000 });
+  }
+
+  if (images.length > 0) {
+    // Enviar imagens pré-renderizadas para a API
+    return await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images }),
+    });
+  }
+
+  // Fallback para outros tipos de arquivo (DOCX, XLSX, etc.) — processamento server-side
+  return await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, {
+    method: 'POST',
+  });
+}
+
 export default function ASOTab({ colaboradorId, documentos, onRefresh }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
   const [runningOcr, setRunningOcr] = useState<string | null>(null);
+  const [ocrProgress, setOcrProgress] = useState('');
 
   const asos = documentos.filter(d => d.tipo_documento === 'aso');
 
@@ -109,10 +154,13 @@ export default function ASOTab({ colaboradorId, documentos, onRefresh }: Props) 
     }
   };
 
-  const handleRunOCR = async (docId: string) => {
+  const handleRunOCR = async (docId: string, arquivoUrl: string) => {
     try {
       setRunningOcr(docId);
-      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, { method: 'POST' });
+      setOcrProgress('Preparando...');
+
+      const res = await renderizarEEnviarOCR(docId, arquivoUrl);
+
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Erro ao processar OCR');
@@ -123,6 +171,7 @@ export default function ASOTab({ colaboradorId, documentos, onRefresh }: Props) 
       toast.error(err.message || 'Erro ao processar OCR');
     } finally {
       setRunningOcr(null);
+      setOcrProgress('');
     }
   };
 
@@ -220,7 +269,7 @@ export default function ASOTab({ colaboradorId, documentos, onRefresh }: Props) 
                         doc.ocr_status === 'processando' ? 'text-blue-600 animate-pulse' :
                         doc.ocr_status === 'erro' ? 'text-red-600' : 'text-gray-500'
                       }`}>
-                        {(doc.ocr_status || 'pendente').toUpperCase()}
+                        {runningOcr === doc.id ? ocrProgress : (doc.ocr_status || 'pendente').toUpperCase()}
                       </span>
                     </div>
                   </div>
@@ -239,7 +288,7 @@ export default function ASOTab({ colaboradorId, documentos, onRefresh }: Props) 
                   {/* Executar OCR se pendente ou erro */}
                   {(!doc.ocr_status || doc.ocr_status === 'pendente' || doc.ocr_status === 'erro') && (
                     <button
-                      onClick={() => handleRunOCR(doc.id)}
+                      onClick={() => handleRunOCR(doc.id, doc.arquivo_url)}
                       disabled={runningOcr === doc.id || uploading}
                       className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition"
                     >

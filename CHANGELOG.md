@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.24.0] - 2026-05-29
+
+### Added
+- **Client-Side PDF Rendering**: New `pdf-to-images-client.ts` library renders PDF pages to JPEG images directly in the browser using PDF.js + Canvas API. Resolves Vercel serverless limitation where native `canvas` module is unavailable. Each page is rendered at configurable scale (default 1.5x) with JPEG compression (quality 0.82).
+- **Client-Rendered OCR Pipeline**: New `processarImagensPreRenderizadas()` function processes browser-rendered images via LLM Vision. Supports multi-page PDFs (up to 5 pages) sent in a single LLM request with automatic fallback to individual page processing if the model rejects batch input.
+- **ASO Tab — Client-Side OCR**: `ASOTab` component now renders PDFs in the browser before sending to OCR API. Shows real-time progress status ("Renderizando PDF no navegador...", "Enviando para IA..."). Supports both PDF and image documents.
+- **Treinamentos Tab — Client-Side OCR**: `TreinamentosTab` component now uses client-side PDF rendering for OCR processing, matching the ASO Tab behavior.
+- **OCR API — Dual Flow**: `/api/gestao-tripulantes/documentos/[id]/ocr` now accepts both client-rendered images (new flow) and server-side processing (legacy). Automatically detects request format and routes accordingly.
+
+### Changed
+- **OCR Route Timeout**: `maxDuration` increased from 120s to 300s (5 minutes) for LLM vision processing of large documents.
+- **OCR Export**: Added `processarImagensPreRenderizadas` to OCR module exports.
+
 ## [5.23.8] - 2026-05-29
 
 ### Fixed

@@ -744,6 +744,233 @@ Retorne APENAS o objeto JSON válido, sem explicações, sem blocos de código m
   }
 }
 
+/**
+ * Processa imagens pré-renderizadas pelo navegador via LLM com visão.
+ * Essa função é usada quando o cliente (browser) converte o PDF em imagens
+ * usando Canvas API e envia as imagens já prontas para a API.
+ * 
+ * Isso resolve o problema do Vercel serverless que não tem suporte ao
+ * módulo nativo `canvas` do Node.js.
+ */
+export async function processarImagensPreRenderizadas(
+  images: string[], // data URIs base64 (data:image/jpeg;base64,...)
+  tipoDocumento?: OCRTipoDocumento
+): Promise<OCRExtractResult> {
+  try {
+    if (!images || images.length === 0) {
+      return { success: false, error: 'Nenhuma imagem fornecida' };
+    }
+
+    console.log(`[OCR/ClientImages] Recebidas ${images.length} imagens pré-renderizadas pelo navegador.`);
+
+    // Enviar TODAS as imagens em uma ÚNICA chamada ao LLM com visão
+    const { getIAConfig } = await import('@/lib/ia/client');
+    const config = await getIAConfig();
+    if (!config || !config.ativo) {
+      return { success: false, error: 'IA não está configurada ou inativa. Configure a IA no painel admin.' };
+    }
+
+    const isLlamaCpp = config.provider === 'llamacpp';
+    const modelLower = (config.model_default || '').toLowerCase();
+    const visionModels = ['gpt-4o', 'gpt-4v', 'gpt-4-turbo', 'claude-3', 'claude-4', 'sonnet', 'haiku', 'opus', 'gemini', 'llava', 'bakllava', 'moondream', 'minicpm-v', 'qwen-vl', 'internvl', 'qwopus'];
+    const isLikelyVision = isLlamaCpp || visionModels.some(m => modelLower.includes(m));
+
+    if (!isLikelyVision) {
+      return { success: false, error: `Modelo "${config.model_default}" não suporta visão. Use um modelo com capacidade de visão (ex: LLaVA, Qwen-VL, GPT-4o).` };
+    }
+
+    const systemPrompt = `Você é um sistema de OCR. Extraia TODO o texto visível das imagens do documento fornecido.
+Transcreva o conteúdo exatamente como aparece, preservando a estrutura e quebras de linha.
+Inclua cabeçalhos, rodapés, carimbos, assinaturas legíveis, tabelas, e qualquer informação visível.
+Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`;
+
+    // Montar conteúdo multimodal — todas as páginas em uma mensagem
+    const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+      { type: 'text', text: `Extraia todo o texto deste documento (${images.length} página(s)):` },
+    ];
+
+    for (const img of images) {
+      userContent.push({
+        type: 'image_url',
+        image_url: { url: img },
+      });
+    }
+
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: userContent },
+    ];
+
+    console.log(`[OCR/ClientImages] Enviando ${images.length} imagens ao LLM "${config.model_default}" (provider: ${config.provider})...`);
+
+    const response = await fetch(`${config.endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.api_key}`,
+      },
+      body: JSON.stringify({
+        model: config.model_default,
+        messages,
+        max_tokens: config.max_tokens || 4096,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Sem detalhes');
+      console.error(`[OCR/ClientImages] LLM retornou ${response.status}: ${errorText.substring(0, 500)}`);
+
+      // Se o modelo não aceitar múltiplas imagens, tentar uma por uma
+      if (images.length > 1 && (response.status === 400 || response.status === 422)) {
+        console.log('[OCR/ClientImages] Tentando enviar imagens individualmente...');
+        return await processarImagensIndividualmente(images, config, tipoDocumento);
+      }
+
+      return { success: false, error: `LLM retornou erro ${response.status}. Verifique a configuração da IA.` };
+    }
+
+    const data = await response.json();
+    let texto = data.choices?.[0]?.message?.content || '';
+
+    // Limpar blocos de raciocínio (DeepSeek/Qwen)
+    if (texto.includes('<think>')) {
+      texto = texto.substring(texto.indexOf('</think>') + 8).trim();
+    }
+    texto = texto.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+    if (texto.length < 10) {
+      return { success: false, error: 'LLM retornou texto insuficiente. O documento pode estar ilegível.' };
+    }
+
+    console.log(`[OCR/ClientImages] LLM extraiu ${texto.length} caracteres com sucesso.`);
+
+    // Extrair dados estruturados via regex
+    const dadosRegex = extrairDadosTexto(texto, tipoDocumento);
+
+    // Extrair dados via LLM estruturado (se for ASO)
+    let dadosIa: Record<string, any> | null = null;
+    if (tipoDocumento === 'aso') {
+      dadosIa = await extrairDadosComLLM(texto, tipoDocumento);
+    }
+
+    const dadosIaLimpos: Record<string, any> = {};
+    if (dadosIa) {
+      Object.keys(dadosIa).forEach(key => {
+        if (dadosIa![key] !== null && dadosIa![key] !== undefined && dadosIa![key] !== '') {
+          dadosIaLimpos[key] = dadosIa![key];
+        }
+      });
+    }
+
+    const dadosExtraidos = { ...dadosRegex, ...dadosIaLimpos };
+
+    return {
+      success: true,
+      data: { texto, dadosExtraidos, confianca: 90 },
+    };
+  } catch (error) {
+    console.error('[OCR/ClientImages] Erro inesperado:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido ao processar imagens',
+    };
+  }
+}
+
+/**
+ * Fallback: Processa imagens uma a uma se o LLM não aceitar múltiplas de uma vez.
+ */
+async function processarImagensIndividualmente(
+  images: string[],
+  config: any,
+  tipoDocumento?: OCRTipoDocumento
+): Promise<OCRExtractResult> {
+  const systemPrompt = `Você é um sistema de OCR. Extraia TODO o texto visível da imagem do documento.
+Transcreva o conteúdo exatamente como aparece, preservando a estrutura e quebras de linha.
+Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`;
+
+  const textos: string[] = [];
+
+  for (let i = 0; i < images.length; i++) {
+    try {
+      console.log(`[OCR/ClientImages] Processando imagem ${i + 1}/${images.length}...`);
+
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        {
+          role: 'user' as const,
+          content: [
+            { type: 'text', text: `Extraia todo o texto desta página ${i + 1}:` },
+            { type: 'image_url', image_url: { url: images[i] } },
+          ],
+        },
+      ];
+
+      const response = await fetch(`${config.endpoint}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.api_key}`,
+        },
+        body: JSON.stringify({
+          model: config.model_default,
+          messages,
+          max_tokens: config.max_tokens || 4096,
+          temperature: 0.1,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn(`[OCR/ClientImages] Página ${i + 1} falhou: ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      let content = data.choices?.[0]?.message?.content || '';
+
+      // Limpar blocos de raciocínio
+      if (content.includes('<think>')) {
+        content = content.substring(content.indexOf('</think>') + 8).trim();
+      }
+      content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+      if (content.length >= 5) {
+        textos.push(content);
+      }
+    } catch (err: any) {
+      console.warn(`[OCR/ClientImages] Erro na página ${i + 1}:`, err.message);
+    }
+  }
+
+  if (textos.length === 0) {
+    return { success: false, error: 'Nenhuma página pôde ser processada pelo LLM.' };
+  }
+
+  const texto = textos.join('\n\n');
+
+  // Extrair dados estruturados
+  const dadosRegex = extrairDadosTexto(texto, tipoDocumento);
+  let dadosIa: Record<string, any> | null = null;
+  if (tipoDocumento === 'aso') {
+    dadosIa = await extrairDadosComLLM(texto, tipoDocumento);
+  }
+
+  const dadosIaLimpos: Record<string, any> = {};
+  if (dadosIa) {
+    Object.keys(dadosIa).forEach(key => {
+      if (dadosIa![key] !== null && dadosIa![key] !== undefined && dadosIa![key] !== '') {
+        dadosIaLimpos[key] = dadosIa![key];
+      }
+    });
+  }
+
+  return {
+    success: true,
+    data: { texto, dadosExtraidos: { ...dadosRegex, ...dadosIaLimpos }, confianca: 88 },
+  };
+}
+
 export async function processarDocumentoOCR(
   arquivoUrl: string,
   tipoDocumento?: OCRTipoDocumento
