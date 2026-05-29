@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.24.1] - 2026-05-29
+
+### Added
+- **ImportarASOModal — Client-Side PDF Rendering**: e-Social ASO import modal now renders PDFs in the browser via Canvas API before sending to OCR, matching the client-side approach used in ASOTab and TreinamentosTab. Progress bar shows real-time status during rendering and OCR processing.
+- **ASO Auto-Reassociation by CPF/Name**: `extrairDadosASODoTexto()` now checks if the extracted CPF or full name belongs to a different collaborator. If a match is found, the document is automatically reassigned to the correct collaborator (`gt_documentos.colaborador_id` updated). Logs reassociation action for audit trail.
+
 ## [5.24.0] - 2026-05-29
 
 ### Added
