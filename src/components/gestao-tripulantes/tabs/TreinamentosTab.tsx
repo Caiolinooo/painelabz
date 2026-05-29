@@ -82,10 +82,36 @@ export default function TreinamentosTab({ colaboradorId, documentos, onRefresh }
     }
   };
 
-  const handleRunOcr = async (docId: string) => {
+  const handleRunOcr = async (docId: string, arquivoUrl: string) => {
     try {
       setRunningOcr(docId);
-      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, { method: 'POST' });
+
+      const isPdf = arquivoUrl.split('?')[0].toLowerCase().endsWith('.pdf');
+      const isImage = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(arquivoUrl.split('?')[0]);
+
+      let images: string[] = [];
+
+      if (isPdf) {
+        toast('Renderizando PDF no navegador...', { icon: '🔄', duration: 3000 });
+        const { renderPdfToImages } = await import('@/lib/ocr/pdf-to-images-client');
+        images = await renderPdfToImages(arquivoUrl, { maxPages: 5, scale: 1.5, quality: 0.82 });
+        if (images.length === 0) throw new Error('Falha ao renderizar PDF');
+      } else if (isImage) {
+        const { imageUrlToDataUri } = await import('@/lib/ocr/pdf-to-images-client');
+        images = [await imageUrlToDataUri(arquivoUrl)];
+      }
+
+      let res: Response;
+      if (images.length > 0) {
+        res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: ***REMOVED*** images }),
+        });
+      } else {
+        res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, { method: 'POST' });
+      }
+
       if (!res.ok) throw new Error('OCR falhou');
       toast.success(t('gestaoTripulantes.ocr.completed'));
       onRefresh?.();
@@ -131,7 +157,7 @@ export default function TreinamentosTab({ colaboradorId, documentos, onRefresh }
               <StatusBadge status={doc.status_validacao} />
               {doc.arquivo_url && doc.ocr_status !== 'nao_aplicavel' && (
                 <button
-                  onClick={() => handleRunOcr(doc.id)}
+                  onClick={() => handleRunOcr(doc.id, doc.arquivo_url)}
                   disabled={runningOcr === doc.id || doc.ocr_status === 'processando'}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
                 >

@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.23.8-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.24.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,13 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.24.0 - Renderizacao Client-Side de PDFs para OCR
+- Nova biblioteca pdf-to-images-client.ts renderiza paginas PDF no navegador via Canvas API
+- Resolve limitacao do Vercel serverless que nao suporta modulo nativo canvas
+- Funcao processarImagensPreRenderizadas processa imagens via LLM Vision
+- ASOTab e TreinamentosTab agora usam renderizacao client-side para OCR
+- Rota OCR suporta tanto fluxo novo (imagens pré-renderizadas) quanto legado
 
 ### v5.23.8 - Correcao OCR Serverless (Tesseract.js)
 - Detecao automatica de ambiente serverless (Vercel/AWS Lambda) para pulir Tesseract.js

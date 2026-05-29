@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
-import { processarDocumentoOCR } from '@/lib/ocr';
+import { processarDocumentoOCR, processarImagensPreRenderizadas } from '@/lib/ocr';
 import { extrairDadosASODoTexto } from '@/lib/gestao-tripulantes/ocr-processor';
 import type { OCRTipoDocumento } from '@/types/ocr';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120;
+export const maxDuration = 300; // 5 min — LLM vision pode levar tempo
 
 export async function POST(
   request: NextRequest,
@@ -41,12 +41,39 @@ export async function POST(
       return NextResponse.json({ error: 'Documento não possui arquivo para processar OCR' }, { status: 400 });
     }
 
+    // Atualizar status para processando
     await supabaseAdmin
       .from('gt_documentos')
       .update({ ocr_status: 'processando', updated_at: new Date().toISOString() })
       .eq('id', id);
 
-    const result = await processarDocumentoOCR(documento.arquivo_url, documento.tipo_documento as OCRTipoDocumento);
+    // Verificar se o cliente enviou imagens pré-renderizadas (browser Canvas API)
+    let result;
+    try {
+      const body = await request.json();
+      const clientImages: string[] | undefined = body?.images;
+
+      if (clientImages && Array.isArray(clientImages) && clientImages.length > 0) {
+        // NOVO FLUXO: Imagens renderizadas pelo navegador → direto para LLM Vision
+        console.log(`[OCR/Route] Recebidas ${clientImages.length} imagens pré-renderizadas do cliente.`);
+        result = await processarImagensPreRenderizadas(
+          clientImages,
+          documento.tipo_documento as OCRTipoDocumento
+        );
+      } else {
+        // FLUXO LEGADO: Processamento server-side (pdf-parse, etc.)
+        result = await processarDocumentoOCR(
+          documento.arquivo_url,
+          documento.tipo_documento as OCRTipoDocumento
+        );
+      }
+    } catch {
+      // Se o body não for JSON válido (ex: POST sem body), usar fluxo legado
+      result = await processarDocumentoOCR(
+        documento.arquivo_url,
+        documento.tipo_documento as OCRTipoDocumento
+      );
+    }
 
     if (!result.success || !result.data) {
       await supabaseAdmin

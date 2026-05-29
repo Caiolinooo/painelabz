@@ -1,5 +1,6 @@
 export {
   processarDocumentoOCR,
+  processarImagensPreRenderizadas,
   invalidateConfigCache,
 } from './ocr-processor';
 
