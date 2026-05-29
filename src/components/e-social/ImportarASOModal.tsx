@@ -107,20 +107,47 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
 
       const uploadData = await uploadRes.json();
       const uploadedDocId = uploadData.data.id;
+      const uploadedDocUrl = uploadData.data.arquivo_url;
       setDocId(uploadedDocId);
 
       // 2. Execute OCR
       setStep('ocr');
-      setOcrProgress(25);
-      const interval = setInterval(() => {
-        setOcrProgress(prev => (prev < 90 ? prev + 15 : prev));
-      }, 800);
+      setOcrProgress(10);
 
-      const ocrRes = await fetchWithToken(`/api/gestao-tripulantes/documentos/${uploadedDocId}/ocr`, {
-        method: 'POST',
-      });
+      const isPdf = uploadedDocUrl.split('?')[0].toLowerCase().endsWith('.pdf');
+      const isImage = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(uploadedDocUrl.split('?')[0]);
 
-      clearInterval(interval);
+      let images: string[] = [];
+
+      if (isPdf) {
+        setOcrProgress(30);
+        const { renderPdfToImages } = await import('@/lib/ocr/pdf-to-images-client');
+        images = await renderPdfToImages(uploadedDocUrl, { maxPages: 5, scale: 1.5, quality: 0.82 });
+        if (images.length === 0) {
+          throw new Error('Não foi possível renderizar o PDF no navegador');
+        }
+      } else if (isImage) {
+        setOcrProgress(30);
+        const { imageUrlToDataUri } = await import('@/lib/ocr/pdf-to-images-client');
+        const dataUri = await imageUrlToDataUri(uploadedDocUrl);
+        images = [dataUri];
+      }
+
+      setOcrProgress(60);
+
+      let ocrRes: Response;
+      if (images.length > 0) {
+        ocrRes = await fetchWithToken(`/api/gestao-tripulantes/documentos/${uploadedDocId}/ocr`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ images }),
+        });
+      } else {
+        ocrRes = await fetchWithToken(`/api/gestao-tripulantes/documentos/${uploadedDocId}/ocr`, {
+          method: 'POST',
+        });
+      }
+
       setOcrProgress(100);
 
       if (!ocrRes.ok) {

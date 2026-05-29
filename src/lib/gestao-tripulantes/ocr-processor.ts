@@ -465,6 +465,53 @@ export async function extrairDadosASODoTexto(
   colaboradorId: string,
   dataEmissao?: string | null
 ): Promise<void> {
+  // Verificar se o ASO pertence a outro colaborador baseado no CPF ou Nome extraído
+  let colaboradorIdFinal = colaboradorId;
+  const cpfExtraido = dadosExtraidos?.cpf ? String(dadosExtraidos.cpf).replace(/\D/g, '') : null;
+  const nomeExtraido = dadosExtraidos?.nome_completo;
+
+  if (cpfExtraido && cpfExtraido.length === 11) {
+    const { data: colabCorreto } = await supabaseAdmin
+      .from('gt_colaboradores')
+      .select('id')
+      .eq('cpf', cpfExtraido)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (colabCorreto && colabCorreto.id !== colaboradorId) {
+      console.log(`[OCR/Reassociation] ASO do documento ${documentoId} pertence ao colaborador com CPF ${cpfExtraido} e não ao original. Reassociando...`);
+      colaboradorIdFinal = colabCorreto.id;
+
+      await supabaseAdmin
+        .from('gt_documentos')
+        .update({
+          colaborador_id: colabCorreto.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', documentoId);
+    }
+  } else if (nomeExtraido && nomeExtraido.trim().length > 5) {
+    const { data: colabCorreto } = await supabaseAdmin
+      .from('gt_colaboradores')
+      .select('id')
+      .ilike('nome_completo', nomeExtraido.trim())
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (colabCorreto && colabCorreto.id !== colaboradorId) {
+      console.log(`[OCR/Reassociation] ASO do documento ${documentoId} pertence ao colaborador "${nomeExtraido}". Reassociando...`);
+      colaboradorIdFinal = colabCorreto.id;
+
+      await supabaseAdmin
+        .from('gt_documentos')
+        .update({
+          colaborador_id: colabCorreto.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', documentoId);
+    }
+  }
+
   // 1. Type of exam
   let tipo_exame = dadosExtraidos?.tipo_exame || 'periodico';
   if (!dadosExtraidos?.tipo_exame) {
@@ -550,7 +597,7 @@ export async function extrairDadosASODoTexto(
     .from('gt_documentos_aso')
     .upsert({
       documento_id: documentoId,
-      colaborador_id: colaboradorId,
+      colaborador_id: colaboradorIdFinal,
       tipo_exame,
       resultado,
       data_realizacao,
