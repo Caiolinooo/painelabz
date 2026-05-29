@@ -1,6 +1,6 @@
 /**
  * API: /api/ia/sessions
- * GET    — Listar sessões do usuário autenticado
+ * GET    — Listar sessões do usuário autenticado (exclui inativas > 30 dias)
  * POST   — Criar nova sessão
  * DELETE — Soft-delete de sessão (via query param ?id=)
  */
@@ -10,6 +10,38 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+const INACTIVE_THRESHOLD_DAYS = 30;
+
+async function cleanupInactiveSessions(userId: string): Promise<number> {
+  const threshold = new Date();
+  threshold.setDate(threshold.getDate() - INACTIVE_THRESHOLD_DAYS);
+  const thresholdISO = threshold.toISOString();
+
+  const { data: oldSessions, error: fetchError } = await supabaseAdmin
+    .from('ia_chat_sessions')
+    .select('id')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .lt('updated_at', thresholdISO)
+    .limit(100);
+
+  if (fetchError || !oldSessions || oldSessions.length === 0) return 0;
+
+  const ids = oldSessions.map(s => s.id);
+  const { error: updateError } = await supabaseAdmin
+    .from('ia_chat_sessions')
+    .update({ deleted_at: new Date().toISOString() })
+    .in('id', ids);
+
+  if (updateError) {
+    console.warn('[IA Sessions Cleanup] Erro ao atualizar sessões inativas:', updateError.message);
+    return 0;
+  }
+
+  console.log(`[IA Sessions Cleanup] ${ids.length} sessão(ões) inativa(s) marcada(s) como fechada(s) para usuário ${userId}.`);
+  return ids.length;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const tokenResult = verifyRequestToken(request);
@@ -18,6 +50,8 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = tokenResult.payload.userId;
+
+    await cleanupInactiveSessions(userId);
 
     const { data, error } = await supabaseAdmin
       .from('ia_chat_sessions')

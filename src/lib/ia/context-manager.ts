@@ -97,6 +97,7 @@ export class ContextManager {
   private memoryStore: Map<string, MemoryStore> = new Map();
   private readonly MAX_INTERACTIONS = 1000;
   private readonly MAX_PATTERNS = 100;
+  private readonly MAX_USERS_IN_MEMORY = 100;
 
   /**
    * Get enriched context for a user
@@ -242,12 +243,40 @@ export class ContextManager {
   }
 
   /**
+   * Evict least recently used user from memory store when at capacity
+   */
+  private evictLRU(): void {
+    if (this.memoryStore.size <= this.MAX_USERS_IN_MEMORY) return;
+
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+
+    for (const [key, store] of this.memoryStore) {
+      const lastUpdated = store.metadata?.lastUpdated;
+      if (lastUpdated) {
+        const time = new Date(lastUpdated).getTime();
+        if (time < oldestTime) {
+          oldestTime = time;
+          oldestKey = key;
+        }
+      }
+    }
+
+    if (oldestKey) {
+      this.memoryStore.delete(oldestKey);
+      console.log(`[IA ContextManager] LRU eviction: removed user ${oldestKey.substring(0, 8)}... from memory cache`);
+    }
+  }
+
+  /**
    * Get or create memory store for user
    */
   private async getMemory(userId: string): Promise<MemoryStore> {
     if (this.memoryStore.has(userId)) {
       return this.memoryStore.get(userId)!;
     }
+
+    this.evictLRU();
     
     // Try to load from database
     const { data: dbMemory } = await supabaseAdmin
