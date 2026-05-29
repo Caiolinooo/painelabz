@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.24.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.24.1-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,11 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.24.1 - Re-automática de ASO por CPF/Nome
+- ImportarASOModal agora usa renderização client-side de PDFs para OCR
+- Lógica de re-automática: se o CPF ou nome extraído pertence a outro colaborador, o documento é reassociado automaticamente
+- Log de auditoria para ações de re-associacão
 
 ### v5.24.0 - Renderizacao Client-Side de PDFs para OCR
 - Nova biblioteca pdf-to-images-client.ts renderiza paginas PDF no navegador via Canvas API
