@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.23.8] - 2026-05-29
+
+### Fixed
+- **OCR Tesseract.js Serverless Detection**: Added `isServerless` environment detection (`VERCEL`, `AWS_LAMBDA_FUNCTION_NAME`) to skip Tesseract.js in serverless environments. Tesseract.js uses WASM which doesn't work on Vercel/AWS Lambda. LLM Vision remains the primary strategy for scanned PDFs in production, with local Tesseract fallback only available in Node.js/development environments.
+- **OCR Image Processing Pipeline**: Updated `processarDocumentoOCR()` to respect serverless detection — Tesseract fallback for images is now skipped in serverless, falling back to raw text extraction instead.
+
 ## [5.23.7] - 2026-05-28
 
 ### Changed

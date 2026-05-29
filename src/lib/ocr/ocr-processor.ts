@@ -476,46 +476,50 @@ async function ocrPdfDigitalizado(buffer: Buffer, idioma: string = 'por'): Promi
   }
 
   // 3) pdfjs-dist + canvas → Tesseract (fallback local sem IA)
-  try {
-    const imagens = await converterPDFParaImagens(buffer);
+  // Nota: Tesseract.js usa WASM e não funciona em serverless (Vercel). Pular nesses ambientes.
+  const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (!isServerless) {
+    try {
+      const imagens = await converterPDFParaImagens(buffer);
 
-    const textPages: string[] = [];
-    let totalConfidence = 0;
-    let confidenceCount = 0;
+      const textPages: string[] = [];
+      let totalConfidence = 0;
+      let confidenceCount = 0;
 
-    for (let i = 0; i < imagens.length; i++) {
-      let pageTexto = '';
-      let pageConfianca = 0;
+      for (let i = 0; i < imagens.length; i++) {
+        let pageTexto = '';
+        let pageConfianca = 0;
 
-      const pageOcr = await processarComTesseract(imagens[i], idioma);
-      if (pageOcr && pageOcr.texto.length >= 5) {
-        pageTexto = pageOcr.texto;
-        pageConfianca = pageOcr.confianca;
+        const pageOcr = await processarComTesseract(imagens[i], idioma);
+        if (pageOcr && pageOcr.texto.length >= 5) {
+          pageTexto = pageOcr.texto;
+          pageConfianca = pageOcr.confianca;
+        }
+
+        if (pageTexto) {
+          textPages.push(pageTexto);
+          totalConfidence += pageConfianca;
+          confidenceCount++;
+        }
       }
 
-      if (pageTexto) {
-        textPages.push(pageTexto);
-        totalConfidence += pageConfianca;
-        confidenceCount++;
+      if (confidenceCount > 0) {
+        return { texto: textPages.join('\n\n'), confianca: Math.round(totalConfidence / confidenceCount) };
       }
+    } catch (localError: any) {
+      console.warn(`[OCR/PDF] Fallback local (pdfjs+tesseract) falhou: ${localError.message}`);
     }
 
-    if (confidenceCount > 0) {
-      return { texto: textPages.join('\n\n'), confianca: Math.round(totalConfidence / confidenceCount) };
+    // 4) Último recurso: Tesseract direto no buffer
+    try {
+      const ocrResult = await processarComTesseract(buffer, idioma);
+      if (ocrResult && ocrResult.texto.trim().length >= 5) {
+        console.log(`[OCR/PDF] Tesseract direto no buffer extraiu ${ocrResult.texto.length} caracteres.`);
+        return ocrResult;
+      }
+    } catch (tessError: any) {
+      console.warn(`[OCR/PDF] Tesseract direto falhou: ${tessError.message}`);
     }
-  } catch (localError: any) {
-    console.warn(`[OCR/PDF] Fallback local (pdfjs+tesseract) falhou: ${localError.message}`);
-  }
-
-  // 4) Último recurso: Tesseract direto no buffer
-  try {
-    const ocrResult = await processarComTesseract(buffer, idioma);
-    if (ocrResult && ocrResult.texto.trim().length >= 5) {
-      console.log(`[OCR/PDF] Tesseract direto no buffer extraiu ${ocrResult.texto.length} caracteres.`);
-      return ocrResult;
-    }
-  } catch (tessError: any) {
-    console.warn(`[OCR/PDF] Tesseract direto falhou: ${tessError.message}`);
   }
 
   throw new Error(
@@ -750,6 +754,7 @@ export async function processarDocumentoOCR(
     }
 
     const config = await getOCRConfigFromDB();
+    const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
     let resultado: { texto: string; dadosExtraidos: Record<string, any>; confianca: number } | null = null;
 
     if (config.fallback_api_url) {
@@ -804,7 +809,7 @@ export async function processarDocumentoOCR(
         } catch (err: any) {
           console.warn('[OCR/Image] LLM visão falhou:', err.message);
         }
-        if (!parseResult) {
+        if (!parseResult && !isServerless) {
           try {
             parseResult = await processarComTesseract(buffer, config.idioma);
           } catch {
@@ -812,11 +817,12 @@ export async function processarDocumentoOCR(
           }
         }
       } else {
-        // Fallback genérico: Tenta Tesseract, senão lê como texto bruto
-        try {
-          parseResult = await processarComTesseract(buffer, config.idioma);
-        } catch {
-          parseResult = await processarTXT(buffer);
+        if (!isServerless) {
+          try {
+            parseResult = await processarComTesseract(buffer, config.idioma);
+          } catch {
+            parseResult = await processarTXT(buffer);
+          }
         }
       }
 
