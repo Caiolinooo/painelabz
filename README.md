@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.23.7-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.23.8-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,12 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.23.8 - Correcao OCR Serverless (Tesseract.js)
+- Detecao automatica de ambiente serverless (Vercel/AWS Lambda) para pulir Tesseract.js
+- Tesseract.js usa WASM e nao funciona em ambientes serverless
+- LLM Vision continua como estrategia primaria para PDFs escaneados em producao
+- Fallback local com Tesseract disponivel apenas em ambientes Node.js/desenvolvimento
 
 ### v5.23.7 - Conversao PDF→Imagem para LLM Vision e Limpeza de Sessoes
 - Nova funcao converterPDFParaImagens() converte paginas PDF para PNG antes de enviar ao LLM Vision
