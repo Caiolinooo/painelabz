@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.23.7] - 2026-05-28
+
+### Changed
+- **OCR LLM Vision — PDF-to-Image Conversion**: New `converterPDFParaImagens()` function converts PDF pages to PNG using pdfjs-dist + canvas before sending to LLM Vision. Supports multi-page PDFs (up to 5 pages). Each page is rendered at 2x scale for optimal OCR accuracy. Falls back to direct PDF send if conversion fails.
+- **OCR LLM Vision — Multi-Image API Payload**: `extrairTextoViaLLMVisao()` now sends multiple image buffers in a single LLM request when processing multi-page PDFs. Content parts array contains one text prompt + N image_url entries (one per page), replacing the previous single-image approach.
+- **OCR PDF Pipeline — Streamlined Cascade**: Simplified `ocrPdfDigitalizado()` by moving PDF-to-image conversion into the LLM Vision strategy. Strategy 3 (pdfjs-dist + Tesseract) now serves as local-only fallback without per-page canvas rendering duplication.
+- **IA Sessions — Auto-Cleanup**: `GET /api/ia/sessions` now automatically soft-deletes sessions inactive for more than 30 days. Runs on each list request, keeping session history clean.
+- **IA Context Manager — LRU Eviction**: Memory store now caps at 100 concurrent users. When capacity is exceeded, the least-recently-updated user's cache is evicted to prevent memory leaks in long-running processes.
+
 ## [5.23.6] - 2026-05-28
 
 ### Changed

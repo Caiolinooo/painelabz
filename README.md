@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.23.6-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.23.7-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,12 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.23.7 - Conversao PDF→Imagem para LLM Vision e Limpeza de Sessoes
+- Nova funcao converterPDFParaImagens() converte paginas PDF para PNG antes de enviar ao LLM Vision
+- Suporte a PDFs multi-pagina (ate 5 paginas) com renderizacao 2x para melhor OCR
+- Limpeza automatica de sessoes IA inativas (>30 dias) no endpoint de listagem
+- LRU eviction no ContextManager da IA para prevenir memory leaks (max 100 usuarios)
 
 ### v5.23.6 - OCR LLM Vision Multi-Formato e Enriquecimento ASO
 - LLM Vision agora processa imagens (PNG, JPG, WebP) alem de PDFs, com fallback para Tesseract
