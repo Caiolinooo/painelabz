@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.24.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.25.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,15 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.25.0 - Man Schedule Integrado e OCR Client-Side com Tesseract
+- Nova aba Man Schedule integrada na pagina de Gestao de Tripulantes
+- OCR client-side com Tesseract.js carregado do CDN (sem dependencia de LLM)
+- Extracao de texto digital de PDFs + OCR em escaneados, tudo no navegador
+- Aba ASO agora mostra documentos ASO e eventos e-Social S-2220 juntos
+- Cache MIO com atualizacao seletiva por tipo
+- Man Schedule com fallback em tempo real e embarques locais
+- Correcao do campo ordExame no XML S-2220
 
 ### v5.24.1 - Re-automática de ASO por CPF/Nome
 - ImportarASOModal agora usa renderização client-side de PDFs para OCR

@@ -47,13 +47,24 @@ export async function POST(
       .update({ ocr_status: 'processando', updated_at: new Date().toISOString() })
       .eq('id', id);
 
-    // Verificar se o cliente enviou imagens pré-renderizadas (browser Canvas API)
+    // Verificar se o cliente enviou imagens pré-renderizadas, texto extraído, ou se usa processamento server-side
     let result;
     try {
       const body = await request.json();
       const clientImages: string[] | undefined = body?.images;
+      const clientText: string | undefined = body?.text;
 
-      if (clientImages && Array.isArray(clientImages) && clientImages.length > 0) {
+      if (clientText) {
+        console.log(`[OCR/Route] Recebido texto extraído diretamente do cliente (${clientText.length} caracteres).`);
+        result = {
+          success: true,
+          data: {
+            texto: clientText,
+            dadosExtraidos: null,
+            confianca: 95
+          }
+        };
+      } else if (clientImages && Array.isArray(clientImages) && clientImages.length > 0) {
         // NOVO FLUXO: Imagens renderizadas pelo navegador → direto para LLM Vision
         console.log(`[OCR/Route] Recebidas ${clientImages.length} imagens pré-renderizadas do cliente.`);
         result = await processarImagensPreRenderizadas(

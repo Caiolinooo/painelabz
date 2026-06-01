@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.25.0] - 2026-05-29
+
+### Added
+- **GT Man Schedule Tab**: New `GTManScheduleTab` component (1000+ lines) embeds the Man Schedule directly into the Gestão de Tripulantes page with a tab system (Matriz de Conformidade / Man Schedule). Includes full filtering, vessel/position/company selectors, export to XLSX, and click-to-open collaborator details.
+- **Client-Side Tesseract.js OCR**: `pdf-to-images-client.ts` now loads Tesseract.js v5.1.0 from CDN for client-side OCR on scanned PDFs and images. New `extractTextFromPdfOrImageClient()` unified function extracts text from digital PDFs (text layer) or runs Tesseract on scans, entirely in the browser.
+- **OCR Text Flow**: `/api/gestao-tripulantes/documentos/[id]/ocr` now accepts a `text` field directly from client-extracted text, alongside the existing `images` array. Enables client-side Tesseract extraction without LLM Vision overhead.
+- **ASO Tab — e-Social Event Display**: `ASOTab` now shows both regular ASO documents AND direct e-Social S-2220 events that aren't linked to a document. Displays combined ASO count. Auto-runs OCR after document upload to trigger reassociation.
+- **Colaborador API — e-Social ASOs**: `GET /api/gestao-tripulantes/colaboradores/[id]` now fetches e-Social S-2220 events for the collaborator's CPF, returned as `esocial_asos` array.
+
+### Changed
+- **Man Schedule Real-Time Fallback**: `GET /api/man-schedule/realtime` now requires JWT authentication. When cache is empty or incomplete, fetches data directly from MIO API in real-time and updates cache in background. Also integrates local/manual embarkations from `gt_historico_embarques`.
+- **MIO Cache Selective Update**: `POST /api/mio/cache/atualizar` now supports selective type updates via query parameter (`?tipo=integrantes,lgp_reports`) or body field. Per-type rate limiting (10s per type). Response includes `updated` and `skipped` arrays.
+- **MIO Enrich Cache Freshness**: Both `colaboradores/route.ts` and `eSocialAutoService.ts` now check cache freshness (5-minute threshold) before falling back to direct MIO API. Prevents unnecessary API calls when cache is recent.
+- **Gestão de Tripulantes Page**: Redesigned with full-width layout and tab system for Matriz de Conformidade vs Man Schedule views.
+- **ASOTab OCR Flow**: OCR now sends extracted text instead of images to the API, using client-side Tesseract for scan detection and digital text extraction.
+
+### Fixed
+- **e-Social S-2220 ordExame Field**: XML generation now includes `ordExame` (exam order) field with proper parsing from string ("inicial"/"sequencial") or number formats. Correctly distinguishes admissional (1) vs other exam types.
+
 ## [5.24.1] - 2026-05-29
 
 ### Added
