@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 
-export const revalidate = 10;
+export const dynamic = 'force-dynamic';
 
 interface RawLGPRecord {
     'Matrícula': string;
@@ -150,22 +151,68 @@ function detectRotationType(
 
 export async function GET(request: NextRequest) {
     try {
+        let token: string | null = null;
+        const authHeader = request.headers.get('authorization') || undefined;
+        if (authHeader) {
+            token = extractTokenFromHeader(authHeader);
+        }
+        if (!token) {
+            token = request.cookies.get('abzToken')?.value || request.cookies.get('token')?.value || null;
+        }
+
+        if (!token) {
+            return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
+        }
+
+        const payload = verifyToken(token);
+        if (!payload) {
+            return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+        }
+
         console.log('[ManSchedule] Buscando dados do cache MIO...');
 
-        const { data: cacheData, error: cacheError } = await supabaseAdmin
+        let { data: cacheData, error: cacheError } = await supabaseAdmin
             .from('mio_cache')
             .select('tipo, dados')
             .in('tipo', ['integrantes', 'lgp_reports']);
 
-        if (cacheError || !cacheData || cacheData.length < 2) {
-            return NextResponse.json({
-                success: false,
-                error: 'Cache MIO indisponível. Execute /api/mio/cache/atualizar primeiro.',
-            }, { status: 503 });
-        }
+        let integrantes: any[] = [];
+        let lgpRecords: any[] = [];
 
-        const integrantes = cacheData.find(c => c.tipo === 'integrantes')?.dados as any[] || [];
-        const lgpRecords = cacheData.find(c => c.tipo === 'lgp_reports')?.dados as any[] || [];
+        if (cacheError || !cacheData || cacheData.length < 2) {
+            console.log('[ManSchedule] Cache MIO incompleto ou vazio. Buscando dados em tempo real e atualizando cache...');
+            try {
+                const { mioClient } = await import('@/lib/mio/client');
+                const [integrantesRes, lgpRes] = await Promise.all([
+                    mioClient.getIntegrantes().catch(e => { console.error('Erro integrantes:', e); return []; }),
+                    mioClient.getLGPReportsRaw().catch(e => { console.error('Erro LGP:', e); return []; }),
+                ]);
+
+                integrantes = integrantesRes;
+                lgpRecords = lgpRes;
+
+                // Salvar no cache de forma assíncrona/background
+                const now = new Date().toISOString();
+                const entries = [
+                    { tipo: 'integrantes', dados: integrantes, total_registros: integrantes.length, atualizado_em: now },
+                    { tipo: 'lgp_reports', dados: lgpRecords, total_registros: lgpRecords.length, atualizado_em: now },
+                ];
+
+                for (const entry of entries) {
+                    await supabaseAdmin.from('mio_cache').upsert(entry, { onConflict: 'tipo' });
+                }
+            } catch (err: any) {
+                console.error('Falha ao coletar dados em tempo real do MIO:', err);
+                return NextResponse.json({
+                    success: false,
+                    error: 'Cache MIO indisponível e falha na comunicação em tempo real com a API do MIO.',
+                    message: err.message
+                }, { status: 503 });
+            }
+        } else {
+            integrantes = cacheData.find(c => c.tipo === 'integrantes')?.dados as any[] || [];
+            lgpRecords = cacheData.find(c => c.tipo === 'lgp_reports')?.dados as any[] || [];
+        }
 
         console.log(`[ManSchedule] Cache carregado: ${integrantes.length} integrantes, ${lgpRecords.length} registros LGP`);
 
@@ -237,6 +284,57 @@ export async function GET(request: NextRequest) {
                     rotation_type: 'normal'
                 });
             }
+        }
+
+        // Buscar embarques locais/manuais inseridos no banco de dados local
+        try {
+            const { data: localEmbarques } = await supabaseAdmin
+                .from('gt_historico_embarques')
+                .select(`
+                    id,
+                    tipo,
+                    data_embarque,
+                    data_desembarque,
+                    local_embarque,
+                    local_desembarque,
+                    observacoes,
+                    colaborador:gt_vw_colaboradores_completo(
+                        cpf,
+                        nome_completo,
+                        cargo_nome,
+                        empresa_nome
+                    )
+                `)
+                .is('deleted_at', null);
+
+            if (localEmbarques && localEmbarques.length > 0) {
+                for (const entry of localEmbarques) {
+                    const colab = entry.colaborador as any;
+                    if (!colab) continue;
+
+                    // Mapeamento de tipo para rotation_type
+                    let rotType: 'normal' | 'fi' | 'dba' | 'stb' | 'offc' = 'normal';
+                    if (entry.tipo === 'folga_indenizada') rotType = 'fi';
+                    else if (entry.tipo === 'dobra') rotType = 'dba';
+                    else if (entry.tipo === 'standby') rotType = 'stb';
+
+                    schedules.push({
+                        id: entry.id,
+                        cpf: colab.cpf || '',
+                        full_name: (colab.nome_completo || '').toUpperCase().trim(),
+                        position: (colab.cargo_nome || '').toUpperCase().trim(),
+                        vessel: (entry.local_desembarque || '').trim(),
+                        company: (colab.empresa_nome || '').trim(),
+                        rotation_start: entry.data_embarque,
+                        rotation_end: entry.data_desembarque,
+                        embarque_status: entry.observacoes || 'Manual',
+                        local_embarque: (entry.local_embarque || '').trim(),
+                        rotation_type: rotType
+                    });
+                }
+            }
+        } catch (localErr) {
+            console.error('Erro ao buscar embarques locais:', localErr);
         }
 
         const vessels = Array.from(new Set(schedules.map(s => s.vessel).filter(Boolean))).sort();

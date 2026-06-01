@@ -46,11 +46,11 @@ export async function autoGenerateESocialEvents(colaboradorId: string): Promise<
 
       const { data: cacheRow } = await supabaseAdmin
         .from('mio_cache')
-        .select('data')
+        .select('dados, atualizado_em')
         .eq('tipo', 'integrantes')
         .maybeSingle();
       
-      const cacheData = cacheRow?.data;
+      const cacheData = cacheRow?.dados;
       if (Array.isArray(cacheData)) {
         mioData = cacheData.find((i: any) => {
           const c = (i.cpf || i.cpf_numero || '').replace(/\D/g, '');
@@ -59,12 +59,20 @@ export async function autoGenerateESocialEvents(colaboradorId: string): Promise<
       }
 
       if (!mioData) {
-        const integrantes = await mioClient.getIntegrantes();
-        if (integrantes && Array.isArray(integrantes)) {
-          mioData = integrantes.find(i => {
-            const c = (i.cpf || '').replace(/\D/g, '');
-            return c === cleanCpf;
-          });
+        const lastUpdated = cacheRow?.atualizado_em ? new Date(cacheRow.atualizado_em).getTime() : 0;
+        const isCacheRecent = (Date.now() - lastUpdated) < 5 * 60 * 1000; // 5 minutos
+
+        if (!isCacheRecent) {
+          console.log(`[eSocialAuto] CPF ${cleanCpf} not found in cache. Cache is stale (${Math.round((Date.now() - lastUpdated)/1000)}s old). Fetching fresh data from MIO...`);
+          const integrantes = await mioClient.getIntegrantes();
+          if (integrantes && Array.isArray(integrantes)) {
+            mioData = integrantes.find(i => {
+              const c = (i.cpf || '').replace(/\D/g, '');
+              return c === cleanCpf;
+            });
+          }
+        } else {
+          console.log(`[eSocialAuto] CPF ${cleanCpf} not found in cache. Cache is recent (${Math.round((Date.now() - lastUpdated)/1000)}s old). Skipping MIO API fallback.`);
         }
       }
 

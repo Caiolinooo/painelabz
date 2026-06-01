@@ -191,7 +191,7 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
       case 'treinamentos':
         return <TreinamentosTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={fetchData} />;
       case 'aso':
-        return <ASOTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={fetchData} />;
+        return <ASOTab colaboradorId={data.id} documentos={data.documentos || []} esocialAsos={(data as any).esocial_asos || []} onRefresh={fetchData} />;
       case 'passaportes':
         return <PassaportesTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={fetchData} />;
       case 'documentos':

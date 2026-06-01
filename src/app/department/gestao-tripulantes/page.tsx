@@ -10,6 +10,7 @@ import GTMatrix from '@/components/gestao-tripulantes/GTMatrix';
 import GTMatrixLegend from '@/components/gestao-tripulantes/GTMatrixLegend';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import AsoReviewPanel from '@/components/gestao-tripulantes/AsoReviewPanel';
+import GTManScheduleTab from '@/components/gestao-tripulantes/GTManScheduleTab';
 
 interface DashboardData {
   total_colaboradores: number;
@@ -53,6 +54,7 @@ interface FiltersState {
 export default function GestaoTripulantesPage() {
   const { t } = useI18n();
   const { user } = useSupabaseAuth();
+  const [activeTab, setActiveTab] = useState<'matrix' | 'schedule'>('matrix');
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [colaboradores, setColaboradores] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,28 +123,63 @@ export default function GestaoTripulantesPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-none w-full space-y-6">
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">{t('gestaoTripulantes.title')}</h1>
           <p className="text-gray-500">{t('gestaoTripulantes.subtitle')}</p>
         </div>
         <a href="/department/gestao-tripulantes/novo"
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap">
+          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm font-semibold">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
           Novo Colaborador
         </a>
       </div>
 
-      <AsoReviewPanel compact />
-      <DashboardCards data={dashboard} />
-      <GTMatrixFilters filters={filters} onChange={handleFilterChange} colaboradores={colaboradores} />
-      <GTMatrix
-        colaboradores={colaboradores}
-        loading={loading}
-        onRowClick={handleRowClick}
-      />
-      <GTMatrixLegend />
+      {/* Tabs Seletor */}
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-6 -mb-px">
+          <button
+            onClick={() => setActiveTab('matrix')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'matrix'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Matriz de Conformidade
+          </button>
+          <button
+            onClick={() => setActiveTab('schedule')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'schedule'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Man Schedule (Escala MIO)
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'matrix' ? (
+        <div className="space-y-6">
+          <AsoReviewPanel compact />
+          <DashboardCards data={dashboard} />
+          <GTMatrixFilters filters={filters} onChange={handleFilterChange} colaboradores={colaboradores} />
+          <GTMatrix
+            colaboradores={colaboradores}
+            loading={loading}
+            onRowClick={handleRowClick}
+          />
+          <GTMatrixLegend />
+        </div>
+      ) : (
+        <div className="pt-2">
+          <GTManScheduleTab onColabClick={handleRowClick} />
+        </div>
+      )}
 
       {showModal && selectedColaborador && (
         <CollaboratorModal

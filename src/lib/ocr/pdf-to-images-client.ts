@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * Renderiza páginas de um PDF em imagens JPEG usando PDF.js + Canvas no navegador.
- * Isso resolve o problema do Vercel serverless que não suporta o módulo nativo `canvas`.
- * O navegador possui Canvas API nativo, então funciona sem dependências extras.
+ * Renderiza páginas de um PDF em imagens JPEG usando PDF.js + Canvas no navegador,
+ * e executa OCR cliente-side usando Tesseract.js se o PDF for digitalizado/imagem.
+ * Isso resolve o problema do Vercel serverless que não suporta o módulo nativo `canvas`
+ * e do timeout da função de 10s no Vercel Hobby.
  */
 
 let pdfjsLoaded: typeof import('pdfjs-dist') | null = null;
@@ -33,10 +34,6 @@ export interface RenderOptions {
 /**
  * Baixa um PDF e renderiza suas páginas como imagens JPEG base64.
  * Roda inteiramente no navegador usando Canvas API.
- * 
- * @param pdfUrl URL pública do PDF (Supabase storage, etc.)
- * @param options Opções de renderização
- * @returns Array de data URIs JPEG (data:image/jpeg;base64,...)
  */
 export async function renderPdfToImages(
   pdfUrl: string,
@@ -75,7 +72,7 @@ export async function renderPdfToImages(
     // Renderizar a página no canvas
     await page.render({ canvasContext: ctx, viewport }).promise;
 
-    // Converter para JPEG base64 (JPEG é muito menor que PNG)
+    // Converter para JPEG base64
     const dataUrl = canvas.toDataURL('image/jpeg', quality);
     images.push(dataUrl);
 
@@ -90,7 +87,6 @@ export async function renderPdfToImages(
 
 /**
  * Converte uma URL de imagem em data URI base64.
- * Útil para enviar imagens já existentes (JPG/PNG) à API.
  */
 export async function imageUrlToDataUri(imageUrl: string): Promise<string> {
   const response = await fetch(imageUrl);
@@ -106,19 +102,124 @@ export async function imageUrlToDataUri(imageUrl: string): Promise<string> {
 }
 
 /**
- * Determina se uma URL aponta para um PDF (pela extensão ou Content-Type).
+ * Extrai texto digital diretamente do PDF (se houver camada de texto selecionável).
  */
-export function isPdfUrl(url: string): boolean {
-  if (!url) return false;
-  const cleanUrl = url.split('?')[0].toLowerCase();
-  return cleanUrl.endsWith('.pdf');
+export async function extractTextFromDigitalPdf(arrayBuffer: ArrayBuffer): Promise<string> {
+  const pdfjsLib = await getPdfjs();
+  const pdf = await pdfjsLib.getDocument({
+    data: new Uint8Array(arrayBuffer),
+  }).promise;
+
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => ('str' in item ? item.str : ''))
+      .join(' ');
+    fullText += pageText + '\n\n';
+  }
+  await pdf.destroy();
+  return fullText.trim();
+}
+
+let tesseractLoaded = false;
+
+/**
+ * Carrega dinamicamente o Tesseract.js do CDN no navegador.
+ */
+async function loadTesseract(): Promise<any> {
+  if (tesseractLoaded && (window as any).Tesseract) {
+    return (window as any).Tesseract;
+  }
+
+  const cdnUrl = 'https://unpkg.com/tesseract.js@v5.1.0/dist/tesseract.min.js';
+  await new Promise<void>((resolve, reject) => {
+    if (document.querySelector(`script[src="${cdnUrl}"]`)) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = cdnUrl;
+    script.onload = () => {
+      tesseractLoaded = true;
+      resolve();
+    };
+    script.onerror = () => reject(new Error('Falha ao carregar Tesseract.js do CDN'));
+    document.head.appendChild(script);
+  });
+
+  return (window as any).Tesseract;
 }
 
 /**
- * Determina se uma URL aponta para uma imagem.
+ * Executa OCR em uma imagem (base64) no navegador.
  */
-export function isImageUrl(url: string): boolean {
-  if (!url) return false;
-  const cleanUrl = url.split('?')[0].toLowerCase();
-  return /\.(png|jpe?g|webp|gif)$/.test(cleanUrl);
+export async function runClientOcr(imageSrc: string): Promise<string> {
+  const Tesseract = await loadTesseract();
+  const { data: { text } } = await Tesseract.recognize(imageSrc, 'por');
+  return text;
+}
+
+/**
+ * Função unificada para extrair o texto de um PDF ou Imagem no lado do cliente.
+ */
+export async function extractTextFromPdfOrImageClient(
+  fileUrl: string,
+  onProgress?: (msg: string) => void
+): Promise<string> {
+  const isPdf = fileUrl.split('?')[0].toLowerCase().endsWith('.pdf');
+  
+  if (isPdf) {
+    onProgress?.('Baixando documento PDF...');
+    const response = await fetch(fileUrl);
+    if (!response.ok) throw new Error(`Falha ao baixar PDF: ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+
+    onProgress?.('Verificando se o PDF contém texto digital...');
+    const digitalText = await extractTextFromDigitalPdf(arrayBuffer);
+    if (digitalText.length >= 30) {
+      console.log(`[OCR/Client] Texto extraído digitalmente (${digitalText.length} caracteres).`);
+      return digitalText;
+    }
+
+    onProgress?.('PDF escaneado detectado. Inicializando renderizador...');
+    const pdfjsLib = await getPdfjs();
+    const pdf = await pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+    }).promise;
+
+    const maxPages = 5;
+    const numPages = Math.min(pdf.numPages, maxPages);
+    let fullText = '';
+
+    for (let i = 1; i <= numPages; i++) {
+      onProgress?.(`Renderizando página ${i} de ${numPages}...`);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1.5 });
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Falha ao criar contexto Canvas 2D');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      
+      canvas.width = 0;
+      canvas.height = 0;
+
+      onProgress?.(`Executando OCR na página ${i} de ${numPages}...`);
+      const pageText = await runClientOcr(dataUrl);
+      fullText += pageText + '\n\n';
+    }
+
+    await pdf.destroy();
+    return fullText.trim();
+  } else {
+    onProgress?.('Baixando imagem...');
+    const dataUri = await imageUrlToDataUri(fileUrl);
+    onProgress?.('Executando OCR na imagem...');
+    return await runClientOcr(dataUri);
+  }
 }

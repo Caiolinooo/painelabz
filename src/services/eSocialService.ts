@@ -530,6 +530,17 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
         return '0999';
       };
 
+      const isAdmissional = (() => {
+        if (typeof esp.tipoExame === 'number') {
+          return esp.tipoExame === 0 || esp.tipoExame === 1;
+        }
+        if (typeof esp.tipoExame === 'string') {
+          return esp.tipoExame.toLowerCase().includes('admiss');
+        }
+        return false;
+      })();
+      const calculatedOrdExame = isAdmissional ? 1 : 2;
+
       let examesXml = '';
       const listExames = esp.exames_realizados || esp.exames || [];
       const defaultDate = esp.data_realizacao || esp.dataRealizacao || esp.dtExame || '';
@@ -542,8 +553,27 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
           const dt = ex.data || ex.dtExm || defaultDate;
           const key = `${dt}-${cod}`;
           
+          let ordExameVal = calculatedOrdExame;
+          if (ex.ordExame !== undefined && ex.ordExame !== null) {
+            if (typeof ex.ordExame === 'string') {
+              const ordStr = ex.ordExame.toLowerCase();
+              if (ordStr.includes('inicial') || ordStr === '1') ordExameVal = 1;
+              else if (ordStr.includes('sequencial') || ordStr === '2') ordExameVal = 2;
+            } else if (typeof ex.ordExame === 'number') {
+              ordExameVal = ex.ordExame;
+            }
+          } else if (ex.ordem !== undefined && ex.ordem !== null) {
+            if (typeof ex.ordem === 'string') {
+              const ordStr = ex.ordem.toLowerCase();
+              if (ordStr.includes('inicial') || ordStr === '1') ordExameVal = 1;
+              else if (ordStr.includes('sequencial') || ordStr === '2') ordExameVal = 2;
+            } else if (typeof ex.ordem === 'number') {
+              ordExameVal = ex.ordem;
+            }
+          }
+          
           if (!uniqueExames.has(key)) {
-            uniqueExames.set(key, { dt, cod, obs: ex.obs || ex.obsExm || '' });
+            uniqueExames.set(key, { dt, cod, obs: ex.obs || ex.obsExm || '', ordExame: ordExameVal });
           } else {
             // Append observation if there's any, to not lose data
             const existing = uniqueExames.get(key);
@@ -559,14 +589,14 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
             optTag('dtExm', ex.dt, 4) +
             optTag('procRealizado', ex.cod, 4) +
             optTag('obsProc', ex.obs || 'Procedimento realizado conforme protocolo medico', 4) +
-            optTag('ordExame', ex.ordExame || 1, 4), 3);
+            optTag('ordExame', ex.ordExame, 4), 3);
         }
       } else {
         examesXml = block('exame',
           optTag('dtExm', defaultDate, 4) +
           optTag('procRealizado', esp.codProc || '0999', 4) +
           optTag('obsProc', 'Procedimento realizado conforme protocolo medico', 4) +
-          optTag('ordExame', 1, 4), 3);
+          optTag('ordExame', calculatedOrdExame, 4), 3);
       }
 
       const medicoPcmsoNome = esp.medico_pcmso_nome || esp.medicoPcmsoNome;

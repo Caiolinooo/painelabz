@@ -113,6 +113,9 @@ export function gerarS2220(dados: DadosS2220): string {
   xml += buildTag('dtAso', exameOcupacional.aso.dtAso, 6);
   xml += buildTag('resAso', exameOcupacional.aso.resAso, 6);
 
+  const isAdmissional = exameOcupacional.tpExame === 1 || String(exameOcupacional.tpExame).toLowerCase().includes('admiss');
+  const calculatedOrdExame = isAdmissional ? 1 : 2;
+
   const seenExames = new Set<string>();
   const examesUnicos = [];
   for (const exame of exameOcupacional.aso.exames) {
@@ -128,6 +131,28 @@ export function gerarS2220(dados: DadosS2220): string {
     xml += buildTag('dtExm', exame.dtExm, 8);
     xml += buildTag('procRealizado', exame.procRealizado, 8);
     xml += buildTag('obsExm', exame.obsExm, 8);
+    
+    let ordExameVal = calculatedOrdExame;
+    const ex = exame as any;
+    if (ex.ordExame !== undefined && ex.ordExame !== null) {
+      if (typeof ex.ordExame === 'string') {
+        const ordStr = ex.ordExame.toLowerCase();
+        if (ordStr.includes('inicial') || ordStr === '1') ordExameVal = 1;
+        else if (ordStr.includes('sequencial') || ordStr === '2') ordExameVal = 2;
+      } else if (typeof ex.ordExame === 'number') {
+        ordExameVal = ex.ordExame;
+      }
+    } else if (ex.ordem !== undefined && ex.ordem !== null) {
+      if (typeof ex.ordem === 'string') {
+        const ordStr = ex.ordem.toLowerCase();
+        if (ordStr.includes('inicial') || ordStr === '1') ordExameVal = 1;
+        else if (ordStr.includes('sequencial') || ordStr === '2') ordExameVal = 2;
+      } else if (typeof ex.ordem === 'number') {
+        ordExameVal = ex.ordem;
+      }
+    }
+    xml += buildTag('ordExame', ordExameVal, 8);
+    
     xml += '        </exame>\n';
   }
 

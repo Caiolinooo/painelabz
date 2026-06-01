@@ -461,7 +461,7 @@ function extrairExamesDoTexto(texto: string, dataAso: string | null): { nome: st
 export async function extrairDadosASODoTexto(
   documentoId: string,
   texto: string,
-  dadosExtraidos: Record<string, any>,
+  dadosExtraidos: Record<string, any> | null | undefined,
   colaboradorId: string,
   dataEmissao?: string | null
 ): Promise<void> {

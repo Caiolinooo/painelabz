@@ -27,7 +27,10 @@ interface ApiMeta {
     companies: string[];
 }
 
-// Position display order — positions not listed here go to the end, sorted alphabetically
+interface Props {
+    onColabClick: (colaborador: any) => void;
+}
+
 const POSITION_ORDER: string[] = [
     'CHEF MANAGER',
     'DAY / NIGHT CHEF',
@@ -51,11 +54,31 @@ function getPositionSortKey(pos: string): number {
     return idx >= 0 ? idx : 999;
 }
 
-export default function ManSchedulePage() {
+export default function GTManScheduleTab({ onColabClick }: Props) {
     const { t, locale } = useI18n();
     const [allSchedules, setAllSchedules] = useState<CrewSchedule[]>([]);
     const [meta, setMeta] = useState<ApiMeta>({ vessels: [], positions: [], companies: [] });
     const [loading, setLoading] = useState(true);
+    const [openingColab, setOpeningColab] = useState<string | null>(null);
+
+    // Gestão de Eventos de Escala Manual
+    const [selectedCell, setSelectedCell] = useState<{
+        cpf: string;
+        name: string;
+        date: Date;
+        status: string;
+        rotationId?: string;
+        vessel: string;
+    } | null>(null);
+    const [formTipo, setFormTipo] = useState('normal');
+    const [formStart, setFormStart] = useState('');
+    const [formEnd, setFormEnd] = useState('');
+    const [formVessel, setFormVessel] = useState('');
+    const [formLocalEmb, setFormLocalEmb] = useState('');
+    const [formObs, setFormObs] = useState('');
+    const [submittingEvent, setSubmittingEvent] = useState(false);
+
+    const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     // Filters
     const [searchName, setSearchName] = useState('');
@@ -65,11 +88,11 @@ export default function ManSchedulePage() {
     const [filterDateStart, setFilterDateStart] = useState('');
     const [filterDateEnd, setFilterDateEnd] = useState('');
 
-    // Timeline navigation
     const tableContainerRef = useRef<HTMLDivElement>(null);
 
     const fetchSchedules = useCallback(async () => {
         try {
+            setLoading(true);
             const res = await fetchWithToken('/api/man-schedule/realtime');
             if (!res.ok) {
                 if (res.status === 503) {
@@ -83,13 +106,142 @@ export default function ManSchedulePage() {
             if (result.meta) setMeta(result.meta);
         } catch (error: any) {
             console.error('Error fetching schedules:', error);
-            toast.error(error.message || t('common.error', 'Erro ao carregar escala do MIO.'));
+            toast.error(error.message || 'Erro ao carregar escala do MIO.');
         } finally {
             setLoading(false);
         }
-    }, [t]);
+    }, []);
 
     useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
+
+    const getWeekRotation = useCallback((weekDate: Date, rotations: any[]) => {
+        const wStart = new Date(weekDate);
+        wStart.setHours(0, 0, 0, 0);
+        const wEnd = new Date(wStart);
+        wEnd.setDate(wEnd.getDate() + 6);
+        wEnd.setHours(23, 59, 59, 999);
+
+        for (const r of rotations) {
+            if (!r.start) continue;
+            const rStart = new Date(r.start);
+            rStart.setHours(0, 0, 0, 0);
+
+            const rEnd = r.end ? new Date(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+            rEnd.setHours(23, 59, 59, 999);
+
+            const overlaps = wStart <= rEnd && wEnd >= rStart;
+            if (overlaps) return r;
+        }
+        return null;
+    }, []);
+
+    const handleCellClick = (cpf: string, name: string, date: Date, status: string, rotations: any[]) => {
+        const matchingRotation = getWeekRotation(date, rotations);
+        const rotId = matchingRotation?.id || '';
+        const currentVessel = matchingRotation?.vessel || '';
+        const formattedDate = date.toISOString().split('T')[0];
+        
+        const defaultEnd = new Date(date);
+        defaultEnd.setDate(defaultEnd.getDate() + 14);
+        const formattedEnd = defaultEnd.toISOString().split('T')[0];
+
+        setSelectedCell({ cpf, name, date, status, rotationId: rotId, vessel: currentVessel });
+        
+        let mappedTipo = 'normal';
+        if (status === 'FI') mappedTipo = 'fi';
+        else if (status === 'DBA') mappedTipo = 'dba';
+        else if (status === 'STB') mappedTipo = 'stb';
+        else if (status === 'OFF-C') mappedTipo = 'offc';
+        
+        setFormTipo(mappedTipo);
+        setFormStart(formattedDate);
+        setFormEnd(formattedEnd);
+        setFormVessel(currentVessel || '');
+        setFormLocalEmb('');
+        setFormObs('');
+    };
+
+    const handleSaveEvent = async () => {
+        if (!selectedCell) return;
+        try {
+            setSubmittingEvent(true);
+            const res = await fetchWithToken('/api/gestao-tripulantes/embarques', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: ***REMOVED***
+                    colaborador_cpf: selectedCell.cpf,
+                    tipo: formTipo,
+                    data_embarque: formStart,
+                    data_desembarque: formEnd,
+                    local_embarque: formLocalEmb,
+                    local_desembarque: formVessel,
+                    observacoes: formObs
+                })
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Erro ao salvar escala.');
+            }
+
+            toast.success('Evento de escala inserido com sucesso!');
+            setSelectedCell(null);
+            fetchSchedules();
+        } catch (err: any) {
+            toast.error(err.message || 'Falha ao salvar evento.');
+        } finally {
+            setSubmittingEvent(false);
+        }
+    };
+
+    const handleDeleteEvent = async () => {
+        if (!selectedCell?.rotationId) return;
+        try {
+            setSubmittingEvent(true);
+            const res = await fetchWithToken(`/api/gestao-tripulantes/embarques/${selectedCell.rotationId}`, {
+                method: 'DELETE'
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Erro ao excluir evento.');
+            }
+
+            toast.success('Evento de escala removido com sucesso!');
+            setSelectedCell(null);
+            fetchSchedules();
+        } catch (err: any) {
+            toast.error(err.message || 'Falha ao remover evento.');
+        } finally {
+            setSubmittingEvent(false);
+        }
+    };
+
+    // Handle clicking a name on the schedule matrix
+    const handleNameClick = async (cpf: string, fullName: string) => {
+        if (!cpf) return;
+        try {
+            const cleanCpf = cpf.replace(/\D/g, '');
+            if (!cleanCpf) return;
+
+            setOpeningColab(cpf);
+            // Search for local collaborator by CPF
+            const res = await fetchWithToken(`/api/gestao-tripulantes/colaboradores?search=${cleanCpf}`);
+            if (!res.ok) throw new Error();
+            const json = await res.json();
+            const colab = json.data?.[0];
+
+            if (colab) {
+                onColabClick(colab);
+            } else {
+                toast.error(`Colaborador "${fullName}" não está cadastrado na base local de tripulantes.`);
+            }
+        } catch {
+            toast.error('Erro ao abrir ficha do colaborador.');
+        } finally {
+            setOpeningColab(null);
+        }
+    };
 
     // ─── Filtered data & Cascading Dropdowns ───
     const filteredSchedules = useMemo(() => {
@@ -139,7 +291,7 @@ export default function ManSchedulePage() {
 
     // ─── Build dynamic rows grouped by position ───
     const positionGroups = useMemo(() => {
-        const byPosition: Record<string, { name: string; cpf: string; rotations: { start: string | null; end: string | null; type: string }[] }[]> = {};
+        const byPosition: Record<string, { name: string; cpf: string; rotations: { id: string; start: string | null; end: string | null; type: string; vessel: string }[] }[]> = {};
 
         for (const s of filteredSchedules) {
             const pos = normalizePosition(s.position) || 'SEM CARGO';
@@ -148,14 +300,14 @@ export default function ManSchedulePage() {
             const existing = byPosition[pos].find(c => c.cpf === s.cpf);
             if (existing) {
                 if (s.rotation_start || s.rotation_end) {
-                    existing.rotations.push({ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal' });
+                    existing.rotations.push({ id: s.id, start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal', vessel: s.vessel });
                 }
             } else {
                 byPosition[pos].push({
                     name: s.full_name,
                     cpf: s.cpf,
                     rotations: (s.rotation_start || s.rotation_end)
-                        ? [{ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal' }]
+                        ? [{ id: s.id, start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal', vessel: s.vessel }]
                         : []
                 });
             }
@@ -168,7 +320,6 @@ export default function ManSchedulePage() {
 
     // ─── Dynamic timeline calculation ───
     const { weeks, timelineStart } = useMemo(() => {
-        // Find earliest and latest dates across all visible rotations
         let earliest: Date | null = null;
         let latest: Date | null = null;
 
@@ -187,20 +338,17 @@ export default function ManSchedulePage() {
             }
         }
 
-        // Fallback: if no dates, show current year range
         if (!earliest) earliest = new Date(new Date().getFullYear(), 0, 1);
         if (!latest) latest = new Date(new Date().getFullYear(), 11, 31);
 
-        // Snap earliest to start of week (Saturday to match original)
         const snapToSaturday = (d: Date) => {
             const day = d.getDay();
-            const diff = (day >= 6) ? day - 6 : day + 1; // distance to previous Saturday
+            const diff = (day >= 6) ? day - 6 : day + 1;
             d.setDate(d.getDate() - diff);
             return d;
         };
 
         const start = snapToSaturday(new Date(earliest));
-        // Add 2 weeks buffer before and after
         start.setDate(start.getDate() - 14);
 
         const endDate = new Date(latest);
@@ -287,7 +435,7 @@ export default function ManSchedulePage() {
     };
 
     // ─── Check exact rotation status for the week ───
-    const getWeekStatus = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string }[]): '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' => {
+    const getWeekStatus = (weekDate: Date, rotations: { id?: string; start: string | null; end: string | null; type?: string; vessel?: string }[]): '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' => {
         const wStart = new Date(weekDate);
         wStart.setHours(0, 0, 0, 0);
         const wEnd = new Date(wStart);
@@ -390,15 +538,7 @@ export default function ManSchedulePage() {
             }
         }
 
-        // Add legend rows after the table data
         const lastRow = range.e.r + 3;
-        const legendLabels: Record<string, string> = {
-            'ON': t('manSchedule.legendOn', 'Embarcado'),
-            'OFF-C': t('manSchedule.legendOffC', 'Troca de Turma'),
-            'FI': t('manSchedule.legendFi', 'Folga Indenizada'),
-            'DBA': t('manSchedule.legendDba', 'Dobra'),
-            'STB': t('manSchedule.legendStb', 'StandBy'),
-        };
         const legendColors: Record<string, string> = {
             'ON': 'E2EFDA', 'OFF-C': 'F4CCCC', 'FI': 'E2EFDA', 'DBA': 'E2EFDA', 'STB': 'F4CCCC'
         };
@@ -442,10 +582,8 @@ export default function ManSchedulePage() {
         toast.success(t('manSchedule.exportedSuccess', 'Planilha exportada com sucesso!'));
     };
 
-    // ─── Alternating group background colors ───
     const groupColors = ['bg-[#d9e1f2]', 'bg-[#b4c6e7]'];
 
-    // ─── Compute which statuses are present in the current view ───
     const presentStatuses = useMemo(() => {
         const statuses = new Set<string>();
         for (const group of positionGroups) {
@@ -459,7 +597,6 @@ export default function ManSchedulePage() {
         return statuses;
     }, [positionGroups, filteredWeeks]);
 
-    // ─── Legend definitions with i18n ───
     const legendItems = useMemo(() => {
         const allItems = [
             { code: 'ON', color: '#e2efda', textColor: '#00b050', label: t('manSchedule.legendOn', 'Embarcado') },
@@ -472,36 +609,28 @@ export default function ManSchedulePage() {
     }, [presentStatuses, t]);
 
     return (
-        <div className="flex flex-col -mx-8 -my-8 h-[calc(100vh-5rem)] overflow-hidden bg-white">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-4 py-3 shrink-0 border-b border-gray-200 gap-3">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800">{t('manSchedule.title', 'Visualização de Matriz - Man Schedule')}</h1>
-                    <p className="text-gray-500 text-sm">{t('manSchedule.subtitle', 'Representação exata da planilha matricial de escalas.')}</p>
-                </div>
-            </div>
-
-            {/* Filters - Always visible */}
-            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 shrink-0">
+        <div className="flex flex-col h-[calc(100vh-14rem)] min-h-[400px] border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            {/* Filters */}
+            <div className="bg-gray-50/80 px-4 py-3 border-b border-gray-200 shrink-0">
                 <div className="flex items-end gap-3 w-full flex-wrap">
-                    <div className="min-w-[180px] flex-shrink-0">
+                    <div className="min-w-[180px] flex-shrink-0 flex-1 md:flex-initial">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.searchLabel', 'Buscar')}</label>
                         <div className="relative">
                             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder={t('manSchedule.search', 'Buscar tripulante...')}
-                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="min-w-[130px] flex-shrink-0">
+                    <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.companyLabel', 'Empresa')}</label>
                         <select
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
                             value={filterCompany}
                             onChange={(e) => setFilterCompany(e.target.value)}
                         >
@@ -512,10 +641,10 @@ export default function ManSchedulePage() {
                         </select>
                     </div>
 
-                    <div className="min-w-[130px] flex-shrink-0">
+                    <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.vesselLabel', 'Embarcação')}</label>
                         <select
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
                             value={filterVessel}
                             onChange={(e) => setFilterVessel(e.target.value)}
                         >
@@ -526,10 +655,10 @@ export default function ManSchedulePage() {
                         </select>
                     </div>
 
-                    <div className="min-w-[130px] flex-shrink-0">
+                    <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.positionLabel', 'Cargo')}</label>
                         <select
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white truncate"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
                             value={filterPosition}
                             onChange={(e) => setFilterPosition(e.target.value)}
                         >
@@ -540,29 +669,30 @@ export default function ManSchedulePage() {
                         </select>
                     </div>
 
-                    <div className="min-w-[140px] flex-shrink-0">
+                    <div className="min-w-[130px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateStart', 'Data Inicio')}</label>
                         <input
                             type="date"
                             value={filterDateStart}
                             onChange={(e) => setFilterDateStart(e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
                         />
                     </div>
 
-                    <div className="min-w-[140px] flex-shrink-0">
+                    <div className="min-w-[130px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateEnd', 'Data Fim')}</label>
                         <input
                             type="date"
                             value={filterDateEnd}
                             onChange={(e) => setFilterDateEnd(e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
                         />
                     </div>
 
                     <button
                         onClick={exportToExcel}
-                        className="flex items-center gap-2 bg-green-600 text-white px-4 py-1.5 rounded shadow hover:bg-green-700 transition font-medium text-sm flex-shrink-0 self-end"
+                        disabled={loading || allSchedules.length === 0}
+                        className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none transition font-semibold text-xs flex-shrink-0 self-end h-[34px]"
                     >
                         <FiDownload />
                         {t('manSchedule.exportXLSX', 'Exportar XLSX')}
@@ -570,41 +700,39 @@ export default function ManSchedulePage() {
                 </div>
             </div>
 
-            {/* Matrix Table - Scrollable area */}
+            {/* Matrix Table */}
             <div ref={tableContainerRef} className="flex-1 overflow-auto min-h-0 relative">
                 <table id="man-schedule-table" className="w-max border-collapse font-sans text-xs bg-white">
-                    <thead className="sticky top-0 z-40 bg-white">
-                        {/* Row 1: Vessel name */}
+                    <thead className="sticky top-0延 z-40 bg-white">
                         <tr>
                             <th
                                 colSpan={3}
-                                className="bg-[#002060] text-white text-left px-2 py-4 font-bold border-r border-b border-black align-top sticky left-0 z-30"
-                                style={{ fontSize: '14px', minWidth: '300px' }}
+                                className="bg-[#002060] text-white text-left px-3 py-3 font-bold border-r border-b border-black align-middle sticky left-0 z-30"
+                                style={{ fontSize: '12px', minWidth: '300px' }}
                             >
                                 {vesselDisplayName}
                             </th>
                             <th
                                 colSpan={filteredWeeks.length}
                                 className="bg-[#e2efda] text-center border-b border-black p-2 font-bold uppercase text-[#002060]"
-                                style={{ fontSize: '11px' }}
+                                style={{ fontSize: '10px' }}
                             >
                                 {t('manSchedule.timeline', 'CRONOGRAMA DE ESCALAS')}
                             </th>
                         </tr>
 
-                        {/* Row 2: Column headers + dates (vertical) */}
                         <tr>
-                            <th className="bg-white text-black font-bold text-center border-r border-b border-black sticky left-0 z-30 min-w-[300px] w-[300px] px-2 py-2">
+                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-0 z-30 min-w-[300px] w-[300px] px-2 py-2">
                                 {t('manSchedule.tableHeaders.name', 'NOME')}
                             </th>
-                            <th className="bg-white text-black font-bold text-center border-r border-b border-black sticky left-[300px] z-30 px-2 py-2 w-[80px] min-w-[80px]">
+                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[300px] z-30 px-2 py-2 w-[80px] min-w-[80px]">
                                 {t('manSchedule.tableHeaders.reqOnboard', "QTD.\nEMBARC").split('\n').map((line, i, arr) => (
                                     <React.Fragment key={i}>
                                         {line}{i !== arr.length - 1 && <br />}
                                     </React.Fragment>
                                 ))}
                             </th>
-                            <th className="bg-white text-black font-bold text-center border-r border-b border-black sticky left-[380px] z-30 px-4 py-2 min-w-[150px] w-[150px]">
+                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[380px] z-30 px-4 py-2 min-w-[150px] w-[150px]">
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
                             {filteredWeeks.map((week, idx) => {
@@ -614,12 +742,12 @@ export default function ManSchedulePage() {
                                     key={`date-${idx}`}
                                     className={`text-center border-r border-b align-bottom pt-2 pb-1 ${
                                         isCurrentWeek 
-                                            ? 'bg-yellow-100 text-yellow-800 font-bold border-yellow-500 border-2' 
+                                            ? 'bg-yellow-100 text-yellow-850 font-bold border-yellow-500 border-2' 
                                             : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
                                     }`}
                                     style={{ height: '90px' }}
                                 >
-                                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', letterSpacing: '0.5px', fontSize: '11px' }}>
+                                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', letterSpacing: '0.5px', fontSize: '10px' }}>
                                         {formatHeaderDate(week.date)}
                                     </div>
                                 </th>
@@ -627,11 +755,10 @@ export default function ManSchedulePage() {
                             })}
                         </tr>
 
-                        {/* Row 3: Day of week */}
                         <tr>
-                            <th className="bg-white border-r border-b border-black sticky left-0 z-30"></th>
-                            <th className="bg-white border-r border-b border-black sticky left-[300px] z-30"></th>
-                            <th className="bg-white border-r border-b border-black sticky left-[380px] z-30"></th>
+                            <th className="bg-slate-50 border-r border-b border-black sticky left-0 z-30"></th>
+                            <th className="bg-slate-50 border-r border-b border-black sticky left-[300px] z-30"></th>
+                            <th className="bg-slate-50 border-r border-b border-black sticky left-[380px] z-30"></th>
                             {filteredWeeks.map((week, idx) => {
                                 const isCurrentWeek = idx === currentWeekIndex;
                                 return (
@@ -642,7 +769,7 @@ export default function ManSchedulePage() {
                                             ? 'bg-yellow-100 text-yellow-800 font-bold border-yellow-500 border-2' 
                                             : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
                                     }`}
-                                    style={{ fontSize: '11px' }}
+                                    style={{ fontSize: '10px' }}
                                 >
                                     {getDayAbbr(week.date)}
                                 </th>
@@ -654,12 +781,15 @@ export default function ManSchedulePage() {
                         {loading ? (
                             <tr>
                                 <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-500 bg-white">
-                                    {t('manSchedule.loading', 'Carregando dados do MIO...')}
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                        <span>{t('manSchedule.loading', 'Carregando dados do MIO...')}</span>
+                                    </div>
                                 </td>
                             </tr>
                         ) : positionGroups.length === 0 ? (
                             <tr>
-                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-400 bg-white">
+                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-405 bg-white">
                                     {t('manSchedule.empty', 'Nenhum tripulante encontrado para os filtros selecionados.')}
                                 </td>
                             </tr>
@@ -668,26 +798,30 @@ export default function ManSchedulePage() {
                                 const bg = groupColors[gIdx % groupColors.length];
                                 return (
                                     <React.Fragment key={`group-${gIdx}`}>
-                                        {/* Position group rows */}
                                         {group.members.map((member, mIdx) => (
-                                            <tr key={`row-${gIdx}-${mIdx}`}>
-                                                {/* NAME */}
-                                                <td className={`bg-white text-blue-900 font-bold px-2 py-1 border-r border-b border-black whitespace-nowrap overflow-hidden sticky left-0 z-20 uppercase`}>
+                                            <tr key={`row-${gIdx}-${mIdx}`} className="hover:bg-slate-50/50">
+                                                {/* NAME (Clicável para abrir modal do colaborador) */}
+                                                <td 
+                                                    onClick={() => handleNameClick(member.cpf, member.name)}
+                                                    className={`bg-white text-blue-600 hover:text-blue-800 hover:underline font-bold px-3 py-1.5 border-r border-b border-black whitespace-nowrap overflow-hidden sticky left-0 z-20 uppercase cursor-pointer transition-colors ${
+                                                        openingColab === member.cpf ? 'opacity-50 animate-pulse' : ''
+                                                    }`}
+                                                >
                                                     {member.name || '\u00A0'}
                                                 </td>
-                                                {/* QTD (show only on first row of the group) */}
+                                                {/* QTD */}
                                                 <td className={`${bg} text-black font-bold text-center border-r border-b border-black sticky left-[300px] z-20`}>
                                                     {mIdx === 0 ? group.count : ''}
                                                 </td>
                                                 {/* POSITION */}
-                                                <td className={`${bg} text-black font-bold px-2 py-1 border-r border-b border-black uppercase sticky left-[380px] z-20`}>
+                                                <td className={`${bg} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[380px] z-20`}>
                                                     {group.position}
                                                 </td>
                                                 {/* Timeline cells */}
-                                                 {filteredWeeks.map((week, wIdx) => {
+                                                {filteredWeeks.map((week, wIdx) => {
                                                     const status = getWeekStatus(week.date, member.rotations);
                                                     const isCurrentWeek = wIdx === currentWeekIndex;
-                                                    let cellClass = 'bg-white border-[#d1d5db]';
+                                                    let cellClass = 'bg-white border-[#e5e7eb]';
                                                     if (status === 'ON' || status === 'FI' || status === 'DBA') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';
                                                     else if (status === 'OFF-C' || status === 'STB') cellClass = 'bg-[#f4cccc] text-[#cc0000] font-bold border-black';
                                                     
@@ -698,17 +832,18 @@ export default function ManSchedulePage() {
                                                     return (
                                                         <td
                                                             key={`cell-${gIdx}-${mIdx}-${wIdx}`}
-                                                            className={`${cellClass} border-r border-b text-center`}
-                                                            style={{ width: '24px', minWidth: '24px', fontSize: '9px' }}
+                                                            onClick={() => handleCellClick(member.cpf, member.name, week.date, status, member.rotations)}
+                                                            className={`${cellClass} border-r border-b text-center cursor-pointer hover:brightness-95 hover:ring-1 hover:ring-blue-400 transition-all`}
+                                                            style={{ width: '26px', minWidth: '26px', fontSize: '9px' }}
+                                                            title={`Clique para gerenciar escala de ${member.name} na semana de ${formatHeaderDate(week.date)}`}
                                                         >
-                                                             {status === 'FI' ? 'FI' : status === 'DBA' ? 'DBA' : status === 'STB' ? 'STB' : status === 'OFF-C' ? 'OFF-C' : status || '-'}
+                                                            {status === 'FI' ? 'FI' : status === 'DBA' ? 'DBA' : status === 'STB' ? 'STB' : status === 'OFF-C' ? 'OFF-C' : status || '-'}
                                                         </td>
                                                     );
                                                 })}
                                             </tr>
                                         ))}
 
-                                        {/* Divider between groups */}
                                         {gIdx < positionGroups.length - 1 && (
                                             <tr key={`div-${gIdx}`}>
                                                 <td colSpan={3 + filteredWeeks.length} className="bg-white h-2 border-b border-black"></td>
@@ -722,20 +857,147 @@ export default function ManSchedulePage() {
                 </table>
             </div>
 
-            {/* Legend - Always visible at bottom */}
-            <div className="flex items-center gap-4 text-xs px-4 py-1.5 border-t border-gray-200 shrink-0 bg-white overflow-x-auto">
+            {/* Legend */}
+            <div className="flex items-center gap-4 text-xs px-4 py-2 border-t border-gray-200 shrink-0 bg-slate-50 overflow-x-auto">
                 {legendItems.map(item => (
                     <div key={item.code} className="flex items-center gap-1.5 flex-shrink-0">
                         <span
-                            className="inline-block text-center font-bold px-1.5 py-0.5 border border-black text-xs"
+                            className="inline-block text-center font-bold px-1.5 py-0.5 border border-black text-[10px]"
                             style={{ backgroundColor: item.color, color: item.textColor, minWidth: '40px' }}
                         >
                             {item.code}
                         </span>
-                        <span className="text-gray-700 font-semibold whitespace-nowrap">{item.label}</span>
+                        <span className="text-slate-600 font-semibold text-xs whitespace-nowrap">{item.label}</span>
                     </div>
                 ))}
             </div>
+
+            {/* Modal de gerenciamento de escalas */}
+            {selectedCell && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 mx-4 border border-gray-100 flex flex-col gap-4">
+                        <div className="flex items-center justify-between border-b border-gray-150 pb-3">
+                            <h3 className="text-base font-bold text-gray-800">
+                                {selectedCell.rotationId && isUuid(selectedCell.rotationId)
+                                    ? 'Editar/Excluir Evento de Escala'
+                                    : 'Adicionar Evento de Escala'}
+                            </h3>
+                            <button
+                                onClick={() => setSelectedCell(null)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors text-lg font-bold"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div>
+                            <p className="text-xs text-gray-500 font-medium">Nome do Tripulante</p>
+                            <p className="text-sm font-semibold text-gray-900 uppercase">{selectedCell.name}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Tipo de Evento</label>
+                                <select
+                                    value={formTipo}
+                                    onChange={(e) => setFormTipo(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                >
+                                    <option value="normal">Embarcado (ON)</option>
+                                    <option value="fi">Folga Indenizada (FI)</option>
+                                    <option value="dba">Dobra (DBA)</option>
+                                    <option value="stb">StandBy (STB)</option>
+                                    <option value="offc">Troca de Turma/Folga (OFF-C)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Embarcação/Destino</label>
+                                <input
+                                    type="text"
+                                    value={formVessel}
+                                    onChange={(e) => setFormVessel(e.target.value)}
+                                    placeholder="Ex: NORMAND..."
+                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Data Início</label>
+                                <input
+                                    type="date"
+                                    value={formStart}
+                                    onChange={(e) => setFormStart(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Data Fim</label>
+                                <input
+                                    type="date"
+                                    value={formEnd}
+                                    onChange={(e) => setFormEnd(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Local de Embarque (Origem)</label>
+                            <input
+                                type="text"
+                                value={formLocalEmb}
+                                onChange={(e) => setFormLocalEmb(e.target.value)}
+                                placeholder="Cidade, Aeroporto ou Base"
+                                className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Observações / Comentários</label>
+                            <textarea
+                                value={formObs}
+                                onChange={(e) => setFormObs(e.target.value)}
+                                placeholder="Informações adicionais..."
+                                rows={2}
+                                className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white resize-none"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-150">
+                            {selectedCell.rotationId && isUuid(selectedCell.rotationId) ? (
+                                <button
+                                    onClick={handleDeleteEvent}
+                                    disabled={submittingEvent}
+                                    className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 disabled:opacity-50 transition-colors shadow-sm"
+                                >
+                                    Excluir Evento
+                                </button>
+                            ) : (
+                                <div />
+                            )}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setSelectedCell(null)}
+                                    className="px-4 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveEvent}
+                                    disabled={submittingEvent}
+                                    className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                                >
+                                    {submittingEvent ? 'Salvando...' : 'Salvar'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

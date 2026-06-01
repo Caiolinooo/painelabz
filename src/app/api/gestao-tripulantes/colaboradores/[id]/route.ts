@@ -91,13 +91,25 @@ export async function GET(
       .or(`substituto_id.eq.${id},substituido_id.eq.${id}`)
       .order('created_at', { ascending: false });
 
+    const cpfClean = colaborador?.cpf ? colaborador.cpf.replace(/\D/g, '') : '';
+    let esocialAsos: any[] = [];
+    if (cpfClean) {
+      const { data: events } = await supabaseAdmin
+        .from('esocial_eventos')
+        .select('*')
+        .eq('evento_codigo', 'S-2220')
+        .eq('cpf_trabalhador', cpfClean);
+      esocialAsos = events || [];
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         ...colaborador,
         documentos: documentos || [],
         embarques: embarques || [],
-        substituicoes: substituicoes || []
+        substituicoes: substituicoes || [],
+        esocial_asos: esocialAsos
       }
     });
   } catch (error) {
