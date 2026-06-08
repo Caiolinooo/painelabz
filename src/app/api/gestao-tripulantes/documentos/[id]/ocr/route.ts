@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
-import { processarDocumentoOCR, processarImagensPreRenderizadas } from '@/lib/ocr';
+import { processarDocumentoOCR, processarImagensPreRenderizadas, extrairDadosTexto } from '@/lib/ocr';
 import { extrairDadosASODoTexto } from '@/lib/gestao-tripulantes/ocr-processor';
 import type { OCRTipoDocumento } from '@/types/ocr';
 
@@ -56,11 +56,12 @@ export async function POST(
 
       if (clientText) {
         console.log(`[OCR/Route] Recebido texto extraído diretamente do cliente (${clientText.length} caracteres).`);
+        const dadosRegex = extrairDadosTexto(clientText, documento.tipo_documento as OCRTipoDocumento);
         result = {
           success: true,
           data: {
             texto: clientText,
-            dadosExtraidos: null,
+            dadosExtraidos: dadosRegex,
             confianca: 95
           }
         };

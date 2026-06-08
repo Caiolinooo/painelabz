@@ -27,7 +27,7 @@ async function getOCRConfigFromDB(): Promise<OCRConfig> {
   return fallback;
 }
 
-function extrairDadosTexto(texto: string, tipoDocumento?: OCRTipoDocumento): Record<string, any> {
+export function extrairDadosTexto(texto: string, tipoDocumento?: OCRTipoDocumento): Record<string, any> {
   const dados: Record<string, any> = {};
   const upper = texto.toUpperCase();
 

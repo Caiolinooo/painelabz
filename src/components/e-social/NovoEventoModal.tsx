@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiX, FiCheckCircle, FiAlertTriangle, FiCode, FiSave, FiSend, FiInfo, FiCopy } from 'react-icons/fi';
+import { FiX, FiCheckCircle, FiAlertTriangle, FiCode, FiSave, FiSend, FiInfo, FiCopy, FiPlus, FiTrash } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 
@@ -64,6 +64,26 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
   const [s2240RiscoSuggestions, setS2240RiscoSuggestions] = useState<any[]>([]);
   const [s2240RiscoLoading, setS2240RiscoLoading] = useState(false);
 
+  // Expanded S-2240 state variables
+  const [s2240DtIniCondicao, setS2240DtIniCondicao] = useState(new Date().toISOString().split('T')[0]);
+  const [s2240LocalAmb, setS2240LocalAmb] = useState('1');
+  const [s2240DscAmb, setS2240DscAmb] = useState('Ambiente Geral');
+  const [s2240Riscos, setS2240Riscos] = useState<{
+    codAgNoc: string;
+    tpAval: string;
+    utilizEPC: string;
+    eficEpc: string;
+    utilizEPI: string;
+    eficEpi: string;
+    caEPI: string;
+  }[]>([
+    { codAgNoc: '09.01.001', tpAval: '1', utilizEPC: '0', eficEpc: 'S', utilizEPI: '0', eficEpi: 'S', caEPI: '' }
+  ]);
+  const [s2240RespCpf, setS2240RespCpf] = useState('');
+  const [s2240RespIdeOC, setS2240RespIdeOC] = useState('1');
+  const [s2240RespNrOC, setS2240RespNrOC] = useState('');
+  const [s2240RespUfOC, setS2240RespUfOC] = useState('RJ');
+
   const [s3000EventoExcluir, setS3000EventoExcluir] = useState('S-2220');
   const [s3000ReciboExcluir, setS3000ReciboExcluir] = useState('REC-');
 
@@ -119,6 +139,20 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
         setS2240Condicoes(localStorage.getItem('esocial_s2240_condicoes') || '');
         setS2240FatorRisco(localStorage.getItem('esocial_s2240_fator') || '09.01.001');
         setS2240EpiEficaz(localStorage.getItem('esocial_s2240_epi') || 'NA');
+
+        setS2240DtIniCondicao(localStorage.getItem('esocial_s2240_dt_ini') || new Date().toISOString().split('T')[0]);
+        setS2240LocalAmb(localStorage.getItem('esocial_s2240_local_amb') || '1');
+        setS2240DscAmb(localStorage.getItem('esocial_s2240_dsc_amb') || 'Ambiente Geral');
+        setS2240RespCpf(localStorage.getItem('esocial_s2240_resp_cpf') || '');
+        setS2240RespIdeOC(localStorage.getItem('esocial_s2240_resp_ide_oc') || '1');
+        setS2240RespNrOC(localStorage.getItem('esocial_s2240_resp_nr_oc') || '');
+        setS2240RespUfOC(localStorage.getItem('esocial_s2240_resp_uf_oc') || 'RJ');
+        const savedRiscos = localStorage.getItem('esocial_s2240_riscos');
+        if (savedRiscos) {
+          try {
+            setS2240Riscos(JSON.parse(savedRiscos));
+          } catch {}
+        }
       } catch (err) {
         console.error('Erro ao buscar dados iniciais:', err);
         toast.error('Erro ao carregar dados do formulário');
@@ -173,6 +207,19 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
     setS2240EpiEficaz(item.epi_utilizado === 'NA' ? 'NA' : 'S');
     setS2240CargoInput(item.cargo);
     setS2240RiscoSuggestions([]);
+
+    const epiUtil = item.epi_utilizado && item.epi_utilizado !== 'NA' ? '2' : '0';
+    setS2240Riscos([
+      {
+        codAgNoc: item.codigo_fator_risco || '09.01.001',
+        tpAval: '1',
+        utilizEPC: '0',
+        eficEpc: 'S',
+        utilizEPI: epiUtil,
+        eficEpi: 'S',
+        caEPI: ''
+      }
+    ]);
   };
 
   if (!isOpen) return null;
@@ -209,10 +256,19 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
       };
     } else if (selectedEventCode === 'S-2240') {
       dadosEspecificos = {
+        dtIniCondicao: s2240DtIniCondicao,
         cargo: s2240CargoInput,
+        localAmb: s2240LocalAmb,
+        dscAmb: s2240DscAmb,
         condicoesAmbiente: s2240Condicoes,
-        codFatRisco: s2240FatorRisco,
-        epiEficaz: s2240EpiEficaz,
+        dscAtivDes: s2240Condicoes,
+        riscos: s2240Riscos,
+        respReg: {
+          cpfResp: s2240RespCpf.replace(/\D/g, ''),
+          ideOC: parseInt(s2240RespIdeOC),
+          nrOC: s2240RespNrOC,
+          ufOC: s2240RespUfOC,
+        }
       };
     } else if (selectedEventCode === 'S-3000') {
       dadosEspecificos = {
@@ -271,6 +327,14 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
         localStorage.setItem('esocial_s2240_condicoes', s2240Condicoes);
         localStorage.setItem('esocial_s2240_fator', s2240FatorRisco);
         localStorage.setItem('esocial_s2240_epi', s2240EpiEficaz);
+        localStorage.setItem('esocial_s2240_dt_ini', s2240DtIniCondicao);
+        localStorage.setItem('esocial_s2240_local_amb', s2240LocalAmb);
+        localStorage.setItem('esocial_s2240_dsc_amb', s2240DscAmb);
+        localStorage.setItem('esocial_s2240_riscos', JSON.stringify(s2240Riscos));
+        localStorage.setItem('esocial_s2240_resp_cpf', s2240RespCpf);
+        localStorage.setItem('esocial_s2240_resp_ide_oc', s2240RespIdeOC);
+        localStorage.setItem('esocial_s2240_resp_nr_oc', s2240RespNrOC);
+        localStorage.setItem('esocial_s2240_resp_uf_oc', s2240RespUfOC);
 
         setXmlPreview(data.xml_preview || '');
         setPreparedEventId(data.evento?.id || null);
@@ -334,6 +398,14 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
         localStorage.setItem('esocial_s2240_condicoes', s2240Condicoes);
         localStorage.setItem('esocial_s2240_fator', s2240FatorRisco);
         localStorage.setItem('esocial_s2240_epi', s2240EpiEficaz);
+        localStorage.setItem('esocial_s2240_dt_ini', s2240DtIniCondicao);
+        localStorage.setItem('esocial_s2240_local_amb', s2240LocalAmb);
+        localStorage.setItem('esocial_s2240_dsc_amb', s2240DscAmb);
+        localStorage.setItem('esocial_s2240_riscos', JSON.stringify(s2240Riscos));
+        localStorage.setItem('esocial_s2240_resp_cpf', s2240RespCpf);
+        localStorage.setItem('esocial_s2240_resp_ide_oc', s2240RespIdeOC);
+        localStorage.setItem('esocial_s2240_resp_nr_oc', s2240RespNrOC);
+        localStorage.setItem('esocial_s2240_resp_uf_oc', s2240RespUfOC);
 
         toast.success('Rascunho salvo com sucesso!');
         onSuccess();
@@ -646,7 +718,7 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
                         onChange={(e) => setS2220MedicoUf(e.target.value)}
                         className="w-full px-3 py-1.5 text-sm border rounded-md bg-white focus:ring-1"
                       >
-                        {['RJ', 'SP', 'ES', 'MG', 'BA', 'SC', 'PR', 'RS', 'PE', 'CE', 'AM'].map(uf => (
+                        {['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'].map(uf => (
                           <option key={uf} value={uf}>{uf}</option>
                         ))}
                       </select>
@@ -729,9 +801,10 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
 
               {/* S-2240 Form */}
               {selectedEventCode === 'S-2240' && (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Cargo Auto-fill */}
                   <div className="relative">
-                    <label className="block text-xs text-gray-500 mb-0.5">Cargo (buscar fatores de risco)</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-0.5">Cargo (buscar fatores de risco)</label>
                     <input
                       type="text"
                       value={s2240CargoInput}
@@ -759,43 +832,268 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
                       </div>
                     )}
                   </div>
+
+                  {/* Date, Local, and Description of environment */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-0.5">Data Início Condição</label>
+                      <input
+                        type="date"
+                        value={s2240DtIniCondicao}
+                        onChange={(e) => setS2240DtIniCondicao(e.target.value)}
+                        className="w-full px-3 py-1.5 text-sm border rounded-md focus:ring-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-0.5">Local do Ambiente</label>
+                      <select
+                        value={s2240LocalAmb}
+                        onChange={(e) => setS2240LocalAmb(e.target.value)}
+                        className="w-full px-3 py-1.5 text-sm border rounded-md bg-white focus:ring-1"
+                      >
+                        <option value="1">1 - Estab. do Próprio Empregador</option>
+                        <option value="2">2 - Estab. de Terceiros</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-0.5">Nome/Dsc. do Ambiente</label>
+                      <input
+                        type="text"
+                        value={s2240DscAmb}
+                        onChange={(e) => setS2240DscAmb(e.target.value)}
+                        placeholder="Ex: Escritório Central, Galpão A"
+                        className="w-full px-3 py-1.5 text-sm border rounded-md focus:ring-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description of activities */}
                   <div>
-                    <label className="block text-xs text-gray-500 mb-0.5">Descrição das Atividades / Ambiente</label>
+                    <label className="block text-xs text-gray-500 mb-0.5">Descrição das Atividades Desempenhadas</label>
                     <textarea
                       value={s2240Condicoes}
                       onChange={(e) => setS2240Condicoes(e.target.value)}
                       rows={2}
+                      placeholder="Descreva as atividades físicas ou mentais..."
                       className="w-full px-3 py-1.5 text-sm border rounded-md focus:ring-1"
                     />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-0.5">Fator de Risco (Código e-Social)</label>
-                      <select
-                        value={s2240FatorRisco}
-                        onChange={(e) => setS2240FatorRisco(e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm border rounded-md bg-white focus:ring-1"
+
+                  {/* Agentes Nocivos / Riscos Section */}
+                  <div className="mt-4 border border-slate-100 rounded-md p-3 bg-slate-50/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-bold text-gray-700">Agentes Nocivos (Riscos Ocupacionais)</label>
+                      <button
+                        type="button"
+                        onClick={() => setS2240Riscos([...s2240Riscos, {
+                          codAgNoc: '09.01.001',
+                          tpAval: '1',
+                          utilizEPC: '0',
+                          eficEpc: 'S',
+                          utilizEPI: '0',
+                          eficEpi: 'S',
+                          caEPI: ''
+                        }])}
+                        className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-medium hover:bg-blue-100 transition flex items-center gap-0.5"
                       >
-                        <option value="09.01.001">09.01.001 - Ausência de fator de risco</option>
-                        <option value="01.01.001">01.01.001 - Ruído contínuo ou intermitente</option>
-                        <option value="02.01.001">02.01.001 - Exposição a poeiras minerais</option>
-                        <option value="03.01.001">03.01.001 - Vibração de corpo inteiro</option>
-                        <option value="03.01.007">03.01.007 - Manipulação de resíduos</option>
-                      </select>
+                        <FiPlus size={10} /> Adicionar Risco
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-0.5">EPI Eficaz</label>
-                      <select
-                        value={s2240EpiEficaz}
-                        onChange={(e) => setS2240EpiEficaz(e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm border rounded-md bg-white focus:ring-1"
-                      >
-                        <option value="NA">Não Aplicável (NA)</option>
-                        <option value="S">Sim (S)</option>
-                        <option value="N">Não (N)</option>
-                      </select>
+
+                    {s2240Riscos.length === 0 && (
+                      <p className="text-xs text-gray-400 italic">Pelo menos um fator de risco deve ser informado.</p>
+                    )}
+
+                    <div className="space-y-3">
+                      {s2240Riscos.map((risco, idx) => (
+                        <div key={idx} className="border border-gray-100 rounded-lg p-3 bg-white space-y-2 relative shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newRiscos = [...s2240Riscos];
+                              newRiscos.splice(idx, 1);
+                              setS2240Riscos(newRiscos);
+                            }}
+                            className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                            title="Remover Risco"
+                          >
+                            <FiTrash size={14} />
+                          </button>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-8">
+                            <div>
+                              <label className="block text-[10px] text-gray-500 mb-0.5">Cód. Agente Nocivo (ex: 09.01.001)</label>
+                              <input
+                                type="text"
+                                value={risco.codAgNoc}
+                                onChange={(e) => {
+                                  const newRiscos = [...s2240Riscos];
+                                  newRiscos[idx].codAgNoc = e.target.value;
+                                  setS2240Riscos(newRiscos);
+                                }}
+                                placeholder="09.01.001"
+                                className="w-full px-2 py-1 text-xs border rounded focus:ring-1"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-gray-500 mb-0.5">Tipo de Avaliação</label>
+                              <select
+                                value={risco.tpAval}
+                                onChange={(e) => {
+                                  const newRiscos = [...s2240Riscos];
+                                  newRiscos[idx].tpAval = e.target.value;
+                                  setS2240Riscos(newRiscos);
+                                }}
+                                className="w-full px-2 py-1 text-xs border rounded bg-white focus:ring-1"
+                              >
+                                <option value="1">1 - Qualitativa</option>
+                                <option value="2">2 - Quantitativa</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {risco.codAgNoc !== '09.01.001' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-50 pt-2">
+                              {/* EPC Column */}
+                              <div className="space-y-1">
+                                <label className="block text-[10px] font-semibold text-gray-500">Equipamento Proteção Coletiva (EPC)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <select
+                                    value={risco.utilizEPC}
+                                    onChange={(e) => {
+                                      const newRiscos = [...s2240Riscos];
+                                      newRiscos[idx].utilizEPC = e.target.value;
+                                      setS2240Riscos(newRiscos);
+                                    }}
+                                    className="w-full px-2 py-1 text-xs border rounded bg-white"
+                                  >
+                                    <option value="0">0 - Não se aplica</option>
+                                    <option value="1">1 - Não implementado</option>
+                                    <option value="2">2 - Implementado</option>
+                                  </select>
+                                  {risco.utilizEPC === '2' && (
+                                    <select
+                                      value={risco.eficEpc}
+                                      onChange={(e) => {
+                                        const newRiscos = [...s2240Riscos];
+                                        newRiscos[idx].eficEpc = e.target.value;
+                                        setS2240Riscos(newRiscos);
+                                      }}
+                                      className="w-full px-2 py-1 text-xs border rounded bg-white"
+                                      title="EPC Eficaz?"
+                                    >
+                                      <option value="S">Sim (Eficaz)</option>
+                                      <option value="N">Não (Ineficaz)</option>
+                                    </select>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* EPI Column */}
+                              <div className="space-y-1">
+                                <label className="block text-[10px] font-semibold text-gray-500">Equipamento Proteção Individual (EPI)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <select
+                                    value={risco.utilizEPI}
+                                    onChange={(e) => {
+                                      const newRiscos = [...s2240Riscos];
+                                      newRiscos[idx].utilizEPI = e.target.value;
+                                      setS2240Riscos(newRiscos);
+                                    }}
+                                    className="w-full px-2 py-1 text-xs border rounded bg-white"
+                                  >
+                                    <option value="0">0 - Não se aplica</option>
+                                    <option value="1">1 - Não utilizado</option>
+                                    <option value="2">2 - Utilizado</option>
+                                  </select>
+                                  {risco.utilizEPI === '2' && (
+                                    <select
+                                      value={risco.eficEpi}
+                                      onChange={(e) => {
+                                        const newRiscos = [...s2240Riscos];
+                                        newRiscos[idx].eficEpi = e.target.value;
+                                        setS2240Riscos(newRiscos);
+                                      }}
+                                      className="w-full px-2 py-1 text-xs border rounded bg-white"
+                                      title="EPI Eficaz?"
+                                    >
+                                      <option value="S">Sim (Eficaz)</option>
+                                      <option value="N">Não (Ineficaz)</option>
+                                    </select>
+                                  )}
+                                </div>
+                                {risco.utilizEPI === '2' && (
+                                  <input
+                                    type="text"
+                                    value={risco.caEPI}
+                                    onChange={(e) => {
+                                      const newRiscos = [...s2240Riscos];
+                                      newRiscos[idx].caEPI = e.target.value;
+                                      setS2240Riscos(newRiscos);
+                                    }}
+                                    placeholder="Nº do Certificado Aprovação (CA)"
+                                    className="w-full mt-1.5 px-2 py-1 text-[11px] border rounded"
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Technical Responsible Section */}
+                  <div className="border border-slate-100 rounded-md p-3 bg-slate-50/30">
+                    <span className="block text-xs font-bold text-gray-700 mb-2">Responsável Técnico pelos Registros Ambientais</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-gray-500 mb-0.5">CPF Responsável</label>
+                        <input
+                          type="text"
+                          value={s2240RespCpf}
+                          onChange={(e) => setS2240RespCpf(e.target.value)}
+                          placeholder="000.000.000-00"
+                          className="w-full px-2 py-1 text-xs border rounded focus:ring-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-gray-500 mb-0.5">Órgão de Classe</label>
+                        <select
+                          value={s2240RespIdeOC}
+                          onChange={(e) => setS2240RespIdeOC(e.target.value)}
+                          className="w-full px-2 py-1 text-xs border rounded bg-white focus:ring-1"
+                        >
+                          <option value="1">1 - CRM (Médico)</option>
+                          <option value="2">2 - CREA (Engenheiro)</option>
+                          <option value="9">9 - Outros</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-gray-500 mb-0.5">Nº de Registro (OC)</label>
+                        <input
+                          type="text"
+                          value={s2240RespNrOC}
+                          onChange={(e) => setS2240RespNrOC(e.target.value)}
+                          placeholder="Registro OC..."
+                          className="w-full px-2 py-1 text-xs border rounded focus:ring-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-gray-500 mb-0.5">UF Órgão de Classe</label>
+                        <select
+                          value={s2240RespUfOC}
+                          onChange={(e) => setS2240RespUfOC(e.target.value)}
+                          className="w-full px-2 py-1 text-xs border rounded bg-white focus:ring-1"
+                        >
+                          {['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'].map(uf => (
+                            <option key={uf} value={uf}>{uf}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
 

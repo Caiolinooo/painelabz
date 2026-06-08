@@ -2,6 +2,7 @@ export {
   processarDocumentoOCR,
   processarImagensPreRenderizadas,
   invalidateConfigCache,
+  extrairDadosTexto,
 } from './ocr-processor';
 
 export type {

@@ -47,7 +47,7 @@ export async function POST(
     }
 
     // Check if already queued
-    if (['enviado', 'processado', 'pendente'].includes(asoData.esocial_status || '')) {
+    if (['enviado', 'processado', 'pendente', 'pendente_revisao'].includes(asoData.esocial_status || '')) {
       return NextResponse.json({ error: 'ASO já foi processado para o E-Social' }, { status: 400 });
     }
 
