@@ -49,10 +49,12 @@ export async function renderPdfToImages(
     throw new Error(`Falha ao baixar PDF: ${response.status} ${response.statusText}`);
   }
   const arrayBuffer = await response.arrayBuffer();
+  // Copy bytes so the original ArrayBuffer doesn't get detached by pdfjs
+  const pdfData = new Uint8Array(arrayBuffer).slice();
 
   // Carregar o documento PDF
   const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(arrayBuffer),
+    data: pdfData,
   }).promise;
 
   const numPages = Math.min(pdf.numPages, maxPages);
@@ -104,10 +106,12 @@ export async function imageUrlToDataUri(imageUrl: string): Promise<string> {
 /**
  * Extrai texto digital diretamente do PDF (se houver camada de texto selecionável).
  */
-export async function extractTextFromDigitalPdf(arrayBuffer: ArrayBuffer): Promise<string> {
+export async function extractTextFromDigitalPdf(input: ArrayBuffer | Uint8Array): Promise<string> {
   const pdfjsLib = await getPdfjs();
+  // Ensure we pass a fresh copy — pdfjs transfers ownership and detaches the buffer
+  const data = input instanceof Uint8Array ? input.slice() : new Uint8Array(input).slice();
   const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(arrayBuffer),
+    data,
   }).promise;
 
   let fullText = '';
@@ -176,8 +180,14 @@ export async function extractTextFromPdfOrImageClient(
     if (!response.ok) throw new Error(`Falha ao baixar PDF: ${response.status}`);
     const arrayBuffer = await response.arrayBuffer();
 
+    // CRITICAL: Copy bytes immediately. pdfjs-dist transfers/detaches the
+    // ArrayBuffer internally, so any subsequent `new Uint8Array(arrayBuffer)`
+    // would throw "Cannot perform Construct on a detached ArrayBuffer".
+    // We keep a master copy and slice fresh copies for each consumer.
+    const pdfBytes = new Uint8Array(arrayBuffer);
+
     onProgress?.('Verificando se o PDF contém texto digital...');
-    const digitalText = await extractTextFromDigitalPdf(arrayBuffer);
+    const digitalText = await extractTextFromDigitalPdf(pdfBytes.slice());
     if (digitalText.length >= 30) {
       console.log(`[OCR/Client] Texto extraído digitalmente (${digitalText.length} caracteres).`);
       return digitalText;
@@ -186,7 +196,7 @@ export async function extractTextFromPdfOrImageClient(
     onProgress?.('PDF escaneado detectado. Inicializando renderizador...');
     const pdfjsLib = await getPdfjs();
     const pdf = await pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
+      data: pdfBytes.slice(),
     }).promise;
 
     const maxPages = 5;

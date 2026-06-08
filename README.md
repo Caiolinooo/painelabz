@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.25.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.25.1-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,12 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.25.1 - Correções de Compliance e-Social S-2240 e OCR
+- Reestruturação do formulário de evento `S-2240` em `NovoEventoModal.tsx` e XML correspondente em `eSocialService.ts` para conformidade oficial (leiaute `<infoExpRisco>`).
+- Expansão de lista de estados brasileiros (UFs CRM médico) de 11 para 27.
+- Bloqueio de duplicidade de eventos incluindo status `'pendente_revisao'`.
+- Processamento automatizado de extração de dados do OCR via regex quando texto pré-extraído é enviado do navegador.
 
 ### v5.25.0 - Man Schedule Integrado e OCR Client-Side com Tesseract
 - Nova aba Man Schedule integrada na pagina de Gestao de Tripulantes

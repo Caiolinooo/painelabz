@@ -1,5 +1,5 @@
 """
-ABZ Audio Server — STT (Whisper/CPU) + TTS (Piper/CPU)
+ABZ Audio Server — STT (Whisper/CPU) + TTS (Supertonic 3/CPU)
 Implementa endpoints compatíveis com a OpenAI API para que o
 livekit-plugins-openai consiga se conectar transparentemente.
 
@@ -7,7 +7,7 @@ Endpoints:
   GET  /health                  → health check
   GET  /v1/models               → model list (plugin check)
   POST /v1/audio/transcriptions → STT (Whisper small, int8, CPU)
-  POST /v1/audio/speech         → TTS (Piper faber PT-BR, CPU)
+  POST /v1/audio/speech         → TTS (Supertonic 3, CPU)
 """
 
 import io
@@ -18,6 +18,8 @@ import tempfile
 import logging
 import hashlib
 import time
+import wave
+import struct
 from functools import lru_cache
 from typing import Optional
 
@@ -25,6 +27,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Depen
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from faster_whisper import WhisperModel
+import numpy as np
 import uvicorn
 
 # ---------------------------------------------------------------------------
@@ -37,12 +40,21 @@ logger = logging.getLogger("audio-server")
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
-MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
-PIPER_MODEL = os.path.join(MODELS_DIR, "pt_BR-faber-medium.onnx")
-
 logger.info("Carregando Whisper base (CPU int8) — velocidade otimizada...")
 stt_model = WhisperModel("base", device="cpu", compute_type="int8")
 logger.info("Whisper carregado com sucesso.")
+
+logger.info("Carregando Supertonic 3 TTS...")
+from supertonic import TTS
+tts_engine = TTS(auto_download=True)
+logger.info("Supertonic 3 carregado com sucesso.")
+
+# Vozes disponíveis do Supertonic 3
+AVAILABLE_VOICES = {
+    "M1": "M1", "M2": "M2", "M3": "M3",
+    "F1": "F1", "F2": "F2", "F3": "F3",
+}
+DEFAULT_VOICE = "M1"
 
 # Cache TTS: dict nativo com timestamp, expira em 30s
 _tts_cache = {}
@@ -56,32 +68,88 @@ def _prune_cache():
         del _tts_cache[k]
 
 
-@lru_cache(maxsize=256)
-def _text_to_hash(text: str) -> str:
-    return hashlib.md5(text.encode("utf-8")).hexdigest()
+def _make_cache_key(text: str, voice: str, lang: str) -> str:
+    raw = f"{text}|{voice}|{lang}"
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
-def _synthesize_cached(text: str) -> bytes:
-    key = _text_to_hash(text)
+def _wav_to_pcm16_24k(wav_bytes: bytes) -> bytes:
+    """Converte WAV bytes para PCM16 24kHz mono via ffmpeg."""
+    pcm_path = os.path.join(tempfile.gettempdir(), f"tts_pcm_{uuid.uuid4().hex}.pcm")
+    try:
+        conv = subprocess.run(
+            ["ffmpeg", "-y", "-i", "-",
+             "-f", "s16le", "-acodec", "pcm_s16le",
+             "-ar", "24000", "-ac", "1", pcm_path],
+            input=wav_bytes,
+            capture_output=True,
+            timeout=30,
+        )
+        if conv.returncode != 0:
+            err = conv.stderr.decode(errors="replace")[:300]
+            logger.error(f"ffmpeg PCM falhou: {err}")
+            raise RuntimeError("Conversão PCM falhou")
+
+        with open(pcm_path, "rb") as f:
+            pcm_bytes = f.read()
+        return pcm_bytes
+    finally:
+        if os.path.exists(pcm_path):
+            os.remove(pcm_path)
+
+
+def _synthesize_cached(text: str, voice: str = DEFAULT_VOICE, lang: str = "pt") -> bytes:
+    """Sintetiza texto usando Supertonic 3 e retorna PCM16 24kHz mono."""
+    cache_key = _make_cache_key(text, voice, lang)
     _prune_cache()
-    if key in _tts_cache:
-        return _tts_cache[key][1]
-    wav_path = os.path.join(tempfile.gettempdir(), f"tts_cache_{uuid.uuid4().hex}.wav")
-    proc = subprocess.run(
-        ["piper", "--model", PIPER_MODEL, "--output_file", wav_path],
-        input=text.encode("utf-8"),
-        capture_output=True,
-        timeout=30,
-    )
-    if proc.returncode != 0:
-        os.remove(wav_path) if os.path.exists(wav_path) else None
-        raise RuntimeError(f"Piper falhou (rc={proc.returncode}): {proc.stderr.decode()[:200]}")
-    with open(wav_path, "rb") as f:
-        data = f.read()
-    os.remove(wav_path) if os.path.exists(wav_path) else None
-    _tts_cache[key] = (time.time(), data)
-    logger.info(f"TTS cache MISS ({len(data)} bytes)")
-    return data
+    if cache_key in _tts_cache:
+        logger.info(f"TTS cache HIT ({len(_tts_cache[cache_key][1])} bytes)")
+        return _tts_cache[cache_key][1]
+
+    # Obter estilo de voz
+    voice_style = tts_engine.get_voice_style(voice_name=voice)
+
+    # Sintetizar
+    wav, duration = tts_engine.synthesize(text, voice_style=voice_style, lang=lang)
+    logger.info(f"TTS sintetizado: {duration:.2f}s, voz={voice}, lang={lang}")
+
+    # Converter numpy array para WAV bytes
+    if isinstance(wav, np.ndarray):
+        wav_path = os.path.join(tempfile.gettempdir(), f"tts_wav_{uuid.uuid4().hex}.wav")
+        try:
+            # Garantir que é 1D
+            if wav.ndim > 1:
+                wav = wav.flatten()
+
+            # Normalizar para int16
+            if wav.dtype != np.int16:
+                if wav.max() > 1.0 or wav.min() < -1.0:
+                    wav = wav / max(abs(wav.max()), abs(wav.min()))
+                wav = (wav * 32767).astype(np.int16)
+
+            sample_rate = 22050  # Supertonic default sample rate
+            with wave.open(wav_path, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(sample_rate)
+                wf.writeframes(wav.tobytes())
+
+            with open(wav_path, "rb") as f:
+                wav_bytes = f.read()
+        finally:
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+    elif isinstance(wav, bytes):
+        wav_bytes = wav
+    else:
+        raise RuntimeError(f"Tipo de saída TTS inesperado: {type(wav)}")
+
+    # Converter para PCM16 24kHz mono
+    pcm_bytes = _wav_to_pcm16_24k(wav_bytes)
+
+    _tts_cache[cache_key] = (time.time(), pcm_bytes)
+    logger.info(f"TTS cache MISS ({len(pcm_bytes)} bytes pcm)")
+    return pcm_bytes
 
 
 # ---------------------------------------------------------------------------
@@ -89,8 +157,8 @@ def _synthesize_cached(text: str) -> bytes:
 # ---------------------------------------------------------------------------
 class TTSRequest(BaseModel):
     input: str
-    model: Optional[str] = "piper"
-    voice: Optional[str] = "faber"
+    model: Optional[str] = "supertonic-3"
+    voice: Optional[str] = DEFAULT_VOICE
     response_format: Optional[str] = "mp3"
     speed: Optional[float] = 1.0
     stream_format: Optional[str] = None
@@ -102,8 +170,7 @@ class TTSRequest(BaseModel):
 # ---------------------------------------------------------------------------
 @app.get("/health")
 async def health():
-    piper_ok = os.path.exists(PIPER_MODEL)
-    return {"status": "ok", "stt": "whisper-small-cpu", "tts": "piper-faber", "piper_model_found": piper_ok}
+    return {"status": "ok", "stt": "whisper-small-cpu", "tts": "supertonic-3", "voices": list(AVAILABLE_VOICES.keys())}
 
 @app.get("/v1/")
 @app.get("/v1")
@@ -112,7 +179,7 @@ async def api_root():
 
 @app.get("/v1/models")
 async def list_models():
-    return {"data": [{"id": "piper", "object": "model"}, {"id": "whisper-small", "object": "model"}]}
+    return {"data": [{"id": "supertonic-3", "object": "model"}, {"id": "whisper-small", "object": "model"}]}
 
 
 # ---------------------------------------------------------------------------
@@ -123,10 +190,8 @@ async def transcribe(
     file: UploadFile = File(...),
     model: Optional[str] = Form(None),
     language: Optional[str] = Form(None),
-    lang: Optional[str] = Query(None),  # openai.STT envia language como query param
+    lang: Optional[str] = Query(None),
 ):
-    # Aceitar language como Form field (padrao) OU query param (do openai.STT plugin)
-    # Forcar PT-BR como idioma default
     lang = lang or language or "pt"
     logger.info(f">>> STT chamado com language={lang}")
 
@@ -141,7 +206,7 @@ async def transcribe(
 
         segments, info = stt_model.transcribe(
             tmp_path,
-            language=lang,  # Forcar PT-BR
+            language=lang,
             beam_size=5,
             best_of=3,
             vad_filter=True,
@@ -165,7 +230,6 @@ async def transcribe(
 # TTS — POST /v1/audio/speech
 # Retorna JSON no formato OpenAI API para compatibilidade com o
 # livekit-plugins-openai openai.TTS.
-# O plugin openai.TTS espera: {"audio": "<base64_encoded_pcm_audio>"}
 # ---------------------------------------------------------------------------
 @app.post("/v1/audio/speech")
 async def synthesize(req: TTSRequest):
@@ -177,45 +241,25 @@ async def synthesize(req: TTSRequest):
     if not req.input or not req.input.strip():
         raise HTTPException(status_code=400, detail="Input text is required")
 
-    if not os.path.exists(PIPER_MODEL):
-        raise HTTPException(status_code=500, detail=f"TTS model not found at {PIPER_MODEL}")
+    # Resolver voz
+    voice = req.voice if req.voice and req.voice in AVAILABLE_VOICES else DEFAULT_VOICE
+    lang = "pt"  # Default PT-BR
 
     try:
-        wav_bytes = _synthesize_cached(req.input)
-
-        # Converter WAV → PCM16 24kHz mono (formato que o openai.TTS espera)
-        pcm_path = os.path.join(tempfile.gettempdir(), f"tts_pcm_{uuid.uuid4().hex}.pcm")
-        conv = subprocess.run(
-            ["ffmpeg", "-y", "-i", "-",
-             "-f", "s16le", "-acodec", "pcm_s16le",
-             "-ar", "24000", "-ac", "1", pcm_path],
-            input=wav_bytes,
-            capture_output=True,
-            timeout=30,
-        )
-        if conv.returncode != 0:
-            err = conv.stderr.decode(errors="replace")[:300]
-            logger.error(f"ffmpeg PCM falhou: {err}")
-            raise HTTPException(status_code=500, detail="Conversão PCM falhou")
-
-        with open(pcm_path, "rb") as f:
-            pcm_bytes = f.read()
-        os.remove(pcm_path) if os.path.exists(pcm_path) else None
+        pcm_bytes = _synthesize_cached(req.input, voice=voice, lang=lang)
 
         # openai.TTS com response_format="mp3" espera JSON {"audio": "base64"}
         # openai.TTS com response_format="pcm" espera PCM cru no body
         if req.response_format == "pcm":
             logger.info(f"TTS OK: {len(pcm_bytes)} bytes pcm16 (raw, cache)")
             return Response(content=pcm_bytes, media_type="audio/pcm")
-        
+
         import base64
         logger.info(f"TTS OK: {len(pcm_bytes)} bytes pcm16 (cache)")
         return {
             "audio": base64.b64encode(pcm_bytes).decode("utf-8"),
         }
 
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="TTS generation timed out (30s)")
     except Exception as e:
         logger.error(f"TTS error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -228,6 +272,6 @@ if __name__ == "__main__":
     print("=" * 50)
     print("  ABZ Audio Server")
     print("  STT: Whisper small (CPU int8)")
-    print("  TTS: Piper faber PT-BR (CPU)")
+    print("  TTS: Supertonic 3 (CPU, 31 languages)")
     print("=" * 50)
     uvicorn.run(app, host="127.0.0.1", port=8001)

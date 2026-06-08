@@ -625,14 +625,98 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
     }
 
     case 'S-2240': {
-      const fatorRisco = esp.fatorRisco || esp.codFatRisco || '';
-      const epiEficaz = esp.epiEficaz || 'NA';
+      const dtIniCondicao = esp.dtIniCondicao || new Date().toISOString().split('T')[0];
+      const localAmb = esp.localAmb || '1';
+      const dscAmb = esp.dscAmb || 'Ambiente Geral de Trabalho';
+      const dscAtivDes = esp.dscAtivDes || esp.condicoesAmbiente || '';
+      
+      const tpInscAmb = 1; // 1 = CNPJ
+      const nrInscAmb = cnpj; 
+      
+      const infoAmbXml = block('infoAmb',
+        optTag('localAmb', localAmb, 3) +
+        optTag('dscAmb', dscAmb, 3) +
+        optTag('tpInsc', tpInscAmb, 3) +
+        optTag('nrInsc', nrInscAmb, 3), 2);
 
-      corpo = block('dadosAmb',
-        optTag('codFatRisco', fatorRisco, 2) +
-        block('infoAmb',
-          optTag('dscAtivDes', esp.condicoesAmbiente || esp.dscAtivDes || '', 3), 2) +
-        optTag('epiEficaz', epiEficaz, 2), 1);
+      const infoAtivXml = block('infoAtiv',
+        optTag('dscAtivDes', dscAtivDes, 3), 2);
+
+      let agNocXml = '';
+      const listRiscos = esp.riscos || [];
+      if (Array.isArray(listRiscos) && listRiscos.length > 0) {
+        for (const risco of listRiscos) {
+          const codAgNoc = risco.codAgNoc || '09.01.001';
+          const tpAval = risco.tpAval || '1';
+          
+          let epcEpiXml = '';
+          if (codAgNoc !== '09.01.001') {
+            const utilizEPC = risco.utilizEPC || '0';
+            const eficEpc = utilizEPC === '2' ? (risco.eficEpc || 'S') : undefined;
+            const utilizEPI = risco.utilizEPI || '0';
+            const eficEpi = utilizEPI === '2' ? (risco.eficEpi || 'S') : undefined;
+            
+            let epiXml = '';
+            if (utilizEPI === '2' && risco.caEPI) {
+              epiXml = block('epi',
+                optTag('docAval', risco.caEPI, 5), 4);
+            }
+
+            epcEpiXml = block('epcEpi',
+              optTag('utilizEPC', utilizEPC, 4) +
+              optTag('eficEpc', eficEpc, 4) +
+              optTag('utilizEPI', utilizEPI, 4) +
+              optTag('eficEpi', eficEpi, 4) +
+              epiXml, 3);
+          }
+
+          agNocXml += block('agNoc',
+            optTag('codAgNoc', codAgNoc, 3) +
+            optTag('tpAval', tpAval, 3) +
+            epcEpiXml, 2);
+        }
+      } else {
+        const codAgNoc = esp.fatorRisco || esp.codFatRisco || '09.01.001';
+        let epcEpiXml = '';
+        if (codAgNoc !== '09.01.001') {
+          const epiEficaz = esp.epiEficaz || 'NA';
+          const utilizEPI = epiEficaz === 'NA' ? '0' : '2';
+          const eficEpi = epiEficaz === 'S' ? 'S' : (epiEficaz === 'N' ? 'N' : undefined);
+          
+          epcEpiXml = block('epcEpi',
+            optTag('utilizEPC', '0', 4) +
+            optTag('utilizEPI', utilizEPI, 4) +
+            optTag('eficEpi', eficEpi, 4), 3);
+        }
+
+        agNocXml = block('agNoc',
+          optTag('codAgNoc', codAgNoc, 3) +
+          optTag('tpAval', '1', 3) +
+          epcEpiXml, 2);
+      }
+
+      let respRegXml = '';
+      const r = esp.respReg;
+      if (r && r.cpfResp) {
+        respRegXml = block('respReg',
+          optTag('cpfResp', r.cpfResp, 3) +
+          optTag('ideOC', r.ideOC, 3) +
+          optTag('nrOC', r.nrOC, 3) +
+          optTag('ufOC', r.ufOC, 3), 2);
+      } else {
+        respRegXml = block('respReg',
+          optTag('cpfResp', '00000000000', 3) +
+          optTag('ideOC', '1', 3) +
+          optTag('nrOC', '00000', 3) +
+          optTag('ufOC', 'RJ', 3), 2);
+      }
+
+      corpo = block('infoExpRisco',
+        optTag('dtIniCondicao', dtIniCondicao, 2) +
+        infoAmbXml +
+        infoAtivXml +
+        agNocXml +
+        respRegXml, 1);
       break;
     }
 
@@ -735,10 +819,46 @@ export function validateEventData(eventoCodigo: string, dadosEvento: any): { val
       if (!getField(dadosEvento, 'tipoAfastamento')) erros.push('Tipo de afastamento é obrigatório');
       break;
 
-    case 'S-2240':
+    case 'S-2240': {
       if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'condicoesAmbiente')) erros.push('Condições ambientais são obrigatórias');
+      
+      const dtIniCondicao = getField(dadosEvento, 'dtIniCondicao');
+      if (!dtIniCondicao) {
+        erros.push('Data de início da condição é obrigatória');
+      }
+
+      const dscAtivDes = getField(dadosEvento, 'dscAtivDes') || getField(dadosEvento, 'condicoesAmbiente');
+      if (!dscAtivDes) {
+        erros.push('Descrição das atividades é obrigatória');
+      }
+
+      const riscos = getField(dadosEvento, 'riscos') || [];
+      if (!Array.isArray(riscos) || riscos.length === 0) {
+        // Para compatibilidade, se tiver o fator simples antigo, não rejeitamos
+        const codFatRisco = getField(dadosEvento, 'codFatRisco') || getField(dadosEvento, 'fatorRisco');
+        if (!codFatRisco) {
+          erros.push('Pelo menos um fator de risco deve ser informado');
+        }
+      } else {
+        riscos.forEach((r: any, idx: number) => {
+          if (!r.codAgNoc) {
+            erros.push(`Fator de risco #${idx + 1}: Código do agente nocivo é obrigatório`);
+          }
+          if (r.utilizEPI === '2' && !r.caEPI) {
+            erros.push(`Fator de risco #${idx + 1}: Número do CA do EPI é obrigatório quando o EPI é utilizado`);
+          }
+        });
+      }
+
+      const respReg = getField(dadosEvento, 'respReg');
+      if (respReg) {
+        if (!respReg.cpfResp) erros.push('CPF do responsável técnico é obrigatório');
+        if (!respReg.ideOC) erros.push('Órgão de classe do responsável técnico é obrigatório');
+        if (!respReg.nrOC) erros.push('Número de registro do responsável técnico é obrigatório');
+        if (!respReg.ufOC) erros.push('UF do órgão de classe do responsável técnico é obrigatório');
+      }
       break;
+    }
 
     case 'S-2298':
     case 'S-2299':

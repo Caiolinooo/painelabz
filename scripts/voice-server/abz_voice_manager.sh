@@ -97,30 +97,19 @@ check_and_install() {
         fi
     done
 
-    echo -e "\n${CYAN}=== 2/5. Configurando Ambiente Python ===${NC}"
+    echo -e "\n${CYAN}=== 2/4. Configurando Ambiente Python ===${NC}"
     mkdir -p "$DIR_AGENT/models"
     if [ ! -d "$DIR_AGENT/venv" ]; then
         python3 -m venv "$DIR_AGENT/venv"
     fi
     source "$DIR_AGENT/venv/bin/activate"
 
-    echo -e "\n${CYAN}=== 3/5. Baixando Modelo de Voz TTS ===${NC}"
-    if [ ! -f "$DIR_AGENT/models/pt_BR-faber-medium.onnx" ]; then
-        echo -e "${YELLOW}[BAIXANDO]${NC} Modelo Piper Faber PT-BR..."
-        wget -q --show-progress -c -P "$DIR_AGENT/models/" \
-            https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx
-        wget -q --show-progress -c -P "$DIR_AGENT/models/" \
-            https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json
-    else
-        echo -e "${GREEN}[OK]${NC} Modelos TTS já baixados."
-    fi
-
-    echo -e "\n${CYAN}=== 4/5. Instalando Bibliotecas Python (LiveKit v1.0+) ===${NC}"
+    echo -e "\n${CYAN}=== 3/4. Instalando Bibliotecas Python (LiveKit v1.0+ + Supertonic 3) ===${NC}"
     pip install --upgrade pip > /dev/null
     pip install --upgrade \
         "livekit-agents[openai,silero]>=1.0.0" \
         fastapi uvicorn python-multipart pydantic \
-        faster-whisper piper-tts
+        faster-whisper supertonic numpy
     # Turn detector para turn_detection natural no v1.0 (opcional mas recomendado)
     pip install --upgrade livekit-plugins-turn-detector 2>/dev/null || true
 
@@ -129,7 +118,11 @@ check_and_install() {
     python3 -c "from livekit.plugins import silero; silero.VAD.load()" 2>/dev/null || true
     python3 -c "from livekit.plugins.turn_detector.multilingual import MultilingualModel; MultilingualModel().download_files()" 2>/dev/null || true
 
-    echo -e "\n${CYAN}=== 5/5. Copiando Código do Agente e Audio Server ===${NC}"
+    # Baixa modelo Supertonic 3 (primeira execução)
+    echo -e "\n${CYAN}Baixando modelo Supertonic 3 TTS (31 idiomas)...${NC}"
+    python3 -c "from supertonic import TTS; TTS(auto_download=True)" 2>/dev/null || true
+
+    echo -e "\n${CYAN}=== 4/4. Copiando Código do Agente e Audio Server ===${NC}"
 
     # Copia os arquivos Python para o diretório do agente
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -170,7 +163,7 @@ start_services() {
     tmux send-keys -t $SESSION_NAME:0 "$LLM_CMD" C-m
 
     # ---- Window 1: Audio Server (STT/TTS na CPU) ----
-    echo -e "${CYAN}[2/3]${NC} Iniciando Audio Server (Whisper + Piper na CPU)..."
+    echo -e "${CYAN}[2/3]${NC} Iniciando Audio Server (Whisper + Supertonic 3 na CPU)..."
     tmux new-window -t $SESSION_NAME:1 -n "audio_server"
     tmux send-keys -t $SESSION_NAME:1 \
         "cd $DIR_AGENT && source venv/bin/activate && python3 audio_server.py" C-m
@@ -287,11 +280,11 @@ test_services() {
     fi
 
     # Teste TTS
-    echo -e "\n${YELLOW}[3/3] Testando TTS (Piper)...${NC}"
+    echo -e "\n${YELLOW}[3/3] Testando TTS (Supertonic 3)...${NC}"
     tts_resp=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
         -X POST http://127.0.0.1:8001/v1/audio/speech \
         -H "Content-Type: application/json" \
-        -d '{"input":"Teste de síntese de voz.","model":"piper","voice":"faber"}')
+        -d '{"input":"Teste de síntese de voz com Supertonic 3.","model":"supertonic-3","voice":"M1"}')
     if [ "$tts_resp" = "200" ]; then
         echo -e "${GREEN}[OK]${NC} TTS gerou áudio com sucesso!"
     else
@@ -317,7 +310,7 @@ while true; do
     echo -e "  4) Monitoramento Live (Dashboard)"
     echo -e "  5) Teste Rápido (LLM + STT + TTS)"
     echo -e "  6) Logs — LLM (Llama.cpp)"
-    echo -e "  7) Logs — Audio Server (Whisper + Piper)"
+    echo -e "  7) Logs — Audio Server (Whisper + Supertonic 3)"
     echo -e "  8) Logs — Agente LiveKit"
     echo -e "  0) Sair"
     echo ""

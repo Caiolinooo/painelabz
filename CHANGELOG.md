@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.25.1] - 2026-06-08
+
+### Added
+- **S-2240 Form UI & XML compliance**: Expanded `S-2240` event manual entry in `NovoEventoModal.tsx` to collect all standard fields: condition start date (`dtIniCondicao`), environment description (`dscAmb`), local environment type (`localAmb`), multiple risk factors list (`riscos` array), EPC/EPI efficacy and CA details, and technical responsible details (`respReg`). Corrected the XML generation in `eSocialService.ts` to output standard nested `<infoExpRisco>` layouts instead of invalid flat `<dadosAmb>` layouts.
+- **Client-Side OCR Data Extraction**: Modified `/api/gestao-tripulantes/documentos/[id]/ocr` to automatically run `extrairDadosTexto` via regex parser and populate structured document data when receiving raw pre-extracted text (`clientText`) from the browser.
+
+### Changed
+- **UF CRM Select Expansion**: Expanded the doctor UF dropdown list from 11 states to include all 27 Brazilian states.
+- **e-Social Deduplication Hardening**: Added `'pendente_revisao'` to duplicate check in `/api/gestao-tripulantes/documentos/[id]/esocial` to prevent duplicate event submissions on rapid click spamming.
+
 ## [5.25.0] - 2026-05-29
 
 ### Added
