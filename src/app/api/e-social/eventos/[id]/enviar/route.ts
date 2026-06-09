@@ -100,7 +100,11 @@ export async function POST(
       evento.evento_codigo === 'S-2220' &&
       /<aso>\s*<resAso>/.test(evento.xml_gerado);
 
-    if (!evento.xml_gerado || xmlContemAmbIncorrecto || xmlContemBugAso) {
+    // Detecta datas inválidas no XML (ex: mês 13 ou dia 13 como mês — YYYY-13-DD)
+    const xmlContemDataInvalida = evento.xml_gerado &&
+      /\d{4}-(1[3-9]|[2-9]\d)-\d{2}/.test(evento.xml_gerado);
+
+    if (!evento.xml_gerado || xmlContemAmbIncorrecto || xmlContemBugAso || xmlContemDataInvalida) {
       try {
         const raw = evento.dados_evento?.dadosEspecificos || evento.dados_evento || {};
         const eventData = {
