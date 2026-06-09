@@ -543,7 +543,7 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
 
       let examesXml = '';
       const listExames = esp.exames_realizados || esp.exames || [];
-      const defaultDate = esp.data_realizacao || esp.dataRealizacao || esp.dtExame || '';
+      const defaultDate = esp.data_realizacao || esp.dataRealizacao || esp.dtExame || esp.dtAso || esp.data_aso || esp.dataAso || '';
       
       if (Array.isArray(listExames) && listExames.length > 0) {
         const uniqueExames = new Map<string, any>();
@@ -603,8 +603,9 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
       const medicoPcmsoCrm = esp.medico_pcmso_crm || esp.medicoPcmsoCrm;
       const medicoPcmsoUf = esp.medico_pcmso_uf || esp.medicoPcmsoUf || 'RJ';
 
+      const dtAsoFinal = defaultDate || esp.dtAso || esp.data_aso || esp.dataAso || new Date().toISOString().split('T')[0];
       const asoBlock = block('aso',
-        optTag('dtAso', defaultDate || esp.dtAso || '', 3) +
+        optTag('dtAso', dtAsoFinal, 3) +
         optTag('resAso', resAsoNum, 3) +
         examesXml +
         block('medico',

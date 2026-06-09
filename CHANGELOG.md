@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.25.3] - 2026-06-09
+
+### Fixed
+- **S-2220 XML Schema Validation**: Resolved a schema error (`invalid child element 'resAso'`) caused by the omission of the `<dtAso>` element when date source fields are empty. Implemented robust date fallbacks including additional fields (`esp.dtAso`, `esp.data_aso`, `esp.dataAso`) and a default fallback to the current date.
+
 ## [5.25.2] - 2026-06-09
 
 ### Added

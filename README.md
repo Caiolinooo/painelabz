@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.25.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.25.3-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,15 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.25.3 - Correção de Validação e-Social S-2220
+- Correção do erro de esquema XML (`invalid child element 'resAso'`) garantindo que a tag `<dtAso>` nunca seja omitida caso os dados de data de realização venham vazios.
+- Adição de novos fallbacks de data no gerador XML (`dtAso`, `data_aso`, `dataAso` e data atual do sistema).
+
+### v5.25.2 - Correções de Fluxo de Matrícula e-Social
+- Implementação do fluxo completo de correção de matrícula do colaborador no e-Social.
+- Novo banco de dados e migrações (`matricula_esocial` no `gt_colaboradores`).
+- Badges dinâmicas de validação no formulário e banner interativo de autocorreção em caso de rejeição pelo portal.
 
 ### v5.25.1 - Correções de Compliance e-Social S-2240 e OCR
 - Reestruturação do formulário de evento `S-2240` em `NovoEventoModal.tsx` e XML correspondente em `eSocialService.ts` para conformidade oficial (leiaute `<infoExpRisco>`).
