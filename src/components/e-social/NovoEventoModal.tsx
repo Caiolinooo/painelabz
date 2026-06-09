@@ -10,6 +10,7 @@ interface Collaborator {
   nome_completo: string;
   cpf: string;
   matricula?: string;
+  matricula_esocial?: string;
   empresa_cnpj?: string;
 }
 
@@ -175,7 +176,7 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
     const colab = collaborators.find(c => c.id === selectedColabId);
     if (colab) {
       setCpf(colab.cpf || '');
-      setMatricula(colab.matricula || '');
+      setMatricula(colab.matricula_esocial || colab.matricula || '');
       setS2200Nome(colab.nome_completo || '');
     }
   }, [selectedColabId, collaborators]);
@@ -532,7 +533,34 @@ export default function NovoEventoModal({ isOpen, onClose, onSuccess }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-0.5">Matrícula (opcional)</label>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-xs text-gray-500">Matrícula (opcional)</label>
+                    {(() => {
+                      const selectedColab = collaborators.find(c => c.id === selectedColabId);
+                      if (selectedColab) {
+                        if (selectedColab.matricula_esocial) {
+                          return (
+                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                              ✓ Confirmada e-Social
+                            </span>
+                          );
+                        } else if (selectedColab.matricula) {
+                          return (
+                            <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200" title="Matrícula importada do WK/MIO, não validada diretamente no e-Social">
+                              ⚠️ Não Confirmada (MIO)
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1 py-0.5 rounded border border-red-200">
+                              ⚠️ Sem Matrícula
+                            </span>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
+                  </div>
                   <input
                     type="text"
                     value={matricula}

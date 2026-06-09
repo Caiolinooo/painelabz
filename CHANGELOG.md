@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.25.2] - 2026-06-09
+
+### Added
+- **e-Social Matrícula Correction Workflow**: Added a `matricula_esocial` column to the `gt_colaboradores` table to store confirmed e-Social registration numbers (in case they mismatch local MIO/WK records).
+- **Correct Matrícula API**: New POST endpoint `/api/e-social/corrigir-matricula` that allows correcting an employee's matrícula, updating `gt_colaboradores.matricula_esocial`, and automatically regenerating the event XML and resetting it to review status.
+- **Badges and Warnings in Modal**: Modified `NovoEventoModal.tsx` to query and show badges indicating if a matrícula is confirmed in e-Social, imported from MIO/WK, or missing altogether.
+- **Correction UI Banner**: Modified `EventoRevisao.tsx` to detect "contract not found" errors returned by the government, displaying a warning banner with clear portal-lookup instructions and a 1-click text input to correct the matrícula and recompile the XML.
+
+### Changed
+- **Matrícula Priority Logic**: Updated XML generation functions in `eSocialService.ts` and `xml-generator.ts` as well as the background generation service `eSocialAutoService` to prioritize `matricula_esocial` if it exists.
+- **Pre-flight Validation**: Added a check requiring the employee's matrícula for S-2200, S-2220, and S-2240 events before submission.
+
 ## [5.25.1] - 2026-06-08
 
 ### Added

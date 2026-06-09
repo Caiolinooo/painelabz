@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ESocialEvento } from '@/types/e-social';
 import { useI18n } from '@/contexts/I18nContext';
-import { FiX, FiCheck, FiXCircle } from 'react-icons/fi';
+import { FiX, FiCheck, FiXCircle, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi';
 
 interface EventoRevisaoProps {
   evento: ESocialEvento;
@@ -18,6 +18,12 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
   const { t } = useI18n();
   const [comentario, setComentario] = useState('');
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
+
+  // Matrícula Correction State
+  const [matriculaCorreta, setMatriculaCorreta] = useState('');
+  const [correcting, setCorrecting] = useState(false);
+  const [correctError, setCorrectError] = useState<string | null>(null);
+  const [correctSuccess, setCorrectSuccess] = useState(false);
 
   if (!open) return null;
 
@@ -34,8 +40,45 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
   const handleClose = () => {
     setConfirmAction(null);
     setComentario('');
+    setMatriculaCorreta('');
+    setCorrectError(null);
+    setCorrectSuccess(false);
     onClose();
   };
+
+  const handleCorrectMatricula = async () => {
+    if (!matriculaCorreta.trim()) return;
+    setCorrecting(true);
+    setCorrectError(null);
+    try {
+      const response = await fetch('/api/e-social/corrigir-matricula', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: evento.id,
+          matriculaCorreta: matriculaCorreta.trim(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao corrigir matrícula');
+      }
+      setCorrectSuccess(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      setCorrectError(err.message || 'Erro ao conectar ao servidor');
+    } finally {
+      setCorrecting(false);
+    }
+  };
+  const errorMsg = evento.ultimo_erro || (Array.isArray(evento.erros_processamento) ? evento.erros_processamento.join('; ') : '');
+  const isMatriculaError = evento.status === 'erro' && (
+    errorMsg.toLowerCase().includes('não foi localizado o contrato de trabalho') ||
+    errorMsg.toLowerCase().includes('contrato de trabalho não localizado') ||
+    errorMsg.toLowerCase().includes('não localizado o contrato de trabalho')
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -50,6 +93,59 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
         </div>
 
         <div className="p-5 overflow-y-auto flex-1 space-y-4">
+          {isMatriculaError && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-5 space-y-3">
+              <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm">
+                <FiAlertTriangle size={18} className="text-amber-600 animate-pulse" />
+                <span>Erro Crítico: Matrícula Rejeitada pelo e-Social</span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                O governo retornou o erro indicando que este CPF não possui a matrícula <strong>{evento.matricula || 'enviada'}</strong> cadastrada no e-Social.
+                <br /><br />
+                <strong>Como resolver:</strong>
+                <ol className="list-decimal list-inside mt-1 space-y-1">
+                  <li>Acesse o portal do e-Social usando seu certificado.</li>
+                  <li>Vá em <strong>Empregado &gt; Gestão de Empregados</strong> e filtre pelo CPF <strong>{evento.cpf_trabalhador}</strong>.</li>
+                  <li>Copie o número da matrícula que consta no portal (ex: <code>17784306000189.000541</code>).</li>
+                  <li>Insira o valor correto abaixo e clique em Corrigir.</li>
+                </ol>
+              </p>
+              
+              <div className="flex gap-2 items-end pt-2">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-amber-800 mb-1">Matrícula Correta (do portal e-Social)</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
+                    placeholder="Ex: 17784306000189.000541"
+                    value={matriculaCorreta}
+                    onChange={(e) => setMatriculaCorreta(e.target.value)}
+                    disabled={correcting || correctSuccess}
+                  />
+                </div>
+                <button
+                  onClick={handleCorrectMatricula}
+                  disabled={!matriculaCorreta.trim() || correcting || correctSuccess}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition-colors cursor-pointer"
+                >
+                  {correcting ? (
+                    <FiRefreshCw className="animate-spin" />
+                  ) : correctSuccess ? (
+                    <FiCheck />
+                  ) : null}
+                  {correcting ? 'Corrigindo...' : correctSuccess ? 'Corrigido!' : 'Corrigir e Recompilar XML'}
+                </button>
+              </div>
+
+              {correctError && (
+                <p className="text-xs text-red-600 font-medium">{correctError}</p>
+              )}
+              {correctSuccess && (
+                <p className="text-xs text-emerald-600 font-medium">Sucesso! A matrícula foi atualizada no colaborador, o XML foi regenerado e a página será recarregada.</p>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-500">{t('eSocial.eventosList.code')}:</span>

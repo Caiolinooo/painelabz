@@ -192,6 +192,7 @@ async function generateS2200(colab: any, cnpjEmpregador: string, cleanCpf: strin
     dadosEspecificos: {
       nome: colab.nome_completo,
       nis: colab.pis_pasep || '',
+      matricula_esocial: colab.matricula_esocial || '',
       matricula: colab.matricula || '',
       dataAdmissao: colab.data_admissao || '',
       tipoAdmissao: tipoAdmissaoNum,
@@ -233,7 +234,7 @@ async function generateS2200(colab: any, cnpjEmpregador: string, cleanCpf: strin
       evento_codigo: 'S-2200',
       cpf_trabalhador: cleanCpf,
       cnpj_empregador: cnpjEmpregador || undefined,
-      matricula: colab.matricula || undefined,
+      matricula: colab.matricula_esocial || colab.matricula || undefined,
       dados_evento: payload,
       status: finalStatus,
       modulo_origem: 'auto',
@@ -269,8 +270,12 @@ async function generateS2240(colab: any, cnpjEmpregador: string, cleanCpf: strin
   const payload = {
     cnpj: cnpjEmpregador,
     cpf: cleanCpf,
+    matricula_esocial: colab.matricula_esocial || undefined,
+    matricula: colab.matricula || undefined,
     dadosEspecificos: {
       nome: colab.nome_completo,
+      matricula_esocial: colab.matricula_esocial || '',
+      matricula: colab.matricula || '',
       nis: colab.pis_pasep || '',
       fatorRisco: '09.01.001',
       condicoesAmbiente: `Atividades operacionais/administrativas no exercício da função de ${cargoNome}. Ambiente controlado sem exposição a fatores de risco nocivos acima dos limites de tolerância.`,
@@ -300,7 +305,7 @@ async function generateS2240(colab: any, cnpjEmpregador: string, cleanCpf: strin
       evento_codigo: 'S-2240',
       cpf_trabalhador: cleanCpf,
       cnpj_empregador: cnpjEmpregador || undefined,
-      matricula: colab.matricula || undefined,
+      matricula: colab.matricula_esocial || colab.matricula || undefined,
       dados_evento: payload,
       status: finalStatus,
       modulo_origem: 'auto',

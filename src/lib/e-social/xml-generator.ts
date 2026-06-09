@@ -154,8 +154,9 @@ function gerarS2240(dados: Record<string, unknown>): string {
 
   xml += '    <ideVinculo>\n';
   xml += `      <cpfTrab>${d.ideTrabalhador?.cpfTrab || d.cpfTrab || ''}</cpfTrab>\n`;
-  if (d.matricula || d.ideTrabalhador?.matricula) {
-    xml += `      <matricula>${d.matricula || d.ideTrabalhador.matricula}</matricula>\n`;
+  const matriculaVal = d.matricula_esocial || d.ideTrabalhador?.matricula_esocial || d.matricula || d.ideTrabalhador?.matricula;
+  if (matriculaVal) {
+    xml += `      <matricula>${matriculaVal}</matricula>\n`;
   }
   xml += '    </ideVinculo>\n';
 
