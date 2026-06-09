@@ -95,7 +95,12 @@ export async function POST(
     const xmlContemAmbIncorrecto = evento.xml_gerado && 
       (isProducao ? evento.xml_gerado.includes('<tpAmb>2</tpAmb>') : evento.xml_gerado.includes('<tpAmb>1</tpAmb>'));
 
-    if (!evento.xml_gerado || xmlContemAmbIncorrecto) {
+    // Detecta o bug histórico do S-2220: <aso><resAso> sem <dtAso> antes (schema inválido)
+    const xmlContemBugAso = evento.xml_gerado &&
+      evento.evento_codigo === 'S-2220' &&
+      /<aso>\s*<resAso>/.test(evento.xml_gerado);
+
+    if (!evento.xml_gerado || xmlContemAmbIncorrecto || xmlContemBugAso) {
       try {
         const raw = evento.dados_evento?.dadosEspecificos || evento.dados_evento || {};
         const eventData = {
