@@ -21,7 +21,7 @@ export async function POST(
     // Fetch document with collaborator's matricula
     const { data: doc, error: docError } = await supabaseAdmin
       .from('gt_documentos')
-      .select('*, colaborador:gt_colaboradores!colaborador_id(id, nome_completo, cpf, matricula)')
+      .select('*, colaborador:gt_colaboradores!colaborador_id(id, nome_completo, cpf, matricula, matricula_esocial)')
       .eq('id', docId)
       .is('deleted_at', null)
       .maybeSingle();
@@ -72,7 +72,7 @@ export async function POST(
         evento_codigo: 'S-2220',
         cpf_trabalhador: cpfLimpo,
         cnpj_empregador: cnpj || null,
-        matricula: colaborador?.matricula || null,
+        matricula: colaborador?.matricula_esocial || colaborador?.matricula || null,
         dados_evento: {
           documento_id: docId,
           colaborador_id: doc.colaborador_id,
@@ -88,6 +88,7 @@ export async function POST(
           exames_realizados: asoData.exames_realizados,
           nome_clinica: asoData.nome_clinica,
           data_validade: doc.data_validade,
+          matricula_esocial: colaborador?.matricula_esocial || '',
           matricula: colaborador?.matricula || '',
         },
         status: 'pendente_revisao',
@@ -114,7 +115,7 @@ export async function POST(
         cnpj,
         tpAmb: 2,
         indRetif: 1,
-        matricula: (colaborador as any)?.matricula || '',
+        matricula: (colaborador as any)?.matricula_esocial || (colaborador as any)?.matricula || '',
         dadosEspecificos: {
           tipoExame: asoData.tipo_exame || 'periodico',
           dataRealizacao: asoData.data_realizacao || doc.data_emissao,
@@ -127,6 +128,7 @@ export async function POST(
           medico_pcmso_uf: asoData.medico_pcmso_uf || '',
           exames_realizados: asoData.exames_realizados || [],
           nome_clinica: asoData.nome_clinica || '',
+          matricula_esocial: (colaborador as any)?.matricula_esocial || '',
           matricula: (colaborador as any)?.matricula || '',
         },
       };

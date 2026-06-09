@@ -442,7 +442,7 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
 
   const eventsWithIdeVinculo = ['S-2210', 'S-2220', 'S-2230', 'S-2240', 'S-2299'];
   const useIdeVinculo = eventsWithIdeVinculo.includes(eventoCodigo);
-  const matricula = esp.matricula || dadosEvento.matricula || '';
+  const matricula = esp.matricula_esocial || dadosEvento.matricula_esocial || esp.matricula || dadosEvento.matricula || '';
 
   const workerBlock = useIdeVinculo
     ? block('ideVinculo',
@@ -457,7 +457,7 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
 
   switch (eventoCodigo) {
     case 'S-2200': {
-      const matricula = esp.matricula || dadosEvento.matricula || '';
+      const matricula = esp.matricula_esocial || dadosEvento.matricula_esocial || esp.matricula || dadosEvento.matricula || '';
       const dataAdmissao = esp.dataAdmissao || '';
       const tipoAdmissao = esp.tipoAdmissao || '';
       const tpRegJorn = esp.tpRegJorn || esp.tipoJornada || 1;
@@ -800,6 +800,7 @@ export function validateEventData(eventoCodigo: string, dadosEvento: any): { val
       if (!getField(dadosEvento, 'dataAdmissao')) erros.push('Data de admissão é obrigatória');
       if (!getField(dadosEvento, 'tipoAdmissao')) erros.push('Tipo de admissão é obrigatório');
       if (!getField(dadosEvento, 'cargo')) erros.push('Cargo é obrigatório');
+      if (!getField(dadosEvento, 'matricula') && !dadosEvento.matricula) erros.push('Matrícula é obrigatória');
       break;
 
     case 'S-2190':
@@ -812,6 +813,7 @@ export function validateEventData(eventoCodigo: string, dadosEvento: any): { val
     case 'S-2220':
       if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
       if (!getField(dadosEvento, 'tipoExame')) erros.push('Tipo de exame é obrigatório');
+      if (!getField(dadosEvento, 'matricula') && !dadosEvento.matricula) erros.push('Matrícula é obrigatória');
       break;
 
     case 'S-2230':
@@ -821,6 +823,7 @@ export function validateEventData(eventoCodigo: string, dadosEvento: any): { val
 
     case 'S-2240': {
       if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
+      if (!getField(dadosEvento, 'matricula') && !dadosEvento.matricula) erros.push('Matrícula é obrigatória');
       
       const dtIniCondicao = getField(dadosEvento, 'dtIniCondicao');
       if (!dtIniCondicao) {
