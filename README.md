@@ -198,6 +198,11 @@ npm run db:cadastro-fields        # Campos adicionais
 
 ## Ultimas Atualizacoes
 
+### v5.25.4 - Auto-Cura de XML do e-Social e Sincronização de Matrícula
+- **Sistema de Auto-Cura de XML**: Eventos com XML quebrado gerados em versões anteriores agora são detectados e refeitos automaticamente (auto-rebuild) durante o envio.
+- **Merge de Dados S-2220**: Adicionado merge de chaves root no payload do evento, prevenindo que tags de médico e exame (como `<nmMed>` e `<dtExm>`) sejam enviadas vazias.
+- **Sincronização Segura de Matrícula**: A matrícula do funcionário (`matricula_esocial`) agora só é atualizada no banco quando o e-Social retorna sucesso (`PROCESSADO`), evitando salvar matrículas recusadas pelo governo.
+
 ### v5.25.3 - Correção de Validação e-Social S-2220
 - Correção do erro de esquema XML (`invalid child element 'resAso'`) garantindo que a tag `<dtAso>` nunca seja omitida caso os dados de data de realização venham vazios.
 - Adição de novos fallbacks de data no gerador XML (`dtAso`, `data_aso`, `dataAso` e data atual do sistema).
