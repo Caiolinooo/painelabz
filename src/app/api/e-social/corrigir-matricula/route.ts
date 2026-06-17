@@ -85,7 +85,14 @@ export async function POST(request: NextRequest) {
     const tpAmbValue = isProducao ? 1 : 2;
 
     // 7. Regenerate XML
+    // Spread the original dadosEspecificos then forcibly override matricula fields
+    // so the corrected value is never lost to stale data from the spread.
     const raw = novosDados.dadosEspecificos || novosDados;
+    const dadosEspecificosCorrigidos = {
+      ...raw,
+      matricula: cleanMatricula,
+      matricula_esocial: cleanMatricula,
+    };
     const eventData = {
       cpf: evento.cpf_trabalhador || '',
       cnpj: evento.cnpj_empregador || '',
@@ -93,11 +100,7 @@ export async function POST(request: NextRequest) {
       indRetif: novosDados.indRetif || 1,
       matricula: cleanMatricula,
       matricula_esocial: cleanMatricula,
-      dadosEspecificos: {
-        ...raw,
-        matricula: cleanMatricula,
-        matricula_esocial: cleanMatricula,
-      },
+      dadosEspecificos: dadosEspecificosCorrigidos,
     };
 
     let xmlGerado = '';
