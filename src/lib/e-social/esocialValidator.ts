@@ -255,6 +255,8 @@ export function validarXMLGerado(xml: string, codigoEvento: string): ResultadoVa
     if (!/<exMedOcup>/.test(xml)) erros.push({ campo: 'exMedOcup', mensagem: 'Falta grupo <exMedOcup>', tipo: 'estrutura', autocorrigivel: false });
     if (!/<aso>/.test(xml)) erros.push({ campo: 'aso', mensagem: 'Falta grupo <aso>', tipo: 'estrutura', autocorrigivel: false });
     if (!/<medico>/.test(xml)) erros.push({ campo: 'medico', mensagem: 'Falta grupo <medico>', tipo: 'estrutura', autocorrigivel: false });
+    if (!/<dtExm>/.test(xml)) erros.push({ campo: 'dtExm', mensagem: 'Falta tag <dtExm> dentro de exames', tipo: 'estrutura', autocorrigivel: false });
+    if (!/<nmMed>/.test(xml)) erros.push({ campo: 'nmMed', mensagem: 'Falta tag <nmMed> no XML', tipo: 'estrutura', autocorrigivel: false });
     
     // Bug histórico do S-2220
     if (/<aso>\\s*<resAso>/.test(xml)) {
