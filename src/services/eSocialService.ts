@@ -382,7 +382,10 @@ function e(str: string): string {
 }
 
 function getEsp(dadosEvento: any): any {
-  return dadosEvento.dadosEspecificos || dadosEvento;
+  if (dadosEvento && dadosEvento.dadosEspecificos) {
+    return { ...dadosEvento, ...dadosEvento.dadosEspecificos };
+  }
+  return dadosEvento || {};
 }
 
 function tag(t: string, content: string, indent = 0): string {
