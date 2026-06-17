@@ -107,13 +107,23 @@ export async function POST(
     if (!evento.xml_gerado || xmlContemAmbIncorrecto || xmlContemBugAso || xmlContemDataInvalida) {
       try {
         const raw = evento.dados_evento?.dadosEspecificos || evento.dados_evento || {};
+        // Resolve the best available matrícula: prefer matricula_esocial (set by corrigir-matricula)
+        // over the plain matricula column, checking dadosEspecificos first.
+        const resolvedMatricula = raw.matricula_esocial
+          || evento.dados_evento?.matricula_esocial
+          || raw.matricula
+          || evento.dados_evento?.matricula
+          || evento.matricula
+          || '';
         const eventData = {
           cpf: evento.cpf_trabalhador || '',
           cnpj: evento.cnpj_empregador || '',
           tpAmb: tpAmbValue,
           indRetif: evento.dados_evento?.indRetif || 1,
-          matricula: evento.matricula || '',
+          matricula: resolvedMatricula,
+          matricula_esocial: resolvedMatricula,
           dadosEspecificos: {
+            ...raw,
             tipoExame: raw.tipoExame || raw.tipo_exame || 'periodico',
             dataRealizacao: raw.dataRealizacao || raw.data_realizacao || '',
             resultado: raw.resultado || 'apto',
@@ -125,7 +135,8 @@ export async function POST(
             medico_pcmso_uf: raw.medico_pcmso_uf || raw.medicoPcmsoUf || raw.uf_pcmso || 'RJ',
             exames_realizados: raw.exames_realizados || raw.exames || [],
             nome_clinica: raw.nome_clinica || raw.nomeClinica || '',
-            matricula: evento.matricula || '',
+            matricula: resolvedMatricula,
+            matricula_esocial: resolvedMatricula,
           },
         };
 
