@@ -89,7 +89,19 @@ export async function validarEPrepararEnvio(evento: any, tpAmb?: number): Promis
   }
 
   // 4. Validação final do XML
-  const valXMLNovo = validarXMLGerado(xml, codigoEvento);
+  let valXMLNovo = validarXMLGerado(xml, codigoEvento);
+  
+  // Se o XML original estava quebrado e ainda não tentamos rebuildar, forçamos um rebuild agora
+  if (!valXMLNovo.valido && !rebuildRealizado) {
+    try {
+      xml = generateEventXML(codigoEvento, dadosCorrigidos);
+      rebuildRealizado = true;
+      valXMLNovo = validarXMLGerado(xml, codigoEvento);
+    } catch (e: any) {
+      // Ignora erro do catch para cair na validação normal abaixo
+    }
+  }
+
   if (!valXMLNovo.valido) {
     return {
       pronto: false,
