@@ -47,21 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Update gt_colaboradores.matricula_esocial
-    if (evento.cpf_trabalhador) {
-      const { error: colabError } = await supabaseAdmin
-        .from('gt_colaboradores')
-        .update({
-          matricula_esocial: cleanMatricula,
-          updated_at: new Date().toISOString()
-        })
-        .eq('cpf', evento.cpf_trabalhador);
-
-      if (colabError) {
-        console.error('[CorrigirMatricula] Erro ao atualizar colaborador:', colabError);
-      } else {
-        console.log(`[CorrigirMatricula] Colaborador CPF ${evento.cpf_trabalhador} atualizado com matricula_esocial: ${cleanMatricula}`);
-      }
-    }
+    // Removido: O funcionário só será atualizado quando a matrícula retornar SUCESSO do e-Social no consultar-lote.
 
     // 5. Build updated payload for event
     const novosDados = {
