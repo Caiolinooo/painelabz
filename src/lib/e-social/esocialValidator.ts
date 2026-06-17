@@ -107,7 +107,7 @@ export function validarDadosEvento(codigoEvento: string, dadosEvento: any): Resu
         });
       }
 
-      const dtAso = getField(dadosEvento, 'dtAso') || getField(dadosEvento, 'dataRealizacao');
+      const dtAso = getField(dadosEvento, 'dtAso') || getField(dadosEvento, 'dataRealizacao') || getField(dadosEvento, 'data_realizacao') || getField(dadosEvento, 'dtExame') || getField(dadosEvento, 'data_aso') || getField(dadosEvento, 'dataAso');
       if (!dtAso) {
         erros.push({ campo: 'dataRealizacao', mensagem: 'Data do ASO obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
         camposPendentes.push({ campo: 'dataRealizacao', label: 'Data do ASO', tipo: 'date' });
@@ -119,19 +119,19 @@ export function validarDadosEvento(codigoEvento: string, dadosEvento: any): Resu
         camposPendentes.push({ campo: 'resultado', label: 'Resultado do ASO', tipo: 'select', opcoes: [{valor:'1', label:'Apto'}, {valor:'2', label:'Inapto'}] });
       }
 
-      const nmMed = getField(dadosEvento, 'medico_nome') || getField(dadosEvento, 'nmMed');
+      const nmMed = getField(dadosEvento, 'medico_nome') || getField(dadosEvento, 'nmMed') || getField(dadosEvento, 'medicoNome') || getField(dadosEvento, 'medico');
       if (!nmMed) {
         erros.push({ campo: 'medico_nome', mensagem: 'Nome do Médico obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
         camposPendentes.push({ campo: 'medico_nome', label: 'Nome do Médico (ASO)', tipo: 'text' });
       }
 
-      const nrCRM = getField(dadosEvento, 'medico_crm') || getField(dadosEvento, 'nrCRM');
+      const nrCRM = getField(dadosEvento, 'medico_crm') || getField(dadosEvento, 'nrCRM') || getField(dadosEvento, 'crm');
       if (!nrCRM) {
         erros.push({ campo: 'medico_crm', mensagem: 'CRM do Médico obrigatório', tipo: 'obrigatorio', autocorrigivel: true });
         camposPendentes.push({ campo: 'medico_crm', label: 'CRM do Médico', tipo: 'text' });
       }
 
-      const ufCRM = getField(dadosEvento, 'medico_uf') || getField(dadosEvento, 'ufCRM');
+      const ufCRM = getField(dadosEvento, 'medico_uf') || getField(dadosEvento, 'ufCRM') || getField(dadosEvento, 'uf');
       if (!ufCRM) {
         erros.push({ campo: 'medico_uf', mensagem: 'UF do CRM obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
         camposPendentes.push({ campo: 'medico_uf', label: 'UF do CRM', tipo: 'text' });
@@ -162,6 +162,22 @@ export function validarDadosEvento(codigoEvento: string, dadosEvento: any): Resu
       if (!getField(dadosEvento, 'tpRegPrev')) {
         erros.push({ campo: 'tpRegPrev', mensagem: 'Tipo de Regime Previdenciário obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
         camposPendentes.push({ campo: 'tpRegPrev', label: 'Regime Previdenciário', tipo: 'select', opcoes: [{valor:'1', label:'RGPS'}, {valor:'2', label:'RPPS'}, {valor:'3', label:'RPPE'}] });
+      }
+      break;
+    }
+    case 'S-2298': {
+      const dataReintegracao = getField(dadosEvento, 'dataReintegracao') || getField(dadosEvento, 'dtReint');
+      if (!dataReintegracao) {
+        erros.push({ campo: 'dataReintegracao', mensagem: 'Data de Reintegração obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
+        camposPendentes.push({ campo: 'dataReintegracao', label: 'Data de Reintegração', tipo: 'date' });
+      }
+      break;
+    }
+    case 'S-2299': {
+      const dataDesligamento = getField(dadosEvento, 'dataDesligamento') || getField(dadosEvento, 'dtDeslig');
+      if (!dataDesligamento) {
+        erros.push({ campo: 'dataDesligamento', mensagem: 'Data de Desligamento obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
+        camposPendentes.push({ campo: 'dataDesligamento', label: 'Data de Desligamento', tipo: 'date' });
       }
       break;
     }
