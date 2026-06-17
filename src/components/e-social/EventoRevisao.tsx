@@ -25,6 +25,12 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
   const [correctError, setCorrectError] = useState<string | null>(null);
   const [correctSuccess, setCorrectSuccess] = useState(false);
 
+  // Validation State
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [camposPreenchidos, setCamposPreenchidos] = useState<Record<string, string>>({});
+  const [savingCampos, setSavingCampos] = useState(false);
+
   if (!open) return null;
 
   const handleConfirm = () => {
@@ -71,6 +77,43 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
       setCorrectError(err.message || 'Erro ao conectar ao servidor');
     } finally {
       setCorrecting(false);
+    }
+  };
+
+  const handleValidate = async () => {
+    setValidating(true);
+    setValidationResult(null);
+    try {
+      const response = await fetch(`/api/e-social/eventos/${evento.id}/validar`, { method: 'POST' });
+      const data = await response.json();
+      setValidationResult(data);
+      if (data.pronto) {
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    } catch (err: any) {
+      setValidationResult({ pronto: false, erros: [err.message || 'Erro de conexão'] });
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleSaveCampos = async () => {
+    setSavingCampos(true);
+    try {
+      const response = await fetch(`/api/e-social/eventos/${evento.id}/corrigir-campos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campos: camposPreenchidos })
+      });
+      const data = await response.json();
+      setValidationResult(data);
+      if (data.pronto) {
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    } catch (err: any) {
+      setValidationResult({ pronto: false, erros: [err.message || 'Erro ao salvar campos'] });
+    } finally {
+      setSavingCampos(false);
     }
   };
   const errorMsg = evento.ultimo_erro || (Array.isArray(evento.erros_processamento) ? evento.erros_processamento.join('; ') : '');
@@ -142,6 +185,79 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
               )}
               {correctSuccess && (
                 <p className="text-xs text-emerald-600 font-medium">Sucesso! A matrícula foi atualizada no colaborador, o XML foi regenerado e a página será recarregada.</p>
+              )}
+            </div>
+          )}
+
+          {/* UI de Validação */}
+          {validationResult && (
+            <div className={`p-4 rounded-lg border ${validationResult.pronto ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} space-y-3`}>
+              <div className={`flex items-center gap-2 font-semibold ${validationResult.pronto ? 'text-emerald-800' : 'text-amber-800'}`}>
+                {validationResult.pronto ? <FiCheck size={18} /> : <FiAlertTriangle size={18} />}
+                <span>{validationResult.pronto ? 'Validação Concluída com Sucesso!' : 'Atenção Necessária'}</span>
+              </div>
+
+              {validationResult.correcoesAplicadas && validationResult.correcoesAplicadas.length > 0 && (
+                <div className="text-xs text-emerald-700 bg-emerald-100/50 p-2 rounded">
+                  <p className="font-semibold mb-1">Correções Automáticas Aplicadas:</p>
+                  <ul className="list-disc list-inside">
+                    {validationResult.correcoesAplicadas.map((c: any, i: number) => (
+                      <li key={i}>{c.descricao}: <span className="line-through opacity-70">{c.de}</span> → <strong>{c.para}</strong></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {validationResult.erros && validationResult.erros.length > 0 && (
+                <div className="text-xs text-red-700 bg-red-100/50 p-2 rounded">
+                  <p className="font-semibold mb-1">Erros Críticos:</p>
+                  <ul className="list-disc list-inside">
+                    {validationResult.erros.map((e: string, i: number) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {validationResult.camposPendentes && validationResult.camposPendentes.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-amber-200/50">
+                  <p className="text-xs font-semibold text-amber-800">Preencha os campos obrigatórios pendentes:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {validationResult.camposPendentes.map((c: any) => (
+                      <div key={c.campo}>
+                        <label className="block text-[11px] font-medium text-amber-900 mb-1">
+                          {c.label} {c.dica && <span className="text-amber-600/70 font-normal">({c.dica})</span>}
+                        </label>
+                        {c.tipo === 'select' ? (
+                          <select
+                            className="w-full px-2 py-1.5 text-xs border border-amber-300 rounded bg-white"
+                            value={camposPreenchidos[c.campo] || ''}
+                            onChange={(e) => setCamposPreenchidos({ ...camposPreenchidos, [c.campo]: e.target.value })}
+                          >
+                            <option value="">Selecione...</option>
+                            {c.opcoes?.map((o: any) => (
+                              <option key={o.valor} value={o.valor}>{o.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={c.tipo === 'date' ? 'date' : 'text'}
+                            className="w-full px-2 py-1.5 text-xs border border-amber-300 rounded bg-white"
+                            value={camposPreenchidos[c.campo] || ''}
+                            onChange={(e) => setCamposPreenchidos({ ...camposPreenchidos, [c.campo]: e.target.value })}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleSaveCampos}
+                    disabled={savingCampos || Object.keys(camposPreenchidos).length === 0}
+                    className="mt-2 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50"
+                  >
+                    {savingCampos ? 'Salvando...' : 'Salvar e Revalidar'}
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -274,6 +390,15 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
 
         {!confirmAction && (
           <div className="p-5 border-t flex justify-end gap-3">
+            <button
+              onClick={handleValidate}
+              disabled={validating}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm text-abz-blue bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50"
+            >
+              <FiRefreshCw size={16} className={validating ? 'animate-spin' : ''} />
+              {validating ? 'Validando...' : 'Validar Auto-Correção'}
+            </button>
+            
             {['pendente_revisao', 'erro', 'rascunho', 'revisao_rejeitado'].includes(evento.status) ? (
               <>
                 <button
