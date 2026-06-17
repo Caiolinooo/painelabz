@@ -3,7 +3,7 @@
 import React from 'react';
 import { ESocialEvento, ESocialEventoStatus } from '@/types/e-social';
 import { useI18n } from '@/contexts/I18nContext';
-import { FiEye, FiEdit2, FiSend, FiTrash2, FiRefreshCw } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiSend, FiTrash2, FiRefreshCw, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 
 interface EventosListProps {
   eventos: ESocialEvento[];
@@ -96,9 +96,14 @@ export default function EventosList({ eventos, loading, onView, onEdit, onSend, 
                   {evento.cpf_trabalhador || '-'}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle[evento.status] || 'bg-gray-100 text-gray-700'}`}>
-                    {t(`eSocial.eventStatus.${statusI18nKey[evento.status] || evento.status}`)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle[evento.status] || 'bg-gray-100 text-gray-700'}`}>
+                      {t(`eSocial.eventStatus.${statusI18nKey[evento.status] || evento.status}`)}
+                    </span>
+                    {(evento.ultimo_erro || evento.erros_processamento) && (
+                      <FiAlertTriangle size={14} className="text-red-500" title="Possui erros pendentes" />
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                   {new Date(evento.created_at).toLocaleDateString()}

@@ -348,7 +348,7 @@ export async function upsertConfiguracoes(configs: { chave: string; valor: any; 
 
 export async function logEnvio(log: {
   evento_id: string;
-  acao: 'envio' | 'consulta' | 'retorno' | 'cancelamento' | 'geracao_xml';
+  acao: 'envio' | 'consulta' | 'retorno' | 'cancelamento' | 'geracao_xml' | 'validacao_api' | 'correcao_campos';
   request_body?: string;
   response_body?: string;
   status_code?: number;
@@ -788,41 +788,15 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
 }
 
 export function validateEventXML(xml: string): { valido: boolean; erros: string[] } {
-  const erros: string[] = [];
-
-  const hasHeader = xml.startsWith('<?xml');
-  if (!hasHeader) {
-    erros.push('Declaração XML ausente');
-  }
-
-  const hasEnvelope = xml.includes('<eSocial');
-  if (!hasEnvelope) {
-    erros.push('Tag raiz <eSocial> ausente');
-  }
-
-  const hasClosing = xml.includes('</eSocial>');
-  if (!hasClosing) {
-    erros.push('Fechamento da tag <eSocial> ausente');
-  }
-
-  const eventMatch = xml.match(/<evt(\w+)(\s|>)/);
-  if (!eventMatch) {
-    erros.push('Tag de evento <evtXXXX> ausente');
-  }
-
-  const ideEventoPresent = xml.includes('<ideEvento>');
-  if (!ideEventoPresent) {
-    erros.push('Bloco <ideEvento> obrigatório ausente');
-  }
-
-  const ideEmpregadorPresent = xml.includes('<ideEmpregador>');
-  if (!ideEmpregadorPresent) {
-    erros.push('Bloco <ideEmpregador> obrigatório ausente');
-  }
-
+  const validador = require('@/lib/e-social/esocialValidator');
+  const codigoEventoMatch = xml.match(/<evt(\w+)(\s|>)/);
+  const codigoEvento = codigoEventoMatch ? `S-${codigoEventoMatch[1]}` : 'Desconhecido';
+  
+  const resultado = validador.validarXMLGerado(xml, codigoEvento);
+  
   return {
-    valido: erros.length === 0,
-    erros,
+    valido: resultado.valido,
+    erros: resultado.erros.map((e: any) => e.mensagem)
   };
 }
 
@@ -833,107 +807,15 @@ function getField(obj: any, field: string): any {
 }
 
 export function validateEventData(eventoCodigo: string, dadosEvento: any): { valido: boolean; erros: string[] } {
-  const erros: string[] = [];
-
-  switch (eventoCodigo) {
-    case 'S-2200':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'nome')) erros.push('Nome do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'dataAdmissao')) erros.push('Data de admissão é obrigatória');
-      if (!getField(dadosEvento, 'tipoAdmissao')) erros.push('Tipo de admissão é obrigatório');
-      if (!getField(dadosEvento, 'cargo')) erros.push('Cargo é obrigatório');
-      if (!getField(dadosEvento, 'matricula') && !dadosEvento.matricula) erros.push('Matrícula é obrigatória');
-      break;
-
-    case 'S-2190':
-    case 'S-2205':
-    case 'S-2206':
-    case 'S-2210':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      break;
-
-    case 'S-2220':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'tipoExame')) erros.push('Tipo de exame é obrigatório');
-      if (!getField(dadosEvento, 'matricula') && !dadosEvento.matricula) erros.push('Matrícula é obrigatória');
-      break;
-
-    case 'S-2230':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'tipoAfastamento')) erros.push('Tipo de afastamento é obrigatório');
-      break;
-
-    case 'S-2240': {
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'matricula') && !dadosEvento.matricula) erros.push('Matrícula é obrigatória');
-      
-      const dtIniCondicao = getField(dadosEvento, 'dtIniCondicao');
-      if (!dtIniCondicao) {
-        erros.push('Data de início da condição é obrigatória');
-      }
-
-      const dscAtivDes = getField(dadosEvento, 'dscAtivDes') || getField(dadosEvento, 'condicoesAmbiente');
-      if (!dscAtivDes) {
-        erros.push('Descrição das atividades é obrigatória');
-      }
-
-      const riscos = getField(dadosEvento, 'riscos') || [];
-      if (!Array.isArray(riscos) || riscos.length === 0) {
-        // Para compatibilidade, se tiver o fator simples antigo, não rejeitamos
-        const codFatRisco = getField(dadosEvento, 'codFatRisco') || getField(dadosEvento, 'fatorRisco');
-        if (!codFatRisco) {
-          erros.push('Pelo menos um fator de risco deve ser informado');
-        }
-      } else {
-        riscos.forEach((r: any, idx: number) => {
-          if (!r.codAgNoc) {
-            erros.push(`Fator de risco #${idx + 1}: Código do agente nocivo é obrigatório`);
-          }
-          if (r.utilizEPI === '2' && !r.caEPI) {
-            erros.push(`Fator de risco #${idx + 1}: Número do CA do EPI é obrigatório quando o EPI é utilizado`);
-          }
-        });
-      }
-
-      const respReg = getField(dadosEvento, 'respReg');
-      if (respReg) {
-        if (!respReg.cpfResp) erros.push('CPF do responsável técnico é obrigatório');
-        if (!respReg.ideOC) erros.push('Órgão de classe do responsável técnico é obrigatório');
-        if (!respReg.nrOC) erros.push('Número de registro do responsável técnico é obrigatório');
-        if (!respReg.ufOC) erros.push('UF do órgão de classe do responsável técnico é obrigatório');
-      }
-      break;
-    }
-
-    case 'S-2298':
-    case 'S-2299':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'dataDesligamento')) erros.push('Data de desligamento é obrigatória');
-      break;
-
-    case 'S-2300':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'tpRegPrev')) erros.push('Tipo de regime previdenciário é obrigatório');
-      break;
-
-    case 'S-2399':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'dtTerm')) erros.push('Data de término é obrigatória');
-      break;
-
-    case 'S-2400':
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      if (!getField(dadosEvento, 'tpInsc')) erros.push('Tipo de inscrição é obrigatório');
-      if (!getField(dadosEvento, 'nrInsc')) erros.push('Número de inscrição é obrigatório');
-      break;
-
-    default:
-      if (!dadosEvento.cpf && !dadosEvento.dadosEspecificos?.cpf) erros.push('CPF do trabalhador é obrigatório');
-      break;
-  }
-
+  // Importação estática aqui para evitar circular dependency caso haja
+  const validador = require('@/lib/e-social/esocialValidator');
+  const resultado = validador.validarDadosEvento(eventoCodigo, dadosEvento);
+  
   return {
-    valido: erros.length === 0,
-    erros,
+    valido: resultado.valido && resultado.camposPendentes.length === 0,
+    erros: [
+      ...resultado.erros.map((e: any) => e.mensagem),
+      ...resultado.camposPendentes.map((c: any) => `Campo pendente: ${c.label}`)
+    ]
   };
 }

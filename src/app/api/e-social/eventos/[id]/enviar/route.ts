@@ -3,6 +3,7 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { enviarEvento } from '@/lib/e-social/client';
 import { generateEventXML, validateEventXML, validateEventData, updateEvento, logEnvio } from '@/services/eSocialService';
+import { validarEPrepararEnvio } from '@/lib/e-social/preEnvioGateway';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,7 @@ export async function POST(
       }, { status: 400 });
     }
 
+    // === Gateway de Pré-Envio: validação + auto-correção + rebuild XML ===
     const { data: configGeral } = await supabaseAdmin
       .from('esocial_configuracoes')
       .select('valor')
@@ -92,87 +94,71 @@ export async function POST(
     const isProducao = configGeral?.valor?.ambiente === 'producao';
     const tpAmbValue = isProducao ? 1 : 2;
 
-    const xmlContemAmbIncorrecto = evento.xml_gerado && 
-      (isProducao ? evento.xml_gerado.includes('<tpAmb>2</tpAmb>') : evento.xml_gerado.includes('<tpAmb>1</tpAmb>'));
+    let xmlParaEnvio = evento.xml_gerado || '';
+    try {
+      const gatewayResult = await validarEPrepararEnvio(evento, tpAmbValue);
 
-    // Detecta o bug histórico do S-2220: <aso><resAso> sem <dtAso> antes (schema inválido)
-    const xmlContemBugAso = evento.xml_gerado &&
-      evento.evento_codigo === 'S-2220' &&
-      /<aso>\s*<resAso>/.test(evento.xml_gerado);
-
-    // Detecta datas inválidas no XML (ex: mês 13 ou dia 13 como mês — YYYY-13-DD)
-    const xmlContemDataInvalida = evento.xml_gerado &&
-      /\d{4}-(1[3-9]|[2-9]\d)-\d{2}/.test(evento.xml_gerado);
-
-    if (!evento.xml_gerado || xmlContemAmbIncorrecto || xmlContemBugAso || xmlContemDataInvalida) {
-      try {
-        const raw = evento.dados_evento?.dadosEspecificos || evento.dados_evento || {};
-        // Resolve the best available matrícula: prefer matricula_esocial (set by corrigir-matricula)
-        // over the plain matricula column, checking dadosEspecificos first.
-        const resolvedMatricula = raw.matricula_esocial
-          || evento.dados_evento?.matricula_esocial
-          || raw.matricula
-          || evento.dados_evento?.matricula
-          || evento.matricula
-          || '';
-        const eventData = {
-          cpf: evento.cpf_trabalhador || '',
-          cnpj: evento.cnpj_empregador || '',
-          tpAmb: tpAmbValue,
-          indRetif: evento.dados_evento?.indRetif || 1,
-          matricula: resolvedMatricula,
-          matricula_esocial: resolvedMatricula,
-          dadosEspecificos: {
-            ...raw,
-            tipoExame: raw.tipoExame || raw.tipo_exame || 'periodico',
-            dataRealizacao: raw.dataRealizacao || raw.data_realizacao || '',
-            resultado: raw.resultado || 'apto',
-            medico_nome: raw.medico || raw.medico_nome || raw.nmMed || '',
-            medico_crm: raw.crm || raw.medico_crm || raw.nrCRM || '',
-            medico_uf: raw.uf || raw.medico_uf || raw.ufCRM || 'RJ',
-            medico_pcmso_nome: raw.medico_pcmso_nome || raw.medicoPcmsoNome || raw.medico_pcmso || '',
-            medico_pcmso_crm: raw.medico_pcmso_crm || raw.medicoPcmsoCrm || raw.crm_pcmso || '',
-            medico_pcmso_uf: raw.medico_pcmso_uf || raw.medicoPcmsoUf || raw.uf_pcmso || 'RJ',
-            exames_realizados: raw.exames_realizados || raw.exames || [],
-            nome_clinica: raw.nome_clinica || raw.nomeClinica || '',
-            matricula: resolvedMatricula,
-            matricula_esocial: resolvedMatricula,
-          },
-        };
-
-        const dataValidation = validateEventData(evento.evento_codigo, eventData);
-
-        if (dataValidation.valido) {
-          const xml = generateEventXML(evento.evento_codigo, eventData);
-          const xmlValidation = validateEventXML(xml);
-
-          if (xmlValidation.valido) {
-            await updateEvento(evento.id, { xml_gerado: xml });
-            evento.xml_gerado = xml;
-
-            await logEnvio({
-              evento_id: evento.id,
-              acao: 'geracao_xml',
-              request_body: JSON.stringify(eventData),
-              response_body: xml,
-              sucesso: true,
-            });
-          } else {
-            return NextResponse.json({
-              error: `Evento não possui XML gerado e a regeneração automática falhou na validação: ${xmlValidation.erros.join('; ')}`,
-            }, { status: 400 });
-          }
-        } else {
+      if (!gatewayResult.pronto) {
+        // Se há campos pendentes, o usuário precisa corrigir via UI
+        if (gatewayResult.camposPendentes.length > 0) {
           return NextResponse.json({
-            error: `Evento não possui XML gerado e os dados salvos são insuficientes para regenerar: ${dataValidation.erros.join('; ')}`,
+            error: 'Evento possui campos obrigatórios pendentes que precisam ser preenchidos antes do envio.',
+            camposPendentes: gatewayResult.camposPendentes,
+            erros: gatewayResult.erros,
+            correcoesAplicadas: gatewayResult.correcoesAplicadas,
           }, { status: 400 });
         }
-      } catch (regErr: any) {
+        // Erros estruturais que não podem ser corrigidos
         return NextResponse.json({
-          error: `Evento não possui XML gerado e a regeneração automática encontrou um erro: ${regErr.message || regErr}`,
+          error: `Validação pré-envio falhou: ${gatewayResult.erros.join('; ')}`,
+          erros: gatewayResult.erros,
+        }, { status: 400 });
+      }
+
+      // Gateway retornou XML válido — usar o XML do gateway
+      xmlParaEnvio = gatewayResult.xml || xmlParaEnvio;
+
+      // Persistir correções e XML regenerado se houve mudanças
+      if (gatewayResult.correcoesAplicadas.length > 0 || gatewayResult.xml) {
+        const updatePayload: any = { updated_at: new Date().toISOString() };
+        if (gatewayResult.xml) updatePayload.xml_gerado = gatewayResult.xml;
+        if (gatewayResult.dadosCorrigidos) updatePayload.dados_evento = gatewayResult.dadosCorrigidos;
+
+        await supabaseAdmin
+          .from('esocial_eventos')
+          .update(updatePayload)
+          .eq('id', id);
+
+        evento.xml_gerado = xmlParaEnvio;
+
+        await logEnvio({
+          evento_id: evento.id,
+          acao: 'geracao_xml',
+          request_body: ***REMOVED***
+            correcoesAplicadas: gatewayResult.correcoesAplicadas,
+            acao_interna: 'gateway_pre_envio',
+          }),
+          response_body: xmlParaEnvio,
+          sucesso: true,
+        });
+      }
+    } catch (gatewayErr: any) {
+      console.error('[Enviar] Erro no gateway de pré-envio:', gatewayErr);
+      // Fallback: se o gateway falhar, tentar enviar com o XML existente
+      if (!xmlParaEnvio) {
+        return NextResponse.json({
+          error: `Validação pré-envio falhou: ${gatewayErr.message || gatewayErr}`,
         }, { status: 400 });
       }
     }
+
+    // Garantir que temos XML para enviar
+    if (!xmlParaEnvio) {
+      return NextResponse.json({
+        error: 'Evento não possui XML gerado e a validação pré-envio não conseguiu gerar um XML válido.',
+      }, { status: 400 });
+    }
+
 
     const statusAntes = evento.status;
 
