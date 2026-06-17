@@ -1,6 +1,14 @@
 # Changelog
 
-## [5.25.3] - 2026-06-09
+## [5.25.4] - 2026-06-17
+
+### Added
+- **e-Social XML Auto-Cura (Auto-Rebuild)**: Added an automatic fallback mechanism in `preEnvioGateway.ts`. If an event stored in the database has an older, structurally broken XML (e.g., missing `<nmMed>` or `<dtExm>`), the gateway now detects the failure and forcibly completely rebuilds the XML payload right before sending, allowing older events to self-heal.
+- **e-Social Safe Matrícula Sync**: Updated the e-Social processing pipeline (`consultar-lote/route.ts`). Employee matricula (`matricula_esocial`) is now safely synchronized *only* when the e-Social server returns a `PROCESSADO` (success) status for the event, avoiding contaminating the employee's registry with rejected/invalid matriculas. Removed the eager update from `corrigir-matricula/route.ts`.
+
+### Fixed
+- **S-2220 Missing Elements**: Fixed an issue where tags like `<nmMed>`, `<nrCRM>`, and `<dtExm>` could be generated completely empty despite the data existing. `eSocialService.ts` now properly merges root-level fields (which is how flat payloads structure the ASO data) with the `dadosEspecificos` payload, ensuring all required physician and exam tags are correctly populated.
+- **S-2220 Strict Validator Rules**: Added strict structural validation checks for `<dtExm>` and `<nmMed>` directly inside `esocialValidator.ts` to block and report XML failures locally instead of sending them to the e-Social XSD schema validator.## [5.25.3] - 2026-06-09
 
 ### Fixed
 - **S-2220 XML Schema Validation**: Resolved a schema error (`invalid child element 'resAso'`) caused by the omission of the `<dtAso>` element when date source fields are empty. Implemented robust date fallbacks including additional fields (`esp.dtAso`, `esp.data_aso`, `esp.dataAso`) and a default fallback to the current date.
