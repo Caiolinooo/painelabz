@@ -64,6 +64,18 @@ export async function POST(request: NextRequest) {
         if (resultado.situacao === 'PROCESSADO') {
           updateData.status = 'processado';
           if (resultado.numeroRecibo) updateData.numero_recibo = resultado.numeroRecibo;
+
+          // Se processou com sucesso no e-Social, garante que a matrícula do funcionário
+          // no nosso banco de dados esteja atualizada com a matrícula usada neste evento aceito.
+          if (evento.cpf_trabalhador && evento.matricula) {
+            await supabaseAdmin
+              .from('gt_colaboradores')
+              .update({
+                matricula_esocial: evento.matricula,
+                updated_at: new Date().toISOString()
+              })
+              .eq('cpf', evento.cpf_trabalhador);
+          }
         } else if (resultado.situacao === 'ERRO' || resultado.situacao === 'REJEITADO') {
           updateData.status = 'erro';
           updateData.erros_processamento = resultado.erros;
