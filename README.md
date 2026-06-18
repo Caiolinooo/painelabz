@@ -198,6 +198,11 @@ npm run db:cadastro-fields        # Campos adicionais
 
 ## Ultimas Atualizacoes
 
+### v5.26.0 - Relatório de Estoque de EPI (PDF)
+- **Geração de PDF Consolidados**: Relatório completo de estoque atual de EPIs com opção de detalhamento de estoque baixo e alertas visuais.
+- **Histórico de Movimentações**: Inclusão opcional do histórico de movimentações (Entradas, Saídas, Ajustes e Devoluções) no PDF, filtrado por período de data de início/fim.
+- **Filtros e Configurações**: Nova interface modal para escolha do tipo de relatório e filtros temporais.
+
 ### v5.25.4 - Auto-Cura de XML do e-Social e Sincronização de Matrícula
 - **Sistema de Auto-Cura de XML**: Eventos com XML quebrado gerados em versões anteriores agora são detectados e refeitos automaticamente (auto-rebuild) durante o envio.
 - **Merge de Dados S-2220**: Adicionado merge de chaves root no payload do evento, prevenindo que tags de médico e exame (como `<nmMed>` e `<dtExm>`) sejam enviadas vazias.
@@ -286,6 +291,27 @@ npm run db:cadastro-fields        # Campos adicionais
 - Extensao do sistema de permissoes com 13 novas permissoes
 - Registro de modulos e internacionalizacao (466 entradas)
 
+### v5.14.0 - ACL Hierárquico Refatorado e Contratos
+- **ACL Hierárquico Refatorado**: Sistema de permissões completamente reestruturado com módulos separados por categoria, novas permissões para Férias, Lista de Presença e Contratos, e hierarquia de acesso refinada por papel (ADMIN/MANAGER/USER).
+- **Contratos com Templates e Campos Multi-Tipo**: Modelos reutilizáveis com mapeamento de signatários, campos multi-tipo (texto, checkbox, assinatura, rubrica) com editor visual de posicionamento e fluxo de assinatura em lote.
+- **Streaming Real na IA Chat**: Canal de IA migrado para streaming real com processamento recursivo de tools.
+- **Expansão de Módulos**: Adicionados módulos de Férias, Biblioteca, Ajuda, Compras, Poliweb, Man-Schedule, Chat Corporativo e Integração ERP.
+- **i18n Ampliado**: Cobertura de tradução expandida para novos módulos e fluxos de permissões.
+
+### v5.13.0 - Estabilização da Voz Local
+- **Voz Local**: Pipeline PCM16 24kHz para reduzir latência e eliminar erros de decodificação.
+- **Orquestrador LiveKit v1.0**: Migração para a nova API de Agentes com fallback para compatibilidade.
+- **Diagnóstico WebRTC**: Telemetria ativa para monitoramento do canal de voz em tempo real.
+
+### v5.12.0 - Agente de Voz Real-Time e Notificações
+- **Agente de Voz Real-Time (LiveKit)**: Integração nativa de WebRTC de alto desempenho.
+- **Auto-Recuperação e Resiliência**: Prevenção do ciclo de auto-kick e monitoramento via `useConnectionState`.
+- **Otimização de Notificações (EPI)**: Envio de e-mails de estoque crítico restrito aos responsáveis setoriais.
+
+### v5.11.0 - Expansão Internacional e Workers Locais
+- **Expansão Internacional (i18n)**: Suporte completo PT-BR / EN-US nos módulos de Contratos, Assinaturas e Reembolsos.
+- **Workers Locais PDF**: Renderização de PDFs offline local (`public/workers`) para privacidade e performance.
+
 ---
 
 ## Changelog
@@ -320,47 +346,6 @@ npm run dev
 
 > [!IMPORTANT]
 > Verifique se as variáveis de `DATABASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` estão corretamente configuradas no seu `.env.local` antes de iniciar.
-
-## 🚀 Últimas Atualizações (v5.14.0)
-
-- **ACL Hierárquico Refatorado**: Sistema de permissões completamente reestruturado com módulos separados por categoria, novas permissões para Férias, Lista de Presença e Contratos, e hierarquia de acesso refinada por papel (ADMIN/MANAGER/USER).
-- **Contratos com Templates e Campos Multi-Tipo**: Módulo de contratos agora suporta templates reutilizáveis, campos de texto, checkbox, assinatura e rubrica em lote, com editor visual de posicionamento e fluxo de assinatura em lote por signatário.
-- **Streaming Real na IA Chat**: Canal de IA migrado de streaming simulado para streaming real com processamento recursivo de tools, garantindo respostas mais rápidas e precisas.
-- **Expansão de Módulos do Sistema**: Adicionados módulos de Férias, Biblioteca, Ajuda, Compras, Poliweb, Man-Schedule, Chat Corporativo e Integração ERP com permissões dedicadas.
-- **i18n Ampliado**: Cobertura de tradução expandida para os novos módulos, contratos, assinaturas e novos fluxos de permissões.
-
-## 🚀 Destaques Recentes (v5.26.0)
-
-- **Relatório de Estoque de EPI**: Nova funcionalidade que permite gerar relatórios em PDF com níveis de estoque e histórico de movimentações filtrado por período.
-
-## 🚀 Destaques Recentes (v5.13.0)
-
-- **Estabilização da Voz Local**: Pipeline PCM16 24kHz que reduz latência e elimina erros de decodificação no cluster local.
-- **Orquestrador LiveKit v1.0**: Migração para nova API de Agentes com fallback para compatibilidade.
-- **Diagnóstico WebRTC**: Telemetria ativa para monitoramento de saúde do canal de voz em tempo real.
-
-## 🚀 Destaques Recentes (v5.12.0)
-
-- **Agente de Voz Real-Time (LiveKit)**: Integração nativa de WebRTC de alto desempenho, garantindo processamento de voz bi-direcional para suporte interativo sem fricção.
-- **Auto-Recuperação e Resiliência**: Identidades de sessão dinâmicas que previnem o ciclo de auto-kick e monitoramento avançado via `useConnectionState` para suportar oscilações de rede.
-- **Otimização de Notificações (EPI)**: Restrição inteligente do envio de e-mails de estoque crítico unicamente aos IDs listados como responsáveis setoriais cadastrados.
-
-## 🚀 Destaques Recentes (v5.11.0)
-
-- **Expansão Internacional (i18n)**: Suporte PT-BR / EN-US completo integrado aos módulos de Contratos, Assinaturas e Reembolsos.
-- **Locais e Datas Dinâmicas**: Patch avançado no motor JavaScript Date para renderização inteligente de fuso-horário global.
-- **Workers Locais PDF**: Processamento de renderização de PDFs offline local (`public/workers`) para máxima privacidade e performance sem CDNs.
-
----
-
-## 🚀 Versões Anteriores (Destaques)
-
-- **Controle de Estoque (v4.10)**: Gestão de inventário e movimentações de EPIs.
-- **Busca Global (v4.8)**: Sistema unificado de pesquisa.
-
-Para o histórico completo, consulte o [CHANGELOG.md](CHANGELOG.md).
-
----
 
 <p align="center">
 Desenvolvido com ❤️ pela equipe ABZ Group.
