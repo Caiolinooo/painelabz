@@ -23,6 +23,7 @@ export default function AdminEPIPage() {
     const [activeTab, setActiveTab] = useState<TabType>('requests');
     const [registrations, setRegistrations] = useState<EPIWithUser[]>([]);
     const [epiTypes, setEpiTypes] = useState<EPIType[]>([]);
+    const [stocks, setStocks] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<EPIWithUser | null>(null);
@@ -50,9 +51,10 @@ export default function AdminEPIPage() {
             setIsLoading(true);
             setError(null);
 
-            const [registrationsRes, typesRes] = await Promise.all([
+            const [registrationsRes, typesRes, stockRes] = await Promise.all([
                 fetch('/api/epi'),
-                fetch('/api/epi/types')
+                fetch('/api/epi/types'),
+                fetch('/api/epi/stock?view=levels')
             ]);
 
             if (!registrationsRes.ok) throw new Error('Erro ao carregar solicitações');
@@ -62,6 +64,11 @@ export default function AdminEPIPage() {
             if (typesRes.ok) {
                 const typesData = await typesRes.json();
                 setEpiTypes(typesData.data || []);
+            }
+
+            if (stockRes.ok) {
+                const stockData = await stockRes.json();
+                setStocks(stockData.data || []);
             }
         } catch (err: any) {
             setError(err.message);
@@ -273,7 +280,7 @@ export default function AdminEPIPage() {
                         ) : activeTab === 'requests' ? (
                             <RequestsTable registrations={registrations} onSelect={handleOpenRequestModal} />
                         ) : activeTab === 'types' ? (
-                            <TypesGrid types={epiTypes} onCreate={handleCreateType} onDelete={handleDeleteType} showModal={showTypeModal} setShowModal={setShowTypeModal} />
+                            <TypesGrid types={epiTypes} stocks={stocks} onCreate={handleCreateType} onDelete={handleDeleteType} showModal={showTypeModal} setShowModal={setShowTypeModal} />
                         ) : activeTab === 'kits' ? (
                             <KitManagement />
                         ) : (
@@ -412,9 +419,15 @@ function RequestsTable({ registrations, onSelect }: { registrations: EPIWithUser
     );
 }
 
-function TypesGrid({ types, onCreate, onDelete, showModal, setShowModal }: { types: EPIType[]; onCreate: (d: any) => Promise<void>; onDelete: (id: string) => void; showModal: boolean; setShowModal: (s: boolean) => void }) {
+function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowModal }: { types: EPIType[]; stocks?: any[]; onCreate: (d: any) => Promise<void>; onDelete: (id: string) => void; showModal: boolean; setShowModal: (s: boolean) => void }) {
     const [formData, setFormData] = useState({ name: '', description: '', category: '', ca_number: '', is_required: false });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Filter states
+    const [filterName, setFilterName] = useState('');
+    const [filterCA, setFilterCA] = useState('');
+    const [filterValidity, setFilterValidity] = useState('');
+    const [filterQuantity, setFilterQuantity] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -427,31 +440,125 @@ function TypesGrid({ types, onCreate, onDelete, showModal, setShowModal }: { typ
         }
     };
 
+    const stockMap = (stocks || []).reduce((acc: any, s: any) => {
+        acc[s.epi_type_id] = s;
+        return acc;
+    }, {} as Record<string, any>);
+
+    // Apply filters
+    let filteredTypes = types;
+
+    if (filterName) {
+        filteredTypes = filteredTypes.filter(t => 
+            t.name.toLowerCase().includes(filterName.toLowerCase())
+        );
+    }
+
+    if (filterCA) {
+        filteredTypes = filteredTypes.filter(t => 
+            t.ca_number?.toString().includes(filterCA)
+        );
+    }
+
+    if (filterValidity) {
+        const targetDate = new Date(filterValidity);
+        filteredTypes = filteredTypes.filter(t => {
+            if (!t.ca_validity_date) return false;
+            const valDate = new Date(t.ca_validity_date);
+            return valDate <= targetDate;
+        });
+    }
+
+    if (filterQuantity !== '') {
+        const qtyLimit = parseInt(filterQuantity);
+        if (!isNaN(qtyLimit)) {
+            filteredTypes = filteredTypes.filter(t => {
+                const qty = stockMap[t.id]?.current_quantity ?? 0;
+                return qty <= qtyLimit;
+            });
+        }
+    }
+
     return (
         <div>
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
+                <h3 className="font-semibold text-gray-700">Tipos de EPI ({filteredTypes.length})</h3>
                 <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"><FiPlus /> Novo Tipo</button>
             </div>
-            {types.length === 0 ? <div className="text-center py-12 text-gray-500">Nenhum tipo cadastrado.</div> : (
+
+            {/* Filter Bar */}
+            <div className="bg-gray-50 border rounded-lg p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-gray-800">
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Nome do EPI</label>
+                    <input
+                        type="text"
+                        placeholder="Filtrar por nome..."
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterName}
+                        onChange={(e) => setFilterName(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Número do CA</label>
+                    <input
+                        type="text"
+                        placeholder="Filtrar por CA..."
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterCA}
+                        onChange={(e) => setFilterCA(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Validade CA (Até)</label>
+                    <input
+                        type="date"
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterValidity}
+                        onChange={(e) => setFilterValidity(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Estoque Máximo (Qtd &le;)</label>
+                    <input
+                        type="number"
+                        placeholder="Qtd em estoque..."
+                        min="0"
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterQuantity}
+                        onChange={(e) => setFilterQuantity(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {filteredTypes.length === 0 ? <div className="text-center py-12 text-gray-500">Nenhum tipo encontrado.</div> : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {types.map(t => (
-                        <div key={t.id} className="border rounded-lg p-4 relative">
-                            <h3 className="font-bold">{t.name}</h3>
-                            <p className="text-sm text-gray-500">{t.category}</p>
-                            {t.ca_number && (
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-500">CA: {t.ca_number}</span>
-                                    {t.ca_validity_date && (
-                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${CA_VALIDITY_COLORS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}`}>
-                                            {CA_VALIDITY_LABELS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}
-                                        </span>
+                    {filteredTypes.map(t => {
+                        const stock = stockMap[t.id];
+                        return (
+                            <div key={t.id} className="border rounded-lg p-4 relative bg-white shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <h3 className="font-bold text-gray-900">{t.name}</h3>
+                                    <p className="text-sm text-gray-500">{t.category}</p>
+                                    {t.ca_number && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs text-gray-500 font-medium">CA: {t.ca_number}</span>
+                                            {t.ca_validity_date && (
+                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${CA_VALIDITY_COLORS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}`}>
+                                                    {CA_VALIDITY_LABELS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}
+                                                </span>
+                                            )}
+                                        </div>
                                     )}
+                                    {t.ca_manufacturer && <p className="text-xs text-gray-400 mt-0.5 truncate" title={t.ca_manufacturer}>{t.ca_manufacturer}</p>}
                                 </div>
-                            )}
-                            {t.ca_manufacturer && <p className="text-xs text-gray-400 mt-0.5">{t.ca_manufacturer}</p>}
-                            <button onClick={() => onDelete(t.id)} className="absolute top-4 right-4 text-red-500"><FiClose /></button>
-                        </div>
-                    ))}
+                                <div className="flex justify-between items-center mt-3 pt-2 border-t text-xs text-gray-600">
+                                    <span>Estoque: <strong className={stock?.is_low_stock ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>{stock?.current_quantity ?? 0}</strong></span>
+                                    {stock?.location && <span className="truncate max-w-[120px]" title={stock.location}>{stock.location}</span>}
+                                </div>
+                                <button onClick={() => onDelete(t.id)} className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"><FiClose /></button>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
             {showModal && (

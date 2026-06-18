@@ -202,6 +202,7 @@ npm run db:cadastro-fields        # Campos adicionais
 - **Geração de PDF Consolidados**: Relatório completo de estoque atual de EPIs com colunas dedicadas para CA (Certificado de Aprovação), Data de Validade do CA e Local de Armazenamento, com destaque visual para estoque abaixo do mínimo.
 - **Histórico de Movimentações**: Inclusão opcional do histórico de movimentações (Entradas, Saídas, Ajustes e Devoluções) no PDF, filtrado por período de data de início/fim.
 - **Filtros e Configurações**: Nova interface modal com filtros avançados por Nome do EPI, Número do CA, Data de Validade do CA e Estoque Máximo permitido.
+- **Aba de Tipos de EPI com Filtros**: Implementados filtros avançados (Nome, CA, Validade, Estoque Máximo) diretamente na lista de Tipos de EPI, integrando a exibição em tempo real da quantidade e localização no card de cada equipamento.
 
 ### v5.25.4 - Auto-Cura de XML do e-Social e Sincronização de Matrícula
 - **Sistema de Auto-Cura de XML**: Eventos com XML quebrado gerados em versões anteriores agora são detectados e refeitos automaticamente (auto-rebuild) durante o envio.
