@@ -7,6 +7,8 @@
 - **Detalhamento do Relatório**: Inclusão de colunas dedicadas de CA (Certificado de Aprovação), Data de Validade do CA e Local de Armazenamento na tabela consolidada do PDF.
 - **Filtros Avançados no Modal**: Adicionados filtros de Nome do EPI, Número do CA, Data Limite de Validade do CA e Estoque Máximo Permitido na interface de configuração do relatório.
 - **Filtros e Estoque em Tipos de EPI**: Implementada a barra de filtros (Nome, CA, Validade, Estoque Máximo) na aba "Tipos de EPI", integrando a exibição em tempo real da quantidade em estoque e local de armazenamento no card de cada equipamento.
+- **Variações de Tamanho e Sub-divisões de EPI**: Adicionada a capacidade de definir tamanhos ou sub-divisões (ex: "38, 39, 40" ou "P, M, G") no cadastro de Tipos de EPI. O sistema gera automaticamente as variações de estoque associadas a cada tamanho.
+- **Visualização Hierárquica de Estoque**: Os cards da aba "Tipos de EPI" agora agrupam de forma hierárquica as variações de tamanho sob o EPI principal (pai), exibindo o estoque de cada tamanho individualmente, além do estoque total agregado e status de estoque baixo consolidado do equipamento.
 - **Filtros Personalizados de Relatório**: Adicionado modal para selecionar o tipo de visualização (Estoque Completo, Estoque Baixo ou Histórico de Movimentações) e filtros de data (início/fim) para o histórico.
 
 ### Changed

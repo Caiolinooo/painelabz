@@ -155,15 +155,44 @@ export default function AdminEPIPage() {
 
     const handleCreateType = async (data: any) => {
         try {
+            const { sizes, ...rootData } = data;
+            
+            // 1. Create the root type
             const res = await fetch('/api/epi/types', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(rootData)
             });
-            if (!res.ok) throw new Error('Erro ao criar tipo');
+            if (!res.ok) throw new Error('Erro ao criar tipo base');
+            const rootJson = await res.json();
+            const rootType = rootJson.data;
+
+            // 2. Create children if sizes were provided
+            if (sizes && rootType?.id) {
+                const sizeList = sizes.split(',')
+                    .map((s: string) => s.trim())
+                    .filter((s: string) => s.length > 0);
+
+                for (const sizeVal of sizeList) {
+                    const childRes = await fetch('/api/epi/types', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...rootData,
+                            name: `${rootData.name} - Tam ${sizeVal}`, // Visual helper name
+                            parent_id: rootType.id,
+                            size: sizeVal
+                        })
+                    });
+                    if (!childRes.ok) {
+                        console.error(`Failed to create size variation: ${sizeVal}`);
+                    }
+                }
+            }
+
             await loadData();
             setShowTypeModal(false);
-            toast.success('Tipo criado com sucesso');
+            toast.success(sizes ? 'Tipo base e variações de tamanho criados com sucesso' : 'Tipo criado com sucesso');
         } catch (err: any) {
             toast.error(err.message);
         }
@@ -420,7 +449,7 @@ function RequestsTable({ registrations, onSelect }: { registrations: EPIWithUser
 }
 
 function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowModal }: { types: EPIType[]; stocks?: any[]; onCreate: (d: any) => Promise<void>; onDelete: (id: string) => void; showModal: boolean; setShowModal: (s: boolean) => void }) {
-    const [formData, setFormData] = useState({ name: '', description: '', category: '', ca_number: '', is_required: false });
+    const [formData, setFormData] = useState({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Filter states
@@ -434,7 +463,7 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
         setIsSubmitting(true);
         try {
             await onCreate(formData);
-            setFormData({ name: '', description: '', category: '', ca_number: '', is_required: false });
+            setFormData({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '' });
         } finally {
             setIsSubmitting(false);
         }
@@ -445,7 +474,7 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
         return acc;
     }, {} as Record<string, any>);
 
-    // Apply filters
+    // Apply filters to flat list
     let filteredTypes = types;
 
     if (filterName) {
@@ -479,10 +508,23 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
         }
     }
 
+    // Build hierarchical view
+    // A root type matches if either it matches directly or any of its child types match
+    const matchingRootIds = new Set<string>();
+    filteredTypes.forEach(t => {
+        if (!t.parent_id) {
+            matchingRootIds.add(t.id);
+        } else {
+            matchingRootIds.add(t.parent_id);
+        }
+    });
+
+    const rootTypesToShow = types.filter(t => !t.parent_id && matchingRootIds.has(t.id));
+
     return (
         <div>
             <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
-                <h3 className="font-semibold text-gray-700">Tipos de EPI ({filteredTypes.length})</h3>
+                <h3 className="font-semibold text-gray-700">Tipos de EPI ({rootTypesToShow.length} principais)</h3>
                 <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"><FiPlus /> Novo Tipo</button>
             </div>
 
@@ -530,40 +572,117 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
                 </div>
             </div>
 
-            {filteredTypes.length === 0 ? <div className="text-center py-12 text-gray-500">Nenhum tipo encontrado.</div> : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {filteredTypes.map(t => {
-                        const stock = stockMap[t.id];
+            {rootTypesToShow.length === 0 ? <div className="text-center py-12 text-gray-500">Nenhum tipo de EPI encontrado.</div> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {rootTypesToShow.map(root => {
+                        const children = types.filter(c => c.parent_id === root.id);
+                        const matchingChildren = children.filter(c => filteredTypes.some(ft => ft.id === c.id));
+                        
+                        // Calculate stock aggregated values
+                        const totalStock = children.length > 0
+                            ? children.reduce((sum, c) => sum + (stockMap[c.id]?.current_quantity ?? 0), 0)
+                            : (stockMap[root.id]?.current_quantity ?? 0);
+                        
+                        const hasLowStock = children.length > 0
+                            ? children.some(c => stockMap[c.id]?.is_low_stock)
+                            : !!stockMap[root.id]?.is_low_stock;
+
+                        const stockLocation = children.length === 0
+                            ? stockMap[root.id]?.location
+                            : null;
+
                         return (
-                            <div key={t.id} className="border rounded-lg p-4 relative bg-white shadow-sm flex flex-col justify-between">
-                                <div>
-                                    <h3 className="font-bold text-gray-900">{t.name}</h3>
-                                    <p className="text-sm text-gray-500">{t.category}</p>
-                                    {t.ca_number && (
+                            <div key={root.id} className="border rounded-lg p-5 relative bg-white shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-start pr-8">
+                                        <div>
+                                            <h3 className="font-bold text-lg text-gray-900">{root.name}</h3>
+                                            <p className="text-sm text-gray-500">{root.category}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {root.ca_number && (
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-xs text-gray-500 font-medium">CA: {t.ca_number}</span>
-                                            {t.ca_validity_date && (
-                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${CA_VALIDITY_COLORS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}`}>
-                                                    {CA_VALIDITY_LABELS[getCAValidityLevel(t.ca_validity_date, t.ca_status)]}
+                                            <span className="text-xs text-gray-500 font-medium">CA: {root.ca_number}</span>
+                                            {root.ca_validity_date && (
+                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${CA_VALIDITY_COLORS[getCAValidityLevel(root.ca_validity_date, root.ca_status)]}`}>
+                                                    {CA_VALIDITY_LABELS[getCAValidityLevel(root.ca_validity_date, root.ca_status)]}
                                                 </span>
                                             )}
                                         </div>
                                     )}
-                                    {t.ca_manufacturer && <p className="text-xs text-gray-400 mt-0.5 truncate" title={t.ca_manufacturer}>{t.ca_manufacturer}</p>}
+                                    {root.ca_manufacturer && <p className="text-xs text-gray-400 mt-0.5 truncate" title={root.ca_manufacturer}>{root.ca_manufacturer}</p>}
+
+                                    {/* Size sub-divisions / Hierarchical stock */}
+                                    {children.length > 0 ? (
+                                        <div className="mt-4 pt-3 border-t">
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sub-divisões / Tamanhos</p>
+                                            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                                                {children.map(c => {
+                                                    const stock = stockMap[c.id];
+                                                    const isMatching = matchingChildren.some(mc => mc.id === c.id);
+                                                    return (
+                                                        <div 
+                                                            key={c.id} 
+                                                            className={`p-2 rounded-md border text-xs flex justify-between items-center transition-all ${
+                                                                isMatching 
+                                                                    ? 'bg-yellow-50/30 border-yellow-200' 
+                                                                    : 'bg-gray-50 border-gray-100 text-gray-400 opacity-60'
+                                                            }`}
+                                                        >
+                                                            <span>Tamanho: <strong className="text-gray-700">{c.size}</strong></span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={stock?.is_low_stock ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>
+                                                                    {stock?.current_quantity ?? 0}
+                                                                </span>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        if (confirm(`Deseja excluir a variação de tamanho ${c.size}?`)) {
+                                                                            onDelete(c.id);
+                                                                        }
+                                                                    }}
+                                                                    className="text-red-400 hover:text-red-600 font-bold text-sm px-1"
+                                                                    title="Excluir variação"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        root.description && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{root.description}</p>
+                                    )}
                                 </div>
-                                <div className="flex justify-between items-center mt-3 pt-2 border-t text-xs text-gray-600">
-                                    <span>Estoque: <strong className={stock?.is_low_stock ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>{stock?.current_quantity ?? 0}</strong></span>
-                                    {stock?.location && <span className="truncate max-w-[120px]" title={stock.location}>{stock.location}</span>}
+
+                                <div className="flex justify-between items-center mt-4 pt-3 border-t text-xs text-gray-600">
+                                    <span>Estoque Total: <strong className={hasLowStock ? "text-red-600 font-bold text-sm" : "text-emerald-600 font-bold text-sm"}>{totalStock}</strong></span>
+                                    {stockLocation && <span className="truncate max-w-[150px]" title={stockLocation}>Local: {stockLocation}</span>}
                                 </div>
-                                <button onClick={() => onDelete(t.id)} className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"><FiClose /></button>
+
+                                <button 
+                                    onClick={() => {
+                                        if (confirm(`Deseja excluir o EPI "${root.name}" e todas as suas variações?`)) {
+                                            onDelete(root.id);
+                                        }
+                                    }} 
+                                    className="absolute top-5 right-5 text-red-400 hover:text-red-600 transition-colors"
+                                    title="Excluir equipamento"
+                                >
+                                    <FiClose className="w-5 h-5" />
+                                </button>
                             </div>
                         );
                     })}
                 </div>
             )}
+
+            {/* Creation Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg max-w-md w-full p-6">
+                    <div className="bg-white rounded-lg max-w-md w-full p-6 text-gray-800">
                         <h2 className="text-xl font-semibold mb-4">Novo Tipo de EPI</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
@@ -576,6 +695,17 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
                                     onChange={(val) => setFormData({ ...formData, ca_number: val })}
                                     label="CA (Certificado de Aprovação)"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tamanhos / Sub-divisões (Opcional - separados por vírgula)</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="ex: 38, 39, 40 ou P, M, G" 
+                                    value={formData.sizes} 
+                                    onChange={(e) => setFormData({ ...formData, sizes: e.target.value })} 
+                                    className="w-full border rounded-lg px-3 py-2" 
+                                />
+                                <p className="text-xs text-gray-400 mt-1">Cria automaticamente variações de estoque para cada tamanho inserido.</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
@@ -604,9 +734,9 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
                             </div>
                             <div className="flex items-center gap-2">
                                 <input type="checkbox" checked={formData.is_required} onChange={(e) => setFormData({ ...formData, is_required: e.target.checked })} id="is_required" />
-                                <label htmlFor="is_required" className="text-sm text-gray-700">EPI Obrigatório</label>
+                                <label htmlFor="is_required" className="text-sm text-gray-700 font-medium">EPI Obrigatório</label>
                             </div>
-                            <div className="flex justify-end gap-3 pt-4">
+                            <div className="flex justify-end gap-3 pt-4 border-t">
                                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg">Cancelar</button>
                                 <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">
                                     {isSubmitting ? 'Salvando...' : 'Salvar'}
