@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiPackage, FiAlertTriangle, FiArrowUp, FiArrowDown, FiRefreshCw, FiPlus, FiSettings, FiTrendingDown, FiTrendingUp } from 'react-icons/fi';
+import { FiPackage, FiAlertTriangle, FiArrowUp, FiArrowDown, FiRefreshCw, FiPlus, FiSettings, FiTrendingDown, FiTrendingUp, FiFileText } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import type { EPIStockWithType, EPIStockMovement, EPIType, StockMovementType } from '@/types/epi';
+import { EPIStockReportModal } from './EPIStockReportModal';
 
 // ==================== MOVEMENT TYPE LABELS ====================
 
@@ -21,6 +22,7 @@ export default function StockManagement() {
     const [isLoading, setIsLoading] = useState(true);
     const [showMovementModal, setShowMovementModal] = useState(false);
     const [showConfigModal, setShowConfigModal] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
     const [selectedStock, setSelectedStock] = useState<EPIStockWithType | null>(null);
     const [epiTypes, setEpiTypes] = useState<EPIType[]>([]);
 
@@ -231,6 +233,12 @@ export default function StockManagement() {
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition"
                 >
                     <FiRefreshCw className="w-4 h-4" /> Inicializar Estoque
+                </button>
+                <button
+                    onClick={() => setShowReportModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition"
+                >
+                    <FiFileText className="w-4 h-4" /> Relatório de Estoque
                 </button>
             </div>
 
@@ -467,6 +475,11 @@ export default function StockManagement() {
                     </div>
                 </div>
             )}
+
+            <EPIStockReportModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+            />
         </div>
     );
 }

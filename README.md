@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.25.3-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.26.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -328,6 +328,10 @@ npm run dev
 - **Streaming Real na IA Chat**: Canal de IA migrado de streaming simulado para streaming real com processamento recursivo de tools, garantindo respostas mais rápidas e precisas.
 - **Expansão de Módulos do Sistema**: Adicionados módulos de Férias, Biblioteca, Ajuda, Compras, Poliweb, Man-Schedule, Chat Corporativo e Integração ERP com permissões dedicadas.
 - **i18n Ampliado**: Cobertura de tradução expandida para os novos módulos, contratos, assinaturas e novos fluxos de permissões.
+
+## 🚀 Destaques Recentes (v5.26.0)
+
+- **Relatório de Estoque de EPI**: Nova funcionalidade que permite gerar relatórios em PDF com níveis de estoque e histórico de movimentações filtrado por período.
 
 ## 🚀 Destaques Recentes (v5.13.0)
 
