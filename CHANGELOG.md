@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.26.0] - 2026-06-18
+
+### Added
+- **Relatório de Estoque de EPI (PDF)**: Nova funcionalidade para geração de relatórios de estoque em formato PDF. O relatório consolida níveis de estoque atuais, alertas de estoque baixo (abaixo do mínimo) e histórico de movimentações (Entradas, Saídas, Ajustes e Devoluções).
+- **Filtros Personalizados de Relatório**: Adicionado modal para selecionar o tipo de visualização (Estoque Completo, Estoque Baixo ou Histórico de Movimentações) e filtros de data (início/fim) para o histórico.
+
+### Changed
+- **Filtros de Data na API de Estoque**: Atualizada a rota `GET /api/epi/stock` e a função `getStockMovements` do backend para aceitar filtros de data de início e fim.
+
 ## [5.25.4] - 2026-06-17
 
 ### Added

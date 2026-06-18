@@ -246,7 +246,9 @@ export async function updateStockConfig(
  */
 export async function getStockMovements(
     epiTypeId?: string,
-    limit: number = 50
+    limit: number = 50,
+    startDate?: string,
+    endDate?: string
 ): Promise<EPIStockMovement[]> {
     let query = supabaseAdmin
         .from('epi_stock_movements')
@@ -259,6 +261,12 @@ export async function getStockMovements(
 
     if (epiTypeId) {
         query = query.eq('epi_type_id', epiTypeId);
+    }
+    if (startDate) {
+        query = query.gte('created_at', startDate);
+    }
+    if (endDate) {
+        query = query.lte('created_at', endDate);
     }
 
     const { data, error } = await query;
