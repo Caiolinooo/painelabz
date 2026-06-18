@@ -122,8 +122,10 @@ export async function POST(request: NextRequest) {
             description: body.description || null,
             category: body.category,
             is_required: body.is_required || false,
-            ca_number: body.ca_number || null // Added ca_number handling
-        } as any); // Type casting since createEPIType might not be fully updated in service yet, but let's assume it handles it or ignores extra fields if not updated. Actually createEPIType takes EPIType, checking service...
+            ca_number: body.ca_number || null,
+            parent_id: body.parent_id || null,
+            size: body.size || null
+        } as any);
 
         return NextResponse.json({
             success: true,
@@ -185,13 +187,14 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: 'Tipo de EPI não encontrado' }, { status: 404 });
         }
 
-        // Update the type
         const type = await updateEPIType(body.id, {
             name: body.name,
             description: body.description,
             category: body.category,
             is_required: body.is_required,
-            ca_number: body.ca_number // Added ca_number handling
+            ca_number: body.ca_number,
+            parent_id: body.parent_id,
+            size: body.size
         } as any);
 
         return NextResponse.json({
