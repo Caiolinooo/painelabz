@@ -32,6 +32,9 @@ export default function StockManagement() {
     const [filterValidity, setFilterValidity] = useState('');
     const [filterQuantity, setFilterQuantity] = useState('');
 
+    // Search state in movement modal
+    const [searchEPI, setSearchEPI] = useState('');
+
 
     // Movement form
     const [movementForm, setMovementForm] = useState({
@@ -113,6 +116,7 @@ export default function StockManagement() {
             if (res.ok) {
                 toast.success('Movimentação registrada');
                 setShowMovementModal(false);
+                setSearchEPI('');
                 setMovementForm({ epi_type_id: '', movement_type: 'entry', quantity: 1, reason: '' });
                 loadData();
             } else {
@@ -560,15 +564,31 @@ export default function StockManagement() {
                         <h2 className="text-xl font-semibold mb-4">Nova Movimentação de Estoque</h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de EPI</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Buscar EPI (Filtro)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nome, categoria ou CA..."
+                                    className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-yellow-500 bg-white"
+                                    value={searchEPI}
+                                    onChange={(e) => setSearchEPI(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de EPI *</label>
                                 <select
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2 bg-white"
                                     value={movementForm.epi_type_id}
                                     onChange={(e) => setMovementForm({ ...movementForm, epi_type_id: e.target.value })}
                                 >
                                     <option value="">Selecione...</option>
-                                    {epiTypes.map(t => (
-                                        <option key={t.id} value={t.id}>{t.name} ({t.category})</option>
+                                    {epiTypes.filter(t => 
+                                        t.name.toLowerCase().includes(searchEPI.toLowerCase()) ||
+                                        t.category.toLowerCase().includes(searchEPI.toLowerCase()) ||
+                                        (t.ca_number && t.ca_number.toString().includes(searchEPI))
+                                    ).map(t => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name} (CA: {t.ca_number || '-'})
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -609,7 +629,13 @@ export default function StockManagement() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => setShowMovementModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                            <button 
+                                onClick={() => {
+                                    setShowMovementModal(false);
+                                    setSearchEPI('');
+                                }} 
+                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                            >
                                 Cancelar
                             </button>
                             <button onClick={handleMovement} className="px-4 py-2 text-white bg-yellow-500 rounded-lg hover:bg-yellow-600">

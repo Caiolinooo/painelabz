@@ -204,7 +204,9 @@ npm run db:cadastro-fields        # Campos adicionais
 - **Filtros e Configurações**: Nova interface modal com filtros avançados por Nome do EPI, Número do CA, Data de Validade do CA e Estoque Máximo permitido.
 - **Aba de Tipos de EPI com Filtros**: Implementados filtros avançados (Nome, CA, Validade, Estoque Máximo) diretamente na lista de Tipos de EPI, integrando a exibição em tempo real da quantidade e localização no card de cada equipamento.
 - **Tamanhos e Sub-divisões de EPI**: Possibilidade de cadastrar EPIs com tamanhos específicos (lote por vírgulas ou selecionando um EPI pai e cadastrando uma variação individual), gerando registros com controle de estoque próprio e auto-herança de dados.
+- **Edição Completa**: Ícones de edição (lápis) no painel de Tipos de EPI permitem abrir o modal preenchido para alterar nome, categoria, CA, descrição e se o equipamento é obrigatório.
 - **Visualização Hierárquica e Filtros no Estoque**: A listagem de estoque agora conta com a mesma barra de filtros avançados e agrupa as variações de tamanho sob o EPI principal com um recuo visual (cascata), calculando o estoque consolidado e mostrando os alertas de estoque baixo por grupo ou individualmente.
+- **Filtro na Nova Movimentação**: Inclusão de um campo de busca por texto no modal de movimentação de estoque para filtrar dinamicamente a lista de seleção de EPIs.
 
 ### v5.25.4 - Auto-Cura de XML do e-Social e Sincronização de Matrícula
 - **Sistema de Auto-Cura de XML**: Eventos com XML quebrado gerados em versões anteriores agora são detectados e refeitos automaticamente (auto-rebuild) durante o envio.
