@@ -155,44 +155,66 @@ export default function AdminEPIPage() {
 
     const handleCreateType = async (data: any) => {
         try {
-            const { sizes, ...rootData } = data;
+            const { sizes, parent_id, size, ...rootData } = data;
             
-            // 1. Create the root type
-            const res = await fetch('/api/epi/types', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(rootData)
-            });
-            if (!res.ok) throw new Error('Erro ao criar tipo base');
-            const rootJson = await res.json();
-            const rootType = rootJson.data;
+            if (parent_id) {
+                // Creating a single child under an existing parent
+                const parentType = epiTypes.find(t => t.id === parent_id);
+                const childName = rootData.name || `${parentType?.name} - Tam ${size}`;
+                const res = await fetch('/api/epi/types', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: ***REMOVED***
+                        ...rootData,
+                        name: childName,
+                        parent_id,
+                        size
+                    })
+                });
+                if (!res.ok) throw new Error('Erro ao criar variação de EPI');
+                toast.success('Variação de EPI criada com sucesso');
+            } else {
+                // Creating a new parent (and optionally multiple sizes)
+                const res = await fetch('/api/epi/types', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: ***REMOVED***
+                        ...rootData,
+                        parent_id: null,
+                        size: null
+                    })
+                });
+                if (!res.ok) throw new Error('Erro ao criar tipo base');
+                const rootJson = await res.json();
+                const rootType = rootJson.data;
 
-            // 2. Create children if sizes were provided
-            if (sizes && rootType?.id) {
-                const sizeList = sizes.split(',')
-                    .map((s: string) => s.trim())
-                    .filter((s: string) => s.length > 0);
+                // Create children if sizes were provided
+                if (sizes && rootType?.id) {
+                    const sizeList = sizes.split(',')
+                        .map((s: string) => s.trim())
+                        .filter((s: string) => s.length > 0);
 
-                for (const sizeVal of sizeList) {
-                    const childRes = await fetch('/api/epi/types', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: ***REMOVED***
-                            ...rootData,
-                            name: `${rootData.name} - Tam ${sizeVal}`, // Visual helper name
-                            parent_id: rootType.id,
-                            size: sizeVal
-                        })
-                    });
-                    if (!childRes.ok) {
-                        console.error(`Failed to create size variation: ${sizeVal}`);
+                    for (const sizeVal of sizeList) {
+                        const childRes = await fetch('/api/epi/types', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: ***REMOVED***
+                                ...rootData,
+                                name: `${rootData.name} - Tam ${sizeVal}`,
+                                parent_id: rootType.id,
+                                size: sizeVal
+                            })
+                        });
+                        if (!childRes.ok) {
+                            console.error(`Failed to create size variation: ${sizeVal}`);
+                        }
                     }
                 }
+                toast.success(sizes ? 'Tipo base e variações de tamanho criados com sucesso' : 'Tipo criado com sucesso');
             }
 
             await loadData();
             setShowTypeModal(false);
-            toast.success(sizes ? 'Tipo base e variações de tamanho criados com sucesso' : 'Tipo criado com sucesso');
         } catch (err: any) {
             toast.error(err.message);
         }
@@ -449,7 +471,7 @@ function RequestsTable({ registrations, onSelect }: { registrations: EPIWithUser
 }
 
 function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowModal }: { types: EPIType[]; stocks?: any[]; onCreate: (d: any) => Promise<void>; onDelete: (id: string) => void; showModal: boolean; setShowModal: (s: boolean) => void }) {
-    const [formData, setFormData] = useState({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '' });
+    const [formData, setFormData] = useState({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '', parent_id: '', size: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Filter states
@@ -463,7 +485,7 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
         setIsSubmitting(true);
         try {
             await onCreate(formData);
-            setFormData({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '' });
+            setFormData({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '', parent_id: '', size: '' });
         } finally {
             setIsSubmitting(false);
         }
@@ -686,8 +708,50 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
                         <h2 className="text-xl font-semibold mb-4">Novo Tipo de EPI</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full border rounded-lg px-3 py-2" required />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">EPI Pai (Opcional - para criar tamanho/variação)</label>
+                                <select
+                                    value={formData.parent_id}
+                                    onChange={(e) => {
+                                        const pid = e.target.value;
+                                        if (pid) {
+                                            const parent = types.find(t => t.id === pid);
+                                            setFormData({
+                                                ...formData,
+                                                parent_id: pid,
+                                                category: parent?.category || '',
+                                                description: parent?.description || '',
+                                                ca_number: parent?.ca_number || '',
+                                                is_required: parent?.is_required || false,
+                                                sizes: ''
+                                            });
+                                        } else {
+                                            setFormData({
+                                                ...formData,
+                                                parent_id: '',
+                                                size: ''
+                                            });
+                                        }
+                                    }}
+                                    className="w-full border rounded-lg px-3 py-2 bg-white"
+                                >
+                                    <option value="">Nenhum (EPI Principal)</option>
+                                    {types.filter(t => !t.parent_id).map(p => (
+                                        <option key={p.id} value={p.id}>{p.name} ({p.category})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Nome {formData.parent_id ? '(Opcional - Gerado automaticamente se vazio)' : '*'}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={formData.name} 
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                                    className="w-full border rounded-lg px-3 py-2" 
+                                    required={!formData.parent_id} 
+                                    placeholder={formData.parent_id ? "Ex: Bota de Segurança - Tam 40" : "Ex: Bota de PVC"}
+                                />
                             </div>
                             <div>
                                 <CALookupField
@@ -696,17 +760,31 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
                                     label="CA (Certificado de Aprovação)"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tamanhos / Sub-divisões (Opcional - separados por vírgula)</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="ex: 38, 39, 40 ou P, M, G" 
-                                    value={formData.sizes} 
-                                    onChange={(e) => setFormData({ ...formData, sizes: e.target.value })} 
-                                    className="w-full border rounded-lg px-3 py-2" 
-                                />
-                                <p className="text-xs text-gray-400 mt-1">Cria automaticamente variações de estoque para cada tamanho inserido.</p>
-                            </div>
+                            {formData.parent_id ? (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tamanho / Variação (Ex: 38, G, etc.) *</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="ex: 38 ou G" 
+                                        value={formData.size} 
+                                        onChange={(e) => setFormData({ ...formData, size: e.target.value })} 
+                                        className="w-full border rounded-lg px-3 py-2" 
+                                        required
+                                    />
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tamanhos / Sub-divisões (Opcional - separados por vírgula)</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="ex: 38, 39, 40 ou P, M, G" 
+                                        value={formData.sizes} 
+                                        onChange={(e) => setFormData({ ...formData, sizes: e.target.value })} 
+                                        className="w-full border rounded-lg px-3 py-2" 
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">Cria automaticamente variações de estoque para cada tamanho inserido.</p>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full border rounded-lg px-3 py-2" rows={2} />

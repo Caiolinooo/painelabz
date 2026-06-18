@@ -26,6 +26,13 @@ export default function StockManagement() {
     const [selectedStock, setSelectedStock] = useState<EPIStockWithType | null>(null);
     const [epiTypes, setEpiTypes] = useState<EPIType[]>([]);
 
+    // Filter states
+    const [filterName, setFilterName] = useState('');
+    const [filterCA, setFilterCA] = useState('');
+    const [filterValidity, setFilterValidity] = useState('');
+    const [filterQuantity, setFilterQuantity] = useState('');
+
+
     // Movement form
     const [movementForm, setMovementForm] = useState({
         epi_type_id: '',
@@ -157,8 +164,57 @@ export default function StockManagement() {
 
     const lowStockItems = stocks.filter(s => s.is_low_stock);
 
+    // Apply filters to flat list
+    let filteredStocks = stocks;
+
+    if (filterName) {
+        filteredStocks = filteredStocks.filter(s => 
+            s.epi_type?.name.toLowerCase().includes(filterName.toLowerCase())
+        );
+    }
+
+    if (filterCA) {
+        filteredStocks = filteredStocks.filter(s => 
+            s.epi_type?.ca_number?.toString().includes(filterCA)
+        );
+    }
+
+    if (filterValidity) {
+        const targetDate = new Date(filterValidity);
+        filteredStocks = filteredStocks.filter(s => {
+            if (!s.epi_type?.ca_validity_date) return false;
+            const valDate = new Date(s.epi_type.ca_validity_date);
+            return valDate <= targetDate;
+        });
+    }
+
+    if (filterQuantity !== '') {
+        const qtyLimit = parseInt(filterQuantity);
+        if (!isNaN(qtyLimit)) {
+            filteredStocks = filteredStocks.filter(s => 
+                s.current_quantity <= qtyLimit
+            );
+        }
+    }
+
+    // Build hierarchical view for stock
+    const matchingStockIds = new Set(filteredStocks.map(s => s.id));
+    const matchingParentTypeIds = new Set<string>();
+    filteredStocks.forEach(s => {
+        if (s.epi_type?.parent_id) {
+            matchingParentTypeIds.add(s.epi_type.parent_id);
+        } else {
+            matchingParentTypeIds.add(s.epi_type_id);
+        }
+    });
+
+    const rootStocksToShow = stocks.filter(s => 
+        (!s.epi_type?.parent_id) && 
+        (matchingStockIds.has(s.id) || matchingParentTypeIds.has(s.epi_type_id))
+    );
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 text-gray-800">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
@@ -242,9 +298,53 @@ export default function StockManagement() {
                 </button>
             </div>
 
+            {/* Filter Bar */}
+            <div className="bg-gray-50 border rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Nome do EPI</label>
+                    <input
+                        type="text"
+                        placeholder="Filtrar por nome..."
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterName}
+                        onChange={(e) => setFilterName(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Número do CA</label>
+                    <input
+                        type="text"
+                        placeholder="Filtrar por CA..."
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterCA}
+                        onChange={(e) => setFilterCA(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Validade CA (Até)</label>
+                    <input
+                        type="date"
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterValidity}
+                        onChange={(e) => setFilterValidity(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Estoque Máximo (Qtd &le;)</label>
+                    <input
+                        type="number"
+                        placeholder="Qtd em estoque..."
+                        min="0"
+                        className="w-full p-2 text-sm border rounded-md outline-none bg-white focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
+                        value={filterQuantity}
+                        onChange={(e) => setFilterQuantity(e.target.value)}
+                    />
+                </div>
+            </div>
+
             {/* Stock Table */}
             <div className="bg-white border rounded-lg overflow-hidden">
-                <h3 className="px-4 py-3 font-semibold text-gray-700 bg-gray-50 border-b">Estoque por Tipo de EPI</h3>
+                <h3 className="px-4 py-3 font-semibold text-gray-700 bg-gray-50 border-b">Estoque por Tipo de EPI ({rootStocksToShow.length} principais)</h3>
                 {stocks.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                         <FiPackage className="mx-auto w-10 h-10 mb-2" />
@@ -265,45 +365,128 @@ export default function StockManagement() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {stocks.map(stock => {
-                                    const pct = stock.minimum_quantity > 0
-                                        ? Math.min(100, (stock.current_quantity / (stock.minimum_quantity * 2)) * 100)
+                                {rootStocksToShow.map(rootStock => {
+                                    const childStocks = stocks.filter(s => s.epi_type?.parent_id === rootStock.epi_type_id);
+                                    const matchingChildStocks = childStocks.filter(s => matchingStockIds.has(s.id));
+
+                                    const totalQuantity = childStocks.length > 0
+                                        ? childStocks.reduce((sum, child) => sum + child.current_quantity, 0)
+                                        : rootStock.current_quantity;
+
+                                    const totalMinQuantity = childStocks.length > 0
+                                        ? childStocks.reduce((sum, child) => sum + child.minimum_quantity, 0)
+                                        : rootStock.minimum_quantity;
+
+                                    const isParentLowStock = childStocks.length > 0
+                                        ? childStocks.some(child => child.is_low_stock)
+                                        : rootStock.is_low_stock;
+
+                                    const pct = totalMinQuantity > 0
+                                        ? Math.min(100, (totalQuantity / (totalMinQuantity * 2)) * 100)
                                         : 100;
-                                    const barColor = stock.is_low_stock ? 'bg-red-500' : pct > 60 ? 'bg-green-500' : 'bg-yellow-500';
+                                    const barColor = isParentLowStock ? 'bg-red-500' : pct > 60 ? 'bg-green-500' : 'bg-yellow-500';
+
+                                    const isRootMatch = matchingStockIds.has(rootStock.id);
+
                                     return (
-                                        <tr key={stock.id} className={`hover:bg-gray-50 ${stock.is_low_stock ? 'bg-red-50' : ''}`}>
-                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                {stock.epi_type?.name || 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-500">
-                                                {stock.epi_type?.category || '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className={`text-lg font-bold ${stock.is_low_stock ? 'text-red-600' : 'text-gray-900'}`}>
-                                                    {stock.current_quantity}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-center text-sm text-gray-500">
-                                                {stock.minimum_quantity}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="w-24 bg-gray-200 rounded-full h-2">
-                                                    <div className={`h-2 rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }}></div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-500">
-                                                {stock.location || '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <button
-                                                    onClick={() => openConfig(stock)}
-                                                    className="text-gray-400 hover:text-gray-600 p-1"
-                                                    title="Configurar"
-                                                >
-                                                    <FiSettings className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={rootStock.id}>
+                                            <tr className={`hover:bg-gray-50 border-b border-gray-150 ${isParentLowStock ? 'bg-red-50/50' : ''} ${!isRootMatch && childStocks.length > 0 ? 'opacity-80' : ''}`}>
+                                                <td className="px-4 py-3 text-sm font-semibold text-gray-900">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span>{rootStock.epi_type?.name || 'N/A'}</span>
+                                                        {childStocks.length > 0 && (
+                                                            <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-normal">
+                                                                {childStocks.length} tamanhos
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-500">
+                                                    {rootStock.epi_type?.category || '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className={`text-lg font-bold ${isParentLowStock ? 'text-red-600' : 'text-gray-900'}`}>
+                                                        {totalQuantity}
+                                                    </span>
+                                                    {childStocks.length > 0 && <span className="text-xs text-gray-400 block">(total)</span>}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-sm text-gray-500">
+                                                    {totalMinQuantity}
+                                                    {childStocks.length > 0 && <span className="text-xs text-gray-400 block">(total)</span>}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                                                        <div className={`h-2 rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }}></div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-500">
+                                                    {childStocks.length > 0 ? (
+                                                        <span className="text-xs text-gray-400 italic">Varia por tamanho</span>
+                                                    ) : (
+                                                        rootStock.location || '-'
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <button
+                                                        onClick={() => openConfig(rootStock)}
+                                                        className="text-gray-400 hover:text-gray-600 p-1"
+                                                        title="Configurar estoque principal"
+                                                    >
+                                                        <FiSettings className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+
+                                            {childStocks.map(child => {
+                                                const isChildMatch = matchingStockIds.has(child.id);
+                                                const childPct = child.minimum_quantity > 0
+                                                    ? Math.min(100, (child.current_quantity / (child.minimum_quantity * 2)) * 100)
+                                                    : 100;
+                                                const childBarColor = child.is_low_stock ? 'bg-red-500' : childPct > 60 ? 'bg-green-500' : 'bg-yellow-500';
+
+                                                return (
+                                                    <tr 
+                                                        key={child.id} 
+                                                        className={`hover:bg-gray-50/70 border-b border-gray-100 ${
+                                                            child.is_low_stock ? 'bg-red-50/20' : 'bg-gray-50/30'
+                                                        } ${isChildMatch ? '' : 'opacity-50 text-gray-400'}`}
+                                                    >
+                                                        <td className="px-4 py-2 pl-8 text-xs font-medium text-gray-700">
+                                                            <span className="text-gray-400 mr-2">↳</span>
+                                                            Tamanho: <strong className="text-gray-800 font-semibold">{child.epi_type?.size || child.epi_type?.name}</strong>
+                                                        </td>
+                                                        <td className="px-4 py-2 text-xs text-gray-400">
+                                                            -
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center text-sm font-semibold">
+                                                            <span className={child.is_low_stock ? 'text-red-600 font-bold' : 'text-gray-700'}>
+                                                                {child.current_quantity}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center text-xs text-gray-500">
+                                                            {child.minimum_quantity}
+                                                        </td>
+                                                        <td className="px-4 py-2">
+                                                            <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                                                                <div className={`h-1.5 rounded-full ${childBarColor} transition-all`} style={{ width: `${childPct}%` }}></div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-2 text-xs text-gray-500">
+                                                            {child.location || '-'}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-right">
+                                                            <button
+                                                                onClick={() => openConfig(child)}
+                                                                className="text-gray-400 hover:text-gray-600 p-1"
+                                                                title="Configurar estoque do tamanho"
+                                                            >
+                                                                <FiSettings className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
@@ -311,6 +494,7 @@ export default function StockManagement() {
                     </div>
                 )}
             </div>
+
 
             {/* Recent Movements */}
             <div className="bg-white border rounded-lg overflow-hidden">
