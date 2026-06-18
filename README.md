@@ -206,7 +206,8 @@ npm run db:cadastro-fields        # Campos adicionais
 - **Tamanhos e Sub-divisões de EPI**: Possibilidade de cadastrar EPIs com tamanhos específicos (lote por vírgulas ou selecionando um EPI pai e cadastrando uma variação individual), gerando registros com controle de estoque próprio e auto-herança de dados.
 - **Edição Completa**: Ícones de edição (lápis) no painel de Tipos de EPI permitem abrir o modal preenchido para alterar nome, categoria, CA, descrição e se o equipamento é obrigatório.
 - **Visualização Hierárquica e Filtros no Estoque**: A listagem de estoque agora conta com a mesma barra de filtros avançados e agrupa as variações de tamanho sob o EPI principal com um recuo visual (cascata), calculando o estoque consolidado e mostrando os alertas de estoque baixo por grupo ou individualmente.
-- **Filtro na Nova Movimentação**: Inclusão de um campo de busca por texto no modal de movimentação de estoque para filtrar dinamicamente a lista de seleção de EPIs.
+- **Filtro e Grade na Nova Movimentação**: Seletor de EPI unificado (combobox) no modal de movimentação de estoque. A busca textual fica dentro do dropdown, que exibe apenas EPIs principais. Se o EPI contiver variações de tamanho, um menu secundário é ativado para selecionar a grade desejada.
+- **Reset de Dados Completo**: Garantida a remoção total de níveis de estoque (`epi_stock`) e movimentações (`epi_stock_movements`) nas rotas administrativas de reset do módulo para manutenções futuras.
 
 ### v5.25.4 - Auto-Cura de XML do e-Social e Sincronização de Matrícula
 - **Sistema de Auto-Cura de XML**: Eventos com XML quebrado gerados em versões anteriores agora são detectados e refeitos automaticamente (auto-rebuild) durante o envio.

@@ -12,7 +12,8 @@
 - **Edição de Tipos e Variações de EPI**: Adicionada a possibilidade de editar qualquer tipo de EPI ou variação de tamanho de forma individual através do ícone de edição (lápis) nas abas administrativas, executando a atualização (PUT) em tempo real.
 - **Visualização Hierárquica de Estoque**: Os cards da aba "Tipos de EPI" agora agrupam de forma hierárquica as variações de tamanho sob o EPI principal (pai), exibindo o estoque de cada tamanho individualmente, além do estoque total agregado e status de estoque baixo consolidado do equipamento.
 - **Filtros e Hierarquia na Aba Estoque**: Implementados os mesmos filtros avançados (Nome, CA, Validade, Estoque Máximo) e visualização em cascata (recuada) na listagem da aba "Estoque", consolidando os dados sob o EPI pai.
-- **Filtro na Nova Movimentação de Estoque**: Adicionado campo de busca textual no modal de "Nova Movimentação" para filtrar os tipos de EPI listados em tempo real por nome, categoria ou CA, facilitando o registro.
+- **Seletor de EPI com Busca e Grade no Estoque**: Nova caixa de seleção unificada (combobox) no modal de "Nova Movimentação". A busca por texto agora fica integrada dentro do próprio dropdown, que lista apenas os EPIs principais. Caso o EPI escolhido possua variações de tamanho, um seletor secundário é exibido para escolher a grade, agilizando e organizando a inserção.
+- **Função de Reset de Dados Completa**: Atualizada a função de reset do módulo para garantir a remoção total de níveis de estoque (`epi_stock`) e histórico de movimentações (`epi_stock_movements`) no banco de dados, em conjunto com registros e assinaturas.
 - **Filtros Personalizados de Relatório**: Adicionado modal para selecionar o tipo de visualização (Estoque Completo, Estoque Baixo ou Histórico de Movimentações) e filtros de data (início/fim) para o histórico.
 
 ### Changed

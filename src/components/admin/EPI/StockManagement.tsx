@@ -32,8 +32,11 @@ export default function StockManagement() {
     const [filterValidity, setFilterValidity] = useState('');
     const [filterQuantity, setFilterQuantity] = useState('');
 
-    // Search state in movement modal
-    const [searchEPI, setSearchEPI] = useState('');
+    // Search and dropdown states in movement modal
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isOpenDropdown, setIsOpenDropdown] = useState(false);
+    const [selectedParentId, setSelectedParentId] = useState('');
+    const [selectedVariationId, setSelectedVariationId] = useState('');
 
 
     // Movement form
@@ -116,7 +119,10 @@ export default function StockManagement() {
             if (res.ok) {
                 toast.success('Movimentação registrada');
                 setShowMovementModal(false);
-                setSearchEPI('');
+                setSearchQuery('');
+                setIsOpenDropdown(false);
+                setSelectedParentId('');
+                setSelectedVariationId('');
                 setMovementForm({ epi_type_id: '', movement_type: 'entry', quantity: 1, reason: '' });
                 loadData();
             } else {
@@ -563,39 +569,101 @@ export default function StockManagement() {
                     <div className="bg-white rounded-lg max-w-md w-full p-6">
                         <h2 className="text-xl font-semibold mb-4">Nova Movimentação de Estoque</h2>
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Buscar EPI (Filtro)</label>
-                                <input
-                                    type="text"
-                                    placeholder="Buscar por nome, categoria ou CA..."
-                                    className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-yellow-500 bg-white"
-                                    value={searchEPI}
-                                    onChange={(e) => setSearchEPI(e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de EPI *</label>
-                                <select
-                                    className="w-full border rounded-lg px-3 py-2 bg-white"
-                                    value={movementForm.epi_type_id}
-                                    onChange={(e) => setMovementForm({ ...movementForm, epi_type_id: e.target.value })}
+                            {/* Custom Searchable Dropdown for EPI Parent */}
+                            <div className="relative text-gray-800">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">EPI *</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsOpenDropdown(!isOpenDropdown)}
+                                    className="w-full border rounded-lg px-3 py-2 text-left bg-white flex justify-between items-center outline-none focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500"
                                 >
-                                    <option value="">Selecione...</option>
-                                    {epiTypes.filter(t => 
-                                        t.name.toLowerCase().includes(searchEPI.toLowerCase()) ||
-                                        t.category.toLowerCase().includes(searchEPI.toLowerCase()) ||
-                                        (t.ca_number && t.ca_number.toString().includes(searchEPI))
-                                    ).map(t => (
-                                        <option key={t.id} value={t.id}>
-                                            {t.name} (CA: {t.ca_number || '-'})
-                                        </option>
-                                    ))}
-                                </select>
+                                    <span className="truncate">
+                                        {selectedParentId 
+                                            ? epiTypes.find(t => t.id === selectedParentId)?.name 
+                                            : 'Selecione um EPI...'}
+                                    </span>
+                                    <span className="text-gray-400 text-xs">▼</span>
+                                </button>
+                                
+                                {isOpenDropdown && (
+                                    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 p-2 space-y-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Digitar para buscar..."
+                                            className="w-full border rounded-md px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-yellow-500 bg-white"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            autoFocus
+                                        />
+                                        <div className="max-h-48 overflow-y-auto space-y-1">
+                                            {epiTypes
+                                                .filter(t => !t.parent_id)
+                                                .filter(t => 
+                                                    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                                    t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                                    (t.ca_number && t.ca_number.toString().includes(searchQuery))
+                                                )
+                                                .map(t => (
+                                                    <button
+                                                        key={t.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedParentId(t.id);
+                                                            setSearchQuery('');
+                                                            setIsOpenDropdown(false);
+                                                            
+                                                            const variations = epiTypes.filter(c => c.parent_id === t.id);
+                                                            if (variations.length === 0) {
+                                                                setMovementForm(prev => ({ ...prev, epi_type_id: t.id }));
+                                                            } else {
+                                                                setSelectedVariationId('');
+                                                                setMovementForm(prev => ({ ...prev, epi_type_id: '' }));
+                                                            }
+                                                        }}
+                                                        className="w-full text-left px-2 py-1.5 hover:bg-gray-100 rounded text-sm transition-colors flex justify-between items-center"
+                                                    >
+                                                        <span className="font-medium">{t.name}</span>
+                                                        <span className="text-xs text-gray-400">{t.category}</span>
+                                                    </button>
+                                                ))
+                                            }
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div>
+
+                            {/* Option to choose size/variation if available */}
+                            {selectedParentId && (() => {
+                                const variations = epiTypes.filter(c => c.parent_id === selectedParentId);
+                                if (variations.length === 0) return null;
+                                return (
+                                    <div className="text-gray-800">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tamanho / Variação *</label>
+                                        <select
+                                            className="w-full border rounded-lg px-3 py-2 bg-white"
+                                            value={selectedVariationId}
+                                            onChange={(e) => {
+                                                const vid = e.target.value;
+                                                setSelectedVariationId(vid);
+                                                setMovementForm(prev => ({ ...prev, epi_type_id: vid }));
+                                            }}
+                                            required
+                                        >
+                                            <option value="">Selecione o tamanho...</option>
+                                            {variations.map(v => (
+                                                <option key={v.id} value={v.id}>
+                                                    Tamanho: {v.size || v.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                );
+                            })()}
+
+                            <div className="text-gray-800">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Movimentação</label>
                                 <select
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2 bg-white"
                                     value={movementForm.movement_type}
                                     onChange={(e) => setMovementForm({ ...movementForm, movement_type: e.target.value as StockMovementType })}
                                 >
@@ -632,7 +700,10 @@ export default function StockManagement() {
                             <button 
                                 onClick={() => {
                                     setShowMovementModal(false);
-                                    setSearchEPI('');
+                                    setSearchQuery('');
+                                    setIsOpenDropdown(false);
+                                    setSelectedParentId('');
+                                    setSelectedVariationId('');
                                 }} 
                                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
                             >
