@@ -78,6 +78,8 @@ export const generateEPIStockReport = (
         const stockBody = filteredStocks.map(s => [
             s.epi_type?.name || 'N/A',
             s.epi_type?.category || '-',
+            s.epi_type?.ca_number || '-',
+            s.epi_type?.ca_validity_date ? new Date(s.epi_type.ca_validity_date).toLocaleDateString('pt-BR') : '-',
             s.current_quantity,
             s.minimum_quantity,
             s.is_low_stock ? 'Abaixo do Mínimo' : 'Regular',
@@ -86,12 +88,12 @@ export const generateEPIStockReport = (
 
         autoTable(doc, {
             startY: currentY,
-            head: [['Tipo de EPI', 'Categoria', 'Qtd Atual', 'Qtd Mínima', 'Status', 'Localização']],
+            head: [['Tipo de EPI', 'Categoria', 'CA', 'Validade CA', 'Qtd Atual', 'Qtd Mínima', 'Status', 'Local de Armazenamento']],
             body: stockBody,
-            styles: { fontSize: 8.5 },
+            styles: { fontSize: 7.5 },
             headStyles: { fillColor: [41, 128, 185] }, // Nice Blue
             didParseCell: function (data: any) {
-                if (data.section === 'body' && data.column.index === 4) {
+                if (data.section === 'body' && data.column.index === 6) {
                     const val = data.cell.raw;
                     if (val === 'Abaixo do Mínimo') {
                         data.cell.styles.textColor = [220, 38, 38]; // Bold red
