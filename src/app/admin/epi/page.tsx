@@ -155,9 +155,23 @@ export default function AdminEPIPage() {
 
     const handleCreateType = async (data: any) => {
         try {
-            const { sizes, parent_id, size, ...rootData } = data;
+            const { id, sizes, parent_id, size, ...rootData } = data;
             
-            if (parent_id) {
+            if (id) {
+                // Editing an existing type
+                const res = await fetch('/api/epi/types', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: ***REMOVED***
+                        id,
+                        parent_id: parent_id || null,
+                        size: size || null,
+                        ...rootData
+                    })
+                });
+                if (!res.ok) throw new Error('Erro ao atualizar tipo de EPI');
+                toast.success('Tipo de EPI atualizado com sucesso');
+            } else if (parent_id) {
                 // Creating a single child under an existing parent
                 const parentType = epiTypes.find(t => t.id === parent_id);
                 const childName = rootData.name || `${parentType?.name} - Tam ${size}`;
@@ -471,7 +485,7 @@ function RequestsTable({ registrations, onSelect }: { registrations: EPIWithUser
 }
 
 function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowModal }: { types: EPIType[]; stocks?: any[]; onCreate: (d: any) => Promise<void>; onDelete: (id: string) => void; showModal: boolean; setShowModal: (s: boolean) => void }) {
-    const [formData, setFormData] = useState({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '', parent_id: '', size: '' });
+    const [formData, setFormData] = useState({ id: '', name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '', parent_id: '', size: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Filter states
@@ -485,10 +499,25 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
         setIsSubmitting(true);
         try {
             await onCreate(formData);
-            setFormData({ name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '', parent_id: '', size: '' });
+            setFormData({ id: '', name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '', parent_id: '', size: '' });
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleEdit = (type: EPIType) => {
+        setFormData({
+            id: type.id,
+            name: type.name,
+            description: type.description || '',
+            category: type.category,
+            ca_number: type.ca_number || '',
+            is_required: type.is_required || false,
+            sizes: '',
+            parent_id: type.parent_id || '',
+            size: type.size || ''
+        });
+        setShowModal(true);
     };
 
     const stockMap = (stocks || []).reduce((acc: any, s: any) => {
@@ -547,7 +576,15 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
         <div>
             <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
                 <h3 className="font-semibold text-gray-700">Tipos de EPI ({rootTypesToShow.length} principais)</h3>
-                <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"><FiPlus /> Novo Tipo</button>
+                <button 
+                    onClick={() => {
+                        setFormData({ id: '', name: '', description: '', category: '', ca_number: '', is_required: false, sizes: '', parent_id: '', size: '' });
+                        setShowModal(true);
+                    }} 
+                    className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                >
+                    <FiPlus /> Novo Tipo
+                </button>
             </div>
 
             {/* Filter Bar */}
@@ -657,6 +694,13 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
                                                                 <span className={stock?.is_low_stock ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>
                                                                     {stock?.current_quantity ?? 0}
                                                                 </span>
+                                                                <button
+                                                                    onClick={() => handleEdit(c)}
+                                                                    className="text-blue-400 hover:text-blue-600 p-0.5"
+                                                                    title="Editar variação"
+                                                                >
+                                                                    <FiEdit2 className="w-3.5 h-3.5" />
+                                                                </button>
                                                                 <button 
                                                                     onClick={() => {
                                                                         if (confirm(`Deseja excluir a variação de tamanho ${c.size}?`)) {
@@ -685,6 +729,13 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
                                 </div>
 
                                 <button 
+                                    onClick={() => handleEdit(root)}
+                                    className="absolute top-5 right-12 text-blue-400 hover:text-blue-600 transition-colors"
+                                    title="Editar equipamento"
+                                >
+                                    <FiEdit2 className="w-5 h-5" />
+                                </button>
+                                <button 
                                     onClick={() => {
                                         if (confirm(`Deseja excluir o EPI "${root.name}" e todas as suas variações?`)) {
                                             onDelete(root.id);
@@ -705,7 +756,7 @@ function TypesGrid({ types, stocks = [], onCreate, onDelete, showModal, setShowM
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg max-w-md w-full p-6 text-gray-800">
-                        <h2 className="text-xl font-semibold mb-4">Novo Tipo de EPI</h2>
+                        <h2 className="text-xl font-semibold mb-4">{formData.id ? 'Editar Tipo de EPI' : 'Novo Tipo de EPI'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">EPI Pai (Opcional - para criar tamanho/variação)</label>
