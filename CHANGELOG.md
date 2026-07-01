@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.26.3] - 2026-07-01
+
+### Fixed
+- **Voice Agent Dependencies Versioning**: Corrected the version constraint for `supertonic` in `requirements.txt` from `>=3.0.0` to `>=1.3.0`. The python library for Supertonic 3 is versioned under `1.3.x` on PyPI, causing dependency installation failures.
+
 ## [5.26.2] - 2026-07-01
 
 ### Fixed
