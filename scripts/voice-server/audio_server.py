@@ -235,8 +235,10 @@ async def transcribe(
 async def synthesize(req: TTSRequest):
     """
     TTS endpoint compatível com OpenAI API.
-    Retorna JSON com campo 'audio' em base64 (PCM16 24kHz mono).
-    Compatível com livekit-plugins-openai openai.TTS.
+    IMPORTANTE: livekit-plugins-openai espera raw audio bytes no body.
+    - response_format="pcm" → PCM16 24kHz mono raw bytes
+    - response_format="mp3" → MP3 bytes via ffmpeg
+    - Qualquer outro → PCM16 24kHz mono raw bytes (fallback seguro)
     """
     if not req.input or not req.input.strip():
         raise HTTPException(status_code=400, detail="Input text is required")
@@ -248,17 +250,35 @@ async def synthesize(req: TTSRequest):
     try:
         pcm_bytes = _synthesize_cached(req.input, voice=voice, lang=lang)
 
-        # openai.TTS com response_format="mp3" espera JSON {"audio": "base64"}
-        # openai.TTS com response_format="pcm" espera PCM cru no body
-        if req.response_format == "pcm":
-            logger.info(f"TTS OK: {len(pcm_bytes)} bytes pcm16 (raw, cache)")
-            return Response(content=pcm_bytes, media_type="audio/pcm")
+        if req.response_format == "mp3":
+            # Converter PCM16 24kHz → MP3 via ffmpeg para compatibilidade
+            mp3_path = os.path.join(tempfile.gettempdir(), f"tts_mp3_{uuid.uuid4().hex}.mp3")
+            try:
+                conv = subprocess.run(
+                    ["ffmpeg", "-y",
+                     "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
+                     "-codec:a", "libmp3lame", "-b:a", "64k", mp3_path],
+                    input=pcm_bytes,
+                    capture_output=True,
+                    timeout=30,
+                )
+                if conv.returncode != 0:
+                    err = conv.stderr.decode(errors="replace")[:300]
+                    logger.error(f"ffmpeg MP3 falhou: {err}")
+                    # Fallback: retorna PCM raw
+                    return Response(content=pcm_bytes, media_type="audio/pcm")
 
-        import base64
-        logger.info(f"TTS OK: {len(pcm_bytes)} bytes pcm16 (cache)")
-        return {
-            "audio": base64.b64encode(pcm_bytes).decode("utf-8"),
-        }
+                with open(mp3_path, "rb") as f:
+                    mp3_bytes = f.read()
+                logger.info(f"TTS OK: {len(mp3_bytes)} bytes mp3")
+                return Response(content=mp3_bytes, media_type="audio/mpeg")
+            finally:
+                if os.path.exists(mp3_path):
+                    os.remove(mp3_path)
+        else:
+            # PCM raw (default — o que o livekit-plugins-openai realmente espera)
+            logger.info(f"TTS OK: {len(pcm_bytes)} bytes pcm16 raw")
+            return Response(content=pcm_bytes, media_type="audio/pcm")
 
     except Exception as e:
         logger.error(f"TTS error: {e}")

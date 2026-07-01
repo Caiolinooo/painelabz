@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.26.3-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.26.4-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,9 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.26.4 - Correções Estruturais do Agente de Voz (LiveKit)
+- **Despacho & Formatos**: Refatoração completa da integração do LiveKit Voice Agent. O `openai.TTS` agora recebe o áudio em formato nativo PCM raw. A API Route agora propaga erros de Dispatch para o frontend via resposta de status. O script de monitoramento agora utiliza corretamente o subcomando `start` do CLI do LiveKit Agents.
 
 ### v5.26.3 - Correção da Versão da Biblioteca Supertonic
 - **Compatibilidade PyPI**: Corrigido o requerimento da biblioteca `supertonic` em `requirements.txt` de `>=3.0.0` para `>=1.3.0`. Embora o modelo de voz chame-se Supertonic 3, a biblioteca oficial Python no PyPI segue a versão `1.3.x`.

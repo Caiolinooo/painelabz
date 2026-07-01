@@ -89,22 +89,27 @@ export async function GET(request: NextRequest) {
 
     // 6. Garantir que a sala existe e despachar o agente explicitamente
     const httpUrl = livekitUrl.replace('wss://', 'https://').replace('ws://', 'http://');
+    let dispatchStatus = 'pending';
     
     try {
       const roomSvc = new RoomServiceClient(httpUrl, apiKey, apiSecret);
       await roomSvc.createRoom({ name: roomName, emptyTimeout: 300 });
+      console.log(`[LiveKit] Sala criada/verificada: ${roomName}`);
 
       const dispatch = new AgentDispatchClient(httpUrl, apiKey, apiSecret);
       await dispatch.createDispatch(roomName, 'abz-voice');
-      console.log(`[LiveKit] Agente despachado para sala: ${roomName}`);
+      dispatchStatus = 'dispatched';
+      console.log(`[LiveKit] Agente 'abz-voice' despachado para sala: ${roomName}`);
     } catch (dispatchErr: any) {
-      console.warn(`[LiveKit] Falha ao despachar agente: ${dispatchErr.message}`);
+      dispatchStatus = `error: ${dispatchErr.message}`;
+      console.error(`[LiveKit] FALHA CRÍTICA ao despachar agente:`, dispatchErr);
     }
 
     return NextResponse.json({
       token,
       roomName,
       serverUrl: livekitUrl,
+      dispatchStatus,
     });
 
   } catch (error: any) {

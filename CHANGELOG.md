@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.26.4] - 2026-07-01
+
+### Fixed
+- **Voice Pipeline Stability**: Comprehensive fixes for the LiveKit Voice Agent pipeline:
+  - Fixed TTS `response_format` to use `pcm` instead of `mp3` to comply with `livekit-plugins-openai` expectations for raw byte streaming.
+  - Fixed `audio_server.py` to stream raw bytes correctly.
+  - Fixed `abz_voice_manager.sh` to initialize the agent using `python3 agent.py start`.
+  - Added robust error handling and status logging to the Next.js API route (`route.ts`) for proper `createDispatch` error propagation.
+
 ## [5.26.3] - 2026-07-01
 
 ### Fixed

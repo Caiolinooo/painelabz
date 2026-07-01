@@ -233,14 +233,14 @@ async def entrypoint(ctx: agents.JobContext):
         logger.info(">>> LLM (openai.LLM) criado (base_url=%s, model=qwen-coder)", LLM_BASE_URL)
 
         # Carregar TTS (openai.TTS suporta base_url customizada = audio_server local)
-        # response_format="mp3" = JSON {"audio": "base64"} — compativel com audio_server
+        # response_format="pcm" = raw PCM16 24kHz mono — formato nativo do LiveKit
         tts = openai.TTS(
             base_url=AUDIO_BASE_URL,
             api_key="local",
             model="tts-1",
-            response_format="mp3",
+            response_format="pcm",
         )
-        logger.info(">>> TTS criado (base_url=%s, format=mp3)", AUDIO_BASE_URL)
+        logger.info(">>> TTS criado (base_url=%s, format=pcm)", AUDIO_BASE_URL)
 
         # Configurar turn handling
         turn_handling = None
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     logger.info(f"Portal: {PORTAL_API_URL}")
     logger.info(f"Gateway: {'ON' if PORTAL_API_URL else 'OFF'}")
     logger.info(f"STT:   PT-BR forced (default)")
-    logger.info(f"TTS:   MP3 format (OpenAI-compatible)")
+    logger.info(f"TTS:   PCM format (OpenAI-compatible, 24kHz mono)")
     logger.info(f"Agent: AgentSession + Agent (v1.x)")
     logger.info(f"Turn:  {'MultilingualModel' if _TURN_DETECTOR_AVAILABLE else 'VAD-only'}")
     logger.info("=" * 60)

@@ -115,6 +115,8 @@ export default function VoiceAssistantModal({ isOpen, onClose, authToken }: Prop
       // Validar serverUrl antes de montar o LiveKitRoom
       const serverUrl = (data.serverUrl || '').trim();
       console.log('[Voice] serverUrl recebida:', JSON.stringify(serverUrl));
+      console.log('[Voice] dispatchStatus:', data.dispatchStatus);
+      console.log('[Voice] roomName:', data.roomName);
 
       if (!serverUrl) {
         throw new Error('Servidor de voz não configurado (NEXT_PUBLIC_LIVEKIT_URL ausente no ambiente).');
