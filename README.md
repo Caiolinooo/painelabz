@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.25.3-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.25.5-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,9 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.25.5 - Correção de Dependências do Agente de Voz
+- **Dependência aiohttp**: Correção de import no script do agente LiveKit (`agent.py`) adicionando a biblioteca `aiohttp` ao arquivo de requerimentos (`requirements.txt`) para evitar falhas silenciosas de import no runtime de integração do microserviço.
 
 ### v5.25.4 - Auto-Cura de XML do e-Social e Sincronização de Matrícula
 - **Sistema de Auto-Cura de XML**: Eventos com XML quebrado gerados em versões anteriores agora são detectados e refeitos automaticamente (auto-rebuild) durante o envio.

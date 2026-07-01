@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.25.5] - 2026-07-01
+
+### Fixed
+- **Voice Agent Dependencies**: Added missing `aiohttp` dependency to `requirements.txt` to prevent runtime `ModuleNotFoundError` crashes when the LiveKit voice agent invokes the Portal ABZ AI gateway API (`processar_texto`).
+
 ## [5.25.4] - 2026-06-17
 
 ### Added
