@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.26.2] - 2026-07-01
+
+### Fixed
+- **Voice Agent Dispatch**: Fixed an issue in `route.ts` where explicit dispatching to LiveKit was calling `createDispatch()` with an empty `agentName` instead of `'abz-voice'`, preventing the registered agent from joining the room.
+
 ## [5.26.1] - 2026-07-01
 
 ### Fixed
