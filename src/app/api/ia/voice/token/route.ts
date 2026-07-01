@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
       await roomSvc.createRoom({ name: roomName, emptyTimeout: 300 });
 
       const dispatch = new AgentDispatchClient(httpUrl, apiKey, apiSecret);
-      await dispatch.createDispatch(roomName, '');
+      await dispatch.createDispatch(roomName, 'abz-voice');
       console.log(`[LiveKit] Agente despachado para sala: ${roomName}`);
     } catch (dispatchErr: any) {
       console.warn(`[LiveKit] Falha ao despachar agente: ${dispatchErr.message}`);

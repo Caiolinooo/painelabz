@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.26.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.26.2-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,9 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.26.2 - Correção de Dispatch do Agente de Voz
+- **Despacho Explícito**: Correção da chamada de `createDispatch()` na rota `/api/ia/voice/token` para apontar corretamente para o identificador do agente `'abz-voice'`, habilitando a conexão correta do agente na sala LiveKit.
 
 ### v5.26.1 - Correção de Dependências do Agente de Voz
 - **Dependência aiohttp**: Correção de import no script do agente LiveKit (`agent.py`) adicionando a biblioteca `aiohttp` ao arquivo de requerimentos (`requirements.txt`) para evitar falhas silenciosas de import no runtime de integração do microserviço.
