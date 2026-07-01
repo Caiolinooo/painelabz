@@ -54,7 +54,7 @@ AVAILABLE_VOICES = {
     "M1": "M1", "M2": "M2", "M3": "M3",
     "F1": "F1", "F2": "F2", "F3": "F3",
 }
-DEFAULT_VOICE = "M1"
+DEFAULT_VOICE = "F1"
 
 # Cache TTS: dict nativo com timestamp, expira em 30s
 _tts_cache = {}
@@ -111,23 +111,45 @@ def _synthesize_cached(text: str, voice: str = DEFAULT_VOICE, lang: str = "pt") 
 
     # Sintetizar
     wav, duration = tts_engine.synthesize(text, voice_style=voice_style, lang=lang)
-    logger.info(f"TTS sintetizado: {duration:.2f}s, voz={voice}, lang={lang}")
+    logger.info(f"TTS sintetizado: {duration}s, voz={voice}, lang={lang}")
 
     # Converter numpy array para WAV bytes
     if isinstance(wav, np.ndarray):
         wav_path = os.path.join(tempfile.gettempdir(), f"tts_wav_{uuid.uuid4().hex}.wav")
         try:
-            # Garantir que é 1D
-            if wav.ndim > 1:
-                wav = wav.flatten()
+            # Garantir que duration é um float (e não um array 1D)
+            try:
+                dur_val = float(duration[0] if isinstance(duration, (list, np.ndarray)) else duration)
+            except Exception:
+                dur_val = 0.0
 
+            # Remover dimensões vazias (ex: (1, N) vira (N,))
+            wav = np.squeeze(wav)
+            
+            # Garantir que é 1D mono
+            if wav.ndim > 1:
+                # Se for (2, N) ou (N, 2)
+                if wav.shape[0] == 2:
+                    wav = wav[0, :]
+                else:
+                    wav = wav[:, 0]
+            elif wav.ndim == 0:
+                wav = np.array([wav])
+
+            num_samples = len(wav)
+            inferred_sr = int(num_samples / dur_val) if dur_val > 0 else 24000
+            
             # Normalizar para int16
             if wav.dtype != np.int16:
                 if wav.max() > 1.0 or wav.min() < -1.0:
                     wav = wav / max(abs(wav.max()), abs(wav.min()))
                 wav = (wav * 32767).astype(np.int16)
 
-            sample_rate = 22050  # Supertonic default sample rate
+            # Usar o sample rate inferido (arredondado para valores comuns se necessário)
+            # Ex: 24000, 22050, 44100, 48000. Vamos apenas usar o calculado (ou o mais próximo).
+            # Para evitar erros de float, vamos usar o inferred_sr diretamente.
+            sample_rate = inferred_sr
+
             with wave.open(wav_path, "wb") as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(2)
@@ -245,7 +267,15 @@ async def synthesize(req: TTSRequest):
 
     # Resolver voz
     voice = req.voice if req.voice and req.voice in AVAILABLE_VOICES else DEFAULT_VOICE
-    lang = "pt"  # Default PT-BR
+    
+    # Detectar idioma heurísticamente
+    text_lower = req.input.lower()
+    en_words = {"the", "is", "you", "and", "to", "a", "it", "that", "of", "in", "what", "how", "hello"}
+    words = set(text_lower.split())
+    if len(words.intersection(en_words)) >= 1:
+        lang = "en"
+    else:
+        lang = "pt"
 
     try:
         pcm_bytes = _synthesize_cached(req.input, voice=voice, lang=lang)

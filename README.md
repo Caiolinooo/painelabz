@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.26.4-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.26.5-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,11 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.26.5 - Sincronização do Pipeline de Áudio do Agente de Voz
+- **Audio Server Corrigido**: Sincronização do `audio_server.py` com a versão local testada. Voz padrão alterada para F1 (feminina, melhor qualidade em PT-BR). Tratamento robusto de arrays NumPy multidimensionais do Supertonic 3 (squeeze + 1D mono enforcement). Inferência dinâmica de sample rate substituindo o valor fixo incorreto (22050 → calculado dinamicamente). Detecção heurística de idioma PT/EN no TTS. Correção de `TypeError` no log de duração quando `duration` é um array.
+- **Agent STT e Saudação**: STT agora força `language="pt"` para evitar alucinações do Whisper. Saudação inicial desativada (causava erro 500 no Jinja template do Qwen/llama.cpp por exigir `role=user`).
+- **Auto-Restart**: Adicionado `run_agent_loop.sh` para reinício automático do agente LiveKit em caso de crash (backoff de 2s).
 
 ### v5.26.4 - Correções Estruturais do Agente de Voz (LiveKit)
 - **Despacho & Formatos**: Refatoração completa da integração do LiveKit Voice Agent. O `openai.TTS` agora recebe o áudio em formato nativo PCM raw. A API Route agora propaga erros de Dispatch para o frontend via resposta de status. O script de monitoramento agora utiliza corretamente o subcomando `start` do CLI do LiveKit Agents.

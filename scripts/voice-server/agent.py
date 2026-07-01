@@ -221,6 +221,7 @@ async def entrypoint(ctx: agents.JobContext):
         stt = openai.STT(
             base_url=AUDIO_BASE_URL,
             api_key="local",
+            language="pt", # Força português para evitar hallucination/tradução para inglês
         )
         logger.info(">>> STT (openai.STT) criado (base_url=%s)", AUDIO_BASE_URL)
 
@@ -278,11 +279,12 @@ async def entrypoint(ctx: agents.JobContext):
         )
         logger.info(">>> Session iniciada na sala — aguardando fala!")
 
-        # Saudacao inicial
-        await session.generate_reply(
-            instructions="Olá! Eu sou a ABZ, assistente do Portal ABZ. Como posso ajudar?",
-        )
-        logger.info(">>> Saudacao enviada — aguardando pergunta do usuario...")
+        # Saudacao inicial desativada para evitar erro 500 do Jinja (Qwen exige role=user)
+        # O usuário iniciará a conversa.
+        # await session.generate_reply(
+        #     instructions="Olá! Eu sou a ABZ, assistente do Portal ABZ. Como posso ajudar?",
+        # )
+        # logger.info(">>> Saudacao enviada — aguardando pergunta do usuario...")
 
     except Exception as e:
         logger.error(f"!!! ERRO no entrypoint: {e}")
