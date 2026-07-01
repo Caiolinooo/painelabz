@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.26.5] - 2026-07-01
+
+### Fixed
+- **Voice Audio Server (TTS Output)**: Synchronized `audio_server.py` with the locally-tested corrected version. Critical fixes:
+  - **DEFAULT_VOICE** changed from `M1` to `F1` (better Portuguese pronunciation quality).
+  - **NumPy array handling**: Replaced naive `flatten()` with robust multi-dimensional array squeeze + 1D mono enforcement. Prevents `ValueError` and distorted audio when Supertonic 3 returns arrays with shapes like `(1, N)` or `(2, N)`.
+  - **Dynamic sample rate inference**: Instead of hardcoding `22050` (incorrect for Supertonic 3), the server now calculates the actual sample rate from the synthesized audio duration and number of samples, falling back to `24000` Hz. Produces correct playback speed.
+  - **Duration logging fix**: Removed `:.2f` format specifier that caused `TypeError` when `duration` is a numpy array instead of a float.
+  - **Heuristic language detection**: TTS endpoint now detects Portuguese vs English input from common English words, instead of always forcing `lang="pt"`. Prevents garbled pronunciation of English phrases.
+
+- **Voice Agent (STT & Greeting)**: Synchronized `agent.py` with the locally-tested corrected version:
+  - **STT language forced to `pt`**: `openai.STT` now receives `language="pt"` parameter to prevent Whisper hallucinations and unwanted English translations of Portuguese speech.
+  - **Greeting disabled**: Commented out `session.generate_reply()` greeting that caused HTTP 500 errors. The Qwen LLM via llama.cpp requires `role=user` in Jinja template context; system-only prompts from `generate_reply` crash the Jinja renderer. The user now initiates the conversation.
+
+### Added
+- **Voice Agent Auto-Restart Script**: Added `run_agent_loop.sh` to the repository. Wraps `agent.py start` in a `while true` loop with 2-second backoff. Automatically restarts the LiveKit Agent if it crashes or disconnects, ensuring voice service availability without manual intervention.
+
 ## [5.26.4] - 2026-07-01
 
 ### Fixed
