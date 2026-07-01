@@ -187,8 +187,9 @@ start_services() {
     echo -e "\n${CYAN}[3/3]${NC} Iniciando Agente LiveKit (conecta ao LiveKit Cloud)..."
     tmux new-window -t $SESSION_NAME:2 -n "livekit_agent"
     # CRÍTICO: Injeta as env vars do LiveKit via source .env
+    # NOTA: 'start' é obrigatório para modo produção do livekit-agents CLI
     tmux send-keys -t $SESSION_NAME:2 \
-        "cd $DIR_AGENT && source venv/bin/activate && source .env && python3 agent.py" C-m
+        "cd $DIR_AGENT && source venv/bin/activate && source .env && python3 agent.py start" C-m
 
     echo -e "\n${GREEN}========================================${NC}"
     echo -e "${GREEN}  TODOS OS SERVIÇOS INICIADOS!${NC}"
