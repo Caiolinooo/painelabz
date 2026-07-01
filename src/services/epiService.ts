@@ -678,7 +678,21 @@ export async function resetEPIModuleData(): Promise<void> {
         throw new Error(`Erro ao deletar registros: ${regError.message}`);
     }
 
-    // 2. Clear signatures bucket (Optional depending on business rule)
+    // 2. Delete all Stock Movements
+    const { error: movError } = await supabaseAdmin.from('epi_stock_movements').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (movError) {
+        console.error('Error deleting stock movements:', movError);
+        throw new Error(`Erro ao deletar histórico de movimentações: ${movError.message}`);
+    }
+
+    // 3. Delete all Stock Levels
+    const { error: stockError } = await supabaseAdmin.from('epi_stock').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (stockError) {
+        console.error('Error deleting stock levels:', stockError);
+        throw new Error(`Erro ao deletar níveis de estoque: ${stockError.message}`);
+    }
+
+    // 4. Clear signatures bucket (Optional depending on business rule)
     try {
         const { data: files } = await supabaseAdmin.storage.from('epi_signatures').list();
         if (files && files.length > 0) {

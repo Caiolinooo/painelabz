@@ -1,9 +1,28 @@
 # Changelog
 
-## [5.25.5] - 2026-07-01
+## [5.26.1] - 2026-07-01
 
 ### Fixed
 - **Voice Agent Dependencies**: Added missing `aiohttp` dependency to `requirements.txt` to prevent runtime `ModuleNotFoundError` crashes when the LiveKit voice agent invokes the Portal ABZ AI gateway API (`processar_texto`).
+
+## [5.26.0] - 2026-06-18
+
+### Added
+- **Relatório de Estoque de EPI (PDF)**: Nova funcionalidade para geração de relatórios de estoque em formato PDF. O relatório consolida níveis de estoque atuais, alertas de estoque baixo (abaixo do mínimo) e histórico de movimentações (Entradas, Saídas, Ajustes e Devoluções).
+- **Detalhamento do Relatório**: Inclusão de colunas dedicadas de CA (Certificado de Aprovação), Data de Validade do CA e Local de Armazenamento na tabela consolidada do PDF.
+- **Filtros Avançados no Modal**: Adicionados filtros de Nome do EPI, Número do CA, Data Limite de Validade do CA e Estoque Máximo Permitido na interface de configuração do relatório.
+- **Filtros e Estoque em Tipos de EPI**: Implementada a barra de filtros (Nome, CA, Validade, Estoque Máximo) na aba "Tipos de EPI", integrando a exibição em tempo real da quantidade em estoque e local de armazenamento no card de cada equipamento.
+- **Variações de Tamanho e Sub-divisões de EPI**: Adicionada a capacidade de definir tamanhos ou sub-divisões (ex: "38, 39, 40" ou "P, M, G") no cadastro de Tipos de EPI. O sistema gera automaticamente as variações de estoque associadas a cada tamanho.
+- **Cadastro Direto de Variações (Pai/Filho)**: Nova opção no modal de criação de EPI para selecionar um EPI Pai existente e cadastrar diretamente uma única variação de tamanho/medida (child), preenchendo automaticamente categoria e descrição herdadas.
+- **Edição de Tipos e Variações de EPI**: Adicionada a possibilidade de editar qualquer tipo de EPI ou variação de tamanho de forma individual através do ícone de edição (lápis) nas abas administrativas, executando a atualização (PUT) em tempo real.
+- **Visualização Hierárquica de Estoque**: Os cards da aba "Tipos de EPI" agora agrupam de forma hierárquica as variações de tamanho sob o EPI principal (pai), exibindo o estoque de cada tamanho individualmente, além do estoque total agregado e status de estoque baixo consolidado do equipamento.
+- **Filtros e Hierarquia na Aba Estoque**: Implementados os mesmos filtros avançados (Nome, CA, Validade, Estoque Máximo) e visualização em cascata (recuada) na listagem da aba "Estoque", consolidando os dados sob o EPI pai.
+- **Seletor de EPI com Busca e Grade no Estoque**: Nova caixa de seleção unificada (combobox) no modal de "Nova Movimentação". A busca por texto agora fica integrada dentro do próprio dropdown, que lista apenas os EPIs principais. Caso o EPI escolhido possua variações de tamanho, um seletor secundário é exibido para escolher a grade, agilizando e organizando a inserção.
+- **Função de Reset de Dados Completa**: Atualizada a função de reset do módulo para garantir a remoção total de níveis de estoque (`epi_stock`) e histórico de movimentações (`epi_stock_movements`) no banco de dados, em conjunto com registros e assinaturas.
+- **Filtros Personalizados de Relatório**: Adicionado modal para selecionar o tipo de visualização (Estoque Completo, Estoque Baixo ou Histórico de Movimentações) e filtros de data (início/fim) para o histórico.
+
+### Changed
+- **Filtros de Data na API de Estoque**: Atualizada a rota `GET /api/epi/stock` e a função `getStockMovements` do backend para aceitar filtros de data de início e fim.
 
 ## [5.25.4] - 2026-06-17
 
