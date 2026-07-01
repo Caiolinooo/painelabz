@@ -84,6 +84,8 @@ export interface EPIType {
     ca_equipment_name?: string;
     is_required: boolean;
     created_at: string;
+    parent_id?: string | null;
+    size?: string | null;
 }
 
 export interface EPICreateRequest {

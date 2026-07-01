@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
         const view = searchParams.get('view') || 'levels'; // levels | stats | movements | alerts
         const epiTypeId = searchParams.get('epiTypeId') || undefined;
         const limit = parseInt(searchParams.get('limit') || '50');
+        const startDate = searchParams.get('startDate') || undefined;
+        const endDate = searchParams.get('endDate') || undefined;
 
         switch (view) {
             case 'stats': {
@@ -77,7 +79,7 @@ export async function GET(request: NextRequest) {
                 return NextResponse.json({ success: true, data: stats });
             }
             case 'movements': {
-                const movements = await getStockMovements(epiTypeId, limit);
+                const movements = await getStockMovements(epiTypeId, limit, startDate, endDate);
                 return NextResponse.json({ success: true, data: movements });
             }
             case 'alerts': {
