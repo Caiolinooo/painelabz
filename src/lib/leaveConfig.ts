@@ -6,8 +6,9 @@
  *
  * Permite ajustar facilmente (via painel admin em /admin/leave-settings):
  * - Prazo mínimo de antecedência para solicitação (legislação / política DP)
- * - E-mails adicionais que devem ser notificados quando uma nova
- *   solicitação de férias é aberta (solicitação do DP - Carlos Gallo + RH)
+ * - Lista de e-mails do DP / RH / demais responsáveis que devem ser
+ *   notificados em todas as etapas do processo de férias (nova solicitação,
+ *   aprovação parcial, aprovação final, rejeição).
  *
  * Todas as configurações têm 3 camadas de fallback:
  *   1. Banco de dados (tabela app_secrets) - configurável via painel admin
@@ -20,9 +21,9 @@ import { getCredential } from '@/lib/secure-credentials';
 /**
  * Prazo mínimo de antecedência (em dias) para uma solicitação de férias.
  *
- * Solicitação do DP (Carlos Gallo): 40 dias de antecedência,
- * contemplando tanto o período de solicitação quanto o de processamento,
- * a fim de garantir o cumprimento do prazo de envio previsto na legislação.
+ * Solicitação do DP: 40 dias de antecedência, contemplando tanto o período
+ * de solicitação quanto o de processamento, a fim de garantir o cumprimento
+ * do prazo de envio previsto na legislação.
  *
  * Este valor é o FALLBACK usado quando nada está configurado no banco
  * nem na env. O valor efetivo pode ser alterado pelo admin em
@@ -34,7 +35,6 @@ export const DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS = 40;
  * Chaves das credenciais armazenadas no banco (tabela app_secrets).
  */
 export const LEAVE_ADVANCE_NOTICE_DAYS_KEY = 'LEAVE_ADVANCE_NOTICE_DAYS';
-export const CARLOS_GALLO_EMAIL_KEY = 'CARLOS_GALLO_EMAIL';
 export const LEAVE_EXTRA_NOTIFY_EMAILS_KEY = 'LEAVE_EXTRA_NOTIFY_EMAILS';
 
 /**
@@ -71,39 +71,24 @@ export async function getAdvanceNoticeDays(): Promise<number> {
 }
 
 /**
- * Email padrão do responsável do DP (Carlos Gallo) que deve ser incluído
- * nas notificações de novas solicitações de férias.
+ * Retorna a lista de e-mails que devem ser notificados em todas as etapas
+ * do processo de férias (nova solicitação, aprovação parcial, aprovação
+ * final, rejeição), além do RH e do próprio colaborador solicitante.
  *
- * Pode ser sobrescrito via:
- * 1. Credencial `CARLOS_GALLO_EMAIL` no banco (app_secrets) - configurável via admin
- * 2. Variável de ambiente `CARLOS_GALLO_EMAIL`
- * 3. Fallback hardcoded abaixo
- */
-export async function getCarlosGalloEmail(): Promise<string> {
-  const fromDb = await getCredential(CARLOS_GALLO_EMAIL_KEY);
-  return fromDb || process.env.CARLOS_GALLO_EMAIL || 'carlos.gallo@groupabz.com';
-}
-
-/**
- * Retorna a lista de emails adicionais que devem ser notificados quando
- * uma nova solicitação de férias é aberta (além do RH e do colaborador).
+ * A lista é configurável via painel admin em /admin/leave-settings e pode
+ * conter quantos e-mails forem necessários (DP, gerentes gerais, fiscais,
+ * etc.), separados por vírgula.
  *
- * Atualmente inclui apenas o Carlos Gallo (solicitação do DP), mas a lista
- * pode ser expandida via:
+ * Camadas de fallback:
  * 1. Credencial `LEAVE_EXTRA_NOTIFY_EMAILS` no banco (separados por vírgula)
  *    - configurável via painel admin
  * 2. Variável de ambiente `LEAVE_EXTRA_NOTIFY_EMAILS` (separados por vírgula)
+ * 3. Lista vazia (ninguém além do RH e do colaborador é notificado)
  */
 export async function getLeaveExtraNotifyEmails(): Promise<string[]> {
   const emails: string[] = [];
 
-  // Carlos Gallo (solicitação do DP)
-  const carlosEmail = await getCarlosGalloEmail();
-  if (carlosEmail) {
-    emails.push(carlosEmail);
-  }
-
-  // Emails adicionais via credencial no banco (separados por vírgula)
+  // Emails via credencial no banco (separados por vírgula)
   const fromDb = await getCredential(LEAVE_EXTRA_NOTIFY_EMAILS_KEY);
   if (fromDb) {
     fromDb
@@ -117,7 +102,7 @@ export async function getLeaveExtraNotifyEmails(): Promise<string[]> {
       });
   }
 
-  // Emails adicionais via variável de ambiente (separados por vírgula)
+  // Emails via variável de ambiente (separados por vírgula)
   const extraEnv = process.env.LEAVE_EXTRA_NOTIFY_EMAILS;
   if (extraEnv) {
     extraEnv
@@ -132,6 +117,25 @@ export async function getLeaveExtraNotifyEmails(): Promise<string[]> {
   }
 
   return emails;
+}
+
+/**
+ * Retorna todos os e-mails que devem receber notificações de férias em
+ * todas as etapas do processo: RH + lista adicional de e-mails (DP e
+ * demais responsáveis configurados pelo admin).
+ *
+ * É a função principal que o sistema de notificações deve usar para
+ * obter os destinatários "globais" (não atrelados a uma solicitação
+ * específica, como líder/gerente/colaborador).
+ */
+export async function getLeaveNotificationRecipients(): Promise<string[]> {
+  const hrEmailFromDb = await getCredential('HR_EMAIL');
+  const hrEmail = hrEmailFromDb || process.env.HR_EMAIL || 'rh@groupabz.com';
+  const extras = await getLeaveExtraNotifyEmails();
+
+  // Combina e remove duplicatas mantendo ordem
+  const all = [hrEmail, ...extras];
+  return Array.from(new Set(all.filter(Boolean)));
 }
 
 /**
