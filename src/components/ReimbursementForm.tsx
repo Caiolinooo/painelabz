@@ -14,6 +14,7 @@ import { UserProfile } from '@/contexts/SupabaseAuthContext';
 import type { FormValues } from '@/lib/schema';
 import { refinedFormSchema, validatePixKey } from '@/lib/schema';
 import { formatCurrency, formatPhone, formatCPF } from '@/lib/utils';
+import { getTodayDateString, parseCurrencyValue } from '@/lib/reimbursementValidation';
 import { InputField, TextArea, SelectField } from './FormFields';
 import PaymentMethodRadio from './PaymentMethodRadio';
 import DescriptionField from './DescriptionField';
@@ -177,7 +178,7 @@ export default function ReimbursementForm({ profile }: ReimbursementFormProps) {
         id: Math.random().toString(36).substr(2, 9),
         tipoReembolso: 'alimentacao',
         descricao: '',
-        valor: '0,00',
+        valor: '',
         comprovantes: []
       }],
       tipoReembolso: 'alimentacao',
@@ -306,7 +307,7 @@ export default function ReimbursementForm({ profile }: ReimbursementFormProps) {
 
       // Calcular valor total das despesas
       const totalValue = data.expenses.reduce((total, expense) => {
-        const value = parseFloat(expense.valor.replace(/\./g, '').replace(',', '.')) || 0;
+        const value = parseCurrencyValue(expense.valor);
         return total + value;
       }, 0);
 
@@ -381,11 +382,18 @@ export default function ReimbursementForm({ profile }: ReimbursementFormProps) {
       // Garantir que centroCusto tenha um valor válido
       const centroCusto = data.centroCusto && data.centroCusto.trim() !== '' ? data.centroCusto : 'abz';
 
+      // Formatar valor total no padrão brasileiro "1.234,56" para compatibilidade
+      // com o parser do backend (que remove pontos e troca vírgula por ponto)
+      const formattedTotalValue = totalValue.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
       const formData = {
         ...data,
         centroCusto: centroCusto,
         expenses: processedExpenses,
-        valorTotal: totalValue.toString(),
+        valorTotal: formattedTotalValue,
         moeda: selectedCurrency, // Usar a moeda selecionada no componente
         tipoReembolso: mainExpense.tipoReembolso,
         descricao: processedExpenses.map(exp => `${exp.tipoReembolso}: ${exp.descricao}`).join('; '),
@@ -714,6 +722,7 @@ export default function ReimbursementForm({ profile }: ReimbursementFormProps) {
                     onChange={field.onChange}
                     error={errors.data?.message}
                     required
+                    max={getTodayDateString()}
                   />
                 )}
               />

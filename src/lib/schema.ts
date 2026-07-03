@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { UploadedFile } from '@/components/FileUploader';
 import { Currency } from '@/lib/currencyConverter';
+import {
+  validateExpenseValue,
+  validateTotalValue,
+  validateExpenseDate,
+  parseCurrencyValue,
+  MAX_TOTAL_REIMBURSEMENT
+} from '@/lib/reimbursementValidation';
 
 // Define a type for files with previews
 export interface FileWithPreview extends File {
@@ -81,6 +88,12 @@ export const validateCurrency = (value: string): boolean => {
   return !isNaN(numValue) && numValue > 0;
 };
 
+/**
+ * Converte uma string de valor (formato brasileiro "1.234,56") para número.
+ * Mantido por compatibilidade com código externo.
+ */
+export const parseValue = (value: string): number => parseCurrencyValue(value);
+
 // Validation for PIX keys
 export const validatePixKey = (pixTipo: string, value: string): boolean => {
   if (!value) return false;
@@ -109,8 +122,19 @@ export const expenseSchema = z.object({
     .max(500, { message: 'Descrição muito longa (máximo 500 caracteres)' }),
   valor: z.string().min(1, { message: 'Valor é obrigatório' })
     .refine(validateCurrency, {
-      message: 'Valor inválido'
-    }),
+      message: 'Valor inválido. Use o formato "0,00" (vírgula como separador de centavos).'
+    })
+    // Validação inteligente de limite por tipo de despesa
+    .refine(
+      (value) => {
+        // Esta validação é apenas uma pré-verificação. A validação completa
+        // que considera o tipo é feita no superRefine do refinedFormSchema,
+        // onde temos acesso ao tipoReembolso da despesa.
+        const numericValue = parseCurrencyValue(value);
+        return numericValue <= MAX_TOTAL_REIMBURSEMENT;
+      },
+      { message: 'Valor individual excede o limite máximo permitido.' }
+    ),
   comprovantes: z.array(z.object({
     id: z.string(),
     name: z.string(),
@@ -141,10 +165,11 @@ export const formSchema = z.object({
     }),
   data: z.string().min(1, { message: 'Data é obrigatória' })
     .refine(value => {
-      const date = new Date(value);
-      return !isNaN(date.getTime()) && date <= new Date();
-    }, {
-      message: 'Data inválida ou futura'
+      const result = validateExpenseDate(value);
+      return result.valid;
+    }, value => {
+      const result = validateExpenseDate(value);
+      return { message: result.errorMessage || 'Data inválida' };
     }),
   // Múltiplas despesas
   expenses: z.array(expenseSchema).min(1, { message: 'Pelo menos uma despesa é obrigatória' })
@@ -237,6 +262,36 @@ export const refinedFormSchema = formSchema.superRefine(
           code: z.ZodIssueCode.custom,
           message: `Chave PIX inválida para o tipo ${data.pixTipo}`,
           path: ['pixChave']
+        });
+      }
+    }
+
+    // Validação inteligente: limite de valor por tipo de despesa
+    if (data.expenses && Array.isArray(data.expenses)) {
+      data.expenses.forEach((expense, index) => {
+        if (!expense.valor) return;
+
+        const validation = validateExpenseValue(expense.tipoReembolso, expense.valor);
+        if (!validation.valid && validation.errorMessage) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: validation.errorMessage,
+            path: ['expenses', index, 'valor']
+          });
+        }
+      });
+
+      // Validar valor total da solicitação
+      const totalValue = data.expenses.reduce((sum, expense) => {
+        return sum + parseCurrencyValue(expense.valor);
+      }, 0);
+
+      const totalValidation = validateTotalValue(totalValue);
+      if (!totalValidation.valid && totalValidation.errorMessage) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: totalValidation.errorMessage,
+          path: ['expenses']
         });
       }
     }

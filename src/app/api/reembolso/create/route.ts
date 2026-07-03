@@ -3,6 +3,12 @@ import { supabaseAdmin } from '@/lib/db';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { sendReimbursementConfirmationEmail } from '@/lib/notifications';
+import {
+  validateExpenseValue,
+  validateTotalValue,
+  validateExpenseDate,
+  parseCurrencyValue
+} from '@/lib/reimbursementValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +51,63 @@ export async function POST(request: NextRequest) {
 
     // Verificação de colunas removida para evitar erro de variável não definida
     console.log('Prosseguindo com criação do reembolso sem verificação de colunas...');
+
+    // === Validação inteligente server-side ===
+    // Valida a data da despesa
+    const dateValidation = validateExpenseDate(formData.data);
+    if (!dateValidation.valid) {
+      console.error('Data inválida:', formData.data, dateValidation.errorMessage);
+      return NextResponse.json(
+        { error: dateValidation.errorMessage || 'Data inválida' },
+        { status: 400 }
+      );
+    }
+
+    // Valida cada despesa individualmente contra o limite do tipo
+    if (formData.expenses && Array.isArray(formData.expenses)) {
+      for (let i = 0; i < formData.expenses.length; i++) {
+        const expense = formData.expenses[i];
+        const validation = validateExpenseValue(expense.tipoReembolso, expense.valor);
+
+        if (!validation.valid) {
+          const limitLabel = validation.limit.label;
+          console.error(
+            `Despesa ${i + 1} inválida: valor=${expense.valor}, tipo=${expense.tipoReembolso}, erro=${validation.errorMessage}`
+          );
+          return NextResponse.json(
+            {
+              error: `Despesa ${i + 1} (${limitLabel}): ${validation.errorMessage}`,
+              field: `expenses[${i}].valor`
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Valida o valor total da solicitação
+      const totalValue = formData.expenses.reduce((sum: number, expense: any) => {
+        return sum + parseCurrencyValue(expense.valor);
+      }, 0);
+
+      const totalValidation = validateTotalValue(totalValue);
+      if (!totalValidation.valid) {
+        console.error('Valor total inválido:', totalValue, totalValidation.errorMessage);
+        return NextResponse.json(
+          { error: totalValidation.errorMessage, field: 'valorTotal' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Compatibilidade com formato antigo (sem expenses array)
+      const totalValidation = validateTotalValue(formData.valorTotal || '0');
+      if (!totalValidation.valid) {
+        console.error('Valor total inválido:', formData.valorTotal, totalValidation.errorMessage);
+        return NextResponse.json(
+          { error: totalValidation.errorMessage, field: 'valorTotal' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Gerar protocolo único com timestamp e ID seguro
     const { randomBytes } = await import('crypto');
