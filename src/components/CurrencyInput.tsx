@@ -44,6 +44,10 @@ export default function CurrencyInput({
   const [isConverting, setIsConverting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Rastreia se o usuário está digitando ativamente, para evitar que a
+  // formatação automática atrapalhe a digitação (ex: digitar vírgula/dot).
+  const isTypingRef = useRef(false);
 
   // Update selected currency when currency prop changes (only on initial load)
   useEffect(() => {
@@ -79,7 +83,7 @@ export default function CurrencyInput({
   // Atualizar valores convertidos quando o valor ou a moeda mudar
   useEffect(() => {
     const updateConversions = async () => {
-      if (!value || value === '0,00') {
+      if (!value || value === '0,00' || value === '0.00' || value === '0') {
         setConvertedValues({
           BRL: '',
           USD: '',
@@ -132,52 +136,101 @@ export default function CurrencyInput({
     updateConversions();
   }, [value, selectedCurrency]);
 
-  // Referência para o input
-  const inputRef = useRef<HTMLInputElement>(null);
+  /**
+   * Formata o valor digitado pelo usuário para o padrão brasileiro "1.234,56".
+   *
+   * Esta função implementa um modo de entrada DECIMAL INTUITIVO, onde o
+   * usuário digita o valor normalmente (ex: "50,83" para R$ 50,83) ao
+   * invés do antigo "formato bancário" onde "50" era interpretado como
+   * R$ 0,50 — fonte frequente de erros como digitar "5000,83" e o
+   * sistema armazenar R$ 5.000.083,00.
+   *
+   * Regras:
+   * - Permite apenas um separador decimal (vírgula ou ponto)
+   * - Permite até 2 casas decimais
+   * - Adiciona separador de milhar automaticamente
+   * - Aceita tanto vírgula quanto ponto como separador decimal
+   */
+  const formatDecimalInput = (inputValue: string): string => {
+    if (!inputValue) return '';
 
-  // Função para manipular a entrada de valores no estilo de aplicativos bancários
-  const handleBankingStyleInput = (inputValue: string, isBackspace: boolean = false): string => {
-    // Se for backspace e o valor atual não estiver vazio
-    if (isBackspace && value) {
-      // Remover formatação para obter apenas os dígitos
-      const digitsOnly = value.replace(/[^\d]/g, '');
+    // Remover tudo que não for dígito, vírgula ou ponto
+    let cleaned = inputValue.replace(/[^\d.,]/g, '');
 
-      if (digitsOnly.length <= 1) {
-        return '0,00';
-      }
+    // Se vazio, retornar vazio
+    if (!cleaned) return '';
 
-      // Remover o último dígito
-      const newDigits = digitsOnly.slice(0, -1);
-      return formatBankingValue(newDigits);
+    // Padronizar: converter qualquer ponto em vírgula temporariamente
+    // para identificar o separador decimal corretamente
+    const hasComma = cleaned.includes(',');
+    const hasDot = cleaned.includes('.');
+
+    // Determinar qual é o separador decimal
+    let decimalSeparator: ',' | '.' | null = null;
+
+    if (hasComma && hasDot) {
+      // Se tem ambos, o último é o decimal
+      const lastComma = cleaned.lastIndexOf(',');
+      const lastDot = cleaned.lastIndexOf('.');
+      decimalSeparator = lastComma > lastDot ? ',' : '.';
+    } else if (hasComma) {
+      decimalSeparator = ',';
+    } else if (hasDot) {
+      decimalSeparator = '.';
     }
 
-    // Para entrada normal, extrair apenas os dígitos do input
-    const newDigits = inputValue.replace(/[^\d]/g, '');
-
-    if (!newDigits) {
-      return '0,00';
+    // Normalizar para vírgula como separador decimal
+    if (decimalSeparator === '.') {
+      // Substituir o último ponto por vírgula
+      const lastDot = cleaned.lastIndexOf('.');
+      cleaned = cleaned.substring(0, lastDot) + ',' + cleaned.substring(lastDot + 1);
+      // Remover quaisquer outras vírgulas que existissem
+      cleaned = cleaned.replace(/,/g, (match, offset) => {
+        return offset === lastDot ? ',' : '';
+      });
     }
 
-    return formatBankingValue(newDigits);
+    // Agora sabemos que o separador decimal (se houver) é a vírgula
+    const [intPart, decPart] = cleaned.split(',');
+
+    // Limitar parte inteira a um valor razoável (12 dígitos = até 999 bilhões)
+    const trimmedInt = (intPart || '').replace(/\D/g, '').slice(0, 12);
+
+    // Remover zeros à esquerda, mas manter pelo menos um zero
+    const normalizedInt = trimmedInt === '' ? '0' : String(parseInt(trimmedInt, 10) || 0);
+
+    // Formatar parte inteira com separadores de milhar
+    const formattedInt = normalizedInt === '0'
+      ? '0'
+      : parseInt(normalizedInt, 10).toLocaleString('pt-BR');
+
+    // Limitar parte decimal a 2 dígitos
+    const trimmedDec = (decPart || '').replace(/\D/g, '').slice(0, 2);
+
+    // Se o usuário está no meio da digitação dos centavos, manter como está
+    if (decPart !== undefined) {
+      return `${formattedInt},${trimmedDec}`;
+    }
+
+    // Se não há parte decimal, retornar apenas a parte inteira formatada
+    // (não forçamos ",00" para o usuário poder digitar a vírgula depois)
+    return formattedInt;
   };
 
-  // Função para formatar valor no estilo bancário
-  const formatBankingValue = (digits: string): string => {
-    if (!digits || digits === '0') {
-      return '0,00';
+  /**
+   * Normaliza o valor para o formato final "1.234,56" usado pelo resto do sistema.
+   * Garante que sempre tenha 2 casas decimais quando o valor estiver completo.
+   */
+  const normalizeValue = (formattedValue: string): string => {
+    if (!formattedValue) return '0,00';
+
+    if (!formattedValue.includes(',')) {
+      return `${formattedValue},00`;
     }
 
-    // Garantir que temos pelo menos 3 dígitos (para ter centavos)
-    const paddedDigits = digits.padStart(3, '0');
-
-    // Separar centavos (últimos 2 dígitos) da parte inteira
-    const centavos = paddedDigits.slice(-2);
-    const reais = paddedDigits.slice(0, -2);
-
-    // Formatar a parte dos reais com separadores de milhar
-    const formattedReais = parseInt(reais || '0').toLocaleString('pt-BR');
-
-    return `${formattedReais},${centavos}`;
+    const [intPart, decPart] = formattedValue.split(',');
+    const paddedDec = (decPart || '').padEnd(2, '0').slice(0, 2);
+    return `${intPart},${paddedDec}`;
   };
 
   // Manipular a entrada do usuário
@@ -188,15 +241,17 @@ export default function CurrencyInput({
     }
 
     const inputValue = e.target.value || '';
+    isTypingRef.current = true;
 
-    // Processar o valor no estilo de aplicativos bancários
-    const processedValue = handleBankingStyleInput(inputValue);
+    // Processar o valor no modo decimal intuitivo
+    const processedValue = formatDecimalInput(inputValue);
 
     // Atualizar o valor
     onChange(processedValue);
 
     // Posicionar cursor no final após formatação
     setTimeout(() => {
+      isTypingRef.current = false;
       if (inputRef.current) {
         const length = inputRef.current.value.length;
         inputRef.current.setSelectionRange(length, length);
@@ -204,20 +259,13 @@ export default function CurrencyInput({
     }, 0);
   };
 
-  // Manipular teclas especiais (backspace, delete)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      const processedValue = handleBankingStyleInput('', true);
-      onChange(processedValue);
-
-      // Posicionar cursor no final
-      setTimeout(() => {
-        if (inputRef.current) {
-          const length = inputRef.current.value.length;
-          inputRef.current.setSelectionRange(length, length);
-        }
-      }, 0);
+  // Normalizar o valor quando o input perde o foco (adicionar ",00" se necessário)
+  const handleBlur = () => {
+    if (value && value !== '0,00') {
+      const normalized = normalizeValue(value);
+      if (normalized !== value) {
+        onChange(normalized);
+      }
     }
   };
 
@@ -262,6 +310,9 @@ export default function CurrencyInput({
     console.log('Moeda alterada para:', currency);
   };
 
+  // Valor exibido no input (preserva o que o usuário está digitando)
+  const displayValue = value === '0,00' ? '' : value;
+
   return (
     <div className={`mb-4 ${className}`}>
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
@@ -286,14 +337,15 @@ export default function CurrencyInput({
           <input
             id={id}
             type="text"
-            value={value}
+            inputMode="decimal"
+            value={displayValue}
             onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
             ref={inputRef}
             className={`flex-1 px-3 py-2 border-y border-r rounded-r-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               error ? 'border-red-500' : 'border-gray-300'
             }`}
-            placeholder={`0,00`}
+            placeholder="0,00"
           />
         </div>
 

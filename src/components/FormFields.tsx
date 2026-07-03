@@ -19,6 +19,8 @@ interface InputFieldProps extends FieldBaseProps {
   mask?: (value: string) => string;
   className?: string;
   disabled?: boolean;
+  max?: string;
+  min?: string;
 }
 
 interface TextAreaProps extends FieldBaseProps {
@@ -72,6 +74,8 @@ export const InputField: React.FC<InputFieldProps> = ({
   mask,
   className = '',
   disabled = false,
+  max,
+  min,
 }) => {
   // Handle input change with optional masking
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,6 +101,8 @@ export const InputField: React.FC<InputFieldProps> = ({
         onBlur={onBlur}
         placeholder={placeholder}
         disabled={disabled}
+        max={max}
+        min={min}
         className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
           errorMessage ? 'border-red-500' : 'border-gray-300'
         } ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
