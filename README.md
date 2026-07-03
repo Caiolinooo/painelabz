@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.27.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.27.1-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,11 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.27.1 - Configuração Admin das Notificações e Prazo de Férias
+- **Painel Admin do Módulo de Férias expandido**: a página `/admin/leave-settings` agora permite configurar (sem precisar mexer em código/env): e-mail do RH, e-mail do Carlos Gallo (DP), e-mails adicionais separados por vírgula, e o prazo de antecedência em dias (default 40). As configurações são persistidas na tabela `app_secrets` e o cache de credenciais é invalidado após cada escrita para que as notificações passem a usar os novos valores imediatamente.
+- **Endpoint público `/api/leave/config`**: retorna o prazo de antecedência configurado e a data mínima permitida para o frontend montar as validações client-side dinamicamente (sem precisar ser admin).
+- **Validações dinâmicas no frontend**: a página `/ferias` carrega as configurações do banco no mount e usa os valores configurados (limite `min` no input de data, banner âmbar com o prazo e a data mais próxima permitida, validação client-side antes do submit).
 
 ### v5.27.0 - Reembolso Inteligente e Notificações de Férias (Solicitação DP)
 - **Reembolso Inteligente (validação de valores)**: Substituído o confuso "formato bancário" do input de valor (onde digitar `50` virava `R$ 0,50`) por um modo decimal intuitivo onde `50,83` vira `R$ 50,83`. Adicionados limites por tipo de despesa (alimentação: R$ 2k, transporte: R$ 1k, hospedagem: R$ 5k, combustível: R$ 1k, material: R$ 5k, outros: R$ 10k) com avisos visuais e validação server-side. Limite total por solicitação de R$ 50.000,00. Validação de data não permite datas futuras. Encerra o bug onde uma despesa de alimentação podia ser salva com R$ 5.000.083,00.

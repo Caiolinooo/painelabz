@@ -1,5 +1,32 @@
 # Changelog
 
+## [5.27.1] - 2026-07-03
+
+### Added
+- **Painel Admin do Módulo de Férias expandido** (`/admin/leave-settings`): agora permite configurar (sem precisar mexer em código/env):
+  - E-mail do RH (já existente, mantido)
+  - E-mail do Carlos Gallo (DP) — novo campo dedicado
+  - E-mails adicionais para notificação (separados por vírgula) — novo campo
+  - Prazo de antecedência em dias (default 40, configurável de 1 a 365) — novo campo
+  - As configurações são persistidas na tabela `app_secrets` com as chaves `LEAVE_ADVANCE_NOTICE_DAYS`, `CARLOS_GALLO_EMAIL` e `LEAVE_EXTRA_NOTIFY_EMAILS`.
+- **Endpoint público `GET /api/leave/config`**: retorna o prazo de antecedência configurado e a data mínima permitida para o frontend montar as validações client-side dinamicamente. Apenas autenticado (não exige admin), não expõe e-mails.
+
+### Changed
+- **`src/lib/leaveConfig.ts`**:
+  - Adicionadas funções async `getAdvanceNoticeDays()`, `getMinLeaveStartDateAsync()`, `validateLeaveAdvanceNoticeAsync()` que leem do banco (com fallback para env e default 40).
+  - Adicionadas constantes `LEAVE_ADVANCE_NOTICE_DAYS_KEY`, `CARLOS_GALLO_EMAIL_KEY`, `LEAVE_EXTRA_NOTIFY_EMAILS_KEY`, `DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS`.
+  - Versões síncronas `LEAVE_ADVANCE_NOTICE_DAYS`, `getMinLeaveStartDate()`, `validateLeaveAdvanceNotice()` mantidas para compatibilidade, marcadas como `@deprecated` quando aplicável, usando o fallback default.
+- **`src/lib/secure-credentials.ts`**: adicionada função `clearCredentialCache(key?)` para invalidar o cache em memória após escrita direta no banco via painel admin.
+- **`src/app/api/admin/leave-settings/route.ts`**:
+  - GET agora retorna `carlosGalloEmail`, `extraNotifyEmails` e `advanceNoticeDays` além de `hrEmail`.
+  - POST aceita `carlosGalloEmail`, `extraNotifyEmails` e `advanceNoticeDays` (com validação: email válido, prazo entre 1 e 365 dias). Limpa o cache de credenciais após cada escrita.
+  - Helper `upsertSecret()` faz upsert na tabela `app_secrets` e invalida cache.
+- **`src/app/api/leave/requests/route.ts`**: validação do prazo agora usa `validateLeaveAdvanceNoticeAsync()` que lê do banco, em vez do valor hardcoded.
+- **`src/app/ferias/page.tsx`**: carrega as configurações (`advanceNoticeDays`, `minStartDate`) do endpoint `/api/leave/config` no mount e usa os valores carregados (com fallback default) para o banner âmbar, atributo `min` do input de data e validação client-side antes do submit.
+
+### Tests
+- `scripts/test-leave-advance-notice.ts` expandido de 16 para 25 testes cobrindo também as constantes de chaves, funções async com fallback (`getAdvanceNoticeDays`, `getMinLeaveStartDateAsync`, `validateLeaveAdvanceNoticeAsync` retornando `requiredDays`), e o comportamento do fallback de emails extras.
+
 ## [5.27.0] - 2026-07-03
 
 ### Added
