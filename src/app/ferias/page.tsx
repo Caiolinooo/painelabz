@@ -10,6 +10,7 @@ import { LeaveRequest } from '@/services/leaveService';
 import MainLayout from '@/components/Layout/MainLayout';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { LEAVE_ADVANCE_NOTICE_DAYS, getMinLeaveStartDate, validateLeaveAdvanceNotice, formatDatePTBR } from '@/lib/leaveConfig';
 
 interface UnifiedUser {
     id: string;
@@ -226,6 +227,15 @@ export default function FeriasPage() {
             return;
         }
 
+        // Validação do prazo de antecedência (solicitação do DP - 40 dias)
+        // Aplica sobre a data de início do primeiro período
+        const firstStartDate = formData.periods[0]?.startDate || '';
+        const advanceValidation = validateLeaveAdvanceNotice(firstStartDate);
+        if (!advanceValidation.valid) {
+            toast.error(advanceValidation.errorMessage || `A data de início deve ter no mínimo ${LEAVE_ADVANCE_NOTICE_DAYS} dias de antecedência.`);
+            return;
+        }
+
         try {
             setSubmitting(true);
             const token = getToken();
@@ -246,7 +256,13 @@ export default function FeriasPage() {
                 })
             });
 
-            if (!res.ok) throw new Error('Failed to submit');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                const errMsg = errData?.error || 'Erro ao enviar solicitação';
+                toast.error(errMsg);
+                setSubmitting(false);
+                return;
+            }
 
             toast.success('Solicitação de férias enviada com sucesso!');
             setShowModal(false);
@@ -927,6 +943,14 @@ export default function FeriasPage() {
                                 </div>
                             </div>
 
+                            {/* Aviso de antecedência - Solicitação do DP */}
+                            <div className="bg-amber-50 px-6 py-3 border-b border-amber-100 text-xs text-amber-900 flex gap-2 items-start">
+                                <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong>Prazo de antecedência ({LEAVE_ADVANCE_NOTICE_DAYS} dias):</strong> conforme solicitação do DP, as férias devem ser pedidas com no mínimo <strong>{LEAVE_ADVANCE_NOTICE_DAYS} dias de antecedência</strong> à data de início, contemplando o período de solicitação e o de processamento, para garantir o cumprimento do prazo legal de envio. A data mais próxima permitida hoje é <strong>{formatDatePTBR(getMinLeaveStartDate())}</strong>.
+                                </div>
+                            </div>
+
                             <form onSubmit={handleSubmitRequest} className="p-0 flex flex-col min-h-[200px] max-h-[calc(90vh-180px)]">
                                 <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5 mb-2">
                                     <div className="space-y-4">
@@ -954,6 +978,7 @@ export default function FeriasPage() {
                                                             type="date"
                                                             required
                                                             value={period.startDate}
+                                                            min={index === 0 ? getMinLeaveStartDate() : undefined}
                                                             onChange={(e) => {
                                                                 const newPeriods = [...formData.periods];
                                                                 newPeriods[index].startDate = e.target.value;
@@ -961,6 +986,18 @@ export default function FeriasPage() {
                                                             }}
                                                             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                                         />
+                                                        {index === 0 && period.startDate && (() => {
+                                                            const validation = validateLeaveAdvanceNotice(period.startDate);
+                                                            if (!validation.valid) {
+                                                                return (
+                                                                    <p className="text-xs text-red-600 mt-1 flex items-start gap-1">
+                                                                        <FiAlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                                                                        <span>Data muito próxima. Mínimo de {LEAVE_ADVANCE_NOTICE_DAYS} dias de antecedência.</span>
+                                                                    </p>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <label className="text-sm font-medium text-gray-700">Data de Retorno</label>
@@ -968,6 +1005,7 @@ export default function FeriasPage() {
                                                             type="date"
                                                             required
                                                             value={period.endDate}
+                                                            min={period.startDate || undefined}
                                                             onChange={(e) => {
                                                                 const newPeriods = [...formData.periods];
                                                                 newPeriods[index].endDate = e.target.value;
