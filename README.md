@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.27.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.27.2-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -127,7 +127,7 @@ Camada de cache unificada para API MIO:
 - **Reembolsos** - Gestao financeira com upload e geracao de relatorios PDF. Validacao inteligente de valores por tipo de despesa e limite total por solicitacao (v5.27.0)
 - **Avaliacoes de Desempenho** - Ciclos 360 com autoavaliacao e revisao gerencial
 - **Ordens de Compra** - Fluxo de aprovacao multinivel com controle de alçada
-- **Recursos Humanos** - Ferias (com alertas automaticos para RH e Carlos Gallo e prazo de 40 dias de antecedencia - v5.27.0), Lista de Presenca, EPI, Ponto, Contracheque
+- **Recursos Humanos** - Ferias (com alertas automaticos por e-mail para RH e lista configuravel de responsaveis e prazo de 40 dias de antecedencia - v5.27.0), Lista de Presenca, EPI, Ponto, Contracheque
 - **Comunicacao** - Feed de Noticias, Rede Social, Chat Corporativo, Calendario
 - **Academia Corporativa** - Cursos, certificados e progresso
 - **Biblioteca** - Gestao de ativos (PDF, Video, Imagens, Links)
@@ -198,15 +198,21 @@ npm run db:cadastro-fields        # Campos adicionais
 
 ## Ultimas Atualizacoes
 
+### v5.27.2 - Notificações a Todos os E-mails + Comprovante de Férias em PDF
+- **Notificações a TODOS os e-mails em TODAS as etapas**: o RH e a lista de e-mails adicionais (DP e demais responsáveis) agora recebem notificações em todas as etapas do processo de férias — nova solicitação, avanço do líder para o gerente, aprovação final E rejeição (antes a rejeição e o avanço de etapa não notificavam a lista adicional). O colaborador também é notificado em todas as etapas.
+- **E-mails no padrão ABZ**: novos templates formais em `emailTemplates.ts` (`leaveRequestCreatedTemplate`, `leaveNewRequestNotificationTemplate`, `leaveApprovedTemplate`, `leaveApprovedNotificationTemplate`, `leaveRejectedTemplate`, `leaveRejectedNotificationTemplate`, `leavePendingManagerTemplate`, `leavePendingManagerNotificationTemplate`, `leaveApprovalPendingTemplate`) seguindo o mesmo padrão visual dos templates de reembolso (logo, header, footer, cores padronizadas, caixas de destaque).
+- **Comprovante de Férias em PDF (download)**: novo `src/lib/leavePDFGenerator.ts` gera dois documentos no padrão ABZ (header com logo, identificação, períodos, opções, assinaturas): (1) comprovante de uma solicitação existente via `GET /api/leave/[id]/pdf` e (2) formulário em branco para preenchimento manual via `GET /api/leave/form-pdf`. Botões de download adicionados na página do colaborador (`/ferias`) e no painel admin (`/admin/leave-requests`).
+- **Configuração simplificada**: removido o campo dedicado do responsável individual; agora há apenas um campo único de "E-mails Adicionais para Notificação" (lista separada por vírgula) que pode conter quantos e-mails forem necessários (DP, diretores, fiscais, etc.). Variável individual do responsável removida do código.
+
 ### v5.27.1 - Configuração Admin das Notificações e Prazo de Férias
-- **Painel Admin do Módulo de Férias expandido**: a página `/admin/leave-settings` agora permite configurar (sem precisar mexer em código/env): e-mail do RH, e-mail do Carlos Gallo (DP), e-mails adicionais separados por vírgula, e o prazo de antecedência em dias (default 40). As configurações são persistidas na tabela `app_secrets` e o cache de credenciais é invalidado após cada escrita para que as notificações passem a usar os novos valores imediatamente.
+- **Painel Admin do Módulo de Férias expandido**: a página `/admin/leave-settings` agora permite configurar (sem precisar mexer em código/env): e-mail do RH, lista de e-mails adicionais separados por vírgula (DP e demais responsáveis), e o prazo de antecedência em dias (default 40). As configurações são persistidas na tabela `app_secrets` e o cache de credenciais é invalidado após cada escrita para que as notificações passem a usar os novos valores imediatamente.
 - **Endpoint público `/api/leave/config`**: retorna o prazo de antecedência configurado e a data mínima permitida para o frontend montar as validações client-side dinamicamente (sem precisar ser admin).
 - **Validações dinâmicas no frontend**: a página `/ferias` carrega as configurações do banco no mount e usa os valores configurados (limite `min` no input de data, banner âmbar com o prazo e a data mais próxima permitida, validação client-side antes do submit).
 
 ### v5.27.0 - Reembolso Inteligente e Notificações de Férias (Solicitação DP)
 - **Reembolso Inteligente (validação de valores)**: Substituído o confuso "formato bancário" do input de valor (onde digitar `50` virava `R$ 0,50`) por um modo decimal intuitivo onde `50,83` vira `R$ 50,83`. Adicionados limites por tipo de despesa (alimentação: R$ 2k, transporte: R$ 1k, hospedagem: R$ 5k, combustível: R$ 1k, material: R$ 5k, outros: R$ 10k) com avisos visuais e validação server-side. Limite total por solicitação de R$ 50.000,00. Validação de data não permite datas futuras. Encerra o bug onde uma despesa de alimentação podia ser salva com R$ 5.000.083,00.
-- **Férias - Alertas automáticos para o DP**: Sempre que uma nova solicitação de férias é aberta, e-mails automáticos são enviados para o RH e para o Carlos Gallo (configurável via credencial `CARLOS_GALLO_EMAIL` ou variável de ambiente `LEAVE_EXTRA_NOTIFY_EMAILS`). Quando aprovada, o colaborador recebe um e-mail explícito confirmando que as férias foram "programadas conforme solicitado", com o período detalhado.
-- **Férias - Prazo de antecedência de 40 dias**: Implementado o prazo mínimo de 40 dias de antecedência para solicitação de férias (solicitação do Carlos Gallo), contemplando tanto o período de solicitação quanto o de processamento para garantir o cumprimento do prazo legal de envio. Validação no frontend (input `min`, aviso visual no modal) e no backend (rejeição com `code: INSUFFICIENT_ADVANCE_NOTICE`).
+- **Férias - Alertas automáticos para o DP**: Sempre que uma nova solicitação de férias é aberta, e-mails automáticos são enviados para o RH e para a lista de e-mails adicionais configurável (DP e demais responsáveis, via credencial `LEAVE_EXTRA_NOTIFY_EMAILS` ou variável de ambiente). Quando aprovada, o colaborador recebe um e-mail explícito confirmando que as férias foram "programadas conforme solicitado", com o período detalhado.
+- **Férias - Prazo de antecedência de 40 dias**: Implementado o prazo mínimo de 40 dias de antecedência para solicitação de férias (solicitação do DP), contemplando tanto o período de solicitação quanto o de processamento para garantir o cumprimento do prazo legal de envio. Validação no frontend (input `min`, aviso visual no modal) e no backend (rejeição com `code: INSUFFICIENT_ADVANCE_NOTICE`).
 
 ### v5.26.5 - Sincronização do Pipeline de Áudio do Agente de Voz
 - **Audio Server Corrigido**: Sincronização do `audio_server.py` com a versão local testada. Voz padrão alterada para F1 (feminina, melhor qualidade em PT-BR). Tratamento robusto de arrays NumPy multidimensionais do Supertonic 3 (squeeze + 1D mono enforcement). Inferência dinâmica de sample rate substituindo o valor fixo incorreto (22050 → calculado dinamicamente). Detecção heurística de idioma PT/EN no TTS. Correção de `TypeError` no log de duração quando `duration` é um array.

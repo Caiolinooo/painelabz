@@ -32,11 +32,7 @@ export default function AdminLeaveSettingsPage() {
     const [hrEmail, setHrEmail] = useState('');
     const [savingHr, setSavingHr] = useState(false);
 
-    // Email do Carlos Gallo (DP)
-    const [carlosGalloEmail, setCarlosGalloEmail] = useState('');
-    const [savingCarlos, setSavingCarlos] = useState(false);
-
-    // Emails extras (separados por vírgula)
+    // Lista de emails adicionais (DP e demais responsáveis) — separados por vírgula
     const [extraNotifyEmails, setExtraNotifyEmails] = useState('');
     const [savingExtra, setSavingExtra] = useState(false);
 
@@ -68,7 +64,6 @@ export default function AdminLeaveSettingsPage() {
             setSectors(data.sectors || []);
             setUsers(data.users || []);
             setHrEmail(data.hrEmail || '');
-            setCarlosGalloEmail(data.carlosGalloEmail || '');
             setExtraNotifyEmails(data.extraNotifyEmails || '');
             setAdvanceNoticeDays(typeof data.advanceNoticeDays === 'number' ? data.advanceNoticeDays : 40);
 
@@ -154,7 +149,6 @@ export default function AdminLeaveSettingsPage() {
      */
     const saveGlobalSettings = async (overrides: Partial<{
         hrEmail: string;
-        carlosGalloEmail: string;
         extraNotifyEmails: string;
         advanceNoticeDays: number;
     }>): Promise<boolean> => {
@@ -167,7 +161,6 @@ export default function AdminLeaveSettingsPage() {
             },
             body: JSON.stringify({
                 hrEmail,
-                carlosGalloEmail,
                 extraNotifyEmails,
                 advanceNoticeDays,
                 ...overrides
@@ -199,24 +192,6 @@ export default function AdminLeaveSettingsPage() {
         }
     };
 
-    const handleSaveCarlosEmail = async () => {
-        if (!carlosGalloEmail || !carlosGalloEmail.includes('@')) {
-            toast.error('Insira um e-mail válido.');
-            return;
-        }
-
-        try {
-            setSavingCarlos(true);
-            await saveGlobalSettings({ carlosGalloEmail });
-            toast.success('E-mail do Carlos Gallo salvo com sucesso!');
-        } catch (error: any) {
-            console.error('Error saving Carlos Gallo email:', error);
-            toast.error(error.message || 'Erro ao salvar e-mail do Carlos Gallo');
-        } finally {
-            setSavingCarlos(false);
-        }
-    };
-
     const handleSaveExtraEmails = async () => {
         // Permite vazio (nesse caso removemos a configuração do banco)
         if (extraNotifyEmails && extraNotifyEmails.trim()) {
@@ -231,7 +206,7 @@ export default function AdminLeaveSettingsPage() {
         try {
             setSavingExtra(true);
             await saveGlobalSettings({ extraNotifyEmails });
-            toast.success('E-mails adicionais salvos com sucesso!');
+            toast.success('Lista de e-mails salva com sucesso!');
         } catch (error: any) {
             console.error('Error saving extra emails:', error);
             toast.error(error.message || 'Erro ao salvar e-mails adicionais');
@@ -285,7 +260,7 @@ export default function AdminLeaveSettingsPage() {
                 <FiUsers className="w-8 h-8 text-blue-600" />
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Hierarquia de Férias</h1>
-                    <p className="text-gray-500">Configure o e-mail do RH, notificações do DP, prazo de antecedência e a hierarquia de aprovação por setor.</p>
+                    <p className="text-gray-500">Configure os e-mails de notificação, o prazo de antecedência e a hierarquia de aprovação por setor.</p>
                 </div>
             </div>
 
@@ -293,17 +268,17 @@ export default function AdminLeaveSettingsPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
                 <div className="p-6 border-b border-gray-100 bg-gray-50">
                     <h2 className="text-lg font-semibold text-gray-800">1. Configurações Globais</h2>
-                    <p className="text-sm text-gray-500">E-mails que recebem alertas automáticos e prazo de antecedência para solicitações de férias.</p>
+                    <p className="text-sm text-gray-500">E-mails que recebem alertas automáticos em todas as etapas do processo de férias e prazo de antecedência para solicitações.</p>
                 </div>
 
                 <div className="p-6 space-y-6">
-                    {/* Aviso informativo sobre a solicitação do DP */}
+                    {/* Aviso informativo sobre o comportamento das notificações */}
                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
                         <FiInfo className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
                         <div className="text-sm text-blue-800">
                             <p className="font-medium mb-1">Notificações automáticas por e-mail</p>
-                            <p className="mb-2">Quando uma nova solicitação de férias é aberta, e-mails automáticos são enviados para o RH e para o Carlos Gallo (e quaisquer e-mails adicionais abaixo). Quando aprovada, o colaborador recebe um e-mail confirmando que as férias estão "programadas conforme solicitado".</p>
-                            <p className="text-xs opacity-80">Solicitação do DP — Carlos Gallo, para acompanhamento das demandas e cumprimento dos prazos legais.</p>
+                            <p className="mb-2">Todos os e-mails configurados abaixo (RH + lista adicional) recebem notificações em <strong>todas as etapas</strong> do processo de férias: nova solicitação, avanço do líder para o gerente, aprovação final e rejeição. O colaborador solicitante também é notificado em todas as etapas.</p>
+                            <p className="text-xs opacity-80">Use a lista adicional para incluir o DP, diretores, fiscais ou quaisquer outros responsáveis que precisem acompanhar o processo.</p>
                         </div>
                     </div>
 
@@ -312,7 +287,7 @@ export default function AdminLeaveSettingsPage() {
                         <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                                 <FiMail className="w-4 h-4 text-gray-500" />
-                                E-mail de Notificações do RH
+                                E-mail do RH
                             </label>
                             <input
                                 type="email"
@@ -321,7 +296,7 @@ export default function AdminLeaveSettingsPage() {
                                 onChange={(e) => setHrEmail(e.target.value)}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
-                            <p className="text-xs text-gray-500 mt-1">Recebe alertas de férias solicitadas, aprovadas e rejeitadas.</p>
+                            <p className="text-xs text-gray-500 mt-1">Notificado em todas as etapas do processo de férias (nova solicitação, avanço, aprovação e rejeição).</p>
                         </div>
                         <button
                             onClick={handleSaveHrEmail}
@@ -335,50 +310,22 @@ export default function AdminLeaveSettingsPage() {
 
                     <hr className="border-gray-100" />
 
-                    {/* E-mail do Carlos Gallo (DP) */}
+                    {/* Lista de e-mails adicionais (DP e demais responsáveis) */}
                     <div className="flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl">
                         <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                                 <FiMail className="w-4 h-4 text-gray-500" />
-                                E-mail do Carlos Gallo (DP)
-                            </label>
-                            <input
-                                type="email"
-                                placeholder="carlos.gallo@groupabz.com"
-                                value={carlosGalloEmail}
-                                onChange={(e) => setCarlosGalloEmail(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Recebe alerta sempre que uma nova solicitação de férias é aberta e quando é aprovada.</p>
-                        </div>
-                        <button
-                            onClick={handleSaveCarlosEmail}
-                            disabled={savingCarlos}
-                            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${savingCarlos ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'}`}
-                        >
-                            <FiSave className={`mr-2 ${savingCarlos ? 'animate-pulse' : ''}`} />
-                            {savingCarlos ? 'Salvando...' : 'Salvar'}
-                        </button>
-                    </div>
-
-                    <hr className="border-gray-100" />
-
-                    {/* E-mails adicionais */}
-                    <div className="flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl">
-                        <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                                <FiMail className="w-4 h-4 text-gray-500" />
-                                E-mails Adicionais para Notificação
+                                E-mails Adicionais para Notificação (DP e responsáveis)
                             </label>
                             <input
                                 type="text"
-                                placeholder="email1@exemplo.com, email2@exemplo.com"
+                                placeholder="dp@exemplo.com, diretor@exemplo.com, fiscal@exemplo.com"
                                 value={extraNotifyEmails}
                                 onChange={(e) => setExtraNotifyEmails(e.target.value)}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                                Lista de e-mails separados por vírgula. Deixe vazio para não enviar cópias adicionais.
+                                Lista de e-mails separados por vírgula. Todos os e-mails desta lista recebem notificações em todas as etapas do processo de férias, assim como o RH. Deixe vazio para não enviar cópias adicionais.
                             </p>
                         </div>
                         <button
