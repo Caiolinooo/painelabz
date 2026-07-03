@@ -173,6 +173,34 @@ export default function AdminLeaveRequestsPage() {
         }
     };
 
+    const handleDownloadComprovante = async (req: RequestWithUser) => {
+        try {
+            const token = getToken();
+            const res = await fetch(`/api/leave/${req.id}/pdf`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData?.error || 'Falha ao gerar comprovante');
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Comprovante_Ferias_${req.id.slice(0, 8)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success('Comprovante baixado com sucesso!');
+        } catch (error: any) {
+            console.error('Error downloading comprovante:', error);
+            toast.error(error.message || 'Erro ao baixar comprovante');
+        }
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'APPROVED':
@@ -430,6 +458,15 @@ export default function AdminLeaveRequestsPage() {
                                     className="w-full sm:w-auto inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm"
                                 >
                                     Fechar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleDownloadComprovante(selectedReq)}
+                                    disabled={isProcessing}
+                                    className="w-full sm:w-auto inline-flex justify-center items-center rounded-md border border-blue-200 shadow-sm px-4 py-2 bg-blue-50 text-base font-medium text-blue-700 hover:bg-blue-100 focus:outline-none sm:text-sm disabled:opacity-50"
+                                >
+                                    <FiDownload className="mr-2" /> Comprovante (PDF)
                                 </button>
 
                                 <button

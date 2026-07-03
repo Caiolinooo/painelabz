@@ -10,7 +10,6 @@ import {
   DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS,
   LEAVE_ADVANCE_NOTICE_DAYS,
   LEAVE_ADVANCE_NOTICE_DAYS_KEY,
-  CARLOS_GALLO_EMAIL_KEY,
   LEAVE_EXTRA_NOTIFY_EMAILS_KEY,
   getAdvanceNoticeDays,
   getMinLeaveStartDate,
@@ -18,8 +17,8 @@ import {
   validateLeaveAdvanceNotice,
   validateLeaveAdvanceNoticeAsync,
   formatDatePTBR,
-  getCarlosGalloEmail,
-  getLeaveExtraNotifyEmails
+  getLeaveExtraNotifyEmails,
+  getLeaveNotificationRecipients
 } from '../src/lib/leaveConfig';
 
 let passed = 0;
@@ -39,7 +38,6 @@ console.log('\n=== Configuração (constantes) ===\n');
 
 assert(DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS === 40, `DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS deve ser 40 (recebido: ${DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS})`);
 assert(LEAVE_ADVANCE_NOTICE_DAYS_KEY === 'LEAVE_ADVANCE_NOTICE_DAYS', `LEAVE_ADVANCE_NOTICE_DAYS_KEY deve ser 'LEAVE_ADVANCE_NOTICE_DAYS'`);
-assert(CARLOS_GALLO_EMAIL_KEY === 'CARLOS_GALLO_EMAIL', `CARLOS_GALLO_EMAIL_KEY deve ser 'CARLOS_GALLO_EMAIL'`);
 assert(LEAVE_EXTRA_NOTIFY_EMAILS_KEY === 'LEAVE_EXTRA_NOTIFY_EMAILS', `LEAVE_EXTRA_NOTIFY_EMAILS_KEY deve ser 'LEAVE_EXTRA_NOTIFY_EMAILS'`);
 
 console.log('\n=== Testes de getMinLeaveStartDate (sync, fallback) ===\n');
@@ -104,16 +102,15 @@ async function runAsyncTests() {
   assert(asyncValid.valid, 'validateLeaveAdvanceNoticeAsync deve aceitar 175 dias');
   assert(asyncValid.requiredDays === 40, 'validateLeaveAdvanceNoticeAsync deve retornar requiredDays=40 mesmo quando válido');
 
-  // Email do Carlos Gallo (fallback)
-  const carlosEmail = await getCarlosGalloEmail();
-  console.log(`  Email do Carlos Gallo (fallback): ${carlosEmail}`);
-  assert(carlosEmail === 'carlos.gallo@groupabz.com', `Email default deve ser carlos.gallo@groupabz.com (recebido: ${carlosEmail})`);
+  // Destinatários configurados (RH + lista adicional)
+  const recipients = await getLeaveNotificationRecipients();
+  console.log(`  Destinatários configurados (RH + extras): ${recipients.join(', ')}`);
+  assert(recipients.includes('rh@groupabz.com'), 'Deve incluir o email padrão do RH no fallback');
 
-  // Emails extras (deve incluir Carlos Gallo)
+  // Emails extras (deve ser lista vazia quando não há config nem env)
   const extras = await getLeaveExtraNotifyEmails();
-  console.log(`  Emails extras: ${extras.join(', ')}`);
-  assert(extras.length >= 1, 'Deve retornar pelo menos 1 email (Carlos Gallo)');
-  assert(extras.includes('carlos.gallo@groupabz.com'), 'Deve incluir o email do Carlos Gallo');
+  console.log(`  Emails extras (sem config): ${extras.length === 0 ? '(nenhum)' : extras.join(', ')}`);
+  assert(extras.length === 0, 'Lista de emails extras deve ser vazia quando não há config nem env');
 
   console.log(`\n=== Resultado: ${passed} passaram, ${failed} falharam ===\n`);
 
