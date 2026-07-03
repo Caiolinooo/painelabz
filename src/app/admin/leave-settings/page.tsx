@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiUsers, FiSave, FiSearch, FiAlertCircle } from 'react-icons/fi';
+import { FiUsers, FiSave, FiSearch, FiAlertCircle, FiMail, FiClock, FiInfo } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { LeaveSectorConfig } from '@/services/leaveService';
@@ -27,8 +27,22 @@ export default function AdminLeaveSettingsPage() {
     const [users, setUsers] = useState<UnifiedUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // ===== Configurações globais =====
     const [hrEmail, setHrEmail] = useState('');
     const [savingHr, setSavingHr] = useState(false);
+
+    // Email do Carlos Gallo (DP)
+    const [carlosGalloEmail, setCarlosGalloEmail] = useState('');
+    const [savingCarlos, setSavingCarlos] = useState(false);
+
+    // Emails extras (separados por vírgula)
+    const [extraNotifyEmails, setExtraNotifyEmails] = useState('');
+    const [savingExtra, setSavingExtra] = useState(false);
+
+    // Prazo de antecedência (em dias)
+    const [advanceNoticeDays, setAdvanceNoticeDays] = useState<number>(40);
+    const [savingAdvanceDays, setSavingAdvanceDays] = useState(false);
 
     // State for unsaved changes
     const [editedConfigs, setEditedConfigs] = useState<Record<string, { leader_id: string | null, manager_id: string | null }>>({});
@@ -54,6 +68,9 @@ export default function AdminLeaveSettingsPage() {
             setSectors(data.sectors || []);
             setUsers(data.users || []);
             setHrEmail(data.hrEmail || '');
+            setCarlosGalloEmail(data.carlosGalloEmail || '');
+            setExtraNotifyEmails(data.extraNotifyEmails || '');
+            setAdvanceNoticeDays(typeof data.advanceNoticeDays === 'number' ? data.advanceNoticeDays : 40);
 
         } catch (error) {
             console.error('Error loading data:', error);
@@ -130,6 +147,40 @@ export default function AdminLeaveSettingsPage() {
         }
     };
 
+    /**
+     * Helper genérico para salvar uma configuração global via API.
+     * Sempre envia TODOS os campos globais juntos para evitar
+     * sobrescrever com valor antigo/undefined.
+     */
+    const saveGlobalSettings = async (overrides: Partial<{
+        hrEmail: string;
+        carlosGalloEmail: string;
+        extraNotifyEmails: string;
+        advanceNoticeDays: number;
+    }>): Promise<boolean> => {
+        const token = getToken();
+        const res = await fetch('/api/admin/leave-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: ***REMOVED***
+                hrEmail,
+                carlosGalloEmail,
+                extraNotifyEmails,
+                advanceNoticeDays,
+                ...overrides
+            })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData?.error || 'Falha ao salvar');
+        }
+        return true;
+    };
+
     const handleSaveHrEmail = async () => {
         if (!hrEmail || !hrEmail.includes('@')) {
             toast.error('Insira um e-mail válido.');
@@ -138,24 +189,77 @@ export default function AdminLeaveSettingsPage() {
 
         try {
             setSavingHr(true);
-            const token = getToken();
-            const res = await fetch('/api/admin/leave-settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                },
-                body: ***REMOVED*** hrEmail })
-            });
-
-            if (!res.ok) throw new Error('Failed to save HR Email');
-
+            await saveGlobalSettings({ hrEmail });
             toast.success('E-mail do RH salvo com sucesso!');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving HR email:', error);
-            toast.error('Erro ao salvar e-mail do RH');
+            toast.error(error.message || 'Erro ao salvar e-mail do RH');
         } finally {
             setSavingHr(false);
+        }
+    };
+
+    const handleSaveCarlosEmail = async () => {
+        if (!carlosGalloEmail || !carlosGalloEmail.includes('@')) {
+            toast.error('Insira um e-mail válido.');
+            return;
+        }
+
+        try {
+            setSavingCarlos(true);
+            await saveGlobalSettings({ carlosGalloEmail });
+            toast.success('E-mail do Carlos Gallo salvo com sucesso!');
+        } catch (error: any) {
+            console.error('Error saving Carlos Gallo email:', error);
+            toast.error(error.message || 'Erro ao salvar e-mail do Carlos Gallo');
+        } finally {
+            setSavingCarlos(false);
+        }
+    };
+
+    const handleSaveExtraEmails = async () => {
+        // Permite vazio (nesse caso removemos a configuração do banco)
+        if (extraNotifyEmails && extraNotifyEmails.trim()) {
+            const emails = extraNotifyEmails.split(',').map(e => e.trim()).filter(Boolean);
+            const invalid = emails.find(e => !e.includes('@'));
+            if (invalid) {
+                toast.error(`E-mail adicional inválido: ${invalid}`);
+                return;
+            }
+        }
+
+        try {
+            setSavingExtra(true);
+            await saveGlobalSettings({ extraNotifyEmails });
+            toast.success('E-mails adicionais salvos com sucesso!');
+        } catch (error: any) {
+            console.error('Error saving extra emails:', error);
+            toast.error(error.message || 'Erro ao salvar e-mails adicionais');
+        } finally {
+            setSavingExtra(false);
+        }
+    };
+
+    const handleSaveAdvanceDays = async () => {
+        if (!advanceNoticeDays || isNaN(Number(advanceNoticeDays))) {
+            toast.error('Insira um número válido de dias.');
+            return;
+        }
+        const days = Number(advanceNoticeDays);
+        if (days < 1 || days > 365) {
+            toast.error('O prazo deve ser entre 1 e 365 dias.');
+            return;
+        }
+
+        try {
+            setSavingAdvanceDays(true);
+            await saveGlobalSettings({ advanceNoticeDays: days });
+            toast.success(`Prazo de antecedência atualizado para ${days} dias!`);
+        } catch (error: any) {
+            console.error('Error saving advance days:', error);
+            toast.error(error.message || 'Erro ao salvar prazo de antecedência');
+        } finally {
+            setSavingAdvanceDays(false);
         }
     };
 
@@ -181,37 +285,144 @@ export default function AdminLeaveSettingsPage() {
                 <FiUsers className="w-8 h-8 text-blue-600" />
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Hierarquia de Férias</h1>
-                    <p className="text-gray-500">Configure o e-mail do RH e a hierarquia de aprovação para cada setor.</p>
+                    <p className="text-gray-500">Configure o e-mail do RH, notificações do DP, prazo de antecedência e a hierarquia de aprovação por setor.</p>
                 </div>
             </div>
 
+            {/* SEÇÃO 1: Configurações Globais - Notificações e Prazos */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-                <div className="p-6 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-800">1. Configurações Globais (RH)</h2>
-                        <p className="text-sm text-gray-500">Este é o e-mail que receberá alertas sobre férias solicitadas, aprovadas e rejeitadas.</p>
-                    </div>
+                <div className="p-6 border-b border-gray-100 bg-gray-50">
+                    <h2 className="text-lg font-semibold text-gray-800">1. Configurações Globais</h2>
+                    <p className="text-sm text-gray-500">E-mails que recebem alertas automáticos e prazo de antecedência para solicitações de férias.</p>
                 </div>
-                <div className="p-6 flex items-end gap-4 max-w-2xl">
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">E-mail de Notificações RH</label>
-                        <input
-                            type="email"
-                            placeholder="rh@seudominio.com"
-                            value={hrEmail}
-                            onChange={(e) => setHrEmail(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+
+                <div className="p-6 space-y-6">
+                    {/* Aviso informativo sobre a solicitação do DP */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
+                        <FiInfo className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
+                        <div className="text-sm text-blue-800">
+                            <p className="font-medium mb-1">Notificações automáticas por e-mail</p>
+                            <p className="mb-2">Quando uma nova solicitação de férias é aberta, e-mails automáticos são enviados para o RH e para o Carlos Gallo (e quaisquer e-mails adicionais abaixo). Quando aprovada, o colaborador recebe um e-mail confirmando que as férias estão "programadas conforme solicitado".</p>
+                            <p className="text-xs opacity-80">Solicitação do DP — Carlos Gallo, para acompanhamento das demandas e cumprimento dos prazos legais.</p>
+                        </div>
                     </div>
-                    <button
-                        onClick={handleSaveHrEmail}
-                        disabled={savingHr}
-                        className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${savingHr ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
-                            }`}
-                    >
-                        <FiSave className={`mr-2 ${savingHr ? 'animate-pulse' : ''}`} />
-                        {savingHr ? 'Salvando...' : 'Salvar E-mail'}
-                    </button>
+
+                    {/* E-mail do RH */}
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                                <FiMail className="w-4 h-4 text-gray-500" />
+                                E-mail de Notificações do RH
+                            </label>
+                            <input
+                                type="email"
+                                placeholder="rh@seudominio.com"
+                                value={hrEmail}
+                                onChange={(e) => setHrEmail(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Recebe alertas de férias solicitadas, aprovadas e rejeitadas.</p>
+                        </div>
+                        <button
+                            onClick={handleSaveHrEmail}
+                            disabled={savingHr}
+                            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${savingHr ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'}`}
+                        >
+                            <FiSave className={`mr-2 ${savingHr ? 'animate-pulse' : ''}`} />
+                            {savingHr ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+
+                    <hr className="border-gray-100" />
+
+                    {/* E-mail do Carlos Gallo (DP) */}
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                                <FiMail className="w-4 h-4 text-gray-500" />
+                                E-mail do Carlos Gallo (DP)
+                            </label>
+                            <input
+                                type="email"
+                                placeholder="carlos.gallo@groupabz.com"
+                                value={carlosGalloEmail}
+                                onChange={(e) => setCarlosGalloEmail(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Recebe alerta sempre que uma nova solicitação de férias é aberta e quando é aprovada.</p>
+                        </div>
+                        <button
+                            onClick={handleSaveCarlosEmail}
+                            disabled={savingCarlos}
+                            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${savingCarlos ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'}`}
+                        >
+                            <FiSave className={`mr-2 ${savingCarlos ? 'animate-pulse' : ''}`} />
+                            {savingCarlos ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+
+                    <hr className="border-gray-100" />
+
+                    {/* E-mails adicionais */}
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                                <FiMail className="w-4 h-4 text-gray-500" />
+                                E-mails Adicionais para Notificação
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="email1@exemplo.com, email2@exemplo.com"
+                                value={extraNotifyEmails}
+                                onChange={(e) => setExtraNotifyEmails(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Lista de e-mails separados por vírgula. Deixe vazio para não enviar cópias adicionais.
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleSaveExtraEmails}
+                            disabled={savingExtra}
+                            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${savingExtra ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'}`}
+                        >
+                            <FiSave className={`mr-2 ${savingExtra ? 'animate-pulse' : ''}`} />
+                            {savingExtra ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+
+                    <hr className="border-gray-100" />
+
+                    {/* Prazo de antecedência */}
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                                <FiClock className="w-4 h-4 text-gray-500" />
+                                Prazo de Antecedência (dias)
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={365}
+                                placeholder="40"
+                                value={advanceNoticeDays}
+                                onChange={(e) => setAdvanceNoticeDays(Number(e.target.value))}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Número mínimo de dias entre a data da solicitação e o início das férias.
+                                Padrão DP: <strong>40 dias</strong> (contempla solicitação + processamento para cumprimento do prazo legal).
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleSaveAdvanceDays}
+                            disabled={savingAdvanceDays}
+                            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${savingAdvanceDays ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'}`}
+                        >
+                            <FiSave className={`mr-2 ${savingAdvanceDays ? 'animate-pulse' : ''}`} />
+                            {savingAdvanceDays ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
                 </div>
             </div>
 
