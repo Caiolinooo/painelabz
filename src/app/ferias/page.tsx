@@ -10,6 +10,12 @@ import { LeaveRequest } from '@/services/leaveService';
 import MainLayout from '@/components/Layout/MainLayout';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+    DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS,
+    validateLeaveAdvanceNotice,
+    formatDatePTBR,
+    LEAVE_ADVANCE_NOTICE_DAYS as FALLBACK_ADVANCE_DAYS
+} from '@/lib/leaveConfig';
 
 interface UnifiedUser {
     id: string;
@@ -75,6 +81,81 @@ export default function FeriasPage() {
     const [isAllReqModalOpen, setIsAllReqModalOpen] = useState(false);
     const [allReqActionReason, setAllReqActionReason] = useState('');
     const [allReqModalProcessing, setAllReqModalProcessing] = useState(false);
+
+    // ==========================================
+    // LEAVE CONFIG (carregado do banco via API)
+    // ==========================================
+    // Prazo de antecedência e data mínima são configuráveis via painel admin
+    // em /admin/leave-settings. Carregamos aqui para usar nas validações
+    // client-side. Antes do load, usamos o fallback default.
+    const [advanceNoticeDays, setAdvanceNoticeDays] = useState<number>(DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS);
+    const [minStartDate, setMinStartDate] = useState<string>('');
+    const [configLoaded, setConfigLoaded] = useState(false);
+
+    useEffect(() => {
+        loadLeaveConfig();
+    }, []);
+
+    const loadLeaveConfig = async () => {
+        try {
+            const token = getToken();
+            const res = await fetch('/api/leave/config', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (typeof data.advanceNoticeDays === 'number' && data.advanceNoticeDays > 0) {
+                    setAdvanceNoticeDays(data.advanceNoticeDays);
+                }
+                if (data.minStartDate) {
+                    setMinStartDate(data.minStartDate);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading leave config (using fallback):', error);
+        } finally {
+            setConfigLoaded(true);
+        }
+    };
+
+    /**
+     * Valida a data de início contra o prazo de antecedência configurado.
+     * Usa o valor carregado do banco (state) com fallback para o default.
+     */
+    const validateAdvanceNoticeForCurrentConfig = (startDate: string) => {
+        // O validateLeaveAdvanceNotice síncrono usa LEAVE_ADVANCE_NOTICE_DAYS
+        // (fallback). Se o estado carregou um valor diferente do banco,
+        // usamos uma versão customizada para validar com o valor correto.
+        if (advanceNoticeDays === FALLBACK_ADVANCE_DAYS) {
+            return validateLeaveAdvanceNotice(startDate);
+        }
+        // Implementação local usando o advanceNoticeDays do state
+        if (!startDate) {
+            return { valid: false, errorMessage: 'Data de início é obrigatória' };
+        }
+        const [year, month, day] = startDate.split('-').map(Number);
+        if (!year || !month || !day) {
+            return { valid: false, errorMessage: 'Data de início inválida' };
+        }
+        const start = new Date(year, month - 1, day, 12, 0, 0);
+        const today = new Date();
+        today.setHours(12, 0, 0, 0);
+        const diffDays = Math.floor((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays < advanceNoticeDays) {
+            const minDate = minStartDate || (() => {
+                const d = new Date();
+                d.setDate(d.getDate() + advanceNoticeDays);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            })();
+            return {
+                valid: false,
+                errorMessage: `A data de início das férias deve ser solicitada com no mínimo ${advanceNoticeDays} dias de antecedência (solicitação do DP para cumprimento do prazo legal de processamento). A data mais próxima permitida é ${formatDatePTBR(minDate)}.`,
+                minDate,
+                daysAhead: diffDays
+            };
+        }
+        return { valid: true, daysAhead: diffDays };
+    };
 
     useEffect(() => {
         if (user?.id) {
@@ -226,6 +307,15 @@ export default function FeriasPage() {
             return;
         }
 
+        // Validação do prazo de antecedência (solicitação do DP - configurável via admin)
+        // Aplica sobre a data de início do primeiro período
+        const firstStartDate = formData.periods[0]?.startDate || '';
+        const advanceValidation = validateAdvanceNoticeForCurrentConfig(firstStartDate);
+        if (!advanceValidation.valid) {
+            toast.error(advanceValidation.errorMessage || `A data de início deve ter no mínimo ${advanceNoticeDays} dias de antecedência.`);
+            return;
+        }
+
         try {
             setSubmitting(true);
             const token = getToken();
@@ -246,7 +336,13 @@ export default function FeriasPage() {
                 })
             });
 
-            if (!res.ok) throw new Error('Failed to submit');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                const errMsg = errData?.error || 'Erro ao enviar solicitação';
+                toast.error(errMsg);
+                setSubmitting(false);
+                return;
+            }
 
             toast.success('Solicitação de férias enviada com sucesso!');
             setShowModal(false);
@@ -927,6 +1023,14 @@ export default function FeriasPage() {
                                 </div>
                             </div>
 
+                            {/* Aviso de antecedência - Solicitação do DP */}
+                            <div className="bg-amber-50 px-6 py-3 border-b border-amber-100 text-xs text-amber-900 flex gap-2 items-start">
+                                <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong>Prazo de antecedência ({advanceNoticeDays} dias):</strong> conforme solicitação do DP, as férias devem ser pedidas com no mínimo <strong>{advanceNoticeDays} dias de antecedência</strong> à data de início, contemplando o período de solicitação e o de processamento, para garantir o cumprimento do prazo legal de envio. A data mais próxima permitida hoje é <strong>{minStartDate ? formatDatePTBR(minStartDate) : '—'}</strong>{!configLoaded && ' (carregando...)'}.
+                                </div>
+                            </div>
+
                             <form onSubmit={handleSubmitRequest} className="p-0 flex flex-col min-h-[200px] max-h-[calc(90vh-180px)]">
                                 <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5 mb-2">
                                     <div className="space-y-4">
@@ -954,6 +1058,7 @@ export default function FeriasPage() {
                                                             type="date"
                                                             required
                                                             value={period.startDate}
+                                                            min={index === 0 ? (minStartDate || undefined) : undefined}
                                                             onChange={(e) => {
                                                                 const newPeriods = [...formData.periods];
                                                                 newPeriods[index].startDate = e.target.value;
@@ -961,6 +1066,18 @@ export default function FeriasPage() {
                                                             }}
                                                             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                                         />
+                                                        {index === 0 && period.startDate && (() => {
+                                                            const validation = validateAdvanceNoticeForCurrentConfig(period.startDate);
+                                                            if (!validation.valid) {
+                                                                return (
+                                                                    <p className="text-xs text-red-600 mt-1 flex items-start gap-1">
+                                                                        <FiAlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                                                                        <span>Data muito próxima. Mínimo de {advanceNoticeDays} dias de antecedência.</span>
+                                                                    </p>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <label className="text-sm font-medium text-gray-700">Data de Retorno</label>
@@ -968,6 +1085,7 @@ export default function FeriasPage() {
                                                             type="date"
                                                             required
                                                             value={period.endDate}
+                                                            min={period.startDate || undefined}
                                                             onChange={(e) => {
                                                                 const newPeriods = [...formData.periods];
                                                                 newPeriods[index].endDate = e.target.value;

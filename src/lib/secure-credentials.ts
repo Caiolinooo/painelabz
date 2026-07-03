@@ -196,3 +196,20 @@ export async function initializeCredentials(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Limpa o cache de credenciais.
+ *
+ * Deve ser chamado após atualizar uma credencial diretamente no banco
+ * (ex: via painel admin) para garantir que a próxima leitura busque o
+ * valor atualizado em vez do valor em cache.
+ *
+ * @param key Chave específica para limpar. Se omitido, limpa todo o cache.
+ */
+export function clearCredentialCache(key?: string): void {
+  if (key) {
+    credentialsCache.delete(key);
+  } else {
+    credentialsCache.clear();
+  }
+}
