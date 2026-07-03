@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox, FiSearch, FiEye, FiTrash2, FiDownload } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox, FiSearch, FiEye, FiTrash2, FiDownload, FiFileText } from 'react-icons/fi';
 import * as XLSX from 'xlsx-js-style';
 import toast from 'react-hot-toast';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
@@ -570,6 +570,69 @@ export default function FeriasPage() {
     // ==========================================
     // HELPERS
     // ==========================================
+
+    /**
+     * Faz download do comprovante de uma solicitação de férias específica.
+     */
+    const handleDownloadComprovante = async (req: LeaveRequest) => {
+        try {
+            const token = getToken();
+            const res = await fetch(`/api/leave/${req.id}/pdf`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData?.error || 'Falha ao gerar comprovante');
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Comprovante_Ferias_${req.id.slice(0, 8)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success('Comprovante baixado com sucesso!');
+        } catch (error: any) {
+            console.error('Error downloading comprovante:', error);
+            toast.error(error.message || 'Erro ao baixar comprovante');
+        }
+    };
+
+    /**
+     * Faz download do formulário de férias em branco (para preenchimento manual).
+     */
+    const handleDownloadFormulario = async () => {
+        try {
+            const token = getToken();
+            const res = await fetch('/api/leave/form-pdf', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData?.error || 'Falha ao gerar formulário');
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Formulario_Ferias_ABZ_${new Date().toISOString().slice(0, 10)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success('Formulário baixado com sucesso!');
+        } catch (error: any) {
+            console.error('Error downloading formulário:', error);
+            toast.error(error.message || 'Erro ao baixar formulário');
+        }
+    };
+
     const getStatusBadgeOptions = (status: string) => {
         switch (status) {
             case 'PENDING_LEADER':
@@ -663,13 +726,23 @@ export default function FeriasPage() {
                     </div>
 
                     {activeTab === 'my_leaves' && (
-                        <button
-                            onClick={() => setShowModal(true)}
-                            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all shadow-sm active:scale-95"
-                        >
-                            <FiPlus className="w-5 h-5" />
-                            Nova Solicitação
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleDownloadFormulario}
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-blue-200 text-blue-700 font-medium rounded-xl hover:bg-blue-50 transition-all shadow-sm active:scale-95"
+                                title="Baixar formulário em branco para preenchimento manual"
+                            >
+                                <FiFileText className="w-5 h-5" />
+                                <span className="hidden sm:inline">Formulário</span>
+                            </button>
+                            <button
+                                onClick={() => setShowModal(true)}
+                                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all shadow-sm active:scale-95"
+                            >
+                                <FiPlus className="w-5 h-5" />
+                                Nova Solicitação
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -723,9 +796,19 @@ export default function FeriasPage() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <p className="text-sm text-gray-500">
-                                                        Registrado em: {new Date(request.created_at).toLocaleDateString('pt-BR')}
-                                                    </p>
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 sm:mt-0">
+                                                        <p className="text-sm text-gray-500">
+                                                            Registrado em: {new Date(request.created_at).toLocaleDateString('pt-BR')}
+                                                        </p>
+                                                        <button
+                                                            onClick={() => handleDownloadComprovante(request)}
+                                                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                                                            title="Baixar comprovante desta solicitação em PDF"
+                                                        >
+                                                            <FiDownload className="w-3.5 h-3.5" />
+                                                            Comprovante
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
 
