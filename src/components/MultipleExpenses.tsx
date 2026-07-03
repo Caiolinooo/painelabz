@@ -154,8 +154,7 @@ const MultipleExpenses: React.FC<MultipleExpensesProps> = ({
         <FiInfo className="mr-2 mt-0.5 flex-shrink-0" />
         <div>
           <strong>Dica:</strong> Digite o valor normalmente usando vírgula para os centavos.
-          Exemplo: <code className="bg-blue-100 px-1 rounded">50,83</code> = R$ 50,83.
-          Não use pontos para centavos (não digite <code className="bg-blue-100 px-1 rounded">50.83</code>).
+          Não use pontos para centavos.
         </div>
       </div>
 
