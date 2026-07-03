@@ -329,16 +329,7 @@ export default function PayrollSheetsPage() {
                         <div className="flex items-center space-x-2">
                           {isLuzMaritima && (
                             <>
-                              <button
-                                onClick={() => {
-                                  setSelectedSheet(sheet.id);
-                                  loadManualData(sheet.id);
-                                }}
-                                className="text-blue-600 hover:text-blue-800"
-                                title="Preenchimento Manual"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
+
                               <button
                                 onClick={() => exportSheet(sheet.id, 'excel')}
                                 className="text-green-600 hover:text-green-800"
@@ -372,107 +363,7 @@ export default function PayrollSheetsPage() {
           )}
         </div>
 
-        {/* Modal de Preenchimento Manual para LUZ Marítima */}
-        {showManualData && isLuzMaritima && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Preenchimento Manual - Custos
-                </h3>
-                <button
-                  onClick={() => setShowManualData(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="p-6 overflow-y-auto max-h-[70vh]">
-                <div className="overflow-x-auto">
-                  <table className="w-full table-auto">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-4 py-2 text-left">Funcionário</th>
-                        <th className="px-4 py-2 text-center">Manual D</th>
-                        <th className="px-4 py-2 text-center">Manual E</th>
-                        <th className="px-4 py-2 text-center">Manual F</th>
-                        <th className="px-4 py-2 text-center">Manual J</th>
-                        <th className="px-4 py-2 text-center">Manual M</th>
-                        <th className="px-4 py-2 text-center">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {manualData.map((employee, index) => (
-                        <tr key={employee.employee.id} className="border-b border-gray-200">
-                          <td className="px-4 py-2">
-                            <div>
-                              <div className="font-medium">{employee.employee.name}</div>
-                              <div className="text-sm text-gray-500">{employee.employee.position}</div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={employee.manual_d}
-                              onChange={(e) => updateManualValue(index, 'manual_d', e.target.value)}
-                              className="w-20 p-1 border border-gray-300 rounded text-center"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={employee.manual_e}
-                              onChange={(e) => updateManualValue(index, 'manual_e', e.target.value)}
-                              className="w-20 p-1 border border-gray-300 rounded text-center"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={employee.manual_f}
-                              onChange={(e) => updateManualValue(index, 'manual_f', e.target.value)}
-                              className="w-20 p-1 border border-gray-300 rounded text-center"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={employee.manual_j}
-                              onChange={(e) => updateManualValue(index, 'manual_j', e.target.value)}
-                              className="w-20 p-1 border border-gray-300 rounded text-center"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={employee.manual_m}
-                              onChange={(e) => updateManualValue(index, 'manual_m', e.target.value)}
-                              className="w-20 p-1 border border-gray-300 rounded text-center"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <button
-                              onClick={() => saveManualData(index)}
-                              className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition-colors text-sm"
-                            >
-                              Salvar
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );
