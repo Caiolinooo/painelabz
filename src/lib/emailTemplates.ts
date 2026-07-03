@@ -1180,3 +1180,329 @@ export const academyCertificateTemplate = (userName: string, courseTitle: string
 
   return baseTemplate(content);
 };
+
+// ============================================================
+// TEMPLATES DO MÓDULO DE FÉRIAS (padrão ABZ)
+// ============================================================
+// Estes templates seguem o mesmo padrão visual dos templates de
+// reembolso (reimbursementConfirmationTemplate, reimbursementApprovalTemplate,
+// reimbursementRejectionTemplate) usando o baseTemplate com logo, header,
+// footer e cores padronizadas.
+// ============================================================
+
+/**
+ * Helper interno para formatar a lista de períodos de férias em HTML.
+ */
+function formatLeavePeriodsList(periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined, start_date: string, end_date: string): string {
+  if (periods && periods.length > 0) {
+    const items = periods.map((p) =>
+      `<li>De <strong>${p.start_date}</strong> até <strong>${p.end_date}</strong> (${p.duration} dias)</li>`
+    ).join('');
+    return `<ul style="padding-left: 20px; margin: 10px 0;">${items}</ul>`;
+  }
+  return `<p style="margin: 5px 0;"><strong>Período:</strong> ${start_date} até ${end_date}</p>`;
+}
+
+/**
+ * Template: Solicitação de férias recebida (enviado ao colaborador solicitante).
+ */
+export const leaveRequestCreatedTemplate = (
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string,
+  justification?: string
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center;">Solicitação de Férias Recebida</h2>
+    <p>Olá, <strong>${userName}</strong>!</p>
+    <p>Sua solicitação de férias foi registrada no sistema com sucesso e está em análise.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Período(s):</strong></p>
+      ${periodsHtml}
+      <p style="margin: 5px 0;"><strong>Data da Solicitação:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+      <p style="margin: 5px 0;"><strong>Status:</strong> Aguardando aprovação</p>
+      ${justification ? `<p style="margin: 5px 0;"><strong>Observações:</strong> ${justification}</p>` : ''}
+    </div>
+    <p>Sua solicitação será analisada pelos seus gestores. Você será notificado sobre a aprovação ou rejeição.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Nova solicitação de férias registrada (enviado ao RH e à lista
+ * adicional de e-mails configurada pelo admin — DP e demais responsáveis).
+ */
+export const leaveNewRequestNotificationTemplate = (
+  userName: string,
+  userEmail: string,
+  sectorName: string | undefined,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string,
+  status: string,
+  justification?: string
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center;">Nova Solicitação de Férias Registrada</h2>
+    <p>O(a) colaborador(a) <strong>${userName}</strong> registrou uma nova solicitação de férias no portal.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
+      <p style="margin: 5px 0;"><strong>E-mail:</strong> ${userEmail}</p>
+      ${sectorName ? `<p style="margin: 5px 0;"><strong>Setor:</strong> ${sectorName}</p>` : ''}
+      <p style="margin: 5px 0;"><strong>Status Atual:</strong> ${status}</p>
+      <p style="margin: 5px 0;"><strong>Data da Solicitação:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+      <p style="margin: 10px 0 5px 0;"><strong>Período(s) Solicitado(s):</strong></p>
+      ${periodsHtml}
+      ${justification ? `<p style="margin: 5px 0;"><strong>Observações do Colaborador:</strong> ${justification}</p>` : ''}
+    </div>
+    <p>Acesse o portal para acompanhar o andamento desta solicitação.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático do Portal ABZ. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Férias aprovadas (enviado ao colaborador solicitante).
+ */
+export const leaveApprovedTemplate = (
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string,
+  options?: { pecuniaryAllowance?: boolean; advance13thSalary?: boolean }
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center; color: #28a745;">Férias Aprovadas e Programadas! 🎉</h2>
+    <p>Olá, <strong>${userName}</strong>!</p>
+    <p>Informamos que sua solicitação de férias foi <strong>aprovada</strong> e está <strong>programada conforme solicitado</strong>.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Período(s) Programado(s):</strong></p>
+      ${periodsHtml}
+      <p style="margin: 5px 0;"><strong>Data da Aprovação:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+      ${options?.pecuniaryAllowance ? `<p style="margin: 5px 0;"><strong>Abono Pecuniário:</strong> Sim (conversão de 10 dias em dinheiro)</p>` : ''}
+      ${options?.advance13thSalary ? `<p style="margin: 5px 0;"><strong>1ª parcela do 13º:</strong> Solicitada junto com as férias</p>` : ''}
+    </div>
+    <p>Aproveite seu descanso! Em caso de dúvidas, entre em contato com o RH.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Férias aprovadas — notificação ao RH/DP (enviado ao RH e à lista
+ * adicional de e-mails configurada pelo admin).
+ */
+export const leaveApprovedNotificationTemplate = (
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string,
+  options?: { pecuniaryAllowance?: boolean; advance13thSalary?: boolean }
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center; color: #28a745;">Férias Aprovadas: ${userName}</h2>
+    <p>A solicitação de férias de <strong>${userName}</strong> foi totalmente aprovada pelos gestores e está programada conforme solicitado.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
+      <p style="margin: 5px 0;"><strong>Período(s) Programado(s):</strong></p>
+      ${periodsHtml}
+      <p style="margin: 5px 0;"><strong>Data da Aprovação:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+      ${options?.pecuniaryAllowance ? `<p style="margin: 5px 0;"><strong>Abono Pecuniário:</strong> Sim</p>` : ''}
+      ${options?.advance13thSalary ? `<p style="margin: 5px 0;"><strong>1ª parcela 13º:</strong> Sim</p>` : ''}
+    </div>
+    <p>Por favor, providencie os trâmites legais e o registro no sistema de RH dentro do prazo previsto na legislação.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático do Portal ABZ. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Solicitação de férias rejeitada (enviado ao colaborador solicitante).
+ */
+export const leaveRejectedTemplate = (
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string,
+  reason?: string
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center; color: #dc3545;">Solicitação de Férias Rejeitada</h2>
+    <p>Olá, <strong>${userName}</strong>!</p>
+    <p>Informamos que sua solicitação de férias foi <strong>rejeitada</strong> por um dos seus gestores.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Período(s) Solicitado(s):</strong></p>
+      ${periodsHtml}
+      <p style="margin: 5px 0;"><strong>Data da Rejeição:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+      <p style="margin: 5px 0;"><strong>Motivo da Rejeição:</strong> ${reason || 'Não informado'}</p>
+    </div>
+    <p>Em caso de dúvidas, converse com seu gestor direto ou com o RH.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Solicitação de férias rejeitada — notificação ao RH/DP.
+ */
+export const leaveRejectedNotificationTemplate = (
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string,
+  reason?: string
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center; color: #dc3545;">Solicitação de Férias Rejeitada: ${userName}</h2>
+    <p>A solicitação de férias de <strong>${userName}</strong> foi rejeitada por um dos gestores.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
+      <p style="margin: 5px 0;"><strong>Período(s) Solicitado(s):</strong></p>
+      ${periodsHtml}
+      <p style="margin: 5px 0;"><strong>Data da Rejeição:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+      <p style="margin: 5px 0;"><strong>Motivo:</strong> ${reason || 'Não informado'}</p>
+    </div>
+    <p>Acesse o portal para consultar os detalhes completos da solicitação.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático do Portal ABZ. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Solicitação avançou para o gerente (enviado ao colaborador).
+ */
+export const leavePendingManagerTemplate = (
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center; color: #17a2b8;">Atualização: Solicitação de Férias</h2>
+    <p>Olá, <strong>${userName}</strong>!</p>
+    <p>Sua solicitação de férias avançou no fluxo de aprovação. Ela foi aprovada pelo seu líder e agora está pendente de aprovação com o gerente da sua área.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Período(s):</strong></p>
+      ${periodsHtml}
+      <p style="margin: 5px 0;"><strong>Status Atual:</strong> Aguardando aprovação do gerente</p>
+    </div>
+    <p>Você será notificado assim que o gerente tomar uma decisão.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Aprovação pendente do gerente — notificação ao RH/DP.
+ */
+export const leavePendingManagerNotificationTemplate = (
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+
+  const content = `
+    <h2 style="text-align: center; color: #17a2b8;">Atualização: Férias de ${userName}</h2>
+    <p>A solicitação de férias de <strong>${userName}</strong> foi aprovada pelo líder e agora aguarda aprovação final do gerente.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
+      <p style="margin: 5px 0;"><strong>Período(s):</strong></p>
+      ${periodsHtml}
+      <p style="margin: 5px 0;"><strong>Status Atual:</strong> Aguardando aprovação do gerente</p>
+    </div>
+    <p>Acesse o portal para acompanhar o andamento.</p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático do Portal ABZ. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+/**
+ * Template: Aprovação pendente do líder/gerente (enviado ao próximo aprovador).
+ */
+export const leaveApprovalPendingTemplate = (
+  approverName: string,
+  userName: string,
+  periods: Array<{ start_date: string; end_date: string; duration: number }> | null | undefined,
+  startDate: string,
+  endDate: string,
+  approvalStage: 'leader' | 'manager',
+  justification?: string
+) => {
+  const config = getEmailConfig();
+  const periodsHtml = formatLeavePeriodsList(periods, startDate, endDate);
+  const stageLabel = approvalStage === 'leader' ? 'Aprovação do Líder' : 'Aprovação Final do Gerente';
+
+  const content = `
+    <h2 style="text-align: center;">${stageLabel}: Férias de ${userName}</h2>
+    <p>Olá, <strong>${approverName}</strong>!</p>
+    <p>O(a) colaborador(a) <strong>${userName}</strong> solicitou férias e aguarda sua aprovação.</p>
+    <div style="background-color: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
+      <p style="margin: 5px 0;"><strong>Etapa de Aprovação:</strong> ${stageLabel}</p>
+      <p style="margin: 5px 0;"><strong>Período(s) Solicitado(s):</strong></p>
+      ${periodsHtml}
+      ${justification ? `<p style="margin: 5px 0;"><strong>Observações do Colaborador:</strong> ${justification}</p>` : ''}
+    </div>
+    <p>Por favor, acesse o portal para aprovar ou reprovar esta solicitação.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${config.appUrl}/admin/leave-approvals" class="button" style="background-color: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;">
+        Acessar Aprovações
+      </a>
+    </div>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático do Portal ABZ. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};

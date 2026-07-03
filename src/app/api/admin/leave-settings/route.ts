@@ -4,7 +4,6 @@ import { supabaseAdmin } from '@/lib/db';
 import { clearCredentialCache } from '@/lib/secure-credentials';
 import {
     LEAVE_ADVANCE_NOTICE_DAYS_KEY,
-    CARLOS_GALLO_EMAIL_KEY,
     LEAVE_EXTRA_NOTIFY_EMAILS_KEY,
     DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS
 } from '@/lib/leaveConfig';
@@ -110,15 +109,13 @@ export async function GET(request: Request) {
         const configs = await getLeaveSectorConfigs();
 
         // Busca todas as configurações globais (app_secrets) com fallback
-        const [hrEmailSecret, carlosGalloSecret, extraEmailsSecret, advanceDaysSecret] = await Promise.all([
+        const [hrEmailSecret, extraEmailsSecret, advanceDaysSecret] = await Promise.all([
             readSecret('HR_EMAIL'),
-            readSecret(CARLOS_GALLO_EMAIL_KEY),
             readSecret(LEAVE_EXTRA_NOTIFY_EMAILS_KEY),
             readSecret(LEAVE_ADVANCE_NOTICE_DAYS_KEY)
         ]);
 
         const hrEmail = hrEmailSecret || process.env.HR_EMAIL || 'rh@groupabz.com';
-        const carlosGalloEmail = carlosGalloSecret || process.env.CARLOS_GALLO_EMAIL || 'carlos.gallo@groupabz.com';
         const extraNotifyEmails = extraEmailsSecret || process.env.LEAVE_EXTRA_NOTIFY_EMAILS || '';
 
         let advanceNoticeDays = DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS;
@@ -153,7 +150,6 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             hrEmail,
-            carlosGalloEmail,
             extraNotifyEmails,
             advanceNoticeDays,
             configs: configs || [],
@@ -182,7 +178,6 @@ export async function POST(request: Request) {
             leader_id,
             manager_id,
             hrEmail,
-            carlosGalloEmail,
             extraNotifyEmails,
             advanceNoticeDays
         } = body;
@@ -192,7 +187,6 @@ export async function POST(request: Request) {
         // para manter consistência (single source of truth).
         const hasGlobalUpdate =
             hrEmail !== undefined ||
-            carlosGalloEmail !== undefined ||
             extraNotifyEmails !== undefined ||
             advanceNoticeDays !== undefined;
 
@@ -200,9 +194,6 @@ export async function POST(request: Request) {
             // Validações
             if (hrEmail !== undefined && hrEmail !== '' && !isValidEmail(hrEmail)) {
                 return NextResponse.json({ error: 'E-mail do RH inválido' }, { status: 400 });
-            }
-            if (carlosGalloEmail !== undefined && carlosGalloEmail !== '' && !isValidEmail(carlosGalloEmail)) {
-                return NextResponse.json({ error: 'E-mail do Carlos Gallo inválido' }, { status: 400 });
             }
             if (extraNotifyEmails !== undefined && extraNotifyEmails !== '') {
                 const emails = extraNotifyEmails.split(',').map((e: string) => e.trim()).filter(Boolean);
@@ -224,20 +215,13 @@ export async function POST(request: Request) {
             if (hrEmail !== undefined) {
                 await upsertSecret('HR_EMAIL', hrEmail, 'Email do RH para notificações de férias');
             }
-            if (carlosGalloEmail !== undefined) {
-                await upsertSecret(
-                    CARLOS_GALLO_EMAIL_KEY,
-                    carlosGalloEmail,
-                    'Email do Carlos Gallo (DP) para notificações de novas solicitações de férias'
-                );
-            }
             if (extraNotifyEmails !== undefined) {
                 const normalized = normalizeEmailList(extraNotifyEmails);
                 if (normalized) {
                     await upsertSecret(
                         LEAVE_EXTRA_NOTIFY_EMAILS_KEY,
                         normalized,
-                        'Lista de emails adicionais (separados por vírgula) notificados em novas solicitações de férias'
+                        'Lista de emails (separados por vírgula) notificados em todas as etapas do processo de férias (DP e demais responsáveis)'
                     );
                 } else {
                     // Se veio vazio, remover a credencial (para não cair no fallback)

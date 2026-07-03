@@ -1,25 +1,38 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendGlobalNotification } from '@/lib/global-notifications';
 import { sendEmail } from '@/lib/email-service';
-import { baseTemplate } from '@/lib/emailTemplates';
-
-import { getCredential } from '@/lib/secure-credentials';
-import { getLeaveExtraNotifyEmails, getMinLeaveStartDate } from '@/lib/leaveConfig';
-
-async function getHrEmail() {
-    const fromDb = await getCredential('HR_EMAIL');
-    return fromDb || process.env.HR_EMAIL || 'rh@groupabz.com';
-}
-function formatPeriods(periods: any[], start_date: string, end_date: string) {
-    if (periods && periods.length > 0) {
-        return `<ul>${periods.map((p: any) => `<li>De <strong>${p.start_date}</strong> até <strong>${p.end_date}</strong> (${p.duration} dias)</li>`).join('')}</ul>`;
-    }
-    return `<p>Período: De <strong>${start_date}</strong> até <strong>${end_date}</strong></p>`;
-}
+import {
+    leaveRequestCreatedTemplate,
+    leaveNewRequestNotificationTemplate,
+    leaveApprovedTemplate,
+    leaveApprovedNotificationTemplate,
+    leaveRejectedTemplate,
+    leaveRejectedNotificationTemplate,
+    leavePendingManagerTemplate,
+    leavePendingManagerNotificationTemplate,
+    leaveApprovalPendingTemplate
+} from '@/lib/emailTemplates';
+import { getLeaveNotificationRecipients } from '@/lib/leaveConfig';
 
 /**
- * Helper para enviar email para múltiplos destinatários (RH + emails extras
- * como Carlos Gallo). Se algum destinatário falhar, os demais ainda recebem.
+ * Serviço de notificações do módulo de Férias.
+ *
+ * Princípios:
+ * - TODOS os destinatários configurados (RH + lista adicional de e-mails do
+ *   DP definida no painel admin) recebem notificação em TODAS as etapas do
+ *   processo: nova solicitação, aprovação parcial (líder → gerente),
+ *   aprovação final e rejeição.
+ * - O colaborador solicitante recebe notificação em todas as etapas que
+ *   afetam sua solicitação (criação, avanço, aprovação, rejeição).
+ * - O líder/gerente recebe notificação apenas quando é a vez dele aprovar.
+ * - Todos os e-mails seguem o padrão visual ABZ (baseTemplate com logo,
+ *   header, footer e cores padronizadas) via templates formais em
+ *   src/lib/emailTemplates.ts.
+ */
+
+/**
+ * Helper: envia o mesmo email para múltiplos destinatários em paralelo.
+ * Falha de um destinatário não bloqueia os demais.
  */
 async function sendEmailToMultipleRecipients(
     recipients: string[],
@@ -30,16 +43,42 @@ async function sendEmailToMultipleRecipients(
     const uniqueRecipients = Array.from(new Set(recipients.filter(Boolean)));
     if (uniqueRecipients.length === 0) return;
 
-    // Envia em paralelo para não bloquear caso um destinatário demore
     await Promise.all(
         uniqueRecipients.map(email =>
             sendEmail(email, subject, textFallback, html).catch(err =>
-                console.error(`Erro ao enviar email para ${email}:`, err)
+                console.error(`[Leave] Erro ao enviar email para ${email}:`, err)
             )
         )
     );
 }
 
+/**
+ * Busca o nome do setor do usuário (se aplicável) para incluir nas
+ * notificações ao RH/DP.
+ */
+async function getSectorName(sectorId: string | null | undefined): Promise<string | undefined> {
+    if (!sectorId) return undefined;
+    try {
+        const { data } = await supabaseAdmin
+            .from('sectors')
+            .select('name')
+            .eq('id', sectorId)
+            .single();
+        return (data as { name?: string } | null)?.name || undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Notificação disparada quando uma nova solicitação de férias é criada.
+ *
+ * Notifica:
+ * 1. O próximo aprovador (líder ou gerente, conforme o status inicial)
+ * 2. O RH + lista adicional de e-mails do DP (todos os destinatários
+ *    configurados no painel admin)
+ * 3. O colaborador solicitante
+ */
 export async function notifyLeaveRequestCreated(requestId: string) {
     const { data: req, error } = await supabaseAdmin
         .from('leave_requests')
@@ -48,12 +87,11 @@ export async function notifyLeaveRequestCreated(requestId: string) {
         .single();
 
     if (error || !req) {
-        console.error('Error fetching request for created notification:', error);
+        console.error('[Leave] Error fetching request for created notification:', error);
         return;
     }
 
     const { user, start_date, end_date, justification, periods, status } = req;
-    const periodsHtml = formatPeriods(periods, start_date, end_date);
     let nextApprover: any = null;
 
     if (user.sector_id) {
@@ -77,7 +115,7 @@ export async function notifyLeaveRequestCreated(requestId: string) {
         }
     }
 
-    // 1. Notify Next Approver (if any)
+    // 1. Notify Next Approver (if any) — usando template formal ABZ
     if (nextApprover && nextApprover.email) {
         await sendGlobalNotification({
             userId: nextApprover.id,
@@ -90,70 +128,79 @@ export async function notifyLeaveRequestCreated(requestId: string) {
             channels: ['in-app', 'email', 'push']
         });
 
-        const approverHtml = baseTemplate(`
-            <div style="color: #333;">
-                <h2 style="color: #0056b3;">Aprovação Pendente: Férias de ${user.name}</h2>
-                <p>Olá <strong>${nextApprover.name}</strong>,</p>
-                <p>O(a) colaborador(a) <strong>${user.name}</strong> solicitou férias e aguarda sua aprovação.</p>
-                <h3>Detalhes do Período:</h3>
-                ${periodsHtml}
-                ${justification ? `<p><strong>Observações:</strong> ${justification}</p>` : ''}
-                <p>Por favor, acesse o portal para aprovar ou reprovar esta solicitação.</p>
-            </div>
-        `);
+        const approvalStage: 'leader' | 'manager' = status === 'PENDING_LEADER' ? 'leader' : 'manager';
+        const approverHtml = leaveApprovalPendingTemplate(
+            nextApprover.name,
+            user.name,
+            periods,
+            start_date,
+            end_date,
+            approvalStage,
+            justification
+        );
 
-        await sendEmail(nextApprover.email, `Aprovação Pendente - Férias de ${user.name}`, `Aprovação de Férias`, approverHtml).catch(console.error);
+        await sendEmail(
+            nextApprover.email,
+            `Aprovação Pendente - Férias de ${user.name}`,
+            `Aprovação de Férias`,
+            approverHtml
+        ).catch(err => console.error(`[Leave] Erro ao notificar aprovador ${nextApprover.email}:`, err));
     }
 
-    // 2. Notify HR + Carlos Gallo (solicitação do DP)
-    // Sempre que uma nova solicitação de férias é aberta, o RH e o
-    // Carlos Gallo recebem um alerta automático por e-mail, conforme
-    // solicitação do Departamento Pessoal.
-    const hrHtml = baseTemplate(`
-        <div style="color: #333;">
-            <h2 style="color: #0056b3;">Nova Solicitação de Férias Registrada</h2>
-            <p>O(a) colaborador(a) <strong>${user.name}</strong> registrou uma solicitação de férias.</p>
-            <p><strong>Status Atual:</strong> ${status}</p>
-            <h3>Detalhes do Período:</h3>
-            ${periodsHtml}
-            ${justification ? `<p><strong>Observações:</strong> ${justification}</p>` : ''}
-            <p style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-left: 4px solid #0056b3; font-size: 13px;">
-                <strong>Lembrete:</strong> Esta é uma notificação automática do Portal ABZ.
-                Acesse o portal para acompanhar o andamento desta solicitação.
-            </p>
-        </div>
-    `);
+    // 2. Notify RH + lista adicional (DP e demais responsáveis)
+    // Em TODAS as etapas do processo, todos os destinatários configurados
+    // no painel admin são notificados.
+    const sectorName = await getSectorName(user.sector_id);
+    const hrAndExtras = await getLeaveNotificationRecipients();
 
-    const hrEmail = await getHrEmail();
-    const extraNotifyEmails = await getLeaveExtraNotifyEmails();
-    const allNotifyEmails = [hrEmail, ...extraNotifyEmails];
+    if (hrAndExtras.length > 0) {
+        const notificationHtml = leaveNewRequestNotificationTemplate(
+            user.name,
+            user.email,
+            sectorName,
+            periods,
+            start_date,
+            end_date,
+            status,
+            justification
+        );
 
-    await sendEmailToMultipleRecipients(
-        allNotifyEmails,
-        `Nova Solicitação de Férias - ${user.name}`,
-        `Nova Solicitação de Férias - ${user.name}`,
-        hrHtml
-    );
+        await sendEmailToMultipleRecipients(
+            hrAndExtras,
+            `Nova Solicitação de Férias - ${user.name}`,
+            `Nova Solicitação de Férias - ${user.name}`,
+            notificationHtml
+        );
 
-    // Log informativo para auditoria (não bloqueia o fluxo)
-    console.log(`[Leave] Notificação de nova solicitação enviada para: ${allNotifyEmails.join(', ')}`);
+        console.log(`[Leave] Nova solicitação notificada para: ${hrAndExtras.join(', ')}`);
+    }
 
-    // 3. Notify Requester
+    // 3. Notify Requester — usando template formal ABZ
     if (user.email) {
-        const requesterHtml = baseTemplate(`
-            <div style="color: #333;">
-                <h2 style="color: #0056b3;">Solicitação de Férias Recebida</h2>
-                <p>Sua solicitação de férias foi registrada no sistema com sucesso.</p>
-                <h3>Detalhes do Período:</h3>
-                ${periodsHtml}
-                <p>Sua solicitação será analisada pelos seus gestores. Você será notificado sobre a aprovação.</p>
-            </div>
-        `);
+        const requesterHtml = leaveRequestCreatedTemplate(
+            user.name,
+            periods,
+            start_date,
+            end_date,
+            justification
+        );
 
-        await sendEmail(user.email, `Confirmação de Solicitação de Férias`, `Férias Solicitadas`, requesterHtml).catch(console.error);
+        await sendEmail(
+            user.email,
+            `Confirmação de Solicitação de Férias`,
+            `Férias Solicitadas`,
+            requesterHtml
+        ).catch(err => console.error(`[Leave] Erro ao notificar solicitante ${user.email}:`, err));
     }
 }
 
+/**
+ * Dispara notificações quando o status de uma solicitação muda.
+ *
+ * Garante que o RH + lista adicional (DP) sejam notificados em TODAS as
+ * mudanças de status, junto com o colaborador e o próximo aprovador
+ * (quando aplicável).
+ */
 export async function triggerLeaveNotifications(requestId: string, newStatus: string, reason?: string) {
     const { data: req, error } = await supabaseAdmin
         .from('leave_requests')
@@ -164,10 +211,15 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
     if (error || !req) return;
 
     const { user, start_date, end_date, periods } = req;
-    const periodsHtml = formatPeriods(periods, start_date, end_date);
+    const pecuniaryAllowance = !!req.pecuniary_allowance;
+    const advance13thSalary = !!req.advance_13th_salary;
+
+    // Destinatários globais (RH + lista adicional do DP) — notificados em
+    // TODAS as etapas.
+    const hrAndExtras = await getLeaveNotificationRecipients();
 
     if (newStatus === 'APPROVED') {
-        // Notify Requester
+        // 1. Notify Requester (in-app + email)
         await sendGlobalNotification({
             userId: user.id,
             submodule: 'ferias',
@@ -180,51 +232,45 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
         });
 
         if (user.email) {
-            // Monta lista dos períodos programados em texto amigável
             const periodsText = (periods && periods.length > 0)
                 ? periods.map((p: any) => `${p.start_date} a ${p.end_date} (${p.duration} dias)`).join(' | ')
                 : `${start_date} a ${end_date}`;
 
-            const requesterHtml = baseTemplate(`
-                <div style="color: #333;">
-                    <h2 style="color: #28a745;">Férias Aprovadas e Programadas! 🎉</h2>
-                    <p>Olá <strong>${user.name}</strong>,</p>
-                    <p>Informamos que sua solicitação de férias foi <strong>aprovada</strong> e está <strong>programada conforme solicitado</strong>.</p>
-                    <h3>Período(s) Programado(s):</h3>
-                    ${periodsHtml}
-                    <p>Aproveite seu descanso! Em caso de dúvidas, entre em contato com o RH.</p>
-                    ${req.pecuniary_allowance ? `<p style="margin-top:12px;padding:10px;background:#f3e8ff;border-left:4px solid #7c3aed;font-size:13px;"><strong>Abono Pecuniário:</strong> Solicitado (conversão de 10 dias em dinheiro).</p>` : ''}
-                    ${req.advance_13th_salary ? `<p style="margin-top:12px;padding:10px;background:#fef3c7;border-left:4px solid #d97706;font-size:13px;"><strong>1ª parcela do 13º:</strong> Solicitada junto com as férias.</p>` : ''}
-                </div>
-            `);
-            await sendEmail(user.email, `Férias Aprovadas e Programadas (${periodsText})`, `Férias Aprovadas`, requesterHtml).catch(console.error);
+            const requesterHtml = leaveApprovedTemplate(
+                user.name,
+                periods,
+                start_date,
+                end_date,
+                { pecuniaryAllowance, advance13thSalary }
+            );
+            await sendEmail(
+                user.email,
+                `Férias Aprovadas e Programadas (${periodsText})`,
+                `Férias Aprovadas`,
+                requesterHtml
+            ).catch(err => console.error(`[Leave] Erro ao notificar solicitante ${user.email}:`, err));
         }
 
-
-        // Notify HR + Carlos Gallo (também na aprovação, para acompanhamento do DP)
-        const hrHtml = baseTemplate(`
-            <div style="color: #333;">
-                <h2 style="color: #28a745;">Férias Aprovadas: ${user.name}</h2>
-                <p>A solicitação de férias de <strong>${user.name}</strong> foi totalmente aprovada pelos gestores e está programada conforme solicitado.</p>
-                <h3>Detalhes do Período:</h3>
-                ${periodsHtml}
-                ${req.pecuniary_allowance ? `<p><strong>Abono Pecuniário:</strong> Sim</p>` : ''}
-                ${req.advance_13th_salary ? `<p><strong>1ª parcela 13º:</strong> Sim</p>` : ''}
-                <p>Por favor, providencie os trâmites legais e o registro no sistema de RH dentro do prazo previsto na legislação.</p>
-            </div>
-        `);
-        const hrEmail = await getHrEmail();
-        const extraNotifyEmails = await getLeaveExtraNotifyEmails();
-        await sendEmailToMultipleRecipients(
-            [hrEmail, ...extraNotifyEmails],
-            `Férias Aprovadas - ${user.name}`,
-            `Férias Aprovadas`,
-            hrHtml
-        );
-
+        // 2. Notify RH + lista adicional (DP) — também na aprovação final
+        if (hrAndExtras.length > 0) {
+            const notificationHtml = leaveApprovedNotificationTemplate(
+                user.name,
+                periods,
+                start_date,
+                end_date,
+                { pecuniaryAllowance, advance13thSalary }
+            );
+            await sendEmailToMultipleRecipients(
+                hrAndExtras,
+                `Férias Aprovadas - ${user.name}`,
+                `Férias Aprovadas`,
+                notificationHtml
+            );
+            console.log(`[Leave] Aprovação notificada para: ${hrAndExtras.join(', ')}`);
+        }
 
     } else if (newStatus === 'REJECTED') {
-        // Notify Requester
+        // 1. Notify Requester (in-app + email)
         await sendGlobalNotification({
             userId: user.id,
             submodule: 'ferias',
@@ -237,38 +283,43 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
         });
 
         if (user.email) {
-            const requesterHtml = baseTemplate(`
-                <div style="color: #333;">
-                    <h2 style="color: #dc3545;">Solicitação de Férias Rejeitada</h2>
-                    <p>Olá <strong>${user.name}</strong>,</p>
-                    <p>Informamos que sua solicitação de férias foi rejeitada.</p>
-                    <h3>Detalhes da Solicitação:</h3>
-                    ${periodsHtml}
-                    <p><strong>Motivo da Rejeição:</strong> ${reason || 'Não informado'}</p>
-                    <p>Em caso de dúvidas, converse com seu gestor.</p>
-                </div>
-            `);
-            await sendEmail(user.email, `Solicitação de Férias Rejeitada`, `Férias Rejeitada`, requesterHtml).catch(console.error);
+            const requesterHtml = leaveRejectedTemplate(
+                user.name,
+                periods,
+                start_date,
+                end_date,
+                reason
+            );
+            await sendEmail(
+                user.email,
+                `Solicitação de Férias Rejeitada`,
+                `Férias Rejeitada`,
+                requesterHtml
+            ).catch(err => console.error(`[Leave] Erro ao notificar solicitante ${user.email}:`, err));
         }
 
-
-        // Notify HR
-        const hrHtml = baseTemplate(`
-            <div style="color: #333;">
-                <h2 style="color: #dc3545;">Solicitação de Férias Rejeitada: ${user.name}</h2>
-                <p>A solicitação de férias de <strong>${user.name}</strong> foi rejeitada por um de seus gestores.</p>
-                <h3>Detalhes do Período:</h3>
-                ${periodsHtml}
-                <p><strong>Motivo:</strong> ${reason || 'Não informado'}</p>
-            </div>
-        `);
-        const hrEmail = await getHrEmail();
-        await sendEmail(hrEmail, `Férias Rejeitada - ${user.name}`, `Férias Rejeitada`, hrHtml).catch(console.error);
-
+        // 2. Notify RH + lista adicional (DP) — também na rejeição
+        if (hrAndExtras.length > 0) {
+            const notificationHtml = leaveRejectedNotificationTemplate(
+                user.name,
+                periods,
+                start_date,
+                end_date,
+                reason
+            );
+            await sendEmailToMultipleRecipients(
+                hrAndExtras,
+                `Férias Rejeitada - ${user.name}`,
+                `Férias Rejeitada`,
+                notificationHtml
+            );
+            console.log(`[Leave] Rejeição notificada para: ${hrAndExtras.join(', ')}`);
+        }
 
     } else if (newStatus === 'PENDING_MANAGER') {
-        // Leader approved, now manager needs to approve
-        // Notify Manager
+        // Líder aprovou, agora gerente precisa aprovar
+
+        // 1. Notify Manager (in-app + email)
         const { data: config } = await supabaseAdmin
             .from('leave_sector_configs')
             .select(`manager_id, manager:users_unified!leave_sector_configs_manager_id_fkey(id, name, email)`)
@@ -291,34 +342,55 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
             });
 
             if (mgr.email) {
-                const managerHtml = baseTemplate(`
-                    <div style="color: #333;">
-                        <h2 style="color: #0056b3;">Aprovação Final Pendente: Férias de ${user.name}</h2>
-                        <p>Olá <strong>${mgr.name}</strong>,</p>
-                        <p>A solicitação de férias de <strong>${user.name}</strong> foi aprovada pelo líder do setor e agora requer sua aprovação final (Gerente).</p>
-                        <h3>Detalhes do Período:</h3>
-                        ${periodsHtml}
-                        <p>Por favor, acesse o portal para aprovar ou reprovar a solicitação.</p>
-                    </div>
-                `);
-                await sendEmail(mgr.email, `Aprovação Pendente (Gerente) - Férias de ${user.name}`, `Aprovação de Férias`, managerHtml).catch(console.error);
+                const managerHtml = leaveApprovalPendingTemplate(
+                    mgr.name,
+                    user.name,
+                    periods,
+                    start_date,
+                    end_date,
+                    'manager',
+                    req.justification
+                );
+                await sendEmail(
+                    mgr.email,
+                    `Aprovação Pendente (Gerente) - Férias de ${user.name}`,
+                    `Aprovação de Férias`,
+                    managerHtml
+                ).catch(err => console.error(`[Leave] Erro ao notificar gerente ${mgr.email}:`, err));
             }
-
         }
 
-        // Notify Requester
+        // 2. Notify Requester (avançou no fluxo)
         if (user.email) {
-            const requesterHtml = baseTemplate(`
-                <div style="color: #333;">
-                    <h2 style="color: #17a2b8;">Atualização: Solicitação de Férias</h2>
-                    <p>Olá <strong>${user.name}</strong>,</p>
-                    <p>Sua solicitação de férias avançou no fluxo. Ela foi aprovada pelo seu líder e agora está pendente de aprovação com o gerente da sua área.</p>
-                    <h3>Detalhes do Período:</h3>
-                    ${periodsHtml}
-                </div>
-            `);
-            await sendEmail(user.email, `Atualização da sua Solicitação de Férias`, `Atualização de Férias`, requesterHtml).catch(console.error);
+            const requesterHtml = leavePendingManagerTemplate(
+                user.name,
+                periods,
+                start_date,
+                end_date
+            );
+            await sendEmail(
+                user.email,
+                `Atualização da sua Solicitação de Férias`,
+                `Atualização de Férias`,
+                requesterHtml
+            ).catch(err => console.error(`[Leave] Erro ao notificar solicitante ${user.email}:`, err));
         }
 
+        // 3. Notify RH + lista adicional (DP) — também no avanço do fluxo
+        if (hrAndExtras.length > 0) {
+            const notificationHtml = leavePendingManagerNotificationTemplate(
+                user.name,
+                periods,
+                start_date,
+                end_date
+            );
+            await sendEmailToMultipleRecipients(
+                hrAndExtras,
+                `Atualização de Férias - ${user.name}`,
+                `Atualização de Férias`,
+                notificationHtml
+            );
+            console.log(`[Leave] Avanço de fluxo notificado para: ${hrAndExtras.join(', ')}`);
+        }
     }
 }
