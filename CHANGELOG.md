@@ -1,5 +1,59 @@
 # Changelog
 
+## [5.27.1] - 2026-07-03
+
+### Added
+- **Painel Admin do Módulo de Férias expandido** (`/admin/leave-settings`): agora permite configurar (sem precisar mexer em código/env):
+  - E-mail do RH (já existente, mantido)
+  - E-mail do Carlos Gallo (DP) — novo campo dedicado
+  - E-mails adicionais para notificação (separados por vírgula) — novo campo
+  - Prazo de antecedência em dias (default 40, configurável de 1 a 365) — novo campo
+  - As configurações são persistidas na tabela `app_secrets` com as chaves `LEAVE_ADVANCE_NOTICE_DAYS`, `CARLOS_GALLO_EMAIL` e `LEAVE_EXTRA_NOTIFY_EMAILS`.
+- **Endpoint público `GET /api/leave/config`**: retorna o prazo de antecedência configurado e a data mínima permitida para o frontend montar as validações client-side dinamicamente. Apenas autenticado (não exige admin), não expõe e-mails.
+
+### Changed
+- **`src/lib/leaveConfig.ts`**:
+  - Adicionadas funções async `getAdvanceNoticeDays()`, `getMinLeaveStartDateAsync()`, `validateLeaveAdvanceNoticeAsync()` que leem do banco (com fallback para env e default 40).
+  - Adicionadas constantes `LEAVE_ADVANCE_NOTICE_DAYS_KEY`, `CARLOS_GALLO_EMAIL_KEY`, `LEAVE_EXTRA_NOTIFY_EMAILS_KEY`, `DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS`.
+  - Versões síncronas `LEAVE_ADVANCE_NOTICE_DAYS`, `getMinLeaveStartDate()`, `validateLeaveAdvanceNotice()` mantidas para compatibilidade, marcadas como `@deprecated` quando aplicável, usando o fallback default.
+- **`src/lib/secure-credentials.ts`**: adicionada função `clearCredentialCache(key?)` para invalidar o cache em memória após escrita direta no banco via painel admin.
+- **`src/app/api/admin/leave-settings/route.ts`**:
+  - GET agora retorna `carlosGalloEmail`, `extraNotifyEmails` e `advanceNoticeDays` além de `hrEmail`.
+  - POST aceita `carlosGalloEmail`, `extraNotifyEmails` e `advanceNoticeDays` (com validação: email válido, prazo entre 1 e 365 dias). Limpa o cache de credenciais após cada escrita.
+  - Helper `upsertSecret()` faz upsert na tabela `app_secrets` e invalida cache.
+- **`src/app/api/leave/requests/route.ts`**: validação do prazo agora usa `validateLeaveAdvanceNoticeAsync()` que lê do banco, em vez do valor hardcoded.
+- **`src/app/ferias/page.tsx`**: carrega as configurações (`advanceNoticeDays`, `minStartDate`) do endpoint `/api/leave/config` no mount e usa os valores carregados (com fallback default) para o banner âmbar, atributo `min` do input de data e validação client-side antes do submit.
+
+### Tests
+- `scripts/test-leave-advance-notice.ts` expandido de 16 para 25 testes cobrindo também as constantes de chaves, funções async com fallback (`getAdvanceNoticeDays`, `getMinLeaveStartDateAsync`, `validateLeaveAdvanceNoticeAsync` retornando `requiredDays`), e o comportamento do fallback de emails extras.
+
+## [5.27.0] - 2026-07-03
+
+### Added
+- **Reembolso Inteligente - Validação de Valores por Tipo**: Novo módulo `src/lib/reimbursementValidation.ts` centraliza limites por tipo de despesa (alimentação: R$ 2.000, transporte: R$ 1.000, hospedagem: R$ 5.000, combustível: R$ 1.000, material: R$ 5.000, outros: R$ 10.000) e total máximo por solicitação (R$ 50.000). Parser robusto aceita `1.234,56`, `1234.56`, `R$ 50,83` e números. Validação timezone-safe de datas (rejeita futuras e >1 ano).
+- **Reembolso - Avisos Visuais no Form**: Banners vermelhos para valores acima do limite máximo e banners amarelos com botão "Confirmar valor" para valores acima do típico mas dentro do limite, permitindo que o usuário confirme valores legítimos altos sem bloquear a entrada.
+- **Férias - Alertas automáticos por e-mail para o DP**: Sempre que uma nova solicitação de férias é aberta, e-mails automáticos são enviados para o RH e para o Carlos Gallo. Quando aprovada, o colaborador recebe um e-mail confirmando que as férias foram "programadas conforme solicitado", com o período detalhado. Emails adicionais configuráveis via credencial `CARLOS_GALLO_EMAIL` ou variável de ambiente `LEAVE_EXTRA_NOTIFY_EMAILS` (separados por vírgula).
+- **Férias - Prazo de antecedência de 40 dias**: Implementado o prazo mínimo de 40 dias de antecedência para a data de início das férias (solicitação do Carlos Gallo para cumprimento do prazo legal de processamento). Novo módulo `src/lib/leaveConfig.ts` com `LEAVE_ADVANCE_NOTICE_DAYS` configurável via env, `validateLeaveAdvanceNotice()`, `getMinLeaveStartDate()` e `formatDatePTBR()`.
+- **Férias - Validação server-side do prazo**: `POST /api/leave/requests` valida a data de início do primeiro período contra o prazo de antecedência e retorna `400` com `code: INSUFFICIENT_ADVANCE_NOTICE`, `minDate` sugerida e `requiredDays` quando rejeitado.
+
+### Changed
+- **CurrencyInput - Modo decimal intuitivo**: Substituído o `handleBankingStyleInput`/`formatBankingValue` por `formatDecimalInput` onde `50,83` vira `R$ 50,83` (em vez do "formato bancário" onde `50` virava `R$ 0,50`). Valor é normalizado para `X,XX` no blur. Adicionado `inputMode="decimal"` para abrir o teclado numérico correto no mobile.
+- **MultipleExpenses - UX aprimorada**: Removido o texto confuso `* Formato bancário: Digite os números (ex: "50" = R$ 0,50 | "5000" = R$ 50,00)`. Adicionado banner informativo sobre o formato correto (vírgula como separador de centavos). Mostra o limite máximo da categoria abaixo do seletor de tipo.
+- **ReimbursementForm - Data com max**: Input de data com `max={getTodayDateString()}` impede seleção de datas futuras no calendário. Valor total enviado ao backend no formato pt-BR (`1.234,56`) para o parser do backend funcionar corretamente.
+- **FormFields - InputField com max/min**: InputField agora forward `max`/`min` para o `<input>` subjacente, permitindo limitar seleção de datas.
+- **Férias - Email de aprovação mais explícito**: O e-mail de "Férias Aprovadas" agora menciona explicitamente que as férias estão "programadas conforme solicitado" e inclui badges para Abono Pecuniário e 1ª parcela do 13º quando aplicável.
+- **Férias - Aviso visual no modal**: O modal "Nova Solicitação de Férias" agora exibe um banner âmbar explicando o prazo de 40 dias de antecedência e mostrando a data mais próxima permitida. Input de "Data de Início" do primeiro período tem `min` configurado para impedir seleção no calendário, com feedback vermelho inline quando o usuário digita uma data próxima.
+
+### Fixed
+- **Reembolso - Bug do "formato bancário"**: Corrigido o bug onde digitar `5000,83` (esperando R$ 5000,83) resultava em R$ 5.000.083,00. O novo parser interpreta diretamente o que o usuário digita, com vírgula como separador de centavos.
+- **Reembolso - Valores absurdos aceitos**: Corrigido o bug onde uma despesa de alimentação de R$ 5.000.083,00 ou R$ 50.000,83 era aceita sem qualquer alerta. Agora é rejeitada no formulário, no schema e na API.
+- **Reembolso - Datas futuras aceitas**: Schema validava mas o calendário permitia selecionar datas futuras. Agora o input tem `max=today` e o schema valida com timezone-safe.
+- **Férias - Erro tratado no submit**: Quando a API retorna erro de validação (ex: prazo insuficiente), o erro agora é exibido via toast em vez de mostrar apenas "Failed to submit" genérico.
+
+### Tests
+- `scripts/test-reimbursement-validation.ts`: 42 testes unitários cobrindo parsing de valores, formatação, validação por tipo, validação total e validação de data.
+- `scripts/test-leave-advance-notice.ts`: 16 testes unitários cobrindo configuração de 40 dias, cálculo de data mínima, validação de antecedência e fallback de emails extras.
+
 ## [5.26.5] - 2026-07-01
 
 ### Fixed

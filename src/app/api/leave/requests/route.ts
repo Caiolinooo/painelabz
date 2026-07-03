@@ -7,6 +7,7 @@ import { sendGlobalNotification } from '@/lib/global-notifications';
 import { sendEmail } from '@/lib/email-service';
 import { notifyLeaveRequestCreated } from '@/services/leaveNotifications';
 import { extractTokenFromHeader, verifyToken, checkAclPermission } from '@/lib/auth';
+import { validateLeaveAdvanceNoticeAsync, getAdvanceNoticeDays } from '@/lib/leaveConfig';
 
 function getAuthPayload(request: Request) {
     const authHeader = request.headers.get('authorization') || undefined;
@@ -64,6 +65,25 @@ export async function POST(request: Request) {
 
         if (payload.userId !== user_id && payload.role !== 'ADMIN' && !hasAcl) {
             return NextResponse.json({ error: 'Você não tem permissão para criar solicitações para outro usuário' }, { status: 403 });
+        }
+
+        // Validação do prazo de antecedência (solicitação do DP - 40 dias default)
+        // Aplica sobre a data de início do primeiro período informado (ou start_date)
+        const firstStartDate = (periods && periods.length > 0 && periods[0].start_date)
+            ? periods[0].start_date
+            : start_date;
+
+        const advanceValidation = await validateLeaveAdvanceNoticeAsync(firstStartDate);
+        if (!advanceValidation.valid) {
+            return NextResponse.json(
+                {
+                    error: advanceValidation.errorMessage,
+                    code: 'INSUFFICIENT_ADVANCE_NOTICE',
+                    minDate: advanceValidation.minDate,
+                    requiredDays: advanceValidation.requiredDays || await getAdvanceNoticeDays()
+                },
+                { status: 400 }
+            );
         }
 
         const res = await createLeaveRequest(user_id, start_date, end_date, justification, periods, pecuniary_allowance, advance_13th_salary);
