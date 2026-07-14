@@ -91,7 +91,9 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/reembolso/${reimbursement.protocolo}`, {
+      // Usar o ID como identificador se disponível, pois evita problemas com encoding de URL
+      const identifier = reimbursement.id || reimbursement.protocolo;
+      const response = await fetch(`/api/reembolso/${identifier}`, {
         method: 'DELETE',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` })

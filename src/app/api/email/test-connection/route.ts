@@ -5,6 +5,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // Forçar nova conexão limpando o cache
+    const globalForNodemailer = global as unknown as { transporter: any };
+    if (globalForNodemailer.transporter) {
+      globalForNodemailer.transporter = null;
+    }
+
     const result = await testEmailConnection();
     return NextResponse.json(result);
   } catch (error) {

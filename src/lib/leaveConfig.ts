@@ -59,12 +59,12 @@ export async function getAdvanceNoticeDays(): Promise<number> {
   const fromDb = await getCredential(LEAVE_ADVANCE_NOTICE_DAYS_KEY);
   if (fromDb) {
     const parsed = parseInt(fromDb, 10);
-    if (!isNaN(parsed) && parsed > 0) {
+    if (!isNaN(parsed) && parsed >= 0) {
       return parsed;
     }
   }
   const fromEnv = Number(process.env.LEAVE_ADVANCE_NOTICE_DAYS);
-  if (!isNaN(fromEnv) && fromEnv > 0) {
+  if (!isNaN(fromEnv) && fromEnv >= 0) {
     return fromEnv;
   }
   return DEFAULT_LEAVE_ADVANCE_NOTICE_DAYS;

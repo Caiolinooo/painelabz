@@ -30,7 +30,7 @@ const emailConfig = {
   secure: process.env.EMAIL_SECURE === 'true', // geralmente false para porta 587 (STARTTLS)
   auth: {
     user: process.env.EMAIL_USER || '***REMOVED***',
-    pass: process.env.EMAIL_PASSWORD || 'Abz@2025'
+    pass: process.env.EMAIL_PASSWORD || ''
   },
   // Log detalhado para depuração
   debug: process.env.NODE_ENV !== 'production',
@@ -84,6 +84,14 @@ export async function createTransport() {
     return globalForNodemailer.transporter;
   }
 
+  // Validar credenciais antes de tentar conectar
+  if (!emailConfig.auth.pass) {
+    throw new Error(
+      `EMAIL_PASSWORD não configurado. ` +
+      `Adicione EMAIL_PASSWORD=<sua-senha> no arquivo .env.local e reinicie o servidor.`
+    );
+  }
+
   try {
     console.log('Inicializando transporte de email com Exchange/Office 365');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
@@ -111,8 +119,10 @@ export async function createTransport() {
     return transporter;
   } catch (error) {
     globalForNodemailer.transporter = null;
+    const errMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+
     console.error('ERRO CRÍTICO - Falha ao inicializar transporte de email Exchange');
-    console.error('Detalhes:', error instanceof Error ? error.message : 'Erro desconhecido');
+    console.error('Detalhes:', errMsg);
 
     if (error instanceof Error) {
       console.error('Stack trace:', error.stack);
@@ -124,10 +134,19 @@ export async function createTransport() {
     console.error('  EMAIL_USER:', emailConfig.auth.user);
     console.error('  EMAIL_PASSWORD:', emailConfig.auth.pass ? 'Configurado' : 'NÃO CONFIGURADO');
 
+    // Detectar erro de autenticação 535 (senha inválida/expirada)
+    if (errMsg.includes('535') || errMsg.includes('Authentication unsuccessful')) {
+      throw new Error(
+        `Credenciais de email inválidas ou expiradas. ` +
+        `Atualize a senha de EMAIL_PASSWORD no arquivo .env.local e reinicie o servidor. ` +
+        `Detalhes: ${errMsg}`
+      );
+    }
+
     throw new Error(
       `Falha ao conectar com servidor Exchange/Office365. ` +
       `Verifique as credenciais e configurações de rede. ` +
-      `Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      `Detalhes: ${errMsg}`
     );
   }
 }
@@ -519,9 +538,14 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
     return await sendEmail(email, 'Redefinição de Senha - ABZ Group', text, html);
   } catch (error) {
     console.error('Erro ao enviar e-mail de redefinição:', error);
+    const errMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    // Evitar duplicação — se já contém a mensagem do transport, usar direto
+    const message = errMsg.startsWith('Falha ao conectar') || errMsg.startsWith('Credenciais')
+      ? errMsg
+      : `Erro ao enviar email de redefinição: ${errMsg}`;
     return {
       success: false,
-      message: `Erro ao enviar email de redefinição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      message
     };
   }
 }
