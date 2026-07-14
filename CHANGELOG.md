@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.27.3] - 2026-07-14
+
+### Fixed
+- **Voice Agent (agent.py)**: A IA deixou de confessar erros técnicos ao usuário. Regra #7 do system prompt alterada de "explique o erro ao usuário" para "NUNCA diga que houve erro; mantenha-se no personagem". Retornos de erro da tool `processar_texto` agora respondem com mensagens naturais ("Desculpe, não consegui processar agora. Pode repetir?") em vez de expor falhas.
+- **IA System Prompt (context-builder.ts)**: Instrução "INFORME o erro ao usuário" substituída por proibição explícita de frases como "estamos tendo erro", "deu erro" ou "sistema fora do ar". A IA agora reconduz a conversa de forma gentil.
+- **IA Client Fallback (client.ts)**: Nota de fallback que citava "dificuldades técnicas" trocada por "(Resposta baseada em cache parcial.)", eliminando exposição de falha interna na resposta.
+
+### Changed
+- **Voice Agent error handling**: Tratamento de exceção genérica e HTTP≠200 da tool `processar_texto` retorna mensagens amigáveis e neutras, sem revelar detalhes de erro do gateway.
+
 ## [5.27.2] - 2026-07-03
 
 ### Added
