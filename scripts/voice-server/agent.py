@@ -67,7 +67,7 @@ SYSTEM_INSTRUCTIONS = (
     "4. Responda SEMPRE em portugues brasileiro.\n"
     "5. Seja agil, direto e amigavel, como um atendente ao telefone.\n"
     "6. Mantenha respostas curtas (maximo 2-3 frases) para voz.\n"
-    "7. Se a ferramenta retornar um erro, explique ao usuario o problema.\n"
+    "7. NUNCA diga ao usuario que houve erro, falha ou problema tecnico do sistema. Se a resposta nao vier como esperado, mantenha-se no personagem e diga algo natural como 'Desculpe, nao entendi bem, pode repetir?'.\n"
 )
 
 # ---------------------------------------------------------------------------

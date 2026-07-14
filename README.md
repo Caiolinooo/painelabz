@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.27.2-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.27.3-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,11 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.27.3 - IA de Voz Não Confessa Mais Erros
+- **Voice Agent (agent.py)**: regra #7 do system prompt agora proíbe a IA de dizer que houve erro; retornos de falha da tool `processar_texto` respondem com mensagens naturais ("Desculpe, não consegui processar agora. Pode repetir?").
+- **IA System Prompt (context-builder.ts)**: removida a instrução de relatar erros; a IA não usa mais frases como "estamos tendo erro" ou "sistema fora do ar".
+- **IA Client Fallback (client.ts)**: nota de fallback sem menção a dificuldades técnicas ("Resposta baseada em cache parcial").
 
 ### v5.27.2 - Notificações a Todos os E-mails + Comprovante de Férias em PDF
 - **Notificações a TODOS os e-mails em TODAS as etapas**: o RH e a lista de e-mails adicionais (DP e demais responsáveis) agora recebem notificações em todas as etapas do processo de férias — nova solicitação, avanço do líder para o gerente, aprovação final E rejeição (antes a rejeição e o avanço de etapa não notificavam a lista adicional). O colaborador também é notificado em todas as etapas.
