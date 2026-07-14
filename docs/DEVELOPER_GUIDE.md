@@ -306,6 +306,20 @@ NODE_ENV="production"
 - Implemente cache para consultas frequentes
 - Monitore o desempenho em produção
 
+## Documentação de Módulos
+
+Guias operacionais verificados contra o código-fonte (atualizados em v5.28.0):
+
+| Módulo | Documento | Cobre |
+|--------|-----------|-------|
+| Agente de Voz | [VOICE_AGENT.md](VOICE_AGENT.md) | LiveKit, STT/TTS local, Supertonic 3, fallback offline, troubleshooting |
+| Férias | [MODULO_FERIAS.md](MODULO_FERIAS.md) | Config admin, notificações, PDFs, API, validação de antecedência |
+| Reembolso | [REIMBURSEMENT_VALIDATION.md](REIMBURSEMENT_VALIDATION.md) | Limites por tipo, parser de valores, validação client/server |
+| EPI | [MODULO_EPI.md](MODULO_EPI.md) | Estoque hierárquico, movimentações, relatórios PDF |
+| Avaliações | [evaluation/README.md](evaluation/README.md) | Módulo 360°, automação, cron |
+| e-Social | [Implementacao/MODULO_E_SOCIAL.md](Implementacao/MODULO_E_SOCIAL.md) | Eventos, XML, certificados |
+| Tripulantes | [Implementacao/MODULO_GESTAO_TRIPULANTES.md](Implementacao/MODULO_GESTAO_TRIPULANTES.md) | Offshore, MIO, OCR |
+
 ## Suporte
 
 Para suporte técnico ou dúvidas sobre o desenvolvimento, entre em contato com a equipe de desenvolvimento através do e-mail suporte@groupabz.com.

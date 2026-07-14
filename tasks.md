@@ -1,3 +1,11 @@
+## Documentação de Engenharia (automação)
+
+- [x] `docs/VOICE_AGENT.md` — pipeline LiveKit, Supertonic 3, fallback offline
+- [x] `docs/MODULO_FERIAS.md` — config admin, notificações, PDFs, API
+- [x] `docs/REIMBURSEMENT_VALIDATION.md` — limites por tipo, parser, validação
+- [x] `docs/MODULO_EPI.md` — estoque hierárquico, PDF, movimentações
+- [x] Índice em `docs/DEVELOPER_GUIDE.md` e DOX (`docs/AGENTS.md`, root `AGENTS.md`)
+
 ## Poliweb Antigo - Auto-login e Proxy
 
 - **Diagnóstico inicial**
