@@ -80,7 +80,16 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-This project is not yet indexed. Before continuing you must scan the project, build the DOX tree and replace this message with the actual index. Go deep and scan files recursively to properly evaluate complexity and create nested DOX files where needed.
+| Path | Scope |
+|------|-------|
+| `docs/AGENTS.md` | Developer documentation tree and module guides |
+| `docs/evaluation/` | Performance evaluation (see `docs/evaluation/README.md`) |
+| `docs/Implementacao/` | e-Social, gestão tripulantes |
+| `scripts/voice-server/` | LiveKit voice agent (see `docs/VOICE_AGENT.md`) |
+| `src/lib/leaveConfig.ts` | Leave module config (see `docs/MODULO_FERIAS.md`) |
+| `src/lib/reimbursementValidation.ts` | Reimbursement limits (see `docs/REIMBURSEMENT_VALIDATION.md`) |
 
 ## Index of Modules
+
+See `docs/DEVELOPER_GUIDE.md` → Documentação de Módulos for the canonical module doc index.
 
