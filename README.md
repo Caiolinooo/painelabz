@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.27.3-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.27.4-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -197,6 +197,11 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.27.4 - Voz Funciona Offline (Fallback LLM Local)
+- **Voice Agent (agent.py)**: a tool `processar_texto` cai no LLM local (llama.cpp) quando o portal está fora do ar, então a voz responde mesmo sem o gateway.
+- **Voice Agent (agent.py)**: fallback com `enable_thinking: false` para não devolver resposta vazia.
+- **Voice Agent (agent.py)**: nenhuma mensagem de erro é exposta ao usuário.
 
 ### v5.27.3 - IA de Voz Não Confessa Mais Erros
 - **Voice Agent (agent.py)**: regra #7 do system prompt agora proíbe a IA de dizer que houve erro; retornos de falha da tool `processar_texto` respondem com mensagens naturais ("Desculpe, não consegui processar agora. Pode repetir?").
