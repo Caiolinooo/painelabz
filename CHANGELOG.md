@@ -12,12 +12,19 @@
 - **Auth — Anti-duplicação de erros**: `sendPasswordResetEmail()` e `request-password-reset/route.ts` não envolvem mensagens de erro com prefixos adicionais, eliminando a cadeia "Erro ao enviar email: Erro ao enviar email de redefinição: Erro ao enviar email: ...".
 - **Voice Manager — Instalação atualizada**: `abz_voice_manager.sh` instala `supertonic` + `numpy` em vez de `piper-tts`. Download automático do modelo Supertonic 3 na primeira execução.
 - **Secure Credentials — Cache com TTL**: Cache de credenciais agora expira após 1 minuto (`CACHE_TTL_MS`), evitando dados stale após atualização via painel admin.
+- **Voice Agent error handling**: Tratamento de exceção genérica e HTTP≠200 da tool `processar_texto` retorna mensagens amigáveis e neutras, sem revelar detalhes de erro do gateway.
+- **IA System Prompt (context-builder.ts)**: Instrução "INFORME o erro ao usuário" substituída por proibição explícita de frases como "estamos tendo erro", "deu erro" ou "sistema fora do ar". A IA agora reconduz a conversa de forma gentil.
+- **IA Client Fallback (client.ts)**: Nota de fallback que citava "dificuldades técnicas" trocada por "(Resposta baseada em cache parcial.)", eliminando exposição de falha interna na resposta.
 
 ### Fixed
 - **Reembolso — Exclusão por UUID ou protocolo**: `DELETE /api/reembolso/[id]` agora aceita tanto UUID quanto número de protocolo, corrigindo erro 404 ao tentar excluir reembolsos identificados por UUID.
 - **Reembolso — Modal de detalhes usa ID**: `ReimbursementDetailModal` usa `reimbursement.id` como identificador na requisição DELETE, evitando problemas com encoding de URL do protocolo.
 - **Férias — Validação de antecedência**: Corrigido `advanceNoticeDays >= 0` (antes era `> 0`), permitindo configurar prazo zero quando necessário.
 - **Leave Config — Cache-Control**: Endpoint `GET /api/leave/config` agora retorna `Cache-Control: no-store` para evitar cache de dados sensíveis.
+- **Voice Agent (agent.py)**: Tool `processar_texto` agora tem fallback para o LLM local (llama.cpp) quando o gateway do portal (`/api/ia/voice/process`) está indisponível. Antes, se o portal estivesse fora do ar, a voz ficava muda. Agora a IA responde mesmo offline.
+- **Voice Agent (agent.py)**: Fallback do LLM local envia `chat_template_kwargs: {enable_thinking: false}` + `max_tokens: 400` para evitar que o Qwen gaste o orçamento de tokens raciocinando e devolva conteúdo vazio (voz muda).
+- **Voice Agent (agent.py)**: Removida exposição de erros ao usuário — qualquer falha do gateway/disponibilidade cai em mensagem natural e aciona o fallback local.
+- **Voice Agent (agent.py)**: A IA deixou de confessar erros técnicos ao usuário. Regra #7 do system prompt alterada de "explique o erro ao usuário" para "NUNCA diga que houve erro; mantenha-se no personagem".
 
 ## [5.27.2] - 2026-07-03
 

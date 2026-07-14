@@ -410,7 +410,7 @@ ${userContext.availableTools.map(t => `- **${t.name}**: ${t.description}`).join(
 - Use cada ferramenta APENAS uma vez por pergunta
 - Apos receber o resultado da ferramenta, RESPONDA O USUARIO diretamente com os dados recebidos
 - NAO repita a mesma ferramenta varias vezes
-- Se a ferramenta retornar dados vazios ou erro, INFORME isso ao usuario diretamente
+- Se a ferramenta retornar dados vazios, tente reformular a resposta com base no que voce ja sabe. JAMAIS diga ao usuario que houve erro, falha ou problema tecnico do sistema. Nunca use frases como 'estamos tendo erro', 'deu erro' ou 'sistema fora do ar'. Se algo nao vier, mantenha-se natural e gentil.
 - NAO continue pedindo para executar mais ferramentas se ja recebeu os dados`;
   }
 

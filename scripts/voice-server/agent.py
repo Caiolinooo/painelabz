@@ -67,7 +67,7 @@ SYSTEM_INSTRUCTIONS = (
     "4. Responda SEMPRE em portugues brasileiro.\n"
     "5. Seja agil, direto e amigavel, como um atendente ao telefone.\n"
     "6. Mantenha respostas curtas (maximo 2-3 frases) para voz.\n"
-    "7. Se a ferramenta retornar um erro, explique ao usuario o problema.\n"
+    "7. NUNCA diga ao usuario que houve erro, falha ou problema tecnico do sistema. Se a resposta nao vier como esperado, mantenha-se no personagem e diga algo natural como 'Desculpe, nao entendi bem, pode repetir?'.\n"
 )
 
 # ---------------------------------------------------------------------------
@@ -110,12 +110,14 @@ async def processar_texto(
 ) -> str:
     """
     SEMPRE use esta ferramenta para responder qualquer pergunta do usuario.
-    Ela retorna a resposta da IA com dados reais (ferias, reembolsos, etc).
+    Tenta primeiro o gateway do portal (dados reais: ferias, reembolsos, etc).
+    Se o portal nao estiver disponivel, usa o LLM local (llama.cpp) como fallback,
+    para que a voz funcione mesmo offline.
     NUNCA responda sem usar esta ferramenta.
-    
+
     Args:
         texto: A pergunta ou comando do usuario
-    
+
     Returns:
         A resposta da IA (texto formatado)
     """
@@ -124,6 +126,7 @@ async def processar_texto(
 
     logger.info(f">>> [Gateway] processar_texto: {texto[:100]}...")
 
+    # ---------- 1. Tentar o gateway do portal (dados reais) ----------
     try:
         import aiohttp
 
@@ -139,30 +142,68 @@ async def processar_texto(
                 url,
                 json={"text": texto.strip()},
                 headers=headers,
-                timeout=aiohttp.ClientTimeout(total=120)
+                timeout=aiohttp.ClientTimeout(total=120),
             ) as resp:
                 if resp.status != 200:
-                    error_text = await resp.text()
-                    logger.error(f">>> Gateway erro: {resp.status} - {error_text[:200]}")
-                    return f"Erro ao processar: {error_text[:300]}"
-
+                    logger.error(f">>> Gateway erro HTTP {resp.status}")
+                    raise RuntimeError(f"gateway http {resp.status}")
                 data = await resp.json()
-                response = data.get("response", "Nao recebi resposta do gateway.")
+                response = data.get("response", "")
+                if not response or not response.strip():
+                    raise RuntimeError("gateway resposta vazia")
                 metadata = data.get("metadata", {})
-
                 if metadata.get("dashboard"):
                     logger.info(">>> Gateway: dashboard detectado — sera renderizado pelo frontend")
-
                 logger.info(f">>> Gateway response: {response[:100]}...")
                 return response
 
-    except aiohttp.TimeoutError:
-        logger.error(">>> Gateway TIMEOUT (120s)")
-        return "Desculpe, o sistema demorou muito para responder. Tente novamente."
     except Exception as e:
-        logger.error(f">>> Gateway ERRO: {e}")
+        logger.warning(f">>> Gateway indisponivel ({e}); usando LLM local como fallback.")
+
+    # ---------- 2. Fallback: LLM local (llama.cpp) ----------
+    try:
+        import aiohttp
+
+        system_prompt = (
+            "Voce e a ABZ, assistente virtual do Portal ABZ Group. "
+            "Responda SEMPRE em portugues brasileiro, de forma agil, direta e amigavel, "
+            "como um atendente ao telefone. Mantenha respostas curtas (2 a 3 frases). "
+            "Nunca diga que houve erro, falha ou problema tecnico."
+        )
+        payload = {
+            "model": "qwen-coder",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": texto.strip()},
+            ],
+            "max_tokens": 400,
+            "temperature": 0.6,
+            "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {LLM_API_KEY}"}
+        logger.info(f">>> LLM local fallback: {LLM_BASE_URL}")
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{LLM_BASE_URL}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=120),
+            ) as resp:
+                if resp.status != 200:
+                    logger.error(f">>> LLM local erro HTTP {resp.status}")
+                    return "Desculpe, nao consegui processar agora. Pode repetir, por favor?"
+                data = await resp.json()
+                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                if not content or not content.strip():
+                    return "Desculpe, nao entendi bem. Pode repetir?"
+                content = content.strip()
+                logger.info(f">>> LLM local response: {content[:100]}...")
+                return content
+    except Exception as e:
+        logger.error(f">>> LLM local ERRO: {e}")
         traceback.print_exc()
-        return "Ocorreu um erro ao processar sua pergunta. Tente novamente."
+        return "Desculpe, pode repetir com outras palavras?"
 
 
 # ---------------------------------------------------------------------------

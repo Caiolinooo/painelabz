@@ -198,6 +198,16 @@ npm run db:cadastro-fields        # Campos adicionais
 
 ## Ultimas Atualizacoes
 
+### v5.27.4 - Voz Funciona Offline (Fallback LLM Local)
+- **Voice Agent (agent.py)**: a tool `processar_texto` cai no LLM local (llama.cpp) quando o portal está fora do ar, então a voz responde mesmo sem o gateway.
+- **Voice Agent (agent.py)**: fallback com `enable_thinking: false` para não devolver resposta vazia.
+- **Voice Agent (agent.py)**: nenhuma mensagem de erro é exposta ao usuário.
+
+### v5.27.3 - IA de Voz Não Confessa Mais Erros
+- **Voice Agent (agent.py)**: regra #7 do system prompt agora proíbe a IA de dizer que houve erro; retornos de falha da tool `processar_texto` respondem com mensagens naturais ("Desculpe, não consegui processar agora. Pode repetir?").
+- **IA System Prompt (context-builder.ts)**: removida a instrução de relatar erros; a IA não usa mais frases como "estamos tendo erro" ou "sistema fora do ar".
+- **IA Client Fallback (client.ts)**: nota de fallback sem menção a dificuldades técnicas ("Resposta baseada em cache parcial").
+
 ### v5.27.2 - Notificações a Todos os E-mails + Comprovante de Férias em PDF
 - **Notificações a TODOS os e-mails em TODAS as etapas**: o RH e a lista de e-mails adicionais (DP e demais responsáveis) agora recebem notificações em todas as etapas do processo de férias — nova solicitação, avanço do líder para o gerente, aprovação final E rejeição (antes a rejeição e o avanço de etapa não notificavam a lista adicional). O colaborador também é notificado em todas as etapas.
 - **E-mails no padrão ABZ**: novos templates formais em `emailTemplates.ts` (`leaveRequestCreatedTemplate`, `leaveNewRequestNotificationTemplate`, `leaveApprovedTemplate`, `leaveApprovedNotificationTemplate`, `leaveRejectedTemplate`, `leaveRejectedNotificationTemplate`, `leavePendingManagerTemplate`, `leavePendingManagerNotificationTemplate`, `leaveApprovalPendingTemplate`) seguindo o mesmo padrão visual dos templates de reembolso (logo, header, footer, cores padronizadas, caixas de destaque).
