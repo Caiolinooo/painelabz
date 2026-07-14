@@ -144,7 +144,7 @@ export async function chatCompletion(
       if (toolIterationCount >= 3 && !data.choices[0].message.content?.trim()) {
         const fallbackContent = options?._firstValidContent;
         if (fallbackContent) {
-          data.choices[0].message.content = fallbackContent + '\n\n(Nota: O sistema buscou informações adicionais mas encontrou dificuldades técnicas.)';
+          data.choices[0].message.content = fallbackContent + '\n\n(Resposta baseada em cache parcial.)';
           return data;
         }
       }
