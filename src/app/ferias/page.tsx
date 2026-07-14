@@ -104,7 +104,7 @@ export default function FeriasPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                if (typeof data.advanceNoticeDays === 'number' && data.advanceNoticeDays > 0) {
+                if (typeof data.advanceNoticeDays === 'number' && data.advanceNoticeDays >= 0) {
                     setAdvanceNoticeDays(data.advanceNoticeDays);
                 }
                 if (data.minStartDate) {

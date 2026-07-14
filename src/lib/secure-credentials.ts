@@ -15,8 +15,10 @@ interface Credential {
   is_encrypted: boolean;
 }
 
-// Cache de credenciais
+// Cache de credenciais e sua expiração
 const credentialsCache = new Map<string, string>();
+const cacheExpiry = new Map<string, number>();
+const CACHE_TTL_MS = 60 * 1000; // 1 minuto
 
 // Cliente Supabase
 let supabaseClient: ReturnType<typeof createClient> | null = null;
@@ -90,9 +92,12 @@ export function decryptValue(encryptedValue: string, salt: string = SECURITY_SAL
  * @returns Valor da credencial ou null se não encontrada
  */
 export async function getCredential(key: string): Promise<string | null> {
-  // Verificar se a credencial está no cache
+  // Verificar se a credencial está no cache e não expirou
   if (credentialsCache.has(key)) {
-    return credentialsCache.get(key) || null;
+    const expiry = cacheExpiry.get(key);
+    if (!expiry || Date.now() < expiry) {
+      return credentialsCache.get(key) || null;
+    }
   }
   
   // Verificar se o cliente Supabase está inicializado
@@ -142,8 +147,9 @@ export async function getCredential(key: string): Promise<string | null> {
       ? decryptValue(credential.value)
       : credential.value;
     
-    // Armazenar no cache
+    // Armazenar no cache com expiração
     credentialsCache.set(key, value);
+    cacheExpiry.set(key, Date.now() + CACHE_TTL_MS);
     
     return value;
   } catch (error) {
@@ -209,7 +215,9 @@ export async function initializeCredentials(): Promise<boolean> {
 export function clearCredentialCache(key?: string): void {
   if (key) {
     credentialsCache.delete(key);
+    cacheExpiry.delete(key);
   } else {
     credentialsCache.clear();
+    cacheExpiry.clear();
   }
 }

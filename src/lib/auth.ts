@@ -332,9 +332,14 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
     }
   } catch (error) {
     console.error('Erro ao enviar email de redefinição:', error);
+    const errMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    // Evitar duplicação de mensagens — se já contém o prefixo, usar direto
+    const message = errMsg.startsWith('Erro ao enviar email')
+      ? errMsg
+      : `Erro ao enviar email de redefinição: ${errMsg}`;
     return {
       success: false,
-      message: `Erro ao enviar email de redefinição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      message
     };
   }
 }

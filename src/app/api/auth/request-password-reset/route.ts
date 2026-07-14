@@ -93,8 +93,9 @@ export async function POST(request: NextRequest) {
 
     if (!emailResult.success) {
       console.error('❌ Erro ao enviar email:', emailResult.message);
+      // Evitar duplicação de mensagens — passar a mensagem direto
       return NextResponse.json(
-        { success: false, message: `Erro ao enviar email: ${emailResult.message}` },
+        { success: false, message: emailResult.message },
         { status: 500 }
       );
     }

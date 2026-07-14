@@ -441,10 +441,11 @@ export async function DELETE(
       );
     }
 
-    // Usar await para acessar params.protocolo
-    const { protocolo } = await params;
+    // Obter o parâmetro (pode ser um ID UUID ou um protocolo)
+    const paramsObj = await params;
+    const identifier = decodeURIComponent(paramsObj.protocolo);
 
-    console.log(`Iniciando exclusão do reembolso ${protocolo} pelo usuário ${payload.userId}`);
+    console.log(`Iniciando exclusão do reembolso ${identifier} pelo usuário ${payload.userId}`);
 
     // Verificar se a tabela de reembolsos existe e obter o nome correto
     const { exists, tableName } = await checkReimbursementTableExists();
@@ -457,17 +458,21 @@ export async function DELETE(
       );
     }
 
+    // Verificar se o identificador é um UUID
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+    const filterColumn = isUUID ? 'id' : 'protocolo';
+
     // Verificar se o reembolso existe antes de excluir
     const { data: reembolso, error: fetchError } = await supabaseAdmin
       .from(tableName)
       .select('id, protocolo')
-      .eq('protocolo', protocolo)
+      .eq(filterColumn, identifier)
       .single();
 
     if (fetchError || !reembolso) {
-      console.error('Erro ao buscar reembolso para exclusão:', fetchError);
+      console.error(`Erro ao buscar reembolso para exclusão (${filterColumn}=${identifier}):`, fetchError);
       return NextResponse.json(
-        { error: 'Solicitação de reembolso não encontrada' },
+        { error: `Solicitação de reembolso não encontrada (${filterColumn}=${identifier})`, details: fetchError },
         { status: 404 }
       );
     }
@@ -476,7 +481,7 @@ export async function DELETE(
     const { error: deleteError } = await supabaseAdmin
       .from(tableName)
       .delete()
-      .eq('protocolo', protocolo);
+      .eq(filterColumn, identifier);
 
     if (deleteError) {
       console.error('Erro ao excluir reembolso:', deleteError);

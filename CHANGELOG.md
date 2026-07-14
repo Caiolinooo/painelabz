@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.28.0] - 2026-07-14
+
+### Added
+- **Voice Server — Supertonic 3 TTS**: Substituído o Piper TTS pelo Supertonic 3 (99M parâmetros, 31 idiomas incluindo PT-BR). Roda 100% em CPU via ONNX, sem necessidade de GPU. Vozes preset: M1, M2, M3, F1, F2, F3. Novo `scripts/voice-server/requirements.txt` para dependências do voice server.
+- **Voice Server — Teste de conexão SMTP**: Endpoint `GET /api/email/test-connection` agora limpa o cache do transporter antes de testar, garantindo credenciais frescas.
+
+### Changed
+- **Email Exchange — Tratamento de erro 535**: Detecta autenticação falhada do Office365 (535 5.7.3) e retorna mensagem orientando sobre credenciais expiradas ou BASIC Auth desabilitado. Removido fallback hardcoded de senha (`Abz@2025`) — agora exige `EMAIL_PASSWORD` configurado.
+- **Email Exchange — Validação pré-conexão**: `createTransport()` valida se `EMAIL_PASSWORD` está configurado antes de tentar conectar, evitando erros genéricos.
+- **Auth — Anti-duplicação de erros**: `sendPasswordResetEmail()` e `request-password-reset/route.ts` não envolvem mensagens de erro com prefixos adicionais, eliminando a cadeia "Erro ao enviar email: Erro ao enviar email de redefinição: Erro ao enviar email: ...".
+- **Voice Manager — Instalação atualizada**: `abz_voice_manager.sh` instala `supertonic` + `numpy` em vez de `piper-tts`. Download automático do modelo Supertonic 3 na primeira execução.
+- **Secure Credentials — Cache com TTL**: Cache de credenciais agora expira após 1 minuto (`CACHE_TTL_MS`), evitando dados stale após atualização via painel admin.
+
+### Fixed
+- **Reembolso — Exclusão por UUID ou protocolo**: `DELETE /api/reembolso/[id]` agora aceita tanto UUID quanto número de protocolo, corrigindo erro 404 ao tentar excluir reembolsos identificados por UUID.
+- **Reembolso — Modal de detalhes usa ID**: `ReimbursementDetailModal` usa `reimbursement.id` como identificador na requisição DELETE, evitando problemas com encoding de URL do protocolo.
+- **Férias — Validação de antecedência**: Corrigido `advanceNoticeDays >= 0` (antes era `> 0`), permitindo configurar prazo zero quando necessário.
+- **Leave Config — Cache-Control**: Endpoint `GET /api/leave/config` agora retorna `Cache-Control: no-store` para evitar cache de dados sensíveis.
+
 ## [5.27.2] - 2026-07-03
 
 ### Added

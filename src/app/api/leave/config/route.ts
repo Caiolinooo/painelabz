@@ -29,6 +29,10 @@ export async function GET(request: Request) {
         return NextResponse.json({
             advanceNoticeDays,
             minStartDate
+        }, {
+            headers: {
+                'Cache-Control': 'no-store, max-age=0'
+            }
         });
     } catch (error) {
         console.error('Error in GET /api/leave/config:', error);
