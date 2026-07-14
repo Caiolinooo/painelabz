@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.27.4] - 2026-07-14
+
+### Fixed
+- **Voice Agent (agent.py)**: Tool `processar_texto` agora tem fallback para o LLM local (llama.cpp) quando o gateway do portal (`/api/ia/voice/process`) está indisponível. Antes, se o portal estivesse fora do ar, a voz ficava muda. Agora a IA responde mesmo offline.
+- **Voice Agent (agent.py)**: Fallback do LLM local envia `chat_template_kwargs: {enable_thinking: false}` + `max_tokens: 400` para evitar que o Qwen gaste o orçamento de tokens raciocinando e devolva conteúdo vazio (voz muda).
+- **Voice Agent (agent.py)**: Removida exposição de erros ao usuário — qualquer falha do gateway/disponibilidade cai em mensagem natural e aciona o fallback local.
+
 ## [5.27.3] - 2026-07-14
 
 ### Fixed
