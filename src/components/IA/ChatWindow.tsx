@@ -46,6 +46,31 @@ export default function ChatWindow({ token }: Props) {
     'Authorization': `Bearer ${token}`,
   }), [token]);
 
+  const parseApiJson = useCallback(async (res: Response) => {
+    const contentType = res.headers.get('Content-Type') || '';
+    const text = await res.text();
+    const trimmed = text.trim();
+
+    if (
+      contentType.includes('text/html') ||
+      trimmed.startsWith('<!DOCTYPE') ||
+      trimmed.startsWith('<!doctype') ||
+      trimmed.startsWith('<html')
+    ) {
+      throw new Error('Serviço temporariamente indisponível. Tente novamente em instantes.');
+    }
+
+    if (!trimmed) {
+      throw new Error(res.ok ? 'Resposta vazia do servidor.' : `Erro ${res.status} sem detalhes.`);
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      throw new Error('Resposta inválida do servidor.');
+    }
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -112,7 +137,7 @@ export default function ChatWindow({ token }: Props) {
     setSessionsLoading(true);
     try {
       const res = await fetch('/api/ia/sessions', { headers: hdrs() });
-      const data = await res.json();
+      const data = await parseApiJson(res);
       const raw: any = data?.sessions;
       const sessionsArray: any[] = Array.isArray(raw)
         ? raw
@@ -122,7 +147,7 @@ export default function ChatWindow({ token }: Props) {
       setSessions(sessionsArray);
     } catch (err) { console.error('Erro sessões:', err); }
     finally { setSessionsLoading(false); }
-  }, [hdrs]);
+  }, [hdrs, parseApiJson]);
 
   useEffect(() => { loadSessions(); }, [loadSessions]);
 
@@ -131,7 +156,7 @@ export default function ChatWindow({ token }: Props) {
     async function loadIntegrations() {
       try {
         const res = await fetch('/api/user/integrations', { headers: hdrs() });
-        const data = await res.json();
+        const data = await parseApiJson(res);
         const hasExch = data.integrations?.some((i: any) => i.provider === 'microsoft_exchange');
         setHasExchange(!!hasExch);
         if (!hasExch) {
@@ -142,14 +167,14 @@ export default function ChatWindow({ token }: Props) {
       }
     }
     loadIntegrations();
-  }, [hdrs]);
+  }, [hdrs, parseApiJson]);
 
   // Load messages
   const loadMessages = useCallback(async (sid: string) => {
     setIsLoading(true);
     try {
       const res = await fetch(`/api/ia/chat?session_id=${sid}`, { headers: hdrs() });
-      const data = await res.json();
+      const data = await parseApiJson(res);
       const raw: any = data?.messages;
       const messagesArray: any[] = Array.isArray(raw)
         ? raw
@@ -159,7 +184,7 @@ export default function ChatWindow({ token }: Props) {
       setMessages(messagesArray);
     } catch (err) { console.error('Erro msgs:', err); }
     finally { setIsLoading(false); }
-  }, [hdrs]);
+  }, [hdrs, parseApiJson]);
 
   const handleSelectSession = useCallback((id: string) => {
     setActiveSessionId(id);
@@ -261,20 +286,25 @@ export default function ChatWindow({ token }: Props) {
         setStreamingStatus(null);
         setStreamingMetadata(null);
       } else {
-        const data = await res.json();
+        const data = await parseApiJson(res);
         if (data.error) throw new Error(data.error);
         if (data.session_id && !currentSessionId) setActiveSessionId(data.session_id);
         if (data.message) setMessages(prev => [...prev, data.message]);
         loadSessions();
       }
     } catch (err) {
+      const raw = err instanceof Error ? err.message : 'Erro ao conectar';
+      const friendly =
+        raw.includes('Unexpected token') || raw.includes('<!DOCTYPE') || raw.includes('is not valid JSON')
+          ? 'Não foi possível obter a resposta da IA agora. Tente novamente em instantes.'
+          : raw;
       setMessages(prev => [...prev, {
         id: `err-${Date.now()}`, session_id: activeSessionId || '', role: 'assistant',
-        content: `❌ ${err instanceof Error ? err.message : 'Erro ao conectar'}`,
+        content: `❌ ${friendly}`,
         tokens_used: null, response_time_ms: null, metadata: {}, created_at: new Date().toISOString(),
       }]);
     } finally { setIsSending(false); inputRef.current?.focus(); }
-  }, [input, isSending, activeSessionId, hdrs, loadSessions]);
+  }, [input, isSending, activeSessionId, hdrs, loadSessions, parseApiJson]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
