@@ -78,9 +78,11 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
+- **Reembolso emails**: três listas no admin — `recipients` (@groupabz.com), `externalRecipients` (outros domínios), `financeEmails` (pós-aprovação/pago). Ver `src/app/api/reembolso/AGENTS.md`.
+
 ## Child DOX Index
 
-This project is not yet indexed. Before continuing you must scan the project, build the DOX tree and replace this message with the actual index. Go deep and scan files recursively to properly evaluate complexity and create nested DOX files where needed.
+- `src/app/api/reembolso/AGENTS.md` — fluxo de emails e status de reembolso
 
 ## Index of Modules
 

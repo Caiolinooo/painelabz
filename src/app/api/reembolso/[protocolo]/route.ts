@@ -7,6 +7,10 @@ import {
   sendReimbursementPaymentEmail,
   sendReimbursementApprovalToFinanceEmail
 } from '@/lib/notifications';
+import {
+  resolveFinancePaymentRecipients,
+  type ReimbursementEmailSettings,
+} from '@/lib/reimbursement-email-routing';
 
 export const dynamic = 'force-dynamic';
 
@@ -329,9 +333,9 @@ export async function PUT(
         );
         console.log('Email de aprovação enviado com sucesso');
 
-        // Send notification to finance team - buscar emails configurados no banco
+        // Notificar fiscal/financeiro para marcar como pago
         console.log('Buscando configurações de email do financeiro...');
-        let financeEmailsList: string[] = ['financeiro@groupabz.com']; // Fallback padrão
+        let financeEmailsList = resolveFinancePaymentRecipients(null);
 
         try {
           const { data: settingsData } = await supabaseAdmin
@@ -340,15 +344,15 @@ export async function PUT(
             .eq('key', 'reimbursement_email_settings')
             .single();
 
-          if (settingsData?.value?.financeEmails && Array.isArray(settingsData.value.financeEmails)) {
-            financeEmailsList = settingsData.value.financeEmails;
-            console.log('Emails do financeiro obtidos das configurações:', financeEmailsList);
-          }
+          financeEmailsList = resolveFinancePaymentRecipients(
+            settingsData?.value as ReimbursementEmailSettings | undefined
+          );
+          console.log('Emails do financeiro obtidos das configurações:', financeEmailsList);
         } catch (settingsError) {
-          console.log('Usando email padrão do financeiro (configuração não encontrada)');
+          console.log('Usando email padrão do fiscal (configuração não encontrada)');
         }
 
-        console.log('Enviando notificação para o financeiro:', financeEmailsList);
+        console.log('Enviando notificação para o fiscal/financeiro:', financeEmailsList);
         await sendReimbursementApprovalToFinanceEmail(
           financeEmailsList,
           reembolso.nome,
@@ -363,7 +367,7 @@ export async function PUT(
             pixChave: reembolso.pix_chave
           }
         );
-        console.log('Notificação enviada para o financeiro com sucesso');
+        console.log('Notificação enviada para o fiscal/financeiro com sucesso');
       } else if (status === 'rejeitado') {
         // Send rejection email
         console.log('Enviando email de rejeição...');
@@ -491,7 +495,7 @@ export async function DELETE(
       );
     }
 
-    console.log(`Reembolso ${protocolo} excluído com sucesso`);
+    console.log(`Reembolso ${reembolso.protocolo || identifier} excluído com sucesso`);
 
     return NextResponse.json({
       success: true,

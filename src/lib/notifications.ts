@@ -9,11 +9,18 @@ import {
   reimbursementConfirmationTemplate,
   reimbursementApprovalTemplate,
   reimbursementRejectionTemplate,
+  reimbursementApprovalRequestTemplate,
+  reimbursementPaymentTemplate,
+  reimbursementFinancePendingTemplate,
   newUserWelcomeTemplate,
   inviteTemplate,
-  baseTemplate
 } from './emailTemplates';
 import { buildAppUrl } from './app-url';
+import {
+  DEFAULT_APPROVAL_RECIPIENTS,
+  DEFAULT_FINANCE_EMAILS,
+  isGroupAbzEmail,
+} from './reimbursement-email-routing';
 
 // Tipo para dados do usuário
 interface UserData {
@@ -459,38 +466,24 @@ export async function sendReimbursementConfirmationEmail(
       console.warn('AVISO: Apenas um anexo foi adicionado ao email. Verifique se o formulário PDF e os comprovantes estão sendo incluídos corretamente.');
     }
 
-    // Preparar lista de destinatários
-    // Regra: para usuários @groupabz.com, usar apenas destinatários configurados (andresa/fiscal)
-    // Para outros domínios, enviar para logistica@groupabz.com como padrão
-    const recipients = [email];
-
-    const isGroupAbzDomain = email.toLowerCase().endsWith('@groupabz.com');
-
-    // Adicionar destinatários adicionais se existirem (vem das configurações)
+    // Destinatários de aprovação:
+    // - @groupabz.com → recipients (Andresa) vindos do create route
+    // - demais domínios → financeEmails (fiscal)
+    // Fallback local se create route não passar destinatários
+    let approvalRecipients: string[] = [];
     if (additionalRecipients && additionalRecipients.length > 0) {
-      console.log(`Adicionando destinatários adicionais: ${additionalRecipients.join(', ')}`);
-      additionalRecipients.forEach(recipient => {
-        if (recipient && !recipients.includes(recipient)) {
-          recipients.push(recipient);
-        }
-      });
-    } else if (isGroupAbzDomain) {
-      // Se é domínio ABZ e não veio destinatário adicional, garantir os padrões
-      console.log('Email do domínio @groupabz.com sem destinatários adicionais, usando padrões');
-      const defaultRecipients = ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
-      defaultRecipients.forEach(r => {
-        if (!recipients.includes(r)) recipients.push(r);
-      });
+      approvalRecipients = additionalRecipients
+        .map((r) => (r || '').toLowerCase().trim())
+        .filter((r) => r.includes('@') && r !== email.toLowerCase().trim());
+    } else if (isGroupAbzEmail(email)) {
+      approvalRecipients = [...DEFAULT_APPROVAL_RECIPIENTS];
     } else {
-      // Se não há destinatários configurados e o usuário NÃO é do domínio @groupabz.com,
-      // enviar para logística como fallback padrão
-      console.log('Usuário não é do domínio @groupabz.com, adicionando logistica@groupabz.com como destinatário padrão');
-      recipients.push('logistica@groupabz.com');
+      approvalRecipients = [...DEFAULT_FINANCE_EMAILS];
     }
 
-    console.log(`Lista final de destinatários: ${recipients.join(', ')}`);
-    console.log(`Domínio @groupabz.com: ${isGroupAbzDomain}`);
-    console.log(`Destinatários adicionais configurados: ${additionalRecipients?.length || 0}`);
+    console.log(`Solicitante: ${email}`);
+    console.log(`Destinatários de aprovação: ${approvalRecipients.join(', ') || 'Nenhum'}`);
+    console.log(`Domínio @groupabz.com: ${isGroupAbzEmail(email)}`);
 
     // Importar utilitários de debug
     const { saveAttachmentsToFiles } = await import('./debug-utils');
@@ -507,41 +500,37 @@ export async function sendReimbursementConfirmationEmail(
 
     console.log(`Filtrando anexos: ${emailAttachments.length} total, ${validAttachments.length} válidos`);
 
-    // Remover código de teste - não adicionar anexos de teste em produção
-
-    // Log detalhado dos anexos válidos
-    console.log(`Enviando email com ${validAttachments.length} anexos válidos:`);
-    validAttachments.forEach((att, idx) => {
-      console.log(`Anexo ${idx + 1}: ${att.filename} (${att.contentType || 'tipo desconhecido'}) - ${att.content
-        ? `Conteúdo: ${Buffer.isBuffer(att.content) ? att.content.length + ' bytes' : 'não é buffer'}`
-        : att.path
-          ? `Caminho: ${att.path}`
-          : 'Sem conteúdo/caminho'
-        }`);
-    });
-
-    // Enviar email para todos os destinatários
-    const result = await sendEmail(
-      recipients,
+    // 1) Confirmação ao solicitante (template do projeto)
+    const confirmationResult = await sendEmail(
+      email,
       `Solicitação de Reembolso - Protocolo: ${protocolo}`,
-      // Versão texto simples
-      `Solicitação de Reembolso - Protocolo: ${protocolo}\n\nOlá ${nome},\n\nSua solicitação de reembolso foi recebida com sucesso e está sendo processada.\n\nProtocolo: ${protocolo}\nValor: ${valor}\nData da Solicitação: ${new Date().toLocaleDateString('pt-BR')}\nStatus: Pendente\n\nVocê receberá atualizações sobre o status da sua solicitação por email. Em caso de dúvidas, entre em contato com o departamento financeiro.\n\nAtenção: Este email deve conter ${validAttachments.length} anexos: o formulário de reembolso e os comprovantes anexados.`,
-      // Versão HTML
-      emailContent + `<p style="color: #666; font-size: 12px;">Este email deve conter ${validAttachments.length} anexos: o formulário de reembolso e os comprovantes anexados.</p>`,
-      {
-        attachments: validAttachments
-      }
+      `Solicitação de Reembolso - Protocolo: ${protocolo}\n\nOlá ${nome},\n\nSua solicitação de reembolso foi recebida com sucesso e está sendo processada.\n\nProtocolo: ${protocolo}\nValor: ${valor}\nData da Solicitação: ${new Date().toLocaleDateString('pt-BR')}\nStatus: Pendente\n\nVocê receberá atualizações sobre o status da sua solicitação por email.`,
+      emailContent,
+      { attachments: validAttachments }
     );
 
-    console.log(`Email de reembolso enviado para ${recipients.join(', ')}`);
-    // DEBUG: Log specific for caio.correia
-    if (email.includes('caio.correia')) {
-      console.log('--- DEBUG CAIO.CORREIA EMAIL ---');
-      console.log('Sent to:', recipients);
-      console.log('Message ID:', ('messageId' in result) ? (result as any).messageId : 'N/A');
-      console.log('Result Success:', result.success);
-      console.log('Result Message:', result.message);
-      console.log('--------------------------------');
+    console.log(`Email de confirmação enviado para solicitante: ${email} (${confirmationResult.success ? 'ok' : 'falha'})`);
+
+    // 2) Pedido de aprovação aos destinatários configurados (Andresa ou fiscal)
+    let approvalResult: { success: boolean; message: string; previewUrl?: string } = {
+      success: true,
+      message: 'Sem destinatários de aprovação',
+    };
+    if (approvalRecipients.length > 0) {
+      const approvalHtml = reimbursementApprovalRequestTemplate(nome, protocolo, valor, email);
+      const sendResult = await sendEmail(
+        approvalRecipients,
+        `Aprovação de Reembolso - Protocolo: ${protocolo}`,
+        `Nova solicitação de reembolso aguardando aprovação.\nProtocolo: ${protocolo}\nSolicitante: ${nome} (${email})\nValor: ${valor}`,
+        approvalHtml,
+        { attachments: validAttachments }
+      );
+      approvalResult = {
+        success: sendResult.success,
+        message: sendResult.message,
+        previewUrl: typeof sendResult.previewUrl === 'string' ? sendResult.previewUrl : undefined,
+      };
+      console.log(`Email de aprovação enviado para: ${approvalRecipients.join(', ')} (${approvalResult.success ? 'ok' : 'falha'})`);
     }
 
     if (emailAttachments.length > 0) {
@@ -553,10 +542,15 @@ export async function sendReimbursementConfirmationEmail(
       console.warn('Aviso: Email enviado sem anexos!');
     }
 
+    const overallSuccess = confirmationResult.success && approvalResult.success;
     return {
-      success: result.success,
-      message: result.message,
-      previewUrl: typeof result.previewUrl === 'string' ? result.previewUrl : undefined
+      success: overallSuccess,
+      message: overallSuccess
+        ? confirmationResult.message
+        : `Confirmação: ${confirmationResult.message}; Aprovação: ${approvalResult.message}`,
+      previewUrl: typeof confirmationResult.previewUrl === 'string'
+        ? confirmationResult.previewUrl
+        : (typeof approvalResult.previewUrl === 'string' ? approvalResult.previewUrl : undefined)
     };
   } catch (error) {
     console.error('Erro ao enviar email de confirmação de reembolso:', error);
@@ -662,32 +656,8 @@ export async function sendReimbursementPaymentEmail(
   observacao?: string
 ): Promise<{ success: boolean; message: string; previewUrl?: string }> {
   try {
-    // Gerar conteúdo do email
-    const emailContent = baseTemplate(`
-        <div style="background: #10b981; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; margin-bottom: 20px;">
-          <h1 style="color: white; margin: 0; font-size: 22px;">✅ Reembolso Pago!</h1>
-        </div>
-        <div style="color: #374151;">
-          <p style="font-size: 16px; line-height: 1.6;">
-            Olá, <strong>${nome}</strong>!
-          </p>
-          <p style="font-size: 16px; line-height: 1.6;">
-            Temos o prazer de informar que seu reembolso foi <strong style="color: #10b981;">pago</strong> com sucesso!
-          </p>
-          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-            <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
-            <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
-            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">PAGO</span></p>
-            ${observacao ? `<p style="margin: 5px 0;"><strong>Observação:</strong> ${observacao}</p>` : ''}
-          </div>
-          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-            O valor foi depositado conforme os dados bancários informados na solicitação.
-            Em caso de dúvidas, entre em contato com o departamento financeiro.
-          </p>
-        </div>
-    `);
+    const emailContent = reimbursementPaymentTemplate(nome, protocolo, valor, observacao);
 
-    // Enviar email
     const result = await sendCustomEmail(
       email,
       `Reembolso Pago - Protocolo: ${protocolo}`,
@@ -729,51 +699,17 @@ export async function sendReimbursementApprovalToFinanceEmail(
   }
 ): Promise<{ success: boolean; message: string; previewUrl?: string }> {
   try {
-    // Gerar conteúdo do email
-    const dadosPagamento = metodoPagamento === 'PIX'
-      ? `<p style="margin: 5px 0;"><strong>Tipo PIX:</strong> ${dadosBancarios?.pixTipo || 'N/A'}</p>
-         <p style="margin: 5px 0;"><strong>Chave PIX:</strong> ${dadosBancarios?.pixChave || 'N/A'}</p>`
-      : `<p style="margin: 5px 0;"><strong>Banco:</strong> ${dadosBancarios?.banco || 'N/A'}</p>
-         <p style="margin: 5px 0;"><strong>Agência:</strong> ${dadosBancarios?.agencia || 'N/A'}</p>
-         <p style="margin: 5px 0;"><strong>Conta:</strong> ${dadosBancarios?.conta || 'N/A'}</p>`;
+    const emailContent = reimbursementFinancePendingTemplate(
+      solicitanteNome,
+      protocolo,
+      valor,
+      metodoPagamento,
+      dadosBancarios
+    );
 
-    const emailContent = baseTemplate(`
-        <div style="background: #f59e0b; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; margin-bottom: 20px;">
-          <h1 style="color: white; margin: 0; font-size: 22px;">💰 Reembolso Aprovado - Aguardando Pagamento</h1>
-        </div>
-        <div style="color: #374151;">
-          <p style="font-size: 16px; line-height: 1.6;">
-            Um novo reembolso foi <strong style="color: #f59e0b;">aprovado</strong> e está aguardando pagamento.
-          </p>
-          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <h3 style="margin: 0 0 10px 0; color: #374151;">Dados do Reembolso</h3>
-            <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
-            <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${solicitanteNome}</p>
-            <p style="margin: 5px 0;"><strong>Valor:</strong> <span style="color: #10b981; font-weight: bold;">${valor}</span></p>
-          </div>
-          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
-            <h3 style="margin: 0 0 10px 0; color: #374151;">Dados para Pagamento</h3>
-            <p style="margin: 5px 0;"><strong>Método:</strong> ${metodoPagamento}</p>
-            ${dadosPagamento}
-          </div>
-          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p style="color: #92400e; margin: 0; font-size: 14px;">
-              <strong>⚠️ Ação necessária:</strong> Acesse o painel de reembolsos para visualizar os comprovantes e marcar como pago após efetuar o pagamento.
-            </p>
-          </div>
-          <div style="text-align: center; margin: 25px 0;">
-            <a href="${buildAppUrl('/reembolso?tab=approval')}" 
-               style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">
-              Acessar Painel de Reembolsos
-            </a>
-          </div>
-        </div>
-    `);
-
-    // Enviar email
     const result = await sendCustomEmail(
       financeEmail,
-      `⚠️ Reembolso Aprovado - Pendente de Pagamento - Protocolo: ${protocolo}`,
+      `Reembolso Aprovado - Pendente de Pagamento - Protocolo: ${protocolo}`,
       emailContent
     );
 

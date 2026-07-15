@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { FiSettings, FiAlertCircle } from 'react-icons/fi';
 import ReimbursementEmailSettings from '@/components/admin/ReimbursementEmailSettings';
 import { useI18n } from '@/contexts/I18nContext';
+import { getDefaultReimbursementEmailSettings } from '@/lib/reimbursement-email-routing';
 
 export default function ReimbursementSettingsPage() {
   const { t } = useI18n();
@@ -13,12 +14,9 @@ export default function ReimbursementSettingsPage() {
   const [emailSettings, setEmailSettings] = useState<{
     enableDomainRule: boolean;
     recipients: string[];
+    externalRecipients: string[];
     financeEmails: string[];
-  }>({
-    enableDomainRule: true,
-    recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
-    financeEmails: ['financeiro@groupabz.com']
-  });
+  }>(getDefaultReimbursementEmailSettings());
 
   useEffect(() => {
     fetchSettings();
@@ -71,21 +69,13 @@ export default function ReimbursementSettingsPage() {
 
       // Usar valores padrão como último recurso
       console.log(t('admin.usandoValoresPadraoParaAsConfiguracoes'));
-      setEmailSettings({
-        enableDomainRule: true,
-        recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
-        financeEmails: ['financeiro@groupabz.com']
-      });
+      setEmailSettings(getDefaultReimbursementEmailSettings());
     } catch (err) {
       console.error(t('admin.erroAoCarregarConfiguracoes'), err);
       setError(t('admin.erroAoCarregarConfiguracoesUsandoValoresPadrao'));
 
       // Usar valores padrão em caso de erro
-      setEmailSettings({
-        enableDomainRule: true,
-        recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
-        financeEmails: ['financeiro@groupabz.com']
-      });
+      setEmailSettings(getDefaultReimbursementEmailSettings());
     } finally {
       setIsLoading(false);
     }
@@ -94,6 +84,7 @@ export default function ReimbursementSettingsPage() {
   const saveEmailSettings = async (settings: {
     enableDomainRule: boolean;
     recipients: string[];
+    externalRecipients: string[];
     financeEmails: string[];
   }): Promise<boolean> => {
     try {

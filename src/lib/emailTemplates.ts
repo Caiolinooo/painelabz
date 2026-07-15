@@ -558,6 +558,136 @@ export const reimbursementRejectionTemplate = (nome: string, protocolo: string, 
   return baseTemplate(content);
 };
 
+// Template: solicitação aguardando aprovação (enviado a Andresa/fiscal)
+export const reimbursementApprovalRequestTemplate = (
+  solicitanteNome: string,
+  protocolo: string,
+  valor: string,
+  solicitanteEmail: string
+) => {
+  const config = getEmailConfig();
+  const panelUrl = `${config.appUrl}/reembolso?tab=approval`;
+
+  const content = `
+    <h2 style="text-align: center; color: ${config.primaryColor};">Nova Solicitação de Reembolso</h2>
+    <p>
+      Há uma nova solicitação de reembolso <strong>aguardando aprovação</strong>.
+    </p>
+    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
+      <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${solicitanteNome}</p>
+      <p style="margin: 5px 0;"><strong>Email:</strong> ${solicitanteEmail}</p>
+      <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
+      <p style="margin: 5px 0;"><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+      <p style="margin: 5px 0;"><strong>Status:</strong> Pendente de aprovação</p>
+    </div>
+    <p>
+      Os comprovantes e o formulário seguem em anexo. Acesse o painel para aprovar ou rejeitar a solicitação.
+    </p>
+    <div style="text-align: center; margin: 25px 0;">
+      <a href="${panelUrl}"
+         style="display: inline-block; background: ${config.primaryColor}; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+        Acessar Painel de Reembolsos
+      </a>
+    </div>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+// Template: reembolso pago (enviado ao solicitante)
+export const reimbursementPaymentTemplate = (
+  nome: string,
+  protocolo: string,
+  valor: string,
+  observacao?: string
+) => {
+  const config = getEmailConfig();
+  const observacaoText = observacao
+    ? `<p style="margin: 5px 0;"><strong>Observação:</strong> ${observacao}</p>`
+    : '';
+
+  const content = `
+    <h2 style="text-align: center; color: #28a745;">Reembolso Pago</h2>
+    <p>
+      Olá, <strong>${nome}</strong>!
+    </p>
+    <p>
+      Temos o prazer de informar que seu reembolso foi <strong style="color: #28a745;">pago</strong> com sucesso.
+    </p>
+    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
+      <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
+      <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">PAGO</span></p>
+      ${observacaoText}
+    </div>
+    <p>
+      O valor foi depositado conforme os dados bancários informados na solicitação.
+      Em caso de dúvidas, entre em contato com o departamento financeiro.
+    </p>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
+// Template: aprovado, aguardando pagamento (enviado ao fiscal)
+export const reimbursementFinancePendingTemplate = (
+  solicitanteNome: string,
+  protocolo: string,
+  valor: string,
+  metodoPagamento: string,
+  dadosBancarios?: {
+    banco?: string;
+    agencia?: string;
+    conta?: string;
+    pixTipo?: string;
+    pixChave?: string;
+  }
+) => {
+  const config = getEmailConfig();
+  const panelUrl = `${config.appUrl}/reembolso?tab=approval`;
+  const dadosPagamento = metodoPagamento === 'PIX'
+    ? `<p style="margin: 5px 0;"><strong>Tipo PIX:</strong> ${dadosBancarios?.pixTipo || 'N/A'}</p>
+       <p style="margin: 5px 0;"><strong>Chave PIX:</strong> ${dadosBancarios?.pixChave || 'N/A'}</p>`
+    : `<p style="margin: 5px 0;"><strong>Banco:</strong> ${dadosBancarios?.banco || 'N/A'}</p>
+       <p style="margin: 5px 0;"><strong>Agência:</strong> ${dadosBancarios?.agencia || 'N/A'}</p>
+       <p style="margin: 5px 0;"><strong>Conta:</strong> ${dadosBancarios?.conta || 'N/A'}</p>`;
+
+  const content = `
+    <h2 style="text-align: center; color: #f59e0b;">Reembolso Aprovado — Aguardando Pagamento</h2>
+    <p>
+      Um reembolso foi <strong>aprovado</strong> e está aguardando a alteração de status para <strong>pago</strong>.
+    </p>
+    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
+      <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${solicitanteNome}</p>
+      <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
+      <p style="margin: 5px 0;"><strong>Método:</strong> ${metodoPagamento}</p>
+      ${dadosPagamento}
+    </div>
+    <p>
+      Acesse o painel de reembolsos para visualizar os comprovantes e marcar como pago após efetuar o pagamento.
+    </p>
+    <div style="text-align: center; margin: 25px 0;">
+      <a href="${panelUrl}"
+         style="display: inline-block; background: ${config.primaryColor}; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+        Acessar Painel de Reembolsos
+      </a>
+    </div>
+    <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
+      Este é um email automático. Por favor, não responda.
+    </p>
+  `;
+
+  return baseTemplate(content);
+};
+
 // Template para boas-vindas a novos usuários
 export const newUserWelcomeTemplate = (nome: string, loginUrl: string, password?: string) => {
   const config = getEmailConfig();

@@ -9,6 +9,11 @@ import {
   validateExpenseDate,
   parseCurrencyValue
 } from '@/lib/reimbursementValidation';
+import {
+  getDefaultReimbursementEmailSettings,
+  resolveInitialApprovalRecipients,
+  type ReimbursementEmailSettings,
+} from '@/lib/reimbursement-email-routing';
 
 export const dynamic = 'force-dynamic';
 
@@ -285,53 +290,34 @@ export async function POST(request: NextRequest) {
       const emailToSend = userEmail || formData.email;
       console.log(`Email que será usado para envio: ${emailToSend}`);
 
-      // Buscar configurações de email de reembolso para destinatários adicionais
+      // Destinatários de aprovação conforme configuração admin + domínio do solicitante
       let additionalRecipients: string[] = [];
-      const isGroupAbzDomain = emailToSend.toLowerCase().endsWith('@groupabz.com');
+      const defaults = getDefaultReimbursementEmailSettings();
 
       try {
-        console.log('Buscando configurações de email de reembolso diretamente do banco...');
-        console.log(`Email do solicitante: ${emailToSend}, Domínio interno: ${isGroupAbzDomain}`);
+        console.log('Buscando configurações de email de reembolso...');
+        console.log(`Email do solicitante: ${emailToSend}`);
 
-        // Buscar configurações globais diretamente do banco de dados
         const { data: settingsData, error: settingsError } = await supabaseAdmin
           .from('settings')
           .select('value')
           .eq('key', 'reimbursement_email_settings')
           .single();
 
+        let settings: ReimbursementEmailSettings = defaults;
         if (settingsError) {
           console.log('Configurações não encontradas no banco, usando valores padrão');
-          // Usar valores padrão hardcoded para garantir que funcione
-          if (isGroupAbzDomain) {
-            additionalRecipients = ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
-            console.log(`Domínio @groupabz.com detectado - Usando destinatários padrão: ${additionalRecipients.join(', ')}`);
-          }
         } else if (settingsData?.value) {
-          const globalSettings = settingsData.value as { enableDomainRule?: boolean; recipients?: string[] };
-          console.log('Configurações globais encontradas:', globalSettings);
-
-          // Verificar se a regra de domínio está ativada e se o email tem o domínio @groupabz.com
-          if (globalSettings.enableDomainRule && isGroupAbzDomain) {
-            additionalRecipients = globalSettings.recipients || ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
-            console.log(`Usando regra de domínio para @groupabz.com: ${additionalRecipients.join(', ')}`);
-          } else if (!globalSettings.enableDomainRule) {
-            console.log('Regra de domínio desativada nas configurações');
-          } else {
-            console.log('Email não é do domínio @groupabz.com, não aplicando regra de domínio');
-          }
+          settings = settingsData.value as ReimbursementEmailSettings;
+          console.log('Configurações globais encontradas:', settings);
         }
 
-        // Log final para debug
-        console.log(`Destinatários adicionais finais: ${additionalRecipients.length > 0 ? additionalRecipients.join(', ') : 'Nenhum'}`);
-
+        additionalRecipients = resolveInitialApprovalRecipients(emailToSend, settings);
+        console.log(`Destinatários de aprovação: ${additionalRecipients.join(', ')}`);
       } catch (settingsError) {
         console.error('Erro ao buscar configurações de email:', settingsError);
-        // Em caso de erro, usar valores padrão para emails internos
-        if (isGroupAbzDomain) {
-          additionalRecipients = ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'];
-          console.log(`Erro ao buscar configurações - Usando fallback para @groupabz.com: ${additionalRecipients.join(', ')}`);
-        }
+        additionalRecipients = resolveInitialApprovalRecipients(emailToSend, defaults);
+        console.log(`Fallback de destinatários: ${additionalRecipients.join(', ')}`);
       }
 
       await sendReimbursementConfirmationEmail(
