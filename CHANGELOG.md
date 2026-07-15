@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.29.0] - 2026-07-15
+
+### Added
+- **Reembolso — Três listas de e-mail no admin**: Em `/admin/reimbursement-settings` agora é possível configurar separadamente aprovadores `@groupabz.com`, aprovadores de outros domínios e e-mails do financeiro/fiscal (pagamento), com add/remove livre em cada lista.
+- **Reembolso — Helper de roteamento**: Novo `src/lib/reimbursement-email-routing.ts` centraliza defaults, normalização de configs legadas e resolução de destinatários por domínio.
+- **Reembolso — Templates oficiais**: Novos templates em `emailTemplates.ts` no padrão ABZ (`reimbursementApprovalRequestTemplate`, `reimbursementPaymentTemplate`, `reimbursementFinancePendingTemplate`).
+
+### Changed
+- **Reembolso — Fluxo de e-mails por domínio**: Solicitantes `@groupabz.com` enviam aprovação inicial para a lista de aprovadores internos (ex.: Andresa); demais domínios usam a lista de aprovadores externos; após qualquer aprovação, o financeiro/fiscal recebe o e-mail para marcar como pago.
+- **Reembolso — Defaults alinhados**: Defaults atualizados para `andresa.oliveira@groupabz.com` (aprovação interna) e `fiscal@groupabz.com` (externos e pagamento), substituindo o legado que misturava Andresa+fiscal e usava `financeiro@`.
+
+### Fixed
+- **Reembolso — Externos sem destinatário de aprovação**: Solicitantes fora de `@groupabz.com` agora recebem envio correto aos aprovadores externos (antes só o solicitante ou `logistica@`).
+- **Reembolso — Fiscal na criação indevida**: Configs antigas com fiscal junto dos aprovadores internos são normalizadas automaticamente (fiscal vai para a lista de pagamento).
+
+### Tests
+- `scripts/test-reimbursement-email-routing.ts`: cobre defaults, roteamento groupabz vs externo, listas independentes, migração de configs legadas e regra de domínio desligada.
+
 ## [5.28.0] - 2026-07-14
 
 ### Added

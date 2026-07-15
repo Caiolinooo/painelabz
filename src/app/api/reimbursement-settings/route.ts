@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db';
+import {
+  getDefaultReimbursementEmailSettings,
+  normalizeReimbursementEmailSettings,
+} from '@/lib/reimbursement-email-routing';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,11 +13,7 @@ export async function GET(request: NextRequest) {
     console.log('GET /api/reimbursement-settings - Iniciando busca de configurações');
 
     // Valores padrão para retornar em caso de erro
-    const defaultSettings = {
-      enableDomainRule: true,
-      recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
-      financeEmails: ['financeiro@groupabz.com']
-    };
+    const defaultSettings = getDefaultReimbursementEmailSettings();
 
     try {
       // Verificar se a tabela settings existe
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
               if (!newError && newData) {
                 console.log('Configurações encontradas após criar tabela:', newData.value);
-                return NextResponse.json(newData.value);
+                return NextResponse.json(normalizeReimbursementEmailSettings(newData.value));
               }
             } catch (retryError) {
               console.error('Erro ao buscar configurações após criar tabela:', retryError);
@@ -165,23 +165,18 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(defaultSettings);
       }
 
-      // Retornar as configurações
+      // Retornar as configurações normalizadas (migra legado andresa+fiscal / financeiro@)
       console.log('Configurações encontradas:', data.value);
-      return NextResponse.json(data.value);
+      return NextResponse.json(normalizeReimbursementEmailSettings(data.value));
     } catch (dbError) {
       console.error('Erro ao acessar o banco de dados:', dbError);
       return NextResponse.json(defaultSettings);
     }
   } catch (error) {
     console.error('Erro ao processar requisição:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor';
 
     // Retornar valores padrão mesmo em caso de erro
-    return NextResponse.json({
-      enableDomainRule: true,
-      recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com'],
-      financeEmails: ['financeiro@groupabz.com']
-    });
+    return NextResponse.json(getDefaultReimbursementEmailSettings());
   }
 }
 
@@ -192,21 +187,36 @@ export async function POST(request: NextRequest) {
 
     // Obter dados do corpo da requisição
     const body = await request.json();
-    const { enableDomainRule, recipients, financeEmails } = body;
+    const { enableDomainRule, recipients, externalRecipients, financeEmails } = body;
 
-    console.log('Dados recebidos:', { enableDomainRule, recipients, financeEmails });
+    console.log('Dados recebidos:', { enableDomainRule, recipients, externalRecipients, financeEmails });
 
     // Validar os dados de entrada
     if (typeof enableDomainRule !== 'boolean' || !Array.isArray(recipients)) {
-      console.error('Dados inválidos:', { enableDomainRule, recipients, financeEmails });
+      console.error('Dados inválidos:', { enableDomainRule, recipients, externalRecipients, financeEmails });
       return NextResponse.json(
         { error: 'Dados inválidos' },
         { status: 400 }
       );
     }
 
-    // Garantir que financeEmails seja um array (usar padrão se não fornecido)
-    const financeEmailsList = Array.isArray(financeEmails) ? financeEmails : ['financeiro@groupabz.com'];
+    const normalized = normalizeReimbursementEmailSettings({
+      enableDomainRule,
+      recipients,
+      externalRecipients: Array.isArray(externalRecipients) ? externalRecipients : undefined,
+      financeEmails: Array.isArray(financeEmails) ? financeEmails : undefined,
+    });
+    const financeEmailsList = normalized.financeEmails;
+    const recipientsList = normalized.recipients;
+    const externalRecipientsList = normalized.externalRecipients;
+    const enableDomainRuleNormalized = normalized.enableDomainRule;
+
+    const settingsValue = {
+      enableDomainRule: enableDomainRuleNormalized,
+      recipients: recipientsList,
+      externalRecipients: externalRecipientsList,
+      financeEmails: financeEmailsList,
+    };
 
     try {
       // Verificar se a tabela settings existe
@@ -241,7 +251,7 @@ export async function POST(request: NextRequest) {
                 .from('settings')
                 .insert({
                   key: 'reimbursement_email_settings',
-                  value: { enableDomainRule, recipients, financeEmails: financeEmailsList },
+                  value: settingsValue,
                   description: 'Configurações de email para solicitações de reembolso'
                 })
                 .select()
@@ -273,11 +283,7 @@ export async function POST(request: NextRequest) {
               }
 
               const configFile = path.join(configDir, 'reimbursementSettings.json');
-              fs.writeFileSync(configFile, JSON.stringify({
-                enableDomainRule,
-                recipients,
-                financeEmails: financeEmailsList
-              }, null, 2));
+              fs.writeFileSync(configFile, JSON.stringify(settingsValue, null, 2));
 
               console.log('Configurações salvas em arquivo local:', configFile);
 
@@ -305,10 +311,7 @@ export async function POST(request: NextRequest) {
           }
 
           const configFile = path.join(configDir, 'reimbursementSettings.json');
-          fs.writeFileSync(configFile, JSON.stringify({
-            enableDomainRule,
-            recipients
-          }, null, 2));
+          fs.writeFileSync(configFile, JSON.stringify(settingsValue, null, 2));
 
           console.log('Configurações salvas em arquivo local como fallback:', configFile);
 
@@ -349,7 +352,7 @@ export async function POST(request: NextRequest) {
         const { data, error: updateError } = await supabaseAdmin
           .from('settings')
           .update({
-            value: { enableDomainRule, recipients, financeEmails: financeEmailsList },
+            value: settingsValue,
             updated_at: new Date().toISOString()
           })
           .eq('key', 'reimbursement_email_settings')
@@ -372,7 +375,7 @@ export async function POST(request: NextRequest) {
           .from('settings')
           .insert({
             key: 'reimbursement_email_settings',
-            value: { enableDomainRule, recipients, financeEmails: financeEmailsList },
+            value: settingsValue,
             description: 'Configurações de email para solicitações de reembolso'
           })
           .select()
