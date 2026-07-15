@@ -1381,7 +1381,13 @@ export async function executeToolCall(name: string, args: any, userRole: string,
                 body: params.toString(),
               });
 
-              const tokenData = await tokenRes.json();
+              const tokenText = await tokenRes.text();
+              let tokenData: any = {};
+              try {
+                tokenData = JSON.parse(tokenText);
+              } catch {
+                console.warn('[IA Tools] Token Graph retornou não-JSON');
+              }
               if (tokenData.access_token) {
                 const displayNameQuery = encodeURIComponent(busca);
                 const graphRes = await fetch(`https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'${busca}')&$top=5&$select=id,displayName,mail,userPrincipalName`, {
@@ -3433,7 +3439,13 @@ async function getGlobalUserEmails(email: string): Promise<string> {
       body: params.toString(),
     });
 
-    const tokenData = await tokenRes.json();
+    const tokenText = await tokenRes.text();
+    let tokenData: any = {};
+    try {
+      tokenData = JSON.parse(tokenText);
+    } catch {
+      return 'Erro ao obter Token de App: resposta inválida do Microsoft Login.';
+    }
     if (!tokenData.access_token) {
       return `Erro ao obter Token de App. A aplicação pode não ter sido configurada para o fluxo Client Credentials. Detalhes: ${JSON.stringify(tokenData)}`;
     }

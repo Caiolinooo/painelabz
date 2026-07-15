@@ -266,8 +266,16 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error('[API IA Chat POST]', err);
+    const raw = err instanceof Error ? err.message : 'Erro interno';
+    const friendly =
+      raw.includes('Unexpected token') ||
+      raw.includes('<!DOCTYPE') ||
+      raw.includes('is not valid JSON') ||
+      raw.includes('retornou uma página HTML')
+        ? 'A IA não conseguiu processar a solicitação agora. Verifique a configuração do endpoint no painel admin ou tente novamente.'
+        : raw;
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Erro interno' },
+      { error: friendly },
       { status: 500 }
     );
   }

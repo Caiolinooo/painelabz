@@ -17,6 +17,39 @@ let configCacheTime = 0;
 const CONFIG_CACHE_TTL = 60_000; // 1 minuto
 
 /**
+ * Lê o body da Response e faz parse JSON com erro legível quando o endpoint devolve HTML.
+ */
+async function parseJsonResponse<T = unknown>(response: Response, context: string): Promise<T> {
+  const contentType = response.headers.get('content-type') || '';
+  const text = await response.text();
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    throw new Error(`${context}: resposta vazia do servidor.`);
+  }
+
+  const looksLikeHtml =
+    contentType.includes('text/html') ||
+    trimmed.startsWith('<!DOCTYPE') ||
+    trimmed.startsWith('<!doctype') ||
+    trimmed.startsWith('<html');
+
+  if (looksLikeHtml) {
+    throw new Error(
+      `${context}: o endpoint retornou uma página HTML em vez de JSON. ` +
+      'Verifique a URL da API da IA no painel admin (deve ser o endpoint /v1, não a interface web).'
+    );
+  }
+
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    const preview = trimmed.slice(0, 120).replace(/\s+/g, ' ');
+    throw new Error(`${context}: resposta inválida (não é JSON). Preview: ${preview}`);
+  }
+}
+
+/**
  * Buscar configuração ativa da IA do banco
  */
 export async function getIAConfig(): Promise<IAConfig | null> {
@@ -122,10 +155,16 @@ export async function chatCompletion(
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Sem detalhes');
-      throw new Error(`LLM retornou ${response.status}: ${errorText}`);
+      const preview = errorText.trim().slice(0, 200);
+      if (preview.startsWith('<!DOCTYPE') || preview.startsWith('<html')) {
+        throw new Error(
+          `LLM retornou ${response.status} com HTML. Verifique a URL da API da IA no painel admin.`
+        );
+      }
+      throw new Error(`LLM retornou ${response.status}: ${preview || 'Sem detalhes'}`);
     }
 
-    const data = await response.json();
+    const data = await parseJsonResponse<LLMCompletionResponse>(response, 'LLM chat/completions');
     
     // Limite de iterações para evitar loop infinito
     const MAX_TOOL_ITERATIONS = 10;
@@ -163,7 +202,12 @@ export async function chatCompletion(
           if (options?.onStatus) {
             options.onStatus(`Processando: ${tc.function.name}...`);
           }
-          const args = JSON.parse(tc.function.arguments || '{}');
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(tc.function.arguments || '{}');
+          } catch {
+            args = {};
+          }
           let result = await executeToolCall(tc.function.name, args, userContext.role, userContext.userId);
           let toolContent = result;
           try {
@@ -358,7 +402,20 @@ export async function chatCompletionStream(
 
     if (!response.ok || !response.body) {
       const errorText = await response.text().catch(() => 'Sem detalhes');
-      throw new Error(`LLM retornou ${response.status}: ${errorText}`);
+      const preview = errorText.trim().slice(0, 200);
+      if (preview.startsWith('<!DOCTYPE') || preview.startsWith('<html')) {
+        throw new Error(
+          `LLM retornou ${response.status} com HTML. Verifique a URL da API da IA no painel admin.`
+        );
+      }
+      throw new Error(`LLM retornou ${response.status}: ${preview || 'Sem detalhes'}`);
+    }
+
+    const responseContentType = response.headers.get('content-type') || '';
+    if (responseContentType.includes('text/html')) {
+      throw new Error(
+        'LLM retornou HTML em modo stream. Verifique a URL da API da IA no painel admin (deve ser o endpoint /v1).'
+      );
     }
 
     const reader = response.body.getReader();
@@ -428,7 +485,12 @@ export async function chatCompletionStream(
         const event = `data: ${JSON.stringify({ status: `Executando: ${tc.name}...` })}\n\n`;
         streamController.enqueue(encoder.encode(event));
 
-        const args = JSON.parse(tc.arguments || '{}');
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(tc.arguments || '{}');
+        } catch {
+          args = {};
+        }
         const rawResult = await executeToolCall(tc.name, args, userContext?.role || 'USER', userContext?.userId || '');
         
         let toolContent = rawResult;
@@ -522,7 +584,10 @@ export async function listModels(): Promise<Array<{ id: string; object: string; 
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`Erro ao listar modelos: ${response.status}`);
-    const data = await response.json();
+    const data = await parseJsonResponse<{ data?: Array<{ id: string; object: string; owned_by: string }> }>(
+      response,
+      'LLM /models'
+    );
     return data.data || [];
   } finally {
     clearTimeout(timeout);
