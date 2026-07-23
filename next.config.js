@@ -62,7 +62,9 @@ const nextConfig = {
         dns: require.resolve('stream-browserify'),
         fs: false,
         child_process: false,
-        crypto: require.resolve('crypto-browserify'),
+        // crypto-browserify pulled elliptic (GHSA-848j-6mx2-7j84, no fix ≤6.6.1).
+        // App crypto usage is server-only; client uses Web Crypto. Do not re-enable without a patched elliptic.
+        crypto: false,
         path: require.resolve('path-browserify'),
         os: require.resolve('os-browserify/browser'),
         util: require.resolve('util'),

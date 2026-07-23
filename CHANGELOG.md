@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.33.0] - 2026-07-23
+
+### Security
+- **sharp@0.35.3** (direct dependency + `overrides`): remedia libvips / Dependabot **#247** (GHSA-f88m-g3jw-g9cj; CVE-2026-33327/33328/35590/35591). Antes transitivo via `next@15.5.21` → `sharp@0.34.5`. Não usar `npm audit fix --force` (sugere downgrade Next→14).
+- **elliptic / GHSA-848j-6mx2-7j84 (Dependabot #155)**: removido polyfill webpack não usado `crypto-browserify` (`crypto: false` em `next.config.js` + uninstall). Sem fix upstream em elliptic ≤6.6.1; não usar `npm audit fix --force`.
+- **Residual**: apenas `xlsx` (high, sem fix npm — migrar depois).
+
+### Changed
+- App version **5.33.0**.
+
 ## [5.32.0] - 2026-07-23
 
 ### Features
@@ -17,8 +27,7 @@
 - **jspdf@4.2.1** (+ `jspdf-autotable@5.0.8` for peer `^4`): remediates jsPDF critical advisories.
 - **nodemailer@9.0.3** (+ `@types/nodemailer@^8`): remediates nodemailer high advisories.
 - **npm overrides**: `glob@10` → `10.5.0`, `minimatch@9` → `9.0.9`, `postcss` → `8.5.22`, `uuid` → `11.1.1`.
-- **Accepted residual (Low)**: `elliptic` via webpack client polyfill (`crypto-browserify` / `browserify-sign` / `create-ecdh`) — no non-breaking fix; do not `npm audit fix --force` (would downgrade Next / break crypto polyfill).
-- **Residual (tracked)**: `sharp` (transitive of Next; `audit fix --force` wrongly suggests Next 14), `xlsx` (no fix — migrate later).
+- **Residual (tracked at 5.31.0)**: `elliptic` + `sharp` (fixed in **5.33.0**), `xlsx` (still residual).
 
 ### Changed
 - App version **5.31.0**; React 18 retained on Next 15.

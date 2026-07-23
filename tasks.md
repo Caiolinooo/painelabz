@@ -122,13 +122,22 @@ Post-rotation:
 | `xlsx` | high | No fix available — plan migration to `exceljs` / SheetJS Pro |
 | `next` | high | **DONE v5.31.0** → `next@15.5.21` + `eslint-config-next@15.5.21` (async params/cookies/headers; `serverExternalPackages`) |
 | `nodemailer` | high | **DONE v5.31.0** → `nodemailer@9.0.3` |
-| overrides | — | **DONE**: `glob@10`→10.5.0, `minimatch@9`→9.0.9, `postcss`→8.5.22, `uuid`→11.1.1 |
-| `elliptic` | low | **Accepted**: webpack client polyfill chain; no safe fix without breaking `crypto-browserify` |
-| `sharp` | high | Residual transitive via Next; do not `audit fix --force` (suggests Next 14 downgrade) |
+| overrides | — | **DONE**: `glob@10`→10.5.0, `minimatch@9`→9.0.9, `postcss`→8.5.22, `uuid`→11.1.1, `sharp`→0.35.3 |
+| `elliptic` | low | **DONE**: removed unused webpack `crypto-browserify` polyfill (`next.config.js` → `crypto: false`); tree empty; `npm run build` OK. No upstream elliptic fix ≤6.6.1; do **not** `audit fix --force` (downgrades crypto-browserify). |
+| `sharp` | high | **DONE**: direct + override `sharp@0.35.3` (libvips GHSA-f88m-g3jw-g9cj / CVE-2026-33327/33328/35590/35591). Was transitive `next@15.5.21` → `0.34.5`. Do **not** `audit fix --force` (downgrades Next→14.2.35). |
+
+### sharp / libvips (Dependabot #247)
+
+1. [x] Confirm tree: `npm ls sharp` → was `next@15.5.21` → `sharp@0.34.5`
+2. [x] Fixed range: advisory `<0.35.0`; patch `>=0.35.0` (applied `0.35.3`, ships `@img/sharp-libvips-*@1.3.2`)
+3. [x] Safest fix without Next downgrade: `dependencies.sharp` + `overrides.sharp` = `0.35.3`
+4. [x] Verify: `npm ls sharp` / `npm audit` no longer flags those CVEs
 
 Verification (2026-07-23): `npm ls next jspdf nodemailer` → 15.5.21 / 4.2.1 / 9.0.3; `npm run build` exit 0; push `main` + `portal`.
 
-`npm audit` after remediations: Dependabot targets cleared; residual elliptic (accepted) + sharp + xlsx.
+`npm audit` after remediations: Dependabot elliptic (#155) + sharp cleared; residual `xlsx` (high, no npm fix).
+
+Combined verify (2026-07-23, **v5.33.0**): remediations coexist (`sharp` dep+override `0.35.3`, `crypto: false`, `crypto-browserify` removed); `npm ls sharp` → 0.35.3; `npm ls elliptic` empty; `npm audit` → only `xlsx` high; `npm run build` exit 0; `next/image` OK; no client `'use client'` imports of Node `crypto`.
 
 ### Medium — remaining code hygiene
 

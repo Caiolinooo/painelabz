@@ -68,6 +68,36 @@ src/app/api/
 
 ---
 
+### ✅ elliptic (LOW / Development) — REMEDIADO
+
+**Alert**: Dependabot #155 — GHSA-848j-6mx2-7j84 (CWE-1240; range `<=6.6.1`)  
+**Status**: Fixed by removal (2026-07-23) — no patched elliptic release exists
+
+#### Tree (before)
+
+```
+crypto-browserify@3.12.1 (devDependency + next.config webpack fallback)
+├── browserify-sign → elliptic@6.6.1
+└── create-ecdh → elliptic@6.6.1
+```
+
+#### Why not override / audit force
+
+- Latest npm `elliptic` is still `6.6.1` (advisory covers all versions ≤6.6.1)
+- `npm audit fix --force` would install ancient `crypto-browserify@3.3.0` / `3.5.1` (breaking downgrade) — rejected
+
+#### Fix applied
+
+1. Set webpack client fallback `crypto: false` in `next.config.js` (app Node `crypto` usage is server/API-only; client uses Web Crypto)
+2. `npm uninstall crypto-browserify` — removes elliptic from lockfile/tree
+3. Verified: `npm ls elliptic` empty; `npm run build` exit 0
+
+#### Residual risk
+
+- Low: if a future client bundle imports Node `crypto`, webpack will fail at build (fail-closed) instead of polyfilling ECDH/signing via elliptic. Re-enable only with a patched elliptic or a non-elliptic polyfill.
+
+---
+
 ## Histórico de Correções de Segurança
 
 ### FASE 1: Vulnerabilidades Críticas (Resolvidas)
