@@ -24,7 +24,7 @@ const PASS = (process.env.MIO_AUTH_PASSWORD || '').replace(/["']/g, '').trim();
             // Show first 3 samples with key fields
             for (let i = 0; i < Math.min(3, list.length); i++) {
                 const item = list[i];
-                console.log(`\n[${i}]`, ***REMOVED***
+                console.log(`\n[${i}]`, JSON.stringify({
                     id: item.id,
                     nome: item.nome || item.nome_completo || item.name,
                     cpf: item.cpf_numero || item.cpf,

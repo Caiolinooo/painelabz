@@ -114,7 +114,7 @@ export default function AvaliacoesAvancadasPage() {
       const response = await fetch('/api/avaliacoes-avancadas/exportar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           formato,
           filtros,
           incluir_graficos: true,
@@ -154,7 +154,7 @@ export default function AvaliacoesAvancadasPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(user as any)?.access_token || ''}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           reportType,
           parameters: reportParameters
         })

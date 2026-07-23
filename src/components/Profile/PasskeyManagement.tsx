@@ -50,7 +50,7 @@ export default function PasskeyManagement() {
             const optionsRes = await fetch('/api/auth/webauthn/register/options', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***})
+                body: JSON.stringify({})
             });
 
             if (!optionsRes.ok) {

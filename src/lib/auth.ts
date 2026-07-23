@@ -480,7 +480,7 @@ export async function initiatePhoneLogin(phoneNumber: string, email?: string, in
     // Verificar autorização para todos os usuários (existentes ou não)
     // Isso garante que apenas usuários autorizados recebam códigos de verificação
     const authCheck = await checkUserAuthorization(email, phoneNumber, inviteCode);
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
+    const adminEmail = process.env.ADMIN_EMAIL || '';
 
     // Verificar se é o administrador
     const isAdminEmail = email === adminEmail;

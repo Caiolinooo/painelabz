@@ -59,7 +59,7 @@ export default function IAFeatureTogglesPanel({ token }: { token: string }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: ***REMOVED*** feature_key: key, is_enabled: enabled }),
+        body: JSON.stringify({ feature_key: key, is_enabled: enabled }),
       });
       let data: any = {};
       try { data = await res.json(); } catch { data = {}; }

@@ -14,15 +14,15 @@ if (!sqlFilePath) {
 }
 
 // Criar cliente Supabase
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Erro: NEXT_PUBLIC_SUPABASE_URL e ***REMOVED*** devem estar definidos no arquivo .env');
+  console.error('Erro: NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_KEY devem estar definidos no arquivo .env');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Ler o arquivo SQL
 const sqlContent = fs.readFileSync(path.resolve(sqlFilePath), 'utf8');

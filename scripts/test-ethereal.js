@@ -27,7 +27,7 @@ async function testEtherealEmail() {
     
     // Criar transporter
     const transporter = nodemailer.createTransport({
-      host: '***REMOVED***',
+      host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
       auth: {
@@ -52,7 +52,7 @@ async function testEtherealEmail() {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <h2 style="color: #0066cc; text-align: center;">Seu Código de Verificação</h2>
-          <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
             ${testCode}
           </div>
           <p style="text-align: center;">
@@ -112,7 +112,7 @@ testEtherealEmail()
       console.log('- User:', result.etherealAccount.user);
       console.log('- Pass:', result.etherealAccount.pass);
       console.log('\nVocê pode usar essas credenciais para configurar o sistema para testes:');
-      console.log('EMAIL_HOST=***REMOVED***');
+      console.log('EMAIL_HOST=smtp.ethereal.email');
       console.log('EMAIL_PORT=587');
       console.log('EMAIL_SECURE=false');
       console.log(`EMAIL_USER=${result.etherealAccount.user}`);

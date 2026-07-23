@@ -29,7 +29,7 @@ async function setupEthereal() {
     // Preparar as novas configurações
     const etherealConfig = `
 # Configurações de Email (Ethereal - apenas para testes)
-EMAIL_HOST=***REMOVED***
+EMAIL_HOST=smtp.ethereal.email
 EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_USER=${testAccount.user}
@@ -47,7 +47,7 @@ EMAIL_FROM="${testAccount.user}"
     
     console.log('Configuração do Ethereal adicionada com sucesso ao arquivo .env');
     console.log('Configurações adicionadas:');
-    console.log('- EMAIL_HOST: ***REMOVED***');
+    console.log('- EMAIL_HOST: smtp.ethereal.email');
     console.log('- EMAIL_PORT: 587');
     console.log('- EMAIL_SECURE: false');
     console.log('- EMAIL_USER:', testAccount.user);

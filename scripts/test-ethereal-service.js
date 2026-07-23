@@ -6,7 +6,7 @@ async function testEtherealEmail() {
   
   // Configuração do Ethereal
   const config = {
-    host: '***REMOVED***',
+    host: 'smtp.ethereal.email',
     port: 587,
     secure: false,
     auth: {
@@ -37,7 +37,7 @@ async function testEtherealEmail() {
     console.log(`Enviando e-mail para ${testEmail}...`);
     
     const info = await transporter.sendMail({
-      from: '"ABZ Group" <***REMOVED***>',
+      from: '"ABZ Group" <apiabz@groupabz.com>',
       to: testEmail,
       subject: 'Teste de E-mail - ABZ Group',
       text: 'Este é um e-mail de teste.',

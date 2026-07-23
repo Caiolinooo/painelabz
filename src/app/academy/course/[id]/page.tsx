@@ -243,7 +243,7 @@ const CoursePage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           course_id: courseId
         })
       });
@@ -304,7 +304,7 @@ const CoursePage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           enrollment_id: enrollment.id,
           ...progressData
         })

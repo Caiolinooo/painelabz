@@ -90,7 +90,7 @@ const NotificationsPage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           notification_ids: notificationIds
         })
       });
@@ -117,7 +117,7 @@ const NotificationsPage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           mark_all_read: true
         })
       });

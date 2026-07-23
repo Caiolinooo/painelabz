@@ -135,7 +135,7 @@ async function createReminderNotification(reminder: any, user: any) {
       type: 'reminder',
       title: `Lembrete: ${reminder.title}`,
       message: reminder.message || 'Você tem um lembrete agendado.',
-      data: ***REMOVED***
+      data: JSON.stringify({
         reminder_id: reminder.id,
         post_id: reminder.post_id,
         original_remind_at: reminder.remind_at

@@ -5,8 +5,8 @@ const { Pool } = require('pg');
 async function main() {
   console.log('Verificando usuário administrador no banco de dados...');
 
-  const adminEmail = ***REMOVED***;
-  const adminPhone = ***REMOVED***;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER;
 
   if (!adminEmail || !adminPhone) {
     console.error('Variáveis de ambiente ADMIN_EMAIL e ADMIN_PHONE_NUMBER são obrigatórias');

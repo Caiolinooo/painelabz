@@ -57,7 +57,7 @@
 }
 
 .pdf-content th {
-  ***REMOVED*** #f7fafc;
+  background-color: #f7fafc;
   font-weight: 600;
 }
 
@@ -71,13 +71,13 @@
 
 .pdf-content code {
   font-family: 'Courier New', monospace;
-  ***REMOVED*** #f7fafc;
+  background-color: #f7fafc;
   padding: 2px 4px;
   border-radius: 4px;
 }
 
 .pdf-content pre {
-  ***REMOVED*** #f7fafc;
+  background-color: #f7fafc;
   padding: 16px;
   border-radius: 4px;
   overflow-x: auto;
@@ -98,7 +98,7 @@
 
 /* Estilos para simular a aparência de um PDF */
 .pdf-container {
-  ***REMOVED*** white;
+  background-color: white;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 40px;
@@ -107,7 +107,7 @@
 }
 
 .pdf-page {
-  ***REMOVED*** white;
+  background-color: white;
   padding: 40px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);

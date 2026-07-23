@@ -1,15 +1,15 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Error: NEXT_PUBLIC_SUPABASE_URL and ***REMOVED*** must be defined in the .env file');
+    console.error('Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY must be defined in the .env file');
     process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false

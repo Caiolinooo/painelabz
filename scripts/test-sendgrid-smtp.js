@@ -47,7 +47,7 @@ async function testSendgridSmtp() {
     
     // Enviar email de teste
     const info = await transporter.sendMail({
-      from: '***REMOVED***', // Usar o mesmo email do destinatário para testes
+      from: 'document.getElementById(', // Usar o mesmo email do destinatário para testes
       to: testEmail,
       subject: 'Teste de SMTP do SendGrid - ABZ Group',
       text: `Seu código de verificação de teste é: ${testCode}. Este é um email de teste para verificar a configuração SMTP do SendGrid.`,
@@ -57,7 +57,7 @@ async function testSendgridSmtp() {
           <p style="margin-bottom: 20px; text-align: center;">
             Este é um email de teste para verificar a configuração SMTP do SendGrid.
           </p>
-          <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
             ${testCode}
           </div>
           <p style="text-align: center;">

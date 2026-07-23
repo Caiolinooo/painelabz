@@ -131,7 +131,7 @@ export default function DashboardBIPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           name: 'Novo Dashboard',
           description: 'Dashboard criado automaticamente',
           layout: {
@@ -239,7 +239,7 @@ export default function DashboardBIPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           format,
           options: {
             includeFilters: true,

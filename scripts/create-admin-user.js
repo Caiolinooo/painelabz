@@ -16,11 +16,11 @@ const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
 
 // Configurações
-const SUPABASE_URL = ***REMOVED***;
-const SUPABASE_KEY = ***REMOVED***;
-const ADMIN_EMAIL = ***REMOVED*** || '***REMOVED***';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.ADMIN_PASSWORD;
+const ADMIN_EMAIL = ***REMOVED*** || 'document.getElementById(';
 const ADMIN_PHONE_NUMBER = ***REMOVED*** || '+5522997847289';
-const ADMIN_PASSWORD = ***REMOVED***;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_FIRST_NAME = process.env.ADMIN_FIRST_NAME || 'Caio';
 const ADMIN_LAST_NAME = process.env.ADMIN_LAST_NAME || 'Correia';
 
@@ -63,7 +63,7 @@ async function createAdminUser() {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_KEY
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         email: ADMIN_EMAIL,
         password: ADMIN_PASSWORD,
         data: {
@@ -96,7 +96,7 @@ async function createAdminUser() {
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Prefer': 'return=representation'
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         id: userId,
         email: ADMIN_EMAIL,
         phone_number: ADMIN_PHONE_NUMBER,

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Salvar configuração em arquivo
-    fs.writeFileSync(configFile, ***REMOVED*** enableDomainRule, recipients }, null, 2));
+    fs.writeFileSync(configFile, JSON.stringify({ enableDomainRule, recipients }, null, 2));
 
     // Retornar resultado
     return NextResponse.json({

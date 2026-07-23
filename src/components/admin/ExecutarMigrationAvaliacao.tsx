@@ -157,7 +157,7 @@ export default function ExecutarMigrationAvaliacao() {
                   Copiar SQL
                 </button>
                 <a
-                  href={`${***REMOVED***}/project/_/sql`}
+                  href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/project/_/sql`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors inline-flex items-center"

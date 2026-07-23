@@ -224,7 +224,7 @@ export async function generateTranslatedEmailHTML(
   const actionButton = actionUrl && actionText ? `
     <div style="margin: 30px 0; text-align: center;">
       <a href="${actionUrl}" 
-         style="***REMOVED*** #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+         style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
         ${actionText}
       </a>
     </div>
@@ -233,7 +233,7 @@ export async function generateTranslatedEmailHTML(
   return baseTemplate(`
     <div style="color: #333;">
       <!-- Header -->
-      <div style="***REMOVED*** #0066cc; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin-bottom: 20px;">
+      <div style="background-color: #0066cc; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin-bottom: 20px;">
         <h1 style="margin: 0; font-size: 24px; color: white;">${title}</h1>
       </div>
       

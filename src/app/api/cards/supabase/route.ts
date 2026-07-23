@@ -78,8 +78,8 @@ const mergeCards = (dbCards: any[], systemModules: typeof SYSTEM_MODULES) => {
 const filterCards = (cards: any[], user: any, userId: string) => {
   const userRole = user?.role || 'USER';
   // Define admin logic based on role or specific email/phone (reused from existing logic)
-  const adminEmail = ***REMOVED*** || '***REMOVED***';
-  const adminPhone = ***REMOVED*** || '+5522997847289';
+  const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
   const isMainAdmin = user?.email === adminEmail || user?.phone_number === adminPhone;
   const isAdmin = userRole === 'ADMIN' || isMainAdmin || userRole === 'admin';
   const isManager = userRole === 'MANAGER' || userRole === 'manager';

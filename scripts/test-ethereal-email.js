@@ -42,7 +42,7 @@ async function testEtherealEmail() {
     console.log('Enviando e-mail de teste...');
     
     const info = await transporter.sendMail({
-      from: '"ABZ Group" <***REMOVED***>',
+      from: '"ABZ Group" <apiabz@groupabz.com>',
       to: 'test@example.com',
       subject: 'Teste de E-mail',
       text: 'Este é um e-mail de teste.',

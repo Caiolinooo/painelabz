@@ -8,16 +8,16 @@ const { createClient } = require('@supabase/supabase-js');
 const fetch = require('node-fetch');
 
 // Get environment variables
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Error: NEXT_PUBLIC_SUPABASE_URL and ***REMOVED*** must be defined in the .env file');
+  console.error('Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY must be defined in the .env file');
   process.exit(1);
 }
 
 // Create Supabase client
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Helper function to execute SQL directly
 async function executeSql(sql) {
@@ -30,7 +30,7 @@ async function executeSql(sql) {
         'Authorization': `Bearer ${supabaseServiceKey}`,
         'Prefer': 'resolution=merge-duplicates'
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         query: sql
       })
     });
@@ -72,7 +72,7 @@ async function executeSql(sql) {
         'Authorization': `Bearer ${supabaseServiceKey}`,
         'Prefer': 'resolution=merge-duplicates'
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         query: sql
       })
     });

@@ -17,7 +17,7 @@ const { createClient } = require(path.join(__dirname, '..', 'node_modules', '@su
 // Função para carregar variáveis de ambiente do arquivo .env.production
 function loadEnv() {
   const envPath = path.join(__dirname, '..', '.env.production');
-  const envContent = ***REMOVED*** 'utf-8');
+  const envContent = fs.readFileSync(envPath, 'utf-8');
   const envVars = {};
 
   envContent.split('\n').forEach(line => {
@@ -36,8 +36,8 @@ function loadEnv() {
 const env = loadEnv();
 
 // Configuração do Supabase
-const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || ***REMOVED***;
-const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Erro: NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios');
@@ -46,7 +46,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false

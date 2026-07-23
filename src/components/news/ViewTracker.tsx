@@ -34,7 +34,7 @@ export default function ViewTracker({ postId, userId, children }: ViewTrackerPro
         if (durationSeconds < 1) return; // Ignore less than 1s
 
         try {
-            const data = ***REMOVED***
+            const data = JSON.stringify({
                 postId,
                 userId,
                 duration: durationSeconds
@@ -136,7 +136,7 @@ export default function ViewTracker({ postId, userId, children }: ViewTrackerPro
                 fetchWithToken(`/api/news/${postId}/view`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED*** userId })
+                    body: JSON.stringify({ userId })
                 }).catch(() => { });
                 setViewRegistered(true);
             }, 3000); // Reduced from 5s to 3s for qualified view

@@ -46,7 +46,7 @@ export default function AdminEPISettingsPage() {
             const res = await fetch('/api/epi/sector-responsibles', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED*** sectorId: selectedSector, userId: selectedUser })
+                body: JSON.stringify({ sectorId: selectedSector, userId: selectedUser })
             });
 
             const json = await res.json();

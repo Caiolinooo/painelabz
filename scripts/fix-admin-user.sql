@@ -21,7 +21,7 @@ SELECT
   password_last_changed,
   created_at
 FROM users_unified 
-WHERE email = '***REMOVED***' 
+WHERE email = 'document.getElementById(' 
    OR phone_number = '+5522997847289';
 
 -- 3. Se o usuário não existir, criar o usuário admin
@@ -50,7 +50,7 @@ INSERT INTO users_unified (
 ) 
 SELECT 
   gen_random_uuid(),
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',
@@ -89,7 +89,7 @@ SELECT
   NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM users_unified 
-  WHERE email = '***REMOVED***' 
+  WHERE email = 'document.getElementById(' 
      OR phone_number = '+5522997847289'
 );
 
@@ -100,7 +100,7 @@ SET
   password_hash = '$2a$10$rQJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP', -- SUBSTITUA PELO HASH REAL
   password_last_changed = NOW(),
   updated_at = NOW()
-WHERE (email = '***REMOVED***' OR phone_number = '+5522997847289')
+WHERE (email = 'document.getElementById(' OR phone_number = '+5522997847289')
   AND password IS NULL;
 
 -- 5. Garantir que o usuário admin tenha role ADMIN e esteja ativo
@@ -126,7 +126,7 @@ SET
     )
   ),
   updated_at = NOW()
-WHERE (email = '***REMOVED***' OR phone_number = '+5522997847289');
+WHERE (email = 'document.getElementById(' OR phone_number = '+5522997847289');
 
 -- 6. Verificar o resultado final
 SELECT 
@@ -146,7 +146,7 @@ SELECT
   created_at,
   updated_at
 FROM users_unified 
-WHERE email = '***REMOVED***' 
+WHERE email = 'document.getElementById(' 
    OR phone_number = '+5522997847289';
 
 -- 7. Verificar se há outros usuários admin
@@ -168,7 +168,7 @@ WHERE role = 'ADMIN';
 --
 -- const bcrypt = require('bcryptjs');
 -- const password = 'REDACTED_SET_VIA_ENV';
--- const hash = ***REMOVED*** 10);
+-- const hash = bcrypt.hashSync(password, 10);
 -- console.log('Hash da senha:', hash);
 --
 -- 3. Copie o hash gerado e substitua nos campos password e password_hash acima

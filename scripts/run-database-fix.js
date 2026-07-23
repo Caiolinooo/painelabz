@@ -15,7 +15,7 @@ async function runDatabaseFix() {
     console.log('Iniciando correção do banco de dados...');
     
     // Criar cliente Supabase
-    const supabaseUrl = ***REMOVED***;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
     
     if (!supabaseUrl || !supabaseKey) {
@@ -24,7 +24,7 @@ async function runDatabaseFix() {
       return;
     }
     
-    const supabase = ***REMOVED*** supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Ler o script SQL
     const sqlScript = fs.readFileSync(path.join(__dirname, 'fix-avaliacao-database-complete.sql'), 'utf8');

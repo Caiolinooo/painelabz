@@ -8,9 +8,9 @@ export async function GET(request: NextRequest) {
     console.log('Iniciando diagnóstico de autenticação do Supabase');
 
     // Obter configurações do Supabase
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseAnonKey = ***REMOVED*** || '';
-    const supabaseServiceKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
     // Verificar configurações
     const configStatus = {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     console.log('Teste de acesso à tabela users_unified:', usersError ? 'Falha' : 'Sucesso');
 
     // Verificar se o usuário administrador existe
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
     const { data: adminData, error: adminError } = await supabaseAdmin
       .from('users_unified')
       .select('id, email, role, phone_number')

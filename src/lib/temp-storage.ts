@@ -110,11 +110,11 @@ export async function storeTemporaryFile(
           }
         } else if (!fileData.isLocalFile) {
           // Tentar baixar do Supabase
-          const supabaseUrl = ***REMOVED***;
-          const supabaseServiceKey = ***REMOVED***;
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
           
           if (supabaseUrl && supabaseServiceKey) {
-            const supabase = ***REMOVED*** supabaseServiceKey, {
+            const supabase = createClient(supabaseUrl, supabaseServiceKey, {
               auth: {
                 autoRefreshToken: false,
                 persistSession: false

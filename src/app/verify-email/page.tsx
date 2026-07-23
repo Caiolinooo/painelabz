@@ -56,7 +56,7 @@ export default function VerifyEmailPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** token }),
+        body: JSON.stringify({ token }),
       });
 
       const data = await response.json();

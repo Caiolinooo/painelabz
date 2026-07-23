@@ -1,17 +1,17 @@
 require('dotenv').config({ path: './.env.local' }); // Load environment variables
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***; // Use service key for schema access
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY; // Use service key for schema access
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Erro: SUPABASE_URL ou ***REMOVED*** não encontrados nos arquivos .env.');
+  console.error('Erro: SUPABASE_URL ou SUPABASE_SERVICE_KEY não encontrados nos arquivos .env.');
   console.error('Certifique-se de que .env.local ou outro arquivo .env está configurado corretamente com essas variáveis.');
   process.exit(1);
 }
 
 // Create a Supabase client with the service role key
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,

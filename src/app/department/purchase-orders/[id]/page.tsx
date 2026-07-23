@@ -88,7 +88,7 @@ export default function PurchaseOrderDetailsPage() {
                     'Content-Type': 'application/json',
                     'X-Client-Locale': locale
                 },
-                body: ***REMOVED*** status: action })
+                body: JSON.stringify({ status: action })
             });
 
             if (!res.ok) throw new Error('Falha na ação');

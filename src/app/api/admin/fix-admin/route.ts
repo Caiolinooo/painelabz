@@ -4,9 +4,9 @@ import { supabaseAdmin as supabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 // Obter URLs e chaves para informações de debug
-const supabaseUrl = ***REMOVED*** || '';
-const supabaseServiceKey = ***REMOVED*** || '';
-const supabaseAnonKey = ***REMOVED*** || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Verificar se a chave de serviço está presente e tem o formato correto
 if (!supabaseServiceKey || supabaseServiceKey.length < 100) {
@@ -21,8 +21,8 @@ console.log('Chave de serviço presente:', supabaseServiceKey ? 'Sim' : 'Não');
 export async function GET(_request: NextRequest) {
   try {
     // Obter informações do administrador das variáveis de ambiente
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Caio';
     const adminLastName = process.env.ADMIN_LAST_NAME || 'Correia';
 

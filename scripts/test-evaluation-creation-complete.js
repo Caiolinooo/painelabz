@@ -4,8 +4,8 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function testCompleteEvaluationFlow() {
   try {
@@ -15,7 +15,7 @@ async function testCompleteEvaluationFlow() {
 
     console.log('🧪 Iniciando teste completo do sistema de avaliações...');
 
-    const supabase = ***REMOVED*** supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Buscar usuários para teste (funcionário e avaliador)
     console.log('\n1️⃣ Buscando usuários para teste...');

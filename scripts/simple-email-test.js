@@ -6,7 +6,7 @@ async function testEmail() {
   
   // Criar transportador com Ethereal
   const transporter = nodemailer.createTransport({
-    host: '***REMOVED***',
+    host: 'smtp.ethereal.email',
     port: 587,
     secure: false,
     auth: {

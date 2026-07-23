@@ -158,7 +158,7 @@ export default function GestaoTripulantesAdminPage() {
       const res = await fetchWithToken('/api/gestao-tripulantes/poliweb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** acao: 'testar_conexao' }),
+        body: JSON.stringify({ acao: 'testar_conexao' }),
       });
       const data = await res.json();
       setTestResult({ success: data.success, message: data.message || 'Conexão concluída' });
@@ -176,7 +176,7 @@ export default function GestaoTripulantesAdminPage() {
       const res = await fetchWithToken('/api/gestao-tripulantes/poliweb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** acao: 'scraping' }),
+        body: JSON.stringify({ acao: 'scraping' }),
       });
       const data = await res.json();
       if (data.success) {

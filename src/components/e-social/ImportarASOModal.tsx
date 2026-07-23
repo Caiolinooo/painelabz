@@ -144,7 +144,7 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
       const ocrRes = await fetchWithToken(`/api/gestao-tripulantes/documentos/${uploadedDocId}/ocr`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** text }),
+        body: JSON.stringify({ text }),
       });
 
       setOcrProgress(100);
@@ -203,7 +203,7 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
       const saveRes = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           aso: {
             tipo_exame: tipoExame,
             resultado: resultado,

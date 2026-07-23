@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // Obter variáveis de ambiente
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseServiceKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
     console.log('=== API SUPABASE STATUS ===');
     console.log('URL do Supabase:', supabaseUrl);

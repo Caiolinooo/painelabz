@@ -29,7 +29,7 @@ INSERT INTO app_secrets (key, value, description, is_encrypted) VALUES
 ('VAPID_SUBJECT', 'mailto:***REMOVED***', 'Subject VAPID para push notifications', FALSE)
 ON CONFLICT (key) DO UPDATE SET 
     value = EXCLUDED.value,
-    description = ***REMOVED***
+    description = background-color:
     updated_at = NOW();
 
 -- Verificar se as chaves foram inseridas

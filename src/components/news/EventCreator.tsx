@@ -141,7 +141,7 @@ const EventCreator: React.FC<EventCreatorProps> = ({
         await fetchWithToken('/api/notifications/event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: ***REMOVED***
+          body: JSON.stringify({
             eventId: calendarEvent.id,
             title: formData.title,
             description: formData.description,

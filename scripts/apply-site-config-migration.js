@@ -6,15 +6,15 @@ const dotenv = require('dotenv');
 // Load env vars
 dotenv.config();
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
     console.error('Missing Supabase credentials in .env');
     process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function run() {
     const migrationPath = path.join(process.cwd(), 'src/lib/database/migrations/create-site-config-table.sql');

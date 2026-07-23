@@ -70,7 +70,7 @@
 
     <script>
         function log(elementId, message, type = 'info') {
-            const element = ***REMOVED***elementId);
+            const element = document.getElementById(elementId);
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = `[${timestamp}] ${message}\n`;
             element.textContent += logEntry;
@@ -78,7 +78,7 @@
         }
 
         function setStatus(elementId, message, type = 'info') {
-            const element = ***REMOVED***elementId);
+            const element = document.getElementById(elementId);
             element.textContent = message;
             element.className = `status ${type}`;
         }
@@ -87,7 +87,7 @@
             const logId = 'auth-log';
             const statusId = 'auth-status';
             
-            ***REMOVED***logId).textContent = '';
+            document.getElementById(logId).textContent = '';
             setStatus(statusId, 'Testando autenticação...', 'info');
             log(logId, 'Iniciando teste de autenticação...');
 
@@ -131,7 +131,7 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`
                         },
-                        body: ***REMOVED*** token })
+                        body: JSON.stringify({ token })
                     });
 
                     log(logId, `Status da verificação: ${response.status}`);
@@ -159,7 +159,7 @@
             const logId = 'permissions-log';
             const statusId = 'permissions-status';
             
-            ***REMOVED***logId).textContent = '';
+            document.getElementById(logId).textContent = '';
             setStatus(statusId, 'Testando permissões...', 'info');
             log(logId, 'Iniciando teste de permissões...');
 
@@ -209,7 +209,7 @@
             const logId = 'news-log';
             const statusId = 'news-status';
             
-            ***REMOVED***logId).textContent = '';
+            document.getElementById(logId).textContent = '';
             setStatus(statusId, 'Testando criação de notícia...', 'info');
             log(logId, 'Iniciando teste de criação de notícia...');
 
@@ -265,7 +265,7 @@
             const logId = 'post-log';
             const statusId = 'post-status';
             
-            ***REMOVED***logId).textContent = '';
+            document.getElementById(logId).textContent = '';
             setStatus(statusId, 'Testando criação de post...', 'info');
             log(logId, 'Iniciando teste de criação de post...');
 
@@ -329,7 +329,7 @@
 
         async function runAllTests() {
             const logId = 'complete-log';
-            ***REMOVED***logId).textContent = '';
+            document.getElementById(logId).textContent = '';
             log(logId, '🚀 Iniciando bateria completa de testes...');
             
             await testAuthentication();

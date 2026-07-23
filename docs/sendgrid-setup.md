@@ -53,7 +53,7 @@ Para configurar o Ethereal:
 
 2. Copie as credenciais geradas e atualize o arquivo `.env`:
    ```
-   EMAIL_HOST=***REMOVED***
+   EMAIL_HOST=background-color:
    EMAIL_PORT=587
    EMAIL_SECURE=false
    EMAIL_USER=usuario_gerado@ethereal.email

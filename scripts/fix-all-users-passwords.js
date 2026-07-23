@@ -3,18 +3,18 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Obter variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 // Verificar configurações
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Erro: NEXT_PUBLIC_SUPABASE_URL e ***REMOVED*** devem estar definidos no arquivo .env');
+  console.error('Erro: NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_KEY devem estar definidos no arquivo .env');
   process.exit(1);
 }
 
 // Criar cliente Supabase
 console.log('Criando cliente Supabase com URL:', supabaseUrl);
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false

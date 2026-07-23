@@ -509,7 +509,7 @@ export default function DocumentsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** ...document, enabled }),
+        body: JSON.stringify({ ...document, enabled }),
       });
 
       if (!response.ok) {

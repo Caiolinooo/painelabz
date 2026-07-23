@@ -84,7 +84,7 @@ async function testSendTestEmail() {
   log('\n━━━ TESTE 2: Envio de email de verificação ━━━', 'blue');
 
   try {
-    const testEmail = process.argv[2] || '***REMOVED***';
+    const testEmail = process.argv[2] || 'caio.correia@groupabz.com';
     log(`📧 Enviando para: ${testEmail}`, 'yellow');
 
     const result = await makeRequest(

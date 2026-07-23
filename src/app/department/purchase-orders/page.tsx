@@ -65,7 +65,7 @@ export default function PurchaseOrdersPage() {
             const res = await fetch(`/api/purchase-orders/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED*** status: action })
+                body: JSON.stringify({ status: action })
             });
             if (!res.ok) throw new Error(`Failed to ${action}`);
             toast.success(`Ordem ${action === 'approved' ? 'aprovada' : 'rejeitada'}`);

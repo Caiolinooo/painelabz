@@ -196,7 +196,7 @@ const AcademyPage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           course_id: courseId
         })
       });

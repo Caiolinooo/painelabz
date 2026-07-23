@@ -28,7 +28,7 @@ const loadEnv = (filePath: string) => {
 loadEnv(path.resolve(process.cwd(), '.env'));
 loadEnv(path.resolve(process.cwd(), '.env.local'));
 
-console.log('SUPABASE_URL:', ***REMOVED*** ? 'Defined' : 'Missing');
+console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Defined' : 'Missing');
 
 async function checkRecentViews() {
     // Dynamically import to ensure envs are loaded first

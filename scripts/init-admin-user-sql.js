@@ -30,9 +30,9 @@ function getDefaultPermissions(role) {
 async function main() {
   console.log('Inicializando usuário administrador usando SQL direto...');
   
-  const adminEmail = ***REMOVED***;
-  const adminPhone = ***REMOVED***;
-  const adminPassword = ***REMOVED***;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+  const adminPassword = process.env.ADMIN_PASSWORD;
   const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Admin';
   const adminLastName = process.env.ADMIN_LAST_NAME || 'ABZ';
   

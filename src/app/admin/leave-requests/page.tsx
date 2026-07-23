@@ -119,7 +119,7 @@ export default function AdminLeaveRequestsPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     request_id: requestId,
                     action,
                     reason: actionReason,

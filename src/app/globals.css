@@ -96,7 +96,7 @@ body {
 }
 
 .bg-primary {
-  ***REMOVED*** var(--primary-color);
+  background-color: var(--primary-color);
   color: white; /* Ensure text is white on primary background */
 }
 
@@ -109,7 +109,7 @@ body {
 }
 
 .bg-secondary {
-  ***REMOVED*** var(--secondary-color);
+  background-color: var(--secondary-color);
   color: white; /* Ensure text is white on secondary background */
 }
 
@@ -172,21 +172,21 @@ error, success {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  ***REMOVED*** #e5e7eb;
+  background-color: #e5e7eb;
   border-radius: 20px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  ***REMOVED*** #d1d5db;
+  background-color: #d1d5db;
 }
 
 /* Dark mode scrollbar if needed */
 @media (prefers-color-scheme: dark) {
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    ***REMOVED*** #4b5563;
+    background-color: #4b5563;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    ***REMOVED*** #6b7280;
+    background-color: #6b7280;
   }
 }
 

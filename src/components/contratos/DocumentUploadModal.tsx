@@ -353,7 +353,7 @@ export default function DocumentUploadModal({ isOpen, onClose, onSuccess, initia
                         'Content-Type': 'application/json',
                         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                     },
-                    body: ***REMOVED***
+                    body: JSON.stringify({
                         template_id: selectedTemplateId,
                         titulo: titulo.trim(),
                         descricao: descricao.trim() || null,

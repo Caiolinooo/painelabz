@@ -266,7 +266,7 @@ function improveComponent(content) {
       setError(\`Erro ao corrigir token: \${error instanceof Error ? error.message : 'Erro desconhecido'}\`);
       
       // Se falhar, tentar criar um novo token para o administrador
-      if (user?.email === '***REMOVED***' || user?.phoneNumber === '+5522997847289') {
+      if (user?.email === 'caio.correia@groupabz.com' || user?.phoneNumber === '+5522997847289') {
         try {
           console.log('Tentando criar novo token para o administrador...');
           

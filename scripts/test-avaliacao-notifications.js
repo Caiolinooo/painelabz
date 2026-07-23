@@ -11,15 +11,15 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 // Configuração do Supabase
-const supabaseUrl = ***REMOVED*** || 'https://your-project.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Erro: Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são necessárias');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // IDs de teste (substitua por IDs válidos do seu banco de dados)
 const TEST_FUNCIONARIO_ID = '550e8400-e29b-41d4-a716-446655440000'; // ID de um funcionário de teste
@@ -210,7 +210,7 @@ async function testarAtualizacaoStatus(avaliacaoId) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.ADMIN_TOKEN || 'admin-token-test'}`
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         status: 'em_andamento'
       })
     });
@@ -246,7 +246,7 @@ async function testarAtualizacaoStatus(avaliacaoId) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.ADMIN_TOKEN || 'admin-token-test'}`
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         status: 'concluida',
         pontuacao_total: 85
       })

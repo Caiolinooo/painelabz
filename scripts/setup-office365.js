@@ -23,7 +23,7 @@ const colors = {
 };
 
 // Criar interface de linha de comando
-const rl = ***REMOVED***
+const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
@@ -49,11 +49,11 @@ async function atualizarEnv(email, senha, nome) {
 
     // Preparar as novas configurações
     const novasConfigs = `# Configurações de Email (Microsoft Exchange/Office 365)
-EMAIL_SERVER=smtp://${email}:${senha}@***REMOVED***:587
+EMAIL_SERVER=smtp://${email}:${senha}@smtp.office365.com:587
 EMAIL_FROM="${nome}" <${email}>
 EMAIL_USER=${email}
 EMAIL_PASSWORD=${senha}
-EMAIL_HOST=***REMOVED***
+EMAIL_HOST=smtp.office365.com
 EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_REPLY_TO=${email}`;
@@ -63,7 +63,7 @@ EMAIL_REPLY_TO=${email}`;
       // Substituir as configurações existentes
       const regex = /# Configurações de Email \(Microsoft Exchange\/Office 365\)[\s\S]*?(?=\n\n# Configurações de personalização de emails|\n\n# Configurações de Ambiente|$)/;
       if (regex.test(envContent)) {
-        envContent = ***REMOVED*** novasConfigs);
+        envContent = envContent.replace(regex, novasConfigs);
       } else {
         // Se não encontrar o padrão exato, procurar por qualquer configuração de email
         const emailRegex = /# Configurações de Email[\s\S]*?(?=\n\n# Configurações de personalização de emails|\n\n# Configurações de Ambiente|$)/;

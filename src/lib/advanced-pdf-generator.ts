@@ -12,7 +12,7 @@ declare global {
 
 function getSupabaseClient() {
   return createClient(
-    ***REMOVED***!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
@@ -83,7 +83,7 @@ export class AdvancedPDFGenerator {
   private generateReportHTML(data: ReportData): string {
     const chartConfigs = data.charts.map((chart, index) => ({
       id: `chart-${index}`,
-      config: ***REMOVED***
+      config: JSON.stringify({
         type: chart.type,
         data: chart.data,
         options: {
@@ -299,7 +299,7 @@ export class AdvancedPDFGenerator {
             // Aguardar carregamento completo
             window.addEventListener('load', function() {
                 ${chartConfigs.map(chart => `
-                    const ctx${chart.id.replace('-', '')} = ***REMOVED***'${chart.id}').getContext('2d');
+                    const ctx${chart.id.replace('-', '')} = document.getElementById('${chart.id}').getContext('2d');
                     new Chart(ctx${chart.id.replace('-', '')}, ${chart.config});
                 `).join('')}
                 

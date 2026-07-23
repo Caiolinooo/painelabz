@@ -303,7 +303,7 @@ export default function ContratoDetailPage() {
         try {
             const res = await fetchWithAuth('/api/contracts/send-email', {
                 method: 'POST',
-                body: ***REMOVED***
+                body: JSON.stringify({
                     documento_id: docId,
                     recipient_email: emailRecipient,
                 }),
@@ -365,7 +365,7 @@ export default function ContratoDetailPage() {
         try {
             const res = await fetchWithAuth(`/api/contracts/${docId}/assign`, {
                 method: 'POST',
-                body: ***REMOVED***
+                body: JSON.stringify({
                     documento_id: currentDocumento.id,
                     colaborador_id: selectedColaborador || null,
                     external_signer_name: manualSignerName || null,
@@ -432,7 +432,7 @@ export default function ContratoDetailPage() {
             setIsAddingCC(true);
             const res = await fetchWithAuth(`/api/contracts/${docId}/assign`, {
                 method: 'POST',
-                body: ***REMOVED***
+                body: JSON.stringify({
                     documento_id: currentDocumento.id,
                     external_signer_name: ccName.trim(),
                     external_signer_email: ccEmail.trim(),
@@ -568,7 +568,7 @@ export default function ContratoDetailPage() {
 
                 const res = await fetchWithAuth('/api/contracts/sign', {
                     method: 'POST',
-                    body: ***REMOVED***
+                    body: JSON.stringify({
                         solicitacao_id: mySolicitacao.id,
                         signature_base64: signatureBase64,
                         field_values: filledValues,

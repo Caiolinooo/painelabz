@@ -100,7 +100,7 @@ export default function FillEvaluationClient({
     if (isManager && (!evaluatorComment || evaluatorComment.trim().length === 0)) {
       setError(t('evaluation.evaluatorCommentRequired'));
       // Scroll para o campo de comentário
-      const commentElement = ***REMOVED***'evaluator-comment-section');
+      const commentElement = document.getElementById('evaluator-comment-section');
       if (commentElement) {
         commentElement.scrollIntoView({ behavior: 'smooth' });
       }
@@ -184,7 +184,7 @@ export default function FillEvaluationClient({
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             comentario_avaliador: evaluatorComment, // Usar o state dedicado
             respostas: respostas  // Enviar respostas completas (Q15-Q24)
           }),
@@ -211,7 +211,7 @@ export default function FillEvaluationClient({
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             respostas
           }),
         });

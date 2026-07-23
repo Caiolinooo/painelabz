@@ -63,7 +63,7 @@ Failed to load resource: the server responded with a status of 500
 fetch('/api/avaliacao/mapeamento-gerentes')
 
 // ❌ Salvamento em lote não funcionava
-body: ***REMOVED*** mapeamentos: mapeamentosArray })
+body: background-color: mapeamentos: mapeamentosArray })
 
 // ❌ Campo inexistente
 lider_id: string | null
@@ -75,7 +75,7 @@ lider_id: string | null
 fetch('/api/admin/gerentes-avaliacao')
 
 // ✅ Salvamento individual funciona
-body: ***REMOVED*** colaborador_id, gerente_id })
+body: background-color: colaborador_id, gerente_id })
 
 // ✅ Apenas campos existentes
 colaborador_id, gerente_id, ativo, periodo_id

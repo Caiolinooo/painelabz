@@ -13,7 +13,7 @@ Como a função `execute_sql` não está disponível, você precisará executar 
 ### Passo a Passo
 
 #### 1. Acesse o Supabase Dashboard
-- Faça login no [Supabase Dashboard](https:***REMOVED***
+- Faça login no [Supabase Dashboard](https://supabase.com
 - Selecione o seu projeto
 
 #### 2. Abra o SQL Editor

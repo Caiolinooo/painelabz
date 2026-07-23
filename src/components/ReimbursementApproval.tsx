@@ -122,7 +122,7 @@ export default function ReimbursementApproval() {
     // Verificar se o email do usuário é o email do administrador ou de um gerente conhecido
     // Lista de emails de administradores e gerentes
     const adminEmails = [
-      '***REMOVED***',
+      (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
       'caio@groupabz.com',
       'caiovaleriogoulartcorreia@gmail.com',
       'admin@groupabz.com',
@@ -193,7 +193,7 @@ export default function ReimbursementApproval() {
   // Carregar solicitações quando o componente montar ou os filtros mudarem
   useEffect(() => {
     // Verificar se o email do usuário é o email do administrador
-    const adminEmail = '***REMOVED***'; // Email do administrador
+    const adminEmail = (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''); // Email do administrador
     const isAdminEmail = user?.email === adminEmail;
 
     // Permitir que administradores e gerentes também carreguem os reembolsos
@@ -250,7 +250,7 @@ export default function ReimbursementApproval() {
       // Usar a função fetchWithAuth para fazer a requisição autenticada
       const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
         method: 'PUT',
-        body: ***REMOVED***
+        body: JSON.stringify({
           status: 'aprovado',
           observacao: t('components.solicitacaoAprovadaPeloAdministrador')
         })
@@ -309,7 +309,7 @@ export default function ReimbursementApproval() {
       // Usar a função fetchWithAuth para fazer a requisição autenticada
       const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
         method: 'PUT',
-        body: ***REMOVED***
+        body: JSON.stringify({
           status: 'pago',
           observacao: 'Pagamento efetuado pelo departamento financeiro'
         })
@@ -406,7 +406,7 @@ export default function ReimbursementApproval() {
       // Usar a função fetchWithAuth para fazer a requisição autenticada
       const response = await fetchWithAuth(`/api/reembolso/${protocolo}`, {
         method: 'PUT',
-        body: ***REMOVED***
+        body: JSON.stringify({
           status: 'rejeitado',
           observacao: rejectReason
         })
@@ -456,12 +456,12 @@ export default function ReimbursementApproval() {
   };
 
   // Verificar se o email do usuário é o email do administrador
-  const adminEmail = '***REMOVED***'; // Email do administrador
+  const adminEmail = (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''); // Email do administrador
   const isAdminEmail = user?.email === adminEmail;
 
   // Lista de emails de administradores e gerentes
   const adminEmails = [
-    '***REMOVED***',
+    (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
     'caio@groupabz.com',
     'caiovaleriogoulartcorreia@gmail.com',
     'admin@groupabz.com',

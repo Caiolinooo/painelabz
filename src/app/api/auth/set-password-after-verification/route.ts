@@ -65,11 +65,11 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
 
     // Verificar se estamos usando Supabase
-    if (***REMOVED*** && ***REMOVED***) {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
       // Usar Supabase
       const supabase = createClient(
-        ***REMOVED***,
-        ***REMOVED***,
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY,
         {
           auth: {
             autoRefreshToken: false,

@@ -113,7 +113,7 @@ export default function KitManagement() {
                 const res = await fetch('/api/epi/kits', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED*** id: editingKit.id, ...formData })
+                    body: JSON.stringify({ id: editingKit.id, ...formData })
                 });
                 const json = await res.json();
                 if (!res.ok) throw new Error(json.error || 'Erro ao atualizar kit');
@@ -163,7 +163,7 @@ export default function KitManagement() {
             const res = await fetch('/api/epi/kits', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     action: 'assign',
                     userId: selectedUserId,
                     kitId: selectedKitForAssign.id

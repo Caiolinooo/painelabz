@@ -105,7 +105,7 @@ export default function AdminLeaveSettingsPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     sector_id: sectorId,
                     leader_id: dataToSave.leader_id,
                     manager_id: dataToSave.manager_id
@@ -159,7 +159,7 @@ export default function AdminLeaveSettingsPage() {
                 'Content-Type': 'application/json',
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
-            body: ***REMOVED***
+            body: JSON.stringify({
                 hrEmail,
                 extraNotifyEmails,
                 advanceNoticeDays,

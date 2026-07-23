@@ -42,8 +42,8 @@ export async function DELETE(
 
     // Inicializar cliente Supabase
     const supabase = createClient(
-      ***REMOVED***!,
-      ***REMOVED***!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!,
       {
         auth: {
           autoRefreshToken: false,
@@ -145,8 +145,8 @@ export async function PUT(
 
     // Inicializar cliente Supabase
     const supabase = createClient(
-      ***REMOVED***!,
-      ***REMOVED***!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!,
       {
         auth: {
           autoRefreshToken: false,

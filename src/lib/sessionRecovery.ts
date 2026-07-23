@@ -122,7 +122,7 @@ async function testTokenValidity(token: string): Promise<{ success: boolean; use
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: ***REMOVED*** token })
+      body: JSON.stringify({ token })
     });
 
     if (response.ok) {
@@ -150,7 +150,7 @@ async function refreshTokenWithRecovery(refreshToken: string): Promise<{ success
       headers: {
         'Content-Type': 'application/json',
       },
-      body: ***REMOVED*** refreshToken }),
+      body: JSON.stringify({ refreshToken }),
     });
 
     if (response.ok) {
@@ -225,7 +225,7 @@ async function attemptSupabaseSessionRecovery(): Promise<SessionRecoveryResult> 
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             userId: userData.id,
             email: userData.email,
             phoneNumber: userData.phone_number,

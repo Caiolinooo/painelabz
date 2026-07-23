@@ -7,8 +7,8 @@ const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
 // Configurações
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 console.log('🔄 Migração de Dados Hardcoded para Supabase');
 console.log('=============================================');
@@ -18,7 +18,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -102,7 +102,7 @@ async function migrateCredentials() {
   const credentials = [
     {
       key: 'ADMIN_EMAIL',
-      value: ***REMOVED*** || '***REMOVED***',
+      value: ***REMOVED*** || 'document.getElementById(',
       description: 'Email do administrador principal',
       is_encrypted: false
     },
@@ -114,7 +114,7 @@ async function migrateCredentials() {
     },
     {
       key: 'ADMIN_PASSWORD',
-      value: encryptValue(***REMOVED*** || '***REMOVED***'),
+      value: encryptValue(***REMOVED*** || 'document.getElementById('),
       description: 'Senha do administrador principal (criptografada)',
       is_encrypted: true
     },
@@ -137,7 +137,7 @@ async function migrateCredentials() {
       is_encrypted: true
     },
     {
-      key: '***REMOVED***',
+      key: 'document.getElementById(',
       value: encryptValue(***REMOVED*** || ''),
       description: 'Chave de serviço do Supabase (criptografada)',
       is_encrypted: true
@@ -199,7 +199,7 @@ async function migrateSettings() {
     },
     {
       key: 'supabase_anon_key',
-      value: ***REMOVED*** || '***REMOVED***',
+      value: ***REMOVED*** || 'document.getElementById(',
       description: 'Chave anônima do Supabase'
     },
     {
@@ -214,7 +214,7 @@ async function migrateSettings() {
     },
     {
       key: 'email_from',
-      value: '***REMOVED***',
+      value: 'document.getElementById(',
       description: 'Email remetente padrão'
     },
     {

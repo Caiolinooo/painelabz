@@ -162,7 +162,7 @@ export default function AdminEPIPage() {
                 const res = await fetch('/api/epi/types', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED***
+                    body: JSON.stringify({
                         id,
                         parent_id: parent_id || null,
                         size: size || null,
@@ -178,7 +178,7 @@ export default function AdminEPIPage() {
                 const res = await fetch('/api/epi/types', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED***
+                    body: JSON.stringify({
                         ...rootData,
                         name: childName,
                         parent_id,
@@ -192,7 +192,7 @@ export default function AdminEPIPage() {
                 const res = await fetch('/api/epi/types', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED***
+                    body: JSON.stringify({
                         ...rootData,
                         parent_id: null,
                         size: null
@@ -212,7 +212,7 @@ export default function AdminEPIPage() {
                         const childRes = await fetch('/api/epi/types', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: ***REMOVED***
+                            body: JSON.stringify({
                                 ...rootData,
                                 name: `${rootData.name} - Tam ${sizeVal}`,
                                 parent_id: rootType.id,
@@ -269,7 +269,7 @@ export default function AdminEPIPage() {
                                     const res = await fetch('/api/epi/ca-lookup', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: ***REMOVED*** action: 'sync' })
+                                        body: JSON.stringify({ action: 'sync' })
                                     });
                                     const json = await res.json();
                                     if (res.ok) {

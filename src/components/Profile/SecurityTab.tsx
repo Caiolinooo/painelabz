@@ -94,7 +94,7 @@ export function SecurityTab({ user }: SecurityTabProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword
         })

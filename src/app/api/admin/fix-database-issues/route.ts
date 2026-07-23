@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Encontradas ${permissions?.length || 0} permissões na tabela user_permissions`);
 
     // 3. Verificar usuário administrador específico
-    const adminEmail = '***REMOVED***';
+    const adminEmail = (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
     const { data: adminUser, error: adminError } = await supabaseAdmin
       .from('users_unified')
       .select('*')

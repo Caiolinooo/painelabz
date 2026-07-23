@@ -77,7 +77,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
             const response = await fetch(`/api/news/posts/${post.id}/like`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED*** user_id: userId })
+                body: JSON.stringify({ user_id: userId })
             });
 
             if (!response.ok) {
@@ -129,7 +129,7 @@ const NewsPostCard: React.FC<NewsPostCardProps> = ({
             handleLike();
 
             // Animação simples via DOM (opcional, pode ser melhorada com React state/ref)
-            const heartElement = ***REMOVED***`heart-animation-${post.id}`);
+            const heartElement = document.getElementById(`heart-animation-${post.id}`);
             if (heartElement) {
                 heartElement.classList.remove('hidden');
                 heartElement.classList.add('animate-ping');

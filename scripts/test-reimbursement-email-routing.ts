@@ -83,7 +83,7 @@ assert(legacy.externalRecipients.length > 0, 'legacy: externalRecipients filled'
 
 // Regra de domínio desligada → external mesmo para groupabz
 assertEqual(
-  resolveInitialApprovalRecipients('***REMOVED***', {
+  resolveInitialApprovalRecipients('caio.correia@groupabz.com', {
     enableDomainRule: false,
     recipients: ['andresa.oliveira@groupabz.com'],
     externalRecipients: ['fiscal@groupabz.com'],

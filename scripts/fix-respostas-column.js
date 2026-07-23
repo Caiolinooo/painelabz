@@ -6,8 +6,8 @@
 const https = require('https');
 require('dotenv').config();
 
-const supabaseUrl = ***REMOVED***;
-const supabaseKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Variáveis de ambiente não configuradas');

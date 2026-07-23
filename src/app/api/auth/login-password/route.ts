@@ -85,9 +85,9 @@ export async function POST(request: NextRequest) {
     console.log('API login-password: Usuário encontrado:', user.id, user.email, user.role);
 
     // Verificar se o usuário é o administrador
-    const adminEmail = ***REMOVED***;
-    const adminPhone = ***REMOVED***;
-    const adminPassword = ***REMOVED***;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminEmail && !adminPhone) {
       return NextResponse.json(

@@ -95,7 +95,7 @@ export default function AdminNotificationsPage() {
     try {
       setVapidLoading(true);
       const res = await fetchWithToken('/api/admin/notifications/push/vapid', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ***REMOVED*** rotate: !vapidPublic })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rotate: !vapidPublic })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'vapid error');
@@ -132,7 +132,7 @@ export default function AdminNotificationsPage() {
 
       // Enviar assinatura para o backend
       const res = await fetchWithToken('/api/notifications/push/subscribe', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ***REMOVED*** subscription: sub })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub })
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -189,7 +189,7 @@ export default function AdminNotificationsPage() {
       const res = await fetchWithToken("/api/admin/notifications/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: ***REMOVED***
+        body: JSON.stringify({
           title: bTitle,
           message: bMessage,
           action_url: bUrl || undefined,
@@ -276,7 +276,7 @@ export default function AdminNotificationsPage() {
                   try {
                     setTestSending(true);
                     const res = await fetchWithToken('/api/notifications', {
-                      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ***REMOVED***
+                      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
                         user_id: userId,
                         type: 'system',
                         title: 'Teste Push',

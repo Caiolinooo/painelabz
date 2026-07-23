@@ -6,12 +6,12 @@ const fs = require('fs');
 const path = require('path');
 
 // Configurações
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const jwtSecret = process.env.JWT_SECRET;
-const adminEmail = ***REMOVED*** || '***REMOVED***';
-const adminPhone = ***REMOVED*** || '+5522997847289';
-const adminPassword = ***REMOVED***;
+const adminEmail = process.env.ADMIN_EMAIL || 'document.getElementById(';
+const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
+const adminPassword = process.env.ADMIN_PASSWORD;
 const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Caio';
 const adminLastName = process.env.ADMIN_LAST_NAME || 'Correia';
 
@@ -30,7 +30,7 @@ if (!jwtSecret) {
 console.log('Criando cliente Supabase com URL:', supabaseUrl);
 console.log('Chave de serviço presente:', supabaseServiceKey ? 'Sim' : 'Não');
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -227,7 +227,7 @@ function generateTokenTester(token, user) {
       font-weight: bold;
     }
     button {
-      ***REMOVED*** #0066cc;
+      background-color: #0066cc;
       color: white;
       border: none;
       padding: 10px 15px;
@@ -236,10 +236,10 @@ function generateTokenTester(token, user) {
       margin-right: 10px;
     }
     button:hover {
-      ***REMOVED*** #0055aa;
+      background-color: #0055aa;
     }
     pre {
-      ***REMOVED*** #f5f5f5;
+      background-color: #f5f5f5;
       padding: 10px;
       border-radius: 4px;
       overflow-x: auto;
@@ -289,8 +289,8 @@ function generateTokenTester(token, user) {
   <script>
     // Função para verificar o token atual
     function checkCurrentToken() {
-      const tokenElement = ***REMOVED***'current-token-info');
-      const tokenDataElement = ***REMOVED***'current-token-data');
+      const tokenElement = document.getElementById('current-token-info');
+      const tokenDataElement = document.getElementById('current-token-data');
 
       // Verificar token no localStorage
       const token = localStorage.getItem('token') || localStorage.getItem('abzToken');
@@ -335,7 +335,7 @@ function generateTokenTester(token, user) {
 
     // Função para salvar o token de administrador
     function saveAdminToken() {
-      const token = ***REMOVED***'admin-token').textContent;
+      const token = document.getElementById('admin-token').textContent;
 
       localStorage.setItem('token', token);
 

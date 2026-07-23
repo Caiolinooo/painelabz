@@ -86,7 +86,7 @@ async function initEmailTransport(): Promise<nodemailer.Transporter> {
     const testAccount = await nodemailer.createTestAccount();
 
     emailTransporter = nodemailer.createTransport({
-      host: '***REMOVED***',
+      host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
       auth: {
@@ -137,7 +137,7 @@ export async function sendVerificationEmail(
             <img src="https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png" alt="ABZ Group Logo" style="max-width: 200px;">
           </div>
           <h2 style="color: #0066cc; text-align: center;">Seu Código de Verificação</h2>
-          <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
             ${code}
           </div>
           <p style="margin-bottom: 20px; text-align: center;">Este código expira em <strong>15 minutos</strong>.</p>

@@ -43,7 +43,7 @@ export function PersonalInfoTab({ user }: PersonalInfoTabProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           first_name: formData.firstName,
           last_name: formData.lastName,
           position: formData.position,

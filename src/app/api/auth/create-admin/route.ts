@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
 
   try {
     // Obter dados do administrador das variáveis de ambiente
-    const adminPhone = ***REMOVED***;
-    const adminEmail = ***REMOVED***;
-    const adminPassword = ***REMOVED***;
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminPhone || !adminEmail || !adminPassword) {
       return NextResponse.json(

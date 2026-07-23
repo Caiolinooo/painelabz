@@ -105,7 +105,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
     .container { padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px; }
     .header { text-align: center; margin-bottom: 20px; }
     .logo { max-width: 200px; height: auto; }
-    .code { ***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold; }
+    .code { background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold; }
     .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px; }
   </style>
 </head>
@@ -139,7 +139,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
     // Enviar e-mail usando a API do SendGrid
     const msg = {
       to: email,
-      from: '***REMOVED***',
+      from: 'document.getElementById(',
       subject: 'Código de Verificação - ABZ Group',
       text,
       html

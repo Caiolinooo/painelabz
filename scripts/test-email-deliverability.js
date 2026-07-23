@@ -169,11 +169,11 @@ https://abzgroup.com.br
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Teste de Entregabilidade</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; ***REMOVED*** #f9f9f9;">
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9f9f9;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td align="center" style="padding: 20px 0;">
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
           <tr>
             <td align="center" style="padding: 30px 20px;">
               <img src="${process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png'}" alt="ABZ Group Logo" width="200" style="display: block; max-width: 200px; height: auto;">
@@ -186,7 +186,7 @@ https://abzgroup.com.br
               <p style="margin-bottom: 20px;">Se você está vendo este email, significa que ele não foi marcado como spam.</p>
               <p style="margin-bottom: 20px;">Data e hora do envio: <strong>${new Date().toLocaleString('pt-BR')}</strong></p>
               
-              <div style="***REMOVED*** #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
+              <div style="background-color: #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
                 <p style="margin: 0; font-weight: bold; color: #ff6d00;">⚠️ Importante: Verifique sua pasta de spam</p>
                 <p style="margin: 8px 0 0 0; font-size: 14px;">
                   Se este email foi para sua pasta de spam, por favor marque-o como "não é spam" e adicione

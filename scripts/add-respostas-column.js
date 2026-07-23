@@ -6,15 +6,15 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-const supabaseUrl = ***REMOVED***;
-const supabaseKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Variáveis de ambiente não configuradas');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function addRespostasColumn() {
   console.log('🔧 Adicionando coluna respostas...\n');

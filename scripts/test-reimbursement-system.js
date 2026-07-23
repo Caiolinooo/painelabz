@@ -1,15 +1,15 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Configurações do Supabase não encontradas');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -35,8 +35,8 @@ async function testReimbursementSystem() {
 
     // 2. Testar busca por usuário específico
     console.log('2️⃣ Testando busca por usuário específico...');
-    const testUserId = '75abe69b-15ac-4ac2-b973-1075c37252c5'; // ***REMOVED***
-    const testEmail = '***REMOVED***';
+    const testUserId = '75abe69b-15ac-4ac2-b973-1075c37252c5'; // caio.correia@groupabz.com
+    const testEmail = 'caio.correia@groupabz.com';
 
     // Busca por user_id
     const { data: byUserId, error: userIdError } = await supabase

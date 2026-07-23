@@ -40,8 +40,8 @@ async function testEmailConfig() {
     // Tentar enviar um e-mail de teste
     console.log('Enviando e-mail de teste...');
     const info = await transporter.sendMail({
-      from: `"ABZ Group" <${process.env.EMAIL_USER || '***REMOVED***'}>`,
-      to: process.env.EMAIL_USER || '***REMOVED***', // Enviar para o próprio e-mail
+      from: `"ABZ Group" <${process.env.EMAIL_USER || 'document.getElementById('}>`,
+      to: process.env.EMAIL_USER || 'document.getElementById(', // Enviar para o próprio e-mail
       subject: 'Teste de Configuração de E-mail',
       text: 'Este é um e-mail de teste para verificar a configuração do sistema de e-mail.',
       html: `
@@ -113,7 +113,7 @@ async function testEmailConfig() {
         const testAccount = await nodemailer.createTestAccount();
         
         const etherealConfig = {
-          host: '***REMOVED***',
+          host: 'document.getElementById(',
           port: 587,
           secure: false,
           auth: {

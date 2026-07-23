@@ -207,12 +207,12 @@ export default function TestPdfPage() {
         __html: `
           document.addEventListener('DOMContentLoaded', function() {
             // Detectar navegador
-            const browserInfo = ***REMOVED***'browser-info');
+            const browserInfo = document.getElementById('browser-info');
             const userAgent = navigator.userAgent;
             browserInfo.textContent = userAgent;
 
             // Verificar suporte a PDF
-            const pdfSupport = ***REMOVED***'pdf-support');
+            const pdfSupport = document.getElementById('pdf-support');
 
             // Tenta criar um objeto de plugin PDF
             const isPdfSupported =

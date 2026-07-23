@@ -182,7 +182,7 @@ const NewsAdminPanel: React.FC<NewsAdminPanelProps> = ({ userId }) => {
       const response = await fetchWithToken(`/api/news/posts/${postId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** featured: !featured })
+        body: JSON.stringify({ featured: !featured })
       });
 
       if (response.ok) {

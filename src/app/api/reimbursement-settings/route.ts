@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
         try {
           // Chamar a API que cria a tabela settings sem usar execute_sql
-          const setupResponse = await fetch(`${***REMOVED*** || ''}/api/setup-settings-table`, {
+          const setupResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/api/setup-settings-table`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
 
         try {
           // Chamar a API que cria a tabela settings sem usar execute_sql
-          const setupResponse = await fetch(`${***REMOVED*** || ''}/api/setup-settings-table`, {
+          const setupResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/api/setup-settings-table`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

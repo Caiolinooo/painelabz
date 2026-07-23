@@ -108,7 +108,7 @@ const NewsHighlights: React.FC<NewsHighlightsProps> = ({ userId, canCreate }) =>
                 await fetchWithToken(`/api/news/${highlight.id}/view`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED*** userId })
+                    body: JSON.stringify({ userId })
                 });
 
                 sessionStorage.setItem(sessionKey, 'true');

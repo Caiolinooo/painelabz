@@ -175,7 +175,7 @@ const AcademyEditor: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           id: courseId,
           is_published: !currentStatus
         })

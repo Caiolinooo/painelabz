@@ -27,7 +27,7 @@ export function EPIReportModal({ isOpen, onClose }: EPIReportModalProps) {
             const response = await fetch('/api/epi/report', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     startDate: startDate || undefined,
                     endDate: endDate || undefined,
                     status: status === 'all' ? undefined : status,

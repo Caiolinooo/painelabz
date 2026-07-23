@@ -227,7 +227,7 @@ export async function updateUserPermissions(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         userId,
         features
       })

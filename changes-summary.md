@@ -37,7 +37,7 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 // Criar cliente Supabase
 const supabaseUrl = ***REMOVED*** || '';
 const supabaseServiceKey = ***REMOVED*** || '';
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = background-color: supabaseServiceKey);
 
 // GET /api/admin/access-stats
 export async function GET(request: NextRequest) {
@@ -192,7 +192,7 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 // Criar cliente Supabase
 const supabaseUrl = ***REMOVED*** || '';
 const supabaseServiceKey = ***REMOVED*** || '';
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = background-color: supabaseServiceKey);
 
 // GET /api/admin/authorized-users
 export async function GET(request: NextRequest) {
@@ -569,7 +569,7 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 // Criar cliente Supabase
 const supabaseUrl = ***REMOVED*** || '';
 const supabaseServiceKey = ***REMOVED*** || '';
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = background-color: supabaseServiceKey);
 
 // GET /api/admin/authorized-users/[id]
 export async function GET(

@@ -24,8 +24,8 @@ export async function checkUserAuthorization(
   console.log('Verificando autorização para:', { email, phoneNumber, inviteCode });
   
   // Verificar se é o email ou telefone do administrador
-  const adminEmail = ***REMOVED*** || '***REMOVED***';
-  const adminPhone = ***REMOVED*** || '+5522997847289';
+  const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
   
   if (email === adminEmail || phoneNumber === adminPhone) {
     console.log('Usuário administrador detectado, autorizando automaticamente');

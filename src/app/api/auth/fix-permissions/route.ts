@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
     console.log('API fix-permissions: Token válido para usuário:', payload.userId);
 
     // Inicializar cliente Supabase
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseKey = ***REMOVED*** || '';
-    const supabase = ***REMOVED*** supabaseKey);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Buscar o usuário
     const { data: userData, error: userError } = await supabase

@@ -1331,7 +1331,7 @@ export async function executeToolCall(name: string, args: any, userRole: string,
   try {
     switch (name) {
       case 'render_dashboard': {
-        return ***REMOVED*** 
+        return JSON.stringify({ 
           success: true, 
           message: 'Dashboard renderizado com sucesso. O usuário verá os componentes logo abaixo desta resposta.',
           _metadata: { dashboard: args.layout } 
@@ -1700,7 +1700,7 @@ return JSON.stringify(data);
           created_at: u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : null,
         }));
 
-        return ***REMOVED***
+        return JSON.stringify({
           total: formattedData.length,
           usuarios: formattedData,
           filtros_aplicados: { department, role, status, busca },
@@ -2117,7 +2117,7 @@ return JSON.stringify(data);
           );
 
           if (emailResult.success) {
-            return ***REMOVED***
+            return JSON.stringify({
               success: true,
               message: `✅ Planilha gerada com ${data.length} registros e enviada para ${email_destino}!`,
               formato: 'xlsx',
@@ -2129,7 +2129,7 @@ return JSON.stringify(data);
               base64_preview: base64.substring(0, 100) + '...',
             });
           } else {
-            return ***REMOVED***
+            return JSON.stringify({
               success: false,
               message: `Planilha gerada mas falha ao enviar email: ${emailResult.error}`,
               formato: 'xlsx',
@@ -2141,7 +2141,7 @@ return JSON.stringify(data);
           }
         }
 
-        return ***REMOVED***
+        return JSON.stringify({
           success: true,
           message: `✅ Planilha gerada com ${data.length} registros`,
           formato: 'xlsx',
@@ -2253,7 +2253,7 @@ return JSON.stringify(data);
             );
 
             if (emailResult.success) {
-              return ***REMOVED***
+              return JSON.stringify({
                 success: true,
                 message: `✅ Relatório PDF enviado com sucesso para ${email_destino}!`,
                 tipo: tipo_dados,
@@ -2264,7 +2264,7 @@ return JSON.stringify(data);
                 message_id: emailResult.messageId,
               });
             } else {
-              return ***REMOVED***
+              return JSON.stringify({
                 success: false,
                 error: `Falha ao enviar email: ${emailResult.error}`,
                 tipo: tipo_dados,
@@ -2274,7 +2274,7 @@ return JSON.stringify(data);
             }
           }
 
-          return ***REMOVED***
+          return JSON.stringify({
             success: true,
             message: `✅ Relatório PDF gerado com sucesso!`,
             tipo: tipo_dados,
@@ -2288,7 +2288,7 @@ return JSON.stringify(data);
 
         } catch (err) {
           console.error('[IA Tools] Erro ao gerar relatório:', err);
-          return ***REMOVED***
+          return JSON.stringify({
             success: false,
             error: `Erro ao gerar relatório: ${err instanceof Error ? err.message : String(err)}`,
           });
@@ -2341,7 +2341,7 @@ return JSON.stringify(data);
           });
 
           if (result.success) {
-            return ***REMOVED***
+            return JSON.stringify({
               success: true,
               message: `✅ Email enviado com sucesso para ${para}!`,
               destinatario: para,
@@ -2350,7 +2350,7 @@ return JSON.stringify(data);
               has_attachments: attachments.length > 0,
             });
           } else {
-            return ***REMOVED***
+            return JSON.stringify({
               success: false,
               error: `Falha ao enviar email: ${result.error}`,
               destinatario: para,
@@ -2429,7 +2429,7 @@ return JSON.stringify(data);
           insights.push('📊 Não foram detectados padrões significativos no período analisado.');
         }
 
-        return ***REMOVED***
+        return JSON.stringify({
           tipo_analise,
           periodo: periodo || 'Últimos 30 dias',
           insights,
@@ -2726,7 +2726,7 @@ return JSON.stringify(data);
           supabaseAdmin.from('Reimbursement').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
         ]);
 
-        return ***REMOVED***
+        return JSON.stringify({
           total_usuarios: totalUsuarios,
           total_sessoes_ia: totalSessoes,
           ferias_pendentes: feriaspen,
@@ -2757,7 +2757,7 @@ return JSON.stringify(data);
           .eq('provider', 'microsoft_exchange')
           .lt('expires_at', new Date().toISOString());
 
-        return ***REMOVED***
+        return JSON.stringify({
           usuarios_sem_cpf_mio: semCpf,
           poliweb_sem_url: poliwebSemUrl,
           integracoes_microsoft_expiradas: msExpiradas,
@@ -2886,7 +2886,7 @@ return JSON.stringify(data);
       case 'buscar_info_organizacao': {
         const org = await msGraphClient.getOrganization();
         const domains = await msGraphClient.listDomains();
-        return ***REMOVED*** organizacao: org, dominios: domains });
+        return JSON.stringify({ organizacao: org, dominios: domains });
       }
 
       case 'buscar_alertas_seguranca': {
@@ -2967,7 +2967,7 @@ return JSON.stringify(data);
       case 'buscar_status_servicos_365': {
         const health = await msGraphClient.getServiceHealth();
         const issues = await msGraphClient.getServiceIssues();
-        return ***REMOVED*** servicos: health, incidentes: issues });
+        return JSON.stringify({ servicos: health, incidentes: issues });
       }
 
       case 'buscar_reviews_acesso': {
@@ -3298,7 +3298,7 @@ case 'coletar_dados_holisticos': {
       }
 
       case 'obter_link_contracheque': {
-        return ***REMOVED***
+        return JSON.stringify({
           sistema: 'WK Radar WebNet',
           url: 'http://wk.groupabz.com/radarwebnet',
           instrucoes: 'Os contracheques e holerites do ABZ Group são gerenciados no sistema externo WK Radar. Acesse o sistema pelo link acima usando suas credenciais.'
@@ -3636,7 +3636,7 @@ async function executeAnalisarKPIs(args: any): Promise<string> {
       departamento: a.department || 'Global',
     }));
 
-    return ***REMOVED***
+    return JSON.stringify({
       resumo: `${analyses.length} KPI(s) abaixo da meta`,
       criticos: analyses.filter(a => a.priority === 'critical').length,
       altos: analyses.filter(a => a.priority === 'high').length,
@@ -3725,7 +3725,7 @@ async function executeGerenciarBaseConhecimento(args: any, userId: string): Prom
           limit: 20,
         });
 
-        return ***REMOVED***
+        return JSON.stringify({
           total,
           entradas: entries.map(e => ({
             id: e.id,

@@ -127,7 +127,7 @@ export default function PayrollSheetsPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           employeeId: employee.employee.id,
           sheetId: selectedSheet,
           manualData: {

@@ -125,7 +125,7 @@ async function testNewsAPIs() {
     const likeResponse = await fetch(`${BASE_URL}/api/news/posts/test-post-id/like`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: ***REMOVED*** user_id: 'test-user-id' })
+      body: JSON.stringify({ user_id: 'test-user-id' })
     });
     const likeResult = await likeResponse.json();
     
@@ -141,7 +141,7 @@ async function testNewsAPIs() {
     const commentResponse = await fetch(`${BASE_URL}/api/news/posts/test-post-id/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: ***REMOVED*** 
+      body: JSON.stringify({ 
         user_id: 'test-user-id',
         content: 'Este é um comentário de teste!'
       })

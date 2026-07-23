@@ -5,24 +5,24 @@
  * 
  * Certifique-se de que as variáveis de ambiente estão configuradas:
  * - NEXT_PUBLIC_SUPABASE_URL: URL do projeto Supabase
- * - ***REMOVED***: Chave de serviço do Supabase
+ * - SUPABASE_SERVICE_KEY: Chave de serviço do Supabase
  */
 
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Configurações
-const SUPABASE_URL = ***REMOVED***;
-const ***REMOVED*** = ***REMOVED***;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 // Verificar se as variáveis de ambiente estão configuradas
-if (!SUPABASE_URL || !***REMOVED***) {
-  console.error('SUPABASE_URL ou ***REMOVED*** não estão definidos. Configure as variáveis de ambiente.');
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('SUPABASE_URL ou SUPABASE_SERVICE_KEY não estão definidos. Configure as variáveis de ambiente.');
   process.exit(1);
 }
 
 // Criar cliente Supabase
-const supabase = createClient(SUPABASE_URL, ***REMOVED***);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // Função para unificar contas de usuários
 async function unifyUserAccounts() {

@@ -338,7 +338,7 @@ User clicks "Salvar" → handleSave()
   ↓
 fetch(`/api/avaliacao/${id}`, { 
   method: 'PATCH', 
-  body: ***REMOVED*** respostas }) 
+  body: background-color: respostas }) 
 })
   ↓
 router.refresh() (revalidate Server Component data)

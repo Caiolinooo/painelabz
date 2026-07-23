@@ -45,7 +45,7 @@ async function testCompleteNewsSystem() {
       const response = await fetch(`${BASE_URL}/api/acl/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           user_id: 'test-user',
           permission_name: 'news.read'
         })
@@ -112,7 +112,7 @@ async function testCompleteNewsSystem() {
       const response = await fetch(`${BASE_URL}/api/news/posts/test-post/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** user_id: 'test-user' })
+        body: JSON.stringify({ user_id: 'test-user' })
       });
       const result = await response.json();
       
@@ -159,7 +159,7 @@ async function testCompleteNewsSystem() {
       const response = await fetch(`${BASE_URL}/api/notifications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           user_id: 'test-user',
           type: 'test',
           title: 'Notificação de Teste',

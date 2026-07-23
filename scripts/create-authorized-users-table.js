@@ -3,15 +3,15 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Configuração do Supabase
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('Erro: Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são necessárias');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function createAuthorizedUsersTable() {
   console.log('Criando tabela authorized_users...');

@@ -299,7 +299,7 @@ export default function UnifiedUserManager() {
       setError(`Erro ao corrigir token: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
 
       // Se falhar, tentar criar um novo token para o administrador
-      if (user?.email === '***REMOVED***' || (user as any)?.phone_number === '+5522997847289') {
+      if (user?.email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '') || (user as any)?.phone_number === '+5522997847289') {
         try {
           console.log('Tentando criar novo token para o administrador...');
 
@@ -391,7 +391,7 @@ export default function UnifiedUserManager() {
 
         // Se o erro for de acesso negado e o usu�rio for o administrador principal, redirecionar para a p�gina de corre��o
         if (response.status === 403 &&
-            (user?.email === '***REMOVED***' || (user as any)?.phone_number === '+5522997847289')) {
+            (user?.email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '') || (user as any)?.phone_number === '+5522997847289')) {
           console.log(t('components.usuarioEOAdministradorPrincipalMasNaoTemAcessoRedi'));
           router.push('/admin-fix');
           return;
@@ -571,7 +571,7 @@ export default function UnifiedUserManager() {
 
         // Se o erro for de acesso negado e o usu�rio for o administrador principal, redirecionar para a p�gina de corre��o
         if (response.status === 403 &&
-            (user?.email === '***REMOVED***' || (user as any)?.phone_number === '+5522997847289')) {
+            (user?.email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '') || (user as any)?.phone_number === '+5522997847289')) {
           console.log(t('components.usuarioEOAdministradorPrincipalMasNaoTemAcessoAsEs'));
           router.push('/admin-fix');
           return;
@@ -799,7 +799,7 @@ export default function UnifiedUserManager() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
               },
-              body: ***REMOVED***
+              body: JSON.stringify({
                 email: inviteEmail,
                 inviteCode: result.inviteCode,
                 expiresAt: result.expiresAt,
@@ -850,7 +850,7 @@ export default function UnifiedUserManager() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           action: 'approve',
           id
         })
@@ -896,7 +896,7 @@ export default function UnifiedUserManager() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           action: 'reject',
           id: selectedUserId,
           reason: rejectReason

@@ -110,7 +110,7 @@ export default function PainelGerentesUnificado() {
       const response = await fetchWithToken('/api/admin/gerentes-avaliacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           usuario_id: usuarioId,
           ativo: !isAtualmenteGerente
         })
@@ -184,7 +184,7 @@ export default function PainelGerentesUnificado() {
         const response = await fetchWithToken('/api/avaliacao/mapeamento-gerentes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: ***REMOVED***
+          body: JSON.stringify({
             colaborador_id: colaboradorId,
             gerente_id: gerenteId,
             periodo_id: null // Global

@@ -132,7 +132,7 @@ export default function WorkflowsPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           name: 'Novo Workflow',
           description: 'Workflow criado automaticamente',
           category: 'custom',

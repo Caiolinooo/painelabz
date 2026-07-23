@@ -115,7 +115,7 @@ export default function ViewEvaluationClient({
       const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           respostas, // Includes notasGerente updates
           comentario_avaliador: comentarioGerente
         })
@@ -159,7 +159,7 @@ export default function ViewEvaluationClient({
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           comentario_final: comentarioFinalFuncionario
         })
       });
@@ -218,7 +218,7 @@ export default function ViewEvaluationClient({
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             comentario_avaliador: comentarioGerente,
             respostas: respostas  // Enviar respostas completas (Q15-Q24)
           })
@@ -237,7 +237,7 @@ export default function ViewEvaluationClient({
         const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: ***REMOVED***
+          body: JSON.stringify({
             status: 'devolvida',
             comentario_avaliador: comentarioGerente
           })
@@ -263,7 +263,7 @@ export default function ViewEvaluationClient({
       const response = await fetch(`/api/avaliacao/${evaluation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           respostas,
           status: 'pendente_aprovacao_gerente'
         })
@@ -312,7 +312,7 @@ export default function ViewEvaluationClient({
         // Dynamically import html2canvas
         const html2canvas = (await import('html2canvas')).default;
 
-        const chartsContainer = ***REMOVED***'evaluation-charts-container');
+        const chartsContainer = document.getElementById('evaluation-charts-container');
         if (chartsContainer) {
           const canvas = await html2canvas(chartsContainer, {
             scale: 2,

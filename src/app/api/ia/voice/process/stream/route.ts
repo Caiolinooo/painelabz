@@ -127,26 +127,26 @@ export async function POST(request: NextRequest) {
 
                     // Status events (tool execution)
                     if (parsed.status) {
-                      controller.enqueue(encoder.encode(`data: ${***REMOVED*** status: parsed.status })}\n\n`));
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: parsed.status })}\n\n`));
                     }
 
                     // Content chunks — enviar diretamente ao agente
                     if (parsed.content) {
                       fullContent += parsed.content;
-                      controller.enqueue(encoder.encode(`data: ${***REMOVED*** content: parsed.content })}\n\n`));
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: parsed.content })}\n\n`));
                     }
 
                     // Metadata events
                     if (parsed.metadata) {
                       accumulatedMetadata = { ...accumulatedMetadata, ...parsed.metadata };
-                      controller.enqueue(encoder.encode(`data: ${***REMOVED*** metadata: parsed.metadata })}\n\n`));
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ metadata: parsed.metadata })}\n\n`));
                     }
                   } catch { /* skip malformed */ }
                 }
               }
 
               // Final event — salvar resposta
-              controller.enqueue(encoder.encode(`data: ${***REMOVED*** 
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                 done: true, 
                 fullContent,
                 metadata: Object.keys(accumulatedMetadata).length > 0 ? accumulatedMetadata : undefined,
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
             });
         } catch (err: any) {
           console.error('[Voice Stream] Erro na stream:', err);
-          controller.enqueue(encoder.encode(`data: ${***REMOVED*** 
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             error: err.message || 'Erro durante streaming',
             session_id: sessionId 
           })}\n\n`));

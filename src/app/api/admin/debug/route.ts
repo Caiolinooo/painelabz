@@ -5,8 +5,8 @@ import { supabaseAdmin as supabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 // Obter URLs e chaves para informações de debug
-const supabaseUrl = ***REMOVED*** || '';
-const supabaseServiceKey = ***REMOVED*** || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
 // GET - Obter informações de debug
 export async function GET(request: NextRequest) {

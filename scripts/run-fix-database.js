@@ -9,8 +9,8 @@ async function runFixDatabase() {
     console.log('Iniciando correção do banco de dados...');
     
     // Criar cliente Supabase
-    const supabaseUrl = ***REMOVED***;
-    const supabaseKey = ***REMOVED***;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não definidas');
@@ -18,7 +18,7 @@ async function runFixDatabase() {
       return;
     }
     
-    const supabase = ***REMOVED*** supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Verificar se a tabela funcionarios existe
     console.log('Verificando se a tabela funcionarios existe...');

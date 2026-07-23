@@ -22,7 +22,7 @@ const colors = {
 async function testExchangeConfig() {
   console.log(`${colors.bold}${colors.blue}=== Testando configuração de e-mail com Exchange/Office 365 ===${colors.reset}`);
   console.log('Configurações atuais:');
-  console.log(`- EMAIL_HOST: ${colors.cyan}${process.env.EMAIL_HOST || '***REMOVED***'}${colors.reset}`);
+  console.log(`- EMAIL_HOST: ${colors.cyan}${process.env.EMAIL_HOST || 'smtp.office365.com'}${colors.reset}`);
   console.log(`- EMAIL_PORT: ${colors.cyan}${process.env.EMAIL_PORT || '587'}${colors.reset}`);
   console.log(`- EMAIL_SECURE: ${colors.cyan}${process.env.EMAIL_SECURE || 'false'}${colors.reset}`);
   console.log(`- EMAIL_USER: ${colors.cyan}${process.env.EMAIL_USER || 'não definido'}${colors.reset}`);
@@ -38,7 +38,7 @@ async function testExchangeConfig() {
 
   // Configuração do Exchange/Office 365
   const exchangeConfig = {
-    host: process.env.EMAIL_HOST || '***REMOVED***',
+    host: process.env.EMAIL_HOST || 'smtp.office365.com',
     port: parseInt(process.env.EMAIL_PORT || '587'),
     secure: process.env.EMAIL_SECURE === 'true',
     auth: {
@@ -98,7 +98,7 @@ async function testExchangeConfig() {
             <p style="margin-bottom: 20px; text-align: center;">
               Data e hora: <strong>${new Date().toLocaleString('pt-BR')}</strong>
             </p>
-            <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 20px;">
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 20px;">
               <p style="margin: 0; font-size: 12px; color: #666;">
                 Este é um email automático. Por favor, não responda.
               </p>
@@ -158,7 +158,7 @@ async function testExchangeConfig() {
       
       console.log(`${colors.green}${colors.bold}✓ Conta de teste Ethereal criada com sucesso!${colors.reset}`);
       console.log(`\nPara testes, você pode usar Ethereal:`);
-      console.log(`EMAIL_HOST=***REMOVED***`);
+      console.log(`EMAIL_HOST=smtp.ethereal.email`);
       console.log(`EMAIL_PORT=587`);
       console.log(`EMAIL_SECURE=false`);
       console.log(`EMAIL_USER=${testAccount.user}`);

@@ -48,7 +48,7 @@ export default function ForgotPasswordForm({ onCancel, initialEmail = '' }: Forg
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           email: identifier,
         }),
       });

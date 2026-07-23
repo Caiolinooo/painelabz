@@ -134,7 +134,7 @@ const MediaUploadWithFilters: React.FC<MediaUploadWithFiltersProps> = ({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           filePath,
           fileType: selectedFile.type
         })

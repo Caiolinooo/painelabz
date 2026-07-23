@@ -12,15 +12,15 @@ const { createClient } = require('@supabase/supabase-js');
 const { sendEmail } = require('../dist/lib/email-gmail');
 
 // Criar cliente Supabase
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Error: NEXT_PUBLIC_SUPABASE_URL and ***REMOVED*** must be defined in the .env file');
+  console.error('Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY must be defined in the .env file');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -72,7 +72,7 @@ async function testReimbursementEmail() {
           <li>Um arquivo simulando o comprovante</li>
         </ol>
         <p>Por favor, verifique se ambos os anexos estão presentes no email.</p>
-        <div style="margin-top: 20px; padding: 10px; ***REMOVED*** #f5f5f5; border-radius: 5px;">
+        <div style="margin-top: 20px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
           <p style="margin: 0;"><strong>Data e hora do teste:</strong> ${new Date().toLocaleString('pt-BR')}</p>
         </div>
         <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #999;">

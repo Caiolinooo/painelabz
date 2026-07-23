@@ -42,7 +42,7 @@ INSERT INTO payroll_codes (code, type, name, description, calculation_type, lega
 
 ON CONFLICT (code, type) DO UPDATE SET
   name = EXCLUDED.name,
-  description = ***REMOVED***
+  description = background-color:
   calculation_type = EXCLUDED.calculation_type,
   legal_type = EXCLUDED.legal_type,
   is_system = EXCLUDED.is_system,
@@ -66,7 +66,7 @@ INSERT INTO payroll_departments (id, company_id, code, name, description, is_act
 ('660e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440000', '33', 'ABZ - FMS - FIRST MARINE SOLUTIONS', 'Departamento de soluções marítimas', true)
 ON CONFLICT (company_id, code) DO UPDATE SET
   name = EXCLUDED.name,
-  description = ***REMOVED***
+  description = background-color:
   is_active = EXCLUDED.is_active,
   updated_at = NOW();
 

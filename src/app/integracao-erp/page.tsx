@@ -167,7 +167,7 @@ export default function IntegracaoERPPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           connectionId,
           module,
           type: 'import'

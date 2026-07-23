@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
             // Tentar adicionar a coluna usando a API de setup
             try {
-              const setupResponse = await fetch(`${***REMOVED*** || ''}/api/setup-user-reimbursement-column`, {
+              const setupResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/api/setup-user-reimbursement-column`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json'
@@ -147,12 +147,12 @@ export async function POST(request: NextRequest) {
             // Usar API de fallback como último recurso
             try {
               console.log('Tentando usar API de fallback...');
-              const fallbackResponse = await fetch(`${***REMOVED*** || ''}/api/users/reimbursement-settings-local`, {
+              const fallbackResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/api/users/reimbursement-settings-local`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json'
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                   userId: userIdToUse,
                   email,
                   enabled,
@@ -204,12 +204,12 @@ export async function POST(request: NextRequest) {
         // Tentar usar API de fallback
         try {
           console.log('Tentando usar API de fallback após erro de atualização...');
-          const fallbackResponse = await fetch(`${***REMOVED*** || ''}/api/users/reimbursement-settings-local`, {
+          const fallbackResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/api/users/reimbursement-settings-local`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
-            body: ***REMOVED***
+            body: JSON.stringify({
               userId: userIdToUse,
               email,
               enabled,

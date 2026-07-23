@@ -381,7 +381,7 @@ export async function chatCompletionStream(
 
   async function startStream(currentMessages: LLMMessage[], streamController: ReadableStreamDefaultController<Uint8Array>) {
     if (toolIterationCount >= MAX_TOOL_ITERATIONS) {
-      const event = `data: ${***REMOVED*** content: 'Limite de busca atingido.', done: true })}\n\n`;
+      const event = `data: ${JSON.stringify({ content: 'Limite de busca atingido.', done: true })}\n\n`;
       streamController.enqueue(encoder.encode(event));
       streamController.close();
       return;
@@ -393,7 +393,7 @@ export async function chatCompletionStream(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${config!.api_key}`,
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         ...body,
         messages: currentMessages,
       }),
@@ -465,7 +465,7 @@ export async function chatCompletionStream(
             if (cleanContent) {
               currentFullContent += cleanContent;
               fullContent += cleanContent;
-              const event = `data: ${***REMOVED*** content: cleanContent, done: false })}\n\n`;
+              const event = `data: ${JSON.stringify({ content: cleanContent, done: false })}\n\n`;
               streamController.enqueue(encoder.encode(event));
             }
           }
@@ -482,7 +482,7 @@ export async function chatCompletionStream(
       })) }];
 
       for (const tc of pendingToolCalls) {
-        const event = `data: ${***REMOVED*** status: `Executando: ${tc.name}...` })}\n\n`;
+        const event = `data: ${JSON.stringify({ status: `Executando: ${tc.name}...` })}\n\n`;
         streamController.enqueue(encoder.encode(event));
 
         let args: Record<string, unknown> = {};
@@ -518,7 +518,7 @@ export async function chatCompletionStream(
 
        // Envia metadados acumulados se houver
       if (Object.keys(accumulatedMetadata).length > 0) {
-        const metaEvent = `data: ${***REMOVED*** metadata: accumulatedMetadata })}\n\n`;
+        const metaEvent = `data: ${JSON.stringify({ metadata: accumulatedMetadata })}\n\n`;
         streamController.enqueue(encoder.encode(metaEvent));
       }
 
@@ -542,7 +542,7 @@ export async function chatCompletionStream(
         } catch { /* ignore */ }
       }
 
-      const finalEvent = `data: ${***REMOVED*** 
+      const finalEvent = `data: ${JSON.stringify({ 
         done: true, 
         fullContent, 
         metadata: Object.keys(accumulatedMetadata).length > 0 ? accumulatedMetadata : undefined 

@@ -131,7 +131,7 @@ const UserReimbursementEmailSettings: React.FC<UserReimbursementEmailSettingsPro
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           userId,
           email,
           enabled,

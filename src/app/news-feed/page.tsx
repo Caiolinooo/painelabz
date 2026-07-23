@@ -58,7 +58,7 @@ const NewsFeedPage: React.FC = () => {
     if (highlightPostId && !loading && news.length > 0) {
       // Small delay to ensure rendering
       setTimeout(() => {
-        const element = ***REMOVED***`post-${highlightPostId}`);
+        const element = document.getElementById(`post-${highlightPostId}`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           // Add temporary highlight
@@ -117,7 +117,7 @@ const NewsFeedPage: React.FC = () => {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: ***REMOVED*** userId: user.id })
+          body: JSON.stringify({ userId: user.id })
         });
 
         if (response.ok) {
@@ -166,7 +166,7 @@ const NewsFeedPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           userId: user.id,
           content: newComment.trim()
         })

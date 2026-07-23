@@ -14,22 +14,22 @@ const { createClient } = require('@supabase/supabase-js');
 // Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing required environment variables:');
   console.error('   - NEXT_PUBLIC_SUPABASE_URL');
-  console.error('   - SUPABASE_SERVICE_ROLE_KEY or ***REMOVED***');
+  console.error('   - SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY');
   console.error('\n📋 Current environment:');
   console.error('   NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✓' : '✗');
   console.error('   SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓' : '✗');
-  console.error('   ***REMOVED***:', ***REMOVED*** ? '✓' : '✗');
+  console.error('   SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY ? '✓' : '✗');
   process.exit(1);
 }
 
 // Create Supabase client with service role key (bypasses RLS)
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false

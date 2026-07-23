@@ -1,10 +1,10 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-const supabaseUrl = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function checkTableStructure() {
   try {

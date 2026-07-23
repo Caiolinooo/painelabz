@@ -127,7 +127,7 @@ class AutoTranslationService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           q: text,
           source: this.localeToGoogleLang(sourceLocale),
           target: this.localeToGoogleLang(targetLocale),

@@ -7,12 +7,12 @@ export async function POST(request: NextRequest) {
       const words = ['Teste ', 'de ', 'stream ', 'funcionando ', 'perfeitamente!'];
       
       for (const word of words) {
-        const payload = `data: ${***REMOVED*** content: word, done: false })}\n\n`;
+        const payload = `data: ${JSON.stringify({ content: word, done: false })}\n\n`;
         controller.enqueue(encoder.encode(payload));
         await new Promise(r => setTimeout(r, 200));
       }
       
-      const endPayload = `data: ${***REMOVED*** done: true, fullContent: words.join('') })}\n\n`;
+      const endPayload = `data: ${JSON.stringify({ done: true, fullContent: words.join('') })}\n\n`;
       controller.enqueue(encoder.encode(endPayload));
       controller.close();
     }

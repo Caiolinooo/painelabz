@@ -74,15 +74,15 @@ export async function POST(request: NextRequest) {
 
         // Como não temos método direto, vamos usar a via HTTP para o PostgreSQL
         // Vamos tentar usar o método via raw query
-        const response = await fetch(`${***REMOVED***}/rest/v1/`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`,
-            'apikey': ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`,
+            'apikey': process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
             'Prefer': 'return=minimal'
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             query: sql
           })
         });

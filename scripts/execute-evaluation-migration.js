@@ -7,8 +7,8 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function executeMigration() {
   try {
@@ -18,7 +18,7 @@ async function executeMigration() {
 
     console.log('🔧 Iniciando migração das tabelas de avaliação...');
 
-    const supabase = ***REMOVED*** supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Ler o script SQL
     const sqlScript = fs.readFileSync(
@@ -98,7 +98,7 @@ async function executeMigration() {
               'apikey': supabaseServiceKey,
               'Prefer': 'return=minimal'
             },
-            body: ***REMOVED*** query: createCiclos })
+            body: JSON.stringify({ query: createCiclos })
           });
 
           if (response.ok) {

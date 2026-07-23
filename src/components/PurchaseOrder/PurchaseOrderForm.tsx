@@ -277,7 +277,7 @@ export default function PurchaseOrderForm() {
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                     'X-Client-Locale': locale
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     ...data,
                     items: data.items.map(item => ({
                         ...item,

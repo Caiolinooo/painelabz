@@ -127,7 +127,7 @@ export default function BannedUsersManager() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           email: user.email,
           phoneNumber: user.phone_number,
           cpf: user.cpf

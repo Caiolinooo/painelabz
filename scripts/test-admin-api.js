@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 // Configurações
 const jwtSecret = (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production'));
 const adminId = '00000000-0000-0000-0000-000000000000'; // ID fixo para o administrador
-const adminPhone = ***REMOVED*** || '+5522997847289';
+const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // Gerar token JWT

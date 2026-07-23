@@ -11,9 +11,9 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export async function ensureAdminUser(): Promise<boolean> {
   try {
-    const adminEmail = ***REMOVED***;
-    const adminPhone = ***REMOVED***;
-    const adminPassword = ***REMOVED***;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminEmail || !adminPhone || !adminPassword) {
       console.error('ADMIN_EMAIL, ADMIN_PHONE_NUMBER e ADMIN_PASSWORD são obrigatórios');

@@ -94,7 +94,7 @@ export async function GET(
         .eq('id', avaliacao.funcionario_id)
         .single();
 
-      console.log('[LEADER CHECK] Query result:', ***REMOVED*** funcionarioData, funcError }));
+      console.log('[LEADER CHECK] Query result:', JSON.stringify({ funcionarioData, funcError }));
 
       if (funcError) {
         console.error('[LEADER CHECK] Erro ao consultar users_unified:', funcError);

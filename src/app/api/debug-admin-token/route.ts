@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Iniciando geração de token de administrador para debug');
 
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseServiceKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
     let jwtSecret = '';
     try {
       jwtSecret = getJwtSecret();
@@ -34,9 +34,9 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const adminEmail = ***REMOVED***?.trim();
-    const adminPhone = ***REMOVED***?.trim();
-    const adminPassword = ***REMOVED***?.trim();
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER?.trim();
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
     const adminFirstName = process.env.ADMIN_FIRST_NAME?.trim() || 'Admin';
     const adminLastName = process.env.ADMIN_LAST_NAME?.trim() || 'User';
 

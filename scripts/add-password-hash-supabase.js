@@ -5,15 +5,15 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Verificar se as variáveis de ambiente necessárias estão definidas
-if (!***REMOVED*** || !***REMOVED***) {
-  console.error('Erro: As variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e ***REMOVED*** devem estar definidas.');
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.error('Erro: As variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_KEY devem estar definidas.');
   process.exit(1);
 }
 
 // Criar cliente Supabase com a chave de serviço
 const supabase = createClient(
-  ***REMOVED***,
-  ***REMOVED***,
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
   {
     auth: {
       autoRefreshToken: false,

@@ -75,7 +75,7 @@ export async function getCardsCached(req: CardsRequest): Promise<any[]> {
     const res = await fetch('/api/cards/supabase', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: ***REMOVED***
+      body: JSON.stringify({
         userId: req.userId,
         userRole: req.userRole,
         userEmail: req.userEmail,

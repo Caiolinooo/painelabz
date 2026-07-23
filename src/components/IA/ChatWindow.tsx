@@ -230,7 +230,7 @@ export default function ChatWindow({ token }: Props) {
     try {
       const res = await fetch('/api/ia/chat', {
         method: 'POST', headers: hdrs(),
-        body: ***REMOVED*** session_id: currentSessionId, message: msg, stream: true }),
+        body: JSON.stringify({ session_id: currentSessionId, message: msg, stream: true }),
       });
 
       const newSid = res.headers.get('X-Session-Id');

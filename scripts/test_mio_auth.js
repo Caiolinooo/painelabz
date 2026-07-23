@@ -1,7 +1,7 @@
 const https = require('https');
 
-const user = "***REMOVED***";
-const pass = "***REMOVED***";
+const user = "document.getElementById(";
+const pass = "document.getElementById(";
 const baseUrl = "mio.app.br";
 const path = "/api/v1/authenticate";
 

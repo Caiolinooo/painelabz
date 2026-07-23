@@ -68,7 +68,7 @@ const NewsCommentSection: React.FC<Props> = ({ postId, userId }) => {
       const res = await fetch(`/api/news/posts/${postId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** user_id: userId, content: text })
+        body: JSON.stringify({ user_id: userId, content: text })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('newsSystem.errorSendingComment', 'Erro ao enviar comentário'));
@@ -98,7 +98,7 @@ const NewsCommentSection: React.FC<Props> = ({ postId, userId }) => {
     const res = await fetch(`/api/news/posts/${postId}/comments/${commentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: ***REMOVED*** content: newContent })
+      body: JSON.stringify({ content: newContent })
     });
     if (res.ok) {
       setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: newContent, edited: true } : c));

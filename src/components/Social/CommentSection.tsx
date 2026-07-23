@@ -89,7 +89,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentAdded 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           post_id: postId,
           content: newComment.trim()
         })
@@ -127,7 +127,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentAdded 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           post_id: postId,
           content: replyContent.trim(),
           parent_id: parentId

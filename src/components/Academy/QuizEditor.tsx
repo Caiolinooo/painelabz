@@ -125,7 +125,7 @@ export default function QuizEditor({ courseId }: { courseId: string }) {
                 resp = await fetchWithAuth('/api/academy/questions', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED*** id: editingId, ...payload })
+                    body: JSON.stringify({ id: editingId, ...payload })
                 });
             } else {
                 resp = await fetchWithAuth('/api/academy/questions', {

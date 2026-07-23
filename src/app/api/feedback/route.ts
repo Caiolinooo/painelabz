@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; ***REMOVED*** #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
     <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
         <!-- Header -->
         <div style="background: linear-gradient(135deg, ${config.color} 0%, ${config.color}dd 100%); border-radius: 12px 12px 0 0; padding: 24px; text-align: center;">

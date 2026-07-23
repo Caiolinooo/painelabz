@@ -1,9 +1,9 @@
 // API para verificar as variáveis de ambiente no Next.js
 export default function handler(req, res) {
   // Verificar variáveis do Supabase
-  const supabaseUrl = ***REMOVED***;
-  const supabaseAnonKey = ***REMOVED***;
-  const supabaseServiceKey = ***REMOVED***;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
   // Preparar resposta
   const response = {

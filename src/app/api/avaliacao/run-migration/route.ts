@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se é admin (role ADMIN ou email/telefone do admin principal)
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const isAdmin = user.role === 'ADMIN' || user.email === adminEmail || user.phone_number === adminPhone;
 
     console.log('User role:', user.role, '| Is admin:', isAdmin);

@@ -62,7 +62,7 @@ BEGIN
     ON CONFLICT (key) 
     DO UPDATE SET 
         value = EXCLUDED.value,
-        description = ***REMOVED***
+        description = background-color:
         updated_at = NOW();
     
     RETURN TRUE;

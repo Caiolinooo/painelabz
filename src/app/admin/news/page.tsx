@@ -675,7 +675,7 @@ export default function NewsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** ...news, enabled }),
+        body: JSON.stringify({ ...news, enabled }),
       });
 
       if (!response.ok) {
@@ -703,7 +703,7 @@ export default function NewsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** ...news, featured }),
+        body: JSON.stringify({ ...news, featured }),
       });
 
       if (!response.ok) {

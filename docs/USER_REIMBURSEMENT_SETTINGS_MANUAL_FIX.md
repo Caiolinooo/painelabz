@@ -23,7 +23,7 @@ Este erro indica que a coluna `reimbursement_email_settings` não existe na tabe
 
 A maneira mais direta de resolver o problema é adicionar a coluna manualmente no SQL Editor do Supabase:
 
-1. Acesse o [Supabase Dashboard](https:***REMOVED***
+1. Acesse o [Supabase Dashboard](https://supabase.com
 2. Selecione seu projeto
 3. Vá para a seção "SQL Editor" no menu lateral
 4. Clique em "New Query" para criar uma nova consulta

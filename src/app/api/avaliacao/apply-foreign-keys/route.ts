@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const isAdmin = user.role === 'ADMIN' || user.email === adminEmail || user.phone_number === adminPhone;
 
     if (!isAdmin) {
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
             '6. Aguarde a mensagem de sucesso',
             '7. Volte aqui e clique em "Verificar Foreign Keys" novamente'
           ],
-          supabaseUrl: ***REMOVED***?.replace(/https:\/\/([^.]+)\..*/, 'https://supabase.com/dashboard/project/$1/sql/new')
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/https:\/\/([^.]+)\..*/, 'https://supabase.com/dashboard/project/$1/sql/new')
         });
       }
 

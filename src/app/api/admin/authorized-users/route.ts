@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
     console.log('Resultado da busca pelo usuário:', requestingUser ? 'Encontrado' : 'Não encontrado', userError ? userError.message : 'Sem erro');
 
     // Verificar se o usuário é o administrador principal
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const isMainAdmin = requestingUser?.email === adminEmail || requestingUser?.phone_number === adminPhone;
 
     console.log('É o administrador principal?', isMainAdmin, {
@@ -268,8 +268,8 @@ export async function POST(request: NextRequest) {
     console.log('Resultado da busca pelo usuário:', requestingUser ? 'Encontrado' : 'Não encontrado', userError ? userError.message : 'Sem erro');
 
     // Verificar se o usuário é o administrador principal
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const isMainAdmin = requestingUser?.email === adminEmail || requestingUser?.phone_number === adminPhone;
 
     console.log('É o administrador principal?', isMainAdmin, {

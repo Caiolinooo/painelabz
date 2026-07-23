@@ -192,7 +192,7 @@ export default function PainelPeriodosAvaliacao() {
           await fetch('/api/avaliacao/notificar-inicio-periodo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: ***REMOVED***
+            body: JSON.stringify({
               periodoId: periodo.id,
               periodoNome: periodo.nome,
               dataLimite: periodo.data_limite_autoavaliacao

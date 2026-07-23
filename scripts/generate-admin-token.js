@@ -10,8 +10,8 @@ const fs = require('fs');
 // Configurações
 const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
-const ADMIN_EMAIL = ***REMOVED*** || '***REMOVED***';
-const ADMIN_PHONE_NUMBER = ***REMOVED*** || '+5522997847289';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
+const ADMIN_PHONE_NUMBER = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
 // Verificar configurações
 if (!DATABASE_URL) {

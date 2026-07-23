@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
           <p>Sua solicitação de reembolso com protocolo <strong>${reimbursement.protocolo}</strong> foi <strong style="color: #dc3545;">rejeitada</strong>.</p>
 
-          <div style="***REMOVED*** #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
             <h3 style="margin-top: 0; color: #0066cc;">Detalhes da Solicitação</h3>
             <p><strong>Protocolo:</strong> ${reimbursement.protocolo}</p>
             <p><strong>Data da Solicitação:</strong> ${new Date(reimbursement.created_at).toLocaleDateString('pt-BR')}</p>
@@ -157,14 +157,14 @@ export async function POST(request: NextRequest) {
 
       if (comments) {
         emailBody += `
-          <div style="***REMOVED*** #f8d7da; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #dc3545;">
+          <div style="background-color: #f8d7da; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #dc3545;">
             <h3 style="margin-top: 0; color: #721c24;">Motivo da Rejeição</h3>
             <p>${comments}</p>
           </div>`;
       }
 
       emailBody += `
-          <div style="***REMOVED*** #e2e3e5; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #6c757d;">
+          <div style="background-color: #e2e3e5; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #6c757d;">
             <h3 style="margin-top: 0; color: #383d41;">O que fazer agora?</h3>
             <p>Você pode criar uma nova solicitação de reembolso corrigindo os problemas mencionados acima.</p>
             <p>Se você acredita que houve um erro na avaliação, entre em contato com o departamento financeiro.</p>

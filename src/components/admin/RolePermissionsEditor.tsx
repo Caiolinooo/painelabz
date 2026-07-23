@@ -99,7 +99,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({ onClose }
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           role: selectedRole,
           permissions: rolePermissions[selectedRole]
         }),

@@ -162,7 +162,7 @@ export const useNotifications = (userId: string) => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED*** user_id: userId })
+        body: JSON.stringify({ user_id: userId })
       });
 
       if (response.ok) {

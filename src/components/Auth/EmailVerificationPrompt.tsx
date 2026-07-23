@@ -30,7 +30,7 @@ export default function EmailVerificationPrompt({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** email }),
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();

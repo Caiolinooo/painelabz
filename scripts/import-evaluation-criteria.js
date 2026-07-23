@@ -11,7 +11,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Configurar cliente Supabase
-const supabaseUrl = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -19,7 +19,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Caminho para o arquivo Excel
 const excelFilePath = path.join(__dirname, '..', 'docs', 'AN-TED-002-R0 - Avaliação de Desempenho.xlsx');

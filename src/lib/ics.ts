@@ -92,7 +92,7 @@ export async function parseIcs(ics: string): Promise<IcsEvent[]> {
         const email = emailMatch ? emailMatch[1].trim() : value.trim();
         const cnMatch = /CN=([^;:]+)/i.exec(nameAndParams);
         const nameParam = cnMatch ? decodeURIComponent(cnMatch[1]) : undefined;
-        const v = ***REMOVED*** email: email.replace(/^mailto:/i, ''), name: nameParam });
+        const v = JSON.stringify({ email: email.replace(/^mailto:/i, ''), name: nameParam });
         (fields[name] as string[] | undefined)?.push?.(v) || (fields[name] = [v]);
         continue;
       }

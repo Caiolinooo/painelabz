@@ -219,7 +219,7 @@ export default function AuthorizedUsersManager() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
               },
-              body: ***REMOVED***
+              body: JSON.stringify({
                 email: inviteEmail,
                 inviteCode: result.inviteCode,
                 expiresAt: result.expiresAt,
@@ -271,7 +271,7 @@ export default function AuthorizedUsersManager() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           action: 'approve',
           id
         })
@@ -318,7 +318,7 @@ export default function AuthorizedUsersManager() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           action: 'reject',
           id: selectedUserId,
           reason: rejectReason

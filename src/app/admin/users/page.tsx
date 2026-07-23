@@ -186,7 +186,7 @@ export default function UsersPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             ...userData,
             password
           })
@@ -204,7 +204,7 @@ export default function UsersPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             ...userData,
             ...(password ? { password } : {})
           })

@@ -196,7 +196,7 @@ const ReimbursementDetailModal: React.FC<ReimbursementDetailModalProps> = ({
           'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` })
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           status: 'rejeitado',
           observacao: rejectReason
         })

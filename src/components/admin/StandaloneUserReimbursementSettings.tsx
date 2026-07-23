@@ -72,7 +72,7 @@ const StandaloneUserReimbursementSettings: React.FC<StandaloneUserReimbursementS
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           email,
           enabled,
           recipients

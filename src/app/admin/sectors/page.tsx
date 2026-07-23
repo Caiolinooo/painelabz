@@ -68,7 +68,7 @@ export default function AdminSectorsPage() {
             const res = await fetch(`/api/sectors/${editingSector.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     allowed_modules: editingSector.allowed_modules,
                     allowed_cards: editingSector.allowed_cards
                 })

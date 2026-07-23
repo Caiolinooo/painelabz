@@ -244,7 +244,7 @@ export default function HelpWidget() {
             const response = await fetch('/api/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     type: typeMap[messageType],
                     message: messageText,
                     url: window.location.href,

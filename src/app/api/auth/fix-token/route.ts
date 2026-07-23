@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       console.log('Token não fornecido em nenhuma fonte, tentando gerar token para administrador');
 
       // Em vez de retornar erro, vamos tentar gerar um token para o administrador
-      const adminEmail = ***REMOVED*** || '***REMOVED***';
+      const adminEmail = process.env.ADMIN_EMAIL || '';
 
       // Buscar o usuário administrador no Supabase
       console.log('Buscando usuário administrador pelo email:', adminEmail);
@@ -132,8 +132,8 @@ export async function POST(request: NextRequest) {
       console.log('Token inválido ou expirado, gerando novo token para o administrador');
 
       // Se o token for inválido, vamos criar um token para o administrador
-      const adminEmail = ***REMOVED*** || '***REMOVED***';
-      const adminPhone = ***REMOVED*** || '+5522997847289';
+      const adminEmail = process.env.ADMIN_EMAIL || '';
+      const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
       // Buscar o usuário administrador no Supabase
       console.log('Buscando usuário administrador pelo email:', adminEmail);
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
       console.error('Erro ao buscar usuário:', userError);
 
       // Se não encontrou o usuário, vamos buscar o administrador
-      const adminEmail = ***REMOVED*** || '***REMOVED***';
+      const adminEmail = process.env.ADMIN_EMAIL || '';
       console.log('Buscando usuário administrador pelo email:', adminEmail);
 
       const { data: adminUser, error: adminUserError } = await supabaseAdmin
@@ -297,8 +297,8 @@ export async function POST(request: NextRequest) {
     console.log('Usuário encontrado:', user);
 
     // Verificar se o usuário é administrador
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || '';
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const isAdmin = user.role === 'ADMIN' || user.email === adminEmail || user.phone_number === adminPhone;
 
     console.log('Verificando se é administrador:', {
@@ -434,7 +434,7 @@ export async function POST(request: NextRequest) {
     try {
       console.log('Tentando gerar token para o administrador após erro');
 
-      const adminEmail = ***REMOVED*** || '***REMOVED***';
+      const adminEmail = process.env.ADMIN_EMAIL || '';
 
       // Buscar o usuário administrador no Supabase
       console.log('Buscando usuário administrador pelo email:', adminEmail);

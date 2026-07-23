@@ -7,17 +7,17 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
 async function fixAdminCreatedUsers() {
-  const supabaseUrl = ***REMOVED***;
-  const supabaseServiceKey = ***REMOVED***;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('❌ Variáveis de ambiente não encontradas');
     console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'OK' : 'MISSING');
-    console.error('***REMOVED***:', supabaseServiceKey ? 'OK' : 'MISSING');
+    console.error('SUPABASE_SERVICE_KEY:', supabaseServiceKey ? 'OK' : 'MISSING');
     process.exit(1);
   }
 
-  const supabase = ***REMOVED*** supabaseServiceKey, {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false

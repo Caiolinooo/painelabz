@@ -70,7 +70,7 @@ export default function SetPassword() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             inviteCode,
             password,
           }),
@@ -95,7 +95,7 @@ export default function SetPassword() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED*** token: emailToken, password }),
+          body: JSON.stringify({ token: emailToken, password }),
         });
 
         const data = await response.json();

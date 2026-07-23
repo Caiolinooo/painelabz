@@ -217,7 +217,7 @@ export default function ImportadorTabelas() {
                 ? 'border-blue-500 bg-blue-50/50'
                 : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
             }`}
-            onClick={() => ***REMOVED***'csv-file-input')?.click()}
+            onClick={() => document.getElementById('csv-file-input')?.click()}
           >
             <input
               id="csv-file-input"

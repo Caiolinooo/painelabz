@@ -2,8 +2,8 @@ require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
-  ***REMOVED***,
-  ***REMOVED***
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
 );
 
 async function checkTableStructure() {

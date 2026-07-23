@@ -107,7 +107,7 @@ export default function PasswordChange() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           password: currentPassword
         })
       });

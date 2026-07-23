@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Definir o administrador principal
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
     // Verificar se o usuário existe no Supabase
     console.log('Buscando usuário no Supabase com ID:', payload.userId);

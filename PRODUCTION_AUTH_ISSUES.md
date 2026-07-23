@@ -5,9 +5,9 @@
 ### 1. **❌ Dados Hardcoded no Código**
 **Localização**: `src/lib/auth.ts` (linhas 1142-1144)
 ```javascript
-const adminEmail = ***REMOVED*** || '***REMOVED***';
-const adminPhone = ***REMOVED*** || '+5522997847289';
-const adminPassword = ***REMOVED*** || '***REMOVED***';
+const adminEmail = process.env.ADMIN_EMAIL || 'document.getElementById(';
+const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
+const adminPassword = process.env.ADMIN_PASSWORD || 'document.getElementById(';
 ```
 
 **Problema**: Credenciais hardcoded como fallback podem causar problemas em produção.
@@ -15,8 +15,8 @@ const adminPassword = ***REMOVED*** || '***REMOVED***';
 ### 2. **❌ URLs e Chaves Hardcoded**
 **Localização**: `src/lib/supabase.ts` (linhas 9-10)
 ```javascript
-const supabaseUrl = ***REMOVED*** || 'https://arzvingdtnttiejcvucs.supabase.co';
-const supabaseAnonKey = ***REMOVED*** || '***REMOVED***';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://arzvingdtnttiejcvucs.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'document.getElementById(';
 ```
 
 **Problema**: Chaves expostas no código fonte.
@@ -72,27 +72,27 @@ node scripts/migrate-hardcoded-data.js
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://arzvingdtnttiejcvucs.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=***REMOVED***
-***REMOVED***=***REMOVED***
+***REMOVED***=background-color:
 
 # Database
-DATABASE_URL=***REMOVED***
+DATABASE_URL=background-color:
 
 # Admin
-ADMIN_EMAIL=***REMOVED***
+ADMIN_EMAIL=background-color:
 ADMIN_PHONE_NUMBER=+5522997847289
-ADMIN_PASSWORD=***REMOVED***
+ADMIN_PASSWORD=background-color:
 ADMIN_FIRST_NAME=Caio
 ADMIN_LAST_NAME=Correia
 
 # JWT
-JWT_SECRET=***REMOVED***
+JWT_SECRET=background-color:
 
 # Email
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=465
 EMAIL_SECURE=true
-EMAIL_USER=***REMOVED***
-EMAIL_PASSWORD=***REMOVED***
+EMAIL_USER=background-color:
+EMAIL_PASSWORD=background-color:
 EMAIL_FROM=***REMOVED***
 ```
 
@@ -100,7 +100,7 @@ EMAIL_FROM=***REMOVED***
 Execute no SQL Editor do Supabase:
 ```sql
 -- Verificar se usuário existe
-SELECT * FROM users_unified WHERE email = '***REMOVED***';
+SELECT * FROM users_unified WHERE email = 'document.getElementById(';
 
 -- Se não existir, criar usuário admin
 INSERT INTO users_unified (
@@ -121,7 +121,7 @@ INSERT INTO users_unified (
   created_at,
   updated_at
 ) VALUES (
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',
@@ -144,8 +144,8 @@ INSERT INTO users_unified (
 Use este código Node.js para gerar o hash:
 ```javascript
 const bcrypt = require('bcryptjs');
-const password = '***REMOVED***';
-const hash = ***REMOVED*** 10);
+const password = 'document.getElementById(';
+const hash = bcrypt.hashSync(password, 10);
 console.log('Hash da senha:', hash);
 ```
 

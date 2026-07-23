@@ -58,7 +58,7 @@ export default function AsoReviewPanel({ compact = false }: Props) {
       const res = await fetchWithToken(`/api/gestao-tripulantes/poliweb/revisar/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** acao, comentario: comment[id] || '' }),
+        body: JSON.stringify({ acao, comentario: comment[id] || '' }),
       });
       if (!res.ok) throw new Error('Falha na revisão');
       toast.success(acao === 'aprovado' ? 'ASO aprovado e importado!' : 'ASO rejeitado');

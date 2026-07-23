@@ -325,7 +325,7 @@ export default function FeriasPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     user_id: user.id,
                     start_date: formData.periods[0].startDate, // Keep for backward comp / boundary tracking
                     end_date: formData.periods[formData.periods.length - 1].endDate,
@@ -370,7 +370,7 @@ export default function FeriasPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     request_id: req.id,
                     approver_id: user.id,
                     action: 'APPROVE'
@@ -412,7 +412,7 @@ export default function FeriasPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     request_id: rejectingRequest.id,
                     approver_id: user.id,
                     action: 'REJECT',
@@ -453,7 +453,7 @@ export default function FeriasPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     request_id: requestId,
                     action,
                     reason: allReqActionReason,

@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
     console.log('Iniciando verificação e criação do perfil de administrador');
 
     // Obter configurações do Supabase
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseAnonKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     const jwtSecret = process.env.JWT_SECRET || '';
 
     // Verificar configurações
@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     console.log('Usando cliente Supabase pré-inicializado com URL:', supabaseUrl);
 
     // Definir informações do administrador (sem senhas/emails hardcoded)
-    const adminEmail = ***REMOVED***?.trim();
-    const adminPhone = ***REMOVED***?.trim();
-    const adminPassword = ***REMOVED***?.trim();
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER?.trim();
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
     const adminFirstName = process.env.ADMIN_FIRST_NAME?.trim() || 'Admin';
     const adminLastName = process.env.ADMIN_LAST_NAME?.trim() || 'User';
 

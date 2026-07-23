@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         is_authorized: false,
         authorization_status: 'pending',
         // Apenas o admin principal pode ser criado como ADMIN
-        role: (role === 'ADMIN' && email === ***REMOVED***) ? 'ADMIN' : 'USER',
+        role: (role === 'ADMIN' && email === process.env.ADMIN_EMAIL) ? 'ADMIN' : 'USER',
         department,
         access_permissions: defaultPermissions,
         active: false, // Usuário inativo por padrão, aguardando aprovação

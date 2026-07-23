@@ -49,7 +49,7 @@ async function testVerificationCodeEmail() {
           <img src="https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png" alt="ABZ Group Logo" style="max-width: 200px;">
         </div>
         <h2 style="color: #0066cc; text-align: center;">Seu Código de Verificação</h2>
-        <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
           ${code}
         </div>
         <p style="margin-bottom: 20px; text-align: center;">Este código expira em <strong>10 minutos</strong>.</p>
@@ -65,7 +65,7 @@ async function testVerificationCodeEmail() {
     // Enviar email
     console.log('Enviando email...');
     const info = await transporter.sendMail({
-      from: '"ABZ Group" <***REMOVED***>',
+      from: '"ABZ Group" <apiabz@groupabz.com>',
       to: testEmail,
       subject: 'Código de Verificação - ABZ Group',
       text,

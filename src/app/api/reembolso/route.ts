@@ -6,8 +6,8 @@ import { generateReimbursementPDF } from '@/lib/pdf-generator';
 export const dynamic = 'force-dynamic';
 
 const supabaseAdmin = createClient(
-  ***REMOVED***!,
-  ***REMOVED***!
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
 );
 
 export async function POST(request: Request) {

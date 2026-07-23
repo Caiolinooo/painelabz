@@ -24,7 +24,7 @@ const generateToken = async (user: any) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         userId: user.id,
         email: user.email,
         phoneNumber: user.phone_number,
@@ -230,7 +230,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: ***REMOVED*** token }),
+        body: JSON.stringify({ token }),
       });
 
       if (refreshResponse.ok) {
@@ -344,7 +344,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
-            body: ***REMOVED*** token }),
+            body: JSON.stringify({ token }),
           });
 
           if (fixResponse.ok) {
@@ -428,7 +428,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           fetch('/api/metrics/activity', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: ***REMOVED*** userId: currentUser.id })
+            body: JSON.stringify({ userId: currentUser.id })
           }).catch(() => { /* Silent fail to avoid polling errors */ });
         }
 
@@ -841,7 +841,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             email: identifier,
             code: otpData.code,
             type: 'verification'
@@ -1314,7 +1314,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
                   const phone = session.user.phone;
 
                   // Verificar se o usuário é o administrador principal
-                  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || '***REMOVED***';
+                  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
                   const isAdmin = email === adminEmail;
 
                   // Criar um perfil básico na tabela users_unified
@@ -1501,7 +1501,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             const tokenResponse = await fetch('/api/auth/generate-token', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: ***REMOVED***
+              body: JSON.stringify({
                 userId: session.user.id,
                 email: session.user.email,
                 phoneNumber: session.user.phone,
@@ -1574,7 +1574,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
                 const phone = session.user.phone;
 
                 // Verificar se o usuário é o administrador principal
-                const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || '***REMOVED***';
+                const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
                 const isAdmin = email === adminEmail;
 
                 // Criar um perfil básico na tabela users_unified
@@ -1883,7 +1883,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!user;
 
   // Verificar papéis do usuário
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || '***REMOVED***';
+  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
 
   // Verificar se o usuário é administrador de várias maneiras para garantir acesso
   const isAdmin = useMemo(() => {
@@ -1918,9 +1918,9 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     const hasAdminRole = profile?.role === 'ADMIN' || tokenPayload?.role === 'ADMIN';
 
-    // Verificar se o email é o email do administrador principal (***REMOVED***)
+    // Verificar se o email é o email do administrador principal (ADMIN_EMAIL)
     // Não permitir que outros emails sejam considerados admin apenas por serem iguais ao adminEmail
-    const isAdminEmail = (profile?.email === '***REMOVED***' || user?.email === '***REMOVED***');
+    const isAdminEmail = (profile?.email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '') || user?.email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''));
 
     // Verificar permissões explícitas de admin
     const hasAdminPermission = !!(profile?.access_permissions?.modules?.admin) ||
@@ -1946,7 +1946,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const updateAdminProfile = async () => {
       // Verificar se o email é exatamente o email do administrador principal
-      const isMainAdmin = profile?.email === '***REMOVED***' || user?.email === '***REMOVED***';
+      const isMainAdmin = profile?.email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '') || user?.email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
 
       if (isMainAdmin && profile?.role !== 'ADMIN') {
         console.log('Atualizando perfil do administrador principal...');

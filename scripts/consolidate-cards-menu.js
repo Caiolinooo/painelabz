@@ -19,17 +19,17 @@ const __dirname = dirname(__filename);
 // Carregar .env.local
 dotenv.config({ path: join(__dirname, '..', '.env.local') });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Erro: Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e ***REMOVED*** são obrigatórias');
+  console.error('❌ Erro: Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_KEY são obrigatórias');
   console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅' : '❌');
-  console.error('***REMOVED***:', supabaseServiceKey ? '✅' : '❌');
+  console.error('SUPABASE_SERVICE_KEY:', supabaseServiceKey ? '✅' : '❌');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Mapeamento de ícones Material para React Icons
 const iconMapping = {

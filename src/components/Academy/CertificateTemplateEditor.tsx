@@ -125,7 +125,7 @@ export default function CertificateTemplateEditor({
     const y = Math.round(rawY / step) * step;
     // Update live (without committing string yet)
     const newFields = { ...config.fields, [drag.key]: { ...(config.fields as any)[drag.key], x, y } };
-    const next = ***REMOVED*** page: config.page, fields: newFields }, null, 2);
+    const next = JSON.stringify({ page: config.page, fields: newFields }, null, 2);
     onChangeConfig(next);
   };
 
@@ -135,7 +135,7 @@ export default function CertificateTemplateEditor({
   const ensureField = (key: string) => {
     if (!(config.fields as any)[key]) {
       const newFields = { ...config.fields, [key]: { x: 50, y: 50, size: 18 } };
-      onChangeConfig(***REMOVED*** page: config.page, fields: newFields }, null, 2));
+      onChangeConfig(JSON.stringify({ page: config.page, fields: newFields }, null, 2));
     }
   };
 
@@ -211,21 +211,21 @@ export default function CertificateTemplateEditor({
                   Tamanho
                   <input type="number" value={f?.size||16} onChange={(e)=>{
                     const newFields = { ...config.fields, [key]: { ...f, size: parseInt(e.target.value||'16') } };
-                    onChangeConfig(***REMOVED*** page: config.page, fields: newFields }, null, 2));
+                    onChangeConfig(JSON.stringify({ page: config.page, fields: newFields }, null, 2));
                   }} className="w-16 border rounded px-2 py-1" />
                 </label>
                 <label className="col-span-2 flex items-center gap-1 text-xs text-gray-600">
                   Cor
                   <input type="color" value={f?.color||'#000000'} onChange={(e)=>{
                     const newFields = { ...config.fields, [key]: { ...f, color: e.target.value } };
-                    onChangeConfig(***REMOVED*** page: config.page, fields: newFields }, null, 2));
+                    onChangeConfig(JSON.stringify({ page: config.page, fields: newFields }, null, 2));
                   }} className="w-16 h-7 border rounded" />
                 </label>
                 <label className="col-span-2 flex items-center gap-1 text-xs text-gray-600">
                   Fonte
                   <select value={f?.font||'Helvetica'} onChange={(e)=>{
                     const newFields = { ...config.fields, [key]: { ...f, font: e.target.value } };
-                    onChangeConfig(***REMOVED*** page: config.page, fields: newFields }, null, 2));
+                    onChangeConfig(JSON.stringify({ page: config.page, fields: newFields }, null, 2));
                   }} className="border rounded px-2 py-1 text-xs">
                     <option value="Helvetica">Helvetica</option>
                     <option value="TimesRoman">Times</option>
@@ -236,7 +236,7 @@ export default function CertificateTemplateEditor({
                   Alinhamento
                   <select value={f?.align||'left'} onChange={(e)=>{
                     const newFields = { ...config.fields, [key]: { ...f, align: e.target.value } };
-                    onChangeConfig(***REMOVED*** page: config.page, fields: newFields }, null, 2));
+                    onChangeConfig(JSON.stringify({ page: config.page, fields: newFields }, null, 2));
                   }} className="border rounded px-2 py-1 text-xs">
                     <option value="left">Esquerda</option>
                     <option value="center">Centro</option>

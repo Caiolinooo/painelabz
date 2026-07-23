@@ -124,28 +124,28 @@ export async function POST(request: NextRequest) {
                 
                 // Handle status events
                 if (parsed.status) {
-                  controller.enqueue(encoder.encode(`data: ${***REMOVED*** status: parsed.status })}\n\n`));
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: parsed.status })}\n\n`));
                   continue;
                 }
                 
                 // Handle metadata events
                 if (parsed.metadata) {
                   lastDashboard = parsed.metadata.dashboard || lastDashboard;
-                  controller.enqueue(encoder.encode(`data: ${***REMOVED*** metadata: parsed.metadata })}\n\n`));
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ metadata: parsed.metadata })}\n\n`));
                   continue;
                 }
                 
                 // Handle content chunks
                 if (parsed.content !== undefined) {
                   finalContent += parsed.content;
-                  controller.enqueue(encoder.encode(`data: ${***REMOVED*** content: parsed.content, done: false })}\n\n`));
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: parsed.content, done: false })}\n\n`));
                 }
                 
                 // Handle done event
                 if (parsed.done) {
                   finalContent = parsed.fullContent || finalContent;
                   lastDashboard = parsed.metadata?.dashboard || lastDashboard;
-                  controller.enqueue(encoder.encode(`data: ${***REMOVED*** done: true, fullContent: finalContent, metadata: parsed.metadata })}\n\n`));
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: finalContent, metadata: parsed.metadata })}\n\n`));
                   
                   // Save to DB after stream completes
                   if (!saved) {

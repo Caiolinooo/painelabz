@@ -4,8 +4,8 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function runDirectFix() {
   try {
@@ -29,7 +29,7 @@ async function runDirectFix() {
           'apikey': supabaseServiceKey,
           'Accept': 'application/vnd.pgrst.object+json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           query: sql1
         })
       });
@@ -51,7 +51,7 @@ async function runDirectFix() {
     console.log('\n🔍 Verificação final...');
 
     // Criar cliente Supabase para verificação
-    const supabase = ***REMOVED*** supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     try {
       const { data: userData, error: userError } = await supabase

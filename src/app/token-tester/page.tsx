@@ -36,7 +36,7 @@ export default function TokenTester() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED*** token: tokenToVerify })
+        body: JSON.stringify({ token: tokenToVerify })
       });
 
       const data = await response.json();

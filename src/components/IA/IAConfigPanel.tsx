@@ -83,7 +83,7 @@ export default function IAConfigPanel({ token }: { token: string }) {
       const res = await fetch('/api/ia/config', {
         method: 'PUT',
         headers: hdrs(),
-        body: ***REMOVED***
+        body: JSON.stringify({
           provider,
           endpoint: endpoint.trim(),
           api_key: apiKey.trim(),

@@ -262,7 +262,7 @@ async function testCardsSystem(): Promise<TestResult[]> {
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/cards/supabase`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: ***REMOVED***
+      body: JSON.stringify({
         userId: 'test-user',
         userRole: 'user',
         userEmail: 'test@example.com'

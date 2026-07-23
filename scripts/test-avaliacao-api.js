@@ -12,8 +12,8 @@ async function testAvaliacaoApi() {
     console.log('Iniciando teste da API de avaliações...');
     
     // Criar cliente Supabase
-    const supabaseUrl = ***REMOVED***;
-    const supabaseKey = ***REMOVED***;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não definidas');
@@ -21,7 +21,7 @@ async function testAvaliacaoApi() {
       return;
     }
     
-    const supabase = ***REMOVED*** supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Testar busca de funcionários
     console.log('Testando busca de funcionários...');

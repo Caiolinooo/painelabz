@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
         console.error('Erro ao buscar usuário:', userError);
 
         // Verificar se é o administrador principal
-        const adminEmail = ***REMOVED*** || '***REMOVED***';
-        const adminPhone = ***REMOVED*** || '+5522997847289';
+        const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+        const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
         // Se o payload contiver o email ou telefone do administrador, gerar um token de administrador
         if (payload.phoneNumber === adminPhone ||
@@ -203,8 +203,8 @@ export async function POST(request: NextRequest) {
       console.error('Erro ao buscar usuário no Supabase:', error);
 
       // Verificar se é o administrador principal
-      const adminEmail = ***REMOVED*** || '***REMOVED***';
-      const adminPhone = ***REMOVED*** || '+5522997847289';
+      const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+      const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
       // Se o payload contiver o email ou telefone do administrador, gerar um token de administrador
       if (payload.phoneNumber === adminPhone) {

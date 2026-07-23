@@ -17,10 +17,10 @@ SELECT
   LENGTH(password) as password_length,
   created_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- Deletar usuário existente se houver
-DELETE FROM users_unified WHERE email = '***REMOVED***';
+DELETE FROM users_unified WHERE email = 'document.getElementById(';
 
 -- Criar usuário admin com hash pré-gerado para senha 'REDACTED_SET_VIA_ENV'
 INSERT INTO users_unified (
@@ -44,7 +44,7 @@ INSERT INTO users_unified (
   updated_at
 ) VALUES (
   gen_random_uuid(),
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',
@@ -101,7 +101,7 @@ SELECT
   created_at,
   updated_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- ========================================
 -- CREDENCIAIS PARA TESTE:

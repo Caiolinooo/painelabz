@@ -106,7 +106,7 @@ export default function TreinamentosTab({ colaboradorId, documentos, onRefresh }
         res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: ***REMOVED*** images }),
+          body: JSON.stringify({ images }),
         });
       } else {
         res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, { method: 'POST' });

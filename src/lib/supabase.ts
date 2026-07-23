@@ -7,10 +7,10 @@ import { getJwtSecret } from './jwt-secret';
 
 // Estas variáveis devem ser definidas no arquivo .env
 // Buscar configurações do Supabase das variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseAnonKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 // Usar a nomenclatura padrão do Supabase para a chave de serviço
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 // Função para validar configurações do Supabase
 function validateSupabaseConfig() {
@@ -124,7 +124,7 @@ async function getSupabaseAdminClient(): Promise<SupabaseClient> {
       initializeSupabaseClient(config.url, config.anonKey);
 
       // Buscar a chave de serviço da tabela app_secrets
-      const secretKey = await getCredential('SUPABASE_SERVICE_ROLE_KEY') || await getCredential('***REMOVED***');
+      const secretKey = await getCredential('SUPABASE_SERVICE_ROLE_KEY') || await getCredential('SUPABASE_SERVICE_KEY');
       if (secretKey) {
         serviceKey = secretKey;
         console.log('Chave de serviço obtida da tabela app_secrets');

@@ -65,7 +65,7 @@ export default function FeriasAccessPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED*** type: 'sector', targetId: sectorId, enabled })
+                body: JSON.stringify({ type: 'sector', targetId: sectorId, enabled })
             });
             if (!res.ok) throw new Error('Failed to update');
             toast.success(`Setor ${enabled ? 'liberado' : 'restrito'}`);
@@ -87,7 +87,7 @@ export default function FeriasAccessPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED*** type: 'user', targetId: userId, enabled })
+                body: JSON.stringify({ type: 'user', targetId: userId, enabled })
             });
             if (!res.ok) throw new Error('Failed to update');
             toast.success(`Usuário ${enabled ? 'liberado' : 'restrito'}`);
@@ -109,7 +109,7 @@ export default function FeriasAccessPage() {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: ***REMOVED*** type: 'user', targetId: userId, enabled: null })
+                body: JSON.stringify({ type: 'user', targetId: userId, enabled: null })
             });
             if (!res.ok) throw new Error('Failed to remove override');
             toast.success('Override removido, herdando do setor');

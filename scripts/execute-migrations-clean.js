@@ -17,7 +17,7 @@ if (!DATABASE_URL) {
 }
 
 function askQuestion(query) {
-  const rl = ***REMOVED***
+  const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });

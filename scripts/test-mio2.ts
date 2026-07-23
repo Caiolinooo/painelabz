@@ -4,7 +4,7 @@ import * as path from 'path';
 // Load env
 const envPath = path.resolve(process.cwd(), '.env.local');
 if (fs.existsSync(envPath)) {
-    const envConfig = ***REMOVED*** 'utf8');
+    const envConfig = fs.readFileSync(envPath, 'utf8');
     envConfig.split('\n').forEach(line => {
         const match = line.match(/^([^=]+)=(.*)$/);
         if (match) {

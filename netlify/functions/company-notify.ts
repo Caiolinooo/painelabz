@@ -12,12 +12,12 @@ export const handler: Handler = async () => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.error('Notify endpoint failed', res.status, data);
-      return { statusCode: 500, body: ***REMOVED*** ok: false, error: data?.error || res.statusText }) };
+      return { statusCode: 500, body: JSON.stringify({ ok: false, error: data?.error || res.statusText }) };
     }
-    return { statusCode: 200, body: ***REMOVED*** ok: true, result: data }) };
+    return { statusCode: 200, body: JSON.stringify({ ok: true, result: data }) };
   } catch (e: any) {
     console.error('company-notify scheduled function error', e);
-    return { statusCode: 500, body: ***REMOVED*** ok: false, error: e?.message || 'error' }) };
+    return { statusCode: 500, body: JSON.stringify({ ok: false, error: e?.message || 'error' }) };
   }
 };
 

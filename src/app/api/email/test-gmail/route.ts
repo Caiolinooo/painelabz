@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     // Obter parâmetros da URL
     const searchParams = request.nextUrl.searchParams;
-    const email = searchParams.get('email') || '***REMOVED***';
+    const email = searchParams.get('email') || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
 
     console.log('Testando conexão com Exchange/Office 365...');
 

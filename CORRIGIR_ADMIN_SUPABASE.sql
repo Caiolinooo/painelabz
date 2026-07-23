@@ -16,7 +16,7 @@ SELECT
   LENGTH(password) as password_length,
   created_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- 2. Se o usuário não existir, criar o usuário admin
 -- Hash da senha 'REDACTED_SET_VIA_ENV': $2a$10$rQJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP
@@ -42,7 +42,7 @@ INSERT INTO users_unified (
 ) 
 SELECT 
   gen_random_uuid(),
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',
@@ -81,7 +81,7 @@ SELECT
   NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM users_unified 
-  WHERE email = '***REMOVED***'
+  WHERE email = 'document.getElementById('
 );
 
 -- 3. Atualizar usuário existente (se já existir)
@@ -110,7 +110,7 @@ SET
     )
   ),
   updated_at = NOW()
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- 4. Verificar o resultado final
 SELECT 
@@ -129,7 +129,7 @@ SELECT
   created_at,
   updated_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- 5. Verificar todos os usuários admin
 SELECT 

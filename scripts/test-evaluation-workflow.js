@@ -7,15 +7,15 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variáveis de ambiente do Supabase não configuradas');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function testEvaluationWorkflow() {
   console.log('🔄 Testando fluxo completo de notificações de avaliação...\n');
@@ -97,7 +97,7 @@ async function testEvaluationWorkflow() {
         const response = await fetch('http://localhost:3000/api/avaliacao/periodos/notify-opened', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: ***REMOVED***
+          body: JSON.stringify({
             periodId: periods[0].id,
             periodName: periods[0].nome
           })

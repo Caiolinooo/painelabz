@@ -83,7 +83,7 @@ const ManagerProtectedRoute: React.FC<ManagerProtectedRouteProps> = ({
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
-            body: ***REMOVED*** token })
+            body: JSON.stringify({ token })
           });
 
           if (refreshResponse.ok) {
@@ -184,7 +184,7 @@ const ManagerProtectedRoute: React.FC<ManagerProtectedRouteProps> = ({
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
               },
-              body: ***REMOVED*** token })
+              body: JSON.stringify({ token })
             });
 
             console.log(t('components.managerprotectedrouteRespostaDaRenovacao'), refreshResponse.status);
@@ -310,7 +310,7 @@ const ManagerProtectedRoute: React.FC<ManagerProtectedRouteProps> = ({
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
               },
-              body: ***REMOVED*** token })
+              body: JSON.stringify({ token })
             });
 
             if (refreshResponse.ok) {

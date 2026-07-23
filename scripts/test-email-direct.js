@@ -14,7 +14,7 @@ const emailConfig = {
   port: parseInt(process.env.EMAIL_PORT || '465'),
   secure: process.env.EMAIL_SECURE !== 'false',
   auth: {
-    user: process.env.EMAIL_USER || '***REMOVED***',
+    user: process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
     pass: process.env.EMAIL_PASSWORD
   }
 };
@@ -94,7 +94,7 @@ async function sendTestEmail(to) {
             <li>Um arquivo TXT simulando uma nota</li>
           </ol>
           <p>Por favor, verifique se todos os anexos estão presentes no email.</p>
-          <div style="margin-top: 20px; padding: 10px; ***REMOVED*** #f5f5f5; border-radius: 5px;">
+          <div style="margin-top: 20px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
             <p style="margin: 0;"><strong>Data e hora do teste:</strong> ${new Date().toLocaleString('pt-BR')}</p>
           </div>
           <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #999;">

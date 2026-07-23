@@ -103,7 +103,7 @@ const SocialFeed: React.FC<SocialFeedProps> = ({ className = '' }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED*** post_id: postId })
+        body: JSON.stringify({ post_id: postId })
       });
 
       if (response.ok) {

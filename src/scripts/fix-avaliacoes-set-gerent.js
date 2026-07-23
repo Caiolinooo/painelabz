@@ -3,17 +3,17 @@ const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variáveis de ambiente do Supabase não carregadas.');
   console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl);
-  console.error('***REMOVED*** / SERVICE_ROLE_KEY:', !!supabaseServiceKey);
+  console.error('SUPABASE_SERVICE_KEY / SERVICE_ROLE_KEY:', !!supabaseServiceKey);
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 

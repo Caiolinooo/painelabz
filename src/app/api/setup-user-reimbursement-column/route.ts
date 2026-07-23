@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
     // Método 1: Tentar adicionar a coluna usando a API REST do Supabase
     try {
       // Usar a API REST do Supabase para executar SQL
-      const supabaseUrl = ***REMOVED***;
-      const supabaseKey = ***REMOVED*** || ***REMOVED***;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !supabaseKey) {
         console.error('Variáveis de ambiente do Supabase não definidas');
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           query: `ALTER TABLE users_unified ADD COLUMN IF NOT EXISTS reimbursement_email_settings JSONB;`
         })
       });
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`
             },
-            body: ***REMOVED***
+            body: JSON.stringify({
               query: `CREATE INDEX IF NOT EXISTS idx_users_unified_reimbursement_email_settings ON users_unified USING GIN (reimbursement_email_settings);`
             })
           });
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`
             },
-            body: ***REMOVED***
+            body: JSON.stringify({
               query: `UPDATE users_unified SET reimbursement_email_settings = '{"enabled": false, "recipients": []}'::jsonb WHERE reimbursement_email_settings IS NULL;`
             })
           });
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`
             },
-            body: ***REMOVED***
+            body: JSON.stringify({
               query: `
                 CREATE OR REPLACE FUNCTION execute_sql(query text)
                 RETURNS VOID AS $$
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
                 'apikey': supabaseKey,
                 'Authorization': `Bearer ${supabaseKey}`
               },
-              body: ***REMOVED***
+              body: JSON.stringify({
                 query: `ALTER TABLE users_unified ADD COLUMN IF NOT EXISTS reimbursement_email_settings JSONB;`
               })
             });

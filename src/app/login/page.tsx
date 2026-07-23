@@ -195,7 +195,7 @@ export default function Login() {
     }
 
     // Verificar se é o email do administrador
-    if (email === '***REMOVED***' || email === '***REMOVED***') {
+    if (email === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '') || email === (process.env.ADMIN_EMAIL || '')) {
       console.log('Email do administrador detectado, iniciando login normal');
 
       // Iniciar o processo de login normal, que redirecionará para a tela de senha
@@ -276,7 +276,7 @@ export default function Login() {
       const optionsRes = await fetch('/api/auth/webauthn/login/options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** email: email || undefined })
+        body: JSON.stringify({ email: email || undefined })
       });
 
       if (!optionsRes.ok) throw new Error('Erro ao obter opções de login biométrico');
@@ -380,8 +380,8 @@ export default function Login() {
       }
 
       // Verificar se é o administrador
-      if (identifier === '***REMOVED***' ||
-        identifier === '***REMOVED***') {
+      if (identifier === (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '') ||
+        identifier === (process.env.ADMIN_EMAIL || '')) {
         console.log('Usuário administrador detectado');
         // Não definimos mais a senha automaticamente, o usuário precisa digitar
       }

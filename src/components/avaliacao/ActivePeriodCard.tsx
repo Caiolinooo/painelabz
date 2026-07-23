@@ -54,7 +54,7 @@ export default function ActivePeriodCard({
       // Caso contrário, criar nova avaliação
       const response = await fetchWithToken('/api/avaliacao/iniciar-periodo', {
         method: 'POST',
-        body: ***REMOVED*** periodo_id: period.id })
+        body: JSON.stringify({ periodo_id: period.id })
       });
 
       if (response.status === 401) {

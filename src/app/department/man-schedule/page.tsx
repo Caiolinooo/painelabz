@@ -325,7 +325,7 @@ export default function ManSchedulePage() {
 
     // ─── Export ───
     const exportToExcel = () => {
-        const table = ***REMOVED***'man-schedule-table');
+        const table = document.getElementById('man-schedule-table');
         if (!table) return;
         const wb = XLSX.utils.table_to_book(table, { sheet: 'Schedule' });
         const ws = wb.Sheets['Schedule'];

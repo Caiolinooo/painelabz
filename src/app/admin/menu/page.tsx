@@ -490,7 +490,7 @@ export default function MenuPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           id: item.id,
           title: item.label, // Ensure title is sent
           href: item.href,

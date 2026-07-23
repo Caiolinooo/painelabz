@@ -5,8 +5,8 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function executeDirectFix() {
   try {
@@ -81,7 +81,7 @@ LEFT JOIN
             'Authorization': `Bearer ${supabaseServiceKey}`,
             'apikey': supabaseServiceKey
           },
-          body: ***REMOVED*** sql: command })
+          body: JSON.stringify({ sql: command })
         });
 
         if (response.ok) {
@@ -98,7 +98,7 @@ LEFT JOIN
     console.log('\n🧪 Testando a view após as correções...');
 
     // Testar a view
-    const supabase = ***REMOVED*** supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Testar registros ativos
     const { data: activeData, error: activeError } = await supabase

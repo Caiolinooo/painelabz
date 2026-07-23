@@ -227,7 +227,7 @@ export default function SmbConnectorPage() {
             const res = await fetchWithToken('/api/smb/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED*** connection_id: selectedConn.id }),
+                body: JSON.stringify({ connection_id: selectedConn.id }),
             });
             const data = await res.json();
             setSyncResult(data);

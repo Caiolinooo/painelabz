@@ -101,7 +101,7 @@ export default function CertificatesAdminPage() {
       const res = await fetchWithToken(`/api/admin/academy/certificates/templates/${selectedTemplate.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** name, course_id: courseId || null, config_json: parsed })
+        body: JSON.stringify({ name, course_id: courseId || null, config_json: parsed })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'update error');

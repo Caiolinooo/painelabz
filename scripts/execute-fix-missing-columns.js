@@ -7,8 +7,8 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function executeFixMissingColumns() {
   try {
@@ -16,7 +16,7 @@ async function executeFixMissingColumns() {
       throw new Error('Variáveis de ambiente não configuradas');
     }
 
-    const supabase = ***REMOVED*** supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('🔧 Executando correções de colunas faltantes...');
 
@@ -56,7 +56,7 @@ async function executeFixMissingColumns() {
                 'apikey': supabaseServiceKey,
                 'Prefer': 'return=minimal'
               },
-              body: ***REMOVED*** query: command })
+              body: JSON.stringify({ query: command })
             });
 
             if (!response.ok) {

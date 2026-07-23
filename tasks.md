@@ -75,6 +75,7 @@ Achado: credencial O365 em repo **público** `Caiolinooo/EmployeeHub` (`src/lib/
 | [ ] | Dependabot alerts em `EmployeeHub` e `painel-abz` |
 | [ ] | Varredura histórica gitleaks em todos os repos |
 | [x] | `git filter-repo` no branch `portal` + force-push (2026-07-23) — rotacionar chaves ainda é obrigatório |
+| [x] | **Fix false-positive purge damage (2026-07-23):** `replace-text` also mangled valid code (`JSON.stringify({`, `document.getElementById(`, `background-color:`, `process.env.*`) into `***REMOVED***` → Vercel build failed on `962ac2e`. Restored from pre-rewrite SHA `fae8e307` + heuristics; secrets not reintroduced; `npm run build` OK |
 
 ### Manual — DPO / LGPD — PENDENTE
 

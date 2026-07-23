@@ -30,11 +30,11 @@ export async function GET(request: NextRequest) {
     console.log('Verificando status da senha para usuário:', payload.userId);
 
     // Verificar se estamos usando Supabase
-    if (***REMOVED*** && ***REMOVED***) {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
       // Usar Supabase
       const supabase = createClient(
-        ***REMOVED***,
-        ***REMOVED***,
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY,
         {
           auth: {
             autoRefreshToken: false,

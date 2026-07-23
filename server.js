@@ -149,18 +149,18 @@ app.prepare().then(() => {
         const manager = global.llamaServerManager;
         
         if (!manager) {
-          ws.send(***REMOVED*** type: 'log', content: '[System] Manager ainda não inicializado pela API.' }));
+          ws.send(JSON.stringify({ type: 'log', content: '[System] Manager ainda não inicializado pela API.' }));
         } else {
           // Enviar logs existentes
           const status = manager.getStatus();
           status.logs.forEach(log => {
-            ws.send(***REMOVED*** type: 'log', content: log }));
+            ws.send(JSON.stringify({ type: 'log', content: log }));
           });
 
           // Subscrever a novos logs
           const logHandler = (line) => {
             if (ws.readyState === WebSocket.OPEN) {
-              ws.send(***REMOVED*** type: 'log', content: line }));
+              ws.send(JSON.stringify({ type: 'log', content: line }));
             }
           };
 

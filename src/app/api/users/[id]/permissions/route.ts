@@ -4,12 +4,12 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
-const supabaseUrl = ***REMOVED*** || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // Safely create client, or return null if keys missing (during build)
 const supabase = (supabaseUrl && supabaseServiceKey)
-    ? ***REMOVED*** supabaseServiceKey)
+    ? createClient(supabaseUrl, supabaseServiceKey)
     : null;
 
 export async function PUT(

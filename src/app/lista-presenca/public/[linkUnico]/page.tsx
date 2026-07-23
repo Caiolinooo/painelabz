@@ -129,7 +129,7 @@ export default function PublicListaPage() {
             const res = await fetch('/api/lista-presenca/registros', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     lista_id: lista.id,
                     nome_completo: visitorName,
                     funcao: visitorRole,
@@ -170,7 +170,7 @@ export default function PublicListaPage() {
             const res = await fetch('/api/lista-presenca/registros', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     lista_id: lista.id,
                     nome_completo: visitorName.trim(),
                     funcao: visitorRole.trim() || null,

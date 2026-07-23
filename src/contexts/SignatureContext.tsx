@@ -110,7 +110,7 @@ export function SignatureProvider({ children }: { children: React.ReactNode }) {
     const registerSignature = useCallback(async (base64: string): Promise<string> => {
         const res = await fetchWithAuth('/api/user/signature', {
             method: 'POST',
-            body: ***REMOVED*** signatureBase64: base64 }),
+            body: JSON.stringify({ signatureBase64: base64 }),
         });
         const data = await res.json();
         if (!data.success) {

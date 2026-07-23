@@ -65,7 +65,7 @@ export default function ReembolsoPage() {
     // Verificar se o email do usuário é o email do administrador ou de um gerente conhecido
     // Lista de emails de administradores e gerentes
     const adminEmails = [
-      '***REMOVED***',
+      (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
       'caio@groupabz.com',
       'caiovaleriogoulartcorreia@gmail.com',
       'admin@groupabz.com',

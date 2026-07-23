@@ -148,7 +148,7 @@ class TokenRefreshManager {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** refreshToken }),
+        body: JSON.stringify({ refreshToken }),
       });
 
       if (!response.ok) {

@@ -7,8 +7,8 @@ async function insertSampleData() {
     console.log('Iniciando inserção de dados de exemplo...');
     
     // Criar cliente Supabase
-    const supabaseUrl = ***REMOVED***;
-    const supabaseKey = ***REMOVED***;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não definidas');
@@ -16,7 +16,7 @@ async function insertSampleData() {
       return;
     }
     
-    const supabase = ***REMOVED*** supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Verificar se já existem funcionários
     console.log('Verificando se já existem funcionários...');

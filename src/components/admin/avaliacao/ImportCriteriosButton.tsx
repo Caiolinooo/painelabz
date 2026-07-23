@@ -34,7 +34,7 @@ export function ImportCriteriosButton() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***})  // Using default file path
+        body: JSON.stringify({})  // Using default file path
       });
 
       const data = await response.json();

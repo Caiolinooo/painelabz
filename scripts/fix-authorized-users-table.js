@@ -4,21 +4,21 @@ const { createClient } = require('@supabase/supabase-js');
 const { Pool } = require('pg');
 
 // Obter variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 const databaseUrl = process.env.DATABASE_URL;
 
 // Verificar se as variáveis de ambiente estão definidas
 if (!supabaseUrl || !supabaseServiceKey || !databaseUrl) {
   console.error('Erro: Variáveis de ambiente não estão configuradas corretamente');
   console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Definido' : 'Não definido');
-  console.error('***REMOVED***:', supabaseServiceKey ? 'Definido' : 'Não definido');
+  console.error('SUPABASE_SERVICE_KEY:', supabaseServiceKey ? 'Definido' : 'Não definido');
   console.error('DATABASE_URL:', databaseUrl ? 'Definido' : 'Não definido');
   process.exit(1);
 }
 
 // Criar cliente Supabase
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Criar pool de conexão PostgreSQL
 const pool = new Pool({

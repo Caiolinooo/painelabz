@@ -242,7 +242,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
       await fetch(`/api/news/${postId}/view`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** userId })
+        body: JSON.stringify({ userId })
       });
       sessionStorage.setItem(sessionKey, 'true');
     } catch (e) {
@@ -343,7 +343,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
     }
 
     const timeout = window.setTimeout(() => {
-      const selectedElement = ***REMOVED***`news-post-${selectedPostId}`);
+      const selectedElement = document.getElementById(`news-post-${selectedPostId}`);
       if (selectedElement) {
         selectedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setHasFocusedSelectedPost(true);
@@ -404,7 +404,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
       const response = await fetch(`/api/news/posts/${postId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** user_id: userId })
+        body: JSON.stringify({ user_id: userId })
       });
 
       const result = await response.json();
@@ -461,7 +461,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({
       handleLike(postId);
 
       // Animação de coração
-      const heartElement = ***REMOVED***`heart-animation-${postId}`);
+      const heartElement = document.getElementById(`heart-animation-${postId}`);
       if (heartElement) {
         heartElement.classList.remove('hidden');
         heartElement.classList.add('animate-ping');

@@ -59,8 +59,8 @@ export async function GET(
     }
 
     // Definir o administrador principal
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
     // Verificar se o usuário é o administrador principal ou tem papel de ADMIN
     const isAdmin = user.role === 'ADMIN' || user.email === adminEmail || user.phone_number === adminPhone;
@@ -177,8 +177,8 @@ export async function PUT(
     }
 
     // Definir o administrador principal
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
     // Verificar se o usuário é o administrador principal ou tem papel de ADMIN
     const isAdmin = user.role === 'ADMIN' || user.email === adminEmail || user.phone_number === adminPhone;
@@ -326,8 +326,8 @@ export async function DELETE(
     }
 
     // Definir o administrador principal
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 
     // Verificar se o usuário é o administrador principal ou tem papel de ADMIN
     const isAdmin = user.role === 'ADMIN' || user.email === adminEmail || user.phone_number === adminPhone;

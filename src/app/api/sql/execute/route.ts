@@ -34,14 +34,14 @@ export async function POST(request: NextRequest) {
     console.log('Executing SQL query:', sql);
 
     // Use the Supabase REST API to execute SQL directly
-    const response = await fetch(`${***REMOVED***}/rest/v1/sql`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/sql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': ***REMOVED*** || '',
-        'Authorization': `Bearer ${***REMOVED*** || ''}`
+        'apikey': process.env.SUPABASE_SERVICE_KEY || '',
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY || ''}`
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         query: sql
       })
     });

@@ -17,7 +17,7 @@ SELECT
   LENGTH(password) as password_length,
   created_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- Passo 2: Gerar hash da senha 'REDACTED_SET_VIA_ENV'
 SELECT 
@@ -47,7 +47,7 @@ INSERT INTO users_unified (
   updated_at
 ) VALUES (
   gen_random_uuid(),
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',
@@ -128,7 +128,7 @@ SELECT
   created_at,
   updated_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- Passo 5: Verificar todos os usuários admin
 SELECT 

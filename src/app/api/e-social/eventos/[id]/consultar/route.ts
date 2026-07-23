@@ -71,7 +71,7 @@ export async function POST(
     await supabaseAdmin.from('esocial_envios_log').insert({
       evento_id: id,
       acao: 'consulta',
-      request_body: ***REMOVED*** protocolo: evento.protocolo_envio }),
+      request_body: JSON.stringify({ protocolo: evento.protocolo_envio }),
       response_body: JSON.stringify(resultado),
       status_code: 200,
       sucesso: resultado.situacao === 'PROCESSADO' || resultado.situacao === 'RECEBIDO',

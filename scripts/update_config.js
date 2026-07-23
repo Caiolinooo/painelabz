@@ -52,7 +52,7 @@ content = content.replace(
 // Replacement 3: handleSaveConfig
 content = content.replace(
   /body: JSON\.stringify\(\{\s*provider,\s*endpoint: endpoint\.trim\(\),\s*api_key: apiKey\.trim\(\),\s*model_default: modelDefault\.trim\(\),\s*max_tokens: maxTokens,\s*temperatura,\s*system_prompt: systemPrompt\.trim\(\),\s*\}\),/g,
-  `body: ***REMOVED***
+  `body: JSON.stringify({
           provider,
           endpoint: endpoint.trim(),
           api_key: apiKey.trim(),

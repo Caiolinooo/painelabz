@@ -175,7 +175,7 @@ export default function ChatPage() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED*** action: 'typing', channelId: selectedChannel.id, isTyping: typing })
+        body: JSON.stringify({ action: 'typing', channelId: selectedChannel.id, isTyping: typing })
       });
     } catch (e) {
       // silencioso
@@ -371,7 +371,7 @@ export default function ChatPage() {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             action: 'heartbeat',
             channelId: selectedChannel?.id
           })
@@ -746,7 +746,7 @@ export default function ChatPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: ***REMOVED*** name, is_public: true })
+        body: JSON.stringify({ name, is_public: true })
       });
       const data = await response.json();
       if (data.success) {

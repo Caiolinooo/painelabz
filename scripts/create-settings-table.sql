@@ -22,7 +22,7 @@ VALUES (
   'Configurações de aprovação de usuários - Bypass ativado para aprovação automática'
 ) ON CONFLICT (key) DO UPDATE SET
   value = EXCLUDED.value,
-  description = ***REMOVED***
+  description = background-color:
   updated_at = NOW();
 
 -- 4. Verificar se a configuração foi criada corretamente

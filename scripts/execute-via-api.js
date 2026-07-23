@@ -4,8 +4,8 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function executeViaAPI() {
   try {
@@ -16,7 +16,7 @@ async function executeViaAPI() {
     console.log('🔧 Executando SQL via API...');
 
     // Criar cliente Supabase para obter token de admin
-    const supabase = ***REMOVED*** supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // SQL para adicionar coluna deleted_at
     const sql1 = 'ALTER TABLE users_unified ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;';
@@ -77,7 +77,7 @@ async function executeViaAPI() {
           'Authorization': `Bearer ${supabaseServiceKey}`,
           'apikey': supabaseServiceKey
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           sql: sql1
         })
       });

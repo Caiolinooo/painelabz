@@ -53,7 +53,7 @@ export default function ESocialRevisaoPage() {
       const res = await fetchWithToken(`/api/e-social/eventos/${eventoId}/revisar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** aprovado: true, comentario }),
+        body: JSON.stringify({ aprovado: true, comentario }),
       });
       if (res.ok) {
         toast.success(t('eSocial.revisao.approved'));
@@ -75,7 +75,7 @@ export default function ESocialRevisaoPage() {
       const res = await fetchWithToken(`/api/e-social/eventos/${eventoId}/revisar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** aprovado: false, comentario }),
+        body: JSON.stringify({ aprovado: false, comentario }),
       });
       if (res.ok) {
         toast.success(t('eSocial.revisao.rejected'));

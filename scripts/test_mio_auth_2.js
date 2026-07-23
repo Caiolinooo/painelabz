@@ -1,8 +1,8 @@
 const https = require('https');
 
-const userEmail = "***REMOVED***";
+const userEmail = "document.getElementById(";
 const userSimple = "caio.correia";
-const pass = "***REMOVED***";
+const pass = "document.getElementById(";
 const host = "mio.app.br";
 
 function request(name, path, authHeader) {

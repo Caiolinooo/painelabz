@@ -9,12 +9,12 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 
 // Configurações
-const SUPABASE_URL = ***REMOVED***;
-const SUPABASE_ANON_KEY = ***REMOVED***;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
-const ADMIN_EMAIL = ***REMOVED*** || '***REMOVED***';
+const ADMIN_EMAIL = ***REMOVED*** || 'document.getElementById(';
 const ADMIN_PHONE = ***REMOVED*** || '+5522997847289';
-const ADMIN_PASSWORD = ***REMOVED*** || '***REMOVED***';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'document.getElementById(';
 const TOKEN_NAME = process.env.NEXT_PUBLIC_TOKEN_NAME || 'token';
 const TOKEN_FILE_NAME = process.env.TOKEN_FILE_NAME || '.token';
 

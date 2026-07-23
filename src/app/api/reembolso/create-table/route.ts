@@ -144,15 +144,15 @@ export async function POST(request: NextRequest) {
       console.log('Creating Reimbursement table structure...');
 
       // Use the REST API to create the table
-      const response = await fetch(`${***REMOVED***}/rest/v1/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${***REMOVED***}`,
-          'apikey': ***REMOVED*** || '',
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
           'X-Client-Info': 'supabase-js/2.0.0',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           cmd: 'project.query',
           query: createTableSQL
         })
@@ -182,15 +182,15 @@ export async function POST(request: NextRequest) {
         USING (true);
       `;
 
-      const rlsResponse = await fetch(`${***REMOVED***}/rest/v1/`, {
+      const rlsResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${***REMOVED***}`,
-          'apikey': ***REMOVED*** || '',
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
           'X-Client-Info': 'supabase-js/2.0.0',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           cmd: 'project.query',
           query: rlsSQL
         })

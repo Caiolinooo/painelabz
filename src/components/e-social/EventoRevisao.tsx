@@ -60,7 +60,7 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
       const response = await fetch('/api/e-social/corrigir-matricula', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           eventId: evento.id,
           matriculaCorreta: matriculaCorreta.trim(),
         }),
@@ -103,7 +103,7 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
       const response = await fetch(`/api/e-social/eventos/${evento.id}/corrigir-campos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** campos: camposPreenchidos })
+        body: JSON.stringify({ campos: camposPreenchidos })
       });
       const data = await response.json();
       setValidationResult(data);

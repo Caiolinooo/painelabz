@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         // Enviar notificação para o administrador
         try {
           await sendAdminNotificationEmail(
-            ***REMOVED*** || '***REMOVED***',
+            process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
             {
               name: `${firstName} ${lastName}`,
               email: email || 'Não informado',
@@ -514,7 +514,7 @@ export async function POST(request: NextRequest) {
     // Enviar notificação para o administrador
     try {
       await sendAdminNotificationEmail(
-        ***REMOVED*** || '***REMOVED***',
+        process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
         {
           name: `${firstName} ${lastName}`,
           email: email || 'Não informado',

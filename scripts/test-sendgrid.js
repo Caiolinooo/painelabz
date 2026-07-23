@@ -38,7 +38,7 @@ async function testSendgrid() {
     // Enviar email usando a API do SendGrid
     const msg = {
       to: testEmail,
-      from: '***REMOVED***', // Usando o e-mail do admin
+      from: 'document.getElementById(', // Usando o e-mail do admin
       subject: 'Teste de Configuração do SendGrid - ABZ Group',
       text: `Seu código de verificação de teste é: ${testCode}. Este é um email de teste para verificar a configuração do SendGrid.`,
       html: `
@@ -47,7 +47,7 @@ async function testSendgrid() {
           <p style="margin-bottom: 20px; text-align: center;">
             Este é um email de teste para verificar a configuração do SendGrid.
           </p>
-          <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
             ${testCode}
           </div>
           <p style="text-align: center;">
@@ -88,7 +88,7 @@ async function testSendgrid() {
 
     // Enviar email de teste
     const info = await transporter.sendMail({
-      from: '***REMOVED***', // Usando o e-mail do admin
+      from: 'document.getElementById(', // Usando o e-mail do admin
       to: testEmail,
       subject: 'Teste de SMTP do SendGrid - ABZ Group',
       text: `Seu código de verificação de teste é: ${testCode}. Este é um email de teste para verificar a configuração SMTP do SendGrid.`,
@@ -98,7 +98,7 @@ async function testSendgrid() {
           <p style="margin-bottom: 20px; text-align: center;">
             Este é um email de teste para verificar a configuração SMTP do SendGrid.
           </p>
-          <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
             ${testCode}
           </div>
           <p style="text-align: center;">

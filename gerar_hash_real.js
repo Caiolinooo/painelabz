@@ -1,7 +1,7 @@
 // Gerar hash a partir de ADMIN_PASSWORD (nunca hardcode senhas neste arquivo)
 const crypto = require('crypto');
 
-const password = ***REMOVED***;
+const password = process.env.ADMIN_PASSWORD || '';
 if (!password) {
   console.error('Defina ADMIN_PASSWORD no ambiente antes de executar este script.');
   process.exit(1);

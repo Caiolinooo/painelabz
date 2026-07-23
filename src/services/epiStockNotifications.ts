@@ -92,7 +92,7 @@ export async function checkAndNotifyLowStock(
                 </tr>
             </table>
             <div style="margin-top: 20px;">
-                <a href="${buildAppUrl('/admin/epi')}" style="***REMOVED*** #0056b3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                <a href="${buildAppUrl('/admin/epi')}" style="background-color: #0056b3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
                     Gerenciar Estoque
                 </a>
             </div>

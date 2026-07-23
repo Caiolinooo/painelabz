@@ -4,16 +4,16 @@ const fs = require('fs');
 const path = require('path');
 
 // Configurações do Supabase
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Erro: NEXT_PUBLIC_SUPABASE_URL e ***REMOVED*** devem estar definidos no arquivo .env');
+  console.error('Erro: NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_KEY devem estar definidos no arquivo .env');
   process.exit(1);
 }
 
 // Criar cliente Supabase com chave de serviço
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Função para criar a configuração de reembolso na API
 async function createReimbursementSettings() {
@@ -35,7 +35,7 @@ async function createReimbursementSettings() {
         'Authorization': `Bearer ${supabaseServiceKey}`,
         'Prefer': 'return=representation'
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         key: 'reimbursement_email_settings',
         value: settings,
         description: 'Configurações de email para solicitações de reembolso'
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Salvar configuração em arquivo
-    fs.writeFileSync(configFile, ***REMOVED*** enableDomainRule, recipients }, null, 2));
+    fs.writeFileSync(configFile, JSON.stringify({ enableDomainRule, recipients }, null, 2));
 
     // Retornar resultado
     return NextResponse.json({

@@ -49,7 +49,7 @@ EMAIL_PASSWORD=${sendgridApiKey}
     console.log('Configuração do SendGrid adicionada com sucesso ao arquivo .env');
     console.log('Configurações adicionadas:');
     console.log('- SENDGRID_API_KEY: ********');
-    console.log('- EMAIL_FROM: ***REMOVED***');
+    console.log('- EMAIL_FROM: document.getElementById(');
     console.log('- EMAIL_HOST: smtp.sendgrid.net');
     console.log('- EMAIL_PORT: 587');
     console.log('- EMAIL_SECURE: false');

@@ -359,7 +359,7 @@ export default function ImportUsers() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('abzToken')}`
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             emails,
             phones
           })
@@ -560,7 +560,7 @@ export default function ImportUsers() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('abzToken')}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           users: data,
           sendInvites: importOptions.sendEmailInvites,
           sendSMS: importOptions.sendSMSInvites,

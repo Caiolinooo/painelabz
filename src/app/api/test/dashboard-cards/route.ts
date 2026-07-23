@@ -10,7 +10,7 @@ export async function GET() {
     const testUserData = {
       userId: 'test-user-id',
       userRole: 'admin',
-      userEmail: '***REMOVED***',
+      userEmail: (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
       userPhone: '+5522997847289'
     };
 

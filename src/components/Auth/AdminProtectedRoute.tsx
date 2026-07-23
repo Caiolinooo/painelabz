@@ -29,8 +29,8 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   // Verificar se o usuário deveria ser administrador
-  const adminEmail = ***REMOVED*** || '***REMOVED***';
-  const adminPhone = ***REMOVED*** || '+5522997847289';
+  const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
   const shouldBeAdmin = user?.email === adminEmail || (user as any)?.phone_number === adminPhone;
 
   // Forçar acesso de administrador para o usuário principal (mesmo em produção)

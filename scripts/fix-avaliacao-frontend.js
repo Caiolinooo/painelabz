@@ -8,8 +8,8 @@
 // Função para verificar se a tabela avaliacoes existe
 async function checkAvaliacoesTable() {
   try {
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não definidas');
@@ -33,8 +33,8 @@ async function checkAvaliacoesTable() {
 // Função para verificar se a tabela avaliacoes_desempenho existe
 async function checkAvaliacoesDesempenhoTable() {
   try {
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não definidas');
@@ -58,8 +58,8 @@ async function checkAvaliacoesDesempenhoTable() {
 // Função para verificar se a view vw_avaliacoes_desempenho existe
 async function checkAvaliacoesView() {
   try {
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não definidas');
@@ -83,8 +83,8 @@ async function checkAvaliacoesView() {
 // Função para verificar se a tabela funcionarios existe e tem os campos corretos
 async function checkFuncionariosTable() {
   try {
-    const supabaseUrl = ***REMOVED*** || '';
-    const supabaseKey = ***REMOVED*** || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não definidas');

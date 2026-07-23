@@ -93,7 +93,7 @@ export default function StockManagement() {
             const res = await fetch('/api/epi/stock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED*** action: 'initialize' }),
+                body: JSON.stringify({ action: 'initialize' }),
             });
             if (res.ok) {
                 const d = await res.json();
@@ -138,7 +138,7 @@ export default function StockManagement() {
             const res = await fetch('/api/epi/stock', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     id: selectedStock.id,
                     minimum_quantity: configForm.minimum_quantity,
                     location: configForm.location,

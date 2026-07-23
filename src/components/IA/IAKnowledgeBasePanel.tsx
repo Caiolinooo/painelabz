@@ -63,7 +63,7 @@ export default function IAKnowledgeBasePanel({ token }: { token: string }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: ***REMOVED*** ...newEntry, action: 'add' }),
+        body: JSON.stringify({ ...newEntry, action: 'add' }),
       });
       
       if (res.ok) {

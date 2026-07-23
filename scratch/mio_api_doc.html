@@ -638,8 +638,8 @@ Esta API utiliza autenticação baseada em JSON Web Token (JWT). Para acessar os
 	// Ajusta o bottom do footer conforme sidebar aberta/fechada
 	document.addEventListener('DOMContentLoaded', function() {
 		function adjustFooter() {
-			var sidebar = ***REMOVED***'sidebar');
-			var footer = ***REMOVED***'sidebar-footer');
+			var sidebar = document.getElementById('sidebar');
+			var footer = document.getElementById('sidebar-footer');
 			if (sidebar && footer) {
 				if (sidebar.classList.contains('active')) {
 					footer.style.bottom = '10px';
@@ -651,7 +651,7 @@ Esta API utiliza autenticação baseada em JSON Web Token (JWT). Para acessar os
 		adjustFooter();
 		// Se você tem um evento para abrir/fechar sidebar, adicione aqui:
 		var observer = new MutationObserver(adjustFooter);
-		var sidebar = ***REMOVED***'sidebar');
+		var sidebar = document.getElementById('sidebar');
 		if (sidebar) {
 			observer.observe(sidebar, {
 				attributes: true,
@@ -668,30 +668,30 @@ Esta API utiliza autenticação baseada em JSON Web Token (JWT). Para acessar os
             var baseUrlOptions = [{"label":"Base Environment","baseUrl":"https://mio.app.br/api/v1"},{"label":"Produção","baseUrl":"https://mio.app.br/api/v1"}];
             var defaultBaseUrl = "https://mio.app.br/api/v1";
 
-            var treeRoot = ***REMOVED***'treeRoot');
-            var searchInput = ***REMOVED***'searchInput');
-            var expandAllBtn = ***REMOVED***'expandAllBtn');
-            var collapseAllBtn = ***REMOVED***'collapseAllBtn');
-            var baseUrlSelect = ***REMOVED***'baseUrlSelect');
-            var homeLogoBtn = ***REMOVED***'homeLogoBtn');
+            var treeRoot = document.getElementById('treeRoot');
+            var searchInput = document.getElementById('searchInput');
+            var expandAllBtn = document.getElementById('expandAllBtn');
+            var collapseAllBtn = document.getElementById('collapseAllBtn');
+            var baseUrlSelect = document.getElementById('baseUrlSelect');
+            var homeLogoBtn = document.getElementById('homeLogoBtn');
             var docsSidebar = document.querySelector('.docs-sidebar');
             var docsLayout = document.querySelector('.docs-layout');
-            var sidebarResizer = ***REMOVED***'sidebarResizer');
+            var sidebarResizer = document.getElementById('sidebarResizer');
 
-            var endpointPanel = ***REMOVED***'endpointPanel');
-            var homeState = ***REMOVED***'homeState');
+            var endpointPanel = document.getElementById('endpointPanel');
+            var homeState = document.getElementById('homeState');
 
             if (!treeRoot || !searchInput || !expandAllBtn || !collapseAllBtn || !endpointPanel || !homeState) {
                 return;
             }
 
-            var endpointName = ***REMOVED***'endpointName');
-            var endpointMetaLine = ***REMOVED***'endpointMetaLine');
-            var endpointUrlText = ***REMOVED***'endpointUrlText');
-            var breadcrumbNav = ***REMOVED***'breadcrumbNav');
-            var endpointContent = ***REMOVED***'endpointContent');
-            var copyUrlBtn = ***REMOVED***'copyUrlBtn');
-            var runInInsomniaBtn = ***REMOVED***'runInInsomniaBtn');
+            var endpointName = document.getElementById('endpointName');
+            var endpointMetaLine = document.getElementById('endpointMetaLine');
+            var endpointUrlText = document.getElementById('endpointUrlText');
+            var breadcrumbNav = document.getElementById('breadcrumbNav');
+            var endpointContent = document.getElementById('endpointContent');
+            var copyUrlBtn = document.getElementById('copyUrlBtn');
+            var runInInsomniaBtn = document.getElementById('runInInsomniaBtn');
 
             var activeEndpointId = null;
             var selectedBaseUrl = '';
@@ -1005,8 +1005,8 @@ Esta API utiliza autenticação baseada em JSON Web Token (JWT). Para acessar os
             }
 
             function bindBodyCopyButton() {
-                var copyBodyBtn = ***REMOVED***'copyBodyBtn');
-                var bodyJsonContent = ***REMOVED***'bodyJsonContent');
+                var copyBodyBtn = document.getElementById('copyBodyBtn');
+                var bodyJsonContent = document.getElementById('bodyJsonContent');
 
                 if (!copyBodyBtn || !bodyJsonContent) {
                     return;
@@ -1340,9 +1340,9 @@ Esta API utiliza autenticação baseada em JSON Web Token (JWT). Para acessar os
             }
 
             function bindCodeExamplesSection(endpoint, resolvedUrl) {
-                var langSelect = ***REMOVED***'codeLangSelect');
-                var snippetContent = ***REMOVED***'codeSnippetContent');
-                var copyCodeSnippetBtn = ***REMOVED***'copyCodeSnippetBtn');
+                var langSelect = document.getElementById('codeLangSelect');
+                var snippetContent = document.getElementById('codeSnippetContent');
+                var copyCodeSnippetBtn = document.getElementById('copyCodeSnippetBtn');
 
                 if (!langSelect || !snippetContent || !copyCodeSnippetBtn) {
                     return;

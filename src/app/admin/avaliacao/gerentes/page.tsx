@@ -107,7 +107,7 @@ export default function GerentesLideresPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** colaborador_id, gerente_id }),
+        body: JSON.stringify({ colaborador_id, gerente_id }),
       });
 
       const data = await response.json();

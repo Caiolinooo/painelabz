@@ -27,7 +27,7 @@ export default function AutomatedDashboard({ className = '' }: AutomatedDashboar
   const handleCardClick = (card: any, href: string, external: boolean) => {
     // Track the module access before navigation
     try {
-      const trackingData = ***REMOVED***
+      const trackingData = JSON.stringify({
         module_id: card.id,
         module_name: card.title,
         module_href: href,

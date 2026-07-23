@@ -10,8 +10,8 @@ const { v4: uuidv4 } = require('uuid');
 
 // Obter configurações do arquivo .env
 const JWT_SECRET = process.env.JWT_SECRET;
-const ADMIN_EMAIL = ***REMOVED*** || '***REMOVED***';
-const ADMIN_PHONE_NUMBER = ***REMOVED*** || '+5522997847289';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
+const ADMIN_PHONE_NUMBER = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 const ADMIN_FIRST_NAME = process.env.ADMIN_FIRST_NAME || 'Caio';
 const ADMIN_LAST_NAME = process.env.ADMIN_LAST_NAME || 'Correia';
 
@@ -68,7 +68,7 @@ const htmlContent = `
       padding: 20px;
     }
     .token-container {
-      ***REMOVED*** #f5f5f5;
+      background-color: #f5f5f5;
       border: 1px solid #ddd;
       border-radius: 5px;
       padding: 15px;
@@ -80,7 +80,7 @@ const htmlContent = `
       font-weight: bold;
     }
     .button {
-      ***REMOVED*** #0066cc;
+      background-color: #0066cc;
       color: white;
       border: none;
       padding: 10px 15px;
@@ -117,19 +117,19 @@ const htmlContent = `
 
   <div id="message"></div>
 
-  <div id="***REMOVED***" style="margin-top: 20px;"></div>
+  <div id="verification-result" style="margin-top: 20px;"></div>
 
   <script>
     function copyToken() {
-      const tokenElement = ***REMOVED***'token');
-      const range = ***REMOVED***;
+      const tokenElement = document.getElementById('token');
+      const range = document.createRange();
       range.selectNode(tokenElement);
       window.getSelection().removeAllRanges();
       window.getSelection().addRange(range);
       document.execCommand('copy');
       window.getSelection().removeAllRanges();
 
-      const message = ***REMOVED***'message');
+      const message = document.getElementById('message');
       message.innerHTML = '<p class="success">Token copiado para a área de transferência!</p>';
       setTimeout(() => {
         message.innerHTML = '';
@@ -137,10 +137,10 @@ const htmlContent = `
     }
 
     function saveToLocalStorage() {
-      const token = ***REMOVED***'token').textContent;
+      const token = document.getElementById('token').textContent;
       localStorage.setItem('token', token);
 
-      const message = ***REMOVED***'message');
+      const message = document.getElementById('message');
       message.innerHTML = '<p class="success">Token salvo no localStorage!</p>';
       setTimeout(() => {
         message.innerHTML = '';
@@ -148,8 +148,8 @@ const htmlContent = `
     }
 
     async function verifyToken() {
-      const token = ***REMOVED***'token').textContent;
-      const resultElement = ***REMOVED***'***REMOVED***');
+      const token = document.getElementById('token').textContent;
+      const resultElement = document.getElementById('verification-result');
 
       resultElement.innerHTML = '<p>Verificando token...</p>';
 
@@ -159,7 +159,7 @@ const htmlContent = `
           headers: {
             'Content-Type': 'application/json'
           },
-          body: ***REMOVED*** token })
+          body: JSON.stringify({ token })
         });
 
         const data = await response.json();
@@ -167,14 +167,14 @@ const htmlContent = `
         if (data.valid) {
           resultElement.innerHTML = \`
             <h3 style="color: green;">Token Válido!</h3>
-            <div style="***REMOVED*** #f0f8f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
+            <div style="background-color: #f0f8f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
               <pre style="white-space: pre-wrap;">\${JSON.stringify(data.decoded, null, 2)}</pre>
             </div>
           \`;
         } else {
           resultElement.innerHTML = \`
             <h3 style="color: red;">Token Inválido</h3>
-            <div style="***REMOVED*** #f8f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
+            <div style="background-color: #f8f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
               <p><strong>Erro:</strong> \${data.error}</p>
               \${data.details ? \`<p><strong>Detalhes:</strong> \${data.details}</p>\` : ''}
             </div>
@@ -183,7 +183,7 @@ const htmlContent = `
       } catch (error) {
         resultElement.innerHTML = \`
           <h3 style="color: red;">Erro ao verificar token</h3>
-          <div style="***REMOVED*** #f8f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
+          <div style="background-color: #f8f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
             <p>\${error.message || 'Erro desconhecido'}</p>
           </div>
         \`;

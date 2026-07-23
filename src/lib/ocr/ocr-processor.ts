@@ -159,7 +159,7 @@ async function obterConteudoArquivo(arquivoUrl: string): Promise<{ buffer: Buffe
   if (arquivoUrl.startsWith('http://') || arquivoUrl.startsWith('https://')) {
     const headers: Record<string, string> = {};
     if (arquivoUrl.includes('supabase.co/storage/')) {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
       if (serviceKey) {
         headers['Authorization'] = `Bearer ${serviceKey}`;
       }
@@ -392,7 +392,7 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${config.api_key}`,
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           model: config.model_default,
           messages,
           max_tokens: config.max_tokens || 4096,
@@ -809,7 +809,7 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${config.api_key}`,
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         model: config.model_default,
         messages,
         max_tokens: config.max_tokens || 4096,
@@ -913,7 +913,7 @@ Retorne APENAS o texto extraído, sem explicações, sem formatação markdown.`
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${config.api_key}`,
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           model: config.model_default,
           messages,
           max_tokens: config.max_tokens || 4096,
@@ -992,7 +992,7 @@ export async function processarDocumentoOCR(
             'Content-Type': 'application/json',
             ...(config.fallback_api_key ? { 'Authorization': `Bearer ${config.fallback_api_key}` } : {}),
           },
-          body: ***REMOVED*** imageUrl: arquivoUrl }),
+          body: JSON.stringify({ imageUrl: arquivoUrl }),
         });
         if (response.ok) {
           const extData = await response.json();

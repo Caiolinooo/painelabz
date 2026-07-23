@@ -55,8 +55,8 @@ export default function ProtectedRoute({
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   // Verificar se o usuário deveria ser administrador
-  const adminEmail = ***REMOVED*** || '***REMOVED***';
-  const adminPhone = ***REMOVED*** || '+5522997847289';
+  const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
   const shouldBeAdmin = user?.email === adminEmail || (user as any)?.phone_number === adminPhone;
 
   // Forçar acesso de administrador para o usuário principal (mesmo em produção)
@@ -85,8 +85,8 @@ export default function ProtectedRoute({
       isAvaliacaoRoute,
       pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
       isDevelopment,
-      adminEmail: ***REMOVED*** || '***REMOVED***',
-      adminPhone: ***REMOVED*** || '+5522997847289'
+      adminEmail: process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
+      adminPhone: process.env.ADMIN_PHONE_NUMBER || '+5522997847289'
     });
 
     // Log detalhado para depuração de permissões
@@ -262,7 +262,7 @@ export default function ProtectedRoute({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           userId: user?.id,
           email: user?.email,
           phoneNumber: (user as any)?.phone_number

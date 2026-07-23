@@ -205,7 +205,7 @@ export default function MetricsDashboard() {
                                     Monitore as dúvidas frequentes para identificar falhas na comunicação.
                                 </p>
                                 <button
-                                    onClick={() => ***REMOVED***'faq-section')?.scrollIntoView({ behavior: 'smooth' })}
+                                    onClick={() => document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth' })}
                                     className="self-start text-sm font-bold text-green-600 hover:text-green-700 hover:underline flex items-center"
                                 >
                                     <FiPlus className="mr-1" /> Novo Relatório

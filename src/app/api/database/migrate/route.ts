@@ -5,14 +5,14 @@ export const dynamic = 'force-dynamic';
 
 // Função para obter o cliente Supabase de forma lazy
 function getSupabaseAdmin() {
-  const supabaseUrl = ***REMOVED***;
-  const supabaseServiceKey = ***REMOVED***;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Supabase credentials are not configured');
   }
 
-  return ***REMOVED*** supabaseServiceKey);
+  return createClient(supabaseUrl, supabaseServiceKey);
 }
 
 export async function POST(request: NextRequest) {

@@ -257,7 +257,7 @@ const ServerUserReimbursementSettings: React.FC<ServerUserReimbursementSettingsP
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             userId,
             email: email || user?.email,
             enabled,
@@ -307,7 +307,7 @@ const ServerUserReimbursementSettings: React.FC<ServerUserReimbursementSettingsP
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: ***REMOVED***
+                  body: JSON.stringify({
                     userId,
                     email: email || user?.email,
                     enabled,
@@ -349,7 +349,7 @@ const ServerUserReimbursementSettings: React.FC<ServerUserReimbursementSettingsP
           headers: {
             'Content-Type': 'application/json',
           },
-          body: ***REMOVED***
+          body: JSON.stringify({
             userId,
             email: email || user?.email,
             enabled,

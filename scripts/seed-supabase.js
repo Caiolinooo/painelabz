@@ -14,8 +14,8 @@ const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require('uuid');
 
 // Configurações
-const SUPABASE_URL = ***REMOVED***;
-const ***REMOVED*** = ***REMOVED***;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const ***REMOVED*** = process.env.ADMIN_PASSWORD;
 
 // Verificar se as variáveis de ambiente estão configuradas
 if (!SUPABASE_URL || !***REMOVED***) {
@@ -28,7 +28,7 @@ const supabase = createClient(SUPABASE_URL, ***REMOVED***);
 
 // Dados para popular o banco
 const adminUser = {
-  email: ***REMOVED*** || '***REMOVED***',
+  email: ***REMOVED*** || 'document.getElementById(',
   first_name: process.env.ADMIN_FIRST_NAME || 'Caio',
   last_name: process.env.ADMIN_LAST_NAME || 'Correia',
   phone_number: ***REMOVED*** || '+5522997847289',
@@ -228,7 +228,7 @@ async function createAdminUser() {
   // Criar usuário na autenticação do Supabase
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email: adminUser.email,
-    password: ***REMOVED*** || '***REMOVED***',
+    password: ***REMOVED*** || 'document.getElementById(',
     email_confirm: true,
     user_metadata: {
       first_name: adminUser.first_name,

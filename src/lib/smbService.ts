@@ -12,7 +12,7 @@ const IV_LENGTH = 16;
 const TAG_LENGTH = 16;
 
 function getEncryptionKey(): Buffer {
-    const key = process.env.SMB_ENCRYPTION_KEY || ***REMOVED*** || 'default-smb-key-change-me-asap!';
+    const key = process.env.SMB_ENCRYPTION_KEY || process.env.NEXT_PUBLIC_SUPABASE_URL || 'default-smb-key-change-me-asap!';
     // Derive a 32-byte key
     return crypto.createHash('sha256').update(key).digest();
 }

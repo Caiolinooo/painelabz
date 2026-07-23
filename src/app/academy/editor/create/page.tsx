@@ -187,7 +187,7 @@ const CreateCoursePage: React.FC = () => {
     try {
       const response = await fetchWithAuth('/api/academy/courses', {
         method: 'POST',
-        body: ***REMOVED***
+        body: JSON.stringify({
           ...formData,
           instructor_id: user?.id,
           instructor_signature_url: signatureUrl

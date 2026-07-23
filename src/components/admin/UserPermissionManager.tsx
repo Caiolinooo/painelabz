@@ -69,7 +69,7 @@ const UserPermissionManager: React.FC<UserPermissionManagerProps> = ({
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     accessPermissions: {
                         modules: permissions,
                         features: currentPermissions?.features || {}

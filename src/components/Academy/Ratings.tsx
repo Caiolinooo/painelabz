@@ -107,7 +107,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           course_id: courseId,
           rating: userRating,
           review: userReview.trim() || null
@@ -146,7 +146,7 @@ const Ratings: React.FC<RatingsProps> = ({ courseId, isEnrolled = false, classNa
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           rating_id: ratingId,
           rating: editRating,
           review: editReview.trim() || null

@@ -5,15 +5,15 @@ const { createClient } = require('@supabase/supabase-js');
 const xlsx = require('xlsx');
 const fs = require('fs');
 
-const SUPABASE_URL = ***REMOVED***;
-const ***REMOVED*** = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL || !***REMOVED***) {
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     console.error('Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env.local');
     process.exit(1);
 }
 
-const supabaseAdmin = createClient(SUPABASE_URL, ***REMOVED***, {
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: {
         autoRefreshToken: false,
         persistSession: false

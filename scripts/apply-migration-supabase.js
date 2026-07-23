@@ -8,15 +8,15 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Configuração do cliente Supabase
-const supabaseUrl = ***REMOVED***;
-const supabaseKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Erro: Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e ***REMOVED*** são necessárias');
+  console.error('Erro: Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_KEY são necessárias');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function applyMigration() {
   try {
@@ -76,7 +76,7 @@ async function applyMigration() {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           sql: 'ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "descriptionEn" TEXT'
         })
       });
@@ -98,7 +98,7 @@ async function applyMigration() {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           sql: 'UPDATE "Card" SET "descriptionEn" = \'\' WHERE "descriptionEn" IS NULL'
         })
       });

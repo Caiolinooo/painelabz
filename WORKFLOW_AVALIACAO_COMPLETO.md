@@ -237,7 +237,7 @@ const approveEvaluation = async (avaliacaoId: string, comentario: string) => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: ***REMOVED***
+      body: background-color:
         comentario_avaliador: comentario
       })
     }

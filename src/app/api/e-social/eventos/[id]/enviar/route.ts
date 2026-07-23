@@ -134,7 +134,7 @@ export async function POST(
         await logEnvio({
           evento_id: evento.id,
           acao: 'geracao_xml',
-          request_body: ***REMOVED***
+          request_body: JSON.stringify({
             correcoesAplicadas: gatewayResult.correcoesAplicadas,
             acao_interna: 'gateway_pre_envio',
           }),
@@ -173,7 +173,7 @@ export async function POST(
     await supabaseAdmin.from('esocial_envios_log').insert({
       evento_id: id,
       acao: 'envio',
-      request_body: ***REMOVED***
+      request_body: JSON.stringify({
         certificado: certificado.nome,
         acao_interna: 'envio_iniciado',
         status_antes: statusAntes,
@@ -208,7 +208,7 @@ export async function POST(
       await supabaseAdmin.from('esocial_envios_log').insert({
         evento_id: id,
         acao: 'envio',
-        request_body: ***REMOVED***
+        request_body: JSON.stringify({
           protocolo: result.protocolo,
           recibo: result.numeroRecibo,
           acao_interna: 'envio_sucesso',
@@ -244,7 +244,7 @@ export async function POST(
     await supabaseAdmin.from('esocial_envios_log').insert({
       evento_id: id,
       acao: 'envio',
-      request_body: ***REMOVED*** erro: erroMsg, acao_interna: 'envio_erro' }),
+      request_body: JSON.stringify({ erro: erroMsg, acao_interna: 'envio_erro' }),
       response_body: erroMsg,
       status_code: 500,
       sucesso: false,
@@ -265,7 +265,7 @@ export async function POST(
       await supabaseAdmin.from('esocial_envios_log').insert({
         evento_id: id,
         acao: 'envio',
-        request_body: ***REMOVED*** acao_interna: 'envio_erro_critico' }),
+        request_body: JSON.stringify({ acao_interna: 'envio_erro_critico' }),
         response_body: error instanceof Error ? error.message : 'Erro interno',
         status_code: 500,
         sucesso: false,

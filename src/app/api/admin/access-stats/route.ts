@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
         .single();
 
       // Verificar se o usuário é o administrador principal
-      const adminEmail = ***REMOVED*** || '***REMOVED***';
-      const adminPhone = ***REMOVED*** || '+5522997847289';
+      const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+      const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
       const isMainAdmin = requestingUser?.email === adminEmail || requestingUser?.phone_number === adminPhone;
 
       if (userError || !requestingUser || (requestingUser.role !== 'ADMIN' && !isMainAdmin)) {

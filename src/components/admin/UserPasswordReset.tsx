@@ -60,7 +60,7 @@ const UserPasswordReset: React.FC<UserPasswordResetProps> = ({ userId, userName,
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED*** password })
+        body: JSON.stringify({ password })
       });
 
       if (!response.ok) {

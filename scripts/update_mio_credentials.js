@@ -16,13 +16,13 @@ console.log(`Pass: ${password}`);
 
 // Atualizar .env.local
 const envPath = path.join(__dirname, '..', '.env.local');
-let envContent = ***REMOVED*** 'utf8');
+let envContent = fs.readFileSync(envPath, 'utf8');
 
 // Regex seguro para substituir ou adicionar
 function updateEnv(key, value) {
     const regex = new RegExp(`^${key}=.*`, 'm');
     if (regex.test(envContent)) {
-        envContent = ***REMOVED*** `${key}="${value}"`);
+        envContent = envContent.replace(regex, `${key}="${value}"`);
     } else {
         envContent += `\n${key}="${value}"`;
     }

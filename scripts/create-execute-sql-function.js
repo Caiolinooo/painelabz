@@ -7,16 +7,16 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Get environment variables
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Error: NEXT_PUBLIC_SUPABASE_URL and ***REMOVED*** must be defined in the .env file');
+  console.error('Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY must be defined in the .env file');
   process.exit(1);
 }
 
 // Create Supabase client
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function createExecuteSqlFunction() {
   try {
@@ -69,7 +69,7 @@ async function createExecuteSqlFunction() {
           'apikey': supabaseServiceKey,
           'Authorization': `Bearer ${supabaseServiceKey}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           sql: createFunctionSQL
         })
       });

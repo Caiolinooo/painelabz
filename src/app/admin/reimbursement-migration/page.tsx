@@ -58,7 +58,7 @@ export default function ReimbursementMigrationPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: ***REMOVED*** force }),
+        body: JSON.stringify({ force }),
       });
 
       const data = await response.json();

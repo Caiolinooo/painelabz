@@ -10,7 +10,7 @@ async function sendVerificationEmail(email, code) {
     port: parseInt(process.env.EMAIL_PORT || '465'),
     secure: process.env.EMAIL_SECURE === 'true',
     auth: {
-      user: process.env.EMAIL_USER || '***REMOVED***',
+      user: process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
       pass: process.env.EMAIL_PASSWORD
     },
     // Configurações para melhorar a entregabilidade
@@ -61,13 +61,13 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <title>Código de Verificação - ABZ Group</title>
       </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; ***REMOVED*** #f9f9f9;">
+      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; background-color: #f9f9f9;">
         <!-- Wrapper para compatibilidade com clientes de email -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f9f9f9;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f9f9f9;">
           <tr>
             <td align="center" style="padding: 20px 0;">
               <!-- Container principal -->
-              <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
+              <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
                 <!-- Cabeçalho com logo -->
                 <tr>
                   <td align="center" style="padding: 30px 20px;">
@@ -85,7 +85,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
                 <!-- Código de verificação -->
                 <tr>
                   <td align="center" style="padding: 0 20px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f5f5f5; border-radius: 5px; margin: 20px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5; border-radius: 5px; margin: 20px 0;">
                       <tr>
                         <td align="center" style="padding: 20px; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333333;">
                           ${code}

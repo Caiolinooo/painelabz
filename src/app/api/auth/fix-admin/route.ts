@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
     console.log('Tentando corrigir permissões de administrador para:', { userId, email, phoneNumber });
 
     // Verificar se o usuário é o administrador principal
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const isMainAdmin = email === adminEmail || phoneNumber === adminPhone;
 
     if (!isMainAdmin) {

@@ -140,7 +140,7 @@ export default function FileExplorer({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           path: getFullPath(currentPath),
           folderName: newFolderName.trim(),
         }),

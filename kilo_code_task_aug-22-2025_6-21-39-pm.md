@@ -9,7 +9,7 @@ Here are the secrets we found:
 
 ADMIN_FIRST_NAME
 ADMIN_LAST_NAME
-***REMOVED***
+background-color:
 EMAIL_USER
 NEXT_PUBLIC_SUPABASE_URL
 JWT_SECRET
@@ -28,7 +28,7 @@ Here are the secrets we found:
 
 ADMIN_FIRST_NAME
 ADMIN_LAST_NAME
-***REMOVED***
+background-color:
 EMAIL_USER
 NEXT_PUBLIC_SUPABASE_URL
 JWT_SECRET
@@ -2296,8 +2296,8 @@ Several client-side components (`.tsx` files) are directly using sensitive envir
 
 ```typescript
 // In src/app/avaliacao/direct-access.tsx and similar files
-const supabaseUrl = ***REMOVED*** || '';
-const supabaseKey = ***REMOVED*** || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 ```
 
 While `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are appropriately prefixed for client exposure, there are instances where sensitive variables like `***REMOVED***` might be inadvertently used in client-side code.
@@ -2308,7 +2308,7 @@ In several files, I found references to server-side environment variables in cli
 
 ```typescript
 // In src/lib/supabase.ts
-const supabaseServiceKey = ***REMOVED*** || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 ```
 
 This is problematic because `***REMOVED***` is a server-side secret that should never be exposed to the client. When this variable is referenced in client-side code, it gets bundled into the build output.
@@ -2317,7 +2317,7 @@ This is problematic because `***REMOVED***` is a server-side secret that should 
 
 Email credentials are stored in the environment files:
 ```
-EMAIL_USER=***REMOVED***
+EMAIL_USER=background-color:
 EMAIL_PASSWORD=***REMOVED***
 ```
 
@@ -2336,8 +2336,8 @@ This URL contains username and password information that should never be exposed
 
 Admin credentials are stored directly in environment files:
 ```
-ADMIN_EMAIL=***REMOVED***
-ADMIN_PASSWORD=***REMOVED***
+ADMIN_EMAIL=background-color:
+ADMIN_PASSWORD=background-color:
 ADMIN_PHONE_NUMBER=+5522997847289
 ADMIN_FIRST_NAME=Caio
 ADMIN_LAST_NAME=Correia
@@ -2373,8 +2373,8 @@ Instead of using sensitive variables directly in client components, create API r
 // /api/supabase-proxy
 export async function supabaseProxy(request) {
   const supabase = createClient(
-    ***REMOVED***!,
-    ***REMOVED***!
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
   // Handle operations server-side
 }
@@ -3175,7 +3175,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   // This is safe because it's in an API route (server-side)
-  const serviceKey = ***REMOVED***;
+  const serviceKey = process.env.ADMIN_PASSWORD;
   
   // Process login...
 }

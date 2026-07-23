@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     // Obter credenciais do ambiente
-    const supabaseUrl = ***REMOVED***;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json(
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar cliente admin
-    const supabaseAdmin = ***REMOVED*** supabaseServiceKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false

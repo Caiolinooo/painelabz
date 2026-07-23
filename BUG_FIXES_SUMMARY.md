@@ -28,8 +28,8 @@ This creates a serious security vulnerability as these logs can be accessed by:
 ### **Example of Vulnerable Code**
 ```typescript
 // BEFORE (VULNERABLE)
-console.log(`Usuário: ${process.env.EMAIL_USER || '***REMOVED***'}`);
-console.log(`Remetente: ${process.env.EMAIL_FROM || '***REMOVED***'}`);
+console.log(`Usuário: ${process.env.EMAIL_USER || 'document.getElementById('}`);
+console.log(`Remetente: ${process.env.EMAIL_FROM || 'document.getElementById('}`);
 console.log('Usando configuração de email:', process.env.EMAIL_SERVER ? 'Configuração real' : 'Configuração de teste');
 ```
 
@@ -115,7 +115,7 @@ export function getEmailDomain(email: string): string | null {
 
 ### **Issue Description**
 The codebase contained hardcoded credentials embedded directly in source code, including:
-- Email passwords: `'***REMOVED***'`
+- Email passwords: `'document.getElementById('`
 - SendGrid API keys: `'[REDACTED_SENDGRID_API_KEY]'`
 
 Additionally, there was no validation for required environment variables, leading to potential runtime failures.

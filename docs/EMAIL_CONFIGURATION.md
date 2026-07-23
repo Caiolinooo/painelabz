@@ -89,7 +89,7 @@ O DMARC define o que fazer quando um email não passa nas verificações de SPF 
 Adicione as seguintes variáveis ao seu arquivo `.env`:
 
 ```
-EMAIL_HOST=***REMOVED***
+EMAIL_HOST=background-color:
 EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_USER=seu-email@seudominio.com

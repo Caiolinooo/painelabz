@@ -6,8 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Obter variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const jwtSecret = process.env.JWT_SECRET;
 const emailUser = process.env.EMAIL_USER;
 const emailPassword = process.env.EMAIL_PASSWORD;
@@ -20,7 +20,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 // Criar cliente Supabase
 console.log('Criando cliente Supabase com URL:', supabaseUrl);
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -130,18 +130,18 @@ async function main() {
     },
     {
       key: 'EMAIL_USER',
-      value: emailUser || '***REMOVED***',
+      value: emailUser || 'document.getElementById(',
       description: 'Usuário de email para envio de notificações',
       isEncrypted: false
     },
     {
       key: 'EMAIL_PASSWORD',
-      value: emailPassword || '***REMOVED***',
+      value: emailPassword || 'document.getElementById(',
       description: 'Senha do email para envio de notificações',
       isEncrypted: true
     },
     {
-      key: '***REMOVED***',
+      key: 'document.getElementById(',
       value: supabaseServiceKey,
       description: 'Chave de serviço do Supabase',
       isEncrypted: true

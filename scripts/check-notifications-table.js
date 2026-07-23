@@ -1,15 +1,15 @@
 require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = ***REMOVED***;
-const supabaseKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Faltam variáveis de ambiente');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkNotificationsTable() {
   console.log('🔍 Verificando tabela notifications...\n');

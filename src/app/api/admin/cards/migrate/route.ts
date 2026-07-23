@@ -146,8 +146,8 @@ export async function POST(request: NextRequest) {
                     console.log('Tentando criar tabela usando método alternativo...');
 
                     // Usar o método de API REST diretamente
-                    const supabaseUrl = ***REMOVED***;
-                    const supabaseKey = ***REMOVED*** || ***REMOVED***;
+                    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
                     if (!supabaseUrl || !supabaseKey) {
                       throw new Error('Variáveis de ambiente do Supabase não configuradas');

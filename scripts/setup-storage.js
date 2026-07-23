@@ -11,7 +11,7 @@ async function setupStorage() {
     console.log('Configurando buckets de armazenamento...');
     
     // Obter o token de serviço do Supabase
-    const supabaseKey = ***REMOVED***;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     if (!supabaseKey) {
       console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY não encontrada no arquivo .env');

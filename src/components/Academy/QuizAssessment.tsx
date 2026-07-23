@@ -78,7 +78,7 @@ export default function QuizAssessment({ courseId, enrollmentId, onComplete }: Q
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     course_id: courseId,
                     enrollment_id: enrollmentId,
                     answers: Object.values(answers)

@@ -305,7 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED*** email, inviteCode }),
+        body: JSON.stringify({ email, inviteCode }),
       });
 
       console.log('Resposta do servidor para iniciar login:', {
@@ -476,7 +476,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           verificationCode: code,
           email,
           inviteCode
@@ -572,7 +572,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: ***REMOVED*** password }),
+        body: JSON.stringify({ password }),
       });
 
       if (response.ok) {
@@ -605,7 +605,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: ***REMOVED*** password }),
+        body: JSON.stringify({ password }),
       });
 
       if (response.ok) {
@@ -710,7 +710,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Verificar papéis do usuário
   const isAdmin = useMemo(() => {
     // Verificar se o usuário é o administrador principal
-    const adminEmail = '***REMOVED***';
+    const adminEmail = (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
     const isMainAdmin = user?.email === adminEmail;
 
     // Verificar se o usuário tem permissão de admin nas permissões de acesso

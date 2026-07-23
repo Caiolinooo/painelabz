@@ -3,12 +3,12 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Obter variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseAnonKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Criar clientes Supabase
-const supabase = ***REMOVED*** supabaseAnonKey);
-const supabaseAdmin = ***REMOVED*** supabaseAnonKey, {
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false

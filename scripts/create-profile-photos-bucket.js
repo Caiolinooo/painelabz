@@ -3,10 +3,10 @@ const { createClient } = require('@supabase/supabase-js');
 
 (async () => {
   try {
-    const url = ***REMOVED***;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
     if (!url || !key) {
-      console.error('Faltando env NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY/***REMOVED***');
+      console.error('Faltando env NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SERVICE_KEY');
       process.exit(1);
     }
     const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });

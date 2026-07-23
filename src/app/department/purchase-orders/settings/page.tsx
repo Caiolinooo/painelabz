@@ -121,7 +121,7 @@ export default function PurchaseOrderSettingsPage() {
             const res = await fetch('/api/purchase-orders/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     sector_id: sectorId,
                     cost_centers: costCenters,
                     payment_terms: paymentTerms,

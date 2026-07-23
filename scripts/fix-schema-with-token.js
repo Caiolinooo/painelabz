@@ -4,8 +4,8 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function getAdminToken() {
   try {
@@ -18,7 +18,7 @@ async function getAdminToken() {
         'Content-Type': 'application/json',
         'apikey': supabaseServiceKey
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         email: 'admin@abz.com.br', // Email de admin padrão
         password: 'admin123' // Senha admin padrão - pode precisar ajustar
       })

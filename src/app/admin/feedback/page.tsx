@@ -130,7 +130,7 @@ export default function AdminFeedbackPage() {
             const res = await fetchWithToken(`/api/admin/feedback/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED*** status })
+                body: JSON.stringify({ status })
             });
             if (!res.ok) throw new Error("Failed to update");
             showToast(`Status atualizado para: ${statusConfig[status].label}`);

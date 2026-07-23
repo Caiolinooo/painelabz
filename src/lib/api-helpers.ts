@@ -49,7 +49,7 @@ export async function loginWithCredentials(identifier: string, password: string)
       headers: {
         'Content-Type': 'application/json',
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         [isEmail ? 'email' : 'phoneNumber']: identifier,
         password
       }),

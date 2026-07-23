@@ -3,9 +3,9 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Obter variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseAnonKey = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 console.log('Verificando configurações do Supabase:');
 console.log('URL:', supabaseUrl);
@@ -19,10 +19,10 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
 }
 
 // Criar cliente Supabase com a chave anônima
-const supabaseAnon = ***REMOVED*** supabaseAnonKey);
+const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
 
 // Criar cliente Supabase com a chave de serviço
-const supabaseService = ***REMOVED*** supabaseServiceKey);
+const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
 // Função para testar a conexão
 async function testConnection() {
@@ -67,12 +67,12 @@ async function testConnection() {
       console.error('Erro ao acessar tabela users:', usersError);
     } else {
       console.log('Acesso à tabela users bem-sucedido!');
-      console.log(`Número de usuários encontrados: ***REMOVED***;
+      console.log(`Número de usuários encontrados: ${usersData.length}`);
       if (usersData.length > 0) {
         console.log('Primeiro usuário:', {
-          id: ***REMOVED***
-          email: ***REMOVED***
-          role: ***REMOVED***
+          id: usersData[0].id,
+          email: usersData[0].email,
+          role: usersData[0].role
         });
       }
     }

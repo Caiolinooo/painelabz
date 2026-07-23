@@ -46,7 +46,7 @@ export const POST = withPermission('manager', async (req: NextRequest) => {
     const updates = [
       { key: 'VAPID_PUBLIC_KEY', value: publicKey, description: 'Chave pública VAPID', is_encrypted: false },
       { key: 'VAPID_PRIVATE_KEY', value: encryptValue(privateKey), description: 'Chave privada VAPID (AES-256-CBC)', is_encrypted: true },
-      { key: 'VAPID_SUBJECT', value: 'mailto:***REMOVED***', description: 'Assunto VAPID', is_encrypted: false }
+      { key: 'VAPID_SUBJECT', value: 'mailto:apiabzgroup@gmail.com', description: 'Assunto VAPID', is_encrypted: false }
     ];
 
     const { error } = await admin.from('app_secrets').upsert(updates, { onConflict: 'key' });

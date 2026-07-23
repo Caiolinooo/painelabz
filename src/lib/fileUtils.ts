@@ -178,7 +178,7 @@ export async function downloadAttachment(url: string, fileName: string): Promise
     console.log('Tentativa 4: Usando URL direta do bucket com API key');
 
     // Obter a API key do Supabase
-    const apiKey = ***REMOVED*** || '';
+    const apiKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     if (!apiKey) {
       console.error('API key do Supabase não encontrada');
       throw new Error('API key do Supabase não encontrada');

@@ -8,17 +8,17 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuração do Supabase
-const SUPABASE_URL = ***REMOVED***;
-const ***REMOVED*** = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-if (!SUPABASE_URL || !***REMOVED***) {
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('❌ Erro: Variáveis de ambiente não configuradas');
   console.error('   NEXT_PUBLIC_SUPABASE_URL:', SUPABASE_URL ? 'OK' : 'FALTANDO');
-  console.error('   ***REMOVED***:', ***REMOVED*** ? 'OK' : 'FALTANDO');
+  console.error('   SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? 'OK' : 'FALTANDO');
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, ***REMOVED***);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function executarMigrations() {
   console.log('🚀 Iniciando execução de migrations do sistema de avaliação...\n');

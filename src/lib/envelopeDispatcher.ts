@@ -200,7 +200,7 @@ export async function dispatchEnvelopeStage(envelopeId: string) {
                         </div>
 
                         <div style="margin: 30px 0; text-align: center;">
-                            <a href="${fullAccessUrl}" style="***REMOVED*** #0066cc; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <a href="${fullAccessUrl}" style="background-color: #0066cc; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                                 Acessar e Assinar / Access and Sign
                             </a>
                         </div>

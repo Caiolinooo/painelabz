@@ -90,7 +90,7 @@ export default function TestUserManagementPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           userId,
           email,
           role: 'ADMIN'

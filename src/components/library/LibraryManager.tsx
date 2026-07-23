@@ -151,7 +151,7 @@ export default function LibraryManager({ isOpen, onClose, onUpdate }: LibraryMan
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: ***REMOVED*** fileName, folder: subfolder === 'collection_resources' ? 'collection_resources' : '' })
+                body: JSON.stringify({ fileName, folder: subfolder === 'collection_resources' ? 'collection_resources' : '' })
             });
 
             if (!authRes.ok) {
@@ -240,7 +240,7 @@ export default function LibraryManager({ isOpen, onClose, onUpdate }: LibraryMan
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     ...formData,
                     content_url: formData.type === 'link' ? ensureProtocol(mainContentUrl) : mainContentUrl,
                     slug: formData.slug || (formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 7))

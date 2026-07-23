@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Criar cliente Supabase com credenciais de serviço
-    const supabaseUrl = ***REMOVED***;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = ***REMOVED*** supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Calcular data de 30 dias atrás
     const thirtyDaysAgo = new Date();

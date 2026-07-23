@@ -10,9 +10,9 @@ const bcrypt = require('bcryptjs');
 
 // Configurações
 const DATABASE_URL = process.env.DATABASE_URL;
-const ADMIN_EMAIL = ***REMOVED*** || '***REMOVED***';
+const ADMIN_EMAIL = ***REMOVED*** || 'document.getElementById(';
 const ADMIN_PHONE_NUMBER = ***REMOVED*** || '+5522997847289';
-const ADMIN_PASSWORD = ***REMOVED***;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_FIRST_NAME = process.env.ADMIN_FIRST_NAME || 'Caio';
 const ADMIN_LAST_NAME = process.env.ADMIN_LAST_NAME || 'Correia';
 

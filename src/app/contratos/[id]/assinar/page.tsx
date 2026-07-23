@@ -190,7 +190,7 @@ export default function AssinarDocumentoPage() {
             const res = await fetch('/api/contracts/sign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     solicitacao_id: solicitacao?.id,
                     signature_base64: finalSignature,
                     signer_data: data || null,

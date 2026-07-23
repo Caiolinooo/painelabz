@@ -7,7 +7,7 @@ async function testGmailConfig() {
   console.log('- EMAIL_HOST:', process.env.EMAIL_HOST || 'smtp.gmail.com');
   console.log('- EMAIL_PORT:', process.env.EMAIL_PORT || '465');
   console.log('- EMAIL_SECURE:', process.env.EMAIL_SECURE || 'true');
-  console.log('- EMAIL_USER:', process.env.EMAIL_USER || '***REMOVED***');
+  console.log('- EMAIL_USER:', process.env.EMAIL_USER || 'apiabzgroup@gmail.com');
   console.log('- EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? '******' : 'não definido');
   console.log('- EMAIL_SERVER:', process.env.EMAIL_SERVER ? process.env.EMAIL_SERVER.replace(/:[^:]*@/, ':****@') : 'não definido');
 
@@ -28,7 +28,7 @@ async function testGmailConfig() {
       port: parseInt(process.env.EMAIL_PORT || '465'),
       secure: process.env.EMAIL_SECURE === 'true',
       auth: {
-        user: process.env.EMAIL_USER || '***REMOVED***',
+        user: process.env.EMAIL_USER || 'apiabzgroup@gmail.com',
         pass: process.env.EMAIL_PASSWORD
       },
       // Configurações para melhorar a entregabilidade
@@ -71,11 +71,11 @@ async function testGmailConfig() {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Teste de E-mail</title>
           </head>
-          <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; ***REMOVED*** #f9f9f9;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f9f9f9;">
+          <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; background-color: #f9f9f9;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f9f9f9;">
               <tr>
                 <td align="center" style="padding: 20px 0;">
-                  <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
+                  <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
                     <tr>
                       <td align="center" style="padding: 30px 20px;">
                         <img src="https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png" alt="ABZ Group Logo" width="200" style="display: block; max-width: 200px; height: auto;">

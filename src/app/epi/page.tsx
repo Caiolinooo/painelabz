@@ -133,7 +133,7 @@ export default function EPIPage() {
             const res = await fetch('/api/epi/delivery', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     userId,
                     registrationIds: approvedItems,
                     signatureUrl: result.signatureUrl,

@@ -32,7 +32,7 @@ async function initEmailTransport() {
       // Fallback para Ethereal em caso de erro
       const testAccount = await nodemailer.createTestAccount();
       const transporter = nodemailer.createTransport({
-        host: '***REMOVED***',
+        host: 'smtp.ethereal.email',
         port: 587,
         secure: false,
         auth: {
@@ -55,7 +55,7 @@ async function initEmailTransport() {
     const testAccount = await nodemailer.createTestAccount();
 
     const transporter = nodemailer.createTransport({
-      host: '***REMOVED***',
+      host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
       auth: {
@@ -135,7 +135,7 @@ async function sendTestEmail(email) {
 // Função principal
 async function main() {
   // Obter o e-mail de destino da linha de comando ou usar o e-mail padrão
-  const email = process.argv[2] || ***REMOVED*** || 'teste@example.com';
+  const email = process.argv[2] || process.env.ADMIN_EMAIL || 'teste@example.com';
 
   console.log('Iniciando teste de e-mail...');
   console.log('Configurações:');

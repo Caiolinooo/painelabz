@@ -6,13 +6,13 @@ function verifyEnvVariables() {
   console.log('Verificando variáveis de ambiente...');
 
   // Verificar variáveis do Supabase
-  const supabaseUrl = ***REMOVED***;
-  const supabaseAnonKey = ***REMOVED***;
-  const supabaseServiceKey = ***REMOVED***;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
   console.log('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Definido' : 'Não definido');
   console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? `${supabaseAnonKey.substring(0, 10)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 10)}` : 'Não definido');
-  console.log('***REMOVED***:', supabaseServiceKey ? `${supabaseServiceKey.substring(0, 10)}...${supabaseServiceKey.substring(supabaseServiceKey.length - 10)}` : 'Não definido');
+  console.log('SUPABASE_SERVICE_KEY:', supabaseServiceKey ? `${supabaseServiceKey.substring(0, 10)}...${supabaseServiceKey.substring(supabaseServiceKey.length - 10)}` : 'Não definido');
   console.log('Comprimento da chave de serviço:', supabaseServiceKey ? supabaseServiceKey.length : 0);
 
   // Verificar outras variáveis importantes

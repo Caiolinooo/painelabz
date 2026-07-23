@@ -35,7 +35,7 @@ export async function sendPushToUserIds(userIds: string[], payload: { title: str
   if (error) { console.error('Erro ao buscar assinaturas push:', error); return { sent: 0 }; }
   if (!subs || subs.length === 0) return { sent: 0 };
 
-  const data = ***REMOVED***
+  const data = JSON.stringify({
     title: payload.title,
     body: payload.body || '',
     url: payload.url || '/',

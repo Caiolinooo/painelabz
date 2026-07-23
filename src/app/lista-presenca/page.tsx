@@ -86,7 +86,7 @@ export default function ListaPresencaPage() {
         try {
             const res = await fetchWithAuth('/api/lista-presenca', {
                 method: 'PUT',
-                body: ***REMOVED*** id, status: 'fechada' }),
+                body: JSON.stringify({ id, status: 'fechada' }),
             });
             const data = await res.json();
             if (data.success) {
@@ -303,7 +303,7 @@ function CreateListaModal({ onClose, onCreated }: { onClose: () => void; onCreat
             setIsSubmitting(true);
             const res = await fetchWithAuth('/api/lista-presenca', {
                 method: 'POST',
-                body: ***REMOVED***
+                body: JSON.stringify({
                     ...form,
                     max_participantes: form.max_participantes ? parseInt(form.max_participantes) : null,
                     token_acesso: form.token_acesso || null,

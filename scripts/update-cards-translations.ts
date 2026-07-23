@@ -9,17 +9,17 @@ import * as dotenv from 'dotenv';
 // Carregar variáveis de ambiente
 dotenv.config({ path: '.env.local' });
 
-const supabaseUrl = ***REMOVED***!;
-const supabaseServiceKey = ***REMOVED***!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variáveis de ambiente não encontradas!');
   console.error('   NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅' : '❌');
-  console.error('   ***REMOVED***:', supabaseServiceKey ? '✅' : '❌');
+  console.error('   SUPABASE_SERVICE_KEY:', supabaseServiceKey ? '✅' : '❌');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Mapeamento de traduções baseado nos arquivos i18n
 const translations: Record<string, { title_pt: string; title_en: string; description_pt: string; description_en: string }> = {

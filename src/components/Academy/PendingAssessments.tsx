@@ -89,7 +89,7 @@ export default function PendingAssessments({ courseId }: { courseId: string }) {
             const resp = await fetchWithAuth('/api/academy/assessments/pending', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     attempt_id: gradingId,
                     grades: gradesArray
                 })

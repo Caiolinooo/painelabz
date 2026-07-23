@@ -20,7 +20,7 @@ SELECT
   LENGTH(password) as password_length,
   created_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- Passo 3: Gerar hash da senha 'REDACTED_SET_VIA_ENV' (agora vai funcionar)
 SELECT 
@@ -28,7 +28,7 @@ SELECT
   crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)) as password_hash;
 
 -- Passo 4: Deletar usuário existente se houver (para garantir limpeza)
-DELETE FROM users_unified WHERE email = '***REMOVED***';
+DELETE FROM users_unified WHERE email = 'document.getElementById(';
 
 -- Passo 5: Criar o usuário admin com hash gerado automaticamente
 INSERT INTO users_unified (
@@ -52,7 +52,7 @@ INSERT INTO users_unified (
   updated_at
 ) VALUES (
   gen_random_uuid(),
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',
@@ -109,7 +109,7 @@ SELECT
   created_at,
   updated_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- ========================================
 -- INSTRUÇÕES:

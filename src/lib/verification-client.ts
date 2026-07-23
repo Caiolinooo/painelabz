@@ -19,7 +19,7 @@ export async function sendVerificationCode(identifier: string, userId: string, m
       headers: {
         'Content-Type': 'application/json',
       },
-      body: ***REMOVED*** identifier, userId, method }),
+      body: JSON.stringify({ identifier, userId, method }),
     });
 
     const data = await response.json();

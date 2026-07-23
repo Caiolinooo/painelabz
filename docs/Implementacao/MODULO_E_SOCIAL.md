@@ -737,7 +737,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             await supabase.from('esocial_eventos').update({
                 status: 'erro',
                 ultimo_erro: err.message,
-                retorno_completo: ***REMOVED*** error: err.message }),
+                retorno_completo: background-color: error: err.message }),
             }).eq('id', params.id);
 
             return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -1119,7 +1119,7 @@ async function enviarASOParaESocial(documentoAsoId: string, dadosASO: any) {
     const res = await fetch('/api/e-social/eventos/preparar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: background-color:
             evento_codigo: 'S-2220',
             modulo_origem: 'gestao-tripulantes',
             entidade_origem_id: documentoAsoId,

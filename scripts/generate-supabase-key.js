@@ -7,7 +7,7 @@ const path = require('path');
 // Função para gerar uma chave de serviço do Supabase
 function generateServiceKey() {
   // Obter o URL do Supabase
-  const supabaseUrl = ***REMOVED*** || '';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   if (!supabaseUrl) {
     console.error('URL do Supabase não definido. Verifique suas variáveis de ambiente.');
     process.exit(1);
@@ -42,11 +42,11 @@ function updateServiceKey(newKey) {
   const envPath = path.resolve('.env');
 
   // Ler o arquivo .env
-  let envContent = ***REMOVED*** 'utf8');
+  let envContent = fs.readFileSync(envPath, 'utf8');
 
   // Substituir a chave de serviço
-  const regex = ***REMOVED***;
-  envContent = ***REMOVED*** `***REMOVED***=${newKey}`);
+  const regex = /SUPABASE_SERVICE_KEY=.*/;
+  envContent = envContent.replace(regex, `SUPABASE_SERVICE_KEY=${newKey}`);
 
   // Escrever o arquivo atualizado
   fs.writeFileSync(envPath, envContent);
@@ -55,7 +55,7 @@ function updateServiceKey(newKey) {
 }
 
 // Verificar a chave de serviço atual
-const currentKey = ***REMOVED*** || '';
+const currentKey = process.env.SUPABASE_SERVICE_KEY || '';
 console.log('Chave de serviço atual:', currentKey ? `${currentKey.substring(0, 10)}...${currentKey.substring(currentKey.length - 10)}` : 'Não definida');
 console.log('Comprimento da chave atual:', currentKey.length);
 

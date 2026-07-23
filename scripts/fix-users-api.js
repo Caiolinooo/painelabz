@@ -5,16 +5,16 @@ const jwt = require('jsonwebtoken');
 const fetch = require('node-fetch');
 
 // Configurações
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 const jwtSecret = process.env.JWT_SECRET;
-const adminEmail = ***REMOVED*** || '***REMOVED***';
-const adminPhone = ***REMOVED*** || '+5522997847289';
+const adminEmail = process.env.ADMIN_EMAIL || 'caio.correia@groupabz.com';
+const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // Verificar configurações
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Erro: SUPABASE_URL e ***REMOVED*** devem estar definidos no arquivo .env');
+  console.error('Erro: SUPABASE_URL e SUPABASE_SERVICE_KEY devem estar definidos no arquivo .env');
   process.exit(1);
 }
 
@@ -27,7 +27,7 @@ if (!jwtSecret) {
 console.log('Criando cliente Supabase com URL:', supabaseUrl);
 console.log('Chave de serviço presente:', supabaseServiceKey ? 'Sim' : 'Não');
 
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false

@@ -5,7 +5,7 @@ const path = require('path');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 
-const supabaseUrl = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
@@ -13,7 +13,7 @@ if (!supabaseUrl || !supabaseKey) {
     process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function verifyEPIFlow() {
     console.log('Starting EPI Flow Verification...');
@@ -23,7 +23,7 @@ async function verifyEPIFlow() {
         const { data: user, error: userError } = await supabase
             .from('users_unified')
             .select('id')
-            .eq('email', '***REMOVED***') // Ensure this user exists or use another one
+            .eq('email', 'caio.correia@groupabz.com') // Ensure this user exists or use another one
             .single();
 
         if (userError || !user) {

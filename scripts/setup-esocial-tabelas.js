@@ -4,15 +4,15 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 
-const supabaseUrl = ***REMOVED***;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Erro: NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey, {
+const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: { persistSession: false },
 });
 

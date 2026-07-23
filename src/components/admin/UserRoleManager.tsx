@@ -111,7 +111,7 @@ const UserRoleManager: React.FC<UserRoleManagerProps> = ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           role: selectedRole,
           accessPermissions: defaultPermissions[selectedRole]
         })

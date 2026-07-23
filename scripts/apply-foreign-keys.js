@@ -10,8 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuração do Supabase a partir das variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
     console.error('❌ Erro: Variáveis de ambiente do Supabase não configuradas');
@@ -20,7 +20,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 // Criar cliente Supabase com permissões de admin
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function applyForeignKeys() {
     console.log('🔧 Iniciando aplicação de foreign keys...');

@@ -86,7 +86,7 @@ async function renderizarEEnviarOCR(
   return await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: ***REMOVED*** text }),
+    body: JSON.stringify({ text }),
   });
 }
 

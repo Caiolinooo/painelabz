@@ -115,7 +115,7 @@ export default function TwoFactorSetup() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           code: verificationCode,
           enabled: true
         })
@@ -163,7 +163,7 @@ export default function TwoFactorSetup() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           enabled: false
         })
       });

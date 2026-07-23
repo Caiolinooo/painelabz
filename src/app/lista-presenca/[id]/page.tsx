@@ -102,7 +102,7 @@ export default function ListaDetailPage() {
             const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
             const res = await fetchWithAuth('/api/lista-presenca/registros', {
                 method: 'POST',
-                body: ***REMOVED***
+                body: JSON.stringify({
                     lista_id: listaId,
                     nome_completo: fullName,
                     funcao: profile.role || '',

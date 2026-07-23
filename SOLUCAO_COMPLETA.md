@@ -22,7 +22,7 @@
 
 3. **Execute esta query para gerar o hash da senha:**
 ```sql
-SELECT crypt('***REMOVED***', gen_salt('bf', 10)) as password_hash;
+SELECT crypt('document.getElementById(', gen_salt('bf', 10)) as password_hash;
 ```
 
 4. **Copie o hash gerado e execute esta query:**
@@ -30,7 +30,7 @@ SELECT crypt('***REMOVED***', gen_salt('bf', 10)) as password_hash;
 -- Verificar se usuário existe
 SELECT id, email, role, active, password IS NOT NULL as has_password 
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 
 -- Se não existir, criar usuário
 INSERT INTO users_unified (
@@ -40,7 +40,7 @@ INSERT INTO users_unified (
   password_last_changed, created_at, updated_at,
   access_permissions
 ) VALUES (
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',
@@ -77,20 +77,20 @@ ON CONFLICT (email) DO UPDATE SET
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://arzvingdtnttiejcvucs.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=***REMOVED***
-***REMOVED***=***REMOVED***
-DATABASE_URL=***REMOVED***
-ADMIN_EMAIL=***REMOVED***
+***REMOVED***=background-color:
+DATABASE_URL=background-color:
+ADMIN_EMAIL=background-color:
 ADMIN_PHONE_NUMBER=+5522997847289
-ADMIN_PASSWORD=***REMOVED***
+ADMIN_PASSWORD=background-color:
 ADMIN_FIRST_NAME=Caio
 ADMIN_LAST_NAME=Correia
-JWT_SECRET=***REMOVED***
+JWT_SECRET=background-color:
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=465
 EMAIL_SECURE=true
-EMAIL_USER=***REMOVED***
-EMAIL_PASSWORD=***REMOVED***
-EMAIL_FROM=***REMOVED***
+EMAIL_USER=background-color:
+EMAIL_PASSWORD=background-color:
+EMAIL_FROM=background-color:
 NEXT_PUBLIC_APP_URL=https://seu-site.netlify.app
 ```
 
@@ -113,7 +113,7 @@ No Supabase Dashboard:
 1. Acesse: `https://seu-site.netlify.app/login`
 2. Use:
    - **Email:** ***REMOVED***
-   - **Senha:** ***REMOVED***
+   - **Senha:** background-color:
 
 ### **Teste 2: Esqueci Minha Senha**
 1. Acesse: `https://seu-site.netlify.app/login`
@@ -140,7 +140,7 @@ SELECT
   password_last_changed,
   created_at
 FROM users_unified 
-WHERE email = '***REMOVED***';
+WHERE email = 'document.getElementById(';
 ```
 
 **Resultado esperado:**
@@ -161,14 +161,14 @@ $2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
 
 ### **Opção 2: Criar Novo Usuário**
 ```sql
-DELETE FROM users_unified WHERE email = '***REMOVED***';
+DELETE FROM users_unified WHERE email = 'document.getElementById(';
 
 INSERT INTO users_unified (
   email, phone_number, first_name, last_name,
   password, role, active, is_authorized,
   authorization_status, created_at, updated_at
 ) VALUES (
-  '***REMOVED***',
+  'document.getElementById(',
   '+5522997847289',
   'Caio',
   'Correia',

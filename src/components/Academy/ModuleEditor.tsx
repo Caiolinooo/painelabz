@@ -87,7 +87,7 @@ const ModuleEditor: React.FC<ModuleEditorProps> = ({ courseId }) => {
             const response = await fetchWithAuth('/api/academy/modules', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     course_id: courseId,
                     ...formData
                 })
@@ -117,7 +117,7 @@ const ModuleEditor: React.FC<ModuleEditorProps> = ({ courseId }) => {
             const response = await fetchWithAuth('/api/academy/modules', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     id: editingId,
                     ...formData
                 })
@@ -172,12 +172,12 @@ const ModuleEditor: React.FC<ModuleEditorProps> = ({ courseId }) => {
                 fetchWithAuth('/api/academy/modules', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED*** id: modules[idx].id, sort_order: swapOrder })
+                    body: JSON.stringify({ id: modules[idx].id, sort_order: swapOrder })
                 }),
                 fetchWithAuth('/api/academy/modules', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: ***REMOVED*** id: modules[swapIdx].id, sort_order: currentOrder })
+                    body: JSON.stringify({ id: modules[swapIdx].id, sort_order: currentOrder })
                 })
             ]);
             await loadModules();

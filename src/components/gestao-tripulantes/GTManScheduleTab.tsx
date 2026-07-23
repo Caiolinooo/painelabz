@@ -168,7 +168,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             const res = await fetchWithToken('/api/gestao-tripulantes/embarques', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     colaborador_cpf: selectedCell.cpf,
                     tipo: formTipo,
                     data_embarque: formStart,
@@ -473,7 +473,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
     // ─── Export ───
     const exportToExcel = () => {
-        const table = ***REMOVED***'man-schedule-table');
+        const table = document.getElementById('man-schedule-table');
         if (!table) return;
         const wb = XLSX.utils.table_to_book(table, { sheet: 'Schedule' });
         const ws = wb.Sheets['Schedule'];

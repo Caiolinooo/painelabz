@@ -57,7 +57,7 @@ export async function sendGlobalNotification(payload: NotificationPayload): Prom
                 type: submodule, // Using submodule as the main type in DB for filtering
                 title,
                 message,
-                data: ***REMOVED*** ...data, sub_type: type }), // Store specific type in data
+                data: JSON.stringify({ ...data, sub_type: type }), // Store specific type in data
                 action_url: actionUrl,
                 priority,
                 expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
@@ -111,7 +111,7 @@ export async function sendGlobalNotification(payload: NotificationPayload): Prom
             <p style="font-size: 16px;">${message}</p>
             ${actionUrl ? `
               <div style="margin-top: 20px;">
-                <a href="${emailActionUrl}" style="***REMOVED*** #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                <a href="${emailActionUrl}" style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
                   Ver Detalhes
                 </a>
               </div>

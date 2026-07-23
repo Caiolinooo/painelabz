@@ -10,15 +10,15 @@ import * as path from 'path';
 // Carregar variáveis de ambiente do .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
-const supabaseUrl = ***REMOVED***!;
-const supabaseKey = ***REMOVED***!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Variáveis de ambiente do Supabase não encontradas');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Todos os cards hardcoded com traduções
 const cardsToSync = [

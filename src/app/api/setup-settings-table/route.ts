@@ -101,8 +101,8 @@ export async function POST(request: NextRequest) {
         console.log('Erro ao inserir registro, tabela não existe:', insertError);
         
         // Tentar criar a tabela usando a API REST direta do Supabase
-        const supabaseUrl = ***REMOVED***;
-        const supabaseKey = ***REMOVED*** || ***REMOVED***;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
         
         if (!supabaseUrl || !supabaseKey) {
           console.error('Variáveis de ambiente do Supabase não definidas');
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
           }
           
           const configFile = path.join(configDir, 'reimbursementSettings.json');
-          fs.writeFileSync(configFile, ***REMOVED***
+          fs.writeFileSync(configFile, JSON.stringify({
             enableDomainRule: true,
             recipients: ['andresa.oliveira@groupabz.com', 'fiscal@groupabz.com']
           }, null, 2));

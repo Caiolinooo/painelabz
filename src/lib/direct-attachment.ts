@@ -79,8 +79,8 @@ export async function processDirectAttachment(fileData: FileData): Promise<Proce
       
       try {
         // Obter configuração do Supabase
-        const supabaseUrl = ***REMOVED***;
-        const supabaseServiceKey = ***REMOVED***;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
         
         if (!supabaseUrl || !supabaseServiceKey) {
           console.error('Configuração do Supabase não encontrada');
@@ -88,7 +88,7 @@ export async function processDirectAttachment(fileData: FileData): Promise<Proce
         }
         
         // Criar cliente Supabase
-        const supabase = ***REMOVED*** supabaseServiceKey, {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
           auth: {
             autoRefreshToken: false,
             persistSession: false

@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // Obter configurações do Supabase
-    const supabaseUrl = ***REMOVED***;
-    const supabaseKey = ***REMOVED*** || ***REMOVED***;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Criar cliente Supabase
-    const supabase = ***REMOVED*** supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Verificar se as tabelas existem
     const tables = [

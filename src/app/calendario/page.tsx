@@ -399,15 +399,15 @@ export default function CalendarioPage() {
       <style jsx global>{`
         .custom-calendar-styling .react-calendar { border: none; font-family: inherit; }
         .custom-calendar-styling .react-calendar__navigation button { color: #0D1B42; min-width: 44px; background: none; font-size: 1rem; font-weight: 600; padding: 8px 0; }
-        .custom-calendar-styling .react-calendar__navigation button:disabled { ***REMOVED*** #f0f0f0; color: #aaa; }
-        .custom-calendar-styling .react-calendar__navigation button:enabled:hover, .custom-calendar-styling .react-calendar__navigation button:enabled:focus { ***REMOVED*** #E0F2FE; }
+        .custom-calendar-styling .react-calendar__navigation button:disabled { background-color: #f0f0f0; color: #aaa; }
+        .custom-calendar-styling .react-calendar__navigation button:enabled:hover, .custom-calendar-styling .react-calendar__navigation button:enabled:focus { background-color: #E0F2FE; }
         .custom-calendar-styling .react-calendar__month-view__weekdays { text-align: center; text-transform: uppercase; font-weight: bold; font-size: 0.75em; padding-bottom: 0.5em; color: #6339F5; }
         .custom-calendar-styling .react-calendar__month-view__weekdays__weekday { padding: 0.5em; }
         .custom-calendar-styling .react-calendar__month-view__days__day--weekend { color: #d10000; }
         .custom-calendar-styling .react-calendar__month-view__days__day--neighboringMonth { color: #999; }
         .custom-calendar-styling .react-calendar__tile { max-width: 100%; padding: 10px 6px; background: none; text-align: center; line-height: 1.5; font-size: 0.875rem; height: 60px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
-        .custom-calendar-styling .react-calendar__tile:disabled { ***REMOVED*** #f0f0f0; color: #aaa; }
-        .custom-calendar-styling .react-calendar__tile:enabled:hover, .custom-calendar-styling .react-calendar__tile:enabled:focus { ***REMOVED*** #E0F2FE; border-radius: 4px; }
+        .custom-calendar-styling .react-calendar__tile:disabled { background-color: #f0f0f0; color: #aaa; }
+        .custom-calendar-styling .react-calendar__tile:enabled:hover, .custom-calendar-styling .react-calendar__tile:enabled:focus { background-color: #E0F2FE; border-radius: 4px; }
         .custom-calendar-styling .react-calendar__tile--now { background: #FFF3E0; font-weight: bold; border-radius: 4px; }
         .custom-calendar-styling .react-calendar__tile--now:enabled:hover, .custom-calendar-styling .react-calendar__tile--now:enabled:focus { background: #FFE0B2; }
         .custom-calendar-styling .react-calendar__tile--active { background: #6339F5; color: white; border-radius: 4px; }

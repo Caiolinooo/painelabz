@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se é o administrador
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
 
     const isAdminEmail = email === adminEmail;
     const isAdmin = isAdminEmail;

@@ -117,15 +117,15 @@ const { isNameEmpty, extractNameFromEmail, validateName, profileNeedsCompletion 
 })();
 
 // Configurar Supabase
-const supabaseUrl = ***REMOVED***;
-const supabaseKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Variáveis de ambiente do Supabase não encontradas');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function testNameValidation() {
   console.log('🧪 TESTANDO SISTEMA DE VALIDAÇÃO DE NOMES\n');

@@ -57,7 +57,7 @@ export default function ThemeEnforcer() {
       }
 
       // Verificar se o estilo já existe
-      let styleElement = ***REMOVED***'theme-enforcer');
+      let styleElement = document.getElementById('theme-enforcer');
       
       // Se não existir, criar um novo
       if (!styleElement) {
@@ -75,7 +75,7 @@ export default function ThemeEnforcer() {
 
         /* Cores primárias */
         .bg-abz-blue, .bg-primary, [class*="bg-primary"] {
-          ***REMOVED*** ${config.primaryColor} !important;
+          background-color: ${config.primaryColor} !important;
         }
 
         .text-abz-blue, .text-primary, [class*="text-primary"] {
@@ -87,7 +87,7 @@ export default function ThemeEnforcer() {
         }
 
         .hover\\:bg-abz-blue:hover, .hover\\:bg-primary:hover, [class*="hover:bg-primary"]:hover {
-          ***REMOVED*** ${config.primaryColor} !important;
+          background-color: ${config.primaryColor} !important;
         }
 
         .focus\\:ring-abz-blue:focus, .focus\\:ring-primary:focus, [class*="focus:ring-primary"]:focus {
@@ -100,7 +100,7 @@ export default function ThemeEnforcer() {
 
         /* Cores secundárias */
         .bg-abz-purple, .bg-secondary, [class*="bg-secondary"] {
-          ***REMOVED*** ${config.secondaryColor} !important;
+          background-color: ${config.secondaryColor} !important;
         }
 
         .text-abz-purple, .text-secondary, [class*="text-secondary"] {
@@ -112,20 +112,20 @@ export default function ThemeEnforcer() {
         }
 
         .hover\\:bg-abz-purple:hover, .hover\\:bg-secondary:hover, [class*="hover:bg-secondary"]:hover {
-          ***REMOVED*** ${config.secondaryColor} !important;
+          background-color: ${config.secondaryColor} !important;
         }
 
         /* Botões com cores primárias */
         button.bg-blue-600, button.bg-blue-500, button.bg-blue-700, 
         .button.bg-blue-600, .button.bg-blue-500, .button.bg-blue-700,
         a.bg-blue-600, a.bg-blue-500, a.bg-blue-700 {
-          ***REMOVED*** ${config.primaryColor} !important;
+          background-color: ${config.primaryColor} !important;
         }
 
         button.hover\\:bg-blue-700:hover, button.hover\\:bg-blue-600:hover, button.hover\\:bg-blue-800:hover,
         .button.hover\\:bg-blue-700:hover, .button.hover\\:bg-blue-600:hover, .button.hover\\:bg-blue-800:hover,
         a.hover\\:bg-blue-700:hover, a.hover\\:bg-blue-600:hover, a.hover\\:bg-blue-800:hover {
-          ***REMOVED*** ${adjustColor(config.primaryColor, -20)} !important;
+          background-color: ${adjustColor(config.primaryColor, -20)} !important;
         }
 
         /* Logos */

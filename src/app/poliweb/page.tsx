@@ -228,7 +228,7 @@ export default function PoliwebPage() {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     userId: user?.id,
                     username_novo: credentialForm.username_novo,
                     password_novo: credentialForm.password_novo,

@@ -53,7 +53,7 @@ export default function SiteHead() {
     document.documentElement.style.setProperty('--secondary-color', config.secondaryColor);
 
     // Adicionar um estilo inline para sobrescrever as classes Tailwind
-    let styleElement = ***REMOVED***'dynamic-colors');
+    let styleElement = document.getElementById('dynamic-colors');
     if (!styleElement) {
       styleElement = document.createElement('style');
       styleElement.id = 'dynamic-colors';
@@ -67,7 +67,7 @@ export default function SiteHead() {
       }
 
       .bg-abz-blue {
-        ***REMOVED*** ${config.primaryColor} !important;
+        background-color: ${config.primaryColor} !important;
       }
 
       .text-abz-blue {
@@ -79,7 +79,7 @@ export default function SiteHead() {
       }
 
       .hover\\:bg-abz-blue:hover {
-        ***REMOVED*** ${config.primaryColor} !important;
+        background-color: ${config.primaryColor} !important;
       }
 
       .focus\\:ring-abz-blue:focus {
@@ -91,7 +91,7 @@ export default function SiteHead() {
       }
 
       .bg-abz-purple {
-        ***REMOVED*** ${config.secondaryColor} !important;
+        background-color: ${config.secondaryColor} !important;
       }
 
       .text-abz-purple {
@@ -103,7 +103,7 @@ export default function SiteHead() {
       }
 
       .hover\\:bg-abz-purple:hover {
-        ***REMOVED*** ${config.secondaryColor} !important;
+        background-color: ${config.secondaryColor} !important;
       }
     `;
 

@@ -42,7 +42,7 @@ async function testACLSystem() {
     const checkResponse = await fetch(`${BASE_URL}/api/acl/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: ***REMOVED***
+      body: JSON.stringify({
         user_id: 'test-user-id',
         permission_name: 'news.read'
       })

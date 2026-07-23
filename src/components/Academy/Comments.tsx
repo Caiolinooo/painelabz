@@ -90,7 +90,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           course_id: courseId,
           content: newComment.trim()
         })
@@ -126,7 +126,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           course_id: courseId,
           content: replyContent.trim(),
           parent_id: parentId
@@ -164,7 +164,7 @@ const Comments: React.FC<CommentsProps> = ({ courseId, className = '' }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           comment_id: commentId,
           content: editContent.trim()
         })

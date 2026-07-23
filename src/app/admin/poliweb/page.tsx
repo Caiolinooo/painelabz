@@ -129,7 +129,7 @@ export default function PoliwebAdminPage() {
             const response = await fetchWithToken('/api/poliweb/credentials', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     userId,
                     username_novo: editForm.username_novo,
                     password_novo: editForm.password_novo,

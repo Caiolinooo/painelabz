@@ -112,7 +112,7 @@ Equipe ABZ Group
             <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Olá <strong>${nomeUsuario}</strong>,</p>
             <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">${notificacao.mensagem}</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${avaliacaoUrl}" style="***REMOVED*** #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar Avaliações</a>
+              <a href="${avaliacaoUrl}" style="background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar Avaliações</a>
             </div>
             <p style="font-size: 14px; line-height: 1.6; color: #6b7280; margin-bottom: 5px;">Atenciosamente,</p>
             <p style="font-size: 14px; line-height: 1.6; color: #6b7280; margin-bottom: 20px;"><strong>Equipe ABZ Group</strong></p>

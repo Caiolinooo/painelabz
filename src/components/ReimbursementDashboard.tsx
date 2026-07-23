@@ -233,7 +233,7 @@ export default function ReimbursementDashboard() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           createTable: true
         }),
       });

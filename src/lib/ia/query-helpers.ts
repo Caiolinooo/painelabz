@@ -155,7 +155,7 @@ export async function fetchAssociatedUsers(data: any[], userColumn: string = 'us
  * Standardizes the output format for IA tools.
  */
 export function formatGlobalResponse(success: boolean, data: any[], message?: string) {
-  return ***REMOVED***
+  return JSON.stringify({
     success,
     count: data.length,
     data: data,

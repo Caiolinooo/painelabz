@@ -116,7 +116,7 @@ export default function RelatoriosPDFPage() {
       const response = await fetch('/api/relatorios-pdf/gerar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED***
+        body: JSON.stringify({
           configuracao_id: configuracao.id,
           parametros,
           filtros

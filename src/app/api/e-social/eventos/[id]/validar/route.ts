@@ -65,7 +65,7 @@ export async function POST(
       await logEnvio({
         evento_id: id,
         acao: 'validacao_api',
-        request_body: ***REMOVED*** correcoes: result.correcoesAplicadas }),
+        request_body: JSON.stringify({ correcoes: result.correcoesAplicadas }),
         response_body: result.xml,
         sucesso: true
       });

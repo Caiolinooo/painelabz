@@ -164,7 +164,7 @@ export default function WKRadarAdminPage() {
             const response = await fetchWithToken('/api/wkradar/credentials', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     userId,
                     username: editForm.username,
                     password: editForm.password

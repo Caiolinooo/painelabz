@@ -17,8 +17,8 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
 // Configuration
-const supabaseUrl = ***REMOVED*** || 'https://your-project.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 const adminToken = process.env.ADMIN_TOKEN || 'admin-token-test';
 
@@ -29,8 +29,8 @@ const pgClient = new Client({
 });
 
 // Supabase clients
-const supabase = ***REMOVED*** supabaseKey);
-const supabaseAdmin = ***REMOVED*** supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
 // Test data - Generate valid UUIDs and unique emails and phone numbers
 const timestamp = Date.now();
@@ -476,7 +476,7 @@ async function testNotificationSystem() {
     // Update evaluation status
     const updateResult = await makeRequest(`/api/avaliacao-desempenho/avaliacoes/${avaliacaoId}`, {
       method: 'PUT',
-      body: ***REMOVED***
+      body: JSON.stringify({
         status: 'em_andamento',
         observacoes: 'Status updated for notification testing'
       })
@@ -518,7 +518,7 @@ async function testNotificationSystem() {
     // Complete evaluation
     const completeResult = await makeRequest(`/api/avaliacao-desempenho/avaliacoes/${avaliacaoId}`, {
       method: 'PUT',
-      body: ***REMOVED***
+      body: JSON.stringify({
         status: 'concluida',
         pontuacao_total: 85,
         observacoes: 'Evaluation completed for notification testing'

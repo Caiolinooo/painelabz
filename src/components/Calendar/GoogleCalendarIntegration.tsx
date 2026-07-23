@@ -143,7 +143,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           userId: user.id,
           summary: newEvent.summary,
           description: newEvent.description,

@@ -79,18 +79,18 @@ async function main() {
   // 1. Verificar variáveis de ambiente
   log('1️⃣  Verificando configurações...', 'blue');
 
-  const supabaseUrl = ***REMOVED***;
-  // Aceitar tanto SUPABASE_SERVICE_ROLE_KEY quanto ***REMOVED***
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Aceitar tanto SUPABASE_SERVICE_ROLE_KEY quanto SUPABASE_SERVICE_KEY
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
   // Debug
   log(`   DEBUG - NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl ? 'Definida' : 'NÃO definida'}`, 'cyan');
   log(`   DEBUG - SUPABASE_SERVICE_ROLE_KEY: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Definida' : 'NÃO definida'}`, 'cyan');
-  log(`   DEBUG - ***REMOVED***: ${***REMOVED*** ? 'Definida' : 'NÃO definida'}`, 'cyan');
+  log(`   DEBUG - SUPABASE_SERVICE_KEY: ${process.env.SUPABASE_SERVICE_KEY ? 'Definida' : 'NÃO definida'}`, 'cyan');
 
   if (!supabaseUrl || !supabaseServiceKey) {
     log('❌ Erro: Variáveis de ambiente não configuradas!', 'red');
-    log('   Por favor, configure NEXT_PUBLIC_SUPABASE_URL e (SUPABASE_SERVICE_ROLE_KEY ou ***REMOVED***)', 'yellow');
+    log('   Por favor, configure NEXT_PUBLIC_SUPABASE_URL e (SUPABASE_SERVICE_ROLE_KEY ou SUPABASE_SERVICE_KEY)', 'yellow');
     process.exit(1);
   }
 
@@ -100,7 +100,7 @@ async function main() {
   // 2. Criar cliente Supabase Admin
   log('\n2️⃣  Conectando ao Supabase...', 'blue');
 
-  const supabase = ***REMOVED*** supabaseServiceKey, {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false

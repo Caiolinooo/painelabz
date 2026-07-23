@@ -9,15 +9,15 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variáveis de ambiente do Supabase não configuradas');
   process.exit(1);
 }
 
-const supabase = ***REMOVED*** supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function setupVapid() {
   console.log('🚀 Configurando Push Notifications...\n');
@@ -52,10 +52,10 @@ async function setupVapid() {
         INSERT INTO app_secrets (key, value, description, is_encrypted) VALUES
         ('VAPID_PUBLIC_KEY', 'BCPzcJmoggpOBd_UPIYMhK2u482VOlEldXdr-ShQHA9fTQvtm4yPT9TU-DdTcmujBL-8BwWHTpxS2BQihUgZzdo', 'Chave pública VAPID para push notifications', FALSE),
         ('VAPID_PRIVATE_KEY', 'OCPM8yhePNB838yd_vYdD0h8KILhM0P7489OWXSlqfY', 'Chave privada VAPID para push notifications', FALSE),
-        ('VAPID_SUBJECT', 'mailto:***REMOVED***', 'Subject VAPID para push notifications', FALSE)
+        ('VAPID_SUBJECT', 'mailto:apiabzgroup@gmail.com', 'Subject VAPID para push notifications', FALSE)
         ON CONFLICT (key) DO UPDATE SET 
             value = EXCLUDED.value,
-            description = ***REMOVED***
+            description = EXCLUDED.description,
             updated_at = NOW();
       `
     });
@@ -79,7 +79,7 @@ async function setupVapid() {
         },
         {
           key: 'VAPID_SUBJECT',
-          value: 'mailto:***REMOVED***',
+          value: 'mailto:apiabzgroup@gmail.com',
           description: 'Subject VAPID para push notifications',
           is_encrypted: false
         }

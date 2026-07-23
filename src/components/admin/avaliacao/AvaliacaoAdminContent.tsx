@@ -131,7 +131,7 @@ export default function AvaliacaoAdminContent() {
       const res = await fetchWithToken('/api/avaliacao/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** method: targetMethod })
+        body: JSON.stringify({ method: targetMethod })
       });
       const json = await res.json();
       if (json.success) {
@@ -160,7 +160,7 @@ export default function AvaliacaoAdminContent() {
       const response = await fetchWithToken('/api/avaliacao/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** gerentesGerais: payload })
+        body: JSON.stringify({ gerentesGerais: payload })
       });
       const json = await response.json();
 

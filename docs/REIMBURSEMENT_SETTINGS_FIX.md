@@ -12,7 +12,7 @@ A aplicação foi atualizada para tentar criar a tabela automaticamente quando e
 
 ## Solução Manual 1: Executar SQL no Supabase Studio
 
-1. Acesse o [Supabase Studio](https:***REMOVED***
+1. Acesse o [Supabase Studio](https://supabase.com
 2. Selecione seu projeto
 3. Vá para a seção "SQL Editor"
 4. Crie um novo script

@@ -122,7 +122,7 @@ export default function UserShortcutsBar() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     module_id: module.id,
                     module_name: module.name,
                     module_href: module.href,

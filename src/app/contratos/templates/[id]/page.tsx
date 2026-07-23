@@ -173,7 +173,7 @@ export default function TemplateFieldsEditorPage() {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     id: templateId,
                     campos: campos.map(({ id, ...rest }) => ({
                         ...rest,

@@ -124,7 +124,7 @@ export function useACLPermissions(userId?: string) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           permission_id: permissionId,
           expires_at: expiresAt,
           granted_by: grantedBy

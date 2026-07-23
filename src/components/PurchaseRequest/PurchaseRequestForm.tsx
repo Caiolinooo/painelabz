@@ -88,7 +88,7 @@ export default function PurchaseRequestForm({ initialData, requestId }: Purchase
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: ***REMOVED***
+                body: JSON.stringify({
                     ...formData,
                     items: items.map(item => ({
                         description: item.description,

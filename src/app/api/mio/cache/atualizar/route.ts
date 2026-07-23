@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         // Salva timestamp global
         await supabaseAdmin
             .from('mio_cache')
-            .upsert({ tipo: '__meta__', dados: ***REMOVED*** ultima_execucao: now }), total_registros: 0, atualizado_em: now }, { onConflict: 'tipo' });
+            .upsert({ tipo: '__meta__', dados: JSON.stringify({ ultima_execucao: now }), total_registros: 0, atualizado_em: now }, { onConflict: 'tipo' });
 
         console.log('[MIO Cache] Coleta concluída.', {
             integrantes: toUpdate.includes('integrantes') ? integrantes.length : undefined,

@@ -34,7 +34,7 @@ Could not find a relationship between 'avaliacoes_desempenho' and 'funcionarios'
 
 ### Passo 2: Executar no Supabase
 
-1. Acesse o [Supabase Dashboard](https:***REMOVED***
+1. Acesse o [Supabase Dashboard](https://supabase.com
 2. Selecione o seu projeto
 3. No menu lateral, clique em **"SQL Editor"**
 4. Clique em **"New query"** (Nova consulta)

@@ -98,7 +98,7 @@ export default function ResetPassword() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           token,
           password,
         }),

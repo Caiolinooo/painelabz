@@ -3,8 +3,8 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Obter variáveis de ambiente
-const supabaseUrl = ***REMOVED***;
-const supabaseServiceKey = ***REMOVED***;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 console.log('Verificando configurações do Supabase:');
 console.log('URL:', supabaseUrl);
@@ -18,7 +18,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 // Criar cliente Supabase com a chave de serviço
-const supabase = ***REMOVED*** supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false

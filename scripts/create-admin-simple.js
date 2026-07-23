@@ -8,11 +8,11 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Configurações
-const SUPABASE_URL = ***REMOVED***;
-const SUPABASE_ANON_KEY = ***REMOVED***;
-const ADMIN_EMAIL = '***REMOVED***';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const ADMIN_EMAIL = 'document.getElementById(';
 const ADMIN_PHONE_NUMBER = '+5522997847289';
-const ADMIN_PASSWORD = ***REMOVED***;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 if (!ADMIN_PASSWORD) { console.error('ADMIN_PASSWORD required'); process.exit(1); }
 const ADMIN_FIRST_NAME = 'Caio';
 const ADMIN_LAST_NAME = 'Correia';

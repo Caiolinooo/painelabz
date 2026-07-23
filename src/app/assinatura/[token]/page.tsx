@@ -223,7 +223,7 @@ export default function AssinaturaExternaPage() {
             fetch('/api/contracts/sign', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: ***REMOVED*** token })
+                body: JSON.stringify({ token })
             }).catch(e => console.warn('[Tracker] Erro ao registrar visualização:', e));
         }
     }, [step, token]);
@@ -337,7 +337,7 @@ export default function AssinaturaExternaPage() {
             const res = await fetch('/api/contracts/sign', {
                 method: 'POST',
                 headers,
-                body: ***REMOVED***
+                body: JSON.stringify({
                     solicitacao_id: currentItem.id,
                     signature_base64: signatureBase64,
                     signer_data: {

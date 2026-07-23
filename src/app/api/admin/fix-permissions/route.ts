@@ -5,8 +5,8 @@ import { supabaseAdmin as supabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 // Obter URLs e chaves para informações de debug
-const supabaseUrl = ***REMOVED*** || '';
-const supabaseServiceKey = ***REMOVED*** || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
 // Verificar se a chave de serviço está presente e tem o formato correto
 if (!supabaseServiceKey || supabaseServiceKey.length < 100) {
@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
     console.log('Usuário encontrado:', user);
 
     // Verificar se o usuário é o administrador
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
+    const adminEmail = process.env.ADMIN_EMAIL || (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '+5522997847289';
     const isAdmin = user.email === adminEmail || user.phone_number === adminPhone || user.role === 'ADMIN';
 
     console.log('Verificando se é o administrador principal:', {

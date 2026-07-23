@@ -99,7 +99,7 @@ export default function UsuariosElegiveisPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: ***REMOVED***
+        body: JSON.stringify({
           usuarios_ids: Array.from(elegiveisIds),
         }),
       });

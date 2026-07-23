@@ -52,7 +52,7 @@ export default function StatusSelector({ userId, currentStatus, onStatusChange }
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
-                body: ***REMOVED*** action: 'status', status: newStatus })
+                body: JSON.stringify({ action: 'status', status: newStatus })
             });
 
             if (!response.ok) {

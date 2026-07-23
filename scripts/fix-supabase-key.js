@@ -5,7 +5,7 @@ const path = require('path');
 const readline = require('readline');
 
 // Criar interface de leitura
-const rl = ***REMOVED***
+const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
@@ -15,11 +15,11 @@ function updateServiceKey(newKey) {
   const envPath = path.resolve('.env');
 
   // Ler o arquivo .env
-  let envContent = ***REMOVED*** 'utf8');
+  let envContent = fs.readFileSync(envPath, 'utf8');
 
   // Substituir a chave de serviço
-  const regex = ***REMOVED***;
-  envContent = ***REMOVED*** `***REMOVED***=${newKey}`);
+  const regex = /SUPABASE_SERVICE_KEY=.*/;
+  envContent = envContent.replace(regex, `SUPABASE_SERVICE_KEY=${newKey}`);
 
   // Escrever o arquivo atualizado
   fs.writeFileSync(envPath, envContent);
@@ -28,13 +28,13 @@ function updateServiceKey(newKey) {
 }
 
 // Verificar a chave de serviço atual
-const currentKey = ***REMOVED*** || '';
+const currentKey = process.env.SUPABASE_SERVICE_KEY || '';
 console.log('Chave de serviço atual:', currentKey ? `${currentKey.substring(0, 10)}...` : 'Não definida');
 console.log('Comprimento da chave atual:', currentKey.length);
 
 // Solicitar a nova chave de serviço
 console.log('\nPara obter a chave de serviço correta:');
-console.log('1. Acesse o painel do Supabase (https:***REMOVED***');
+console.log('1. Acesse o painel do Supabase (https://app.supabase.com)');
 console.log('2. Selecione seu projeto');
 console.log('3. Vá para "Settings" > "API"');
 console.log('4. Copie a "service_role key" (NÃO a anon key)');

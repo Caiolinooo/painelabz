@@ -1,7 +1,7 @@
 const { Client } = require('pg');
 
 const client = new Client({
-  connectionString: '***REMOVED***',
+  connectionString: 'postgresql://postgres.arzvingdtnttiejcvucs:Caio%402122%40@aws-0-us-east-2.pooler.supabase.com:6543/postgres',
   ssl: { rejectUnauthorized: false }
 });
 

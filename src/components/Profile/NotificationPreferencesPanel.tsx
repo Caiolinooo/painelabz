@@ -64,7 +64,7 @@ export default function NotificationPreferencesPanel() {
     try {
       setSaving(true);
       const res = await fetchWithToken('/api/notifications/prefs', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: ***REMOVED*** prefs })
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefs })
       });
       if (!res.ok) throw new Error('save error');
       setStatus(t('components.preferenciasSalvas'));
@@ -89,7 +89,7 @@ export default function NotificationPreferencesPanel() {
         applicationServerKey: urlBase64ToUint8Array(vapidPublic)
       });
       const res = await fetchWithToken('/api/notifications/push/subscribe', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ***REMOVED*** subscription })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription })
       });
       if (!res.ok) throw new Error(await res.text());
       setPrefs(prev => ({ ...prev, channels: { ...prev.channels, push: true } }));
@@ -110,7 +110,7 @@ export default function NotificationPreferencesPanel() {
       await sub?.unsubscribe();
       if (endpoint) {
         await fetchWithToken('/api/notifications/push/unsubscribe', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ***REMOVED*** endpoint })
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint })
         });
       }
       setPrefs(prev => ({ ...prev, channels: { ...prev.channels, push: false } }));

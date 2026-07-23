@@ -104,7 +104,7 @@ export default function PainelConfigGerentesAvaliacaoAdvanced() {
       const response = await fetchWithToken('/api/admin/gerentes-avaliacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: ***REMOVED*** colaborador_id, gerente_id }),
+        body: JSON.stringify({ colaborador_id, gerente_id }),
       });
 
       const result = await response.json();

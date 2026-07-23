@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         .from('users_unified')
         .insert({
           id: userId,
-          email: '***REMOVED***',
+          email: (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
           phone_number: '+5522997847289',
           first_name: 'Caio',
           last_name: 'Correia',
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         .from('users_unified')
         .insert({
           id: userId,
-          email: '***REMOVED***',
+          email: (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''),
           phone_number: '+5522997847289',
           first_name: 'Caio',
           last_name: 'Correia',

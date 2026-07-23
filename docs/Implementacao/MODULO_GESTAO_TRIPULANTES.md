@@ -1146,7 +1146,7 @@ export async function processarDocumentoOCR(arquivoUrl: string, tipoDocumento: s
                 const fallbackRes = await fetch(ocrConfig.fallback_api_url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ocrConfig.fallback_api_key}` },
-                    body: ***REMOVED*** image: buffer.toString('base64'), language: ocrConfig.idioma || 'por' })
+                    body: background-color: image: buffer.toString('base64'), language: ocrConfig.idioma || 'por' })
                 });
                 const fallbackData = await fallbackRes.json();
                 const texto = fallbackData.text || fallbackData.textos?.join('\n') || '';

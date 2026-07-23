@@ -9,7 +9,7 @@ const path = require('path');
 const readline = require('readline');
 
 // Interface de linha de comando
-const rl = ***REMOVED***
+const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
@@ -71,7 +71,7 @@ async function main() {
   let envContent = '';
   
   if (fs.existsSync(envPath)) {
-    envContent = ***REMOVED*** 'utf8');
+    envContent = fs.readFileSync(envPath, 'utf8');
   }
   
   // Remover configurações existentes
