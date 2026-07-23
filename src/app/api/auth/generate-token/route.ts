@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '@/lib/jwt-secret';
+import { verifyAuth } from '@/lib/api-utils';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await verifyAuth(request, true);
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     // Obter dados do corpo da requisição
     const { userId, email, phoneNumber, role, firstName, lastName } = await request.json();
     
@@ -12,8 +19,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ID do usuário é obrigatório' }, { status: 400 });
     }
     
-    // Obter chave secreta do JWT
-    const jwtSecret = process.env.JWT_SECRET || process.env.NEXT_PUBLIC_JWT_SECRET || 'abz-secret-key';
+    // Obter chave secreta do JWT (sem fallback inseguro / sem NEXT_PUBLIC)
+    const jwtSecret = getJwtSecret();
     
     // Criar payload do token
     const payload = {

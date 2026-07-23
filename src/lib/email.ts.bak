@@ -14,8 +14,8 @@ const exchangeConfig = {
   port: parseInt(process.env.EMAIL_PORT || '587'),
   secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para outras portas
   auth: {
-    user: process.env.EMAIL_USER || '***REMOVED***',
-    pass: process.env.EMAIL_PASSWORD || 'Caio@2122@'
+    user: process.env.EMAIL_USER || '',
+    pass: process.env.EMAIL_PASSWORD || ''
   },
   // Desativar verificação de certificado em ambiente de desenvolvimento
   tls: {
@@ -54,8 +54,8 @@ const etherealConfig = {
   port: parseInt(process.env.EMAIL_PORT || '587'),
   secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para outras portas
   auth: {
-    user: process.env.EMAIL_USER || 'c2z6ej7cai5vpdol@ethereal.email',
-    pass: process.env.EMAIL_PASSWORD || 'HxRMTY73284bqa3DWG'
+    user: process.env.EMAIL_USER || '',
+    pass: process.env.EMAIL_PASSWORD || ''
   }
 };
 
@@ -176,7 +176,7 @@ export async function sendEmail(
 ): Promise<{ success: boolean; message: string; previewUrl?: string; usedFallback?: boolean }> {
   // Conteúdo do email
   const mailOptions = {
-    from: options?.from || process.env.EMAIL_FROM || '"ABZ Group" <***REMOVED***>',
+    from: options?.from || process.env.EMAIL_FROM || '"ABZ Group" <your_mailbox@yourcompany.com>',
     to,
     cc: options?.cc,
     bcc: options?.bcc,
@@ -190,7 +190,7 @@ export async function sendEmail(
       'X-MSMail-Priority': 'High',
       'Importance': 'High',
       'X-Mailer': 'ABZ Group Mailer',
-      'List-Unsubscribe': '<mailto:***REMOVED***?subject=Unsubscribe>'
+      'List-Unsubscribe': '<mailto:your_mailbox@yourcompany.com?subject=Unsubscribe>'
     },
     // Adicionar informações de prioridade
     priority: 'high',

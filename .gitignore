@@ -36,11 +36,29 @@ yarn-error.log*
 
 # Environment files - sensitive configuration
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 .env.production
+.env.backup
+.env.backup-*
+!.env.example
+
+# Local secret-scan / PDF extract scratch (do not commit)
+_pdf_extract.txt
+_extract_pdf.py
+_scan_secrets.py
+_redact_secrets.py
+_rescan.py
+
+# History-purge workdir / patches (may contain secret remnants in diffs)
+.git-purge-work/
+
+# Patch rejects / local IDE
+*.rej
+.cursor/
 
 # Token files
 .token

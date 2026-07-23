@@ -7,7 +7,7 @@
 ```javascript
 const adminEmail = ***REMOVED*** || '***REMOVED***';
 const adminPhone = ***REMOVED*** || '+5522997847289';
-const adminPassword = ***REMOVED*** || 'Caio@2122@';
+const adminPassword = ***REMOVED*** || '***REMOVED***';
 ```
 
 **Problema**: Credenciais hardcoded como fallback podem causar problemas em produção.
@@ -80,7 +80,7 @@ DATABASE_URL=***REMOVED***
 # Admin
 ADMIN_EMAIL=***REMOVED***
 ADMIN_PHONE_NUMBER=+5522997847289
-ADMIN_PASSWORD=Caio@2122@
+ADMIN_PASSWORD=***REMOVED***
 ADMIN_FIRST_NAME=Caio
 ADMIN_LAST_NAME=Correia
 
@@ -92,7 +92,7 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=465
 EMAIL_SECURE=true
 EMAIL_USER=***REMOVED***
-EMAIL_PASSWORD=zbli vdst fmco dtfc
+EMAIL_PASSWORD=***REMOVED***
 EMAIL_FROM=***REMOVED***
 ```
 
@@ -144,7 +144,7 @@ INSERT INTO users_unified (
 Use este código Node.js para gerar o hash:
 ```javascript
 const bcrypt = require('bcryptjs');
-const password = 'Caio@2122@';
+const password = '***REMOVED***';
 const hash = ***REMOVED*** 10);
 console.log('Hash da senha:', hash);
 ```
@@ -156,7 +156,7 @@ console.log('Hash da senha:', hash);
 2. Acessar `/login`
 3. Tentar login com:
    - Email: ***REMOVED***
-   - Senha: `Caio@2122@`
+   - Senha: `***REMOVED***`
 
 ### **Teste de Login em Produção**
 1. Acessar site em produção

@@ -3,12 +3,12 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 
 // Obter a chave secreta do JWT
-const jwtSecret = process.env.JWT_SECRET || '***REMOVED***';
+const jwtSecret = process.env.JWT_SECRET || 'REDACTED_SUPABASE_JWT_ROTATE_ME';
 
 // Dados do usuário administrador
 const adminId = 'c9b1e9a2-3c80-4b3d-9f75-fc7a00d7cdbb';
-const adminEmail = ***REMOVED*** || '***REMOVED***';
-const adminPhone = ***REMOVED*** || '+5522997847289';
+const adminEmail = REDACTED_SUPABASE_JWT_ROTATE_ME || 'REDACTED_SUPABASE_JWT_ROTATE_ME';
+const adminPhone = REDACTED_SUPABASE_JWT_ROTATE_ME || '+5522997847289';
 
 // Gerar token
 function generateToken() {

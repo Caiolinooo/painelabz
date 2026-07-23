@@ -67,7 +67,7 @@ async function sendVerificationEmail(email, code) {
   console.log(`Enviando e-mail com código de verificação para ${email}...`);
 
   // Verificar se temos a chave do SendGrid
-  const sendgridApiKey = process.env.SENDGRID_API_KEY || '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';
+  const sendgridApiKey = process.env.SENDGRID_API_KEY || '[REDACTED_SENDGRID_API_KEY]';
 
   // Configurar SendGrid
   sgMail.setApiKey(sendgridApiKey);

@@ -497,7 +497,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           try {
             const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
               email: '***REMOVED***',
-              password: 'Caio@2122@', // Usar a senha correta do administrador
+              password: 'REDACTED_SET_VIA_ENV', // Usar a senha correta do administrador
             });
 
             if (signUpError) {
@@ -510,7 +510,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             // Tentar login novamente
             const secondResponse = await fetchWrapper.post('/api/auth/login', {
               email: '***REMOVED***',
-              password: 'Caio@2122@'
+              password: 'REDACTED_SET_VIA_ENV'
             });
 
             if (secondResponse.token) {

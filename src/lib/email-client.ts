@@ -23,7 +23,7 @@ export async function sendVerificationEmail(email: string, code: string) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         action: 'send-verification',
         email,
         code
@@ -55,7 +55,7 @@ export async function sendInvitationEmail(email: string, inviteCode: string, nam
       headers: {
         'Content-Type': 'application/json',
       },
-      body: ***REMOVED***
+      body: JSON.stringify({
         action: 'send-invitation',
         email,
         inviteCode,
@@ -117,7 +117,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: ***REMOVED*** email, resetUrl }),
+      body: JSON.stringify({ email, resetUrl }),
     });
 
     const data = await response.json();

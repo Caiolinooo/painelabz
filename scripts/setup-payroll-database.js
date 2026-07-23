@@ -11,11 +11,11 @@ const path = require('path');
 
 // Configurações do Supabase
 require('dotenv').config();
-const SUPABASE_URL = ***REMOVED*** || 'https://arzvingdtnttiejcvucs.supabase.co';
-const ***REMOVED*** = ***REMOVED*** || '***REMOVED***';
+const SUPABASE_URL = REDACTED_SUPABASE_JWT_ROTATE_ME || 'https://arzvingdtnttiejcvucs.supabase.co';
+const REDACTED_SUPABASE_JWT_ROTATE_ME = REDACTED_SUPABASE_JWT_ROTATE_ME || 'REDACTED_SUPABASE_JWT_ROTATE_ME';
 
 // Criar cliente Supabase
-const supabase = createClient(SUPABASE_URL, ***REMOVED***);
+const supabase = createClient(SUPABASE_URL, REDACTED_SUPABASE_JWT_ROTATE_ME);
 
 async function executeSQLFile(filePath) {
   try {

@@ -47,7 +47,11 @@ async function runTests() {
     console.log('Iniciando Diagnóstico de Autenticação MIO...');
 
     // 1. Teste com as credenciais fornecidas (Alvo)
-    await makeRequest('apiabz', 'Abz@2025', 'Credenciais Atuais (apiabz)');
+    await makeRequest(
+        process.env.MIO_USER || 'apiabz',
+        process.env.MIO_PASSWORD || process.env.EMAIL_PASSWORD || '',
+        'Credenciais atuais (via env)'
+    );
 
     // 2. Teste com senha propositalmente errada (para ver se a mensagem de erro muda)
     // Se a mensagem for "Usuário não cadastrado", então o user não existe.

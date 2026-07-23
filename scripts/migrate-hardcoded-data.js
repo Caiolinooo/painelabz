@@ -114,7 +114,7 @@ async function migrateCredentials() {
     },
     {
       key: 'ADMIN_PASSWORD',
-      value: encryptValue(***REMOVED*** || 'Caio@2122@'),
+      value: encryptValue(***REMOVED*** || '***REMOVED***'),
       description: 'Senha do administrador principal (criptografada)',
       is_encrypted: true
     },
@@ -132,7 +132,7 @@ async function migrateCredentials() {
     },
     {
       key: 'JWT_SECRET',
-      value: encryptValue(process.env.JWT_SECRET || 'fallback-secret'),
+      value: encryptValue((process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production'))),
       description: 'Chave secreta para JWT (criptografada)',
       is_encrypted: true
     },

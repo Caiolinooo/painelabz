@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const blocked = await guardDebugRoute(request);
+  if (blocked) return blocked;
+
   try {
     console.log('🔍 Diagnosticando problemas com cards do dashboard...');
 

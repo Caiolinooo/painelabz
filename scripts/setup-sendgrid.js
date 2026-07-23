@@ -12,7 +12,7 @@ async function setupSendgrid() {
   }
 
   // Chave do SendGrid fornecida
-  const sendgridApiKey = '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';
+  const sendgridApiKey = '[REDACTED_SENDGRID_API_KEY]';
 
   try {
     // Ler o arquivo .env

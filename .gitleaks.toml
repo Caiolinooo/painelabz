@@ -1,0 +1,42 @@
+title = "Painel ABZ secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "abz-email-password-fallback"
+description = "Hardcoded EMAIL_PASSWORD / EMAIL_PASS fallback in source"
+regex = '''(?i)(EMAIL_PASSWORD|EMAIL_PASS)\s*\|\|\s*['"][^'"]{4,}['"]'''
+tags = ["email", "credential", "hardcoded"]
+
+[[rules]]
+id = "abz-smtp-pass-literal"
+description = "Literal SMTP password assignment in auth block"
+regex = '''(?i)pass\s*:\s*process\.env\.EMAIL_PASSWORD\s*\|\|\s*['"][^'"]+['"]'''
+tags = ["email", "credential"]
+
+[[rules]]
+id = "abz-gmail-app-password-spaced"
+description = "Gmail app password pattern (4 groups of 4 letters)"
+regex = '''(?i)\b[a-z]{4}\s+[a-z]{4}\s+[a-z]{4}\s+[a-z]{4}\b'''
+entropy = 2.5
+tags = ["gmail", "app-password"]
+keywords = ["email", "gmail", "pass", "password", "auth"]
+
+[[rules]]
+id = "abz-jwt-fallback-secret"
+description = "Insecure JWT_SECRET fallback string"
+regex = '''JWT_SECRET\s*\|\|\s*['"]fallback-secret['"]'''
+tags = ["jwt", "insecure-fallback"]
+
+[[allowlists]]
+description = "Ignore local env examples and gitleaks config itself"
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''package-lock\.json$''',
+  '''_pdf_extract\.txt$''',
+  '''_scan_secrets\.py$''',
+  '''_redact_secrets\.py$''',
+  '''_extract_pdf\.py$''',
+]

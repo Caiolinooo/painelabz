@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.30.0] - 2026-07-23
+
+### Security
+- **Git history purge**: Removed leaked credential files and literal secrets from branch history (`git filter-repo`); collaborators with old clones should re-clone. Credential **rotation remains mandatory** (O365, JWT, Supabase, etc.) — purge does not revoke exposed keys.
+- **No hardcoded secrets**: Email/JWT/WKRadar fallbacks removed; runtime uses `src/lib/email-env.ts`, `src/lib/jwt-secret.ts`, and `WKRADAR_DEFAULT_PASSWORD` (server-side only).
+- **Debug routes hardened**: `guardDebugRoute` blocks production access; `/api/email/debug` is admin-only and never returns passwords; TLS SMTP uses `rejectUnauthorized: true`.
+- **Secret scanning CI**: `.gitleaks.toml` + `.github/workflows/secret-scanning.yml` (Gitleaks).
+
+### Features
+- **Admin email credentials UI**: `/admin/email-settings` (menu Sistema) — ADMIN can view/update SMTP account; password stored encrypted in `app_secrets`.
+- **Runtime resolution**: DB (`app_secrets`) → env (`EMAIL_*` bootstrap/fallback) → throw; API `GET/PUT/POST /api/admin/email-settings` with masked password and optional SMTP test.
+
+### Docs
+- `SECURITY.md`, `tasks.md`, `AGENTS.md`, and `src/app/api/admin/email-settings/AGENTS.md` document posture, rotation checklist, and DOX contracts.
+- `.env.example` documents required vars without real secrets; ops SQL helper `scripts/email-credentials-app-secrets.sql`.
+
 ## [5.29.0] - 2026-07-15
 
 ### Added
@@ -25,7 +41,7 @@
 - **Voice Server — Teste de conexão SMTP**: Endpoint `GET /api/email/test-connection` agora limpa o cache do transporter antes de testar, garantindo credenciais frescas.
 
 ### Changed
-- **Email Exchange — Tratamento de erro 535**: Detecta autenticação falhada do Office365 (535 5.7.3) e retorna mensagem orientando sobre credenciais expiradas ou BASIC Auth desabilitado. Removido fallback hardcoded de senha (`Abz@2025`) — agora exige `EMAIL_PASSWORD` configurado.
+- **Email Exchange — Tratamento de erro 535**: Detecta autenticação falhada do Office365 (535 5.7.3) e retorna mensagem orientando sobre credenciais expiradas ou BASIC Auth desabilitado. Removido fallback hardcoded de senha (`[REDACTED]`) — agora exige `EMAIL_PASSWORD` configurado.
 - **Email Exchange — Validação pré-conexão**: `createTransport()` valida se `EMAIL_PASSWORD` está configurado antes de tentar conectar, evitando erros genéricos.
 - **Auth — Anti-duplicação de erros**: `sendPasswordResetEmail()` e `request-password-reset/route.ts` não envolvem mensagens de erro com prefixos adicionais, eliminando a cadeia "Erro ao enviar email: Erro ao enviar email de redefinição: Erro ao enviar email: ...".
 - **Voice Manager — Instalação atualizada**: `abz_voice_manager.sh` instala `supertonic` + `numpy` em vez de `piper-tts`. Download automático do modelo Supertonic 3 na primeira execução.

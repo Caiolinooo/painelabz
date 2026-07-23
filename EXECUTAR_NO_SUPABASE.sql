@@ -19,10 +19,10 @@ SELECT
 FROM users_unified 
 WHERE email = '***REMOVED***';
 
--- Passo 2: Gerar hash da senha 'Caio@2122@'
+-- Passo 2: Gerar hash da senha 'REDACTED_SET_VIA_ENV'
 SELECT 
   'HASH GERADO' as status,
-  crypt('Caio@2122@', gen_salt('bf', 10)) as password_hash;
+  crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)) as password_hash;
 
 -- Passo 3: Criar ou atualizar o usuário admin
 -- IMPORTANTE: Copie o hash gerado acima e substitua na linha abaixo
@@ -51,8 +51,8 @@ INSERT INTO users_unified (
   '+5522997847289',
   'Caio',
   'Correia',
-  crypt('Caio@2122@', gen_salt('bf', 10)), -- Hash será gerado automaticamente
-  crypt('Caio@2122@', gen_salt('bf', 10)), -- Hash será gerado automaticamente
+  crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)), -- Hash será gerado automaticamente
+  crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)), -- Hash será gerado automaticamente
   'ADMIN',
   'Administrador do Sistema',
   'TI',
@@ -86,8 +86,8 @@ INSERT INTO users_unified (
   NOW()
 )
 ON CONFLICT (email) DO UPDATE SET
-  password = crypt('Caio@2122@', gen_salt('bf', 10)),
-  password_hash = crypt('Caio@2122@', gen_salt('bf', 10)),
+  password = crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)),
+  password_hash = crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)),
   role = 'ADMIN',
   active = true,
   is_authorized = true,
@@ -157,5 +157,5 @@ ORDER BY created_at;
 --    - active: true
 -- 5. Teste o login com:
 --    Email: ***REMOVED***
---    Senha: Caio@2122@
+--    Senha: REDACTED_SET_VIA_ENV
 -- ========================================

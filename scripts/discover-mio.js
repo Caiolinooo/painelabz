@@ -7,9 +7,13 @@ const agent = new https.Agent({
 });
 
 const CREDENTIALS = {
-    username: 'apiabz',
-    password: process.argv[2] || 'Abz@2025'
+    username: process.env.MIO_AUTH_USER || process.argv[2],
+    password: process.env.MIO_AUTH_PASSWORD || process.argv[3]
 };
+if (!CREDENTIALS.username || !CREDENTIALS.password) {
+    console.error('Provide MIO credentials via MIO_AUTH_USER/MIO_AUTH_PASSWORD or argv: node discover-mio.js <user> <password>');
+    process.exit(1);
+}
 
 // Lista de prefixos comuns para APIs
 const PREFIXES = [

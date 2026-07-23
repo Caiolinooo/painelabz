@@ -228,7 +228,7 @@ async function createAdminUser() {
   // Criar usuário na autenticação do Supabase
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email: adminUser.email,
-    password: ***REMOVED*** || 'Caio@2122@',
+    password: ***REMOVED*** || '***REMOVED***',
     email_confirm: true,
     user_metadata: {
       first_name: adminUser.first_name,

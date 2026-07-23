@@ -95,7 +95,7 @@ export default function LoginTest() {
 
         <div className="mt-4">
           <p className="text-sm text-gray-600">
-            {t('auth.testCredentials', 'Use o email ***REMOVED*** e senha Caio@2122@ para testar.')}
+            {t('auth.testCredentials', 'Use o email ***REMOVED*** e senha REDACTED_SET_VIA_ENV para testar.')}
           </p>
         </div>
       </div>

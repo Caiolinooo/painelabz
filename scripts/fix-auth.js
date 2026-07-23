@@ -9,7 +9,7 @@ const { createClient } = require('@supabase/supabase-js');
 const SUPABASE_URL = ***REMOVED***;
 const SUPABASE_ANON_KEY = ***REMOVED***;
 const ADMIN_EMAIL = '***REMOVED***';
-const ADMIN_PASSWORD = 'Caio@2122@';
+const ADMIN_PASSWORD = '***REMOVED***';
 
 // Criar cliente Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

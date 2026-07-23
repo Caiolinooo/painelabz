@@ -11,11 +11,16 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export async function ensureAdminUser(): Promise<boolean> {
   try {
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
-    const adminPassword = ***REMOVED*** || 'Caio@2122@';
+    const adminEmail = ***REMOVED***;
+    const adminPhone = ***REMOVED***;
+    const adminPassword = ***REMOVED***;
+
+    if (!adminEmail || !adminPhone || !adminPassword) {
+      console.error('ADMIN_EMAIL, ADMIN_PHONE_NUMBER e ADMIN_PASSWORD são obrigatórios');
+      return false;
+    }
     
-    console.log('Verificando usuário administrador:', { adminEmail, adminPhone });
+    console.log('Verificando usuário administrador:', { adminEmail, adminPhone: adminPhone ? '[set]' : '[missing]' });
     
     // Criar pool de conexão com o PostgreSQL
     const pool = new Pool({

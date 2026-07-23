@@ -11,7 +11,7 @@ const supabaseServiceKey = ***REMOVED***;
 const jwtSecret = process.env.JWT_SECRET;
 const adminEmail = ***REMOVED*** || '***REMOVED***';
 const adminPhone = ***REMOVED*** || '+5522997847289';
-const adminPassword = ***REMOVED*** || 'Caio@2122@';
+const adminPassword = ***REMOVED***;
 const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Caio';
 const adminLastName = process.env.ADMIN_LAST_NAME || 'Correia';
 

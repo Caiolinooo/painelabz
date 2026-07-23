@@ -115,8 +115,8 @@ export function getEmailDomain(email: string): string | null {
 
 ### **Issue Description**
 The codebase contained hardcoded credentials embedded directly in source code, including:
-- Email passwords: `'Caio@2122@'`
-- SendGrid API keys: `'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'`
+- Email passwords: `'***REMOVED***'`
+- SendGrid API keys: `'[REDACTED_SENDGRID_API_KEY]'`
 
 Additionally, there was no validation for required environment variables, leading to potential runtime failures.
 
@@ -128,11 +128,11 @@ Additionally, there was no validation for required environment variables, leadin
 ```typescript
 // BEFORE (CRITICAL VULNERABILITY)
 auth: {
-  user: process.env.EMAIL_USER || '***REMOVED***',
-  pass: process.env.EMAIL_PASSWORD || 'Caio@2122@'  // HARDCODED PASSWORD!
+  user: process.env.EMAIL_USER, // required — no hardcoded fallback
+  pass: process.env.EMAIL_PASSWORD // required — no hardcoded fallback
 }
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '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');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '[REDACTED_SENDGRID_API_KEY]');
 ```
 
 ### **Fix Applied**

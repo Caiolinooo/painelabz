@@ -2,7 +2,7 @@ const https = require('https');
 
 const userEmail = "***REMOVED***";
 const userSimple = "caio.correia";
-const pass = "Caio@2122@";
+const pass = "***REMOVED***";
 const host = "mio.app.br";
 
 function request(name, path, authHeader) {

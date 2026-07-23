@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  const blocked = await guardDebugRoute(request);
+  if (blocked) return blocked;
+
   try {
     const { email, phoneNumber, newPassword } = await request.json();
 
@@ -22,10 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔧 Resetando senha para:', email || phoneNumber);
-
-    // Buscar usuário
-    let query = supabaseAdmin.from('users_unified').select('*');
+    let query = supabaseAdmin.from('users_unified').select('id, email, phone_number, first_name, last_name');
 
     if (email) {
       query = query.eq('email', email);
@@ -36,41 +37,32 @@ export async function POST(request: NextRequest) {
     const { data: user, error: userError } = await query.single();
 
     if (userError || !user) {
-      console.error('❌ Usuário não encontrado:', userError);
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
         { status: 404 }
       );
     }
 
-    console.log('✅ Usuário encontrado:', user.id);
-
-    // Hash da nova senha
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    console.log('🔐 Senha hasheada com bcrypt');
 
-    // Atualizar senha do usuário
     const { error: updateError } = await supabaseAdmin
       .from('users_unified')
       .update({
         password: hashedPassword,
         password_hash: hashedPassword,
         password_last_changed: new Date().toISOString(),
-        failed_login_attempts: 0, // Resetar contador de tentativas falhas
-        lock_until: null, // Remover bloqueio se houver
+        failed_login_attempts: 0,
+        lock_until: null,
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('❌ Erro ao atualizar senha:', updateError);
       return NextResponse.json(
-        { error: 'Erro ao atualizar senha', details: updateError },
+        { error: 'Erro ao atualizar senha' },
         { status: 500 }
       );
     }
-
-    console.log('✅ Senha atualizada com sucesso!');
 
     return NextResponse.json({
       success: true,
@@ -84,9 +76,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao resetar senha:', error);
+    console.error('Erro ao resetar senha:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor', details: error },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

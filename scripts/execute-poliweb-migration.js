@@ -72,24 +72,26 @@ async function executeMigration() {
     }
     console.log('');
 
-    // Insert Hudna's credentials
-    console.log('🔑 Inserindo credenciais da Hudna...');
-    const { data: hudnaCreds, error: hudnaError } = await supabase
-        .from('poliweb_credentials')
-        .upsert({
-            user_id: hudnaUser.id,
-            username: 'hudna.mendonca@groupabz.com',
-            password: 'Clave#123'
-        }, { onConflict: 'user_id' })
-        .select()
-        .single();
-
-    if (hudnaError) {
-        console.error(`❌ Erro: ${hudnaError.message}`);
+    // Insert seed credentials only when env is configured
+    console.log('🔑 Inserindo credenciais seed (se configuradas)...');
+    if (!process.env.POLIWEB_SEED_USERNAME || !process.env.POLIWEB_SEED_PASSWORD) {
+        console.warn('⚠️  POLIWEB_SEED_USERNAME/PASSWORD não definidos — pulando seed de credenciais.');
     } else {
-        console.log('✅ Credenciais da Hudna salvas!');
-        console.log('   Email: hudna.mendonca@groupabz.com');
-        console.log('   Senha: Clave#123\n');
+        const { error: hudnaError } = await supabase
+            .from('poliweb_credentials')
+            .upsert({
+                user_id: hudnaUser.id,
+                username: process.env.POLIWEB_SEED_USERNAME,
+                password: process.env.POLIWEB_SEED_PASSWORD
+            }, { onConflict: 'user_id' })
+            .select()
+            .single();
+
+        if (hudnaError) {
+            console.error(`❌ Erro: ${hudnaError.message}`);
+        } else {
+            console.log('✅ Credenciais seed salvas (senha omitida do log).\n');
+        }
     }
 
     // Check if Caio already has credentials

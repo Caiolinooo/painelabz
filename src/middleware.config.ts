@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from './lib/jwt-secret';
 
 // Função para extrair o token do cabeçalho de autorização
 export function extractTokenFromHeader(authHeader: string | null): string | null {
@@ -17,7 +18,7 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
 // Função para verificar um token JWT
 export function verifyToken(token: string): any | null {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    return jwt.verify(token, getJwtSecret());
   } catch (error) {
     return null;
   }

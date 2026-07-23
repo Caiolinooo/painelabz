@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { Tables } from '@/types/supabase';
+import { getJwtSecret } from '@/lib/jwt-secret';
 
 // Tipo do usuário do Supabase
 type User = Tables<'users_unified'>;
@@ -23,7 +24,7 @@ export function generateToken(user: User): string {
     email: user.email,
   };
 
-  return jwt.sign(payload, process.env.JWT_SECRET || 'fallback-secret', {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: '7d', // Token expira em 7 dias
   });
 }
@@ -31,7 +32,7 @@ export function generateToken(user: User): string {
 // Função para verificar um token JWT
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as TokenPayload;
+    return jwt.verify(token, getJwtSecret()) as TokenPayload;
   } catch (error) {
     return null;
   }

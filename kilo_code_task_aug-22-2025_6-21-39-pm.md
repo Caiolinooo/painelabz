@@ -2318,7 +2318,7 @@ This is problematic because `***REMOVED***` is a server-side secret that should 
 Email credentials are stored in the environment files:
 ```
 EMAIL_USER=***REMOVED***
-EMAIL_PASSWORD=zbli vdst fmco dtfc
+EMAIL_PASSWORD=***REMOVED***
 ```
 
 These are being used in multiple server-side files but could potentially be exposed if accidentally imported in client-side code.
@@ -2337,7 +2337,7 @@ This URL contains username and password information that should never be exposed
 Admin credentials are stored directly in environment files:
 ```
 ADMIN_EMAIL=***REMOVED***
-ADMIN_PASSWORD=Caio@2122@
+ADMIN_PASSWORD=***REMOVED***
 ADMIN_PHONE_NUMBER=+5522997847289
 ADMIN_FIRST_NAME=Caio
 ADMIN_LAST_NAME=Correia

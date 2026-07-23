@@ -75,13 +75,13 @@ Depois que o domínio ou endereço de e-mail for verificado no SendGrid, você p
 
 1. Atualize o arquivo `.env` com as configurações do SendGrid:
    ```
-   SENDGRID_API_KEY=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
+   SENDGRID_API_KEY=[REDACTED_SENDGRID_API_KEY]
    EMAIL_FROM=seu-email-verificado@seu-dominio.com
    EMAIL_HOST=smtp.sendgrid.net
    EMAIL_PORT=587
    EMAIL_SECURE=false
    EMAIL_USER=apikey
-   EMAIL_PASSWORD=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
+   EMAIL_PASSWORD=[REDACTED_SENDGRID_API_KEY]
    ```
 
 2. Atualize o arquivo `src/lib/email.ts` para usar o SendGrid:

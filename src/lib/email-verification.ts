@@ -64,7 +64,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
         <!-- Botão de verificação -->
         <div style="margin: 30px 0;">
           <a href="${verificationUrl}" 
-             style="display: inline-block; ***REMOVED*** #0066cc; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+             style="display: inline-block; background: #0066cc; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
             Verificar Email
           </a>
         </div>
@@ -73,11 +73,11 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
           Ou copie e cole este link no seu navegador:
         </p>
         
-        <p style="color: #0066cc; font-size: 14px; word-break: break-all; margin-bottom: 30px; padding: 10px; ***REMOVED*** #f8f9fa; border-radius: 4px;">
+        <p style="color: #0066cc; font-size: 14px; word-break: break-all; margin-bottom: 30px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
           ${verificationUrl}
         </p>
 
-        <div style="***REMOVED*** #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0; text-align: left;">
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0; text-align: left;">
           <p style="color: #856404; font-size: 14px; margin: 0;">
             <strong>⏰ Importante:</strong> Este link é válido por 24 horas.
           </p>

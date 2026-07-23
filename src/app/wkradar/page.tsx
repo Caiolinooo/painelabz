@@ -65,33 +65,27 @@ export default function WKRadarPage() {
 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.success && data.credentials) {
+                    if (data.success && data.credentials?.username && data.credentials?.password) {
                         setCredentials({
                             username: data.credentials.username,
                             password: data.credentials.password,
-                            isCustom: true
+                            isCustom: Boolean(data.isCustom)
                         });
                     } else {
-                        setCredentials({
-                            username: generateDefaultUsername(),
-                            password: 'Abz@2025',
-                            isCustom: false
-                        });
+                        setError(
+                            data.message ||
+                            'Credenciais WKRadar indisponíveis. Contate o administrador.'
+                        );
+                        setCredentials(null);
                     }
                 } else {
-                    setCredentials({
-                        username: generateDefaultUsername(),
-                        password: 'Abz@2025',
-                        isCustom: false
-                    });
+                    setError('Não foi possível carregar credenciais WKRadar.');
+                    setCredentials(null);
                 }
             } catch (err) {
                 console.error('Erro ao carregar credenciais WKRadar:', err);
-                setCredentials({
-                    username: generateDefaultUsername(),
-                    password: 'Abz@2025',
-                    isCustom: false
-                });
+                setError('Erro ao carregar credenciais WKRadar.');
+                setCredentials(null);
             } finally {
                 setLoading(false);
             }

@@ -8,7 +8,7 @@
  * - ***REMOVED***: Chave de serviço do Supabase
  * - ADMIN_EMAIL: Email do administrador (padrão: ***REMOVED***)
  * - ADMIN_PHONE_NUMBER: Número de telefone do administrador (padrão: +5522997847289)
- * - ADMIN_PASSWORD: Senha do administrador (padrão: Caio@2122@)
+ * - ADMIN_PASSWORD: Senha do administrador (padrão: ***REMOVED***)
  */
 
 require('dotenv').config();
@@ -20,7 +20,7 @@ const SUPABASE_URL = ***REMOVED***;
 const SUPABASE_KEY = ***REMOVED***;
 const ADMIN_EMAIL = ***REMOVED*** || '***REMOVED***';
 const ADMIN_PHONE_NUMBER = ***REMOVED*** || '+5522997847289';
-const ADMIN_PASSWORD = ***REMOVED*** || 'Caio@2122@';
+const ADMIN_PASSWORD = ***REMOVED***;
 const ADMIN_FIRST_NAME = process.env.ADMIN_FIRST_NAME || 'Caio';
 const ADMIN_LAST_NAME = process.env.ADMIN_LAST_NAME || 'Correia';
 

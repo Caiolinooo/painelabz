@@ -152,7 +152,7 @@ export default function WKRadarAdminPage() {
         setEditingUser(user.id);
         setEditForm({
             username: existing?.username || generateDefaultUsername(user),
-            password: existing?.password || 'Abz@2025'
+            password: existing?.password || ''
         });
     };
 
@@ -278,7 +278,7 @@ export default function WKRadarAdminPage() {
                             {t('wkradar.defaultCredentials', 'Credenciais Padrão')}
                         </p>
                         <p className="text-sm text-blue-700 mt-1">
-                            {t('wkradar.defaultCredentialsDesc', 'Por padrão, os usuários usam o formato primeiro_nome.sobrenome como login e a senha Abz@2025. Configure credenciais customizadas abaixo quando necessário.')}
+                            {t('wkradar.defaultCredentialsDesc', 'Por padrão, os usuários usam o formato primeiro_nome.sobrenome como login e a senha padrão definida em WKRADAR_DEFAULT_PASSWORD no servidor. Configure credenciais customizadas abaixo quando necessário.')}
                         </p>
                     </div>
                 </div>
@@ -405,7 +405,7 @@ export default function WKRadarAdminPage() {
                                                 />
                                             ) : (
                                                 <span className="text-sm text-gray-500">
-                                                    {creds ? '••••••••' : 'Abz@2025'}
+                                                    {creds ? '••••••••' : '•••••••• (padrão)'}
                                                 </span>
                                             )}
                                         </td>

@@ -1,7 +1,9 @@
 import {
   createTransport as createExchangeTransport,
   sendEmail as sendExchangeEmail,
-  sendVerificationEmail as sendExchangeVerificationEmail
+  sendVerificationEmail as sendExchangeVerificationEmail,
+  resetEmailTransport,
+  testEmailConnection,
 } from './email-exchange';
 
 /**
@@ -9,6 +11,8 @@ import {
  * NOTA: Este arquivo é um wrapper para manter compatibilidade com código legado.
  * A implementação real está em email-exchange.ts que usa Exchange/Office365 exclusivamente.
  */
+
+export { resetEmailTransport, testEmailConnection };
 
 /**
  * Inicializa o transporte de e-mail usando Exchange/Office 365

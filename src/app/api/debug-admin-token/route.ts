@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
+import { getJwtSecret } from '@/lib/jwt-secret';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const blocked = await guardDebugRoute(request);
+  if (blocked) return blocked;
+
   try {
     console.log('Iniciando geração de token de administrador para debug');
 
-    // Obter configurações do Supabase
     const supabaseUrl = ***REMOVED*** || '';
     const supabaseServiceKey = ***REMOVED*** || '';
-    const jwtSecret = process.env.JWT_SECRET || '';
+    let jwtSecret = '';
+    try {
+      jwtSecret = getJwtSecret();
+    } catch {
+      jwtSecret = '';
+    }
 
-    // Verificar configurações
     if (!supabaseUrl || !supabaseServiceKey || !jwtSecret) {
       return NextResponse.json({
         success: false,
@@ -26,15 +34,27 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Usando cliente Supabase já inicializado em lib/supabase.ts
+    const adminEmail = ***REMOVED***?.trim();
+    const adminPhone = ***REMOVED***?.trim();
+    const adminPassword = ***REMOVED***?.trim();
+    const adminFirstName = process.env.ADMIN_FIRST_NAME?.trim() || 'Admin';
+    const adminLastName = process.env.ADMIN_LAST_NAME?.trim() || 'User';
 
-    // Definir informações do administrador
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
-    const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Caio';
-    const adminLastName = process.env.ADMIN_LAST_NAME || 'Correia';
+    if (!adminEmail && !adminPhone) {
+      return NextResponse.json({
+        success: false,
+        message: 'ADMIN_EMAIL ou ADMIN_PHONE_NUMBER deve estar configurado'
+      }, { status: 500 });
+    }
 
-    console.log('Buscando administrador com email:', adminEmail);
+    if (!adminPassword) {
+      return NextResponse.json({
+        success: false,
+        message: 'ADMIN_PASSWORD deve estar configurado no ambiente'
+      }, { status: 500 });
+    }
+
+    console.log('Buscando administrador com email:', adminEmail || '(phone)');
 
     // Buscar o usuário administrador
     let adminUser;
@@ -96,7 +116,7 @@ export async function GET(request: NextRequest) {
             const { data: newAuthUser, error: signUpError } = await supabase.auth.admin.createUser({
               email: adminEmail,
               phone: adminPhone,
-              password: ***REMOVED*** || 'Caio@2122@',
+              password: adminPassword,
               email_confirm: true,
               user_metadata: {
                 first_name: adminFirstName,
@@ -152,7 +172,7 @@ export async function GET(request: NextRequest) {
           const { data: newAuthUser, error: signUpError } = await supabase.auth.admin.createUser({
             email: adminEmail,
             phone: adminPhone,
-            password: ***REMOVED*** || 'Caio@2122@',
+            password: adminPassword,
             email_confirm: true,
             user_metadata: {
               first_name: adminFirstName,

@@ -127,7 +127,7 @@ export async function sendVerificationEmail(
 
     // Conteúdo do email padrão
     const defaultMailOptions = {
-      from: process.env.EMAIL_FROM || '"ABZ Group" <***REMOVED***>',
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       to: email,
       subject: 'Código de Verificação - ABZ Group',
       text: `Seu código de verificação é: ${code}. Este código expira em 15 minutos.`,

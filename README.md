@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.28.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.30.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -194,9 +194,26 @@ npm run db:cadastro-fields        # Campos adicionais
 
 > Variaveis de ambiente obrigatorias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`
 
+### Credenciais de e-mail (SMTP)
+
+- **Bootstrap**: `EMAIL_USER`, `EMAIL_PASSWORD` (e host/porta) podem vir do `.env` / host (Vercel/Netlify) na primeira subida.
+- **Operacao recomendada**: ADMIN salva conta/senha em `/admin/email-settings` — persistencia em `app_secrets` (senha AES). Em runtime a ordem e **DB → env → erro** (sem senha hardcoded).
+- Detalhes e contrato: `src/app/api/admin/email-settings/AGENTS.md`.
+
+### Seguranca (resumo)
+
+- Nao hardcodar JWT, senhas SMTP/app passwords ou defaults WKRadar no codigo. Ver `SECURITY.md` e checklist de rotacao em `tasks.md`.
+- Debug APIs (`/api/debug/*`, etc.) sao bloqueadas em producao; CI usa Gitleaks (`.gitleaks.toml`).
+- Se o historico do branch `portal` foi reescrito (purge de secrets), clones antigos devem ser **re-clonados**; a rotacao das chaves expostas continua obrigatoria.
+
 ---
 
 ## Ultimas Atualizacoes
+
+### v5.30.0 - Seguranca + Credenciais de E-mail no Admin
+- **Purge de secrets no historico** e remocao de fallbacks hardcoded (email/JWT/WKRadar); debug routes endurecidas; Gitleaks no CI.
+- **Admin email-settings** em `/admin/email-settings` com persistencia em `app_secrets` (DB → env).
+- Documentacao de postura e rotacao em `SECURITY.md` / `tasks.md`. Ver `CHANGELOG.md`.
 
 ### v5.27.4 - Voz Funciona Offline (Fallback LLM Local)
 - **Voice Agent (agent.py)**: a tool `processar_texto` cai no LLM local (llama.cpp) quando o portal está fora do ar, então a voz responde mesmo sem o gateway.

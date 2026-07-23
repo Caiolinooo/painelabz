@@ -15,7 +15,7 @@ DIR_AGENT="$HOME/Desktop/abz-voice-local"
 # Host em 127.0.0.1 (mesma máquina)
 #LLM_CMD="cd ~/Desktop/llama.cpp/build/bin && ./llama-server \
  # --host 0.0.0.0 \
- # --api-key Caio@2122@ \
+ # --api-key REDACTED_SET_VIA_ENV \
  # --reasoning-effort auto \
  # --reasoning-budget 8950 \
  # --n-gpu-layers 999 \
@@ -49,7 +49,7 @@ export LIVEKIT_URL="${LIVEKIT_URL}"
 export LIVEKIT_API_KEY="${LIVEKIT_API_KEY}"
 export LIVEKIT_API_SECRET="${LIVEKIT_API_SECRET}"
 export LLM_BASE_URL="http://127.0.0.1:8080/v1"
-export LLM_API_KEY="Caio@2122@"
+export LLM_API_KEY="REDACTED_SET_VIA_ENV"
 export AUDIO_BASE_URL="http://127.0.0.1:8001/v1"
 export PORTAL_API_URL="http://localhost:3000"
 export VOICE_DEFAULT_LANGUAGE="pt"
@@ -263,7 +263,7 @@ test_services() {
     echo -e "${YELLOW}[1/3] Testando LLM (Llama.cpp)...${NC}"
     llm_resp=$(curl -s --max-time 30 http://127.0.0.1:8080/v1/chat/completions \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer Caio@2122@" \
+        -H "Authorization: Bearer REDACTED_SET_VIA_ENV" \
         -d '{"model":"qwen-coder","messages":[{"role":"user","content":"Diga apenas: teste ok"}],"max_tokens":20}')
     if echo "$llm_resp" | grep -q "choices"; then
         echo -e "${GREEN}[OK]${NC} LLM respondeu!"

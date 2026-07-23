@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
           phoneNumber: adminUser.phone_number,
           role: 'ADMIN'
         },
-        process.env.JWT_SECRET || 'fallback-secret',
+        (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
         { expiresIn: '7d' }
       );
 
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
             phoneNumber: adminUser.phone_number,
             role: 'ADMIN'
           },
-          process.env.JWT_SECRET || 'fallback-secret',
+          (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
           { expiresIn: '7d' }
         );
 
@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
             phoneNumber: adminUser.phone_number,
             role: 'ADMIN'
           },
-          process.env.JWT_SECRET || 'fallback-secret',
+          (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
           { expiresIn: '7d' }
         );
 
@@ -322,7 +322,7 @@ export async function POST(request: NextRequest) {
           phoneNumber: user.phone_number,
           role: 'ADMIN'
         },
-        process.env.JWT_SECRET || 'fallback-secret',
+        (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
         { expiresIn: '7d' }
       );
 
@@ -455,7 +455,7 @@ export async function POST(request: NextRequest) {
             phoneNumber: adminUser.phone_number,
             role: 'ADMIN'
           },
-          process.env.JWT_SECRET || 'fallback-secret',
+          (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
           { expiresIn: '7d' }
         );
 

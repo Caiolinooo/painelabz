@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = 'https://arzvingdtnttiejcvucs.supabase.co';
-const SERVICE_KEY = '***REMOVED***';
+const SERVICE_KEY = 'REDACTED_SUPABASE_JWT_ROTATE_ME';
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: {

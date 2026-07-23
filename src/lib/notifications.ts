@@ -148,7 +148,7 @@ export async function sendCustomEmail(
       text,
       htmlContent,
       {
-        from: process.env.EMAIL_FROM || '"ABZ Group" <***REMOVED***>'
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER
       }
     );
 

@@ -25,8 +25,8 @@ WHERE email = '***REMOVED***'
    OR phone_number = '+5522997847289';
 
 -- 3. Se o usuário não existir, criar o usuário admin
--- IMPORTANTE: Substitua 'HASH_DA_SENHA_AQUI' pelo hash bcrypt real da senha 'Caio@2122@'
--- Use: const bcrypt = require('bcryptjs'); console.log(bcrypt.hashSync('Caio@2122@', 10));
+-- IMPORTANTE: Substitua 'HASH_DA_SENHA_AQUI' pelo hash bcrypt real da senha 'REDACTED_SET_VIA_ENV'
+-- Use: const bcrypt = require('bcryptjs'); console.log(bcrypt.hashSync('REDACTED_SET_VIA_ENV', 10));
 
 INSERT INTO users_unified (
   id,
@@ -167,7 +167,7 @@ WHERE role = 'ADMIN';
 -- 2. Execute o seguinte código:
 --
 -- const bcrypt = require('bcryptjs');
--- const password = 'Caio@2122@';
+-- const password = 'REDACTED_SET_VIA_ENV';
 -- const hash = ***REMOVED*** 10);
 -- console.log('Hash da senha:', hash);
 --

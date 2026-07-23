@@ -50,7 +50,7 @@ logger = logging.getLogger("abz-voice")
 # Config
 # ---------------------------------------------------------------------------
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
-LLM_API_KEY = os.getenv("LLM_API_KEY", "Caio@2122@")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "REDACTED_SET_VIA_ENV")
 AUDIO_BASE_URL = os.getenv("AUDIO_BASE_URL", "http://127.0.0.1:8001/v1")
 
 # Gateway to Portal ABZ AI engine (same engine as text chat)

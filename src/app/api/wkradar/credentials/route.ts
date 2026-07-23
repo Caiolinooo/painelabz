@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/db';
+import {
+  generateWkradarDefaultUsername,
+  tryGetWkradarDefaultPassword,
+} from '@/lib/wkradar-defaults';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -63,14 +67,40 @@ export async function GET(request: NextRequest) {
                 credentials: {
                     username: credentials.username,
                     password: credentials.password
-                }
+                },
+                isCustom: true,
             });
         }
 
-        // Sem credenciais customizadas
+        // Sem credenciais customizadas — montar padrão via env (nunca hardcoded)
+        const { data: userRow } = await supabaseAdmin
+            .from('users_unified')
+            .select('first_name, last_name, email')
+            .eq('id', userId)
+            .maybeSingle();
+
+        const defaultPassword = tryGetWkradarDefaultPassword();
+        const fullName = [userRow?.first_name, userRow?.last_name].filter(Boolean).join(' ');
+        const defaultUsername = generateWkradarDefaultUsername(fullName, userRow?.email);
+
+        if (!defaultPassword || !defaultUsername) {
+            return NextResponse.json({
+                success: true,
+                credentials: null,
+                isCustom: false,
+                message: !defaultPassword
+                    ? 'WKRADAR_DEFAULT_PASSWORD não configurado no servidor'
+                    : 'Não foi possível gerar username padrão',
+            });
+        }
+
         return NextResponse.json({
             success: true,
-            credentials: null
+            credentials: {
+                username: defaultUsername,
+                password: defaultPassword,
+            },
+            isCustom: false,
         });
 
     } catch (error) {

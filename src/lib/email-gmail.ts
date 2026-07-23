@@ -6,36 +6,67 @@
 
 import nodemailer from 'nodemailer';
 import { buildAppUrl } from './app-url';
+import {
+  clearResolvedEmailAuthCache,
+  emailTlsOptions,
+  resolveEmailAddress,
+  resolveEmailAuth,
+  resolveEmailFrom,
+} from './email-env';
 
-// Configuração do Gmail com otimizações simplificadas para maior compatibilidade
-const emailConfig = {
-  service: 'gmail', // Usar o serviço pré-configurado do Gmail
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // true para 465
-  auth: {
-    user: process.env.EMAIL_USER || '***REMOVED***',
-    pass: process.env.EMAIL_PASSWORD || 'zbli vdst fmco dtfc'
-  },
-  // Configurações de timeout mais generosas
-  connectionTimeout: 30000, // 30 segundos
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
-  // Configurações de segurança simplificadas
-  tls: {
-    rejectUnauthorized: false, // Aceitar certificados auto-assinados
-  },
-  debug: process.env.NODE_ENV !== 'production', // Ativar debug em desenvolvimento
-  logger: process.env.NODE_ENV !== 'production' // Ativar logger em desenvolvimento
+type GmailMailConfig = {
+  service: 'gmail';
+  host: string;
+  port: number;
+  secure: boolean;
+  auth: { user: string; pass: string };
+  connectionTimeout: number;
+  greetingTimeout: number;
+  socketTimeout: number;
+  tls: ReturnType<typeof emailTlsOptions>;
+  debug: boolean;
+  logger: boolean;
 };
 
-// Log para debug
-console.log('Configuração de email carregada:', {
-  host: emailConfig.host,
-  port: emailConfig.port,
-  secure: emailConfig.secure,
-  user: emailConfig.auth.user
-});
+let emailConfig: GmailMailConfig | null = null;
+
+async function buildGmailConfig(): Promise<GmailMailConfig> {
+  const auth = await resolveEmailAuth();
+  return {
+    service: 'gmail',
+    host: auth.host || 'smtp.gmail.com',
+    port: auth.port || 465,
+    secure: auth.secure,
+    auth: {
+      user: auth.user,
+      pass: auth.pass,
+    },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
+    tls: emailTlsOptions(),
+    debug: process.env.NODE_ENV !== 'production',
+    logger: process.env.NODE_ENV !== 'production',
+  };
+}
+
+async function getGmailConfig(): Promise<GmailMailConfig> {
+  if (!emailConfig) {
+    emailConfig = await buildGmailConfig();
+    console.log('Configuração de email carregada:', {
+      host: emailConfig.host,
+      port: emailConfig.port,
+      secure: emailConfig.secure,
+      user: emailConfig.auth.user,
+    });
+  }
+  return emailConfig;
+}
+
+export function resetGmailTransport(): void {
+  emailConfig = null;
+  clearResolvedEmailAuthCache();
+}
 
 /**
  * Inicializa o transporte de e-mail
@@ -43,92 +74,39 @@ console.log('Configuração de email carregada:', {
  */
 export async function createTransport() {
   try {
+    const config = await getGmailConfig();
     console.log('Inicializando transporte de email com Gmail');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
     console.log('Configuração detalhada:', {
-      service: emailConfig.service,
-      host: emailConfig.host,
-      port: emailConfig.port,
-      secure: emailConfig.secure,
-      user: emailConfig.auth.user,
-      // Não logar a senha por segurança
-      debug: emailConfig.debug,
-      logger: emailConfig.logger
+      service: config.service,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.auth.user,
+      debug: config.debug,
+      logger: config.logger,
     });
 
-    // Criar transporter com configuração simplificada para Gmail
-    // Usar configuração mais simples para maior compatibilidade
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: emailConfig.auth.user,
-        pass: emailConfig.auth.pass
-      }
+        user: config.auth.user,
+        pass: config.auth.pass,
+      },
+      tls: emailTlsOptions(),
     });
 
-    // Verificar conexão
-    console.log('Verificando conexão com o servidor SMTP do Gmail...');
     await transporter.verify();
-    console.log('Conexão com o servidor SMTP do Gmail verificada com sucesso');
-
+    console.log('Conexão com o servidor SMTP verificada com sucesso');
     return transporter;
   } catch (error) {
-    console.error('Erro ao inicializar transporte de email com Gmail:', error);
-
-    if (error instanceof Error) {
-      console.error('Detalhes do erro:', error.message);
-      console.error('Stack trace:', error.stack);
-    }
-
-    // Tentar criar uma conta de teste Ethereal como fallback
-    try {
-      console.log('Tentando criar conta de teste Ethereal como fallback...');
-      const testAccount = await nodemailer.createTestAccount();
-
-      const etherealTransporter = nodemailer.createTransport({
-        host: '***REMOVED***',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass
-        },
-        debug: true,
-        logger: true
-      });
-
-      console.log('Conta de teste Ethereal criada:', {
-        user: testAccount.user,
-        pass: testAccount.pass,
-        previewURL: `https://ethereal.email/message/`
-      });
-
-      // Verificar conexão
-      await etherealTransporter.verify();
-      console.log('Conexão com Ethereal verificada com sucesso');
-
-      return etherealTransporter;
-    } catch (fallbackError) {
-      console.error('Erro ao criar conta de teste Ethereal:', fallbackError);
-
-      if (fallbackError instanceof Error) {
-        console.error('Detalhes do erro fallback:', fallbackError.message);
-        console.error('Stack trace fallback:', fallbackError.stack);
-      }
-
-      throw new Error(`Não foi possível inicializar nenhum transporte de email: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    }
+    emailConfig = null;
+    clearResolvedEmailAuthCache();
+    console.error('Erro ao inicializar transporte de email Gmail:', error);
+    throw error;
   }
 }
 
-/**
- * Envia um e-mail
- * @param to Destinatário(s)
- * @param subject Assunto
- * @param text Conteúdo em texto
- * @param html Conteúdo em HTML
- * @returns Resultado do envio
- */
 export async function sendEmail(
   to: string | string[],
   subject: string,
@@ -147,18 +125,18 @@ export async function sendEmail(
   }
 ) {
   try {
-    // Criar transporte com configuração simplificada para Gmail
+    const config = await getGmailConfig();
     const transport = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: emailConfig.auth.user,
-        pass: emailConfig.auth.pass
-      }
+        user: config.auth.user,
+        pass: config.auth.pass
+      },
+      tls: emailTlsOptions(),
     });
 
-    // Preparar opções do e-mail com configuração simplificada
     const mailOptions = {
-      from: options?.from || process.env.EMAIL_FROM || '"ABZ Group" <***REMOVED***>',
+      from: options?.from || (await resolveEmailFrom()),
       to,
       cc: options?.cc,
       bcc: options?.bcc,
@@ -166,8 +144,7 @@ export async function sendEmail(
       text,
       html,
       attachments: options?.attachments,
-      // Configurações adicionais
-      replyTo: process.env.EMAIL_REPLY_TO || process.env.EMAIL_USER || '***REMOVED***'
+      replyTo: process.env.EMAIL_REPLY_TO || resolveEmailAddress()
     };
 
     console.log('Enviando e-mail para:', Array.isArray(to) ? to.join(', ') : to);
@@ -235,13 +212,13 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
       <meta http-equiv="X-UA-Compatible" content="IE=edge">
       <title>Código de Verificação - ABZ Group</title>
     </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; ***REMOVED*** #f9f9f9;">
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; background: #f9f9f9;">
       <!-- Wrapper para compatibilidade com clientes de email -->
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f9f9f9;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: #f9f9f9;">
         <tr>
           <td align="center" style="padding: 20px 0;">
             <!-- Container principal -->
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
               <!-- Cabeçalho com logo -->
               <tr>
                 <td align="center" style="padding: 30px 20px;">
@@ -259,7 +236,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
               <!-- Código de verificação -->
               <tr>
                 <td align="center" style="padding: 0 20px;">
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f5f5f5; border-radius: 5px; margin: 20px 0;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: #f5f5f5; border-radius: 5px; margin: 20px 0;">
                     <tr>
                       <td align="center" style="padding: 20px; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333333;">
                         ${code}
@@ -331,14 +308,14 @@ export async function sendInvitationEmail(
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Convite para o Portal ABZ</title>
     </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; ***REMOVED*** #f9f9f9; color: #333333;">
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background: #f9f9f9; color: #333333;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
           <td align="center" style="padding: 20px 0;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden;">
               <!-- Cabeçalho -->
               <tr>
-                <td align="center" style="padding: 30px 20px; ***REMOVED*** #ffffff;">
+                <td align="center" style="padding: 30px 20px; background: #ffffff;">
                   <img src="${process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png'}" alt="ABZ Group Logo" style="max-width: 200px; height: auto;">
                 </td>
               </tr>
@@ -350,15 +327,15 @@ export async function sendInvitationEmail(
                   <p style="margin-bottom: 20px;">Olá ${name || ''},</p>
                   <p style="margin-bottom: 20px;">Você foi convidado para acessar o Portal ABZ, nossa plataforma interna para colaboradores.</p>
 
-                  <div style="***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                  <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p style="margin-bottom: 10px; font-weight: bold;">Seu código de convite:</p>
-                    <div style="***REMOVED*** #ffffff; padding: 10px; border-radius: 5px; text-align: center; font-size: 18px; letter-spacing: 2px; font-weight: bold; border: 1px dashed #0066cc;">
+                    <div style="background: #ffffff; padding: 10px; border-radius: 5px; text-align: center; font-size: 18px; letter-spacing: 2px; font-weight: bold; border: 1px dashed #0066cc;">
                       ${inviteCode}
                     </div>
                   </div>
 
                   <div style="text-align: center; margin: 30px 0;">
-                    <a href="${inviteUrl}" style="***REMOVED*** #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar o Portal</a>
+                    <a href="${inviteUrl}" style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar o Portal</a>
                   </div>
 
                   <p style="margin-bottom: 20px;">Se o botão acima não funcionar, copie e cole o seguinte link no seu navegador:</p>
@@ -373,7 +350,7 @@ export async function sendInvitationEmail(
 
               <!-- Informações de Segurança -->
               <tr>
-                <td style="padding: 15px 30px; ***REMOVED*** #f5f5f5; border-top: 1px solid #e0e0e0;">
+                <td style="padding: 15px 30px; background: #f5f5f5; border-top: 1px solid #e0e0e0;">
                   <p style="font-size: 13px; color: #666666; margin: 0 0 10px 0;"><strong>Informações de Segurança:</strong></p>
                   <p style="font-size: 13px; color: #666666; margin: 0 0 10px 0;">• Nunca compartilhe seu código de convite com outras pessoas.</p>
                   <p style="font-size: 13px; color: #666666; margin: 0 0 10px 0;">• A ABZ Group nunca solicitará sua senha por e-mail ou telefone.</p>
@@ -383,7 +360,7 @@ export async function sendInvitationEmail(
 
               <!-- Rodapé -->
               <tr>
-                <td style="padding: 20px 30px; text-align: center; ***REMOVED*** #ffffff; border-top: 1px solid #e0e0e0;">
+                <td style="padding: 20px 30px; text-align: center; background: #ffffff; border-top: 1px solid #e0e0e0;">
                   <p style="font-size: 12px; color: #999999; margin: 0 0 10px 0;">&copy; ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.</p>
                   <p style="font-size: 12px; color: #999999; margin: 0;">Este e-mail foi enviado para ${email}. Se você não solicitou este convite, por favor ignore esta mensagem ou entre em contato com nosso suporte.</p>
                 </td>
@@ -443,14 +420,14 @@ Equipe ABZ Group
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Redefinição de Senha - ABZ Group</title>
     </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; ***REMOVED*** #f9f9f9; color: #333333;">
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background: #f9f9f9; color: #333333;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
           <td align="center" style="padding: 20px 0;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden;">
               <!-- Cabeçalho -->
               <tr>
-                <td align="center" style="padding: 30px 20px; ***REMOVED*** #ffffff;">
+                <td align="center" style="padding: 30px 20px; background: #ffffff;">
                   <img src="${process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png'}" alt="ABZ Group Logo" style="max-width: 200px; height: auto;">
                 </td>
               </tr>
@@ -463,7 +440,7 @@ Equipe ABZ Group
                   <p style="margin-bottom: 20px;">Clique no botão abaixo para redefinir sua senha:</p>
 
                   <div style="text-align: center; margin: 30px 0;">
-                    <a href="${resetUrl}" style="***REMOVED*** #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Redefinir Senha</a>
+                    <a href="${resetUrl}" style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Redefinir Senha</a>
                   </div>
 
                   <p style="margin-bottom: 20px;">Se o botão acima não funcionar, copie e cole o seguinte link no seu navegador:</p>
@@ -479,7 +456,7 @@ Equipe ABZ Group
 
               <!-- Informações de Segurança -->
               <tr>
-                <td style="padding: 15px 30px; ***REMOVED*** #f5f5f5; border-top: 1px solid #e0e0e0;">
+                <td style="padding: 15px 30px; background: #f5f5f5; border-top: 1px solid #e0e0e0;">
                   <p style="font-size: 13px; color: #666666; margin: 0 0 10px 0;"><strong>Informações de Segurança:</strong></p>
                   <p style="font-size: 13px; color: #666666; margin: 0 0 10px 0;">• Nunca compartilhe sua senha com outras pessoas.</p>
                   <p style="font-size: 13px; color: #666666; margin: 0 0 10px 0;">• A ABZ Group nunca solicitará sua senha por e-mail ou telefone.</p>
@@ -489,7 +466,7 @@ Equipe ABZ Group
 
               <!-- Rodapé -->
               <tr>
-                <td style="padding: 20px 30px; text-align: center; ***REMOVED*** #ffffff; border-top: 1px solid #e0e0e0;">
+                <td style="padding: 20px 30px; text-align: center; background: #ffffff; border-top: 1px solid #e0e0e0;">
                   <p style="font-size: 12px; color: #999999; margin: 0 0 10px 0;">&copy; ${new Date().getFullYear()} ABZ Group. Todos os direitos reservados.</p>
                   <p style="font-size: 12px; color: #999999; margin: 0;">Este e-mail foi enviado para ${email}. Se você não solicitou esta redefinição, por favor ignore esta mensagem.</p>
                 </td>
@@ -521,27 +498,27 @@ Equipe ABZ Group
  */
 export async function testEmailConnection() {
   try {
+    const config = await getGmailConfig();
     console.log('Testando conexão com o servidor de email Gmail...');
     console.log('Configuração:', {
       service: 'gmail',
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      user: emailConfig.auth.user,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.auth.user,
       // Não logar a senha por segurança
       environment: process.env.NODE_ENV || 'development'
     });
 
-    // Criar transporter com configuração simplificada para Gmail
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: emailConfig.auth.user,
-        pass: emailConfig.auth.pass
-      }
+        user: config.auth.user,
+        pass: config.auth.pass
+      },
+      tls: emailTlsOptions(),
     });
 
-    // Verificar conexão
     await transporter.verify();
     console.log('Teste de conexão com Gmail bem-sucedido!');
 
@@ -550,10 +527,10 @@ export async function testEmailConnection() {
       message: 'Conexão com o servidor Gmail verificada com sucesso',
       config: {
         service: 'gmail',
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        user: emailConfig.auth.user,
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        user: config.auth.user,
         environment: process.env.NODE_ENV || 'development'
       }
     };
@@ -565,15 +542,16 @@ export async function testEmailConnection() {
       console.error('Stack trace:', error.stack);
     }
 
+    const config = emailConfig;
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Erro desconhecido',
       config: {
         service: 'gmail',
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        user: emailConfig.auth.user,
+        host: config?.host || 'smtp.gmail.com',
+        port: config?.port || 465,
+        secure: config?.secure ?? true,
+        user: config?.auth.user,
         environment: process.env.NODE_ENV || 'development'
       }
     };

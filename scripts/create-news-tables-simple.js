@@ -1,10 +1,10 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Configurações do Supabase
-const supabaseUrl = ***REMOVED*** || 'https://arzvingdtnttiejcvucs.supabase.co';
-const supabaseKey = ***REMOVED*** || '***REMOVED***';
+const supabaseUrl = REDACTED_SUPABASE_JWT_ROTATE_ME || 'https://arzvingdtnttiejcvucs.supabase.co';
+const supabaseKey = REDACTED_SUPABASE_JWT_ROTATE_ME || 'REDACTED_SUPABASE_JWT_ROTATE_ME';
 
-const supabase = ***REMOVED*** supabaseKey);
+const supabase = REDACTED_SUPABASE_JWT_ROTATE_ME supabaseKey);
 
 async function createNewsTables() {
   try {

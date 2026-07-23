@@ -10,7 +10,9 @@ async function getVapid(): Promise<{ publicKey: string; privateKey: string; subj
     const publicKey = pub?.value || '';
     let privateKey = prv?.value || '';
     if (prv?.is_encrypted) privateKey = decryptValue(privateKey);
-    const subject = subj?.value || 'mailto:***REMOVED***';
+    const subject =
+      subj?.value ||
+      (process.env.EMAIL_USER ? `mailto:${process.env.EMAIL_USER}` : 'mailto:noreply@localhost');
     if (!publicKey || !privateKey) return null;
     return { publicKey, privateKey, subject };
   } catch (e) {

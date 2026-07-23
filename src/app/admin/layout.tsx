@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor, FiActivity, FiMessageSquare, FiShoppingCart, FiShield, FiBook, FiServer, FiCpu, FiSend, FiAnchor } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiUsers, FiFileText, FiMenu, FiX, FiLogOut, FiLayers, FiList, FiEdit, FiUser, FiUserCheck, FiDollarSign, FiCheck, FiTool, FiKey, FiUserX, FiChevronLeft, FiChevronRight, FiBell, FiAward, FiSmartphone, FiDatabase, FiBarChart2, FiBox, FiMonitor, FiActivity, FiMessageSquare, FiShoppingCart, FiShield, FiBook, FiServer, FiCpu, FiSend, FiAnchor, FiMail } from 'react-icons/fi';
 import NotificationHUD from '@/components/notifications/NotificationHUD';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useI18n } from '@/contexts/I18nContext';
@@ -39,6 +39,7 @@ const adminMenuItems = [
   { id: 'reimbursement-migration', href: '/admin/reimbursement-migration', label: 'admin.reimbursementMigration', icon: FiSettings },
   // Configurações gerais
   { id: 'automation', href: '/admin/automation', label: 'admin.automation', icon: FiSettings },
+  { id: 'email-settings', href: '/admin/email-settings', label: 'Credenciais de E-mail', icon: FiMail },
   { id: 'settings', href: '/admin/settings', label: 'admin.settings', icon: FiSettings },
   { id: 'builder', href: '/admin/builder', label: 'Module Builder', icon: FiBox },
   { id: 'purchase-orders', href: '/admin/purchase-orders', label: 'Ordens de Compra', icon: FiShoppingCart },
@@ -146,6 +147,7 @@ const adminMenuGroups = [
       { id: 'setup', href: '/admin/setup', label: 'admin.systemSetup', icon: FiTool },
       { id: 'builder', href: '/admin/builder', label: 'Module Builder', icon: FiBox },
       { id: 'automation', href: '/admin/automation', label: 'admin.automation', icon: FiSettings },
+      { id: 'email-settings', href: '/admin/email-settings', label: 'Credenciais de E-mail', icon: FiMail },
       { id: 'settings', href: '/admin/settings', label: 'admin.settings', icon: FiSettings },
       { id: 'acl-management', href: '/admin/acl-management', label: 'admin.acl', icon: FiKey },
       { id: 'admin-fix', href: '/admin-fix', label: 'admin.fixPermissions', icon: FiUserCheck },

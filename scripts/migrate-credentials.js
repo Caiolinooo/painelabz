@@ -124,7 +124,7 @@ async function main() {
   const credentials = [
     {
       key: 'JWT_SECRET',
-      value: jwtSecret || 'fallback-secret',
+      value: jwtSecret || (() => { throw new Error('JWT_SECRET required for migration'); })(),
       description: 'Chave secreta para assinatura de tokens JWT',
       isEncrypted: true
     },
@@ -136,7 +136,7 @@ async function main() {
     },
     {
       key: 'EMAIL_PASSWORD',
-      value: emailPassword || 'zbli vdst fmco dtfc',
+      value: emailPassword || '***REMOVED***',
       description: 'Senha do email para envio de notificações',
       isEncrypted: true
     },

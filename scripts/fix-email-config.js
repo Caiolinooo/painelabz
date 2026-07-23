@@ -7,7 +7,7 @@ async function testEmailConfig() {
   console.log('- EMAIL_HOST:', process.env.EMAIL_HOST || 'outlook.office365.com');
   console.log('- EMAIL_PORT:', process.env.EMAIL_PORT || '587');
   console.log('- EMAIL_SECURE:', process.env.EMAIL_SECURE || 'false');
-  console.log('- EMAIL_USER:', process.env.EMAIL_USER || '***REMOVED***');
+  console.log('- EMAIL_USER:', process.env.EMAIL_USER || '(não definido)');
   console.log('- EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? '******' : 'não definido');
 
   // Configuração do Exchange com OAuth2 (recomendado para Microsoft 365)
@@ -16,14 +16,18 @@ async function testEmailConfig() {
     port: parseInt(process.env.EMAIL_PORT || '587'),
     secure: process.env.EMAIL_SECURE === 'true',
     auth: {
-      user: process.env.EMAIL_USER || '***REMOVED***',
-      pass: process.env.EMAIL_PASSWORD || 'Caio@2122@'
+      user: process.env.EMAIL_USER || '',
+      pass: process.env.EMAIL_PASSWORD || ''
     },
     tls: {
-      rejectUnauthorized: false, // Aceitar certificados auto-assinados
-      ciphers: 'SSLv3'
+      rejectUnauthorized: true,
+      minVersion: 'TLSv1.2'
     }
   };
+
+  if (!exchangeConfig.auth.user || !exchangeConfig.auth.pass) {
+    throw new Error('Defina EMAIL_USER e EMAIL_PASSWORD no ambiente');
+  }
 
   try {
     console.log('Tentando criar transporter com configuração manual...');
@@ -74,8 +78,8 @@ async function testEmailConfig() {
     const gmailConfig = {
       service: 'gmail',
       auth: {
-        user: '***REMOVED***', // Use uma conta Gmail alternativa
-        pass: 'sua-senha-de-app-do-gmail' // Use uma senha de aplicativo
+        user: process.env.EMAIL_USER || '',
+        pass: process.env.EMAIL_PASSWORD || '' // Use uma senha de aplicativo
       }
     };
     

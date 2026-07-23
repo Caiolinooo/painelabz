@@ -85,11 +85,20 @@ export async function POST(request: NextRequest) {
     console.log('API login-password: Usuário encontrado:', user.id, user.email, user.role);
 
     // Verificar se o usuário é o administrador
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
-    const adminPassword = ***REMOVED*** || 'Caio@2122@';
+    const adminEmail = ***REMOVED***;
+    const adminPhone = ***REMOVED***;
+    const adminPassword = ***REMOVED***;
 
-    const isAdmin = user.email === adminEmail || user.phone_number === adminPhone;
+    if (!adminEmail && !adminPhone) {
+      return NextResponse.json(
+        { success: false, message: 'ADMIN_EMAIL/ADMIN_PHONE_NUMBER não configurados' },
+        { status: 500 }
+      );
+    }
+
+    const isAdmin =
+      (adminEmail && user.email === adminEmail) ||
+      (adminPhone && user.phone_number === adminPhone);
 
     if (!isAdmin) {
       console.log('API login-password: Usuário não é o administrador');
@@ -111,10 +120,13 @@ export async function POST(request: NextRequest) {
       const bcrypt = await import('bcryptjs');
       passwordMatches = await bcrypt.compare(password, user.password);
       console.log('API login-password: Resultado da comparação bcrypt:', passwordMatches);
-    } else {
+    } else if (adminPassword) {
       // Fallback: comparar diretamente com a variável de ambiente
       passwordMatches = password === adminPassword;
       console.log('API login-password: Usando fallback (comparação direta):', passwordMatches);
+    } else {
+      console.log('API login-password: Sem hash no banco e ADMIN_PASSWORD não configurado');
+      passwordMatches = false;
     }
 
     if (!passwordMatches) {
@@ -139,7 +151,7 @@ export async function POST(request: NextRequest) {
     console.log('API login-password: É usuário migrado?', isLegacyUser);
 
     // Para novos usuários (criados APÓS a data de corte), verificar email
-    if (!isLegacyUser && user.email_verified === false && user.email !== (***REMOVED*** || '***REMOVED***')) {
+    if (!isLegacyUser && user.email_verified === false && (!adminEmail || user.email !== adminEmail)) {
       console.log('API login-password: Novo usuário com email não verificado');
       return NextResponse.json({
         success: false,

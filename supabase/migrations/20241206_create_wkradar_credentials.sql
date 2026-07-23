@@ -1,6 +1,6 @@
 -- Create WKRadar credentials table
 -- This table stores custom Guacamole credentials for users
--- Default credentials are: username = first_name.last_name, password = Abz@2025
+-- Default credentials are: username = first_name.last_name, password = REDACTED_SET_VIA_ENV
 
 CREATE TABLE IF NOT EXISTS wkradar_credentials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

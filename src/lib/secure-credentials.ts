@@ -1,13 +1,12 @@
 /**
- * Módulo para gerenciamento seguro de credenciais
- * Implementa um sistema de cache e recuperação segura de credenciais do Supabase
+ * Gerenciamento seguro de credenciais via tabela app_secrets.
+ * Cache em memória + suporte a valores AES-256-CBC (is_encrypted).
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { SECURITY_SALT, SUPABASE_KEY_HASH } from './security-config';
 
-// Interface para credenciais
 interface Credential {
   key: string;
   value: string;
@@ -15,70 +14,66 @@ interface Credential {
   is_encrypted: boolean;
 }
 
-// Cache de credenciais e sua expiração
 const credentialsCache = new Map<string, string>();
 const cacheExpiry = new Map<string, number>();
-const CACHE_TTL_MS = 60 * 1000; // 1 minuto
+const CACHE_TTL_MS = 60 * 1000;
 
-// Cliente Supabase
-let supabaseClient: ReturnType<typeof createClient> | null = null;
+let supabaseClient: SupabaseClient | null = null;
 
-/**
- * Inicializa o cliente Supabase com a chave de serviço
- * @param supabaseUrl URL do Supabase
- * @param supabaseKey Chave de serviço do Supabase (opcional)
- * @returns Cliente Supabase inicializado
- */
+function resolveServiceKey(): string {
+  return (
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PRIVATE_SUPABASE_SERVICE_KEY ||
+    ''
+  );
+}
+
 export function initializeSupabaseClient(
-  supabaseUrl: string = ***REMOVED*** || '',
-  supabaseKey: string = ***REMOVED*** || ''
+  supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  supabaseKey: string = resolveServiceKey()
 ) {
-  // Verificar se a chave fornecida é válida
   if (supabaseKey) {
     const keyHash = crypto.createHash('md5').update(supabaseKey).digest('hex');
-    if (keyHash !== SUPABASE_KEY_HASH) {
+    if (SUPABASE_KEY_HASH && keyHash !== SUPABASE_KEY_HASH) {
       console.warn('Aviso: Hash da chave Supabase não corresponde ao esperado');
     }
   }
 
-  // Criar cliente Supabase
-  supabaseClient = ***REMOVED*** supabaseKey, {
+  supabaseClient = createClient(supabaseUrl, supabaseKey, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
-    }
+      persistSession: false,
+    },
   });
 
   return supabaseClient;
 }
 
-/**
- * Descriptografa um valor criptografado
- * @param encryptedValue Valor criptografado
- * @param salt Salt para descriptografia
- * @returns Valor descriptografado
- */
+export function encryptValue(value: string, salt: string = SECURITY_SALT): string {
+  if (!value) return '';
+  const key = crypto.createHash('md5').update(salt).digest('hex').slice(0, 32);
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key), iv);
+  let encrypted = cipher.update(value, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return `${iv.toString('hex')}:${encrypted}`;
+}
+
 export function decryptValue(encryptedValue: string, salt: string = SECURITY_SALT): string {
   if (!encryptedValue) return '';
-  
-  // Separar IV e valor criptografado
+
   const parts = encryptedValue.split(':');
   if (parts.length !== 2) return '';
-  
+
   const iv = Buffer.from(parts[0], 'hex');
   const encrypted = parts[1];
-  
-  // Criar um hash MD5 do salt para usar como chave
   const key = crypto.createHash('md5').update(salt).digest('hex').slice(0, 32);
-  
+
   try {
-    // Criar decipher
     const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key), iv);
-    
-    // Descriptografar o valor
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
     return decrypted;
   } catch (error) {
     console.error('Erro ao descriptografar valor:', error);
@@ -86,71 +81,62 @@ export function decryptValue(encryptedValue: string, salt: string = SECURITY_SAL
   }
 }
 
-/**
- * Obtém uma credencial do Supabase
- * @param key Chave da credencial
- * @returns Valor da credencial ou null se não encontrada
- */
+function ensureClient(): SupabaseClient | null {
+  if (supabaseClient) return supabaseClient;
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const serviceKey = resolveServiceKey();
+    if (url && serviceKey) {
+      return initializeSupabaseClient(url, serviceKey);
+    }
+    console.error(
+      'Cliente Supabase não inicializado. Defina NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_SERVICE_KEY).'
+    );
+    return null;
+  } catch (e) {
+    console.error('Falha ao auto-inicializar cliente Supabase para secure-credentials:', e);
+    return null;
+  }
+}
+
 export async function getCredential(key: string): Promise<string | null> {
-  // Verificar se a credencial está no cache e não expirou
   if (credentialsCache.has(key)) {
     const expiry = cacheExpiry.get(key);
     if (!expiry || Date.now() < expiry) {
       return credentialsCache.get(key) || null;
     }
   }
-  
-  // Verificar se o cliente Supabase está inicializado
-  if (!supabaseClient) {
-    // Tentativa de auto-inicialização em ambiente de servidor (Netlify/Next API)
-    try {
-      const url = ***REMOVED*** || '';
-      const serviceKey = ***REMOVED*** || process.env.NEXT_PRIVATE_***REMOVED*** || '';
-      if (url && serviceKey) {
-        initializeSupabaseClient(url, serviceKey);
-      } else {
-        console.error('Cliente Supabase não inicializado. Variáveis de ambiente ausentes (NEXT_PUBLIC_SUPABASE_URL/***REMOVED***).');
-        return null;
-      }
-    } catch (e) {
-      console.error('Falha ao auto-inicializar cliente Supabase para secure-credentials:', e);
-      return null;
-    }
-  }
-  
-  if (!supabaseClient) {
+
+  const client = ensureClient();
+  if (!client) {
     console.error('Cliente Supabase não disponível para buscar credencial');
     return null;
   }
 
   try {
-    // Buscar a credencial no Supabase
-    const { data, error } = await supabaseClient
+    const { data, error } = await client
       .from('app_secrets')
       .select('*')
       .eq('key', key)
-      .single();
-    
+      .maybeSingle();
+
     if (error) {
       console.error(`Erro ao buscar credencial ${key}:`, error);
       return null;
     }
-    
+
     if (!data) {
-      console.warn(`Credencial ${key} não encontrada`);
       return null;
     }
-    
-    // Descriptografar o valor se necessário
+
     const credential = data as unknown as Credential;
-    const value = credential.is_encrypted 
+    const value = credential.is_encrypted
       ? decryptValue(credential.value)
       : credential.value;
-    
-    // Armazenar no cache com expiração
+
     credentialsCache.set(key, value);
     cacheExpiry.set(key, Date.now() + CACHE_TTL_MS);
-    
+
     return value;
   } catch (error) {
     console.error(`Erro ao obter credencial ${key}:`, error);
@@ -158,44 +144,24 @@ export async function getCredential(key: string): Promise<string | null> {
   }
 }
 
-/**
- * Obtém todas as credenciais necessárias para a aplicação
- * @returns Objeto com todas as credenciais
- */
 export async function getAllCredentials(): Promise<Record<string, string>> {
   const credentials: Record<string, string> = {};
-  
-  // Lista de credenciais para buscar
-  const keys = [
-    'JWT_SECRET',
-    'EMAIL_USER',
-    'EMAIL_PASSWORD',
-    '***REMOVED***'
-  ];
-  
-  // Buscar cada credencial
+  const keys = ['JWT_SECRET', 'EMAIL_USER', 'EMAIL_PASSWORD', 'SUPABASE_SERVICE_KEY'];
+
   for (const key of keys) {
     const value = await getCredential(key);
     if (value) {
       credentials[key] = value;
     }
   }
-  
+
   return credentials;
 }
 
-/**
- * Inicializa o sistema de credenciais
- * Deve ser chamado no início da aplicação
- */
 export async function initializeCredentials(): Promise<boolean> {
   try {
-    // Inicializar cliente Supabase
     initializeSupabaseClient();
-    
-    // Carregar todas as credenciais
     await getAllCredentials();
-    
     return true;
   } catch (error) {
     console.error('Erro ao inicializar sistema de credenciais:', error);
@@ -203,15 +169,6 @@ export async function initializeCredentials(): Promise<boolean> {
   }
 }
 
-/**
- * Limpa o cache de credenciais.
- *
- * Deve ser chamado após atualizar uma credencial diretamente no banco
- * (ex: via painel admin) para garantir que a próxima leitura busque o
- * valor atualizado em vez do valor em cache.
- *
- * @param key Chave específica para limpar. Se omitido, limpa todo o cache.
- */
 export function clearCredentialCache(key?: string): void {
   if (key) {
     credentialsCache.delete(key);
@@ -220,4 +177,55 @@ export function clearCredentialCache(key?: string): void {
     credentialsCache.clear();
     cacheExpiry.clear();
   }
+}
+
+/**
+ * Upsert em app_secrets. Use encrypt:true para senhas/API keys.
+ */
+export async function setCredential(
+  key: string,
+  value: string,
+  description: string,
+  options: { encrypt?: boolean } = {}
+): Promise<void> {
+  const client = ensureClient();
+  if (!client) {
+    throw new Error('Supabase service client indisponível para gravar app_secrets');
+  }
+
+  const encrypt = options.encrypt === true;
+  const storedValue = encrypt ? encryptValue(value) : value;
+
+  const { data: existing, error: readError } = await client
+    .from('app_secrets')
+    .select('id')
+    .eq('key', key)
+    .maybeSingle();
+
+  if (readError) throw readError;
+
+  if (existing) {
+    const { error } = await client
+      .from('app_secrets')
+      .update({
+        value: storedValue,
+        description,
+        is_encrypted: encrypt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('key', key);
+    if (error) throw error;
+  } else {
+    const { error } = await client.from('app_secrets').insert([
+      {
+        key,
+        value: storedValue,
+        description,
+        is_encrypted: encrypt,
+      },
+    ]);
+    if (error) throw error;
+  }
+
+  clearCredentialCache(key);
 }

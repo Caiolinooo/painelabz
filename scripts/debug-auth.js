@@ -2,9 +2,13 @@ const axios = require('axios');
 
 const URL = 'https://mio.app.br/api/v1/authenticate';
 const CREDENTIALS = {
-    user: 'apiabz',
-    pass: 'Abz@2025'
+    user: process.env.MIO_AUTH_USER || process.argv[2],
+    pass: process.env.MIO_AUTH_PASSWORD || process.argv[3]
 };
+if (!CREDENTIALS.user || !CREDENTIALS.pass) {
+    console.error('Provide MIO credentials via MIO_AUTH_USER/MIO_AUTH_PASSWORD or argv');
+    process.exit(1);
+}
 
 async function testAuth() {
     console.log('🕵️ Testando autenticação MIO em:', URL);

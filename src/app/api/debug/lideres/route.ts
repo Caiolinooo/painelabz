@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,9 @@ export const dynamic = 'force-dynamic';
  * GET /api/debug/lideres
  */
 export async function GET(request: NextRequest) {
+    const blocked = await guardDebugRoute(request);
+    if (blocked) return blocked;
+
     try {
         // Get all users marked as leaders
         const { data: lideres, error: lideresError } = await supabaseAdmin

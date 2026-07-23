@@ -175,14 +175,21 @@ async function createAdminUser() {
   console.log('Criando usuário administrador...');
   
   // Verificar se o usuário já existe na autenticação do Supabase
+  const adminEmail = ***REMOVED***;
+  const adminPassword = ***REMOVED***;
+  if (!adminEmail || !adminPassword) {
+    console.error('Defina ADMIN_EMAIL e ADMIN_PASSWORD no ambiente antes de criar o admin.');
+    return false;
+  }
+
   const { data: authUser, error: authError } = await supabase.auth.signUp({
-    email: '***REMOVED***',
-    password: 'Caio@2122@',
+    email: adminEmail,
+    password: adminPassword,
     options: {
       data: {
-        first_name: 'Caio',
-        last_name: 'Correia',
-        phone_number: '+5522997847289',
+        first_name: process.env.ADMIN_FIRST_NAME || 'Admin',
+        last_name: process.env.ADMIN_LAST_NAME || 'User',
+        phone_number: ***REMOVED*** || '',
         role: 'ADMIN'
       }
     }

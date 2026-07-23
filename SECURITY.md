@@ -123,5 +123,27 @@ src/app/api/
 
 ---
 
-**Última atualização**: 2025-11-07
-**Responsável**: Claude AI (Security Audit)
+## Exposição de Credenciais O365 / GitHub (2026-07-22)
+
+**Severidade**: Crítica (CVSS sugerido 9.8) — CWE-798  
+**Origem**: Relatório DPO / Red Team — repositório público `Caiolinooo/EmployeeHub` com senha O365 em `src/lib/email-exchange.ts`.
+
+### Remediações no código (este repositório)
+
+- Remoção de fallbacks hardcoded de `EMAIL_PASSWORD` / `EMAIL_PASS` / app passwords Gmail
+- Resolução centralizada em `src/lib/email-env.ts` (falha se env ausente)
+- TLS SMTP com `rejectUnauthorized: true` (Nodemailer)
+- JWT sem `fallback-secret` / `abz-secret-key` — `src/lib/jwt-secret.ts`
+- WKRadar: senha padrão apenas via `WKRADAR_DEFAULT_PASSWORD` (servidor); API `/api/wkradar/credentials`
+- `/api/email/debug` exige ADMIN e nunca retorna senha; desabilitado em produção sem `ALLOW_EMAIL_DEBUG=true`
+- CI: `.github/workflows/secret-scanning.yml` + `.gitleaks.toml`
+- Docs/scripts com segredos redigidos
+
+### Ações manuais obrigatórias (fora do código)
+
+Ver checklist em `tasks.md` (seção O365 / GitHub / DPO): tornar privado o repo público, rotacionar senha O365, revogar sessões/MFA, auditar sign-in logs, secret scanning org-wide, avaliar LGPD.
+
+---
+
+**Última atualização**: 2026-07-23
+**Responsável**: Security remediation (O365 credential exposure)

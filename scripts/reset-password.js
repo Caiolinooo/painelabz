@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 // Configurações
 const MONGODB_URI = "mongodb+srv://apiabzgroup:Cli%40212202%40@abzpainel.dz8sggk.mongodb.net/?retryWrites=true&w=majority&appName=ABZPainel";
 const ADMIN_PHONE = '+5522997847289';
-const NEW_PASSWORD = 'Caio@2122@';
+const NEW_PASSWORD = '***REMOVED***';
 
 async function resetPassword() {
   try {

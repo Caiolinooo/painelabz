@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdminFromRequest } from '@/lib/auth';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,9 @@ export const dynamic = 'force-dynamic';
  * GET /api/debug/check-admin
  */
 export async function GET(request: NextRequest) {
+  const blocked = await guardDebugRoute(request, { requireAdmin: false });
+  if (blocked) return blocked;
+
   try {
     const authHeader = request.headers.get('authorization');
     const token = extractTokenFromHeader(authHeader || '');

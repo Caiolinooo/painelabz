@@ -14,7 +14,7 @@ const SUPABASE_ANON_KEY = ***REMOVED***;
 const JWT_SECRET = process.env.JWT_SECRET;
 const ADMIN_EMAIL = ***REMOVED*** || '***REMOVED***';
 const ADMIN_PHONE = ***REMOVED*** || '+5522997847289';
-const ADMIN_PASSWORD = ***REMOVED*** || 'Caio@2122@';
+const ADMIN_PASSWORD = ***REMOVED*** || '***REMOVED***';
 const TOKEN_NAME = process.env.NEXT_PUBLIC_TOKEN_NAME || 'token';
 const TOKEN_FILE_NAME = process.env.TOKEN_FILE_NAME || '.token';
 

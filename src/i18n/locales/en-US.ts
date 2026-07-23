@@ -3255,7 +3255,7 @@ export default {
     adminTitle: 'WKRadar Configuration',
     adminDesc: 'Manage WKRadar access credentials for each user',
     defaultCredentials: 'Default Credentials',
-    defaultCredentialsDesc: 'By default, users use the format first_name.last_name as login and password Abz@2025. Configure custom credentials below when needed.',
+    defaultCredentialsDesc: 'By default, users use the format first_name.last_name as login and the server-configured default password (WKRADAR_DEFAULT_PASSWORD). Configure custom credentials below when needed.',
     wkUsername: 'WKRadar Login',
     wkPassword: 'WKRadar Password',
     customized: 'Customized',

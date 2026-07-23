@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
 
 export async function POST(request: NextRequest) {
+  const blocked = await guardDebugRoute(request);
+  if (blocked) return blocked;
+
   try {
     const { email } = await request.json();
 
@@ -13,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseUrl = ***REMOVED***;
-    const supabaseServiceKey = ***REMOVED***;
+    const supabaseServiceKey = ***REMOVED*** || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json(
@@ -31,18 +35,17 @@ export async function POST(request: NextRequest) {
 
     const { data: user, error } = await supabase
       .from('users_unified')
-      .select('*')
+      .select('id, email, phone_number, first_name, last_name, role, active, email_verified, authorization_status, created_at, updated_at, password, password_hash')
       .eq('email', email)
       .single();
 
     if (error) {
       return NextResponse.json(
-        { error: 'Usuário não encontrado', details: error.message },
+        { error: 'Usuário não encontrado' },
         { status: 404 }
       );
     }
 
-    // Verificar formato da senha
     const hasPassword = !!user.password;
     const hasPasswordHash = !!user.password_hash;
     const passwordIsBcrypt = hasPassword && user.password.startsWith('$2');
@@ -65,10 +68,6 @@ export async function POST(request: NextRequest) {
       password_info: {
         has_password: hasPassword,
         has_password_hash: hasPasswordHash,
-        password_length: hasPassword ? user.password.length : 0,
-        password_hash_length: hasPasswordHash ? user.password_hash.length : 0,
-        password_preview: hasPassword ? user.password.substring(0, 30) : null,
-        password_hash_preview: hasPasswordHash ? user.password_hash.substring(0, 30) : null,
         password_is_bcrypt: passwordIsBcrypt,
         password_hash_is_bcrypt: passwordHashIsBcrypt
       }
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Erro ao verificar usuário:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

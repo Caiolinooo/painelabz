@@ -31,6 +31,7 @@ import { sendVerificationCode } from './verification';
 import { supabase, getUserById } from './supabase';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { getJwtSecret } from './jwt-secret';
 // Não importar nodemailer diretamente aqui para evitar problemas com módulos Node.js no browser
 // import nodemailer from 'nodemailer';
 import { Tables } from '../types/supabase';
@@ -280,7 +281,7 @@ export function generateToken(user: any, rememberMe: boolean = false): string {
   // Se "lembrar-me" estiver ativo, usar expiração mais longa
   const expiresIn = rememberMe ? '7d' : '1d';
 
-  return jwt.sign(payload, process.env.JWT_SECRET || 'fallback-secret', {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn,
   });
 }
@@ -399,11 +400,8 @@ export function verifyToken(token: string | null | undefined): TokenPayload | nu
       return null;
     }
 
-    // Obter a chave secreta do JWT
-    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
-    if (process.env.NODE_ENV === 'development' && !process.env.JWT_SECRET) {
-      console.warn('verifyToken: JWT_SECRET não definido, usando fallback-secret');
-    }
+    // Obter a chave secreta do JWT (sem fallback inseguro em produção)
+    const jwtSecret = getJwtSecret();
 
     // Verificar e decodificar o token JWT
     const payload = jwt.verify(token, jwtSecret) as TokenPayload;

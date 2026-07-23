@@ -9,10 +9,10 @@ const fs = require('fs');
 // Configurações
 const supabaseUrl = ***REMOVED***;
 const supabaseServiceKey = ***REMOVED***;
-const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+const jwtSecret = (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production'));
 const adminEmail = ***REMOVED*** || '***REMOVED***';
 const adminPhone = ***REMOVED*** || '+5522997847289';
-const adminPassword = ***REMOVED*** || 'Caio@2122@';
+const adminPassword = ***REMOVED*** || '***REMOVED***';
 const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Caio';
 const adminLastName = process.env.ADMIN_LAST_NAME || 'Correia';
 

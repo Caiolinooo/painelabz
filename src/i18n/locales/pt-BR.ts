@@ -3567,7 +3567,7 @@ export default {
     adminTitle: 'Configuração WKRadar',
     adminDesc: 'Gerencie as credenciais de acesso ao WKRadar para cada usuário',
     defaultCredentials: 'Credenciais Padrão',
-    defaultCredentialsDesc: 'Por padrão, os usuários usam o formato primeiro_nome.sobrenome como login e a senha Abz@2025. Configure credenciais customizadas abaixo quando necessário.',
+    defaultCredentialsDesc: 'Por padrão, os usuários usam o formato primeiro_nome.sobrenome como login e a senha padrão definida no servidor (WKRADAR_DEFAULT_PASSWORD). Configure credenciais customizadas abaixo quando necessário.',
     wkUsername: 'Login WKRadar',
     wkPassword: 'Senha WKRadar',
     customized: 'Customizado',

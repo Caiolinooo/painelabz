@@ -1,40 +1,61 @@
 import nodemailer from 'nodemailer';
+import {
+  clearResolvedEmailAuthCache,
+  emailTlsOptions,
+  resolveEmailAuth,
+  resolveEmailFrom,
+} from '../email-env';
 
-const emailConfig = {
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '465'),
-    secure: process.env.EMAIL_SECURE !== 'false',
+let transporter: nodemailer.Transporter | null = null;
+
+async function getTransporter() {
+  if (transporter) return transporter;
+  const auth = await resolveEmailAuth();
+  transporter = nodemailer.createTransport({
+    host: auth.host,
+    port: auth.port,
+    secure: auth.secure,
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-    }
-};
+      user: auth.user,
+      pass: auth.pass,
+    },
+    tls: emailTlsOptions(),
+  });
+  return transporter;
+}
 
-export const transporter = nodemailer.createTransport(emailConfig);
+export function resetEmailServiceTransport(): void {
+  transporter = null;
+  clearResolvedEmailAuthCache();
+}
 
 export const sendEmail = async ({
-    to,
-    subject,
-    html,
-    attachments = []
+  to,
+  subject,
+  html,
+  attachments = [],
 }: {
-    to: string | string[];
-    subject: string;
-    html: string;
-    attachments?: any[];
+  to: string | string[];
+  subject: string;
+  html: string;
+  attachments?: unknown[];
 }) => {
-    try {
-        const info = await transporter.sendMail({
-            from: `"Portal ABZ" <${emailConfig.auth.user}>`,
-            to,
-            subject,
-            html,
-            attachments
-        });
-        console.log('Email sent:', info.messageId);
-        return { success: true, messageId: info.messageId };
-    } catch (error) {
-        console.error('Error sending email:', error);
-        return { success: false, error };
-    }
+  try {
+    const auth = await resolveEmailAuth();
+    const transport = await getTransporter();
+    const from = await resolveEmailFrom('Portal ABZ');
+    const info = await transport.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      attachments,
+      replyTo: auth.replyTo,
+    });
+    console.log('Email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return { success: false, error };
+  }
 };

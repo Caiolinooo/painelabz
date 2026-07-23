@@ -49,9 +49,10 @@ const sendgridConfig = {
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000,
-  // Configurações de TLS
+  // Configurações de TLS — sempre validar certificado
   tls: {
-    rejectUnauthorized: process.env.NODE_ENV === 'production'
+    rejectUnauthorized: true,
+    minVersion: 'TLSv1.2' as const,
   }
 };
 
@@ -82,7 +83,7 @@ export async function createTransport() {
       const testAccount = await nodemailer.createTestAccount();
 
       const etherealTransporter = nodemailer.createTransport({
-        host: '***REMOVED***',
+        host: 'smtp.ethereal.email',
         port: 587,
         secure: false,
         auth: {
@@ -138,11 +139,22 @@ export async function sendEmail(
     // Criar transporte
     const transport = await createTransport();
 
+    const sender =
+      process.env.EMAIL_FROM?.trim() ||
+      process.env.EMAIL_USER?.trim();
+    if (!sender) {
+      throw new Error('EMAIL_FROM ou EMAIL_USER deve estar configurado');
+    }
+    const senderAddress = sender.includes('<')
+      ? (sender.match(/<([^>]+)>/)?.[1] || sender)
+      : sender;
+    const mailDomain = senderAddress.includes('@') ? senderAddress.split('@')[1] : 'localhost';
+
     // Preparar opções do e-mail com cabeçalhos anti-spam
     const mailOptions = {
       from: {
         name: 'ABZ Group',
-        address: options?.from || process.env.EMAIL_FROM || '***REMOVED***'
+        address: options?.from || senderAddress
       },
       to,
       cc: options?.cc,
@@ -159,11 +171,11 @@ export async function sendEmail(
         'Importance': 'Normal',
         // Identificação do remetente
         'X-Mailer': 'ABZ Group Mailer via SendGrid',
-        'X-Sender': process.env.EMAIL_USER || '***REMOVED***',
+        'X-Sender': senderAddress,
         // Opção de descadastramento (importante para evitar spam)
-        'List-Unsubscribe': `<mailto:${process.env.EMAIL_USER || '***REMOVED***'}?subject=Unsubscribe>`,
+        'List-Unsubscribe': `<mailto:${senderAddress}?subject=Unsubscribe>`,
         // Identificação da mensagem
-        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2)}@groupabz.com>`,
+        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2)}@${mailDomain}>`,
         // Feedback loop
         'Feedback-ID': `${Date.now()}:abzgroup:${process.env.NODE_ENV || 'development'}`,
         // Cabeçalhos adicionais para evitar spam
@@ -172,15 +184,14 @@ export async function sendEmail(
         'Content-Transfer-Encoding': '7bit',
         'X-SG-EID': 'ABZ Group',
         'X-SG-ID': 'ABZ Group',
-        'X-Report-Abuse': `Please report abuse to ${process.env.EMAIL_USER || '***REMOVED***'}`
+        'X-Report-Abuse': `Please report abuse to ${senderAddress}`
       },
       // Configurações adicionais
       encoding: 'utf-8',
       priority: 'normal' as const,
       disableFileAccess: true,
       disableUrlAccess: true,
-      // Configurações para melhorar a entregabilidade
-      replyTo: process.env.EMAIL_USER || '***REMOVED***'
+      replyTo: process.env.EMAIL_REPLY_TO || senderAddress
     };
 
     console.log('Enviando e-mail para:', Array.isArray(to) ? to.join(', ') : to);
@@ -251,7 +262,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
     .container { padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px; }
     .header { text-align: center; margin-bottom: 20px; }
     .logo { max-width: 150px; height: auto; }
-    .code { ***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold; }
+    .code { background: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold; }
     .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px; }
   </style>
 </head>
@@ -336,7 +347,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
     .container { padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px; }
     .header { text-align: center; margin-bottom: 20px; }
     .logo { max-width: 200px; height: auto; }
-    .code { ***REMOVED*** #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold; }
+    .code { background: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; font-size: 24px; letter-spacing: 5px; font-weight: bold; }
     .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px; }
   </style>
 </head>

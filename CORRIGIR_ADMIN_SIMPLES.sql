@@ -22,10 +22,10 @@ SELECT
 FROM users_unified 
 WHERE email = '***REMOVED***';
 
--- Passo 3: Gerar hash da senha 'Caio@2122@' (agora vai funcionar)
+-- Passo 3: Gerar hash da senha 'REDACTED_SET_VIA_ENV' (agora vai funcionar)
 SELECT 
   'HASH GERADO' as status,
-  crypt('Caio@2122@', gen_salt('bf', 10)) as password_hash;
+  crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)) as password_hash;
 
 -- Passo 4: Deletar usuário existente se houver (para garantir limpeza)
 DELETE FROM users_unified WHERE email = '***REMOVED***';
@@ -56,8 +56,8 @@ INSERT INTO users_unified (
   '+5522997847289',
   'Caio',
   'Correia',
-  crypt('Caio@2122@', gen_salt('bf', 10)), -- Hash será gerado automaticamente
-  crypt('Caio@2122@', gen_salt('bf', 10)), -- Hash será gerado automaticamente
+  crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)), -- Hash será gerado automaticamente
+  crypt('REDACTED_SET_VIA_ENV', gen_salt('bf', 10)), -- Hash será gerado automaticamente
   'ADMIN',
   'Administrador do Sistema',
   'TI',
@@ -124,8 +124,8 @@ WHERE email = '***REMOVED***';
 --    - active: true
 -- 5. Teste o login com:
 --    Email: ***REMOVED***
---    Senha: Caio@2122@
+--    Senha: REDACTED_SET_VIA_ENV
 -- ========================================
 
 -- Se ainda der erro, use este hash pré-gerado:
--- Hash para 'Caio@2122@': $2a$10$rQJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP
+-- Hash para 'REDACTED_SET_VIA_ENV': $2a$10$rQJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP

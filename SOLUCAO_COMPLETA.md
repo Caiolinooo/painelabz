@@ -22,7 +22,7 @@
 
 3. **Execute esta query para gerar o hash da senha:**
 ```sql
-SELECT crypt('Caio@2122@', gen_salt('bf', 10)) as password_hash;
+SELECT crypt('***REMOVED***', gen_salt('bf', 10)) as password_hash;
 ```
 
 4. **Copie o hash gerado e execute esta query:**
@@ -81,7 +81,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=***REMOVED***
 DATABASE_URL=***REMOVED***
 ADMIN_EMAIL=***REMOVED***
 ADMIN_PHONE_NUMBER=+5522997847289
-ADMIN_PASSWORD=Caio@2122@
+ADMIN_PASSWORD=***REMOVED***
 ADMIN_FIRST_NAME=Caio
 ADMIN_LAST_NAME=Correia
 JWT_SECRET=***REMOVED***
@@ -89,7 +89,7 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=465
 EMAIL_SECURE=true
 EMAIL_USER=***REMOVED***
-EMAIL_PASSWORD=zbli vdst fmco dtfc
+EMAIL_PASSWORD=***REMOVED***
 EMAIL_FROM=***REMOVED***
 NEXT_PUBLIC_APP_URL=https://seu-site.netlify.app
 ```
@@ -113,7 +113,7 @@ No Supabase Dashboard:
 1. Acesse: `https://seu-site.netlify.app/login`
 2. Use:
    - **Email:** ***REMOVED***
-   - **Senha:** Caio@2122@
+   - **Senha:** ***REMOVED***
 
 ### **Teste 2: Esqueci Minha Senha**
 1. Acesse: `https://seu-site.netlify.app/login`

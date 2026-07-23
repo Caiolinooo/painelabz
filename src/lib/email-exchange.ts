@@ -8,117 +8,117 @@
 
 import nodemailer from 'nodemailer';
 import { buildAppUrl } from './app-url';
+import {
+  clearResolvedEmailAuthCache,
+  emailTlsOptions,
+  resolveEmailAddress,
+  resolveEmailAuth,
+  resolveEmailFrom,
+} from './email-env';
 
-// Validate required environment variables
-function validateEmailConfig() {
-  const requiredVars = ['EMAIL_USER', 'EMAIL_PASSWORD'];
-  const missing = requiredVars.filter(varName => !process.env[varName]);
+type ExchangeMailConfig = {
+  host: string;
+  port: number;
+  secure: boolean;
+  auth: { user: string; pass: string };
+  debug: boolean;
+  logger: boolean;
+  pool: boolean;
+  maxConnections: number;
+  maxMessages: number;
+  connectionTimeout: number;
+  greetingTimeout: number;
+  socketTimeout: number;
+  tls: ReturnType<typeof emailTlsOptions>;
+  requireTLS: boolean;
+  opportunisticTLS: boolean;
+};
 
-  if (missing.length > 0) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-    } else {
-      console.warn(`Missing email environment variables: ${missing.join(', ')}. Using default development credentials.`);
+let emailConfig: ExchangeMailConfig | null = null;
+
+async function buildEmailConfig(): Promise<ExchangeMailConfig> {
+  const auth = await resolveEmailAuth();
+  return {
+    host: auth.host,
+    port: auth.port,
+    secure: auth.secure,
+    auth: {
+      user: auth.user,
+      pass: auth.pass,
+    },
+    debug: process.env.NODE_ENV !== 'production',
+    logger: process.env.NODE_ENV !== 'production',
+    pool: true,
+    maxConnections: 2,
+    maxMessages: 50,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    tls: emailTlsOptions(),
+    requireTLS: true,
+    opportunisticTLS: true,
+  };
+}
+
+async function getEmailConfig(): Promise<ExchangeMailConfig> {
+  if (!emailConfig) {
+    emailConfig = await buildEmailConfig();
+    if (typeof window === 'undefined') {
+      console.log('Configuração de email carregada:', {
+        host: emailConfig.host,
+        port: emailConfig.port,
+        secure: emailConfig.secure,
+        user: emailConfig.auth.user,
+      });
     }
   }
+  return emailConfig;
 }
 
-// Configuração do Exchange/Office 365 com otimizações para evitar spam
-const emailConfig = {
-  host: process.env.EMAIL_HOST || '***REMOVED***',
-  port: parseInt(process.env.EMAIL_PORT || '587'),
-  secure: process.env.EMAIL_SECURE === 'true', // geralmente false para porta 587 (STARTTLS)
-  auth: {
-    user: process.env.EMAIL_USER || '***REMOVED***',
-    pass: process.env.EMAIL_PASSWORD || ''
-  },
-  // Log detalhado para depuração
-  debug: process.env.NODE_ENV !== 'production',
-  logger: process.env.NODE_ENV !== 'production',
-  // Configurações para melhorar a entregabilidade
-  pool: true, // Usar conexões persistentes
-  maxConnections: 2, // Office 365 tem limite de 3 conexões simultâneas, mantemos em 2 para margem de segurança
-  maxMessages: 50, // Reduzido de 100 para evitar limites de taxa por sessão
-  // Configurações de timeout
-  connectionTimeout: 10000, // 10 segundos
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-  // Configurações de segurança para Exchange/Office 365
-  tls: {
-    rejectUnauthorized: false, // Mais permissivo para evitar problemas
-    minVersion: 'TLSv1.2' as const
-  },
-  // Configurações específicas para Exchange/Office 365
-  requireTLS: true, // Exigir TL S
-  opportunisticTLS: true // Usar TLS quando disponível
-} as const;
-
-// Validate configuration on import (only in server environment)
-if (typeof window === 'undefined') {
-  try {
-    validateEmailConfig();
-    console.log('Email configuration validated successfully');
-  } catch (error) {
-    console.error('Email configuration validation failed:', error instanceof Error ? error.message : 'Unknown error');
-  }
-}
-
-// Log para debug
-console.log('Configuração de email carregada:', {
-  host: emailConfig.host,
-  port: emailConfig.port,
-  secure: emailConfig.secure,
-  user: emailConfig.auth.user
-});
-
-// Variável global para armazenar a instância do transporter e evitar limite de conexões
 const globalForNodemailer = global as unknown as { transporter: nodemailer.Transporter | null };
+
+/** Limpa transporter e cache após alteração de credenciais no admin. */
+export function resetEmailTransport(): void {
+  emailConfig = null;
+  globalForNodemailer.transporter = null;
+  clearResolvedEmailAuthCache();
+}
 
 /**
  * Inicializa o transporte de e-mail com Exchange/Office 365
  * @returns Transporter configurado
  */
 export async function createTransport() {
-  // Retornar a instância existente se houver (para evitar estourar o limite de conexões concorrentes)
   if (globalForNodemailer.transporter) {
     return globalForNodemailer.transporter;
   }
 
-  // Validar credenciais antes de tentar conectar
-  if (!emailConfig.auth.pass) {
-    throw new Error(
-      `EMAIL_PASSWORD não configurado. ` +
-      `Adicione EMAIL_PASSWORD=<sua-senha> no arquivo .env.local e reinicie o servidor.`
-    );
-  }
+  const config = await getEmailConfig();
 
   try {
     console.log('Inicializando transporte de email com Exchange/Office 365');
     console.log('Ambiente:', process.env.NODE_ENV || 'development');
     console.log('Configuração detalhada:', {
-      host: emailConfig.host,
-      port: emailConfig.port,
-      secure: emailConfig.secure,
-      user: emailConfig.auth.user,
-      // Não logar a senha por segurança
-      debug: emailConfig.debug,
-      logger: emailConfig.logger
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.auth.user,
+      debug: config.debug,
+      logger: config.logger,
     });
 
-    // Criar transporter com configuração otimizada para Exchange
-    const transporter = nodemailer.createTransport(emailConfig);
+    const transporter = nodemailer.createTransport(config);
 
-    // Verificar conexão apenas na inicialização (primeira vez)
     console.log('Verificando conexão com o servidor SMTP...');
     await transporter.verify();
     console.log('Conexão com o servidor SMTP verificada com sucesso');
 
-    // Armazenar na global para reuso
     globalForNodemailer.transporter = transporter;
-
     return transporter;
   } catch (error) {
     globalForNodemailer.transporter = null;
+    emailConfig = null;
+    clearResolvedEmailAuthCache();
     const errMsg = error instanceof Error ? error.message : 'Erro desconhecido';
 
     console.error('ERRO CRÍTICO - Falha ao inicializar transporte de email Exchange');
@@ -128,37 +128,28 @@ export async function createTransport() {
       console.error('Stack trace:', error.stack);
     }
 
-    console.error('Verifique as configurações de email no arquivo .env:');
-    console.error('  EMAIL_HOST:', emailConfig.host);
-    console.error('  EMAIL_PORT:', emailConfig.port);
-    console.error('  EMAIL_USER:', emailConfig.auth.user);
-    console.error('  EMAIL_PASSWORD:', emailConfig.auth.pass ? 'Configurado' : 'NÃO CONFIGURADO');
+    console.error('Verifique as configurações de email (Admin → Credenciais de E-mail ou .env):');
+    console.error('  EMAIL_HOST:', config.host);
+    console.error('  EMAIL_PORT:', config.port);
+    console.error('  EMAIL_USER:', config.auth.user);
+    console.error('  EMAIL_PASSWORD:', config.auth.pass ? 'Configurado' : 'NÃO CONFIGURADO');
 
-    // Detectar erro de autenticação 535 (senha inválida/expirada)
     if (errMsg.includes('535') || errMsg.includes('Authentication unsuccessful')) {
       throw new Error(
         `Credenciais de email inválidas ou expiradas. ` +
-        `Atualize a senha de EMAIL_PASSWORD no arquivo .env.local e reinicie o servidor. ` +
-        `Detalhes: ${errMsg}`
+          `Atualize no Admin → Credenciais de E-mail (ou EMAIL_PASSWORD no ambiente). ` +
+          `Detalhes: ${errMsg}`
       );
     }
 
     throw new Error(
       `Falha ao conectar com servidor Exchange/Office365. ` +
-      `Verifique as credenciais e configurações de rede. ` +
-      `Detalhes: ${errMsg}`
+        `Verifique as credenciais e configurações de rede. ` +
+        `Detalhes: ${errMsg}`
     );
   }
 }
 
-/**
- * Envia um e-mail usando Exchange/Office 365
- * @param to Destinatário(s)
- * @param subject Assunto
- * @param text Conteúdo em texto
- * @param html Conteúdo em HTML
- * @returns Resultado do envio
- */
 export async function sendEmail(
   to: string | string[],
   subject: string,
@@ -180,9 +171,12 @@ export async function sendEmail(
     // Criar transporte
     const transport = await createTransport();
 
+    const senderAddress = await resolveEmailAddress();
+    const mailDomain = senderAddress.includes('@') ? senderAddress.split('@')[1] : 'localhost';
+
     // Preparar opções do e-mail otimizadas para Exchange/Office 365
     const mailOptions = {
-      from: options?.from || process.env.EMAIL_FROM || '"ABZ Group" <***REMOVED***>',
+      from: options?.from || (await resolveEmailFrom()),
       to,
       cc: options?.cc,
       bcc: options?.bcc,
@@ -199,11 +193,11 @@ export async function sendEmail(
 
         // Identificação do remetente (importante para SPF/DKIM)
         'X-Mailer': 'ABZ Group Internal System v3.0',
-        'X-Sender': process.env.EMAIL_USER || '***REMOVED***',
-        'Return-Path': process.env.EMAIL_USER || '***REMOVED***',
+        'X-Sender': senderAddress,
+        'Return-Path': senderAddress,
 
         // Opção de descadastramento (RFC 8058)
-        'List-Unsubscribe': `<mailto:${process.env.EMAIL_USER || '***REMOVED***'}?subject=Unsubscribe>`,
+        'List-Unsubscribe': `<mailto:${senderAddress}?subject=Unsubscribe>`,
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
 
         // Cabeçalhos específicos para Exchange/Office365
@@ -220,15 +214,14 @@ export async function sendEmail(
         'X-No-Archive': 'True',
 
         // Message ID único
-        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2, 15)}@groupabz.com>`
+        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2, 15)}@${mailDomain}>`
       },
       // Configurações adicionais
       encoding: 'utf-8',
       priority: 'normal' as const,
       disableFileAccess: true,
       disableUrlAccess: true,
-      // Adicionar um endereço de resposta
-      replyTo: process.env.EMAIL_REPLY_TO || process.env.EMAIL_USER || '***REMOVED***'
+      replyTo: senderAddress
     };
 
     console.log('Enviando e-mail para:', Array.isArray(to) ? to.join(', ') : to);
@@ -285,11 +278,11 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
       <meta http-equiv="X-UA-Compatible" content="IE=edge">
       <title>Código de Verificação - ABZ Group</title>
     </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; ***REMOVED*** #f9f9f9;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f9f9f9;">
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; background: #f9f9f9;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: #f9f9f9;">
         <tr>
           <td align="center" style="padding: 20px 0;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
               <tr>
                 <td align="center" style="padding: 30px 20px;">
                   <img src="${process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png'}" alt="ABZ Group Logo" width="200" style="display: block; max-width: 200px; height: auto;">
@@ -302,7 +295,7 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
               </tr>
               <tr>
                 <td align="center" style="padding: 0 20px;">
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f5f5f5; border-radius: 5px; margin: 20px 0;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: #f5f5f5; border-radius: 5px; margin: 20px 0;">
                     <tr>
                       <td align="center" style="padding: 20px; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333333;">
                         ${code}
@@ -387,12 +380,13 @@ export async function sendInvitationEmail(
  */
 export async function testEmailConnection() {
   try {
+    const config = await getEmailConfig();
     console.log('Testando conexão com o servidor de email...');
     console.log('Configuração:', {
-      host: emailConfig.host,
-      port: emailConfig.port,
-      secure: emailConfig.secure,
-      user: emailConfig.auth.user,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.auth.user,
       // Não logar a senha por segurança
       environment: process.env.NODE_ENV || 'development'
     });
@@ -406,10 +400,10 @@ export async function testEmailConnection() {
       success: true,
       message: 'Conexão com o servidor Exchange/Office 365 verificada com sucesso',
       config: {
-        host: emailConfig.host,
-        port: emailConfig.port,
-        secure: emailConfig.secure,
-        user: emailConfig.auth.user,
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        user: config.auth.user,
         environment: process.env.NODE_ENV || 'development'
       }
     };
@@ -421,14 +415,15 @@ export async function testEmailConnection() {
       console.error('Stack trace:', error.stack);
     }
 
+    const config = emailConfig;
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Erro desconhecido',
       config: {
-        host: emailConfig.host,
-        port: emailConfig.port,
-        secure: emailConfig.secure,
-        user: emailConfig.auth.user,
+        host: config?.host,
+        port: config?.port,
+        secure: config?.secure,
+        user: config?.auth.user,
         environment: process.env.NODE_ENV || 'development'
       }
     };
@@ -477,11 +472,11 @@ ${new Date().getFullYear()} © Todos os direitos reservados.
       <meta http-equiv="X-UA-Compatible" content="IE=edge">
       <title>Redefinição de Senha - ABZ Group</title>
     </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; ***REMOVED*** #f9f9f9;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #f9f9f9;">
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; background: #f9f9f9;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: #f9f9f9;">
         <tr>
           <td align="center" style="padding: 20px 0;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="***REMOVED*** #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); max-width: 600px; margin: 0 auto;">
               <tr>
                 <td align="center" style="padding: 30px 20px;">
                   <img src="${process.env.EMAIL_LOGO_URL || 'https://abzgroup.com.br/wp-content/uploads/2023/05/LC1_Azul.png'}" alt="ABZ Group Logo" width="200" style="display: block; max-width: 200px; height: auto;">

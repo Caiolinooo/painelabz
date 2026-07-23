@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
           role: newUnifiedUser.role,
           email: newUnifiedUser.email
         },
-        process.env.JWT_SECRET || 'fallback-secret',
+        (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
         { expiresIn: '1d' }
       );
       
@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
           role: userData.role,
           email: userData.email
         },
-        process.env.JWT_SECRET || 'fallback-secret',
+        (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
         { expiresIn: '1d' }
       );
       
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
         role: userData.role,
         email: userData.email
       },
-      process.env.JWT_SECRET || 'fallback-secret',
+      (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET required'); })() : 'dev-only-jwt-secret-not-for-production')),
       { expiresIn: '1d' }
     );
     

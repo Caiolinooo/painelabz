@@ -37,10 +37,10 @@ try {
         console.log(`\n[INFO] Usuário atual: "${mioUser}" (Esperado: apiabz)`);
     }
 
-    if (mioPass === 'Abz@2025') {
+    if (mioPass === '[REDACTED]') {
         console.log('[OK] Senha correta.');
     } else {
-        console.log(`[ALERTA] Senha atual tem tamanho ${mioPass.length} (Esperado: 8 - 'Abz@2025'). Valor atual começa com: ${mioPass.substring(0, 3)}...`);
+        console.log(`[ALERTA] Senha atual tem tamanho ${mioPass.length} (Esperado: 8 - '[REDACTED]'). Valor atual começa com: ${mioPass.substring(0, 3)}...`);
     }
 
 } catch (e) {

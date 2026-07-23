@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const blocked = await guardDebugRoute(request);
+  if (blocked) return blocked;
+
   try {
     const { data: avaliacoes } = await supabaseAdmin
       .from('avaliacoes_desempenho')
@@ -21,7 +25,8 @@ export async function GET() {
       mapeamento,
       aguardando: avaliacoes?.filter(a => a.status === 'aguardando_aprovacao') || []
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Erro desconhecido';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

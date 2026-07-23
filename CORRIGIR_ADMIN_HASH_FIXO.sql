@@ -22,7 +22,7 @@ WHERE email = '***REMOVED***';
 -- Deletar usuário existente se houver
 DELETE FROM users_unified WHERE email = '***REMOVED***';
 
--- Criar usuário admin com hash pré-gerado para senha 'Caio@2122@'
+-- Criar usuário admin com hash pré-gerado para senha 'REDACTED_SET_VIA_ENV'
 INSERT INTO users_unified (
   id,
   email,
@@ -106,5 +106,5 @@ WHERE email = '***REMOVED***';
 -- ========================================
 -- CREDENCIAIS PARA TESTE:
 -- Email: ***REMOVED***
--- Senha: Caio@2122@
+-- Senha: REDACTED_SET_VIA_ENV
 -- ========================================

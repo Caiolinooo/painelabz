@@ -181,11 +181,9 @@ export default function LibraryItemPage() {
                             )}
 
                             {item.type === 'text' && (
-                                <div
-                                    className="prose max-w-none"
-                                    style={contentStyle}
-                                    dangerouslySetInnerHTML={{ __html: item.content_text || '' }}
-                                />
+                                <div className="prose max-w-none whitespace-pre-wrap" style={contentStyle}>
+                                    {item.content_text || ''}
+                                </div>
                             )}
 
                             {item.type === 'document' && (

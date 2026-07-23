@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { getDefaultPermissions } from '@/lib/auth';
+import { guardDebugRoute } from '@/lib/debug-route-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  const blocked = await guardDebugRoute(request);
+  if (blocked) return blocked;
+
   try {
     // Obter dados do administrador das variáveis de ambiente
-    const adminPhone = ***REMOVED*** || '+5522997847289';
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPassword = ***REMOVED*** || 'Caio@2122@';
+    const adminPhone = ***REMOVED***;
+    const adminEmail = ***REMOVED***;
+    const adminPassword = ***REMOVED***;
 
     if (!adminPhone || !adminEmail || !adminPassword) {
       return NextResponse.json(

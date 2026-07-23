@@ -29,11 +29,25 @@ export async function GET(request: NextRequest) {
     // Usando cliente Supabase já inicializado em lib/supabase.ts
     console.log('Usando cliente Supabase pré-inicializado com URL:', supabaseUrl);
 
-    // Definir informações do administrador
-    const adminEmail = ***REMOVED*** || '***REMOVED***';
-    const adminPhone = ***REMOVED*** || '+5522997847289';
-    const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Caio';
-    const adminLastName = process.env.ADMIN_LAST_NAME || 'Correia';
+    // Definir informações do administrador (sem senhas/emails hardcoded)
+    const adminEmail = ***REMOVED***?.trim();
+    const adminPhone = ***REMOVED***?.trim();
+    const adminPassword = ***REMOVED***?.trim();
+    const adminFirstName = process.env.ADMIN_FIRST_NAME?.trim() || 'Admin';
+    const adminLastName = process.env.ADMIN_LAST_NAME?.trim() || 'User';
+
+    if (!adminEmail || !adminPhone || !adminPassword) {
+      return NextResponse.json({
+        success: false,
+        message:
+          'ADMIN_EMAIL, ADMIN_PHONE_NUMBER e ADMIN_PASSWORD devem estar configurados no ambiente',
+        config: {
+          ADMIN_EMAIL: adminEmail ? 'Configurado' : 'Não configurado',
+          ADMIN_PHONE_NUMBER: adminPhone ? 'Configurado' : 'Não configurado',
+          ADMIN_PASSWORD: adminPassword ? 'Configurado' : 'Não configurado',
+        },
+      }, { status: 500 });
+    }
 
     console.log('Buscando administrador com email:', adminEmail);
 
@@ -60,7 +74,7 @@ export async function GET(request: NextRequest) {
         // Tentar criar usuário administrador
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: adminEmail,
-          password: ***REMOVED*** || 'Caio@2122@',
+          password: adminPassword,
           options: {
             data: {
               first_name: adminFirstName,
@@ -78,7 +92,7 @@ export async function GET(request: NextRequest) {
 
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: adminEmail,
-            password: ***REMOVED*** || 'Caio@2122@'
+            password: adminPassword
           });
 
           if (signInError) {

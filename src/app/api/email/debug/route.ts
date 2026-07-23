@@ -1,91 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { testEmailConnection, sendVerificationEmail } from '@/lib/email';
+import { verifyAuth } from '@/lib/api-utils';
 import nodemailer from 'nodemailer';
+import { emailTlsOptions, resolveEmailAuth } from '@/lib/email-env';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * API para depurar problemas com o serviço de email
+ * API para depurar problemas com o serviço de email (somente ADMIN).
+ * Nunca retorna senha ou segredos em texto plano.
  * @route GET /api/email/debug
  */
 export async function GET(request: NextRequest) {
   try {
-    // Obter parâmetros da URL
+    const authResult = await verifyAuth(request, true);
+    if (authResult.error) {
+      return authResult.error;
+    }
+
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_EMAIL_DEBUG !== 'true') {
+      return NextResponse.json(
+        { success: false, message: 'Debug de email desabilitado em produção' },
+        { status: 403 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const action = searchParams.get('action') || 'test';
-    const email = searchParams.get('email') || '***REMOVED***';
+    const email = searchParams.get('email');
 
-    // Informações de configuração
-    const config = {
-      host: process.env.EMAIL_HOST || '***REMOVED***',
-      port: parseInt(process.env.EMAIL_PORT || '587'),
-      secure: process.env.EMAIL_SECURE === 'true',
-      user: process.env.EMAIL_USER || '***REMOVED***',
-      pass: process.env.EMAIL_PASSWORD || 'Caio@2122@',
-      from: process.env.EMAIL_FROM || '***REMOVED***',
+    let auth;
+    try {
+      auth = resolveEmailAuth();
+    } catch (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error instanceof Error ? error.message : 'Credenciais de email ausentes',
+        },
+        { status: 500 }
+      );
+    }
+
+    // Nunca expor senha
+    const publicConfig = {
+      host: auth.host,
+      port: auth.port,
+      secure: auth.secure,
+      user: auth.user,
+      passwordConfigured: Boolean(auth.pass),
+      from: auth.from,
       environment: process.env.NODE_ENV || 'development',
-      apiKey: process.env.SENDGRID_API_KEY ? 'Configurado' : 'Não configurado'
+      sendgridConfigured: Boolean(process.env.SENDGRID_API_KEY),
     };
 
-    // Verificar a ação solicitada
     switch (action) {
-      case 'test':
-        // Testar conexão com servidor de email
+      case 'test': {
         const connectionResult = await testEmailConnection();
         return NextResponse.json({
           ...connectionResult,
-          config
+          config: publicConfig,
         });
+      }
 
-      case 'send':
-        // Enviar email de teste
+      case 'send': {
+        if (!email) {
+          return NextResponse.json(
+            { success: false, message: 'Parâmetro email é obrigatório para action=send' },
+            { status: 400 }
+          );
+        }
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const sendResult = await sendVerificationEmail(email, code);
         return NextResponse.json({
           ...sendResult,
-          config,
-          code
+          config: publicConfig,
+          // Não retornar o código em produção
+          code: process.env.NODE_ENV === 'production' ? undefined : code,
         });
+      }
 
-      case 'direct':
-        // Testar envio direto com nodemailer
+      case 'direct': {
+        if (!email) {
+          return NextResponse.json(
+            { success: false, message: 'Parâmetro email é obrigatório para action=direct' },
+            { status: 400 }
+          );
+        }
+
         const transporter = nodemailer.createTransport({
-          host: config.host,
-          port: config.port,
-          secure: config.secure,
+          host: auth.host,
+          port: auth.port,
+          secure: auth.secure,
           auth: {
-            user: config.user,
-            pass: config.pass
+            user: auth.user,
+            pass: auth.pass,
           },
-          tls: {
-            rejectUnauthorized: process.env.NODE_ENV === 'production'
-          }
+          tls: emailTlsOptions(),
         });
 
-        // Verificar conexão
         await transporter.verify();
 
-        // Enviar email de teste
         const testCode = Math.floor(100000 + Math.random() * 900000).toString();
         const info = await transporter.sendMail({
-          from: `"ABZ Group" <${config.from}>`,
+          from: `"ABZ Group" <${auth.from}>`,
           to: email,
-          subject: "Teste de Email - ABZ Group",
+          subject: 'Teste de Email - ABZ Group',
           text: `Este é um email de teste. Seu código é: ${testCode}`,
-          html: `<p>Este é um email de teste.</p><p>Seu código é: <strong>${testCode}</strong></p>`
+          html: `<p>Este é um email de teste.</p><p>Seu código é: <strong>${testCode}</strong></p>`,
         });
 
         return NextResponse.json({
           success: true,
           messageId: info.messageId,
-          config,
-          code: testCode
+          config: publicConfig,
+          code: process.env.NODE_ENV === 'production' ? undefined : testCode,
         });
+      }
 
       default:
-        // Ação desconhecida
         return NextResponse.json(
-          { success: false, message: 'Ação desconhecida', config },
+          { success: false, message: 'Ação desconhecida', config: publicConfig },
           { status: 400 }
         );
     }
@@ -95,7 +130,6 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         message: `Erro ao processar solicitação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        error: error instanceof Error ? error.stack : 'Sem stack trace'
       },
       { status: 500 }
     );

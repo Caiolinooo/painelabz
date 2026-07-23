@@ -1,30 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateAndStoreCertificate } from '@/lib/certificates';
-
-function extractTokenFromHeader(authHeader?: string | null): string | null {
-    if (!authHeader) return null;
-    if (authHeader.startsWith('Bearer ')) {
-        return authHeader.substring(7);
-    }
-    return authHeader;
-}
-
-function verifyToken(token: string): any {
-    try {
-        const defaultSecret = new TextEncoder().encode(
-            process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET || 'fallback-secret-key-1234567890'
-        );
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        return null;
-    }
-}
+import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 

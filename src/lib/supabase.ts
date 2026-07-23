@@ -3,6 +3,7 @@ import { getCredential, initializeSupabaseClient } from './secure-credentials';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import { getJwtSecret } from './jwt-secret';
 
 // Estas variáveis devem ser definidas no arquivo .env
 // Buscar configurações do Supabase das variáveis de ambiente
@@ -279,14 +280,14 @@ export async function signInWithEmail(email: string, password: string) {
     // Gerar token JWT
 
     // Obter a chave JWT da tabela app_secrets ou usar a do ambiente
-    let jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+    let jwtSecret = getJwtSecret();
     try {
       const secretKey = await getCredential('JWT_SECRET');
       if (secretKey) {
         jwtSecret = secretKey;
       }
     } catch (error) {
-      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando fallback:', error);
+      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando env/getJwtSecret:', error);
     }
 
     const token = jwt.sign(
@@ -358,14 +359,14 @@ export async function signInWithPhone(phone: string, password: string) {
     // Gerar token JWT
 
     // Obter a chave JWT da tabela app_secrets ou usar a do ambiente
-    let jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+    let jwtSecret = getJwtSecret();
     try {
       const secretKey = await getCredential('JWT_SECRET');
       if (secretKey) {
         jwtSecret = secretKey;
       }
     } catch (error) {
-      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando fallback:', error);
+      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando env/getJwtSecret:', error);
     }
 
     const token = jwt.sign(
@@ -512,14 +513,14 @@ export async function signUp(email: string, password: string, userData: any) {
     // Gerar token JWT
 
     // Obter a chave JWT da tabela app_secrets ou usar a do ambiente
-    let jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+    let jwtSecret = getJwtSecret();
     try {
       const secretKey = await getCredential('JWT_SECRET');
       if (secretKey) {
         jwtSecret = secretKey;
       }
     } catch (error) {
-      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando fallback:', error);
+      console.warn('Erro ao obter JWT_SECRET da tabela app_secrets, usando env/getJwtSecret:', error);
     }
 
     const token = jwt.sign(

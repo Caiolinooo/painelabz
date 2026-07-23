@@ -10,7 +10,7 @@ Comprimento da chave de serviço: 0
 
 **Causa raiz:**
 - O Netlify **NÃO** carrega automaticamente o `.env.production`
-- A API de upload precisa da *****REMOVED***** para ter permissão no Storage
+- A API de upload precisa da **REDACTED_SUPABASE_JWT_ROTATE_ME** para ter permissão no Storage
 - Sem essa chave, o upload falha com erro 500
 
 ## ✅ SOLUÇÃO IMPLEMENTADA
@@ -34,8 +34,8 @@ O código agora busca a service key da tabela `app_secrets` do Supabase quando n
 2. Abra a tabela `app_secrets`
 3. Clique em **Insert** > **Insert row**
 4. Preencha:
-   - **key**: `***REMOVED***`
-   - **value**: `***REMOVED***`
+   - **key**: `REDACTED_SUPABASE_JWT_ROTATE_ME`
+   - **value**: `REDACTED_SUPABASE_JWT_ROTATE_ME`
    - **description**: `Supabase Service Role Key para operações administrativas`
 5. Clique em **Save**
 

@@ -6,7 +6,7 @@ async function testSendgrid() {
   console.log('Testando configuração do SendGrid...');
 
   // Verificar se temos a chave do SendGrid
-  const sendgridApiKey = process.env.SENDGRID_API_KEY || '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';
+  const sendgridApiKey = process.env.SENDGRID_API_KEY || '[REDACTED_SENDGRID_API_KEY]';
 
   console.log('Configurações atuais:');
   console.log('- SENDGRID_API_KEY:', sendgridApiKey ? '********' : 'não definido');

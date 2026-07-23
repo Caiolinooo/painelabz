@@ -19,7 +19,7 @@ FROM users_unified
 WHERE email = '***REMOVED***';
 
 -- 2. Se o usuário não existir, criar o usuário admin
--- Hash da senha 'Caio@2122@': $2a$10$rQJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP
+-- Hash da senha 'REDACTED_SET_VIA_ENV': $2a$10$rQJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP7QJ5qP
 INSERT INTO users_unified (
   id,
   email,

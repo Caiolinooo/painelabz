@@ -8,8 +8,11 @@ async function testGmailEmail() {
   const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.EMAIL_PORT || '465');
   const secure = process.env.EMAIL_SECURE === 'true';
-  const user = process.env.EMAIL_USER || '***REMOVED***';
-  const pass = process.env.EMAIL_PASSWORD || 'senha_do_app';
+  const user = process.env.EMAIL_USER || '';
+  const pass = process.env.EMAIL_PASSWORD || '';
+  if (!user || !pass) {
+    throw new Error('Defina EMAIL_USER e EMAIL_PASSWORD no ambiente antes de rodar este script');
+  }
 
   console.log('Configuração carregada:', {
     host,
@@ -38,7 +41,8 @@ async function testGmailEmail() {
     socketTimeout: 10000,
     // Desativar verificação de certificado em ambiente de desenvolvimento
     tls: {
-      rejectUnauthorized: false
+      rejectUnauthorized: true,
+      minVersion: 'TLSv1.2'
     }
   };
 

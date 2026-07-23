@@ -3,41 +3,36 @@
  * Portal ABZ - Envio de emails via nodemailer
  */
 import nodemailer from 'nodemailer';
+import { emailTlsOptions, resolveEmailAuth } from '@/lib/email-env';
 
 // Configuração do transporter
 function getTransporter() {
-  // Debug: mostrar variáveis disponíveis
-  console.log('[IA Email Debug] EMAIL_HOST:', process.env.EMAIL_HOST);
-  console.log('[IA Email Debug] EMAIL_USER:', process.env.EMAIL_USER);
-  console.log('[IA Email Debug] EMAIL_PORT:', process.env.EMAIL_PORT);
-  console.log('[IA Email Debug] EMAIL_PASS defined:', !!process.env.EMAIL_PASS);
+  try {
+    const auth = resolveEmailAuth();
+    console.log('[IA Email] Usando SMTP:', auth.host, 'port:', auth.port, 'user:', auth.user);
 
-  // Verificar qual configuração está disponível (com fallback para desenvolvimento)
-  const emailHost = process.env.EMAIL_HOST || '***REMOVED***';
-  const emailPort = process.env.EMAIL_PORT || '587';
-  const emailUser = process.env.EMAIL_USER || '***REMOVED***';
-  const emailPass = process.env.EMAIL_PASS || 'Abz@2025';
-  const emailFrom = process.env.EMAIL_FROM || '***REMOVED***';
-
-  console.log('[IA Email] Usando SMTP:', emailHost, 'port:', emailPort, 'user:', emailUser);
-
-  if (emailHost && emailUser && emailPass) {
-    return nodemailer.createTransport({
-      host: emailHost,
-      port: parseInt(emailPort),
-      secure: parseInt(emailPort) === 465,
-      auth: {
-        user: emailUser,
-        pass: emailPass,
+    return nodemailer.createTransport(
+      {
+        host: auth.host,
+        port: auth.port,
+        secure: auth.port === 465,
+        auth: {
+          user: auth.user,
+          pass: auth.pass,
+        },
+        tls: emailTlsOptions(),
       },
-    }, {
-      from: `ABZ Portal <${emailFrom}>`,
-    });
+      {
+        from: `ABZ Portal <${auth.from}>`,
+      }
+    );
+  } catch (error) {
+    console.warn(
+      '[IA Email] Nenhuma configuração SMTP válida:',
+      error instanceof Error ? error.message : error
+    );
+    return null;
   }
-
-  // Fallback para desenvolvimento - usar ethereal
-  console.warn('[IA Email] Nenhuma configuração SMTP encontrada. Usando modo mock.');
-  return null;
 }
 
 export interface SendEmailOptions {
@@ -65,7 +60,6 @@ export async function sendEmailWithNodemailer(options: SendEmailOptions): Promis
   const transporter = getTransporter();
 
   if (!transporter) {
-    // Modo mock - retorna sucesso simulado
     console.log('[IA Email] Modo mock ativo. Email seria enviado para:', options.to);
     return {
       success: true,
@@ -76,9 +70,10 @@ export async function sendEmailWithNodemailer(options: SendEmailOptions): Promis
 
   try {
     const to = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+    const auth = resolveEmailAuth();
 
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@groupabz.com',
+      from: auth.from || process.env.EMAIL_FROM,
       to,
       subject: options.subject,
       text: options.text || options.html?.replace(/<[^>]*>/g, ''),
@@ -151,7 +146,7 @@ export async function sendReportEmail(
       {
         filename,
         content: Buffer.from(reportBase64, 'base64'),
-        contentType: filename.endsWith('.xlsx') 
+        contentType: filename.endsWith('.xlsx')
           ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
           : 'application/pdf',
       },

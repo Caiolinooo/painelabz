@@ -44,13 +44,13 @@ export const baseTemplate = (content: string, locale: string = 'pt-BR') => {
           color: #333;
           margin: 0;
           padding: 0;
-          ***REMOVED*** #f9f9f9;
+          background: #f9f9f9;
         }
         .container {
           max-width: 600px;
           margin: 0 auto;
           padding: 20px;
-          ***REMOVED*** #ffffff;
+          background: #ffffff;
           border-radius: 8px;
           box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
@@ -75,7 +75,7 @@ export const baseTemplate = (content: string, locale: string = 'pt-BR') => {
         }
         .button {
           display: inline-block;
-          ***REMOVED*** ${config.primaryColor};
+          background: ${config.primaryColor};
           color: white;
           text-decoration: none;
           padding: 10px 20px;
@@ -84,7 +84,7 @@ export const baseTemplate = (content: string, locale: string = 'pt-BR') => {
           margin: 20px 0;
         }
         .highlight {
-          ***REMOVED*** ${config.secondaryColor};
+          background: ${config.secondaryColor};
           padding: 15px;
           border-radius: 5px;
           text-align: center;
@@ -479,7 +479,7 @@ export const reimbursementConfirmationTemplate = (nome: string, protocolo: strin
     <p>
       Sua solicitação de reembolso foi recebida com sucesso e está sendo processada.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
       <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
       <p style="margin: 5px 0;"><strong>Data da Solicitação:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
@@ -512,7 +512,7 @@ export const reimbursementApprovalTemplate = (nome: string, protocolo: string, v
     <p>
       Sua solicitação de reembolso foi <strong>aprovada</strong> e o pagamento será processado em breve.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
       <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
       <p style="margin: 5px 0;"><strong>Método de Pagamento:</strong> ${metodoPagamento}</p>
@@ -542,7 +542,7 @@ export const reimbursementRejectionTemplate = (nome: string, protocolo: string, 
     <p>
       Infelizmente, sua solicitação de reembolso não foi aprovada.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
       <p style="margin: 5px 0;"><strong>Data da Decisão:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
       <p style="margin: 5px 0;"><strong>Motivo:</strong> ${motivo}</p>
@@ -573,7 +573,7 @@ export const reimbursementApprovalRequestTemplate = (
     <p>
       Há uma nova solicitação de reembolso <strong>aguardando aprovação</strong>.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
       <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${solicitanteNome}</p>
       <p style="margin: 5px 0;"><strong>Email:</strong> ${solicitanteEmail}</p>
@@ -618,7 +618,7 @@ export const reimbursementPaymentTemplate = (
     <p>
       Temos o prazer de informar que seu reembolso foi <strong style="color: #28a745;">pago</strong> com sucesso.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
       <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
       <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">PAGO</span></p>
@@ -664,7 +664,7 @@ export const reimbursementFinancePendingTemplate = (
     <p>
       Um reembolso foi <strong>aprovado</strong> e está aguardando a alteração de status para <strong>pago</strong>.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Protocolo:</strong> ${protocolo}</p>
       <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${solicitanteNome}</p>
       <p style="margin: 5px 0;"><strong>Valor:</strong> ${valor}</p>
@@ -695,7 +695,7 @@ export const newUserWelcomeTemplate = (nome: string, loginUrl: string, password?
   // Adicionar informações de senha se fornecida
   const passwordInfo = password
     ? `
-    <div style="***REMOVED*** #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
+    <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
       <p style="margin: 0; font-weight: bold; color: #ff6d00;">⚠️ Informações de Acesso</p>
       <p style="margin: 8px 0 0 0;">
         Uma senha temporária foi gerada para você: <strong>${password}</strong>
@@ -723,7 +723,7 @@ export const newUserWelcomeTemplate = (nome: string, loginUrl: string, password?
       Após a aprovação, você poderá acessar o sistema utilizando seu email e senha cadastrados.
     </p>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${loginUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+      <a href="${loginUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
         Verificar Status da Conta
       </a>
     </div>
@@ -756,7 +756,7 @@ export const inviteTemplate = (inviteCode: string, registerUrl: string, expiryTe
     <p>
       Você foi convidado para se juntar ao sistema ${config.companyName}.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center;">
       <p style="margin: 5px 0; font-size: 18px;"><strong>Seu código de verificação:</strong></p>
       <p style="margin: 10px 0; font-size: 24px; font-weight: bold; letter-spacing: 2px; font-family: monospace;">${inviteCode}</p>
       ${maxUses ? `<p style="margin: 5px 0; font-size: 14px;">Este código pode ser usado ${maxUses} ${maxUses === 1 ? 'vez' : 'vezes'}</p>` : ''}
@@ -781,7 +781,7 @@ export const inviteTemplate = (inviteCode: string, registerUrl: string, expiryTe
     </ol>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${loginUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+      <a href="${loginUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
         Acessar o Sistema
       </a>
     </div>
@@ -799,12 +799,12 @@ export const inviteTemplate = (inviteCode: string, registerUrl: string, expiryTe
       Se você não solicitou este convite, por favor ignore este email.
     </p>
 
-    <div style="***REMOVED*** #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
+    <div style="background: #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px;">
       <p style="margin: 0; font-weight: bold; color: #ff6d00;">⚠️ Importante: Verifique sua pasta de spam</p>
       <p style="margin: 8px 0 0 0; font-size: 14px;">
         Nossos emails podem ocasionalmente ser filtrados como spam. Se você não encontrar futuros emails do sistema,
         verifique sua pasta de spam e marque nosso endereço como "não é spam" ou adicione
-        <strong>${process.env.EMAIL_USER || '***REMOVED***'}</strong> à sua lista de contatos.
+        <strong>${process.env.EMAIL_USER || 'o remetente deste email'}</strong> à sua lista de contatos.
       </p>
     </div>
 
@@ -835,7 +835,7 @@ export const adminNotificationTemplate = (userData: {
     <p>
       Um novo usuário se cadastrou no Portal ${config.companyName} e está aguardando aprovação.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <h3 style="margin-top: 0; color: ${config.primaryColor};">Detalhes do Usuário:</h3>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
@@ -865,7 +865,7 @@ export const adminNotificationTemplate = (userData: {
       Por favor, acesse o painel administrativo para revisar e aprovar este cadastro.
     </p>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${adminUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+      <a href="${adminUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
         Acessar Painel Admin
       </a>
     </div>
@@ -892,12 +892,12 @@ export const purchaseOrderCreatedTemplate = (
   const t = (key: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
   const viewButton = viewUrl
-    ? `<a href="${viewUrl.startsWith('http') ? viewUrl : config.appUrl + viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-right: 10px;">
+    ? `<a href="${viewUrl.startsWith('http') ? viewUrl : config.appUrl + viewUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-right: 10px;">
            ${t('emails.purchaseOrder.viewOrder')}
        </a>`
     : '';
   const attachmentButton = attachmentUrl
-    ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="***REMOVED*** #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+    ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="background: #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
            ${t('emails.purchaseOrder.downloadAttachment')}
        </a>`
     : '';
@@ -910,7 +910,7 @@ export const purchaseOrderCreatedTemplate = (
     <p>
       ${t('emails.purchaseOrder.createdMessage')}
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <h3 style="margin-top: 0; color: ${config.primaryColor};">${t('emails.purchaseOrder.summary')}:</h3>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
@@ -967,7 +967,7 @@ export const orderStatusUpdateTemplate = (
   const statusColor = statusColors[newStatus];
 
   const noteSection = note
-    ? `<div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    ? `<div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
          <p style="margin: 0; font-weight: bold;">${t('emails.purchaseOrder.note')}:</p>
          <p style="margin: 5px 0;">${note}</p>
        </div>`
@@ -975,7 +975,7 @@ export const orderStatusUpdateTemplate = (
 
   const viewButton = viewUrl
     ? `<div style="text-align: center; margin: 30px 0;">
-         <a href="${viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+         <a href="${viewUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
            ${t('emails.purchaseOrder.viewOrder')}
          </a>
        </div>`
@@ -1025,7 +1025,7 @@ export const requestStatusUpdateTemplate = (
   const statusColor = statusColors[newStatus];
 
   const noteSection = note
-    ? `<div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    ? `<div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
          <p style="margin: 0; font-weight: bold;">Observação:</p>
          <p style="margin: 5px 0;">${note}</p>
        </div>`
@@ -1033,7 +1033,7 @@ export const requestStatusUpdateTemplate = (
 
   const viewButton = viewUrl
     ? `<div style="text-align: center; margin: 30px 0;">
-         <a href="${viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+         <a href="${viewUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
            Ver Requisição
          </a>
        </div>`
@@ -1082,7 +1082,7 @@ export const poApprovalRequestTemplate = (
   const t = (key: string, params?: any) => getTranslation(locale as any, key, undefined, params);
 
   const attachmentButton = attachmentUrl
-    ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="***REMOVED*** #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-left: 10px;">
+    ? `<a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="background: #6c757d; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; margin-left: 10px;">
            ${t('emails.purchaseOrder.downloadAttachment')}
        </a>`
     : '';
@@ -1095,7 +1095,7 @@ export const poApprovalRequestTemplate = (
     <p>
       ${t('emails.purchaseOrder.approvalMessage', { name: requesterName })}
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <h3 style="margin-top: 0; color: ${config.primaryColor};">${t('emails.purchaseOrder.summary')}:</h3>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
@@ -1118,7 +1118,7 @@ export const poApprovalRequestTemplate = (
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-         <a href="${viewUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+         <a href="${viewUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
            ${t('emails.purchaseOrder.viewOrder')}
          </a>
          ${attachmentButton}
@@ -1154,7 +1154,7 @@ export const poApprovedFiscalTemplate = (
     <p>
       A Requisição de Compra <strong>${poId}</strong> foi aprovada e está pronta para faturamento/pagamento.
     </p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <h3 style="margin-top: 0; color: ${config.primaryColor};">${t('emails.purchaseOrder.summary')}:</h3>
       <p><strong>${t('emails.purchaseOrder.poNumber')}:</strong> ${poId}</p>
       <p><strong>Solicitante:</strong> ${requesterName}</p>
@@ -1164,7 +1164,7 @@ export const poApprovedFiscalTemplate = (
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-         <a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+         <a href="${attachmentUrl.startsWith('http') ? attachmentUrl : config.appUrl + attachmentUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
            ${t('emails.purchaseOrder.downloadAttachment')}
          </a>
          <br><br>
@@ -1197,7 +1197,7 @@ export const purchaseOrderToSupplierTemplate = (
       Segue em anexo a <strong>Ordem de Compra ${poNumber}</strong>${rqfNumber ? `, referente a Requisicao de Compra <strong>${rqfNumber}</strong>,` : ''} emitida por <strong>${companyName}</strong>.
     </p>
     <p>Por favor, confirme o recebimento respondendo a este e-mail.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 20px; border-radius: 8px; margin: 24px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 20px; border-radius: 8px; margin: 24px 0;">
       <h3 style="margin-top: 0; color: ${config.primaryColor}; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Resumo da OC</h3>
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <tr><td style="padding: 6px 0; font-weight: bold; color: #555; width: 40%;">No da OC:</td><td style="padding: 6px 0;"><strong>${poNumber}</strong></td></tr>
@@ -1208,7 +1208,7 @@ export const purchaseOrderToSupplierTemplate = (
         ${paymentTerms ? `<tr><td style="padding: 6px 0; font-weight: bold; color: #555;">Cond. Pagamento:</td><td style="padding: 6px 0;">${paymentTerms}</td></tr>` : ''}
       </table>
     </div>
-    <p style="***REMOVED*** #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #664d03;">
+    <p style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #664d03;">
       Este e um documento oficial. O PDF desta Ordem de Compra esta em anexo. Revise as informacoes e confirme o recebimento respondendo este e-mail.
     </p>
     <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
@@ -1227,7 +1227,7 @@ export const eventInviteTemplate = (title: string, formattedDate: string, locati
     <p>Olá!</p>
     <p>Você foi convidado para o seguinte evento:</p>
     
-    <div style="***REMOVED*** white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${config.primaryColor}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${config.primaryColor}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <h3 style="margin-top: 0; color: ${config.primaryColor};">${title}</h3>
       
       <p style="margin: 10px 0;">
@@ -1267,13 +1267,13 @@ export const newsNotificationTemplate = (title: string, summary: string, newsUrl
     <p>Olá!</p>
     <p>Uma nova notícia importante foi publicada no Portal ABZ:</p>
     
-    <div style="***REMOVED*** white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${config.primaryColor}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${config.primaryColor}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <h3 style="margin-top: 0; color: ${config.primaryColor};">${title}</h3>
       <p style="color: #666; font-style: italic;">${summary}</p>
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${newsUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
+      <a href="${newsUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">
         Ler Notícia Completa
       </a>
     </div>
@@ -1291,14 +1291,14 @@ export const academyCertificateTemplate = (userName: string, courseTitle: string
     <p>Olá <strong>${userName}</strong>,</p>
     <p>É com grande alegria que informamos que você concluiu com sucesso o curso:</p>
     
-    <div style="***REMOVED*** white; padding: 25px; border-radius: 8px; margin: 20px 0; border: 1px solid #e0e0e0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <div style="background: white; padding: 25px; border-radius: 8px; margin: 20px 0; border: 1px solid #e0e0e0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
         <h3 style="margin: 0; color: ${config.primaryColor}; font-size: 20px;">${courseTitle}</h3>
     </div>
     
     <p>Seu certificado já está disponível para download. Ele também foi anexado a este e-mail para sua conveniência.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${downloadUrl}" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;">
+      <a href="${downloadUrl}" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;">
         Baixar Certificado (PDF)
       </a>
     </div>
@@ -1350,7 +1350,7 @@ export const leaveRequestCreatedTemplate = (
     <h2 style="text-align: center;">Solicitação de Férias Recebida</h2>
     <p>Olá, <strong>${userName}</strong>!</p>
     <p>Sua solicitação de férias foi registrada no sistema com sucesso e está em análise.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Período(s):</strong></p>
       ${periodsHtml}
       <p style="margin: 5px 0;"><strong>Data da Solicitação:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
@@ -1386,7 +1386,7 @@ export const leaveNewRequestNotificationTemplate = (
   const content = `
     <h2 style="text-align: center;">Nova Solicitação de Férias Registrada</h2>
     <p>O(a) colaborador(a) <strong>${userName}</strong> registrou uma nova solicitação de férias no portal.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
       <p style="margin: 5px 0;"><strong>E-mail:</strong> ${userEmail}</p>
       ${sectorName ? `<p style="margin: 5px 0;"><strong>Setor:</strong> ${sectorName}</p>` : ''}
@@ -1422,7 +1422,7 @@ export const leaveApprovedTemplate = (
     <h2 style="text-align: center; color: #28a745;">Férias Aprovadas e Programadas! 🎉</h2>
     <p>Olá, <strong>${userName}</strong>!</p>
     <p>Informamos que sua solicitação de férias foi <strong>aprovada</strong> e está <strong>programada conforme solicitado</strong>.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Período(s) Programado(s):</strong></p>
       ${periodsHtml}
       <p style="margin: 5px 0;"><strong>Data da Aprovação:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
@@ -1455,7 +1455,7 @@ export const leaveApprovedNotificationTemplate = (
   const content = `
     <h2 style="text-align: center; color: #28a745;">Férias Aprovadas: ${userName}</h2>
     <p>A solicitação de férias de <strong>${userName}</strong> foi totalmente aprovada pelos gestores e está programada conforme solicitado.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
       <p style="margin: 5px 0;"><strong>Período(s) Programado(s):</strong></p>
       ${periodsHtml}
@@ -1489,7 +1489,7 @@ export const leaveRejectedTemplate = (
     <h2 style="text-align: center; color: #dc3545;">Solicitação de Férias Rejeitada</h2>
     <p>Olá, <strong>${userName}</strong>!</p>
     <p>Informamos que sua solicitação de férias foi <strong>rejeitada</strong> por um dos seus gestores.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Período(s) Solicitado(s):</strong></p>
       ${periodsHtml}
       <p style="margin: 5px 0;"><strong>Data da Rejeição:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
@@ -1520,7 +1520,7 @@ export const leaveRejectedNotificationTemplate = (
   const content = `
     <h2 style="text-align: center; color: #dc3545;">Solicitação de Férias Rejeitada: ${userName}</h2>
     <p>A solicitação de férias de <strong>${userName}</strong> foi rejeitada por um dos gestores.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
       <p style="margin: 5px 0;"><strong>Período(s) Solicitado(s):</strong></p>
       ${periodsHtml}
@@ -1552,7 +1552,7 @@ export const leavePendingManagerTemplate = (
     <h2 style="text-align: center; color: #17a2b8;">Atualização: Solicitação de Férias</h2>
     <p>Olá, <strong>${userName}</strong>!</p>
     <p>Sua solicitação de férias avançou no fluxo de aprovação. Ela foi aprovada pelo seu líder e agora está pendente de aprovação com o gerente da sua área.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Período(s):</strong></p>
       ${periodsHtml}
       <p style="margin: 5px 0;"><strong>Status Atual:</strong> Aguardando aprovação do gerente</p>
@@ -1581,7 +1581,7 @@ export const leavePendingManagerNotificationTemplate = (
   const content = `
     <h2 style="text-align: center; color: #17a2b8;">Atualização: Férias de ${userName}</h2>
     <p>A solicitação de férias de <strong>${userName}</strong> foi aprovada pelo líder e agora aguarda aprovação final do gerente.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
       <p style="margin: 5px 0;"><strong>Período(s):</strong></p>
       ${periodsHtml}
@@ -1616,7 +1616,7 @@ export const leaveApprovalPendingTemplate = (
     <h2 style="text-align: center;">${stageLabel}: Férias de ${userName}</h2>
     <p>Olá, <strong>${approverName}</strong>!</p>
     <p>O(a) colaborador(a) <strong>${userName}</strong> solicitou férias e aguarda sua aprovação.</p>
-    <div style="***REMOVED*** ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <div style="background: ${config.secondaryColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Colaborador:</strong> ${userName}</p>
       <p style="margin: 5px 0;"><strong>Etapa de Aprovação:</strong> ${stageLabel}</p>
       <p style="margin: 5px 0;"><strong>Período(s) Solicitado(s):</strong></p>
@@ -1625,7 +1625,7 @@ export const leaveApprovalPendingTemplate = (
     </div>
     <p>Por favor, acesse o portal para aprovar ou reprovar esta solicitação.</p>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${config.appUrl}/admin/leave-approvals" class="button" style="***REMOVED*** ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;">
+      <a href="${config.appUrl}/admin/leave-approvals" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;">
         Acessar Aprovações
       </a>
     </div>

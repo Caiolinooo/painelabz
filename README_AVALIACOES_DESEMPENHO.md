@@ -24,11 +24,11 @@ Certifique-se de que você tem um arquivo `.env.local` na raiz do projeto com as
 ```
 # Configurações do Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://arzvingdtnttiejcvucs.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=***REMOVED***
-***REMOVED***=***REMOVED***
+NEXT_PUBLIC_SUPABASE_ANON_KEY=REDACTED_SUPABASE_JWT_ROTATE_ME
+REDACTED_SUPABASE_JWT_ROTATE_ME=REDACTED_SUPABASE_JWT_ROTATE_ME
 
 # Configurações do banco de dados (Supabase)
-DATABASE_URL=***REMOVED***
+DATABASE_URL=REDACTED_SUPABASE_JWT_ROTATE_ME
 ```
 
 ### 2. Executar o script para criar a tabela

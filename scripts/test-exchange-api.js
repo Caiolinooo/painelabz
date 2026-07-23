@@ -11,7 +11,7 @@ async function testExchangeEmail() {
     secure: false,
     auth: {
       user: 'api@groupabz.com',
-      pass: 'Caio@2122@'
+      pass: '***REMOVED***'
     },
     tls: {
       rejectUnauthorized: false
