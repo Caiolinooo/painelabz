@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import MainLayout from '@/components/Layout/MainLayout';
@@ -10,12 +10,13 @@ import Link from 'next/link';
 import { FiArrowLeft } from 'react-icons/fi';
 
 interface PageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
-export default function PublicProfilePage({ params }: PageProps) {
+export default function PublicProfilePage(props: PageProps) {
+    const params = use(props.params);
     const { user: currentUser } = useSupabaseAuth();
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);

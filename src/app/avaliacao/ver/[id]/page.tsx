@@ -1,16 +1,17 @@
 // src/app/avaliacao/ver/[id]/page.tsx
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import ViewEvaluationClient from './ViewEvaluationClient';
 import { Evaluation, EvaluationCriterion, User } from '@/types';
 
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function ViewEvaluationPage({ params }: PageProps) {
+export default function ViewEvaluationPage(props: PageProps) {
+  const params = use(props.params);
   const router = useRouter();
   const { user, isAuthenticated } = useSupabaseAuth();
   const { id } = params;

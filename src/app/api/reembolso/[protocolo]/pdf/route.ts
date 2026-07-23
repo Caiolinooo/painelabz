@@ -10,10 +10,8 @@ const supabaseAdmin = createClient(
     process.env.SUPABASE_SERVICE_KEY!
 );
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { protocolo: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ protocolo: string }> }) {
+    const params = await props.params;
     try {
         // Usar params.protocolo conforme a estrutura de diretórios
         const id = params.protocolo;

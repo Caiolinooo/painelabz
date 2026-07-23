@@ -4,7 +4,7 @@
 
 ![Painel ABZ Logo](public/images/LC1_Azul.png)
 
-[![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
@@ -29,7 +29,7 @@ O **Painel ABZ** e o nucleo digital da ABZ Group, projetado para centralizar flu
 
 ```
                     ┌─────────────────────────────────────┐
-                    │        Next.js 14 App Router         │
+                    │        Next.js 15 App Router         │
                     │  (React 18 + TypeScript 5)           │
                     └──────────┬──────────────────────────┘
                                │
@@ -52,7 +52,7 @@ O **Painel ABZ** e o nucleo digital da ABZ Group, projetado para centralizar flu
 ```
 
 ### Stack Tecnologica
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript 5, Tailwind CSS 3
+- **Frontend**: Next.js 15 (App Router), React 18, TypeScript 5, Tailwind CSS 3
 - **Database**: Supabase (PostgreSQL) com RLS e Storage
 - **Auth**: Supabase Auth + JWT customizado + WebAuthn/Passkeys
 - **UI**: Radix UI, Framer Motion, React Icons, Recharts
@@ -388,7 +388,7 @@ Para o historico completo de todas as versoes, consulte o [CHANGELOG.md](CHANGEL
 
 ```mermaid
 graph TB
-    A[Frontend - Next.js 14] --> B[API Routes / Server Actions]
+    A[Frontend - Next.js 15] --> B[API Routes / Server Actions]
     B --> C[Supabase - DB & Auth]
     B --> D[Storage - Google Drive / Supabase]
     B --> E[External Services - ERP/Mail]

@@ -86,7 +86,8 @@ function extractToken(request: NextRequest): string | null {
  * GET /api/poliweb-proxy/[...path]
  * Serves Poliweb content through proxy with session cookies injected
  */
-export async function GET(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+    const params = await props.params;
     try {
         const pathSegments = await Promise.resolve(params.path);
         const targetPath = '/' + pathSegments.join('/');
@@ -200,7 +201,8 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
  * POST /api/poliweb-proxy/[...path]
  * Handles form submissions through proxy with session cookies
  */
-export async function POST(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+    const params = await props.params;
     try {
         const pathSegments = await Promise.resolve(params.path);
         const targetPath = '/' + pathSegments.join('/');

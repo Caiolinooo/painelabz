@@ -15,10 +15,8 @@ function getSupabaseClient() {
 /**
  * GET - Buscar período específico
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const authHeader = request.headers.get('authorization');
 
@@ -56,10 +54,8 @@ export async function GET(
 /**
  * PUT - Atualizar período
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const authHeader = request.headers.get('authorization');
 
@@ -111,10 +107,8 @@ export async function PUT(
 /**
  * DELETE - Excluir período
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const authHeader = request.headers.get('authorization');
 

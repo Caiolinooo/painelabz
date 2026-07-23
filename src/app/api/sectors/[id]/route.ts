@@ -4,10 +4,8 @@ import { supabaseAdmin } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 // PUT /api/sectors/[id] - Update sector permissions
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const sectorId = params.id;
     if (!sectorId) {
         return NextResponse.json({ error: 'Missing sector ID' }, { status: 400 });

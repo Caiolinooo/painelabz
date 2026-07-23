@@ -1,14 +1,15 @@
 // src/app/avaliacao/preencher/[id]/page.tsx
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import FillEvaluationClient from './FillEvaluationClient';
 
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function FillEvaluationPage({ params }: PageProps) {
+export default function FillEvaluationPage(props: PageProps) {
+  const params = use(props.params);
   const router = useRouter();
   const { id } = params; // Extrai ID diretamente
   const [evaluation, setEvaluation] = useState<any>(null);

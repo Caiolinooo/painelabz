@@ -14,10 +14,8 @@ export const dynamic = 'force-dynamic';
  * - Líder/gerente do setor (com permissão de aprovação)
  * - Admins e usuários com ACL ferias:admin/manage/read
  */
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const requestId = params.id;
         if (!requestId) {
@@ -62,9 +60,9 @@ export async function GET(
         const isAdmin = payload.role === 'ADMIN';
 
         if (!isOwner && !isAdmin) {
-            const hasAcl = await checkAclPermission(payload.userId, payload.role, 'ferias', 'read') ||
-                            await checkAclPermission(payload.userId, payload.role, 'ferias', 'manage') ||
-                            await checkAclPermission(payload.userId, payload.role, 'ferias', 'admin');
+            const hasAcl = (await checkAclPermission(payload.userId, payload.role, 'ferias', 'read')) ||
+                            (await checkAclPermission(payload.userId, payload.role, 'ferias', 'manage')) ||
+                            (await checkAclPermission(payload.userId, payload.role, 'ferias', 'admin'));
 
             if (!hasAcl) {
                 // Verifica se é líder ou gerente do setor

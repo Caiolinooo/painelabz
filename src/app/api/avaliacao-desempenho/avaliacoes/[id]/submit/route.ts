@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { NotificacoesAvaliacaoService } from '@/lib/services/notificacoes-avaliacao';
@@ -24,7 +25,6 @@ export async function POST(
     if (!token) {
       console.log('🔵 [SUBMIT] Token não encontrado em header, tentando cookies...');
       // Tentar obter token dos cookies como fallback
-      const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       const cookieToken = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value;
 

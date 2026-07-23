@@ -12,10 +12,8 @@ const supabase = (supabaseUrl && supabaseServiceKey)
     ? createClient(supabaseUrl, supabaseServiceKey)
     : null;
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         if (!supabase) {
             return NextResponse.json({ error: 'Configuration Error' }, { status: 500 });

@@ -5,9 +5,10 @@ import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 // Moderation endpoint to enforce server-side permission
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; commentId: string } }
+  props: { params: Promise<{ id: string; commentId: string }> }
 ) {
   try {
+    const params = await props.params;
     const token = extractTokenFromHeader(request.headers.get('authorization') ?? undefined);
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const payload = verifyToken(token);

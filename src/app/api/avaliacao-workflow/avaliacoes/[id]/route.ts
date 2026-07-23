@@ -7,10 +7,8 @@ export const dynamic = 'force-dynamic';
 /**
  * Obter detalhes de uma avaliação específica
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const avaliacaoId = params.id;
     const currentUser = await getCurrentUser();
@@ -70,10 +68,8 @@ export async function GET(
 /**
  * Atualizar avaliação (salvar rascunho)
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const avaliacaoId = params.id;
     const body = await request.json();
@@ -160,10 +156,8 @@ export async function PATCH(
 /**
  * Submeter, aprovar ou devolver avaliação
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const avaliacaoId = params.id;
     const body = await request.json();

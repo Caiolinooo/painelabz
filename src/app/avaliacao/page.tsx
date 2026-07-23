@@ -1,6 +1,6 @@
 // src/app/avaliacao/page.tsx
 import React from 'react';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   getEvaluations,
@@ -26,8 +26,7 @@ export default async function EvaluationPage() {
 
   // Fallback: tentar ler do header Authorization (se middleware setou)
   if (!token) {
-    const { headers: requestHeaders } = await import('next/headers');
-    const headersList = await requestHeaders();
+    const headersList = await headers();
     const authHeader = headersList.get('authorization');
     console.log('🔍 EvaluationPage - Authorization header:', authHeader ? 'Presente' : 'Ausente');
 

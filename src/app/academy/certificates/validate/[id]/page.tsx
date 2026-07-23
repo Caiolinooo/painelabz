@@ -40,7 +40,8 @@ async function getCertificateInfo(enrollmentId: string) {
   }
 }
 
-export default async function ValidateCertificatePage({ params }: { params: { id: string } }) {
+export default async function ValidateCertificatePage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const info = await getCertificateInfo(params.id);
 
   return (

@@ -4,7 +4,8 @@ import { EvaluationSettingsService } from '@/lib/services/evaluation-settings';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 // GET /api/avaliacao/:id/pdf -> retorna PDF (base64) simplificado
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const id = params.id;
     const { data: avaliacao, error } = await supabase

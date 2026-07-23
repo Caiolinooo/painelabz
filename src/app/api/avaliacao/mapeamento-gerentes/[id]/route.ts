@@ -17,7 +17,8 @@ const supabase: SupabaseClient | null = (supabaseUrl && supabaseServiceKey)
   ? createClient(supabaseUrl, supabaseServiceKey)
   : null;
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     if (!supabase) {
       return NextResponse.json({ success: false, error: 'Configuration Error' }, { status: 500 });
@@ -40,7 +41,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     if (!supabase) {
       return NextResponse.json({ success: false, error: 'Configuration Error' }, { status: 500 });

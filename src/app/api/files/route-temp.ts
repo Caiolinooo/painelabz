@@ -10,9 +10,10 @@ import { supabaseAdmin } from '@/lib/db';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  props: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    const params = await props.params;
     console.log('File download request received:', params.path);
 
     // Check authentication

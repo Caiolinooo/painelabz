@@ -4,8 +4,8 @@ import { withAdmin } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
-export const DELETE = withAdmin(async (request: NextRequest, user, { params }: { params: { id: string } }) => {
-    const { id } = params;
+export const DELETE = withAdmin(async (request: NextRequest, user, context: { params: Promise<{ id: string }> }) => {
+    const { id } = await context.params;
 
     if (!id) {
         return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -85,8 +85,8 @@ export const DELETE = withAdmin(async (request: NextRequest, user, { params }: {
 });
 
 // Optional: PUT for updates (future proofing)
-export const PUT = withAdmin(async (request: NextRequest, user, { params }: { params: { id: string } }) => {
-    const { id } = params;
+export const PUT = withAdmin(async (request: NextRequest, user, context: { params: Promise<{ id: string }> }) => {
+    const { id } = await context.params;
     const json = await request.json();
 
     const { error } = await supabaseAdmin

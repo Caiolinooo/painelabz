@@ -10,10 +10,8 @@ import React from 'react';
 // Force dynamic to ensure we can read request/cookies
 export const dynamic = 'force-dynamic';
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const poId = params.id;
     if (!poId) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
 

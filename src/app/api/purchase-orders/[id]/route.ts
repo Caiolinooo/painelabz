@@ -5,7 +5,8 @@ import { buildAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const authHeader = request.headers.get('authorization');
         let token = extractTokenFromHeader(authHeader || undefined);
@@ -74,7 +75,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const authHeader = request.headers.get('authorization');
         let token = extractTokenFromHeader(authHeader || undefined);
@@ -362,7 +364,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const authHeader = request.headers.get('authorization');
         let token = extractTokenFromHeader(authHeader || undefined);

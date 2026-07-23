@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { NotificacoesAvaliacaoService } from '@/lib/services/notificacoes-avaliacao';
@@ -18,7 +19,6 @@ export async function POST(
 
     // Fallback: Tentar pegar do cookie se não vier no header (comum no front-end)
     if (!token) {
-      const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       token = cookieStore.get('abzToken')?.value || cookieStore.get('token')?.value || null;
     }

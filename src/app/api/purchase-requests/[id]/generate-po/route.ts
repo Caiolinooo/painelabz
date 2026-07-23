@@ -4,10 +4,8 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const authHeader = request.headers.get('authorization');
         let token = extractTokenFromHeader(authHeader || undefined);

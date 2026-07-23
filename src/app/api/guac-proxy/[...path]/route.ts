@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GUACAMOLE_BASE_URL = 'https://vm.groupabz.com/guacamole';
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { path: string[] } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+    const params = await props.params;
     const path = params.path?.join('/') || '';
     const searchParams = request.nextUrl.searchParams.toString();
     const url = `${GUACAMOLE_BASE_URL}/${path}${searchParams ? `?${searchParams}` : ''}`;
@@ -87,10 +85,8 @@ export async function GET(
     }
 }
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { path: string[] } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+    const params = await props.params;
     const path = params.path?.join('/') || '';
     const searchParams = request.nextUrl.searchParams.toString();
     const url = `${GUACAMOLE_BASE_URL}/${path}${searchParams ? `?${searchParams}` : ''}`;
@@ -163,23 +159,24 @@ export async function POST(
 }
 
 // Handle other methods (PUT, DELETE, PATCH)
-export async function PUT(request: NextRequest, context: { params: { path: string[] } }) {
-    return handleGenericMethod(request, context, 'PUT');
+export async function PUT(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+    return handleGenericMethod(request, props, 'PUT');
 }
 
-export async function DELETE(request: NextRequest, context: { params: { path: string[] } }) {
-    return handleGenericMethod(request, context, 'DELETE');
+export async function DELETE(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+    return handleGenericMethod(request, props, 'DELETE');
 }
 
-export async function PATCH(request: NextRequest, context: { params: { path: string[] } }) {
-    return handleGenericMethod(request, context, 'PATCH');
+export async function PATCH(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+    return handleGenericMethod(request, props, 'PATCH');
 }
 
 async function handleGenericMethod(
     request: NextRequest,
-    { params }: { params: { path: string[] } },
+    props: { params: Promise<{ path: string[] }> },
     method: string
 ) {
+    const params = await props.params;
     const path = params.path?.join('/') || '';
     const searchParams = request.nextUrl.searchParams.toString();
     const url = `${GUACAMOLE_BASE_URL}/${path}${searchParams ? `?${searchParams}` : ''}`;

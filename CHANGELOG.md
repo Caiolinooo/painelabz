@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.31.0] - 2026-07-23
+
+### Security
+- **Next.js 15.5.21** (+ `eslint-config-next@15.5.21`): closes Dependabot Next 14.x advisories; migrated async `cookies`/`headers`/`params`, `serverExternalPackages` in `next.config.js`. Custom `server.js` + Guacamole/WebSocket proxy kept intact.
+- **jspdf@4.2.1** (+ `jspdf-autotable@5.0.8` for peer `^4`): remediates jsPDF critical advisories.
+- **nodemailer@9.0.3** (+ `@types/nodemailer@^8`): remediates nodemailer high advisories.
+- **npm overrides**: `glob@10` → `10.5.0`, `minimatch@9` → `9.0.9`, `postcss` → `8.5.22`, `uuid` → `11.1.1`.
+- **Accepted residual (Low)**: `elliptic` via webpack client polyfill (`crypto-browserify` / `browserify-sign` / `create-ecdh`) — no non-breaking fix; do not `npm audit fix --force` (would downgrade Next / break crypto polyfill).
+- **Residual (tracked)**: `sharp` (transitive of Next; `audit fix --force` wrongly suggests Next 14), `xlsx` (no fix — migrate later).
+
+### Changed
+- App version **5.31.0**; React 18 retained on Next 15.
+
 ## [5.30.0] - 2026-07-23
 
 ### Security

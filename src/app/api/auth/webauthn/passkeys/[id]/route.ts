@@ -4,7 +4,8 @@ import { supabaseAdmin } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const authHeader = req.headers.get('authorization');
         let token = extractTokenFromHeader(authHeader || undefined);

@@ -118,13 +118,17 @@ Post-rotation:
 
 | Package | Severity | Notes |
 |---------|----------|--------|
-| `jspdf` | critical | Fix needs major → 4.x — test PDF/cert/receipt flows |
+| `jspdf` | critical | **DONE v5.31.0** → `jspdf@4.2.1` + `jspdf-autotable@5.0.8` |
 | `xlsx` | high | No fix available — plan migration to `exceljs` / SheetJS Pro |
-| `next` | high | DoS advisories; safe bump needs Next 16 major — schedule upgrade |
-| `nodemailer` | high | Major → 9.x — test SMTP after bump |
-| `eslint-config-next` / `glob` | high | Tied to Next 16 major |
+| `next` | high | **DONE v5.31.0** → `next@15.5.21` + `eslint-config-next@15.5.21` (async params/cookies/headers; `serverExternalPackages`) |
+| `nodemailer` | high | **DONE v5.31.0** → `nodemailer@9.0.3` |
+| overrides | — | **DONE**: `glob@10`→10.5.0, `minimatch@9`→9.0.9, `postcss`→8.5.22, `uuid`→11.1.1 |
+| `elliptic` | low | **Accepted**: webpack client polyfill chain; no safe fix without breaking `crypto-browserify` |
+| `sharp` | high | Residual transitive via Next; do not `audit fix --force` (suggests Next 14 downgrade) |
 
-`npm audit fix` (non-force) already applied: **48 → 19** total vulns.
+Verification (2026-07-23): `npm ls next jspdf nodemailer` → 15.5.21 / 4.2.1 / 9.0.3; `npm run build` exit 0; push `main` + `portal`.
+
+`npm audit` after remediations: Dependabot targets cleared; residual elliptic (accepted) + sharp + xlsx.
 
 ### Medium — remaining code hygiene
 

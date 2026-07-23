@@ -35,10 +35,12 @@ const nextConfig = {
     ],
   },
 
+  // Pacotes externos no servidor (estabilizado no Next 15; antes era experimental.serverComponentsExternalPackages)
+  serverExternalPackages: ['tesseract.js', 'pdfjs-dist', 'canvas', 'pdf-parse'],
+
   // Configurações experimentais
   experimental: {
     optimizeCss: true,
-    serverComponentsExternalPackages: ['tesseract.js', 'pdfjs-dist', 'canvas', 'pdf-parse'],
   },
 
   // Configurações do webpack para polyfill de módulos Node.js
