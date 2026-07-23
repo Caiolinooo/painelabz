@@ -59,21 +59,55 @@ export async function sugerirBack(params: SugerirBackParams): Promise<CandidatoB
     }
   }
 
-  const { data: documentos } = await supabaseAdmin
-    .from('gt_documentos')
-    .select('colaborador_id, data_validade')
-    .in('colaborador_id', candidatos.map(c => c.id))
-    .not('data_validade', 'is', null);
-
+  // Prefer post-send ASOs (enviado/processado) for validity; fallback to any dated doc per candidate
+  const candidatoIds = candidatos.map(c => c.id);
   const hoje = new Date();
   const docsValidosMap = new Map<string, boolean>();
-  if (documentos) {
-    for (const d of documentos) {
-      const valido = new Date(d.data_validade) >= hoje;
-      if (!docsValidosMap.has(d.colaborador_id)) {
-        docsValidosMap.set(d.colaborador_id, true);
+
+  const { data: asosEnviados } = await supabaseAdmin
+    .from('gt_documentos_aso')
+    .select('colaborador_id, documento:gt_documentos!documento_id(data_validade, deleted_at)')
+    .in('colaborador_id', candidatoIds)
+    .in('esocial_status', ['enviado', 'processado']);
+
+  const withGlobalAso = new Set<string>();
+  if (asosEnviados) {
+    for (const a of asosEnviados) {
+      if (!a.colaborador_id) continue;
+      const rawDoc = a.documento as
+        | { data_validade?: string | null; deleted_at?: string | null }
+        | { data_validade?: string | null; deleted_at?: string | null }[]
+        | null;
+      const doc = Array.isArray(rawDoc) ? rawDoc[0] : rawDoc;
+      if (doc?.deleted_at) continue;
+      withGlobalAso.add(a.colaborador_id);
+      const validade = doc?.data_validade;
+      const valido = validade ? new Date(validade) >= hoje : true;
+      docsValidosMap.set(
+        a.colaborador_id,
+        docsValidosMap.has(a.colaborador_id)
+          ? (docsValidosMap.get(a.colaborador_id)! || valido)
+          : valido
+      );
+    }
+  }
+
+  const missingIds = candidatoIds.filter((id) => !withGlobalAso.has(id));
+  if (missingIds.length > 0) {
+    const { data: documentos } = await supabaseAdmin
+      .from('gt_documentos')
+      .select('colaborador_id, data_validade')
+      .in('colaborador_id', missingIds)
+      .not('data_validade', 'is', null);
+
+    if (documentos) {
+      for (const d of documentos) {
+        const valido = new Date(d.data_validade) >= hoje;
+        if (!docsValidosMap.has(d.colaborador_id)) {
+          docsValidosMap.set(d.colaborador_id, true);
+        }
+        docsValidosMap.set(d.colaborador_id, docsValidosMap.get(d.colaborador_id)! && valido);
       }
-      docsValidosMap.set(d.colaborador_id, docsValidosMap.get(d.colaborador_id)! && valido);
     }
   }
 

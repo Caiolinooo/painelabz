@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import {
   FiSave, FiRefreshCw, FiToggleLeft, FiSliders, FiDatabase,
   FiBell, FiCamera, FiCpu, FiSettings, FiLayout, FiChevronDown, FiChevronRight,
-  FiAnchor, FiGlobe, FiBriefcase, FiPlay, FiCheckCircle, FiAlertTriangle, FiClock
+  FiAnchor, FiGlobe, FiBriefcase, FiPlay, FiCheckCircle, FiAlertTriangle, FiClock,
+  FiCalendar
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import TiposEventoEscalaAdmin from '@/components/gestao-tripulantes/admin/TiposEventoEscalaAdmin';
 
 function MioSyncButton() {
   const [syncing, setSyncing] = useState(false);
@@ -242,6 +244,7 @@ export default function GestaoTripulantesAdminPage() {
 
   const tabs = [
     { id: 'geral', label: 'Configuração Geral', icon: FiSettings },
+    { id: 'escala', label: 'Marcadores Escala', icon: FiCalendar },
     { id: 'mio', label: 'Integração MIO', icon: FiDatabase },
     { id: 'poliweb', label: 'PoliWeb', icon: FiGlobe },
     { id: 'notificacoes', label: 'Notificações', icon: FiBell },
@@ -319,6 +322,8 @@ export default function GestaoTripulantesAdminPage() {
         </div>
 
         <div className="p-6">
+          {activeTab === 'escala' && <TiposEventoEscalaAdmin />}
+
           {activeTab === 'geral' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">

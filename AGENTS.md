@@ -86,6 +86,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 - `src/app/api/reembolso/AGENTS.md` — fluxo de emails e status de reembolso
 - `src/app/api/admin/email-settings/AGENTS.md` — credenciais SMTP no admin (app_secrets)
+- `src/app/api/gestao-tripulantes/AGENTS.md` — ASO identity gate, e-Social sync, Man Schedule tipos/cores/observações
 
 ## Index of Modules
 

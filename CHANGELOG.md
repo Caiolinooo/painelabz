@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.34.0] - 2026-07-23
+
+### Features
+- **ASO identity gate**: OCR reassocia só por CPF (quarantine se não achar); sync `gt_documentos_aso.esocial_status` no envio/consulta S-2220; UI rascunhos vs disponíveis; `GET /api/gestao-tripulantes/aso?cpf=` só pós-envio.
+- **Escala personalizável**: tabela `gt_tipos_evento_escala` + admin Marcadores; cores/labels dinâmicos na grade; preview de observações; PUT de embarques; OFF-C round-trip; realtime merge só `origem=local`.
+
+### Docs / Ops
+- Migrations `20260723_000001_aso_identity_gate.sql` e `20260723_000002_gt_tipos_evento_escala.sql` (já aplicadas no Supabase); script `scripts/run-aso-escala-migrations.js`.
+- DOX `src/app/api/gestao-tripulantes/AGENTS.md`.
+
 ## [5.33.0] - 2026-07-23
 
 ### Security

@@ -2,6 +2,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { buscarASOsPendentes, PoliWebASO } from './poliweb-scraper';
 import { gerarXMLEvento } from '@/lib/e-social/xml-generator';
 import { validarXML } from '@/lib/e-social/validacao';
+import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
+import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
 
 export interface ImportResult {
   success: boolean;
@@ -79,13 +81,18 @@ export async function importarEProcessarASOs(asos: PoliWebASO[]): Promise<Import
 
   for (const aso of sortedAsos) {
     try {
-      const cpfLimpo = aso.colaboradorCpf.replace(/\D/g, '');
-      
-      // 1. Buscar o colaborador
+      const cpfLimpo = normalizeCpf(aso.colaboradorCpf);
+
+      // 1. Buscar o colaborador (digits + masked CPF — backfill-safe)
+      const colaboradorHit = await findColaboradorByCpf(cpfLimpo);
+      if (!colaboradorHit) {
+        erros.push(`Colaborador com CPF ${aso.colaboradorCpf} não encontrado no sistema ou inativo.`);
+        continue;
+      }
       const { data: colaborador, error: colError } = await supabaseAdmin
         .from('gt_colaboradores')
         .select('*')
-        .eq('cpf', cpfLimpo)
+        .eq('id', colaboradorHit.id)
         .is('deleted_at', null)
         .maybeSingle();
 

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
-import { generateEventXML, validateEventXML, validateEventData, updateEvento, logEnvio, STATUS_EVENTO } from '@/services/eSocialService';
+import { generateEventXML, validateEventXML, validateEventData, updateEvento, logEnvio } from '@/services/eSocialService';
+import { cpfsMatch, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,13 @@ export async function POST(
       return NextResponse.json({ error: 'Documento não é um ASO' }, { status: 400 });
     }
 
-    const colaborador = doc.colaborador as any;
+    const colaborador = doc.colaborador as {
+      id: string;
+      nome_completo: string;
+      cpf: string;
+      matricula?: string;
+      matricula_esocial?: string;
+    } | null;
 
     const { data: asoData, error: asoError } = await supabaseAdmin
       .from('gt_documentos_aso')
@@ -46,9 +53,35 @@ export async function POST(
       return NextResponse.json({ error: 'Dados detalhados do ASO não encontrados. Execute o OCR primeiro.' }, { status: 400 });
     }
 
+    if (asoData.esocial_status === 'quarentena' || asoData.identity_match === 'quarantine') {
+      return NextResponse.json({
+        error: 'ASO em quarentena de identidade — CPF do documento não bate com um colaborador válido. Corrija o vínculo antes de enviar.',
+      }, { status: 400 });
+    }
+
     // Check if already queued
     if (['enviado', 'processado', 'pendente', 'pendente_revisao'].includes(asoData.esocial_status || '')) {
       return NextResponse.json({ error: 'ASO já foi processado para o E-Social' }, { status: 400 });
+    }
+
+    // Prefer OCR CPF for e-Social compliance; block on mismatch with profile
+    const cpfOcr = normalizeCpf(asoData.cpf_documento || '');
+    const cpfPerfil = normalizeCpf(colaborador?.cpf || '');
+    const ocrDados = (doc.ocr_dados_extraidos || {}) as { cpf?: string };
+    const cpfFromOcrDados = normalizeCpf(ocrDados.cpf || '');
+    const cpfDocumento = cpfOcr.length === 11 ? cpfOcr : (cpfFromOcrDados.length === 11 ? cpfFromOcrDados : '');
+
+    if (cpfDocumento && cpfPerfil && !cpfsMatch(cpfDocumento, cpfPerfil)) {
+      return NextResponse.json({
+        error: `CPF do ASO (OCR: ${cpfDocumento}) difere do CPF do perfil (${cpfPerfil}). Envio bloqueado.`,
+        code: 'ASO_CPF_MISMATCH',
+        cpf_documento: cpfDocumento,
+        cpf_perfil: cpfPerfil,
+      }, { status: 400 });
+    }
+
+    if (!cpfDocumento && !cpfPerfil) {
+      return NextResponse.json({ error: 'CPF não disponível no ASO nem no perfil do colaborador.' }, { status: 400 });
     }
 
     // Fetch CNPJ of the collaborator's employer company
@@ -59,11 +92,12 @@ export async function POST(
         .select('gt_empresas!empresa_id(cnpj)')
         .eq('id', doc.colaborador_id)
         .maybeSingle();
-      const rawCnpj = (colabCnpj as any)?.gt_empresas?.cnpj || '';
+      const rawCnpj = (colabCnpj as { gt_empresas?: { cnpj?: string } } | null)?.gt_empresas?.cnpj || '';
       cnpj = rawCnpj.replace(/\D/g, '');
     }
 
-    const cpfLimpo = (colaborador?.cpf || '').replace(/\D/g, '');
+    // Compliance: send OCR CPF when present, else profile
+    const cpfLimpo = cpfDocumento || cpfPerfil;
 
     // Create e-Social event record (S-2220 - Monitoramento da Saúde do Trabalhador)
     const { data: evento, error: eventoError } = await supabaseAdmin
@@ -115,7 +149,7 @@ export async function POST(
         cnpj,
         tpAmb: 2,
         indRetif: 1,
-        matricula: (colaborador as any)?.matricula_esocial || (colaborador as any)?.matricula || '',
+        matricula: colaborador?.matricula_esocial || colaborador?.matricula || '',
         dadosEspecificos: {
           tipoExame: asoData.tipo_exame || 'periodico',
           dataRealizacao: asoData.data_realizacao || doc.data_emissao,
@@ -128,8 +162,8 @@ export async function POST(
           medico_pcmso_uf: asoData.medico_pcmso_uf || '',
           exames_realizados: asoData.exames_realizados || [],
           nome_clinica: asoData.nome_clinica || '',
-          matricula_esocial: (colaborador as any)?.matricula_esocial || '',
-          matricula: (colaborador as any)?.matricula || '',
+          matricula_esocial: colaborador?.matricula_esocial || '',
+          matricula: colaborador?.matricula || '',
         },
       };
 

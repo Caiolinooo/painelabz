@@ -1,0 +1,92 @@
+/**
+ * Helpers for Man Schedule event types (marcadores customizáveis).
+ * Storage codes: normal | fi | dba | stb | offc | custom
+ * Legacy DB values (folga_indenizada, dobra, standby) are normalized on read.
+ */
+
+export interface GTTipoEventoEscala {
+  id: string;
+  codigo: string;
+  display_code: string;
+  label: string;
+  bg_color: string;
+  text_color: string;
+  ordem: number;
+  ativo: boolean;
+  is_system: boolean;
+  maps_to_db_tipo: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Built-in seeds used when table is empty / unavailable. */
+export const DEFAULT_TIPOS_EVENTO_ESCALA: Omit<GTTipoEventoEscala, 'id' | 'created_at' | 'updated_at'>[] = [
+  { codigo: 'normal', display_code: 'ON', label: 'Embarcado', bg_color: '#e2efda', text_color: '#00b050', ordem: 10, ativo: true, is_system: true, maps_to_db_tipo: 'normal' },
+  { codigo: 'fi', display_code: 'FI', label: 'Folga Indenizada', bg_color: '#e2efda', text_color: '#00b050', ordem: 20, ativo: true, is_system: true, maps_to_db_tipo: 'folga_indenizada' },
+  { codigo: 'dba', display_code: 'DBA', label: 'Dobra', bg_color: '#e2efda', text_color: '#00b050', ordem: 30, ativo: true, is_system: true, maps_to_db_tipo: 'dobra' },
+  { codigo: 'stb', display_code: 'STB', label: 'StandBy', bg_color: '#f4cccc', text_color: '#cc0000', ordem: 40, ativo: true, is_system: true, maps_to_db_tipo: 'standby' },
+  { codigo: 'offc', display_code: 'OFF-C', label: 'Troca de Turma', bg_color: '#f4cccc', text_color: '#cc0000', ordem: 50, ativo: true, is_system: true, maps_to_db_tipo: 'offc' },
+];
+
+const LEGACY_TO_CODIGO: Record<string, string> = {
+  normal: 'normal',
+  folga_indenizada: 'fi',
+  fi: 'fi',
+  dobra: 'dba',
+  dba: 'dba',
+  standby: 'stb',
+  stb: 'stb',
+  offc: 'offc',
+  troca_turma: 'offc',
+  substituicao: 'normal',
+  treinamento: 'normal',
+};
+
+export { normalizeCpf } from '@/lib/utils/identity';
+
+/** Map stored embarque.tipo → schedule codigo (preserves offc and custom). */
+export function mapDbTipoToCodigo(tipo: string | null | undefined): string {
+  if (!tipo) return 'normal';
+  const key = tipo.trim().toLowerCase();
+  if (LEGACY_TO_CODIGO[key]) return LEGACY_TO_CODIGO[key];
+  return key;
+}
+
+/**
+ * Map UI/API rotation codigo → value stored in gt_historico_embarques.tipo.
+ * OFF-C stores as `offc` (not folga_indenizada).
+ */
+export function mapCodigoToDbTipo(codigo: string | null | undefined): string {
+  if (!codigo) return 'normal';
+  const key = codigo.trim().toLowerCase();
+  switch (key) {
+    case 'normal':
+    case 'on':
+      return 'normal';
+    case 'fi':
+    case 'folga_indenizada':
+      return 'fi';
+    case 'dba':
+    case 'dobra':
+      return 'dba';
+    case 'stb':
+    case 'standby':
+      return 'stb';
+    case 'offc':
+    case 'off-c':
+    case 'troca_turma':
+      return 'offc';
+    default:
+      return key;
+  }
+}
+
+/** Hex without # for XLSX styles. */
+export function hexToRgbNoHash(hex: string, fallback = 'E2EFDA'): string {
+  const cleaned = (hex || '').replace('#', '').trim().toUpperCase();
+  if (/^[0-9A-F]{6}$/.test(cleaned)) return cleaned;
+  if (/^[0-9A-F]{3}$/.test(cleaned)) {
+    return cleaned.split('').map((c) => c + c).join('');
+  }
+  return fallback;
+}

@@ -118,22 +118,33 @@ export async function POST(
       return NextResponse.json({ error: 'Erro ao salvar resultado do OCR' }, { status: 500 });
     }
 
+    let asoIdentity: { identity_match?: string | null; cpf_documento?: string | null; colaborador_id?: string | null; esocial_status?: string | null } | null = null;
+
     if (documento.tipo_documento === 'aso') {
-      await extrairDadosASODoTexto(
-        id,
-        result.data.texto,
-        result.data.dadosExtraidos,
-        documento.colaborador_id,
-        documento.data_emissao
-      ).catch((asoErr) => {
+      try {
+        await extrairDadosASODoTexto(
+          id,
+          result.data.texto,
+          result.data.dadosExtraidos,
+          documento.colaborador_id,
+          documento.data_emissao
+        );
+        const { data: asoRow } = await supabaseAdmin
+          .from('gt_documentos_aso')
+          .select('identity_match, cpf_documento, colaborador_id, esocial_status')
+          .eq('documento_id', id)
+          .maybeSingle();
+        asoIdentity = asoRow;
+      } catch (asoErr) {
         console.error('Erro ao processar dados de ASO:', asoErr);
-      });
+      }
     }
 
     return NextResponse.json({
       success: true,
       data: {
         documento: updated,
+        aso_identity: asoIdentity,
         ocr: {
           confianca: result.data.confianca,
           dados_extraidos: result.data.dadosExtraidos,

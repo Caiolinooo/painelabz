@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { enviarEvento } from '@/lib/e-social/client';
 import { generateEventXML, validateEventXML, validateEventData, updateEvento, logEnvio } from '@/services/eSocialService';
 import { validarEPrepararEnvio } from '@/lib/e-social/preEnvioGateway';
+import { syncAsoEsocialStatusFromEvento } from '@/lib/gestao-tripulantes/aso-esocial-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,6 +219,16 @@ export async function POST(
         sucesso: true,
       });
 
+      await syncAsoEsocialStatusFromEvento({
+        eventoId: id,
+        status: 'enviado',
+        protocolo: result.protocolo,
+        numeroRecibo: result.numeroRecibo,
+        entidadeOrigemId: evento.entidade_origem_id,
+        entidadeOrigemTipo: evento.entidade_origem_tipo,
+        eventoCodigo: evento.evento_codigo,
+      });
+
       return NextResponse.json({
         success: true,
         message: 'Evento enviado ao E-Social com sucesso',
@@ -249,6 +260,14 @@ export async function POST(
       status_code: 500,
       sucesso: false,
       mensagem_erro: erroMsg,
+    });
+
+    await syncAsoEsocialStatusFromEvento({
+      eventoId: id,
+      status: 'erro',
+      entidadeOrigemId: evento.entidade_origem_id,
+      entidadeOrigemTipo: evento.entidade_origem_tipo,
+      eventoCodigo: evento.evento_codigo,
     });
 
     return NextResponse.json({

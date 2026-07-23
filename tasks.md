@@ -216,3 +216,71 @@ git push -u --force-with-lease origin portal
 - Remaining `eyJhbGciOi` hits only truncated 10-char prefix in `kilo_code_task_aug-22-2025_6-21-39-pm.md` (not a full JWT)
 - Reflog expired; `git gc --prune=now` completed
 
+## Gestão Tripulantes — ASO + Escala personalizável (2026-07-23)
+
+**Verificação combinada (2026-07-23):** PASS (código). Sem conflict markers em `AGENTS.md` / `tasks.md` / GT. Migrations `000001` + `000002` coexistentes (sem overlap de schema). Fix: `embarques/route.ts` importava `findColaboradorByCpf` de `cpf` → corrigido para `cpf-lookup`. `tsc` em `src/` sem erros GT (falha residual só em `scratch/regenerate_xml.ts`, fora do escopo). **Ainda pendente:** aplicar ambas migrations no Supabase + Playwright/manual UI.
+
+### ASO (análise → implementação) — checklist
+
+**Status análise (2026-07-23):** cross-person ASOs no perfil (ex.: Adalberto vendo Vinicius/Wendel) — ver relatório do agent. Hipótese: upload/import no perfil errado + OCR reassociation falha (CPF formatado vs dígitos / primeiro CPF no PDF / nome frágil). Títulos com nome alheio vêm de `ImportarASOModal` (`ASO - ${filename}`).
+
+- [x] Análise: causa ASOs de outras pessoas no perfil errado
+- [x] Fluxo alvo: cadastro/import → envio E-Social (S-2220) → disponibilidade global só se enviado/processado
+- [x] Normalizar CPF em lookups (OCR, PoliWeb, e-Social) via `src/lib/gestao-tripulantes/cpf.ts` + `cpf-lookup.ts` (digits + máscara). Backfill SQL opcional abaixo.
+- [x] Hard-block vínculo: CPF OCR ≠ perfil → reassign por CPF ou quarentena; **sem** reassociação só por nome; freeze após pendente/enviado/processado
+- [x] UI ASOTab / ImportarASOModal: nome/CPF OCR + match; rascunhos vs disponíveis; bloqueio envio se CPF mismatch; título não é identidade
+- [x] Schema: migration `20260723_000001_aso_identity_gate.sql` (`cpf_documento`, `identity_match`, CHECK com `quarentena|erro_validacao|pendente_revisao`)
+- [x] API global `GET /api/gestao-tripulantes/aso?cpf=` (só enviado/processado); `algoritmo-back` prefere ASO pós-envio
+- [x] Sync loop: enviar/consultar S-2220 → `gt_documentos_aso.esocial_status` via `aso-esocial-sync.ts`
+- [ ] Data fix (manual): auditar Adalberto / Vinicius / Wendel — limpar vínculos errados em `gt_documentos` / `gt_documentos_aso`; re-OCR ou quarentena; opcional backfill CPF:
+  ```sql
+  -- Opcional: normalizar CPF em colaboradores (rodar no SQL Editor após backup)
+  UPDATE gt_colaboradores
+  SET cpf = regexp_replace(cpf, '[^0-9]', '', 'g'), updated_at = now()
+  WHERE cpf IS NOT NULL AND cpf ~ '[^0-9]';
+  ```
+- [ ] Verificação: Playwright perfil ASO + S-2220 + regressão cross-person; aplicar migration em staging/prod
+
+### Escala personalizável (marcadores/cores/preview comentário)
+
+**Status implementação (2026-07-23):** tabela `gt_tipos_evento_escala` + CRUD admin; realtime merge só `origem=local`; OFF-C round-trip; observações na grade; PUT embarques. **Pendente:** aplicar migration no Supabase + verificação Playwright.
+
+#### Fase 0 — Contratos / modelo
+- [x] Análise: tipos hardcoded vs configuráveis + mapa de arquivos
+- [x] Definir modelo: tabela `gt_tipos_evento_escala` (recomendado) **ou** JSON em `gt_configuracoes.escala_tipos`
+- [x] Migration: relaxar/substituir CHECK de `gt_historico_embarques.tipo`; seed ON/FI/DBA/STB/OFF-C (`20260723_000002_gt_tipos_evento_escala.sql`)
+- [x] Preservar códigos MIO (`normal|fi|dba|stb|offc`) como `codigo` / `is_system` + `maps_to_db_tipo`
+
+#### Fase 1 — Admin (tipos + cores + labels)
+- [x] API CRUD tipos de marcador (list/create/update/delete ou soft-disable)
+- [x] Tab em `/admin/gestao-tripulantes` → **Marcadores Escala**
+- [x] Campos: código curto, label, cor fundo, cor texto, ordem, ativo, mapeamento MIO opcional
+- [x] Modal "Adicionar Evento" carrega tipos do DB (não `<option>` fixos)
+
+#### Fase 2 — Grade + API realtime
+- [x] `GET /api/man-schedule/realtime`: devolver `observacoes` + `tipo_codigo` sem sobrescrever `embarque_status`; merge só `origem='local'`; CPF normalize
+- [x] Corrigir round-trip `offc` → não virar `fi` após save (`mapCodigoToDbTipo` → `offc`)
+- [x] Células: cor/label dinâmicos; tooltip/hover com observações; indicador se há comentário
+- [x] Legenda dinâmica a partir dos tipos ativos presentes na grade
+- [x] Export XLSX usar mesmas cores configuráveis
+
+#### Fase 3 — CRUD eventos completo
+- [x] PUT/PATCH `/api/gestao-tripulantes/embarques/[id]` (hoje só DELETE)
+- [x] Modal: preload observações/datas/tipo ao editar; não limpar `formObs` em open de evento existente
+- [x] Evitar create-always no Salvar quando já existe UUID local
+
+#### Fase 4 — Verificação
+- [ ] UI: criar tipo custom → cor na grade → comentário no hover/tooltip _(após migration)_
+- [ ] Round-trip OFF-C / tipos custom + soft-delete _(após migration)_
+- [ ] Playwright: modal + grade em `/department/gestao-tripulantes` tab Man Schedule
+
+### Conferência cross-módulo
+- [x] Mapa Tripulantes / ASO / E-Social / Man Schedule / MIO _(merge local-only; CPF normalize)_
+- [x] Merge verify ASO+Escala (imports/migrations/docs) — 2026-07-23; fix `embarques`→`cpf-lookup`
+- [ ] Guardrails de identidade (CPF / MIO id) — ver checklist ASO (Playwright + data fix ainda abertos)
+- [ ] Aplicar migrations staging/prod: `20260723_000001_aso_identity_gate.sql` → `20260723_000002_gt_tipos_evento_escala.sql`
+
+### Supabase migrations aplicadas (2026-07-23)
+- [x] `20260723_000001_aso_identity_gate.sql` (cpf_documento, identity_match, colaborador_id nullable)
+- [x] `20260723_000002_gt_tipos_evento_escala.sql` (5 marcadores seed ON/FI/DBA/STB/OFF-C)
+- Script: `node scripts/run-aso-escala-migrations.js`

@@ -1,6 +1,13 @@
 import { processarDocumentoOCR as processarDocumentoOCRGlobal } from '@/lib/ocr';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buscarCodigoExame } from '@/lib/e-social/codigos';
+import {
+  cpfsMatch,
+  isEsocialQueuedOrBeyond,
+  normalizeCpf,
+  type AsoIdentityMatch,
+} from '@/lib/gestao-tripulantes/cpf';
+import { findColaboradorByCpf, getColaboradorCpfNormalized } from '@/lib/gestao-tripulantes/cpf-lookup';
 import type { TipoDocumento } from '@/types/gestao-tripulantes';
 import type { OCRExtractResult, OCRTipoDocumento } from '@/types/ocr';
 
@@ -465,51 +472,75 @@ export async function extrairDadosASODoTexto(
   colaboradorId: string,
   dataEmissao?: string | null
 ): Promise<void> {
-  // Verificar se o ASO pertence a outro colaborador baseado no CPF ou Nome extraído
-  let colaboradorIdFinal = colaboradorId;
-  const cpfExtraido = dadosExtraidos?.cpf ? String(dadosExtraidos.cpf).replace(/\D/g, '') : null;
-  const nomeExtraido = dadosExtraidos?.nome_completo;
+  // Hard identity gate: CPF-only (never silent name-only moves).
+  // Mismatch → reassign by CPF or quarantine (clear wrong link). Never leave on wrong person.
+  let colaboradorIdFinal: string | null = colaboradorId;
+  const cpfExtraidoRaw = dadosExtraidos?.cpf ? normalizeCpf(String(dadosExtraidos.cpf)) : '';
+  const cpfExtraido = cpfExtraidoRaw.length === 11 ? cpfExtraidoRaw : null;
+  let identityMatch: AsoIdentityMatch = cpfExtraido ? 'unknown' : 'unknown';
 
-  if (cpfExtraido && cpfExtraido.length === 11) {
-    const { data: colabCorreto } = await supabaseAdmin
-      .from('gt_colaboradores')
-      .select('id')
-      .eq('cpf', cpfExtraido)
-      .is('deleted_at', null)
-      .maybeSingle();
+  // Preserve esocial_status if already queued/sent — freeze identity after queue
+  const { data: existingAso } = await supabaseAdmin
+    .from('gt_documentos_aso')
+    .select('esocial_status, colaborador_id, identity_match')
+    .eq('documento_id', documentoId)
+    .maybeSingle();
 
-    if (colabCorreto && colabCorreto.id !== colaboradorId) {
-      console.log(`[OCR/Reassociation] ASO do documento ${documentoId} pertence ao colaborador com CPF ${cpfExtraido} e não ao original. Reassociando...`);
-      colaboradorIdFinal = colabCorreto.id;
+  const frozen = isEsocialQueuedOrBeyond(existingAso?.esocial_status);
 
-      await supabaseAdmin
-        .from('gt_documentos')
-        .update({
-          colaborador_id: colabCorreto.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', documentoId);
+  if (frozen) {
+    identityMatch = 'frozen';
+    colaboradorIdFinal = existingAso?.colaborador_id || colaboradorId;
+    console.log(
+      `[OCR/Identity] Documento ${documentoId} já em e-Social (${existingAso?.esocial_status}) — identidade congelada.`
+    );
+  } else if (cpfExtraido) {
+    const profileCpf = await getColaboradorCpfNormalized(colaboradorId);
+
+    if (profileCpf && cpfsMatch(cpfExtraido, profileCpf)) {
+      identityMatch = 'match';
+      colaboradorIdFinal = colaboradorId;
+    } else {
+      const colabCorreto = await findColaboradorByCpf(cpfExtraido);
+
+      if (colabCorreto && colabCorreto.id !== colaboradorId) {
+        console.log(
+          `[OCR/Identity] ASO ${documentoId}: CPF OCR ${cpfExtraido} ≠ perfil. Reassociando → ${colabCorreto.id}`
+        );
+        identityMatch = 'reassigned';
+        colaboradorIdFinal = colabCorreto.id;
+        await supabaseAdmin
+          .from('gt_documentos')
+          .update({
+            colaborador_id: colabCorreto.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', documentoId);
+      } else if (colabCorreto && colabCorreto.id === colaboradorId) {
+        identityMatch = 'match';
+        colaboradorIdFinal = colaboradorId;
+      } else {
+        // CPF OCR exists but no matching colaborador — or profile mismatch without target
+        console.warn(
+          `[OCR/Identity] ASO ${documentoId}: CPF OCR ${cpfExtraido} sem colaborador válido. Quarentena.`
+        );
+        identityMatch = 'quarantine';
+        colaboradorIdFinal = null;
+        await supabaseAdmin
+          .from('gt_documentos')
+          .update({
+            colaborador_id: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', documentoId);
+      }
     }
-  } else if (nomeExtraido && nomeExtraido.trim().length > 5) {
-    const { data: colabCorreto } = await supabaseAdmin
-      .from('gt_colaboradores')
-      .select('id')
-      .ilike('nome_completo', nomeExtraido.trim())
-      .is('deleted_at', null)
-      .maybeSingle();
-
-    if (colabCorreto && colabCorreto.id !== colaboradorId) {
-      console.log(`[OCR/Reassociation] ASO do documento ${documentoId} pertence ao colaborador "${nomeExtraido}". Reassociando...`);
-      colaboradorIdFinal = colabCorreto.id;
-
-      await supabaseAdmin
-        .from('gt_documentos')
-        .update({
-          colaborador_id: colabCorreto.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', documentoId);
-    }
+  } else {
+    // No CPF from OCR — keep current link but mark unknown (do NOT move by name)
+    identityMatch = 'unknown';
+    console.warn(
+      `[OCR/Identity] ASO ${documentoId}: CPF não extraído. Mantendo vínculo atual sem reassociação por nome.`
+    );
   }
 
   // 1. Type of exam
@@ -593,24 +624,51 @@ export async function extrairDadosASODoTexto(
     }
   }
 
-  await supabaseAdmin
-    .from('gt_documentos_aso')
-    .upsert({
-      documento_id: documentoId,
-      colaborador_id: colaboradorIdFinal,
-      tipo_exame,
-      resultado,
-      data_realizacao,
-      medico_nome: medico_nome || null,
-      medico_crm: medico_crm || null,
-      medico_uf: medico_uf || null,
-      medico_pcmso_nome: medico_pcmso_nome || null,
-      medico_pcmso_crm: medico_pcmso_crm || null,
-      medico_pcmso_uf: medico_pcmso_uf || null,
-      cnpj_clinica: cnpj_clinica || null,
-      nome_clinica: nome_clinica || null,
-      exames_realizados: examesComCodigos.length > 0 ? examesComCodigos : null,
-      esocial_status: 'nao_enviado',
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'documento_id' });
+  const asoUpsert: Record<string, unknown> = {
+    documento_id: documentoId,
+    colaborador_id: colaboradorIdFinal,
+    tipo_exame,
+    resultado,
+    data_realizacao,
+    medico_nome: medico_nome || null,
+    medico_crm: medico_crm || null,
+    medico_uf: medico_uf || null,
+    medico_pcmso_nome: medico_pcmso_nome || null,
+    medico_pcmso_crm: medico_pcmso_crm || null,
+    medico_pcmso_uf: medico_pcmso_uf || null,
+    cnpj_clinica: cnpj_clinica || null,
+    nome_clinica: nome_clinica || null,
+    exames_realizados: examesComCodigos.length > 0 ? examesComCodigos : null,
+    cpf_documento: cpfExtraido,
+    identity_match: identityMatch,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Never reset esocial_status once queued/sent/processed; quarantine gets explicit status
+  if (frozen) {
+    // leave esocial_status untouched (omit from upsert payload → need merge carefully)
+  } else if (identityMatch === 'quarantine') {
+    asoUpsert.esocial_status = 'quarentena';
+  } else if (!existingAso?.esocial_status || existingAso.esocial_status === 'quarentena') {
+    asoUpsert.esocial_status = 'nao_enviado';
+  }
+  // else: keep existing status (pendente/erro/etc.) by omitting esocial_status
+
+  if (frozen) {
+    // Upsert without overwriting esocial_status or colaborador when frozen
+    delete asoUpsert.colaborador_id;
+    const { error: upsertErr } = await supabaseAdmin
+      .from('gt_documentos_aso')
+      .upsert(asoUpsert, { onConflict: 'documento_id' });
+    if (upsertErr) {
+      console.error('[OCR/ASO] upsert (frozen) failed:', upsertErr);
+    }
+  } else {
+    const { error: upsertErr } = await supabaseAdmin
+      .from('gt_documentos_aso')
+      .upsert(asoUpsert, { onConflict: 'documento_id' });
+    if (upsertErr) {
+      console.error('[OCR/ASO] upsert failed:', upsertErr);
+    }
+  }
 }

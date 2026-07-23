@@ -5,6 +5,7 @@ import { FiUpload, FiDownload, FiSend, FiHeart, FiAlertCircle, FiCheckCircle, Fi
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
+import { cpfsMatch, formatCpf, isEsocialGlobalVisible, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 
 interface Document {
   id: string;
@@ -17,6 +18,10 @@ interface Document {
   status_validacao: string;
   ocr_status: string;
   arquivo_url: string;
+  ocr_dados_extraidos?: {
+    cpf?: string;
+    nome_completo?: string;
+  } | null;
   aso_data?: {
     tipo_exame?: string;
     resultado?: string;
@@ -25,11 +30,14 @@ interface Document {
     medico_crm?: string;
     nome_clinica?: string;
     esocial_status?: string;
+    cpf_documento?: string | null;
+    identity_match?: string | null;
   };
 }
 
 interface Props {
   colaboradorId: string;
+  colaboradorCpf?: string;
   documentos: Document[];
   esocialAsos?: any[];
   onRefresh?: () => void;
@@ -51,10 +59,13 @@ const RESULTADO_COLORS: Record<string, string> = {
 
 const ESOCIAL_STATUS_COLORS: Record<string, string> = {
   nao_enviado: 'text-gray-400',
+  pendente: 'text-orange-500',
   pendente_revisao: 'text-orange-500',
   aprovado: 'text-blue-600',
   enviado: 'text-green-600',
+  processado: 'text-green-700',
   erro: 'text-red-600',
+  quarentena: 'text-red-700',
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -71,9 +82,12 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function isDraftStatus(status: string): boolean {
+  return !isEsocialGlobalVisible(status);
+}
+
 /**
- * Extrai texto no navegador (usando PDF.js text layer ou Tesseract.js para imagens/scans) e envia ao servidor.
- * Resolve o problema do Vercel serverless sem suporte a canvas/tesseract.
+ * Extrai texto no navegador e envia ao servidor (sem canvas no Vercel).
  */
 async function renderizarEEnviarOCR(
   docId: string,
@@ -90,7 +104,7 @@ async function renderizarEEnviarOCR(
   });
 }
 
-export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], onRefresh }: Props) {
+export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esocialAsos = [], onRefresh }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
@@ -98,6 +112,20 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
   const [ocrProgress, setOcrProgress] = useState('');
 
   const asos = documentos.filter(d => d.tipo_documento === 'aso');
+  const profileCpf = normalizeCpf(colaboradorCpf || '');
+
+  const getOcrIdentity = (doc: Document) => {
+    const cpfDoc = normalizeCpf(doc.aso_data?.cpf_documento || doc.ocr_dados_extraidos?.cpf || '');
+    const nomeOcr = doc.ocr_dados_extraidos?.nome_completo || '';
+    const match = doc.aso_data?.identity_match;
+    const matchesProfile = cpfDoc.length === 11 && profileCpf.length === 11
+      ? cpfsMatch(cpfDoc, profileCpf)
+      : match === 'match';
+    return { cpfDoc, nomeOcr, match, matchesProfile };
+  };
+
+  const availableAsos = asos.filter(d => isEsocialGlobalVisible(d.aso_data?.esocial_status || 'nao_enviado'));
+  const draftAsos = asos.filter(d => isDraftStatus(d.aso_data?.esocial_status || 'nao_enviado'));
 
   const getEventField = (event: any, fieldName: string) => {
     const dados = event.dados_evento || {};
@@ -129,6 +157,8 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
   const linkedDocIds = new Set(asos.map(d => d.id));
   const unlinkedEsocialAsos = (esocialAsos || []).filter(evt => {
     const docId = evt.entidade_origem_id || evt.dados_evento?.documento_id || evt.dados_evento?.documentoId;
+    const status = evt.status || '';
+    // Global e-Social events: show when sent/processed (or keep pending visibility as draft-like)
     return !linkedDocIds.has(docId);
   });
 
@@ -153,7 +183,7 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
         body: fd,
       });
       if (!res.ok) throw new Error('Upload falhou');
-      
+
       const json = await res.json();
       const doc = json.data;
 
@@ -161,7 +191,6 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
       onRefresh?.();
 
       if (doc && doc.id && doc.arquivo_url) {
-        // Automatically run OCR to parse and reassociate if it belongs to someone else
         handleRunOCR(doc.id, doc.arquivo_url);
       }
     } catch {
@@ -177,7 +206,7 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
       setRunningOcr(docId);
       setOcrProgress('Preparando...');
 
-      const res = await renderizarEEnviarOCR(docId, arquivoUrl);
+      const res = await renderizarEEnviarOCR(docId, arquivoUrl, setOcrProgress);
 
       if (!res.ok) {
         const data = await res.json();
@@ -193,10 +222,20 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
     }
   };
 
-  const handleSendESocial = async (docId: string) => {
+  const handleSendESocial = async (doc: Document) => {
+    const { cpfDoc, matchesProfile, match } = getOcrIdentity(doc);
+    if (match === 'quarantine' || doc.aso_data?.esocial_status === 'quarentena') {
+      toast.error('ASO em quarentena de identidade — não pode enviar ao e-Social.');
+      return;
+    }
+    if (cpfDoc && profileCpf && !matchesProfile) {
+      toast.error(`CPF do ASO (${formatCpf(cpfDoc)}) difere do perfil (${formatCpf(profileCpf)}). Envio bloqueado.`);
+      return;
+    }
+
     try {
-      setSending(docId);
-      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/esocial`, { method: 'POST' });
+      setSending(doc.id);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${doc.id}/esocial`, { method: 'POST' });
       if (!res.ok) {
         const json = await res.json();
         throw new Error(json.error || 'Falha ao enviar E-Social');
@@ -212,13 +251,166 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
     }
   };
 
+  const renderAsoCard = (doc: Document, section: 'available' | 'draft') => {
+    const meta = doc.aso_data || {};
+    const eSocialStatus = meta.esocial_status || 'nao_enviado';
+    const { cpfDoc, nomeOcr, match, matchesProfile } = getOcrIdentity(doc);
+    const identityBlocked =
+      match === 'quarantine' ||
+      eSocialStatus === 'quarentena' ||
+      (cpfDoc.length === 11 && profileCpf.length === 11 && !matchesProfile);
+
+    const displayTitle = nomeOcr
+      ? `ASO — ${nomeOcr}`
+      : (doc.titulo?.startsWith('ASO -') ? 'ASO' : doc.titulo);
+
+    return (
+      <div key={doc.id} className="p-5 hover:bg-gray-50 transition-colors">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-gray-800 text-sm">{displayTitle}</p>
+              {section === 'draft' && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-800">
+                  {eSocialStatus === 'quarentena' ? 'quarentena' : 'não enviado / rascunho'}
+                </span>
+              )}
+              {section === 'available' && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-green-100 text-green-800">
+                  disponível
+                </span>
+              )}
+              {meta.tipo_exame && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TIPO_EXAME_COLORS[meta.tipo_exame.toLowerCase()] || 'bg-gray-100 text-gray-600'}`}>
+                  {t(`gestaoTripulantes.aso.${meta.tipo_exame}`, meta.tipo_exame)}
+                </span>
+              )}
+              {meta.resultado && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${RESULTADO_COLORS[meta.resultado.toLowerCase()] || 'bg-gray-100 text-gray-600'}`}>
+                  {t(`gestaoTripulantes.aso.${meta.resultado}`, meta.resultado)}
+                </span>
+              )}
+            </div>
+
+            {/* Identity from OCR — never treat filename as identity */}
+            <div className={`rounded-lg border px-3 py-2 text-xs ${
+              identityBlocked
+                ? 'border-red-200 bg-red-50 text-red-800'
+                : match === 'match' || matchesProfile
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border-slate-200 bg-slate-50 text-slate-700'
+            }`}>
+              <div className="flex items-start gap-2">
+                {identityBlocked ? (
+                  <FiAlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                ) : (
+                  <FiCheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                )}
+                <div className="space-y-0.5">
+                  <p>
+                    <span className="font-semibold">Identidade OCR:</span>{' '}
+                    {nomeOcr || '—'} · CPF {cpfDoc ? formatCpf(cpfDoc) : 'não extraído'}
+                  </p>
+                  <p className="opacity-80">
+                    Match: {match || '—'}
+                    {profileCpf ? ` · Perfil: ${formatCpf(profileCpf)}` : ''}
+                    {doc.titulo?.includes('.') || doc.titulo?.startsWith('ASO -')
+                      ? ` · Arquivo: ${doc.titulo}`
+                      : ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1">
+              <div>
+                <p className="text-xs text-gray-400">Realização</p>
+                <p className="text-xs font-medium text-gray-700">{formatDate(meta.data_realizacao || doc.data_emissao)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Validade</p>
+                <p className="text-xs font-medium text-gray-700">{formatDate(doc.data_validade)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Médico</p>
+                <p className="text-xs font-medium text-gray-700">{meta.medico_nome || '—'}{meta.medico_crm ? ` (${meta.medico_crm})` : ''}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Clínica</p>
+                <p className="text-xs font-medium text-gray-700">{meta.nome_clinica || '—'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 pt-1 flex-wrap">
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-400">{t('gestaoTripulantes.aso.eSocialStatus')}:</span>
+                <span className={`text-xs font-semibold ${ESOCIAL_STATUS_COLORS[eSocialStatus] || 'text-gray-500'}`}>
+                  {eSocialStatus.replace(/_/g, ' ').toUpperCase()}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-400">OCR:</span>
+                <span className={`text-xs font-semibold ${
+                  doc.ocr_status === 'concluido' ? 'text-green-600' :
+                  doc.ocr_status === 'processando' ? 'text-blue-600 animate-pulse' :
+                  doc.ocr_status === 'erro' ? 'text-red-600' : 'text-gray-500'
+                }`}>
+                  {runningOcr === doc.id ? ocrProgress : (doc.ocr_status || 'pendente').toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+            <StatusBadge status={doc.status_validacao} />
+
+            {doc.arquivo_url && (
+              <a href={doc.arquivo_url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600">
+                <FiDownload className="w-3 h-3" /> PDF
+              </a>
+            )}
+
+            {(!doc.ocr_status || doc.ocr_status === 'pendente' || doc.ocr_status === 'erro') && (
+              <button
+                onClick={() => handleRunOCR(doc.id, doc.arquivo_url)}
+                disabled={runningOcr === doc.id || uploading}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition"
+              >
+                <FiClock className="w-3.5 h-3.5" />
+                {runningOcr === doc.id ? 'Processando...' : 'Executar OCR'}
+              </button>
+            )}
+
+            {eSocialStatus === 'nao_enviado' && doc.ocr_status === 'concluido' && (
+              <button
+                onClick={() => handleSendESocial(doc)}
+                disabled={sending === doc.id || identityBlocked}
+                title={identityBlocked ? 'Bloqueado: CPF OCR ≠ perfil' : undefined}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
+              >
+                <FiSend className="w-3 h-3" />
+                {sending === doc.id ? 'Enviando...' : t('gestaoTripulantes.aso.sendESocial')}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const totalCount = asos.length + unlinkedEsocialAsos.length;
+
   return (
     <div className="divide-y divide-gray-100">
-      {/* Upload bar */}
       <div className="p-4 flex items-center justify-between bg-gray-50/70">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <FiHeart className="text-red-500" />
-          <span>{asos.length + unlinkedEsocialAsos.length} ASO(s) cadastrado(s)</span>
+          <span>
+            {availableAsos.length} disponível(is) · {draftAsos.length} rascunho(s)
+            {unlinkedEsocialAsos.length > 0 ? ` · ${unlinkedEsocialAsos.length} e-Social` : ''}
+            {' '}({totalCount} total)
+          </span>
         </div>
         <label className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg cursor-pointer hover:bg-red-700 transition ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
           <FiUpload className="w-3.5 h-3.5" />
@@ -227,113 +419,35 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
         </label>
       </div>
 
-      {asos.length === 0 && unlinkedEsocialAsos.length === 0 ? (
+      {totalCount === 0 ? (
         <div className="p-12 text-center">
           <FiHeart className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-400 text-sm">{t('gestaoTripulantes.aso.noAso')}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
-          {/* Render regular ASO documents */}
-          {asos.map(doc => {
-            const meta = doc.aso_data || {};
-            const eSocialStatus = meta.esocial_status || 'nao_enviado';
-            return (
-              <div key={doc.id} className="p-5 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-gray-800 text-sm">{doc.titulo}</p>
-                      {meta.tipo_exame && (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TIPO_EXAME_COLORS[meta.tipo_exame.toLowerCase()] || 'bg-gray-100 text-gray-600'}`}>
-                          {t(`gestaoTripulantes.aso.${meta.tipo_exame}`, meta.tipo_exame)}
-                        </span>
-                      )}
-                      {meta.resultado && (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${RESULTADO_COLORS[meta.resultado.toLowerCase()] || 'bg-gray-100 text-gray-600'}`}>
-                          {t(`gestaoTripulantes.aso.${meta.resultado}`, meta.resultado)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1">
-                      <div>
-                        <p className="text-xs text-gray-400">Realização</p>
-                        <p className="text-xs font-medium text-gray-700">{formatDate(meta.data_realizacao || doc.data_emissao)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400">Validade</p>
-                        <p className="text-xs font-medium text-gray-700">{formatDate(doc.data_validade)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400">Médico</p>
-                        <p className="text-xs font-medium text-gray-700">{meta.medico_nome || '—'}{meta.medico_crm ? ` (${meta.medico_crm})` : ''}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400">Clínica</p>
-                        <p className="text-xs font-medium text-gray-700">{meta.nome_clinica || '—'}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 pt-1 flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-400">{t('gestaoTripulantes.aso.eSocialStatus')}:</span>
-                        <span className={`text-xs font-semibold ${ESOCIAL_STATUS_COLORS[eSocialStatus] || 'text-gray-500'}`}>
-                          {eSocialStatus.replace('_', ' ').toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-400">OCR:</span>
-                        <span className={`text-xs font-semibold ${
-                          doc.ocr_status === 'concluido' ? 'text-green-600' :
-                          doc.ocr_status === 'processando' ? 'text-blue-600 animate-pulse' :
-                          doc.ocr_status === 'erro' ? 'text-red-600' : 'text-gray-500'
-                        }`}>
-                          {runningOcr === doc.id ? ocrProgress : (doc.ocr_status || 'pendente').toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <StatusBadge status={doc.status_validacao} />
-
-                    {doc.arquivo_url && (
-                      <a href={doc.arquivo_url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600">
-                        <FiDownload className="w-3 h-3" /> PDF
-                      </a>
-                    )}
-
-                    {/* Executar OCR se pendente ou erro */}
-                    {(!doc.ocr_status || doc.ocr_status === 'pendente' || doc.ocr_status === 'erro') && (
-                      <button
-                        onClick={() => handleRunOCR(doc.id, doc.arquivo_url)}
-                        disabled={runningOcr === doc.id || uploading}
-                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition"
-                      >
-                        <FiClock className="w-3.5 h-3.5" />
-                        {runningOcr === doc.id ? 'Processando...' : 'Executar OCR'}
-                      </button>
-                    )}
-
-                    {eSocialStatus === 'nao_enviado' && doc.ocr_status === 'concluido' && (
-                      <button
-                        onClick={() => handleSendESocial(doc.id)}
-                        disabled={sending === doc.id}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
-                      >
-                        <FiSend className="w-3 h-3" />
-                        {sending === doc.id ? 'Enviando...' : t('gestaoTripulantes.aso.sendESocial')}
-                      </button>
-                    )}
-                  </div>
-                </div>
+          {availableAsos.length > 0 && (
+            <div>
+              <div className="px-5 py-2 bg-green-50/80 border-b border-green-100">
+                <p className="text-xs font-bold uppercase tracking-wide text-green-800">
+                  Disponíveis (enviado / processado no e-Social)
+                </p>
               </div>
-            );
-          })}
+              {availableAsos.map(doc => renderAsoCard(doc, 'available'))}
+            </div>
+          )}
 
-          {/* Render direct e-Social ASO events */}
+          {draftAsos.length > 0 && (
+            <div>
+              <div className="px-5 py-2 bg-amber-50/80 border-b border-amber-100">
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-800">
+                  Rascunhos / não enviados (não entram no uso global)
+                </p>
+              </div>
+              {draftAsos.map(doc => renderAsoCard(doc, 'draft'))}
+            </div>
+          )}
+
           {unlinkedEsocialAsos.map(evt => {
             const tipo = getEventField(evt, 'tipo_exame');
             const res = getEventField(evt, 'resultado');
@@ -343,21 +457,27 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
             const medicoCrm = getEventField(evt, 'medico_crm');
             const medicoUf = getEventField(evt, 'medico_uf');
             const clinica = evt.dados_evento?.nome_clinica || 'Sincronizado e-Social';
-            
+
             const eventStatus = evt.status || 'pendente';
-            const statusValidadeStr = dataValidade 
+            const statusValidadeStr = dataValidade
               ? (new Date(dataValidade) < new Date() ? 'vencido' : 'valido')
               : 'valido';
+            const isGlobal = eventStatus === 'processado' || eventStatus === 'enviado' || eventStatus === 'sucesso';
 
             return (
-              <div key={evt.id} className="p-5 hover:bg-gray-50 transition-colors border-l-4 border-l-blue-400 bg-blue-50/5">
+              <div key={evt.id} className={`p-5 hover:bg-gray-50 transition-colors border-l-4 ${isGlobal ? 'border-l-green-400 bg-green-50/5' : 'border-l-blue-400 bg-blue-50/5'}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span className={`w-2 h-2 rounded-full ${isGlobal ? 'bg-green-500' : 'bg-blue-500'}`}></span>
                         ASO e-Social (S-2220)
                       </p>
+                      {!isGlobal && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-800">
+                          não enviado / rascunho
+                        </span>
+                      )}
                       {tipo && (
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TIPO_EXAME_COLORS[tipo.toLowerCase()] || 'bg-gray-100 text-gray-600'}`}>
                           {t(`gestaoTripulantes.aso.${tipo}`, tipo)}
@@ -396,11 +516,11 @@ export default function ASOTab({ colaboradorId, documentos, esocialAsos = [], on
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-gray-400">Status e-Social:</span>
                         <span className={`text-xs font-bold ${
-                          eventStatus === 'processado' || eventStatus === 'enviado' || eventStatus === 'sucesso' ? 'text-green-600' :
+                          isGlobal ? 'text-green-600' :
                           eventStatus === 'pendente_revisao' || eventStatus === 'pendente' ? 'text-orange-500' :
                           eventStatus === 'erro' || eventStatus === 'erro_validacao' ? 'text-red-600' : 'text-gray-500'
                         }`}>
-                          {eventStatus.replace('_', ' ').toUpperCase()}
+                          {eventStatus.replace(/_/g, ' ').toUpperCase()}
                         </span>
                       </div>
                     </div>

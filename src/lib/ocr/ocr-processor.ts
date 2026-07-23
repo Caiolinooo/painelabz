@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { normalizeCpf } from '@/lib/utils/identity';
 import type { OCRTipoDocumento, OCRExtractResult, OCRConfig } from '@/types/ocr';
 import fs from 'fs';
 import path from 'path';
@@ -32,7 +33,7 @@ export function extrairDadosTexto(texto: string, tipoDocumento?: OCRTipoDocument
   const upper = texto.toUpperCase();
 
   const cpfMatch = texto.match(/(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[.\s-]?(\d{2})/);
-  if (cpfMatch) dados.cpf = `${cpfMatch[1]}${cpfMatch[2]}${cpfMatch[3]}${cpfMatch[4]}`;
+  if (cpfMatch) dados.cpf = normalizeCpf(`${cpfMatch[1]}${cpfMatch[2]}${cpfMatch[3]}${cpfMatch[4]}`);
 
   const rgLabeled = upper.match(/(?:RG|IDENTIDADE|REGISTRO\s*GERAL)[:\s]*(\d{1,2}[.\s]?\d{3}[.\s]?\d{3}[.\s-]?\d{0,2})/i);
   if (rgLabeled) {
@@ -41,7 +42,7 @@ export function extrairDadosTexto(texto: string, tipoDocumento?: OCRTipoDocument
     const rgPlain = texto.match(/(\d{1,2})[.\s]?(\d{3})[.\s]?(\d{3})[.\s-]?(\d{0,2})/);
     if (rgPlain) {
       const cleanedRg = rgPlain[0].replace(/[.\s-]/g, '');
-      const cleanedCpf = dados.cpf ? dados.cpf.replace(/[.\s-]/g, '') : '';
+      const cleanedCpf = dados.cpf ? normalizeCpf(dados.cpf) : '';
       if (!cleanedCpf || !cleanedCpf.includes(cleanedRg)) {
         dados.rg = cleanedRg;
       }

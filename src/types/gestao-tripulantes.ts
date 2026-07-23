@@ -137,6 +137,8 @@ export interface GTDocumento {
 export type TipoExameASO = 'admissional' | 'periodico' | 'demissional' | 'retorno' | 'mudanca_funcao';
 export type ResultadoASO = 'apto' | 'inapto' | 'apto_condicional';
 
+export type AsoIdentityMatch = 'match' | 'reassigned' | 'quarantine' | 'unknown' | 'frozen';
+
 export interface GTDocumentoASO {
     id: string;
     documento_id: string;
@@ -154,6 +156,9 @@ export interface GTDocumentoASO {
     esocial_protocolo?: string;
     esocial_numero_recibo?: string;
     esocial_data_envio?: string;
+    /** Digits-only CPF from OCR (identity gate source of truth before send) */
+    cpf_documento?: string | null;
+    identity_match?: AsoIdentityMatch | null;
     created_at: string;
     updated_at: string;
 }
@@ -170,7 +175,34 @@ export interface GTTreinamento {
     created_at: string;
 }
 
-export type TipoEmbarque = 'normal' | 'dobra' | 'folga_indenizada' | 'standby' | 'substituicao' | 'treinamento';
+/** Legacy embarque tipos + Man Schedule codes (fi/dba/stb/offc) + custom. */
+export type TipoEmbarque =
+  | 'normal'
+  | 'dobra'
+  | 'folga_indenizada'
+  | 'standby'
+  | 'substituicao'
+  | 'treinamento'
+  | 'fi'
+  | 'dba'
+  | 'stb'
+  | 'offc'
+  | (string & {});
+
+export interface GTTipoEventoEscala {
+  id: string;
+  codigo: string;
+  display_code: string;
+  label: string;
+  bg_color: string;
+  text_color: string;
+  ordem: number;
+  ativo: boolean;
+  is_system: boolean;
+  maps_to_db_tipo?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface GTHistoricoEmbarque {
     id: string;

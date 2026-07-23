@@ -28,8 +28,12 @@ interface Props {
 const TIPO_CONFIG: Record<string, { color: string; label: string }> = {
   normal: { color: 'bg-blue-100 text-blue-700 border-blue-300', label: 'Normal' },
   dobra: { color: 'bg-orange-100 text-orange-700 border-orange-300', label: 'Dobra' },
+  dba: { color: 'bg-orange-100 text-orange-700 border-orange-300', label: 'Dobra' },
   folga_indenizada: { color: 'bg-green-100 text-green-700 border-green-300', label: 'Folga Indenizada' },
+  fi: { color: 'bg-green-100 text-green-700 border-green-300', label: 'Folga Indenizada' },
   standby: { color: 'bg-yellow-100 text-yellow-700 border-yellow-300', label: 'StandBy' },
+  stb: { color: 'bg-yellow-100 text-yellow-700 border-yellow-300', label: 'StandBy' },
+  offc: { color: 'bg-red-100 text-red-700 border-red-300', label: 'Troca de Turma (OFF-C)' },
   substituicao: { color: 'bg-purple-100 text-purple-700 border-purple-300', label: 'Substituição' },
   treinamento: { color: 'bg-gray-100 text-gray-700 border-gray-300', label: 'Treinamento' },
 };
@@ -37,8 +41,12 @@ const TIPO_CONFIG: Record<string, { color: string; label: string }> = {
 const DOT_COLORS: Record<string, string> = {
   normal: 'bg-blue-500',
   dobra: 'bg-orange-500',
+  dba: 'bg-orange-500',
   folga_indenizada: 'bg-green-500',
+  fi: 'bg-green-500',
   standby: 'bg-yellow-500',
+  stb: 'bg-yellow-500',
+  offc: 'bg-red-500',
   substituicao: 'bg-purple-500',
   treinamento: 'bg-gray-500',
 };

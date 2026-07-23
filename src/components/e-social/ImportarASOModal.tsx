@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiX, FiUpload, FiCpu, FiCheckCircle, FiAlertCircle, FiSave, FiSend, FiTrash, FiPlus } from 'react-icons/fi';
+import { FiX, FiUpload, FiCpu, FiCheckCircle, FiAlertCircle, FiSend, FiTrash, FiPlus } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
+import { cpfsMatch, formatCpf, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 
 interface Collaborator {
   id: string;
@@ -43,6 +44,9 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
   const [medicoPcmsoUf, setMedicoPcmsoUf] = useState('RJ');
   const [examesRealizados, setExamesRealizados] = useState<{ nome: string; data: string }[]>([]);
   const [nomeClinica, setNomeClinica] = useState('');
+  const [ocrNome, setOcrNome] = useState('');
+  const [ocrCpf, setOcrCpf] = useState('');
+  const [identityMatch, setIdentityMatch] = useState<string | null>(null);
 
   // Fetch collaborators
   useEffect(() => {
@@ -92,7 +96,8 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
       fd.append('file', file);
       fd.append('colaborador_id', selectedColabId);
       fd.append('tipo_documento', 'aso');
-      fd.append('titulo', `ASO - ${file.name.replace(/\.[^/.]+$/, "")}`);
+      // Title is storage label only — identity comes from OCR, never from filename
+      fd.append('titulo', 'ASO');
       fd.append('data_emissao', new Date().toISOString().split('T')[0]);
 
       const uploadRes = await fetchWithToken('/api/gestao-tripulantes/documentos/upload', {
@@ -156,13 +161,15 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
 
       toast.success('OCR concluído com sucesso!');
 
-      // 3. Fetch Extracted Data via API (includes gt_documentos_aso)
+      // 3. Fetch Extracted Data via API (includes gt_documentos_aso + OCR identity)
       let asoData: Record<string, any> | null = null;
+      let ocrDados: Record<string, any> | null = null;
       try {
         const docRes = await fetchWithToken(`/api/gestao-tripulantes/documentos/${uploadedDocId}`);
         if (docRes.ok) {
           const docJson = await docRes.json();
           asoData = docJson.data?.aso || null;
+          ocrDados = docJson.data?.ocr_dados_extraidos || null;
         }
       } catch (fetchErr) {
         console.warn('Falha ao buscar dados do ASO via API, usando fallback vazio', fetchErr);
@@ -170,6 +177,22 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
 
       if (!asoData) {
         console.warn('Dados do ASO não encontrados no banco, usando fallback vazio');
+      }
+
+      const extractedCpf = normalizeCpf(asoData?.cpf_documento || ocrDados?.cpf || '');
+      const extractedNome = ocrDados?.nome_completo || '';
+      setOcrCpf(extractedCpf);
+      setOcrNome(extractedNome);
+      setIdentityMatch(asoData?.identity_match || null);
+
+      // If OCR reassigned/quarantined away from selected colab, warn
+      const selected = collaborators.find(c => c.id === selectedColabId);
+      const selectedCpf = normalizeCpf(selected?.cpf || '');
+      if (extractedCpf.length === 11 && selectedCpf && !cpfsMatch(extractedCpf, selectedCpf)) {
+        toast.error(
+          `CPF do ASO (${formatCpf(extractedCpf)}) difere do colaborador selecionado (${formatCpf(selectedCpf)}). Envio ao e-Social ficará bloqueado.`,
+          { duration: 6000 }
+        );
       }
 
       // Pre-populate reviewed fields
@@ -195,6 +218,17 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
 
   const handleSaveAndGenerateEvent = async () => {
     if (!docId) return;
+
+    const selected = collaborators.find(c => c.id === selectedColabId);
+    const selectedCpf = normalizeCpf(selected?.cpf || '');
+    if (identityMatch === 'quarantine') {
+      toast.error('ASO em quarentena de identidade — corrija o vínculo antes de enviar.');
+      return;
+    }
+    if (ocrCpf.length === 11 && selectedCpf && !cpfsMatch(ocrCpf, selectedCpf)) {
+      toast.error(`CPF OCR (${formatCpf(ocrCpf)}) ≠ perfil (${formatCpf(selectedCpf)}). Envio bloqueado.`);
+      return;
+    }
 
     try {
       setStep('saving');
@@ -263,7 +297,16 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
     setMedicoPcmsoUf('RJ');
     setExamesRealizados([]);
     setNomeClinica('');
+    setOcrNome('');
+    setOcrCpf('');
+    setIdentityMatch(null);
   };
+
+  const selectedColab = collaborators.find(c => c.id === selectedColabId);
+  const selectedCpfNorm = normalizeCpf(selectedColab?.cpf || '');
+  const identityBlocked =
+    identityMatch === 'quarantine' ||
+    (ocrCpf.length === 11 && selectedCpfNorm.length === 11 && !cpfsMatch(ocrCpf, selectedCpfNorm));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
@@ -367,11 +410,30 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
 
           {step === 'review' && (
             <div className="space-y-4">
-              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg flex items-start gap-2.5">
-                <FiCheckCircle className="text-emerald-600 w-5 h-5 shrink-0 mt-0.5" />
+              <div className={`p-3 border rounded-lg flex items-start gap-2.5 ${
+                identityBlocked
+                  ? 'bg-red-50 border-red-100'
+                  : 'bg-emerald-50 border-emerald-100'
+              }`}>
+                {identityBlocked ? (
+                  <FiAlertCircle className="text-red-600 w-5 h-5 shrink-0 mt-0.5" />
+                ) : (
+                  <FiCheckCircle className="text-emerald-600 w-5 h-5 shrink-0 mt-0.5" />
+                )}
                 <div>
-                  <h4 className="text-xs font-bold text-emerald-800">OCR Executado com Sucesso!</h4>
-                  <p className="text-[11px] text-emerald-600 mt-0.5">Revise os dados extraídos abaixo antes de confirmar o envio ao e-Social.</p>
+                  <h4 className={`text-xs font-bold ${identityBlocked ? 'text-red-800' : 'text-emerald-800'}`}>
+                    {identityBlocked ? 'Identidade OCR não confere' : 'OCR Executado com Sucesso!'}
+                  </h4>
+                  <p className={`text-[11px] mt-0.5 ${identityBlocked ? 'text-red-600' : 'text-emerald-600'}`}>
+                    Nome: {ocrNome || '—'} · CPF: {ocrCpf ? formatCpf(ocrCpf) : 'não extraído'}
+                    {selectedCpfNorm ? ` · Perfil: ${formatCpf(selectedCpfNorm)}` : ''}
+                    {identityMatch ? ` · Match: ${identityMatch}` : ''}
+                  </p>
+                  <p className={`text-[11px] mt-0.5 ${identityBlocked ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {identityBlocked
+                      ? 'Envio ao e-Social bloqueado até corrigir o vínculo (CPF-only).'
+                      : 'Revise os dados extraídos abaixo antes de confirmar o envio ao e-Social.'}
+                  </p>
                 </div>
               </div>
 
@@ -613,7 +675,9 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
               </button>
               <button
                 onClick={handleSaveAndGenerateEvent}
-                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+                disabled={identityBlocked}
+                title={identityBlocked ? 'Bloqueado: CPF OCR ≠ perfil' : undefined}
+                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
               >
                 <FiSend className="w-3.5 h-3.5" />
                 Salvar & Enviar ao e-Social

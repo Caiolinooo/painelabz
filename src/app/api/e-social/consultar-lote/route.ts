@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { consultarProtocolo } from '@/lib/e-social/client';
+import { syncAsoEsocialStatusFromEvento } from '@/lib/gestao-tripulantes/aso-esocial-sync';
+import type { AsoEsocialMirrorStatus } from '@/lib/gestao-tripulantes/aso-esocial-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +94,18 @@ export async function POST(request: NextRequest) {
           status_code: 200,
           sucesso: resultado.situacao === 'PROCESSADO' || resultado.situacao === 'RECEBIDO',
         });
+
+        if (updateData.status === 'processado' || updateData.status === 'erro') {
+          await syncAsoEsocialStatusFromEvento({
+            eventoId: evento.id,
+            status: updateData.status as AsoEsocialMirrorStatus,
+            protocolo: evento.protocolo_envio,
+            numeroRecibo: updateData.numero_recibo as string | undefined,
+            entidadeOrigemId: evento.entidade_origem_id,
+            entidadeOrigemTipo: evento.entidade_origem_tipo,
+            eventoCodigo: evento.evento_codigo,
+          });
+        }
 
         resultados.push({
           evento_id: evento.id,

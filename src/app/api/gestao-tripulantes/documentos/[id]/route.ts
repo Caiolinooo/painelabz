@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { buscarCodigoExame } from '@/lib/e-social/codigos';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,7 +107,6 @@ export async function PUT(
 
       // Resolve exam codes on manual save
       if (Array.isArray(asoPayload.exames_realizados)) {
-        const { buscarCodigoExame } = await import('@/lib/e-social/codigos');
         for (const ex of asoPayload.exames_realizados) {
           if (!ex.codProc || ex.codProc === '9999') {
             const resolvedCode = await buscarCodigoExame(ex.nome);

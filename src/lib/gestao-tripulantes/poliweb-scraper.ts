@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
+import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
 import type { GTDocumento, GTColaborador } from '@/types/gestao-tripulantes';
 
 interface PoliWebCredentials {
@@ -78,7 +80,7 @@ function parseASOsFromHTML(html: string): PoliWebASO[] {
 
     // ASO table: CPF, Nome, Tipo Exame, Data Realização, Data Validade, Resultado, Médico, CRM
     if (tds.length >= 5) {
-      const cpf = tds[0].replace(/\D/g, '');
+      const cpf = normalizeCpf(tds[0]);
       if (cpf.length === 11) {
         asos.push({
           colaboradorCpf: tds[0],
@@ -193,11 +195,12 @@ export async function buscarASOsPendentes(): Promise<{
 
     const asosProcessados = await Promise.all(
       result.data.map(async (aso) => {
-        const cpfLimpo = aso.colaboradorCpf.replace(/\D/g, '');
+        const hit = await findColaboradorByCpf(aso.colaboradorCpf);
+        if (!hit) return null;
         const { data: colaborador } = await supabase
           .from('gt_colaboradores')
           .select('*')
-          .eq('cpf', cpfLimpo)
+          .eq('id', hit.id)
           .is('deleted_at', null)
           .maybeSingle();
 
