@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { getToken } from '@/lib/tokenStorage';
 
 type EmailProvider = 'exchange' | 'gmail' | 'sendgrid';
+type EmailTransport = 'smtp' | 'graph' | 'auto';
 
 type EmailSettingsResponse = {
   user: string;
@@ -25,6 +26,9 @@ type EmailSettingsResponse = {
   from: string;
   replyTo: string;
   provider: EmailProvider;
+  transport?: EmailTransport;
+  effectiveTransport?: 'smtp' | 'graph';
+  graphConfigured?: boolean;
   passwordSet: boolean;
   passwordMasked?: string;
   source: 'db' | 'env' | 'none';
@@ -35,6 +39,12 @@ const PROVIDER_OPTIONS: Array<{ value: EmailProvider; label: string }> = [
   { value: 'exchange', label: 'Microsoft Exchange / Office 365' },
   { value: 'gmail', label: 'Gmail (App Password)' },
   { value: 'sendgrid', label: 'SendGrid SMTP' },
+];
+
+const TRANSPORT_OPTIONS: Array<{ value: EmailTransport; label: string }> = [
+  { value: 'auto', label: 'Auto (Graph se MS_GRAPH_* existir; senão SMTP)' },
+  { value: 'graph', label: 'Microsoft Graph (recomendado p/ O365 — evita erro 535)' },
+  { value: 'smtp', label: 'SMTP clássico (senha / app password)' },
 ];
 
 function sourceBadge(source: 'db' | 'env' | 'none') {
@@ -79,6 +89,9 @@ export default function AdminEmailSettingsPage() {
   const [from, setFrom] = useState('');
   const [replyTo, setReplyTo] = useState('');
   const [provider, setProvider] = useState<EmailProvider>('exchange');
+  const [transport, setTransport] = useState<EmailTransport>('auto');
+  const [effectiveTransport, setEffectiveTransport] = useState<'smtp' | 'graph'>('smtp');
+  const [graphConfigured, setGraphConfigured] = useState(false);
   const [passwordSet, setPasswordSet] = useState(false);
   const [source, setSource] = useState<'db' | 'env' | 'none'>('none');
   const [testTo, setTestTo] = useState('');
@@ -107,6 +120,9 @@ export default function AdminEmailSettingsPage() {
       setFrom(data.from || '');
       setReplyTo(data.replyTo || '');
       setProvider(data.provider || 'exchange');
+      setTransport(data.transport || 'auto');
+      setEffectiveTransport(data.effectiveTransport || 'smtp');
+      setGraphConfigured(Boolean(data.graphConfigured));
       setPasswordSet(Boolean(data.passwordSet));
       setSource(data.source || 'none');
       setPassword('');
@@ -152,8 +168,16 @@ export default function AdminEmailSettingsPage() {
       toast.error('Informe um e-mail/usuário SMTP válido');
       return;
     }
-    if (!passwordSet && !password.trim()) {
-      toast.error('Informe a senha (ou app password) na primeira configuração');
+    const needsSmtpPassword =
+      (transport === 'smtp' || (transport === 'auto' && !graphConfigured)) &&
+      !passwordSet &&
+      !password.trim();
+    if (needsSmtpPassword) {
+      toast.error('Informe a senha SMTP (ou escolha transporte Graph com MS_GRAPH_* no ambiente)');
+      return;
+    }
+    if (transport === 'graph' && !graphConfigured) {
+      toast.error('Graph não está configurado no ambiente (MS_GRAPH_CLIENT_ID/SECRET/TENANT_ID)');
       return;
     }
 
@@ -171,6 +195,7 @@ export default function AdminEmailSettingsPage() {
           from: from || user,
           replyTo: replyTo || user,
           provider,
+          transport,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -181,6 +206,8 @@ export default function AdminEmailSettingsPage() {
       setPassword('');
       setPasswordSet(Boolean(data.passwordSet));
       setSource(data.source || 'db');
+      setEffectiveTransport(data.effectiveTransport || 'smtp');
+      setGraphConfigured(Boolean(data.graphConfigured));
       await loadSettings();
     } catch (error) {
       console.error(error);
@@ -250,6 +277,25 @@ export default function AdminEmailSettingsPage() {
           <li>Variáveis de ambiente <code>EMAIL_*</code></li>
           <li>Erro se ambos estiverem ausentes — nunca há senha no código</li>
         </ol>
+        <p className="mt-2 text-xs">
+          Transporte efetivo agora:{' '}
+          <strong>{effectiveTransport === 'graph' ? 'Microsoft Graph' : 'SMTP'}</strong>
+          {graphConfigured ? ' · MS_GRAPH_* detectado' : ' · MS_GRAPH_* ausente no ambiente'}
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <div className="mb-1 flex items-center gap-2 font-medium">
+          <FiAlertCircle /> Erro Outlook 535 / Authentication unsuccessful
+        </div>
+        <p>
+          O Microsoft 365 costuma bloquear SMTP AUTH (senha). Prefira{' '}
+          <strong>Microsoft Graph</strong> com app registration (
+          <code>Mail.Send</code> application + consent admin) e variáveis{' '}
+          <code>MS_GRAPH_CLIENT_ID</code>, <code>MS_GRAPH_CLIENT_SECRET</code>,{' '}
+          <code>MS_GRAPH_TENANT_ID</code> (GUID do tenant). Informe só o e-mail da caixa em{' '}
+          <em>E-mail / usuário</em>.
+        </p>
       </div>
 
       <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -261,6 +307,21 @@ export default function AdminEmailSettingsPage() {
             onChange={(e) => handleProviderChange(e.target.value as EmailProvider)}
           >
             {PROVIDER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Transporte</span>
+          <select
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            value={transport}
+            onChange={(e) => setTransport(e.target.value as EmailTransport)}
+          >
+            {TRANSPORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -282,12 +343,16 @@ export default function AdminEmailSettingsPage() {
 
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">
-            Senha / App Password
+            Senha / App Password (SMTP)
             {passwordSet ? (
               <span className="ml-2 text-xs font-normal text-gray-500">
                 (já configurada — deixe em branco para manter)
               </span>
-            ) : null}
+            ) : (
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                (opcional se transporte = Graph)
+              </span>
+            )}
           </span>
           <div className="relative">
             <input

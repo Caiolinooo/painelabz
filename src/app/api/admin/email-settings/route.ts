@@ -3,10 +3,12 @@ import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import {
   clearResolvedEmailAuthCache,
   EmailProvider,
+  EmailTransport,
   getEmailSettingsPublic,
 } from '@/lib/email-env';
 import { clearCredentialCache, setCredential } from '@/lib/secure-credentials';
 import { resetEmailTransport, testEmailConnection, sendEmail } from '@/lib/email-exchange';
+import { isMicrosoftGraphMailConfigured } from '@/lib/email-graph';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,15 +44,29 @@ function parseProvider(raw: unknown): EmailProvider | null {
   }
 }
 
+function parseTransport(raw: unknown): EmailTransport | null {
+  if (typeof raw !== 'string') return null;
+  const value = raw.trim().toLowerCase();
+  switch (value) {
+    case 'smtp':
+    case 'graph':
+    case 'auto':
+      return value;
+    default:
+      return null;
+  }
+}
+
 const SECRET_DESCRIPTIONS: Record<string, string> = {
-  EMAIL_USER: 'Conta SMTP (usuário/e-mail de envio)',
-  EMAIL_PASSWORD: 'Senha / app password SMTP (criptografada)',
+  EMAIL_USER: 'Conta SMTP / caixa Graph (usuário/e-mail de envio)',
+  EMAIL_PASSWORD: 'Senha / app password SMTP (criptografada; opcional se Graph)',
   EMAIL_HOST: 'Host SMTP',
   EMAIL_PORT: 'Porta SMTP',
   EMAIL_SECURE: 'SMTP secure (true/false)',
   EMAIL_FROM: 'Endereço From exibido nos e-mails',
   EMAIL_REPLY_TO: 'Reply-To padrão',
   EMAIL_PROVIDER: 'Provedor: exchange | gmail | sendgrid',
+  EMAIL_TRANSPORT: 'Transporte: smtp | graph | auto',
 };
 
 /**
@@ -67,6 +83,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ...settings,
       passwordMasked: settings.passwordSet ? '••••••••' : '',
+      graphConfigured: isMicrosoftGraphMailConfigured(),
     });
   } catch (error) {
     console.error('GET /api/admin/email-settings:', error);
@@ -91,6 +108,7 @@ export async function PUT(request: Request) {
     const from = typeof body.from === 'string' ? body.from.trim() : undefined;
     const replyTo = typeof body.replyTo === 'string' ? body.replyTo.trim() : undefined;
     const provider = body.provider !== undefined ? parseProvider(body.provider) : undefined;
+    const transport = body.transport !== undefined ? parseTransport(body.transport) : undefined;
 
     if (user !== undefined && user !== '' && !isValidEmail(user)) {
       return NextResponse.json({ error: 'E-mail/usuário SMTP inválido' }, { status: 400 });
@@ -106,6 +124,24 @@ export async function PUT(request: Request) {
         { error: 'provider deve ser exchange, gmail ou sendgrid' },
         { status: 400 }
       );
+    }
+    if (body.transport !== undefined && transport === null) {
+      return NextResponse.json(
+        { error: 'transport deve ser smtp, graph ou auto' },
+        { status: 400 }
+      );
+    }
+    if ((transport === 'graph' || transport === 'auto') && !isMicrosoftGraphMailConfigured()) {
+      // auto still allowed (falls back to smtp); graph alone requires env
+      if (transport === 'graph') {
+        return NextResponse.json(
+          {
+            error:
+              'Microsoft Graph não configurado. Defina MS_GRAPH_CLIENT_ID, MS_GRAPH_CLIENT_SECRET e MS_GRAPH_TENANT_ID (GUID do tenant, não "common") no ambiente.',
+          },
+          { status: 400 }
+        );
+      }
     }
 
     let port: string | undefined;
@@ -151,6 +187,9 @@ export async function PUT(request: Request) {
     }
     if (provider !== undefined && provider !== null) {
       writes.push(setCredential('EMAIL_PROVIDER', provider, SECRET_DESCRIPTIONS.EMAIL_PROVIDER));
+    }
+    if (transport !== undefined && transport !== null) {
+      writes.push(setCredential('EMAIL_TRANSPORT', transport, SECRET_DESCRIPTIONS.EMAIL_TRANSPORT));
     }
 
     if (writes.length === 0) {

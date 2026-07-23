@@ -15,6 +15,11 @@ import {
   resolveEmailAuth,
   resolveEmailFrom,
 } from './email-env';
+import {
+  isMicrosoftGraphMailConfigured,
+  sendEmailViaGraph,
+  testGraphMailConnection,
+} from './email-graph';
 
 type ExchangeMailConfig = {
   host: string;
@@ -135,9 +140,12 @@ export async function createTransport() {
     console.error('  EMAIL_PASSWORD:', config.auth.pass ? 'Configurado' : 'NÃO CONFIGURADO');
 
     if (errMsg.includes('535') || errMsg.includes('Authentication unsuccessful')) {
+      const graphHint = isMicrosoftGraphMailConfigured()
+        ? ' Ou defina EMAIL_TRANSPORT=graph / auto no Admin para enviar via Microsoft Graph (Mail.Send).'
+        : ' No Microsoft 365: ative Authenticated SMTP na caixa, use senha de app se houver MFA, ou configure MS_GRAPH_* e transporte Graph (recomendado — SMTP AUTH costuma estar bloqueado).';
       throw new Error(
-        `Credenciais de email inválidas ou expiradas. ` +
-          `Atualize no Admin → Credenciais de E-mail (ou EMAIL_PASSWORD no ambiente). ` +
+        `Credenciais SMTP rejeitadas pelo Outlook (535). ` +
+          `Atualize senha no Admin → Credenciais de E-mail.${graphHint} ` +
           `Detalhes: ${errMsg}`
       );
     }
@@ -168,79 +176,112 @@ export async function sendEmail(
   }
 ): Promise<{ success: boolean; message: string; messageId?: string; previewUrl?: string }> {
   try {
-    // Criar transporte
-    const transport = await createTransport();
-
+    const auth = await resolveEmailAuth();
     const senderAddress = await resolveEmailAddress();
-    const mailDomain = senderAddress.includes('@') ? senderAddress.split('@')[1] : 'localhost';
 
-    // Preparar opções do e-mail otimizadas para Exchange/Office 365
-    const mailOptions = {
-      from: options?.from || (await resolveEmailFrom()),
-      to,
-      cc: options?.cc,
-      bcc: options?.bcc,
-      subject,
-      text,
-      html,
-      attachments: options?.attachments,
-      // Cabeçalhos otimizados para Exchange/Office 365
-      headers: {
-        // Prioridade normal (IMPORTANTE: não usar 'high' ou 'urgent')
-        'X-Priority': '3',
-        'X-MSMail-Priority': 'Normal',
-        'Importance': 'Normal',
+    console.log('Enviando e-mail para:', Array.isArray(to) ? to.join(', ') : to, {
+      transport: auth.effectiveTransport,
+    });
 
-        // Identificação do remetente (importante para SPF/DKIM)
-        'X-Mailer': 'ABZ Group Internal System v3.0',
-        'X-Sender': senderAddress,
-        'Return-Path': senderAddress,
+    if (auth.effectiveTransport === 'graph') {
+      const graphResult = await sendEmailViaGraph({
+        fromUser: auth.user,
+        to,
+        subject,
+        text,
+        html,
+        cc: options?.cc,
+        bcc: options?.bcc,
+        replyTo: senderAddress,
+        attachments: options?.attachments,
+      });
+      return graphResult;
+    }
 
-        // Opção de descadastramento (RFC 8058)
-        'List-Unsubscribe': `<mailto:${senderAddress}?subject=Unsubscribe>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    try {
+      const transport = await createTransport();
+      const mailDomain = senderAddress.includes('@') ? senderAddress.split('@')[1] : 'localhost';
 
-        // Cabeçalhos específicos para Exchange/Office365
-        'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN, AutoReply',
+      const mailOptions = {
+        from: options?.from || (await resolveEmailFrom()),
+        to,
+        cc: options?.cc,
+        bcc: options?.bcc,
+        subject,
+        text,
+        html,
+        attachments: options?.attachments,
+        headers: {
+          'X-Priority': '3',
+          'X-MSMail-Priority': 'Normal',
+          Importance: 'Normal',
+          'X-Mailer': 'ABZ Group Internal System v3.0',
+          'X-Sender': senderAddress,
+          'Return-Path': senderAddress,
+          'List-Unsubscribe': `<mailto:${senderAddress}?subject=Unsubscribe>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN, AutoReply',
+          'X-Email-Type': 'transactional',
+          'X-Email-Source': 'ABZ-Internal-System',
+          'MIME-Version': '1.0',
+          'X-No-Archive': 'True',
+          'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2, 15)}@${mailDomain}>`,
+        },
+        encoding: 'utf-8',
+        priority: 'normal' as const,
+        disableFileAccess: true,
+        disableUrlAccess: true,
+        replyTo: senderAddress,
+      };
 
-        // Indicar tipo de email (importante para filtros)
-        'X-Email-Type': 'transactional',
-        'X-Email-Source': 'ABZ-Internal-System',
+      const info = await transport.sendMail(mailOptions);
+      const messageId = (info as { messageId?: string })?.messageId || 'unknown';
+      console.log('E-mail enviado com sucesso. ID:', messageId);
 
-        // MIME versão (compatibilidade)
-        'MIME-Version': '1.0',
+      return {
+        success: true,
+        message: 'Email enviado com sucesso',
+        messageId,
+      };
+    } catch (smtpError) {
+      const smtpMsg = smtpError instanceof Error ? smtpError.message : String(smtpError);
+      const isAuthFail =
+        smtpMsg.includes('535') || smtpMsg.includes('Authentication unsuccessful');
 
-        // Prevenir tracking (boa prática)
-        'X-No-Archive': 'True',
+      if (isAuthFail && isMicrosoftGraphMailConfigured()) {
+        console.warn(
+          '[email-exchange] SMTP 535 — tentando fallback Microsoft Graph (Mail.Send)'
+        );
+        const graphResult = await sendEmailViaGraph({
+          fromUser: auth.user,
+          to,
+          subject,
+          text,
+          html,
+          cc: options?.cc,
+          bcc: options?.bcc,
+          replyTo: senderAddress,
+          attachments: options?.attachments,
+        });
+        if (graphResult.success) {
+          return {
+            ...graphResult,
+            message: `${graphResult.message} (fallback após falha SMTP 535)`,
+          };
+        }
+        return {
+          success: false,
+          message: `SMTP 535 e Graph falharam. SMTP: ${smtpMsg}. Graph: ${graphResult.message}`,
+        };
+      }
 
-        // Message ID único
-        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2, 15)}@${mailDomain}>`
-      },
-      // Configurações adicionais
-      encoding: 'utf-8',
-      priority: 'normal' as const,
-      disableFileAccess: true,
-      disableUrlAccess: true,
-      replyTo: senderAddress
-    };
-
-    console.log('Enviando e-mail para:', Array.isArray(to) ? to.join(', ') : to);
-
-    // Enviar e-mail
-    const info = await transport.sendMail(mailOptions);
-    const messageId = (info as any)?.messageId || 'unknown';
-    console.log('E-mail enviado com sucesso. ID:', messageId);
-
-    return {
-      success: true,
-      message: 'Email enviado com sucesso',
-      messageId
-    };
+      throw smtpError;
+    }
   } catch (error) {
     console.error('Erro ao enviar e-mail:', error);
     return {
       success: false,
-      message: `Erro ao enviar email: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      message: `Erro ao enviar email: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
     };
   }
 }
@@ -380,39 +421,77 @@ export async function sendInvitationEmail(
  */
 export async function testEmailConnection() {
   try {
+    const auth = await resolveEmailAuth();
+
+    if (auth.effectiveTransport === 'graph') {
+      const graphTest = await testGraphMailConnection(auth.user);
+      return {
+        success: graphTest.success,
+        message: graphTest.message,
+        config: {
+          transport: 'graph' as const,
+          host: 'graph.microsoft.com',
+          port: 443,
+          secure: true,
+          user: auth.user,
+          environment: process.env.NODE_ENV || 'development',
+          ...graphTest.config,
+        },
+      };
+    }
+
     const config = await getEmailConfig();
-    console.log('Testando conexão com o servidor de email...');
-    console.log('Configuração:', {
+    console.log('Testando conexão SMTP...', {
       host: config.host,
       port: config.port,
       secure: config.secure,
       user: config.auth.user,
-      // Não logar a senha por segurança
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
     });
 
     const transport = await createTransport();
     await transport.verify();
 
-    console.log('Teste de conexão bem-sucedido!');
-
     return {
       success: true,
-      message: 'Conexão com o servidor Exchange/Office 365 verificada com sucesso',
+      message: 'Conexão SMTP com Exchange/Office 365 verificada com sucesso',
       config: {
+        transport: 'smtp' as const,
         host: config.host,
         port: config.port,
         secure: config.secure,
         user: config.auth.user,
-        environment: process.env.NODE_ENV || 'development'
-      }
+        environment: process.env.NODE_ENV || 'development',
+      },
     };
   } catch (error) {
     console.error('Erro ao testar conexão com o servidor de email:', error);
 
-    if (error instanceof Error) {
-      console.error('Detalhes do erro:', error.message);
-      console.error('Stack trace:', error.stack);
+    if (
+      error instanceof Error &&
+      (error.message.includes('535') || error.message.includes('Authentication unsuccessful')) &&
+      isMicrosoftGraphMailConfigured()
+    ) {
+      const auth = await resolveEmailAuth().catch(() => null);
+      if (auth?.user) {
+        const graphTest = await testGraphMailConnection(auth.user);
+        if (graphTest.success) {
+          return {
+            success: true,
+            message:
+              'SMTP falhou (535), mas Microsoft Graph está OK. Salve transporte "graph" ou "auto" no Admin.',
+            config: {
+              transport: 'graph' as const,
+              host: 'graph.microsoft.com',
+              port: 443,
+              secure: true,
+              user: auth.user,
+              environment: process.env.NODE_ENV || 'development',
+              smtpError: error.message,
+            },
+          };
+        }
+      }
     }
 
     const config = emailConfig;
@@ -420,12 +499,13 @@ export async function testEmailConnection() {
       success: false,
       message: error instanceof Error ? error.message : 'Erro desconhecido',
       config: {
+        transport: 'smtp' as const,
         host: config?.host,
         port: config?.port,
         secure: config?.secure,
         user: config?.auth.user,
-        environment: process.env.NODE_ENV || 'development'
-      }
+        environment: process.env.NODE_ENV || 'development',
+      },
     };
   }
 }

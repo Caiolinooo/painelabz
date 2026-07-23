@@ -23,7 +23,7 @@
 
 ### Manual (ops)
 1. Confirmar tabela `app_secrets` (senão: `scripts/create-app-secrets-table.sql`)
-2. Abrir `/admin/email-settings` como ADMIN e salvar conta + senha rotacionada
+2. Abrir `/admin/email-settings` como ADMIN — para O365 com erro **535**, preferir transporte **Graph** (`MS_GRAPH_*` + `Mail.Send`) ou salvar senha SMTP só se Authenticated SMTP estiver ativo na caixa
 3. Rodar “Testar conexão” (opcional: enviar e-mail de teste)
 4. Inspecionar keys: `scripts/email-credentials-app-secrets.sql` no SQL Editor
 5. Após OK em DB, pode remover `EMAIL_PASSWORD` do host env (manter só bootstrap se quiser)

@@ -1,22 +1,29 @@
 /**
  * Resolução segura de credenciais de e-mail.
  * Ordem: app_secrets (DB) → variáveis de ambiente → erro (nunca hardcode).
+ * Transporte: smtp | graph | auto (auto = Graph se MS_GRAPH_* configurado e provider exchange).
  * Usar apenas no servidor.
  */
 
 import { getCredential } from './secure-credentials';
+import { isMicrosoftGraphMailConfigured } from './email-graph';
 
 export type EmailProvider = 'exchange' | 'gmail' | 'sendgrid';
+export type EmailTransport = 'smtp' | 'graph' | 'auto';
 
 export type ResolvedEmailAuth = {
   host: string;
   port: number;
   secure: boolean;
   user: string;
+  /** Pode ser vazio quando transport efetivo for Graph */
   pass: string;
   from: string;
   replyTo: string;
   provider: EmailProvider;
+  transport: EmailTransport;
+  /** Transporte que será usado de fato (auto resolvido) */
+  effectiveTransport: 'smtp' | 'graph';
   /** Origem efetiva das credenciais de user/pass */
   source: 'db' | 'env';
 };
@@ -30,6 +37,7 @@ export const EMAIL_SECRET_KEYS = [
   'EMAIL_FROM',
   'EMAIL_REPLY_TO',
   'EMAIL_PROVIDER',
+  'EMAIL_TRANSPORT',
 ] as const;
 
 export type EmailSecretKey = (typeof EMAIL_SECRET_KEYS)[number];
@@ -55,6 +63,26 @@ function parseProvider(raw: string | null | undefined): EmailProvider {
   if (value === 'gmail') return 'gmail';
   if (value === 'sendgrid') return 'sendgrid';
   return 'exchange';
+}
+
+function parseTransport(raw: string | null | undefined): EmailTransport {
+  const value = (raw || '').trim().toLowerCase();
+  if (value === 'smtp') return 'smtp';
+  if (value === 'graph') return 'graph';
+  return 'auto';
+}
+
+export function resolveEffectiveTransport(
+  transport: EmailTransport,
+  provider: EmailProvider
+): 'smtp' | 'graph' {
+  if (transport === 'smtp') return 'smtp';
+  if (transport === 'graph') return 'graph';
+  // auto: prefer Graph for Exchange when app credentials exist (SMTP AUTH often blocked)
+  if (provider === 'exchange' && isMicrosoftGraphMailConfigured()) {
+    return 'graph';
+  }
+  return 'smtp';
 }
 
 function envPass(): string | undefined {
@@ -85,33 +113,48 @@ export async function resolveEmailAuth(): Promise<ResolvedEmailAuth> {
     return resolvedAuthCache;
   }
 
-  const [userRes, passRes, hostRes, portRes, secureRes, fromRes, replyRes, providerRes] =
-    await Promise.all([
-      secretOrEnv('EMAIL_USER', process.env.EMAIL_USER),
-      secretOrEnv('EMAIL_PASSWORD', envPass()),
-      secretOrEnv('EMAIL_HOST', process.env.EMAIL_HOST),
-      secretOrEnv('EMAIL_PORT', process.env.EMAIL_PORT),
-      secretOrEnv('EMAIL_SECURE', process.env.EMAIL_SECURE),
-      secretOrEnv('EMAIL_FROM', process.env.EMAIL_FROM),
-      secretOrEnv('EMAIL_REPLY_TO', process.env.EMAIL_REPLY_TO),
-      secretOrEnv('EMAIL_PROVIDER', process.env.EMAIL_PROVIDER),
-    ]);
+  const [
+    userRes,
+    passRes,
+    hostRes,
+    portRes,
+    secureRes,
+    fromRes,
+    replyRes,
+    providerRes,
+    transportRes,
+  ] = await Promise.all([
+    secretOrEnv('EMAIL_USER', process.env.EMAIL_USER),
+    secretOrEnv('EMAIL_PASSWORD', envPass()),
+    secretOrEnv('EMAIL_HOST', process.env.EMAIL_HOST),
+    secretOrEnv('EMAIL_PORT', process.env.EMAIL_PORT),
+    secretOrEnv('EMAIL_SECURE', process.env.EMAIL_SECURE),
+    secretOrEnv('EMAIL_FROM', process.env.EMAIL_FROM),
+    secretOrEnv('EMAIL_REPLY_TO', process.env.EMAIL_REPLY_TO),
+    secretOrEnv('EMAIL_PROVIDER', process.env.EMAIL_PROVIDER),
+    secretOrEnv('EMAIL_TRANSPORT', process.env.EMAIL_TRANSPORT),
+  ]);
 
   const user = userRes.value;
-  const pass = passRes.value;
+  const pass = passRes.value || '';
 
   if (!user) {
     throw new Error(
       'EMAIL_USER não configurado. Defina no Admin → Credenciais de E-mail ou em EMAIL_USER no ambiente.'
     );
   }
-  if (!pass) {
+
+  const provider = parseProvider(providerRes.value);
+  const transport = parseTransport(transportRes.value);
+  const effectiveTransport = resolveEffectiveTransport(transport, provider);
+
+  if (!pass && effectiveTransport === 'smtp') {
     throw new Error(
-      'EMAIL_PASSWORD não configurado. Defina no Admin → Credenciais de E-mail ou em EMAIL_PASSWORD no ambiente.'
+      'EMAIL_PASSWORD não configurado. Defina no Admin → Credenciais de E-mail ou em EMAIL_PASSWORD no ambiente. ' +
+        'Se o tenant bloqueia SMTP (erro 535), use transporte Microsoft Graph (Mail.Send) com MS_GRAPH_* no ambiente.'
     );
   }
 
-  const provider = parseProvider(providerRes.value);
   const host = hostRes.value || DEFAULT_HOST_BY_PROVIDER[provider];
   const port = parseInt(portRes.value || String(DEFAULT_PORT_BY_PROVIDER[provider]), 10);
   const secure =
@@ -130,6 +173,8 @@ export async function resolveEmailAuth(): Promise<ResolvedEmailAuth> {
     from,
     replyTo,
     provider,
+    transport,
+    effectiveTransport,
     source,
   };
 
@@ -141,13 +186,20 @@ export async function resolveEmailAuth(): Promise<ResolvedEmailAuth> {
 /** Sync fallback só a partir de env (bootstrap / templates sem await). Prefira resolveEmailAuth(). */
 export function resolveEmailAuthFromEnvSync(): Omit<ResolvedEmailAuth, 'source'> {
   const user = process.env.EMAIL_USER?.trim();
-  const pass = envPass();
-  if (!user || !pass) {
+  const pass = envPass() || '';
+  if (!user) {
+    throw new Error(
+      'EMAIL_USER não configurado no ambiente. Use o Admin ou defina as variáveis de bootstrap.'
+    );
+  }
+  const provider = parseProvider(process.env.EMAIL_PROVIDER);
+  const transport = parseTransport(process.env.EMAIL_TRANSPORT);
+  const effectiveTransport = resolveEffectiveTransport(transport, provider);
+  if (!pass && effectiveTransport === 'smtp') {
     throw new Error(
       'EMAIL_USER/EMAIL_PASSWORD não configurados no ambiente. Use o Admin ou defina as variáveis de bootstrap.'
     );
   }
-  const provider = parseProvider(process.env.EMAIL_PROVIDER);
   const host = process.env.EMAIL_HOST?.trim() || DEFAULT_HOST_BY_PROVIDER[provider];
   const port = parseInt(
     process.env.EMAIL_PORT || String(DEFAULT_PORT_BY_PROVIDER[provider]),
@@ -162,6 +214,8 @@ export function resolveEmailAuthFromEnvSync(): Omit<ResolvedEmailAuth, 'source'>
     from: process.env.EMAIL_FROM?.trim() || user,
     replyTo: process.env.EMAIL_REPLY_TO?.trim() || user,
     provider,
+    transport,
+    effectiveTransport,
   };
 }
 
@@ -197,6 +251,9 @@ export async function getEmailSettingsPublic(): Promise<{
   from: string;
   replyTo: string;
   provider: EmailProvider;
+  transport: EmailTransport;
+  effectiveTransport: 'smtp' | 'graph';
+  graphConfigured: boolean;
   passwordSet: boolean;
   source: 'db' | 'env' | 'none';
   sources: Record<string, 'db' | 'env' | 'none'>;
@@ -210,6 +267,7 @@ export async function getEmailSettingsPublic(): Promise<{
     'EMAIL_FROM',
     'EMAIL_REPLY_TO',
     'EMAIL_PROVIDER',
+    'EMAIL_TRANSPORT',
   ];
 
   const sources: Record<string, 'db' | 'env' | 'none'> = {};
@@ -248,6 +306,9 @@ export async function getEmailSettingsPublic(): Promise<{
       case 'EMAIL_PROVIDER':
         envVal = process.env.EMAIL_PROVIDER;
         break;
+      case 'EMAIL_TRANSPORT':
+        envVal = process.env.EMAIL_TRANSPORT;
+        break;
       default: {
         const _never: never = key;
         void _never;
@@ -264,6 +325,8 @@ export async function getEmailSettingsPublic(): Promise<{
   }
 
   const provider = parseProvider(values.EMAIL_PROVIDER);
+  const transport = parseTransport(values.EMAIL_TRANSPORT);
+  const effectiveTransport = resolveEffectiveTransport(transport, provider);
   const user = values.EMAIL_USER || '';
   const host = values.EMAIL_HOST || DEFAULT_HOST_BY_PROVIDER[provider];
   const port = parseInt(
@@ -288,6 +351,9 @@ export async function getEmailSettingsPublic(): Promise<{
     from: values.EMAIL_FROM || user,
     replyTo: values.EMAIL_REPLY_TO || user,
     provider,
+    transport,
+    effectiveTransport,
+    graphConfigured: isMicrosoftGraphMailConfigured(),
     passwordSet,
     source,
     sources,

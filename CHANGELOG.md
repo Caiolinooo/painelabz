@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.32.0] - 2026-07-23
+
+### Features
+- **Email via Microsoft Graph**: transporte `smtp` | `graph` | `auto` em `/admin/email-settings` e `EMAIL_TRANSPORT`. Para O365 com erro Outlook **535**, preferir Graph (`MS_GRAPH_CLIENT_ID` / `SECRET` / `TENANT_ID` + permissão `Mail.Send`).
+- **Fallback automático**: se SMTP falhar com 535 e o Graph estiver configurado, o envio tenta Graph.
+- Novo `src/lib/email-graph.ts`; senha SMTP opcional quando o transporte efetivo é Graph.
+
+### Docs
+- DOX/admin email-settings, `.env.example` e `AGENTS.md` atualizados com Graph e orientação 535.
+
 ## [5.31.0] - 2026-07-23
 
 ### Security
