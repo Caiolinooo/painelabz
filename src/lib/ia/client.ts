@@ -166,6 +166,29 @@ export function sanitizeMessagesForLLM(messages: LLMMessage[]): LLMMessage[] {
 }
 
 /**
+ * Remove blocos de raciocínio interno (<thought>...</thought>, <think>...</think>, <reasoning>...</reasoning>)
+ * de modelos de raciocínio como Gemini 2.5, DeepSeek R1 e Llama 3 Thinking.
+ */
+export function stripReasoningBlocks(text: string): string {
+  if (!text) return '';
+
+  let cleaned = text;
+  cleaned = cleaned.replace(/<thought>[\s\S]*?<\/thought>/gi, '');
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
+
+  cleaned = cleaned.replace(/<thought>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/<think>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/<reasoning>[\s\S]*$/gi, '');
+
+  cleaned = cleaned.replace(/<\/?thought>/gi, '');
+  cleaned = cleaned.replace(/<\/?think>/gi, '');
+  cleaned = cleaned.replace(/<\/?reasoning>/gi, '');
+
+  return cleaned.trim();
+}
+
+/**
  * Enviar mensagens ao LLM e obter resposta completa (sem streaming)
  */
 export async function chatCompletion(
@@ -256,6 +279,9 @@ export async function chatCompletion(
     }
 
     const data = await parseJsonResponse<LLMCompletionResponse>(response, 'LLM chat/completions');
+    if (data.choices?.[0]?.message?.content) {
+      data.choices[0].message.content = stripReasoningBlocks(data.choices[0].message.content);
+    }
     
     // Limite de iterações para evitar loop infinito
     const MAX_TOOL_ITERATIONS = 10;
@@ -647,9 +673,11 @@ export async function chatCompletionStream(
         } catch { /* ignore */ }
       }
 
+      const cleanFullContent = stripReasoningBlocks(fullContent);
+
       const finalEvent = `data: ${JSON.stringify({ 
         done: true, 
-        fullContent, 
+        fullContent: cleanFullContent, 
         metadata: Object.keys(accumulatedMetadata).length > 0 ? accumulatedMetadata : undefined 
       })}\n\n`;
       streamController.enqueue(encoder.encode(finalEvent));

@@ -45,12 +45,28 @@ function renderContent(text: string): React.ReactNode {
   });
 }
 
+function stripReasoningBlocks(text: string): string {
+  if (!text) return '';
+  let cleaned = text;
+  cleaned = cleaned.replace(/<thought>[\s\S]*?<\/thought>/gi, '');
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
+  cleaned = cleaned.replace(/<thought>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/<think>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/<reasoning>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/<\/?thought>/gi, '');
+  cleaned = cleaned.replace(/<\/?think>/gi, '');
+  cleaned = cleaned.replace(/<\/?reasoning>/gi, '');
+  return cleaned.trim();
+}
+
 export default function MessageBubble({ message, isStreaming }: Props) {
   const isUser = message.role === 'user';
   if (message.role === 'system') return null;
 
   // Extrair dashboard da metadata
   const dashboard = message.metadata?.dashboard;
+  const cleanContent = isUser ? message.content : stripReasoningBlocks(message.content);
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
@@ -68,7 +84,7 @@ export default function MessageBubble({ message, isStreaming }: Props) {
             : 'bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100'
         }`}>
           <div className="text-sm leading-relaxed">
-            {isUser ? message.content : renderContent(message.content)}
+            {isUser ? cleanContent : renderContent(cleanContent)}
             {isStreaming && <span className="inline-block w-2 h-4 bg-blue-500 ml-0.5 animate-pulse rounded-sm align-middle" />}
           </div>
         </div>

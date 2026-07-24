@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.40.0] - 2026-07-23
+
+### Fixed
+- **Filtro Defensivo Multicamada Contra Leitura de Raciocínio Interno (`stripReasoningBlocks`)**:
+  - Modelos com capacidade de raciocínio encadeado (Chain-of-Thought), como Gemini 2.5, DeepSeek R1, Llama 3 Thinking e Qwen QwQ, geravam tags como `<thought>` no corpo do texto final.
+  - Implementado o utilitário `stripReasoningBlocks` que purga automaticamente blocos `<thought>`, `<think>` e `<reasoning>` (completos ou incompletos) em 3 camadas:
+    1. **Camada de API Backend (`client.ts`)**: Filtra `chatCompletion` e requisições SSE `chatCompletionStream`.
+    2. **Camada de Interface UI (`MessageBubble.tsx`)**: Guarda defensiva antes do `renderContent`.
+    3. **Camada de Prompt do Sistema (`context-builder.ts`)**: Adicionada a *REGRA ABSOLUTA DE COMUNICAÇÃO* que proíbe qualquer modelo de incluir rascunhos de pensamento na resposta final.
+
 ## [5.39.0] - 2026-07-23
 
 ### Fixed
