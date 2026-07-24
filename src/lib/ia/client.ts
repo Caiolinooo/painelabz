@@ -122,6 +122,50 @@ export function invalidateConfigCache(): void {
 }
 
 /**
+ * Resolver o modelo correto com fallback para o provedor
+ */
+export function resolveModel(requestedModel?: string, configModel?: string, provider?: string): string {
+  if (requestedModel && requestedModel !== 'default' && requestedModel.trim()) return requestedModel.trim();
+  if (configModel && configModel !== 'default' && configModel.trim()) return configModel.trim();
+
+  if (provider === 'gemini') return 'gemini-2.5-flash';
+  if (provider === 'openai') return 'gpt-4o-mini';
+  return 'meta-llama-3-8b';
+}
+
+/**
+ * Limpar e sanitizar mensagens para compatibilidade estrita com OpenAI / Gemini API
+ */
+export function sanitizeMessagesForLLM(messages: LLMMessage[]): LLMMessage[] {
+  if (!Array.isArray(messages)) return [];
+
+  return messages
+    .map((msg) => {
+      if (!msg) return null;
+
+      const role = msg.role;
+      let rawContent = typeof msg.content === 'string' ? msg.content : (msg.content ? String(msg.content) : '');
+
+      const cleanMsg: any = {
+        role,
+        content: rawContent.trim(),
+      };
+
+      if (role === 'tool') {
+        cleanMsg.tool_call_id = (msg as any).tool_call_id || 'call_0';
+        // Sem 'name' no objeto tool para compatibilidade estrita com o Gemini
+      }
+
+      if (role === 'assistant' && Array.isArray((msg as any).tool_calls) && (msg as any).tool_calls.length > 0) {
+        cleanMsg.tool_calls = (msg as any).tool_calls;
+      }
+
+      return cleanMsg as LLMMessage;
+    })
+    .filter(Boolean) as LLMMessage[];
+}
+
+/**
  * Enviar mensagens ao LLM e obter resposta completa (sem streaming)
  */
 export async function chatCompletion(
@@ -163,20 +207,23 @@ export async function chatCompletion(
   }
 
   const tools = sanitizeToolsForLLM(rawTools);
-  console.log('[IA Client] Tools sanitizadas enviadas para o modelo:', tools.length);
+  const selectedModel = resolveModel(options?.model, config.model_default, config.provider);
+  const cleanMessages = sanitizeMessagesForLLM(messages);
+
+  console.log('[IA Client] Modelo:', selectedModel, '| Tools sanitizadas:', tools.length);
 
   const body: any = {
-    model: options?.model || config.model_default,
-    messages,
-    max_tokens: options?.maxTokens || config.max_tokens,
-    temperature: options?.temperature ?? config.temperatura,
+    model: selectedModel,
+    messages: cleanMessages,
+    max_tokens: options?.maxTokens || config.max_tokens || 8192,
+    temperature: options?.temperature ?? config.temperatura ?? 0.7,
     stream: false,
     tools: tools.length > 0 ? tools : undefined,
     tool_choice: tools.length > 0 ? 'auto' : undefined,
   };
 
   const controller = new AbortController();
-  const timeoutMs = options?._timeoutMs || 240_000; // Reduzido para 4min para dar margem
+  const timeoutMs = options?._timeoutMs || 240_000;
   const timeout = setTimeout(() => {
     console.log('[IA Client] TIMEOUT ATINGIDO - Abortando requisição');
     controller.abort();
@@ -268,7 +315,6 @@ export async function chatCompletion(
             role: 'tool',
             content: toolContent,
             tool_call_id: tc.id,
-            name: tc.function.name
           } as any);
         }
       
@@ -358,17 +404,19 @@ export async function chatCompletionStream(
   }
 
   const tools = sanitizeToolsForLLM(rawTools);
-  console.log('[IA Stream] Tools sanitizadas enviadas para o modelo:', tools.length);
+  const selectedModel = resolveModel(options?.model, config!.model_default, config!.provider);
+  const cleanMessages = sanitizeMessagesForLLM(messages);
+
+  console.log('[IA Stream] Modelo:', selectedModel, '| Tools sanitizadas:', tools.length);
 
   const body: any = {
-    model: options?.model || config!.model_default,
-    messages,
-    max_tokens: options?.maxTokens || config!.max_tokens,
-    temperature: options?.temperature ?? config!.temperatura,
+    model: selectedModel,
+    messages: cleanMessages,
+    max_tokens: options?.maxTokens || config!.max_tokens || 8192,
+    temperature: options?.temperature ?? config!.temperatura ?? 0.7,
     stream: true,
     tools: tools.length > 0 ? tools : undefined,
     tool_choice: tools.length > 0 ? 'auto' : undefined,
-    ...options,
   };
 
   const controller = new AbortController();
@@ -570,7 +618,6 @@ export async function chatCompletionStream(
           role: 'tool',
           content: toolContent,
           tool_call_id: tc.id,
-          name: tc.name
         } as any);
       }
 

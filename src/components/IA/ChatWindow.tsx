@@ -51,23 +51,23 @@ export default function ChatWindow({ token }: Props) {
     const text = await res.text();
     const trimmed = text.trim();
 
-    if (
-      contentType.includes('text/html') ||
-      trimmed.startsWith('<!DOCTYPE') ||
-      trimmed.startsWith('<!doctype') ||
-      trimmed.startsWith('<html')
-    ) {
-      throw new Error('Serviço temporariamente indisponível. Tente novamente em instantes.');
-    }
-
     if (!trimmed) {
-      throw new Error(res.ok ? 'Resposta vazia do servidor.' : `Erro ${res.status} sem detalhes.`);
+      throw new Error(res.ok ? 'Resposta vazia do servidor.' : `Erro ${res.status} no servidor.`);
     }
 
     try {
-      return JSON.parse(trimmed);
+      const parsed = JSON.parse(trimmed);
+      return parsed;
     } catch {
-      throw new Error('Resposta inválida do servidor.');
+      if (
+        contentType.includes('text/html') ||
+        trimmed.startsWith('<!DOCTYPE') ||
+        trimmed.startsWith('<!doctype') ||
+        trimmed.startsWith('<html')
+      ) {
+        throw new Error(`Erro no servidor (${res.status}). Verifique a API Key e o Modelo no Painel Admin (/admin/ia-config).`);
+      }
+      throw new Error(`Resposta inválida do servidor (${res.status}).`);
     }
   }, []);
 

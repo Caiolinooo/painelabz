@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.39.0] - 2026-07-23
+
+### Fixed
+- **Compatibilidade Estrita de Tool Calls com Google Gemini (`client.ts`)**:
+  - Removido o campo `name` dos objetos de resposta da ferramenta (`role: 'tool'`). A especificação OpenAI/Gemini rejeita a propriedade `name` no nível da mensagem de ferramenta, corrigindo o erro HTTP 400/500 que impedia a execução de mensagens com tools no Gemini.
+- **Sanitização de Mensagens e Resolução de Modelos (`sanitizeMessagesForLLM` e `resolveModel`)**:
+  - Limpeza automática de mensagens enviadas ao LLM para remover campos internos e conteúdos vazios.
+  - Resolução automática do modelo default quando `config.model_default` é inválido ou `'default'` (fallback automático para `gemini-2.5-flash` ou `gpt-4o-mini`).
+- **Parsing de Erros Transparente na UI (`ChatWindow.tsx`)**:
+  - `parseApiJson` agora realiza o parse das respostas JSON de erro antes da checagem HTML, exibindo o diagnóstico real do servidor na tela do chat em vez da mensagem genérica.
+
 ## [5.38.0] - 2026-07-23
 
 ### Features
