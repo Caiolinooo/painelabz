@@ -38,16 +38,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ config });
     }
 
-    // Não-admin: esconder api_key
+    // Não-admin: esconder api_key de todos os provedores
     const safeProviderSettings: any = {};
-    if (config.provider_settings) {
-      if (config.provider_settings.lmstudio) {
-        const { api_key, ...rest } = config.provider_settings.lmstudio;
-        safeProviderSettings.lmstudio = rest;
-      }
-      if (config.provider_settings.llamacpp) {
-        const { api_key, ...rest } = config.provider_settings.llamacpp;
-        safeProviderSettings.llamacpp = rest;
+    if (config.provider_settings && typeof config.provider_settings === 'object') {
+      for (const [key, value] of Object.entries(config.provider_settings)) {
+        if (value && typeof value === 'object') {
+          const { api_key, ...rest } = value as any;
+          safeProviderSettings[key] = rest;
+        }
       }
     }
 

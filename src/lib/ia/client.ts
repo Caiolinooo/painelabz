@@ -144,7 +144,8 @@ export async function chatCompletion(
       ? AbortSignal.any([controller.signal, options.signal]) 
       : controller.signal;
 
-    const response = await fetch(`${config!.endpoint}/chat/completions`, {
+    const baseEndpoint = normalizeEndpoint(config!.endpoint);
+    const response = await fetch(`${baseEndpoint}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -387,7 +388,8 @@ export async function chatCompletionStream(
       return;
     }
 
-    const response = await fetch(`${config!.endpoint}/chat/completions`, {
+    const baseEndpoint = normalizeEndpoint(config!.endpoint);
+    const response = await fetch(`${baseEndpoint}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -569,26 +571,84 @@ export async function chatCompletionStream(
 }
 
 /**
+ * Normalizar URL de endpoint de IA (e.g. adiciona /v1beta/openai para Google Gemini se necessário)
+ */
+export function normalizeEndpoint(rawEndpoint: string): string {
+  let ep = (rawEndpoint || '').trim().replace(/\/+$/, '');
+  if (!ep) return ep;
+  
+  // Normalização para Google Gemini OpenAI Compatibility API
+  if (ep.includes('generativelanguage.googleapis.com')) {
+    if (!ep.includes('/openai')) {
+      if (ep.endsWith('/v1beta')) {
+        ep += '/openai';
+      } else if (!ep.includes('/v1beta')) {
+        ep += '/v1beta/openai';
+      }
+    }
+  }
+  return ep;
+}
+
+/**
  * Listar modelos disponíveis no endpoint LLM
  */
-export async function listModels(): Promise<Array<{ id: string; object: string; owned_by: string }>> {
-  const config = await getIAConfig();
-  if (!config) throw new Error('IA não está configurada.');
+export async function listModels(
+  customEndpoint?: string,
+  customApiKey?: string
+): Promise<Array<{ id: string; object: string; owned_by: string }>> {
+  let endpoint = customEndpoint;
+  let apiKey = customApiKey;
+
+  if (!endpoint) {
+    const config = await getIAConfig();
+    if (!config) throw new Error('IA não está configurada.');
+    endpoint = config.endpoint;
+    apiKey = config.api_key;
+  }
+
+  endpoint = normalizeEndpoint(endpoint);
+  if (!endpoint) throw new Error('Endpoint da IA não informado.');
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const timeout = setTimeout(() => controller.abort(), 12_000);
 
   try {
-    const response = await fetch(`${config.endpoint}/models`, {
-      headers: { 'Authorization': `Bearer ${config.api_key}` },
+    const headers: Record<string, string> = {};
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const response = await fetch(`${endpoint}/models`, {
+      headers,
       signal: controller.signal,
     });
-    if (!response.ok) throw new Error(`Erro ao listar modelos: ${response.status}`);
-    const data = await parseJsonResponse<{ data?: Array<{ id: string; object: string; owned_by: string }> }>(
-      response,
-      'LLM /models'
-    );
-    return data.data || [];
+
+    if (!response.ok) throw new Error(`Erro ao listar modelos (${response.status})`);
+
+    const data = await parseJsonResponse<any>(response, 'LLM /models');
+
+    if (Array.isArray(data?.data)) {
+      return data.data.map((m: any) => ({
+        id: typeof m === 'string' ? m : (m.id || m.name || String(m)),
+        object: m.object || 'model',
+        owned_by: m.owned_by || 'provider',
+      }));
+    }
+
+    if (Array.isArray(data?.models)) {
+      return data.models.map((m: any) => {
+        const rawName = m.name || m.id || String(m);
+        const cleanId = rawName.replace(/^models\//, '');
+        return {
+          id: cleanId,
+          object: 'model',
+          owned_by: 'google',
+        };
+      });
+    }
+
+    return [];
   } finally {
     clearTimeout(timeout);
   }
@@ -597,9 +657,12 @@ export async function listModels(): Promise<Array<{ id: string; object: string; 
 /**
  * Testar conexão com o endpoint LLM
  */
-export async function testConnection(): Promise<{ success: boolean; message: string; models?: string[] }> {
+export async function testConnection(
+  customEndpoint?: string,
+  customApiKey?: string
+): Promise<{ success: boolean; message: string; models?: string[] }> {
   try {
-    const models = await listModels();
+    const models = await listModels(customEndpoint, customApiKey);
     return {
       success: true,
       message: `Conectado com sucesso. ${models.length} modelo(s) disponível(is).`,

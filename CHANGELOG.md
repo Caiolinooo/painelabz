@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.36.0] - 2026-07-23
+
+### Features
+- **Suporte Oficial a Google Gemini**: Adicionada compatibilidade completa com a API do **Google Gemini** (via endpoint OpenAI Compatibility `https://generativelanguage.googleapis.com/v1beta/openai`). Suporta chave do Google AI Studio com modelos `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.0-flash`, `gemini-1.5-flash` e `gemini-1.5-pro`.
+- **Consulta Dinâmica de Modelos no Painel Admin (`/admin/ia-config`)**:
+  - Novo botão **🔍 Buscar Modelos Disponíveis no Servidor**: envia requisição ao endpoint configurado (`GET /api/ia/models?endpoint=...&api_key=...`) e extrai dinamicamente a lista de modelos ativos.
+  - Menu suspenso `<select>` que permite ao Administrador escolher qualquer modelo retornado pelo servidor em vez de digitar manualmente.
+- **Suporte Multi-Provedor Expandido**: Presets nativos para **Google Gemini**, **OpenAI (ChatGPT)**, **LM Studio**, **llama.cpp** e **Outros (OpenRouter, Groq, Ollama, DeepSeek)**.
+- **Normalização Automática de Endpoint (`normalizeEndpoint`)**: Ajusta URLs do Gemini e provedores compatíveis para garantir requisições válidas em `/models` e `/chat/completions`.
+
 ## [5.35.0] - 2026-07-23
 
 ### Features

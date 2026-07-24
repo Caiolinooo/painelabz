@@ -15,20 +15,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
+    const endpoint = request.nextUrl.searchParams.get('endpoint') || undefined;
+    const apiKey = request.nextUrl.searchParams.get('api_key') || undefined;
     const testMode = request.nextUrl.searchParams.get('test') === 'true';
 
     if (testMode) {
-      const result = await testConnection();
+      const result = await testConnection(endpoint, apiKey);
       return NextResponse.json(result);
     }
 
-    const models = await listModels();
+    const models = await listModels(endpoint, apiKey);
 
     return NextResponse.json({
       models: models.map(m => ({
         id: m.id,
         object: m.object || 'model',
-        owned_by: m.owned_by || 'local',
+        owned_by: m.owned_by || 'provider',
       })),
     });
   } catch (err) {

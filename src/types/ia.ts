@@ -7,6 +7,14 @@
 // Tipos de banco de dados
 // =====================================================
 
+export type IAProviderType = 'gemini' | 'openai' | 'lmstudio' | 'llamacpp' | 'custom';
+
+export interface IAConfigProviderSetting {
+  endpoint: string;
+  api_key: string;
+  model_default: string;
+}
+
 export interface IAConfig {
   id: string;
   endpoint: string;
@@ -16,24 +24,16 @@ export interface IAConfig {
   temperatura: number;
   system_prompt: string;
   ativo: boolean;
-  provider: 'lmstudio' | 'llamacpp';
-  provider_settings: {
-    lmstudio?: { endpoint: string; api_key: string; model_default: string };
-    llamacpp?: { endpoint: string; api_key: string; model_default: string };
-  };
+  provider: IAProviderType;
+  provider_settings: Partial<Record<IAProviderType, IAConfigProviderSetting>>;
   created_at: string;
   updated_at: string;
 }
 
-
-
 /** Config sem dados sensíveis (para retorno em API não-admin) */
 export type IAConfigPublic = Omit<IAConfig, 'api_key' | 'provider_settings'> & {
   api_key?: never;
-  provider_settings: {
-    lmstudio?: { endpoint: string; model_default: string; api_key?: never };
-    llamacpp?: { endpoint: string; model_default: string; api_key?: never };
-  };
+  provider_settings: Partial<Record<IAProviderType, Omit<IAConfigProviderSetting, 'api_key'>>>;
 };
 
 export interface IAChatSession {
