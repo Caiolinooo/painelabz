@@ -459,10 +459,13 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
   const tagMap: Record<string, string> = {
     'S-1000': 'evtInfoEmpregador',
     'S-2200': 'evtAdmissao',
+    'S-2205': 'evtAltCadastral',
+    'S-2206': 'evtAltContratual',
     'S-2210': 'evtCAT',
     'S-2220': 'evtMonit',
     'S-2230': 'evtAfastTemp',
     'S-2240': 'evtExpRisco',
+    'S-2298': 'evtReintegr',
     'S-2299': 'evtDeslig',
     'S-2300': 'evtTSVInicio',
     'S-2399': 'evtTSVTermino',
@@ -483,7 +486,7 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
     optTag('tpInsc', 1, 2) +
     optTag('nrInsc', cnpj.substring(0, 8), 2), 1);
 
-  const eventsWithIdeVinculo = ['S-2210', 'S-2220', 'S-2230', 'S-2240', 'S-2299'];
+  const eventsWithIdeVinculo = ['S-2206', 'S-2210', 'S-2220', 'S-2230', 'S-2240', 'S-2298', 'S-2299'];
   const useIdeVinculo = eventsWithIdeVinculo.includes(eventoCodigo);
   const matricula = esp.matricula_esocial || dadosEvento.matricula_esocial || esp.matricula || dadosEvento.matricula || '';
 
@@ -762,6 +765,144 @@ export function generateEventXML(eventoCodigo: string, dadosEvento: any): string
         infoAtivXml +
         agNocXml +
         respRegXml, 1);
+      break;
+    }
+
+    case 'S-2205': {
+      const dtAlteracao = esp.dtAlteracao || esp.dataAlteracao || new Date().toISOString().split('T')[0];
+      const nmTrab = esp.nome || esp.nmTrab || '';
+      const sexo = esp.sexo || '';
+      const racaCor = esp.racaCor || '';
+      const estCiv = esp.estCiv || '';
+      const grauInstr = esp.grauInstr || '';
+      const dtNascto = esp.dtNascto || esp.data_nascimento || '';
+      
+      const dadosAlteracao = block('alteracao',
+        optTag('dtAlteracao', dtAlteracao, 2) +
+        block('dadosTrabalhador',
+          optTag('nmTrab', nmTrab, 3) +
+          optTag('sexo', sexo, 3) +
+          optTag('racaCor', racaCor, 3) +
+          optTag('estCiv', estCiv, 3) +
+          optTag('grauInstr', grauInstr, 3) +
+          optTag('dtNascto', dtNascto, 3), 2), 1);
+
+      corpo = dadosAlteracao;
+      break;
+    }
+
+    case 'S-2206': {
+      const dtAlteracao = esp.dtAlteracao || esp.dataAlteracao || new Date().toISOString().split('T')[0];
+
+      const cargo = block('cargo',
+        optTag('codCargo', esp.codCargo || '001', 4) +
+        optTag('nmCargo', esp.cargo || esp.nmCargo || '', 4) +
+        optTag('codCBO', esp.codCBO || esp.cbo || '', 4), 3);
+
+      const salario = block('salario',
+        optTag('vrSalFx', esp.salario || esp.vrSalFx || '0', 4) +
+        optTag('undSalFixo', esp.undSalFixo || 7, 4), 3);
+
+      const infoContrato = block('infoContrato', cargo + salario, 2);
+
+      corpo = block('altContratual',
+        optTag('dtAlteracao', dtAlteracao, 2) +
+        infoContrato, 1);
+      break;
+    }
+
+    case 'S-2210': {
+      const dtAcid = esp.dtAcid || esp.dataAcidente || '';
+      const tpAcid = esp.tpAcid || esp.tipoAcidente || '';
+      const tpCat = esp.tpCat || esp.tipoCat || '1';
+      
+      let localAcidXml = '';
+      const local = esp.localAcidente || {};
+      if (local.dscLograd || local.uf) {
+        localAcidXml = block('localAcidente',
+          optTag('tpLograd', local.tpLograd || 'R', 3) +
+          optTag('dscLograd', local.dscLograd, 3) +
+          optTag('nrLograd', local.nrLograd, 3) +
+          optTag('bairro', local.bairro, 3) +
+          optTag('cep', local.cep, 3) +
+          optTag('codMunic', local.codMunic, 3) +
+          optTag('uf', local.uf, 3) +
+          optTag('pais', local.pais || '105', 3), 2);
+      }
+
+      const parteAtingida = block('parteAtingida',
+        optTag('codParteAting', esp.parteAtingidaCod || '799990000', 3) +
+        optTag('lateralidade', esp.parteAtingidaLateralidade || '1', 3), 2);
+
+      const agenteCausador = block('agenteCausador',
+        optTag('codAgntCausador', esp.agenteCausadorCod || '999990000', 3), 2);
+
+      corpo = block('cat',
+        optTag('dtAcid', dtAcid, 2) +
+        optTag('hrAcid', esp.hrAcid || esp.horaAcidente, 2) +
+        optTag('tpAcid', tpAcid, 2) +
+        optTag('tpCat', tpCat, 2) +
+        optTag('dtObito', esp.dtObito, 2) +
+        optTag('hrsTrabAntesAcid', esp.hrsTrabAntes, 2) +
+        optTag('tpLocal', esp.tpLocal, 2) +
+        optTag('dscLocal', esp.dscLocal, 2) +
+        optTag('codSitGeradora', esp.codSitGeradora, 2) +
+        optTag('iniciatCAT', esp.iniciatCat || '1', 2) +
+        optTag('obsCAT', esp.obsCat, 2) +
+        optTag('ultDiaTrab', esp.ultDiaTrab, 2) +
+        optTag('houveAfast', esp.houveAfast ? 'S' : 'N', 2) +
+        optTag('dtIniAfast', esp.dtIniAfast, 2) +
+        localAcidXml +
+        parteAtingida +
+        agenteCausador, 1);
+      break;
+    }
+
+    case 'S-2230': {
+      const dtIniAfast = esp.dtIniAfast || esp.dataInicioAfastamento;
+      const dtTermAfast = esp.dtTermAfast || esp.dataFimAfastamento;
+
+      if (dtIniAfast && !dtTermAfast) {
+        corpo = block('infoAfastamento',
+          block('iniAfastamento',
+            optTag('dtIniAfast', dtIniAfast, 3) +
+            optTag('codMotAfast', esp.codMotAfast || esp.motivoAfastamento || '01', 3) +
+            optTag('infoMesmoMtv', esp.infoMesmoMtv, 3) +
+            optTag('tpAcidTransito', esp.tpAcidTransito, 3) +
+            optTag('observacao', esp.observacao || esp.observacoes, 3), 2), 1);
+      } else if (dtTermAfast) {
+        corpo = block('infoAfastamento',
+          block('fimAfastamento',
+            optTag('dtTermAfast', dtTermAfast, 3), 2), 1);
+      }
+      break;
+    }
+
+    case 'S-2298': {
+      const tpReint = esp.tpReint || esp.tipoReintegracao || '1';
+      const dtEfetRetorno = esp.dtEfetRetorno || esp.dataRetorno || '';
+      const dtEfeito = esp.dtEfeito || esp.dataEfeito || dtEfetRetorno;
+
+      corpo = block('infoReintegr',
+        optTag('tpReint', tpReint, 2) +
+        optTag('nrProcJud', esp.nrProcJud, 2) +
+        optTag('nrLeiAnistia', esp.nrLeiAnistia, 2) +
+        optTag('dtEfetRetorno', dtEfetRetorno, 2) +
+        optTag('dtEfeito', dtEfeito, 2), 1);
+      break;
+    }
+
+    case 'S-2299': {
+      const mtvDeslig = esp.mtvDeslig || esp.motivoDesligamento || '10';
+      const dtDeslig = esp.dtDeslig || esp.dataDesligamento || '';
+
+      corpo = block('infoDeslig',
+        optTag('mtvDeslig', mtvDeslig, 2) +
+        optTag('dtDeslig', dtDeslig, 2) +
+        optTag('indPagtoAPI', esp.indPagtoAPI, 2) +
+        optTag('dtProjFimAPI', esp.dtProjFimAPI, 2) +
+        optTag('pensAlim', esp.pensAlim || '0', 2) +
+        optTag('observacao', esp.observacao || esp.observacoes, 2), 1);
       break;
     }
 

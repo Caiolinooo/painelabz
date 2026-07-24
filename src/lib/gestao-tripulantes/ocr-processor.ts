@@ -536,11 +536,19 @@ export async function extrairDadosASODoTexto(
       }
     }
   } else {
-    // No CPF from OCR — keep current link but mark unknown (do NOT move by name)
-    identityMatch = 'unknown';
+    // No CPF from OCR — quarantine to prevent wrong-profile assignment
+    identityMatch = 'quarantine';
+    colaboradorIdFinal = null;
     console.warn(
-      `[OCR/Identity] ASO ${documentoId}: CPF não extraído. Mantendo vínculo atual sem reassociação por nome.`
+      `[OCR/Identity] ASO ${documentoId}: CPF não extraído pelo OCR. Documento em quarentena para revisão manual.`
     );
+    await supabaseAdmin
+      .from('gt_documentos')
+      .update({
+        colaborador_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', documentoId);
   }
 
   // 1. Type of exam

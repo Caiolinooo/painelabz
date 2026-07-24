@@ -17,16 +17,25 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 - CPF normalize: digits-only via `@/lib/utils/identity` → `@/lib/gestao-tripulantes/cpf` (client-safe) + `cpf-lookup.ts` (server).
 - OCR path (`extrairDadosASODoTexto`): **CPF-only** reassociation. Never silent name/`ilike` moves.
-- If OCR CPF ≠ profile CPF: reassign to `gt_colaboradores` by CPF **or** quarantine (`gt_documentos.colaborador_id` + ASO `colaborador_id` = null, `esocial_status = quarentena`, `identity_match = quarantine`). Migration makes `gt_documentos.colaborador_id` nullable for this.
+- If OCR CPF ≠ profile CPF: reassign to `gt_colaboradores` by CPF **or** quarantine (`gt_documentos.colaborador_id` + ASO `colaborador_id` = null, `esocial_status = quarentena`, `identity_match = quarantine`). When OCR cannot extract CPF, quarantine is set immediately to avoid wrong profile assignment.
 - After `esocial_status` in `pendente|enviado|processado`: freeze identity (`identity_match = frozen`); do not reset status to `nao_enviado`.
 - Persist `cpf_documento` + `identity_match` on `gt_documentos_aso`.
 - Send (`POST .../documentos/[id]/esocial`): prefer OCR CPF; **block** if OCR CPF ≠ profile CPF.
 
-### ASO ↔ e-Social sync
+### All e-Social Events ↔ Module Sync
+- Generic sync service `esocial-sync.ts` mirrors e-Social event status changes back to originating entities:
+  - **S-2200**: `gt_colaboradores.esocial_admissao_status`
+  - **S-2205**: `gt_colaboradores.esocial_cadastro_status`
+  - **S-2206**: `gt_colaboradores.esocial_contrato_status`
+  - **S-2220**: `gt_documentos_aso.esocial_status`
+  - **S-2230**: `gt_afastamentos.esocial_status`
+  - **S-2210**: `gt_acidentes.esocial_status`
+  - **S-2240**: `gt_colaboradores.esocial_risco_status`
+  - **S-2299**: `gt_colaboradores.esocial_desligamento_status`
 
-- Queue create sets `esocial_status = pendente` + `esocial_evento_id`.
-- On S-2220 send success → `enviado`; consult processado/erro → mirror via `syncAsoEsocialStatusFromEvento` (`entidade_origem_id` / `esocial_evento_id`).
-- Global visibility = `enviado|processado` only.
+### Employee Record Hub (`/api/employee-hub`)
+- Single point of truth for employee data, combining personal details, document counts, ASOs, embarques, e-Social event timeline, afastamentos, acidentes (CAT), and trainings.
+- Endpoints: `GET /api/employee-hub/[id]`, `GET /api/employee-hub/[id]/timeline`, `GET /api/employee-hub/search`.
 
 ### Global ASO read
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.35.0] - 2026-07-23
+
+### Features
+- **Hub Central de Movimentação (`/api/employee-hub`)**: View consolidada `vw_employee_hub` e serviço `employee-hub-service.ts` para consulta unificada de colaboradores (dados pessoais, documentos, ASOs, embarques, linha do tempo e-Social, afastamentos, acidentes CAT e treinamentos). APIs: `GET /api/employee-hub/[id]`, `GET /api/employee-hub/[id]/timeline` e `GET /api/employee-hub/search`.
+- **e-Social — Suporte Completo a Eventos**: XML generators oficiais (leiaute S-1.3) para **S-2205** (Alt. Cadastral), **S-2206** (Alt. Contratual), **S-2210** (CAT), **S-2230** (Afastamento Temporário), **S-2298** (Reintegração) e **S-2299** (Desligamento). Validações completas em `esocialValidator.ts`.
+- **Motor de Sincronização Genérico (`esocial-sync.ts`)**: Sincronização de status bidirecional para todos os eventos do e-Social espelhados nas tabelas de origem (`gt_colaboradores`, `gt_documentos_aso`, `gt_afastamentos`, `gt_acidentes`).
+- **Módulos de Afastamentos e Acidentes (CAT)**: Novas tabelas `gt_afastamentos` e `gt_acidentes` com APIs CRUD e auto-geração automática de eventos **S-2230** e **S-2210**.
+- **Identity Gate — Quarentena Automática**: Quando o OCR não consegue extrair o CPF de um documento ASO, o sistema coloca o documento diretamente em quarentena (`identity_match = 'quarantine'`, `colaborador_id = null`), prevenindo a atribuição indevida a perfis errados.
+
+### Database & Migrations
+- `20260724_000001_fix_aso_identity_backfill.sql`: Reavaliação e correção de ASOs antigos em `unknown`.
+- `20260724_000002_esocial_tracking_columns.sql`: Colunas de rastreamento de eventos e-Social em `gt_colaboradores`.
+- `20260724_000003_create_gt_afastamentos.sql`: Tabela de afastamentos.
+- `20260724_000004_create_gt_acidentes.sql`: Tabela de acidentes CAT.
+- `20260724_000005_create_employee_hub_view.sql`: View unificada `vw_employee_hub`.
+
 ## [5.34.0] - 2026-07-23
 
 ### Features

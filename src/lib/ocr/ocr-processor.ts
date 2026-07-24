@@ -32,7 +32,21 @@ export function extrairDadosTexto(texto: string, tipoDocumento?: OCRTipoDocument
   const dados: Record<string, any> = {};
   const upper = texto.toUpperCase();
 
-  const cpfMatch = texto.match(/(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[.\s-]?(\d{2})/);
+  // Priority 1: CPF explicitly labeled in the document
+  const cpfLabeledPatterns = [
+    /(?:CPF\s*(?:do\s+)?(?:Trabalhador|Empregado|Funcionário|Funcionario|Paciente)?)\s*[:\-\s/|I]\s*(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[.\s\-]?(\d{2})/i,
+    /(?:C\.?\s*P\.?\s*F\.?\s*(?:\/\s*M\.?\s*F\.?)?)\s*[:\-\s|I]\s*(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[.\s\-]?(\d{2})/i,
+    /(?:CPF)\s*(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[.\s\-]?(\d{2})/i,
+  ];
+  let cpfMatch: RegExpMatchArray | null = null;
+  for (const pattern of cpfLabeledPatterns) {
+    cpfMatch = texto.match(pattern);
+    if (cpfMatch) break;
+  }
+  // Fallback: generic 11-digit CPF pattern
+  if (!cpfMatch) {
+    cpfMatch = texto.match(/(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[.\s\-]?(\d{2})/);
+  }
   if (cpfMatch) dados.cpf = normalizeCpf(`${cpfMatch[1]}${cpfMatch[2]}${cpfMatch[3]}${cpfMatch[4]}`);
 
   const rgLabeled = upper.match(/(?:RG|IDENTIDADE|REGISTRO\s*GERAL)[:\s]*(\d{1,2}[.\s]?\d{3}[.\s]?\d{3}[.\s-]?\d{0,2})/i);

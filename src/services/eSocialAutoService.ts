@@ -127,6 +127,14 @@ export async function autoGenerateESocialEvents(colaboradorId: string): Promise<
       console.log(`[eSocialAuto] S-2240 already exists for CPF ${cleanCpf}. Skipping S-2240 auto-generation.`);
     }
 
+    // 6. Generate S-2299 if collaborator has demission date
+    if (colab.data_demissao) {
+      const hasS2299 = existingEvents?.some(e => e.evento_codigo === 'S-2299');
+      if (!hasS2299) {
+        await generateS2299(colab, cnpjEmpregador, cleanCpf);
+      }
+    }
+
   } catch (err) {
     console.error('[eSocialAuto] Unexpected error in auto-generation hook:', err);
   }
@@ -330,5 +338,68 @@ async function generateS2240(colab: any, cnpjEmpregador: string, cleanCpf: strin
     console.log(`[eSocialAuto] S-2240 event created successfully for CPF ${cleanCpf}. Status: ${finalStatus}`);
   } catch (insertErr) {
     console.error(`[eSocialAuto] Error inserting S-2240 event for CPF ${cleanCpf}:`, insertErr);
+  }
+}
+
+async function generateS2299(colab: any, cnpjEmpregador: string, cleanCpf: string) {
+  console.log(`[eSocialAuto] Generating S-2299 for ${colab.nome_completo}...`);
+
+  const payload = {
+    cnpj: cnpjEmpregador,
+    cpf: cleanCpf,
+    matricula_esocial: colab.matricula_esocial || undefined,
+    matricula: colab.matricula || undefined,
+    dadosEspecificos: {
+      mtvDeslig: colab.motivo_demissao || '10',
+      dtDeslig: colab.data_demissao,
+      observacoes: `Desligamento registrado em ${colab.data_demissao}`,
+    }
+  };
+
+  const dataValidation = validateEventData('S-2299', payload);
+  let xml = '';
+  let xmlValidation = { valido: false, erros: [] as string[] };
+
+  if (dataValidation.valido) {
+    try {
+      xml = generateEventXML('S-2299', payload);
+      xmlValidation = validateEventXML(xml);
+    } catch (xmlErr: any) {
+      xmlValidation.erros.push(xmlErr.message || 'Erro durante geração XML');
+    }
+  }
+
+  const isValid = dataValidation.valido && xmlValidation.valido;
+  const finalStatus = isValid ? STATUS_EVENTO.PENDENTE_REVISAO : STATUS_EVENTO.RASCUNHO;
+
+  try {
+    const createdEvent = await createEvento({
+      evento_codigo: 'S-2299',
+      cpf_trabalhador: cleanCpf,
+      cnpj_empregador: cnpjEmpregador || undefined,
+      matricula: colab.matricula_esocial || colab.matricula || undefined,
+      dados_evento: payload,
+      status: finalStatus,
+      modulo_origem: 'auto',
+      entidade_origem_id: colab.id,
+      entidade_origem_tipo: 'gt_colaboradores'
+    });
+
+    if (xml && xmlValidation.valido) {
+      await updateEvento(createdEvent.id, { xml_gerado: xml });
+    }
+
+    await logEnvio({
+      evento_id: createdEvent.id,
+      acao: 'geracao_xml',
+      request_body: JSON.stringify(payload),
+      response_body: xml || undefined,
+      sucesso: isValid,
+      mensagem_erro: isValid ? undefined : [...dataValidation.erros, ...xmlValidation.erros].join('; '),
+    });
+
+    console.log(`[eSocialAuto] S-2299 event created successfully for CPF ${cleanCpf}. Status: ${finalStatus}`);
+  } catch (insertErr) {
+    console.error(`[eSocialAuto] Error inserting S-2299 event for CPF ${cleanCpf}:`, insertErr);
   }
 }

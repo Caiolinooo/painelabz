@@ -158,6 +158,83 @@ export function validarDadosEvento(codigoEvento: string, dadosEvento: any): Resu
       }
       break;
     }
+    case 'S-2205': {
+      const dtAlteracao = getField(dadosEvento, 'dtAlteracao') || getField(dadosEvento, 'dataAlteracao');
+      if (!dtAlteracao) {
+        erros.push({ campo: 'dtAlteracao', mensagem: 'Data de Alteração obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
+        camposPendentes.push({ campo: 'dtAlteracao', label: 'Data de Alteração', tipo: 'date' });
+      }
+      const nmTrab = getField(dadosEvento, 'nmTrab') || getField(dadosEvento, 'nome');
+      if (!nmTrab) {
+        erros.push({ campo: 'nmTrab', mensagem: 'Nome do Trabalhador obrigatório', tipo: 'obrigatorio', autocorrigivel: true });
+        camposPendentes.push({ campo: 'nmTrab', label: 'Nome do Trabalhador', tipo: 'text' });
+      }
+      break;
+    }
+    case 'S-2206': {
+      const matricula = getField(dadosEvento, 'matricula') || getField(dadosEvento, 'matricula_esocial');
+      if (!matricula) {
+        erros.push({ campo: 'matricula', mensagem: 'Matrícula e-Social obrigatória', tipo: 'obrigatorio', autocorrigivel: false });
+        camposPendentes.push({ campo: 'matricula', label: 'Matrícula e-Social', tipo: 'text' });
+      }
+      const dtAlteracao = getField(dadosEvento, 'dtAlteracao') || getField(dadosEvento, 'dataAlteracao');
+      if (!dtAlteracao) {
+        erros.push({ campo: 'dtAlteracao', mensagem: 'Data de Alteração obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
+        camposPendentes.push({ campo: 'dtAlteracao', label: 'Data de Alteração', tipo: 'date' });
+      }
+      break;
+    }
+    case 'S-2210': {
+      const matricula = getField(dadosEvento, 'matricula') || getField(dadosEvento, 'matricula_esocial');
+      if (!matricula) {
+        erros.push({ campo: 'matricula', mensagem: 'Matrícula e-Social obrigatória', tipo: 'obrigatorio', autocorrigivel: false });
+        camposPendentes.push({ campo: 'matricula', label: 'Matrícula e-Social', tipo: 'text' });
+      }
+      const dtAcid = getField(dadosEvento, 'dtAcid') || getField(dadosEvento, 'dataAcidente');
+      if (!dtAcid) {
+        erros.push({ campo: 'dtAcid', mensagem: 'Data do Acidente obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
+        camposPendentes.push({ campo: 'dtAcid', label: 'Data do Acidente', tipo: 'date' });
+      }
+      const tpAcid = getField(dadosEvento, 'tpAcid') || getField(dadosEvento, 'tipoAcidente');
+      if (!tpAcid) {
+        erros.push({ campo: 'tpAcid', mensagem: 'Tipo de Acidente obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
+        camposPendentes.push({ campo: 'tpAcid', label: 'Tipo de Acidente', tipo: 'select', opcoes: [{valor:'1', label:'Típico'}, {valor:'2', label:'Doença'}, {valor:'3', label:'Trajeto'}] });
+      }
+      const tpCat = getField(dadosEvento, 'tpCat') || getField(dadosEvento, 'tipoCat');
+      if (!tpCat) {
+        erros.push({ campo: 'tpCat', mensagem: 'Tipo de CAT obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
+        camposPendentes.push({ campo: 'tpCat', label: 'Tipo de CAT', tipo: 'select', opcoes: [{valor:'1', label:'Inicial'}, {valor:'2', label:'Reabertura'}, {valor:'3', label:'Comunicação de Óbito'}] });
+      }
+      break;
+    }
+    case 'S-2230': {
+      const matricula = getField(dadosEvento, 'matricula') || getField(dadosEvento, 'matricula_esocial');
+      if (!matricula) {
+        erros.push({ campo: 'matricula', mensagem: 'Matrícula e-Social obrigatória', tipo: 'obrigatorio', autocorrigivel: false });
+        camposPendentes.push({ campo: 'matricula', label: 'Matrícula e-Social', tipo: 'text' });
+      }
+      const dtIniAfast = getField(dadosEvento, 'dtIniAfast') || getField(dadosEvento, 'dataInicioAfastamento');
+      const dtTermAfast = getField(dadosEvento, 'dtTermAfast') || getField(dadosEvento, 'dataFimAfastamento');
+      if (!dtIniAfast && !dtTermAfast) {
+        erros.push({ campo: 'dtIniAfast', mensagem: 'Data de início ou término do afastamento obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
+        camposPendentes.push({ campo: 'dtIniAfast', label: 'Data Início Afastamento', tipo: 'date' });
+      }
+      if (dtIniAfast) {
+        const codMotAfast = getField(dadosEvento, 'codMotAfast') || getField(dadosEvento, 'motivoAfastamento');
+        if (!codMotAfast) {
+          erros.push({ campo: 'codMotAfast', mensagem: 'Código do Motivo de Afastamento obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
+          camposPendentes.push({ campo: 'codMotAfast', label: 'Motivo do Afastamento', tipo: 'select', opcoes: [
+            {valor:'01', label:'Doença não profissional'},
+            {valor:'03', label:'Licença maternidade'},
+            {valor:'06', label:'Acidente de trabalho típico'},
+            {valor:'15', label:'Férias'},
+            {valor:'21', label:'Licença remunerada'},
+            {valor:'31', label:'Aposentadoria por invalidez'}
+          ]});
+        }
+      }
+      break;
+    }
     case 'S-2300': {
       if (!getField(dadosEvento, 'tpRegPrev')) {
         erros.push({ campo: 'tpRegPrev', mensagem: 'Tipo de Regime Previdenciário obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
