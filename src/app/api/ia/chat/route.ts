@@ -265,15 +265,21 @@ export async function POST(request: NextRequest) {
       session_id: sessionId,
     });
   } catch (err) {
-    console.error('[API IA Chat POST]', err);
+    console.error('[API IA Chat POST Error]', err);
     const raw = err instanceof Error ? err.message : 'Erro interno';
-    const friendly =
+    let friendly = raw;
+
+    if (raw.includes('IA não está configurada')) {
+      friendly = 'A IA ainda não foi configurada no sistema. Por favor, acesse o Painel Admin (/admin/ia-config) para inserir a API Key e selecionar o modelo.';
+    } else if (
       raw.includes('Unexpected token') ||
       raw.includes('<!DOCTYPE') ||
       raw.includes('is not valid JSON') ||
       raw.includes('retornou uma página HTML')
-        ? 'A IA não conseguiu processar a solicitação agora. Verifique a configuração do endpoint no painel admin ou tente novamente.'
-        : raw;
+    ) {
+      friendly = 'O endpoint da IA retornou um formato inesperado. Verifique a URL do endpoint no Painel Admin (/admin/ia-config).';
+    }
+
     return NextResponse.json(
       { error: friendly },
       { status: 500 }

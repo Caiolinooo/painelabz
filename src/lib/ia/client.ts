@@ -67,18 +67,49 @@ export async function getIAConfig(): Promise<IAConfig | null> {
       .limit(1)
       .maybeSingle();
 
-    if (error || !data) {
-      console.error('[IA Client] Erro ao buscar config:', error?.message);
-      return null;
+    if (data && data.endpoint) {
+      configCache = data as IAConfig;
+      configCacheTime = now;
+      return configCache;
     }
+  } catch (err) {
+    console.error('[IA Client] Erro ao buscar config do banco:', err);
+  }
 
-    configCache = data as IAConfig;
+  // Fallback para variáveis de ambiente se a tabela do banco estiver vazia
+  const envApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.OPENAI_API_KEY || process.env.IA_API_KEY;
+  const envEndpoint = process.env.IA_ENDPOINT || (
+    (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)
+      ? 'https://generativelanguage.googleapis.com/v1beta/openai'
+      : (process.env.OPENAI_API_KEY ? 'https://api.openai.com/v1' : '')
+  );
+  const envModel = process.env.IA_MODEL || (
+    (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)
+      ? 'gemini-2.5-flash'
+      : (process.env.OPENAI_API_KEY ? 'gpt-4o-mini' : 'default')
+  );
+
+  if (envEndpoint && envApiKey) {
+    const envConfig: IAConfig = {
+      id: 'env-fallback',
+      endpoint: envEndpoint,
+      api_key: envApiKey,
+      model_default: envModel,
+      max_tokens: 8192,
+      temperatura: 0.7,
+      system_prompt: '',
+      ativo: true,
+      provider: (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) ? 'gemini' : 'openai',
+      provider_settings: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    configCache = envConfig;
     configCacheTime = now;
     return configCache;
-  } catch (err) {
-    console.error('[IA Client] Erro inesperado ao buscar config:', err);
-    return null;
   }
+
+  return null;
 }
 
 /**

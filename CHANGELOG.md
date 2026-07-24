@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.37.0] - 2026-07-23
+
+### Fixed
+- **IA Chat API Errors & Fallbacks (`/api/ia/chat`)**: Adicionada mensagem de erro clara quando a IA não está configurada no banco, orientando o usuário a acessar o Painel Admin (`/admin/ia-config`) para inserir a API Key e escolher o modelo.
+- **Env Var Fallback (`getIAConfig`)**: Suporte a fallback via variáveis de ambiente (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `IA_ENDPOINT`, `IA_MODEL`) caso a tabela `ia_config` no Supabase não possua registro configurado.
+
 ## [5.36.0] - 2026-07-23
 
 ### Features
