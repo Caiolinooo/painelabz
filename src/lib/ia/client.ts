@@ -10,6 +10,7 @@ import type {
 } from '@/types/ia';
 import { supabaseAdmin } from '@/lib/supabase';
 import { IA_TOOLS_DEFINITION, executeToolCall } from './tools';
+import { routeToSubAgent, sanitizeToolsForLLM } from './agents-router';
 
 // Cache da config para evitar queries repetidas
 let configCache: IAConfig | null = null;
@@ -145,13 +146,24 @@ export async function chatCompletion(
     throw new Error('IA não está configurada. Configure o endpoint e token no painel admin.');
   }
 
-  let tools: any[] = IA_TOOLS_DEFINITION;
+  let rawTools: any[] = [];
   if (userContext) {
     const { getAvailableTools } = await import('./tools');
-    tools = await getAvailableTools(userContext.userId, userContext.role);
+    const userMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
+    const activeSubAgent = routeToSubAgent(userMsg);
+    console.log(`[IA Client] Sub-Agente Ativo: ${activeSubAgent.name} (${activeSubAgent.id})`);
+
+    const allTools = await getAvailableTools(userContext.userId, userContext.role);
+    const domainTools = allTools.filter((t: any) =>
+      t.function && activeSubAgent.toolNames.includes(t.function.name)
+    );
+    rawTools = domainTools.length > 0 ? domainTools : allTools;
+  } else {
+    rawTools = IA_TOOLS_DEFINITION;
   }
-  
-  console.log('[IA Client] Tools disponíveis para o modelo:', tools.length);
+
+  const tools = sanitizeToolsForLLM(rawTools);
+  console.log('[IA Client] Tools sanitizadas enviadas para o modelo:', tools.length);
 
   const body: any = {
     model: options?.model || config.model_default,
@@ -329,11 +341,24 @@ export async function chatCompletionStream(
     throw new Error('IA não está configurada.');
   }
 
-  let tools: any[] = IA_TOOLS_DEFINITION;
+  let rawTools: any[] = [];
   if (userContext) {
     const { getAvailableTools } = await import('./tools');
-    tools = await getAvailableTools(userContext.userId, userContext.role);
+    const userMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
+    const activeSubAgent = routeToSubAgent(userMsg);
+    console.log(`[IA Stream] Sub-Agente Ativo: ${activeSubAgent.name} (${activeSubAgent.id})`);
+
+    const allTools = await getAvailableTools(userContext.userId, userContext.role);
+    const domainTools = allTools.filter((t: any) =>
+      t.function && activeSubAgent.toolNames.includes(t.function.name)
+    );
+    rawTools = domainTools.length > 0 ? domainTools : allTools;
+  } else {
+    rawTools = IA_TOOLS_DEFINITION;
   }
+
+  const tools = sanitizeToolsForLLM(rawTools);
+  console.log('[IA Stream] Tools sanitizadas enviadas para o modelo:', tools.length);
 
   const body: any = {
     model: options?.model || config!.model_default,

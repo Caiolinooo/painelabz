@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.38.0] - 2026-07-23
+
+### Features
+- **Arquitetura de Sub-Agentes Especializados (`agents-router.ts`)**:
+  - O sistema de IA agora roteia dinamicamente cada mensagem do usuário para o Sub-Agente adequado do seu domínio:
+    - 👥 **`agente_rh_tripulantes`**: Perfil, férias, reembolsos, EPIs, embarques.
+    - 🩺 **`agente_aso_saude`**: ASOs, exames ocupacionais, quarentena.
+    - 🏛️ **`agente_esocial_compliance`**: Eventos e-Social, CAT (S-2210), Afastamentos (S-2230), Riscos (S-2240).
+    - 📊 **`agente_analytics_admin`**: KPIs, relatórios em Excel, dashboards visuais.
+    - 💬 **`agente_geral`**: Atendimento geral e navegação.
+  - **Redução Drástica de Payload**: Reduz o envio de 25+ ferramentas para apenas 4-5 ferramentas focadas por domínio, aumentando imensamente a velocidade e a taxa de acerto da IA.
+- **Sanitização Estrita de Esquema para o Google Gemini (`sanitizeToolsForLLM`)**:
+  - Remove propriedades customizadas não-padrão (`adminOnly`, `requireModule`, `requireTeamAccess`) da especificação de ferramentas antes de enviar para o LLM.
+  - Garante conformidade estrita com o validador OpenAPI/JSON Schema do Google Gemini, eliminando erros 400/500 de rejeição de requisição.
+
 ## [5.37.0] - 2026-07-23
 
 ### Fixed

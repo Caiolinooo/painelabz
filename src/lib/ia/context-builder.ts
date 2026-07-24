@@ -481,6 +481,17 @@ export async function buildChatMessages(
 
   let systemPrompt = buildSystemPrompt(userContext, config?.system_prompt || undefined);
 
+  // Injetar contexto do Sub-Agente especializado
+  try {
+    const { routeToSubAgent } = await import('@/lib/ia/agents-router');
+    const subAgent = routeToSubAgent(newMessage);
+    if (subAgent?.systemPromptAddon) {
+      systemPrompt += `\n\n[SUB-AGENTE ESPECIALIZADO ATIVO: ${subAgent.name} (${subAgent.icon})]\n${subAgent.systemPromptAddon}`;
+    }
+  } catch (saErr) {
+    console.warn('[IA Context] Erro ao carregar sub-agente:', saErr);
+  }
+
   // Injetar contexto da base de conhecimento
   try {
     const { buildKnowledgeContext } = await import('@/lib/ia/knowledge-base');
