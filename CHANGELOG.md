@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.41.0] - 2026-07-24
+
+### Changed
+- Atualização do módulo de IA e integração e-Social.
+
 ## [5.40.0] - 2026-07-23
 
 ### Fixed
