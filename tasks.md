@@ -1,3 +1,23 @@
+## IA Companion — data path audit (2026-07-27)
+
+### Feito
+- [x] Audit matrix: see / consultar / raciocinar / manipular (Companion + `/api/ia/chat` + tools)
+- [x] Anti-alucinação hard em Companion + context-builder
+- [x] `buscar_ferias` / `buscar_reembolsos` default usuário logado + JSON estruturado
+- [x] `buscar_kpis_sistema` escopo RBAC para non-ADMIN
+- [x] Mutate tools `aprovar_*` / `reprovar_*` (férias/reembolso) + status corretos nas actions
+- [x] `tool-result-format.ts` + loop 12/10 rodadas; remove abort prematuro
+- [x] Companion allowlist + globals + mutate; ghost `gerenciar_notificacoes` corrigido
+- [x] Export KPI stubs → Excel/PDF reais; DOX + CHANGELOG + **v5.49.0**
+
+### Pendente / leftovers
+- [ ] Migrar restante do monolito `tools.ts` para registry
+- [ ] Playwright E2E Companion pendências + approve flow
+- [ ] Unificar status APPROVED vs aprovado no caminho legado `/api/reimbursement/approve`
+- [ ] `ponto.tools.ts` placeholder ainda stub
+
+---
+
 ## KPI / IA cards — empty data fix (2026-07-27)
 
 - [x] Root cause: LLM widget shapes (`label`/`value`, Chart.js labels) + resolve preferring empty `w.data` over tool result; Companion dropped `dashboard`

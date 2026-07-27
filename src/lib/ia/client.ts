@@ -287,8 +287,8 @@ export async function chatCompletion(
       data.choices[0].message.content = stripReasoningBlocks(data.choices[0].message.content);
     }
     
-    // Limite de iterações para evitar loop infinito
-    const MAX_TOOL_ITERATIONS = 10;
+    // Multi-tool workflows (pendências → dashboard → abrir KPI) precisam de várias rodadas
+    const MAX_TOOL_ITERATIONS = 12;
     const toolIterationCount = options?._toolIterations || 0;
     const firstValidContent = options?._firstValidContent || null;
     
@@ -301,14 +301,6 @@ export async function chatCompletion(
                          data.choices[0].message.tool_calls.length > 0;
     
     if (hasToolCalls && userContext) {
-      if (toolIterationCount >= 3 && !data.choices[0].message.content?.trim()) {
-        const fallbackContent = options?._firstValidContent;
-        if (fallbackContent) {
-          data.choices[0].message.content = fallbackContent + '\n\n(Resposta baseada em cache parcial.)';
-          return data;
-        }
-      }
-      
       if (toolIterationCount >= MAX_TOOL_ITERATIONS) {
         const fallbackContent = options?._firstValidContent;
         data.choices[0].message.content = fallbackContent || 'Limite de busca atingido.';
@@ -318,6 +310,7 @@ export async function chatCompletion(
       const toolCalls = data.choices[0].message.tool_calls;
       const newMessages = [...messages, data.choices[0].message];
       let mergedMetadata = options?._accumulatedMetadata || {};
+      const { formatToolResultForLLM } = await import('./tool-result-format');
       
       for (const tc of toolCalls) {
           if (options?.onStatus) {
@@ -329,7 +322,7 @@ export async function chatCompletion(
           } catch {
             args = {};
           }
-          let result = await executeToolCall(tc.function.name, args, userContext.role, userContext.userId);
+          const result = await executeToolCall(tc.function.name, args, userContext.role, userContext.userId);
           let toolContent = result;
           try {
             const parsedResult = JSON.parse(result);
@@ -350,9 +343,17 @@ export async function chatCompletion(
               }
             }
             if (tc.function.name === 'render_dashboard') {
-              toolContent = parsedResult.message || 'Dashboard renderizado.';
+              toolContent = JSON.stringify({
+                _summary: parsedResult.message || 'Dashboard renderizado.',
+                success: parsedResult.success !== false,
+                message: parsedResult.message || 'Dashboard renderizado.',
+              });
+            } else {
+              toolContent = formatToolResultForLLM(tc.function.name, result).contentForLlm;
             }
-          } catch { /* usa o result original */ }
+          } catch {
+            toolContent = formatToolResultForLLM(tc.function.name, result).contentForLlm;
+          }
 
           newMessages.push({
             role: 'tool',
@@ -525,7 +526,7 @@ export async function chatCompletionStream(
   }
 
   let toolIterationCount = 0;
-  const MAX_TOOL_ITERATIONS = 5;
+  const MAX_TOOL_ITERATIONS = 10;
 
   async function startStream(currentMessages: LLMMessage[], streamController: ReadableStreamDefaultController<Uint8Array>) {
     if (toolIterationCount >= MAX_TOOL_ITERATIONS) {
@@ -641,6 +642,7 @@ export async function chatCompletionStream(
           args = {};
         }
         const rawResult = await executeToolCall(tc.name, args, userContext?.role || 'USER', userContext?.userId || '');
+        const { formatToolResultForLLM } = await import('./tool-result-format');
         
         let toolContent = rawResult;
         try {
@@ -660,13 +662,17 @@ export async function chatCompletionStream(
               accumulatedMetadata = { ...accumulatedMetadata, ...incoming };
             }
           }
-          // Se for o render_dashboard, podemos limpar o conteúdo para não poluir o contexto se for muito grande
-          // Mas o LLM precisa saber que funcionou.
           if (tc.name === 'render_dashboard') {
-            toolContent = parsedResult.message || 'Dashboard renderizado.';
+            toolContent = JSON.stringify({
+              _summary: parsedResult.message || 'Dashboard renderizado.',
+              success: parsedResult.success !== false,
+              message: parsedResult.message || 'Dashboard renderizado.',
+            });
+          } else {
+            toolContent = formatToolResultForLLM(tc.name, rawResult).contentForLlm;
           }
         } catch {
-          // Não era JSON ou falhou o parse, usa raw
+          toolContent = formatToolResultForLLM(tc.name, rawResult).contentForLlm;
         }
 
         nextMessages.push({

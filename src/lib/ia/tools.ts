@@ -469,16 +469,22 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'buscar_ferias',
-      description: 'Busca as informações de férias de um funcionário específico usando seu ID',
+      description:
+        'Busca solicitações de férias. Sem funcionario_id usa o usuário logado ("minhas férias"). Com ID, respeita RBAC.',
       parameters: {
         type: 'object',
         properties: {
           funcionario_id: {
             type: 'string',
-            description: 'ID (UUID) do funcionário',
+            description: 'UUID do funcionário (opcional — padrão = usuário autenticado)',
           },
+          status: {
+            type: 'string',
+            description: 'Filtro opcional: PENDING_LEADER, PENDING_MANAGER, APPROVED, CANCELLED',
+          },
+          limite: { type: 'number', description: 'Máximo de registros (padrão 20)' },
         },
-        required: ['funcionario_id'],
+        required: [],
       },
     },
     requireModule: 'ferias',
@@ -487,16 +493,24 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'buscar_reembolsos',
-      description: 'Busca o total de reembolsos e valores de um funcionário específico',
+      description:
+        'Busca reembolsos. Sem identificador usa o usuário logado ("meus reembolsos"). Aceita funcionario_id, cpf ou email.',
       parameters: {
         type: 'object',
         properties: {
           funcionario_id: {
             type: 'string',
-            description: 'ID (UUID) do funcionário',
+            description: 'UUID do funcionário (opcional — padrão = usuário autenticado)',
           },
+          cpf: { type: 'string', description: 'CPF alternativo para resolver o usuário' },
+          email: { type: 'string', description: 'E-mail alternativo para resolver o usuário' },
+          status: {
+            type: 'string',
+            description: 'Filtro opcional: pendente, aprovado, rejeitado, pago',
+          },
+          limite: { type: 'number', description: 'Máximo de registros (padrão 50)' },
         },
-        required: ['funcionario_id'],
+        required: [],
       },
     },
     requireModule: 'reembolso',
@@ -668,17 +682,18 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'buscar_kpis_sistema',
-      description: 'Retorna KPIs globais do portal (usuários, sessões IA, pendências de férias/reembolsos/compras/avaliações/EPI). Opcionalmente varre e-mail e Teams em busca de sinais de pendência/conclusão correlatos. Apenas ADMIN.',
+      description:
+        'KPIs do portal: ADMIN vê totais globais + opcional scan e-mail/Teams; MANAGER/USER recebem escopo pessoal/equipe (pendências acessíveis). Preferir buscar_dados_usuario(tipo=resumo) para "minhas pendências".',
       parameters: {
         type: 'object',
         properties: {
           incluir_comunicacao: {
             type: 'boolean',
-            description: 'Se true (padrão quando há pendências), pesquisa e-mails e conversas Teams relacionados',
+            description: 'Se true (padrão quando há pendências), pesquisa e-mails e conversas Teams relacionados (ADMIN)',
           },
           email_monitoramento: {
             type: 'string',
-            description: 'Mailbox a monitorar no Graph (padrão: e-mail do admin logado)',
+            description: 'Mailbox a monitorar no Graph (padrão: e-mail do usuário logado)',
           },
           dias: { type: 'number', description: 'Janela de dias para scan de comunicação (padrão: 14)' },
           limite_sinais: { type: 'number', description: 'Máx. sinais por fonte (padrão: 25)' },
@@ -686,7 +701,7 @@ export const IA_TOOLS_DEFINITION = [
         required: [],
       },
     },
-    adminOnly: true,
+    adminOnly: false,
   },
   {
     type: 'function',
@@ -1897,6 +1912,75 @@ export const IA_TOOLS_DEFINITION = [
     },
     adminOnly: false,
   },
+  {
+    type: 'function',
+    function: {
+      name: 'aprovar_ferias',
+      description:
+        'Aprova solicitação de férias (ADMIN/GERENTE). PENDING_LEADER→PENDING_MANAGER; PENDING_MANAGER→APPROVED. Use IDs de buscar_ferias / buscar_ferias_global.',
+      parameters: {
+        type: 'object',
+        properties: {
+          solicitacao_id: { type: 'string', description: 'UUID da leave_request' },
+          comentario: { type: 'string', description: 'Comentário opcional' },
+        },
+        required: ['solicitacao_id'],
+      },
+    },
+    requireModule: 'ferias',
+    requireTeamAccess: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reprovar_ferias',
+      description: 'Reprova solicitação de férias (ADMIN/GERENTE). Status → REJECTED. Motivo obrigatório.',
+      parameters: {
+        type: 'object',
+        properties: {
+          solicitacao_id: { type: 'string' },
+          motivo: { type: 'string', description: 'Motivo da reprovação' },
+        },
+        required: ['solicitacao_id', 'motivo'],
+      },
+    },
+    requireModule: 'ferias',
+    requireTeamAccess: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'aprovar_reembolso',
+      description: 'Aprova reembolso pendente (ADMIN). Status → aprovado. Use ID de buscar_reembolsos / buscar_reembolsos_global.',
+      parameters: {
+        type: 'object',
+        properties: {
+          reembolso_id: { type: 'string' },
+          comentario: { type: 'string' },
+        },
+        required: ['reembolso_id'],
+      },
+    },
+    requireModule: 'reembolso',
+    adminOnly: true,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reprovar_reembolso',
+      description: 'Reprova reembolso pendente (ADMIN). Status → rejeitado. Motivo obrigatório.',
+      parameters: {
+        type: 'object',
+        properties: {
+          reembolso_id: { type: 'string' },
+          motivo: { type: 'string' },
+        },
+        required: ['reembolso_id', 'motivo'],
+      },
+    },
+    requireModule: 'reembolso',
+    adminOnly: true,
+  },
 ];
 
 /**
@@ -1904,7 +1988,12 @@ export const IA_TOOLS_DEFINITION = [
  */
 export async function getAvailableTools(userId: string, role: string) {
   const availableTools = [];
-  const effectiveRole = role === 'ADMIN' ? 'ADMIN' : (role === 'GERENTE' ? 'GERENTE' : 'USER');
+  const effectiveRole =
+    role === 'ADMIN'
+      ? 'ADMIN'
+      : role === 'GERENTE' || role === 'MANAGER'
+        ? 'GERENTE'
+        : 'USER';
 
   // Cache de feature toggles para esta chamada
   let featureTogglesCache: Record<string, { is_enabled: boolean; allowed_roles: string[] }> | null = null;
@@ -3339,26 +3428,67 @@ return JSON.stringify(data);
       }
 
       case 'buscar_ferias': {
-        const { funcionario_id } = args;
-        const { data, error } = await supabaseAdmin
+        const { funcionario_id, status, limite = 20 } = args || {};
+        const targetId = (funcionario_id && String(funcionario_id).trim()) || userId;
+        const effectiveRole =
+          userRole === 'ADMIN' ? 'ADMIN' : userRole === 'GERENTE' || userRole === 'MANAGER' ? 'GERENTE' : 'USER';
+        const hasAccess = await canAccessUserData(userId, effectiveRole as any, targetId);
+        if (!hasAccess) {
+          return JSON.stringify({
+            success: false,
+            error: 'Sem permissão para ver férias deste usuário.',
+            _summary: 'buscar_ferias: acesso negado',
+          });
+        }
+
+        let query = supabaseAdmin
           .from('leave_requests')
-          .select('start_date, end_date, status, reason')
-          .eq('user_id', funcionario_id)
+          .select('id, start_date, end_date, status, reason, created_at, user_id')
+          .eq('user_id', targetId)
           .order('start_date', { ascending: false })
-          .limit(10);
-          
-        if (error) return `Erro ao buscar férias: ${error.message}`;
-        if (!data || data.length === 0) return `Nenhuma solicitação de férias encontrada para este funcionário.`;
-        return JSON.stringify(data);
+          .limit(Math.min(Number(limite) || 20, 50));
+
+        if (status) {
+          query = query.eq('status', status);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          return JSON.stringify({ success: false, error: error.message, _summary: `buscar_ferias: erro ${error.message}` });
+        }
+        if (!data || data.length === 0) {
+          return JSON.stringify({
+            success: true,
+            total: 0,
+            ferias: [],
+            escopo: targetId === userId ? 'proprio' : 'outro',
+            _summary: 'buscar_ferias: nenhuma solicitação encontrada',
+          });
+        }
+
+        const pendentes = data.filter(
+          (f) => f.status === 'PENDING_LEADER' || f.status === 'PENDING_MANAGER'
+        );
+        return JSON.stringify({
+          success: true,
+          total: data.length,
+          pendentes_count: pendentes.length,
+          ferias: data,
+          escopo: targetId === userId ? 'proprio' : 'outro',
+          _summary: `buscar_ferias: ${data.length} registro(s), ${pendentes.length} pendente(s)`,
+        });
       }
 
       case 'buscar_reembolsos': {
-        // Suporte a múltiplos identificadores: funcionario_id (UUID), cpf ou email
-        const { funcionario_id, cpf, email } = args || {};
+        // Suporte a múltiplos identificadores: funcionario_id (UUID), cpf ou email; default = usuário logado
+        const { funcionario_id, cpf, email, status, limite = 50 } = args || {};
 
-        // Resolve userId a partir de qualquer identificador disponível
         let resolvedUserId = funcionario_id;
         let resolvedEmail: string | null = email || null;
+
+        if (!resolvedUserId && !cpf && !email) {
+          resolvedUserId = userId;
+        }
 
         if (!resolvedUserId) {
           if (cpf) {
@@ -3368,7 +3498,11 @@ return JSON.stringify(data);
               .eq('cpf', cpf)
               .maybeSingle();
             if (error || !data) {
-              return `Erro ao buscar reembolsos: usuário com CPF não encontrado.`;
+              return JSON.stringify({
+                success: false,
+                error: 'Usuário com CPF não encontrado.',
+                _summary: 'buscar_reembolsos: CPF não encontrado',
+              });
             }
             resolvedUserId = data.id;
             resolvedEmail = data.email;
@@ -3379,7 +3513,11 @@ return JSON.stringify(data);
               .eq('email', email)
               .maybeSingle();
             if (error || !data) {
-              return `Erro ao buscar reembolsos: usuário com email não encontrado.`;
+              return JSON.stringify({
+                success: false,
+                error: 'Usuário com email não encontrado.',
+                _summary: 'buscar_reembolsos: email não encontrado',
+              });
             }
             resolvedUserId = data.id;
             resolvedEmail = data.email;
@@ -3394,38 +3532,84 @@ return JSON.stringify(data);
         }
 
         if (!resolvedUserId && !resolvedEmail) {
-          return `Erro: informe o ID do funcionário (UUID) ou forneça CPF/email válido para resolução automática.`;
+          return JSON.stringify({
+            success: false,
+            error: 'Informe funcionario_id, CPF ou email (ou omita para seus próprios reembolsos).',
+            _summary: 'buscar_reembolsos: identificador ausente',
+          });
         }
 
-        // Reimbursement pode indexar por user_id e/ou email — tenta ambos
+        if (resolvedUserId) {
+          const effectiveRole =
+            userRole === 'ADMIN' ? 'ADMIN' : userRole === 'GERENTE' || userRole === 'MANAGER' ? 'GERENTE' : 'USER';
+          const hasAccess = await canAccessUserData(userId, effectiveRole as any, resolvedUserId);
+          if (!hasAccess) {
+            return JSON.stringify({
+              success: false,
+              error: 'Sem permissão para ver reembolsos deste usuário.',
+              _summary: 'buscar_reembolsos: acesso negado',
+            });
+          }
+        }
+
         let data: any[] | null = null;
         let error: any = null;
+        const lim = Math.min(Number(limite) || 50, 100);
 
         if (resolvedUserId) {
-          const byUser = await supabaseAdmin
+          let byUser = supabaseAdmin
             .from('Reimbursement')
-            .select('status, valorTotal, descricao, data, email, user_id')
+            .select('id, status, valorTotal, descricao, data, email, user_id, tipo_reembolso')
             .eq('user_id', resolvedUserId)
             .order('data', { ascending: false })
-            .limit(50);
-          data = byUser.data;
-          error = byUser.error;
+            .limit(lim);
+          if (status) byUser = byUser.eq('status', status);
+          const res = await byUser;
+          data = res.data;
+          error = res.error;
         }
 
         if ((!data || data.length === 0) && resolvedEmail) {
-          const byEmail = await supabaseAdmin
+          let byEmail = supabaseAdmin
             .from('Reimbursement')
-            .select('status, valorTotal, descricao, data, email, user_id')
+            .select('id, status, valorTotal, descricao, data, email, user_id, tipo_reembolso')
             .eq('email', resolvedEmail)
             .order('data', { ascending: false })
-            .limit(50);
-          data = byEmail.data;
-          error = byEmail.error || error;
+            .limit(lim);
+          if (status) byEmail = byEmail.eq('status', status);
+          const res = await byEmail;
+          data = res.data;
+          error = res.error || error;
         }
-          
-        if (error) return `Erro ao buscar reembolsos: ${error.message}`;
-        if (!data || data.length === 0) return `Nenhuma solicitação de reembolso encontrada para este funcionário.`;
-        return JSON.stringify(data);
+
+        if (error) {
+          return JSON.stringify({
+            success: false,
+            error: error.message,
+            _summary: `buscar_reembolsos: erro ${error.message}`,
+          });
+        }
+        if (!data || data.length === 0) {
+          return JSON.stringify({
+            success: true,
+            total: 0,
+            reembolsos: [],
+            escopo: resolvedUserId === userId ? 'proprio' : 'outro',
+            _summary: 'buscar_reembolsos: nenhum encontrado',
+          });
+        }
+
+        const pendentes = data.filter((r) => String(r.status).toLowerCase() === 'pendente');
+        const totalPendente = pendentes.reduce((sum, r) => sum + (parseFloat(r.valorTotal) || 0), 0);
+        return JSON.stringify({
+          success: true,
+          total: data.length,
+          pendentes_count: pendentes.length,
+          total_pendente: totalPendente,
+          reembolsos: data,
+          escopo: resolvedUserId === userId ? 'proprio' : 'outro',
+          _summary: `buscar_reembolsos: ${data.length} registro(s), ${pendentes.length} pendente(s), R$ ${totalPendente}`,
+        });
       }
       
       case 'buscar_escala_mio': {
@@ -3678,14 +3862,72 @@ return JSON.stringify(data);
       }
 
       case 'buscar_kpis_sistema': {
-        if (userRole !== 'ADMIN') return `Acesso negado. Apenas administradores podem acessar KPIs do sistema.`;
-
         const {
           incluir_comunicacao,
           email_monitoramento,
           dias = 14,
           limite_sinais = 25,
         } = args || {};
+
+        const isAdmin = userRole === 'ADMIN';
+        const effectiveRole = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' || userRole === 'MANAGER' ? 'GERENTE' : 'USER');
+
+        // Non-admin: escopo pessoal/equipe via IDs acessíveis
+        if (!isAdmin) {
+          const access = await getAccessibleUserIdsForGlobal(userId, effectiveRole);
+          const ids = access.ids; // null = sem restrição (não deve acontecer para USER), [] = sem acesso
+
+          if (!access.hasAccess) {
+            return JSON.stringify({
+              success: false,
+              error: access.error || 'Acesso negado.',
+              _summary: 'buscar_kpis_sistema: acesso negado',
+            });
+          }
+
+          let feriasQ = supabaseAdmin
+            .from('leave_requests')
+            .select('*', { count: 'exact', head: true })
+            .in('status', ['PENDING_LEADER', 'PENDING_MANAGER']);
+          let reembQ = supabaseAdmin
+            .from('Reimbursement')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pendente');
+          let avalQ = supabaseAdmin
+            .from('avaliacoes_desempenho')
+            .select('*', { count: 'exact', head: true })
+            .in('status', ['pendente', 'pending', 'pendente_autoavaliacao', 'aguardando_aprovacao']);
+
+          if (ids) {
+            feriasQ = feriasQ.in('user_id', ids);
+            reembQ = reembQ.in('user_id', ids);
+            avalQ = avalQ.in('colaborador_id', ids);
+          }
+
+          const [
+            { count: feriaspen },
+            { count: reembolsopen },
+            { count: avaliacoesp },
+          ] = await Promise.all([feriasQ, reembQ, avalQ]);
+
+          const pendencias = {
+            ferias_pendentes: feriaspen || 0,
+            reembolsos_pendentes: reembolsopen || 0,
+            avaliacoes_pendentes: avaliacoesp || 0,
+          };
+          const totalPendencias =
+            (feriaspen || 0) + (reembolsopen || 0) + (avaliacoesp || 0);
+
+          return JSON.stringify({
+            success: true,
+            escopo: effectiveRole === 'GERENTE' ? 'equipe' : 'pessoal',
+            ...pendencias,
+            total_pendencias: totalPendencias,
+            nota: 'KPIs de sistema globais são exclusivos de ADMIN. Este resultado é filtrado pelo seu RBAC. Para detalhe use buscar_dados_usuario(tipo=resumo).',
+            gerado_em: new Date().toLocaleString('pt-BR'),
+            _summary: `buscar_kpis_sistema (${effectiveRole}): ${totalPendencias} pendência(s) no escopo`,
+          });
+        }
 
         const [
           { count: totalUsuarios },
@@ -3748,17 +3990,21 @@ return JSON.stringify(data);
               resumo: `Falha ao escanear comunicação: ${e instanceof Error ? e.message : String(e)}`,
               email_sinais: [],
               teams_sinais: [],
+              erro: true,
             };
           }
         }
 
         return JSON.stringify({
+          success: true,
+          escopo: 'global',
           total_usuarios: totalUsuarios,
           total_sessoes_ia: totalSessoes,
           ...pendencias,
           total_pendencias: totalPendencias,
           comunicacao,
           gerado_em: new Date().toLocaleString('pt-BR'),
+          _summary: `buscar_kpis_sistema: ${totalPendencias} pendência(s) globais`,
         });
       }
 
@@ -5147,6 +5393,224 @@ case 'coletar_dados_holisticos': {
         });
         if (!msgs.length) return 'Nenhuma mensagem Teams encontrada para a consulta.';
         return JSON.stringify({ total: msgs.length, mensagens: msgs });
+      }
+
+      case 'aprovar_ferias': {
+        const role = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' || userRole === 'MANAGER' ? 'GERENTE' : 'USER');
+        if (role === 'USER') {
+          return JSON.stringify({ success: false, error: 'Apenas ADMIN/GERENTE podem aprovar férias.', _summary: 'aprovar_ferias: negado' });
+        }
+        const solicitacaoId = String(args?.solicitacao_id || '').trim();
+        if (!solicitacaoId) {
+          return JSON.stringify({ success: false, error: 'solicitacao_id obrigatório.', _summary: 'aprovar_ferias: id ausente' });
+        }
+
+        const { data: req, error: fetchErr } = await supabaseAdmin
+          .from('leave_requests')
+          .select('id, user_id, status, start_date, end_date')
+          .eq('id', solicitacaoId)
+          .maybeSingle();
+
+        if (fetchErr || !req) {
+          return JSON.stringify({ success: false, error: 'Solicitação não encontrada.', _summary: 'aprovar_ferias: não encontrada' });
+        }
+
+        if (role === 'GERENTE') {
+          const hasAccess = await canAccessUserData(userId, role, req.user_id);
+          if (!hasAccess) {
+            return JSON.stringify({ success: false, error: 'Só pode aprovar férias da sua equipe.', _summary: 'aprovar_ferias: fora da equipe' });
+          }
+        }
+
+        let nextStatus: 'PENDING_MANAGER' | 'APPROVED' | null = null;
+        if (req.status === 'PENDING_LEADER') nextStatus = 'PENDING_MANAGER';
+        else if (req.status === 'PENDING_MANAGER') nextStatus = 'APPROVED';
+        else {
+          return JSON.stringify({
+            success: false,
+            error: `Status atual "${req.status}" não permite aprovação.`,
+            _summary: `aprovar_ferias: status inválido ${req.status}`,
+          });
+        }
+
+        const { updateLeaveRequestStatus } = await import('@/services/leaveService');
+        const ok = await updateLeaveRequestStatus(solicitacaoId, nextStatus);
+        if (!ok) {
+          return JSON.stringify({ success: false, error: 'Falha ao atualizar status.', _summary: 'aprovar_ferias: erro update' });
+        }
+
+        return JSON.stringify({
+          success: true,
+          solicitacao_id: solicitacaoId,
+          status_anterior: req.status,
+          status_novo: nextStatus,
+          periodo: { inicio: req.start_date, fim: req.end_date },
+          comentario: args?.comentario || null,
+          message:
+            nextStatus === 'PENDING_MANAGER'
+              ? 'Aprovado pelo líder — aguardando gerente.'
+              : 'Férias aprovadas.',
+          _summary: `aprovar_ferias: ${req.status} → ${nextStatus}`,
+        });
+      }
+
+      case 'reprovar_ferias': {
+        const role = userRole === 'ADMIN' ? 'ADMIN' : (userRole === 'GERENTE' || userRole === 'MANAGER' ? 'GERENTE' : 'USER');
+        if (role === 'USER') {
+          return JSON.stringify({ success: false, error: 'Apenas ADMIN/GERENTE podem reprovar férias.', _summary: 'reprovar_ferias: negado' });
+        }
+        const solicitacaoId = String(args?.solicitacao_id || '').trim();
+        const motivo = String(args?.motivo || '').trim();
+        if (!solicitacaoId || !motivo) {
+          return JSON.stringify({ success: false, error: 'solicitacao_id e motivo são obrigatórios.', _summary: 'reprovar_ferias: args' });
+        }
+
+        const { data: req, error: fetchErr } = await supabaseAdmin
+          .from('leave_requests')
+          .select('id, user_id, status, start_date, end_date')
+          .eq('id', solicitacaoId)
+          .maybeSingle();
+
+        if (fetchErr || !req) {
+          return JSON.stringify({ success: false, error: 'Solicitação não encontrada.', _summary: 'reprovar_ferias: não encontrada' });
+        }
+
+        if (req.status !== 'PENDING_LEADER' && req.status !== 'PENDING_MANAGER') {
+          return JSON.stringify({
+            success: false,
+            error: `Status "${req.status}" não permite reprovação.`,
+            _summary: `reprovar_ferias: status ${req.status}`,
+          });
+        }
+
+        if (role === 'GERENTE') {
+          const hasAccess = await canAccessUserData(userId, role, req.user_id);
+          if (!hasAccess) {
+            return JSON.stringify({ success: false, error: 'Só pode reprovar férias da sua equipe.', _summary: 'reprovar_ferias: fora da equipe' });
+          }
+        }
+
+        const { updateLeaveRequestStatus } = await import('@/services/leaveService');
+        const ok = await updateLeaveRequestStatus(solicitacaoId, 'REJECTED', motivo);
+        if (!ok) {
+          return JSON.stringify({ success: false, error: 'Falha ao atualizar status.', _summary: 'reprovar_ferias: erro update' });
+        }
+
+        return JSON.stringify({
+          success: true,
+          solicitacao_id: solicitacaoId,
+          status_novo: 'REJECTED',
+          motivo,
+          message: 'Férias reprovadas.',
+          _summary: `reprovar_ferias: ${req.status} → REJECTED`,
+        });
+      }
+
+      case 'aprovar_reembolso': {
+        if (userRole !== 'ADMIN') {
+          return JSON.stringify({ success: false, error: 'Apenas ADMIN pode aprovar reembolso.', _summary: 'aprovar_reembolso: negado' });
+        }
+        const reembolsoId = String(args?.reembolso_id || '').trim();
+        if (!reembolsoId) {
+          return JSON.stringify({ success: false, error: 'reembolso_id obrigatório.', _summary: 'aprovar_reembolso: id ausente' });
+        }
+
+        const { data: reemb, error: fetchErr } = await supabaseAdmin
+          .from('Reimbursement')
+          .select('id, status, valorTotal, descricao, email')
+          .eq('id', reembolsoId)
+          .maybeSingle();
+
+        if (fetchErr || !reemb) {
+          return JSON.stringify({ success: false, error: 'Reembolso não encontrado.', _summary: 'aprovar_reembolso: não encontrado' });
+        }
+
+        const st = String(reemb.status || '').toLowerCase();
+        if (st !== 'pendente' && st !== 'pending') {
+          return JSON.stringify({
+            success: false,
+            error: `Reembolso já está "${reemb.status}".`,
+            _summary: `aprovar_reembolso: status ${reemb.status}`,
+          });
+        }
+
+        const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+        const { error: updErr } = await supabaseAdmin
+          .from('Reimbursement')
+          .update({
+            status: 'aprovado',
+            approvedBy: me?.email || userId,
+            approvedAt: new Date().toISOString(),
+            comments: args?.comentario || null,
+          })
+          .eq('id', reembolsoId);
+
+        if (updErr) {
+          return JSON.stringify({ success: false, error: updErr.message, _summary: 'aprovar_reembolso: erro update' });
+        }
+
+        return JSON.stringify({
+          success: true,
+          reembolso_id: reembolsoId,
+          status_novo: 'aprovado',
+          valor: reemb.valorTotal,
+          message: 'Reembolso aprovado.',
+          _summary: `aprovar_reembolso: ${reembolsoId} → aprovado`,
+        });
+      }
+
+      case 'reprovar_reembolso': {
+        if (userRole !== 'ADMIN') {
+          return JSON.stringify({ success: false, error: 'Apenas ADMIN pode reprovar reembolso.', _summary: 'reprovar_reembolso: negado' });
+        }
+        const reembolsoId = String(args?.reembolso_id || '').trim();
+        const motivo = String(args?.motivo || '').trim();
+        if (!reembolsoId || !motivo) {
+          return JSON.stringify({ success: false, error: 'reembolso_id e motivo são obrigatórios.', _summary: 'reprovar_reembolso: args' });
+        }
+
+        const { data: reemb, error: fetchErr } = await supabaseAdmin
+          .from('Reimbursement')
+          .select('id, status')
+          .eq('id', reembolsoId)
+          .maybeSingle();
+
+        if (fetchErr || !reemb) {
+          return JSON.stringify({ success: false, error: 'Reembolso não encontrado.', _summary: 'reprovar_reembolso: não encontrado' });
+        }
+
+        const st = String(reemb.status || '').toLowerCase();
+        if (st !== 'pendente' && st !== 'pending') {
+          return JSON.stringify({
+            success: false,
+            error: `Reembolso já está "${reemb.status}".`,
+            _summary: `reprovar_reembolso: status ${reemb.status}`,
+          });
+        }
+
+        const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+        const { error: updErr } = await supabaseAdmin
+          .from('Reimbursement')
+          .update({
+            status: 'rejeitado',
+            approvedBy: me?.email || userId,
+            approvedAt: new Date().toISOString(),
+            comments: motivo,
+          })
+          .eq('id', reembolsoId);
+
+        if (updErr) {
+          return JSON.stringify({ success: false, error: updErr.message, _summary: 'reprovar_reembolso: erro update' });
+        }
+
+        return JSON.stringify({
+          success: true,
+          reembolso_id: reembolsoId,
+          status_novo: 'rejeitado',
+          motivo,
+          message: 'Reembolso rejeitado.',
+          _summary: `reprovar_reembolso: ${reembolsoId} → rejeitado`,
+        });
       }
 
       case 'navegar_portal': {

@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.49.0] - 2026-07-27
+
+### Improved
+- **IA Companion / Assistant — data path audit + fixes**:
+  - Hard anti-hallucination in Companion system prompt + `context-builder` (never invent numbers; always call tools; multi-tool workflows allowed).
+  - `buscar_ferias` / `buscar_reembolsos` default to authenticated user; structured JSON + `_summary`.
+  - `buscar_kpis_sistema` no longer ADMIN-only: USER/MANAGER get RBAC-scoped pendências; ADMIN keeps global + Graph scan.
+  - New mutate tools: `aprovar_ferias` / `reprovar_ferias` / `aprovar_reembolso` / `reprovar_reembolso` (correct leave/reimbursement statuses).
+  - `formatToolResultForLLM` (`tool-result-format.ts`) — short `_summary` + size cap for LLM reasoning.
+  - Tool loop: sync max **12** rounds; stream **10**; removed premature abort at round 3 without content.
+  - Companion allowlist: globals, mutate, KPIs; history window 12; `MANAGER` treated as GERENTE for team tools.
+  - Fixed ghost tool `gerenciar_notificacoes` → `enviar_notificacao_proativa`; ferias/reembolso actions status alignment; KPI export stubs use real Excel/PDF generators.
+
 ## [5.48.1] - 2026-07-27
 
 ### Fixed
