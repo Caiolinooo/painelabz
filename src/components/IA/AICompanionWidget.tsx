@@ -155,27 +155,29 @@ export default function AICompanionWidget() {
         </div>
       )}
 
-      {/* NÃO misturar `fixed` com `relative` — o relative anula o fixed e o FAB some da viewport */}
+      {/* FAB = só o ícone colorido flutuante (sem placa branca / label) */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-[5.25rem] md:right-24 z-[60] w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 bg-white border border-[#005B96]/15 ${
+        className={`fixed bottom-6 right-[5.25rem] md:right-24 z-[60] w-16 h-16 rounded-full flex items-center justify-center transition-transform duration-300 bg-transparent border-0 p-0 ${
           status === 'executing'
-            ? 'scale-110 ring-4 ring-emerald-300/70'
+            ? 'scale-110'
             : status === 'listening'
-              ? 'ring-4 ring-[#005B96]/35'
-              : status === 'speaking'
-                ? 'ring-4 ring-[#0B72E7]/30'
-                : 'hover:scale-105 ring-2 ring-[#005B96]/25 hover:ring-[#005B96]/45'
+              ? 'scale-105'
+              : 'hover:scale-110'
         }`}
-        style={{ boxShadow: '0 6px 28px rgba(0, 91, 150, 0.28), 0 1px 0 rgba(255,255,255,0.9) inset' }}
+        style={{
+          filter: 'drop-shadow(0 8px 20px rgba(0, 91, 150, 0.28))',
+        }}
         title="Companion ABZ"
         aria-label="Abrir Companion ABZ"
       >
         {isOpen ? (
-          <FiX className="w-6 h-6 text-[#005B96]" />
+          <span className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-lg border border-gray-100">
+            <FiX className="w-6 h-6 text-[#005B96]" />
+          </span>
         ) : (
-          <AnimatedABZLogo status={status} size={44} compactLabel />
+          <AnimatedABZLogo status={status} size={60} />
         )}
       </button>
 
@@ -183,7 +185,7 @@ export default function AICompanionWidget() {
         <div className="fixed bottom-24 right-24 z-[70] w-[390px] h-[520px] max-h-[85vh] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
           <div className="bg-gradient-to-r from-[#005B96] via-[#0A7AB8] to-[#005B96] p-4 text-white flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-inner">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-inner overflow-hidden">
                 <AnimatedABZLogo status={status} size={36} />
               </div>
               <div>
@@ -212,9 +214,9 @@ export default function AICompanionWidget() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-b from-blue-50/80 to-white px-4 py-3 border-b flex flex-col items-center justify-center">
-            <AnimatedABZLogo status={status} size={72} showWordmark />
-            <p className="text-xs font-medium text-gray-600 mt-1">
+          <div className="bg-gradient-to-b from-blue-50/80 to-white px-4 py-4 border-b flex flex-col items-center justify-center">
+            <AnimatedABZLogo status={status} size={80} />
+            <p className="text-xs font-medium text-gray-600 mt-2">
               {status === 'idle' && !isSending && 'Pronto — digite ou peça para abrir um módulo'}
               {(status === 'speaking' || isSending) && 'Consultando a IA...'}
               {status === 'listening' && 'Ouvindo...'}

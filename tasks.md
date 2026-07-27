@@ -12,7 +12,7 @@
 ### Pendente
 - [ ] Playwright: companion NAVIGATE com typo ("feririas") + pergunta real à IA
 - [x] FAB sumiu: `fixed`+`relative` no mesmo botão — removido `relative` (2026-07-27)
-- [x] Assistant travava em "pendências" (stream + `render_dashboard` ausente no sub-agente RH) — tools alinhadas + status SSE inicial (2026-07-27)
+- [x] FAB = pinwheel colorido oficial flutuante (`abz-icon-color.png`) — 2026-07-27
 
 ---
 
