@@ -1,3 +1,11 @@
+## KPI / IA cards — empty data fix (2026-07-27)
+
+- [x] Root cause: LLM widget shapes (`label`/`value`, Chart.js labels) + resolve preferring empty `w.data` over tool result; Companion dropped `dashboard`
+- [x] `normalizeWidgetData` / `adaptToolResultToWidget` / `isEmptyWidgetData` in `kpi-board-shared.ts`
+- [x] Fix `resolveWidgetData` + GenerativeDashboard empty-states; persist normalize on create
+- [x] Companion API + FAB render dashboard
+- [x] DOX + CHANGELOG + v5.48.1
+
 ## KPI Quadro Branco — delete (2026-07-27)
 
 ### Feito

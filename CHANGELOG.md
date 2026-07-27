@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.48.1] - 2026-07-27
+
+### Fixed
+- **IA interactive cards — empty/blank data** (KPI `/kpi`, Assistant `/ia`, Companion FAB):
+  - Shared `normalizeWidgetData` + `adaptToolResultToWidget` (`kpi-board-shared.ts`) coerce LLM/tool variance (`label`/`value`/`assunto`/`labels+datasets`/nested `email_sinais`) into paint-able metric/list/chart/table shapes.
+  - `GenerativeDashboard` normalizes on render; clear empty-states (“Nenhum e-mail pendente”) instead of icon-only blank rows.
+  - GET `/api/ia/kpi-boards?resolve=1` prefers live allowlisted `dataSource` tool results over empty snapshots; optional `dataSource.path`.
+  - Companion returns + renders `_metadata.dashboard` (was dropped).
+
 ## [5.48.0] - 2026-07-27
 
 ### Added

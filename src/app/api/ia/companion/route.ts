@@ -16,6 +16,7 @@ import {
   isTourIntent,
   resolvePortalNavigation,
 } from '@/lib/ia/portal-navigation';
+import { normalizeWidgetData } from '@/lib/ia/kpi-board-shared';
 import type { LLMMessage } from '@/types/ia';
 
 export const dynamic = 'force-dynamic';
@@ -210,9 +211,16 @@ export async function POST(req: NextRequest) {
         llmResponse.choices?.[0]?.message?.content?.trim() ||
         '';
 
+      const messageMeta = (llmResponse.choices?.[0]?.message as {
+        metadata?: {
+          portalCommands?: AICommandPayload[];
+          dashboard?: unknown;
+          kpiBoard?: unknown;
+        };
+      })?.metadata;
+
       // Commands vindos da tool navegar_portal (via _metadata acumulado no client)
-      const metaCommands = (llmResponse.choices?.[0]?.message as { metadata?: { portalCommands?: AICommandPayload[] } })
-        ?.metadata?.portalCommands;
+      const metaCommands = messageMeta?.portalCommands;
       if (Array.isArray(metaCommands)) {
         for (const c of metaCommands) {
           if (c?.action && c?.target && !commands.some(x => x.action === c.action && x.target === c.target)) {
@@ -235,6 +243,103 @@ export async function POST(req: NextRequest) {
           .replace(/\{[\s\S]*"commands"\s*:\s*\[[\s\S]*?\][\s\S]*\}/g, '')
           .trim();
       }
+
+      // Safety net: resposta prometeu navegação / tour sem NAVIGATE → injeta comando
+      const injected = ensureNavigationCommand({
+        prompt,
+        reply: replyText,
+        commands,
+        navMatch,
+      });
+      if (injected && !navMatch) {
+        navMatch = injected;
+      }
+
+      if (!replyText && commands.length > 0 && navMatch) {
+        replyText = `Abrindo ${navMatch.route.label} para você.`;
+      }
+      if (!replyText) {
+        replyText = 'Pronto — como posso ajudar?';
+      }
+
+      // Extrai / salva LTM + skills (Hermes-like) — não bloqueia resposta
+      void (async () => {
+        try {
+          const { extractAndSaveMemoriesFromTurn } = await import('@/lib/ia/user-memory');
+          const { extractAndSaveSkillsFromTurn } = await import('@/lib/ia/user-skills');
+          await Promise.all([
+            extractAndSaveMemoriesFromTurn({
+              userId,
+              userMessage: prompt.trim(),
+              assistantReply: replyText,
+              source: 'companion',
+              sessionId: session_id,
+            }),
+            extractAndSaveSkillsFromTurn({
+              userId,
+              userMessage: prompt.trim(),
+              assistantReply: replyText,
+              source: 'companion-auto',
+            }),
+          ]);
+        } catch (memErr) {
+          console.warn('[Companion] memory/skill extract skip:', memErr);
+        }
+      })();
+
+      // Persistência leve (sessão companion dedicada, opcional)
+      let sessionId = session_id as string | undefined;
+      try {
+        if (!sessionId) {
+          const { data: sess } = await supabaseAdmin
+            .from('ia_chat_sessions')
+            .insert({
+              user_id: userId,
+              session_title: `Companion: ${prompt.trim().slice(0, 40)}`,
+            })
+            .select('id')
+            .single();
+          sessionId = sess?.id;
+        }
+        if (sessionId) {
+          await supabaseAdmin.from('ia_chat_messages').insert([
+            { session_id: sessionId, role: 'user', content: prompt.trim() },
+            { session_id: sessionId, role: 'assistant', content: replyText },
+          ]);
+        }
+      } catch (persistErr) {
+        console.warn('[Companion] persist skip:', persistErr);
+      }
+
+      // Normalize dashboard widgets before sending to FAB (same path as /kpi + chat)
+      let dashboard = messageMeta?.dashboard ?? null;
+      if (dashboard && typeof dashboard === 'object' && Array.isArray((dashboard as { widgets?: unknown[] }).widgets)) {
+        const dash = dashboard as { widgets: Array<{ type: string; data?: unknown; [k: string]: unknown }> };
+        dashboard = {
+          ...dash,
+          widgets: dash.widgets.map((w) => ({
+            ...w,
+            data: normalizeWidgetData(String(w.type || 'metric'), w.data),
+          })),
+        };
+      }
+
+      return NextResponse.json({
+        reply: replyText,
+        commands,
+        session_id: sessionId,
+        dashboard,
+        kpiBoard: messageMeta?.kpiBoard ?? null,
+        navigation: navMatch
+          ? {
+              path: navMatch.route.path,
+              label: navMatch.route.label,
+              confidence: navMatch.confidence,
+              matchedOn: navMatch.matchedOn,
+            }
+          : null,
+        userId,
+      });
     } catch (iaErr) {
       console.error('[Companion] IA error:', iaErr);
       // Fallback: se já temos navegação fuzzy, confirma; senão erro amigável
@@ -255,17 +360,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Safety net: resposta prometeu navegação / tour sem NAVIGATE → injeta comando
-    const injected = ensureNavigationCommand({
-      prompt,
-      reply: replyText,
-      commands,
-      navMatch,
-    });
-    if (injected && !navMatch) {
-      navMatch = injected;
-    }
-
     if (!replyText && commands.length > 0 && navMatch) {
       replyText = `Abrindo ${navMatch.route.label} para você.`;
     }
@@ -273,59 +367,11 @@ export async function POST(req: NextRequest) {
       replyText = 'Pronto — como posso ajudar?';
     }
 
-    // Extrai / salva LTM + skills (Hermes-like) — não bloqueia resposta
-    void (async () => {
-      try {
-        const { extractAndSaveMemoriesFromTurn } = await import('@/lib/ia/user-memory');
-        const { extractAndSaveSkillsFromTurn } = await import('@/lib/ia/user-skills');
-        await Promise.all([
-          extractAndSaveMemoriesFromTurn({
-            userId,
-            userMessage: prompt.trim(),
-            assistantReply: replyText,
-            source: 'companion',
-            sessionId: session_id,
-          }),
-          extractAndSaveSkillsFromTurn({
-            userId,
-            userMessage: prompt.trim(),
-            assistantReply: replyText,
-            source: 'companion-auto',
-          }),
-        ]);
-      } catch (memErr) {
-        console.warn('[Companion] memory/skill extract skip:', memErr);
-      }
-    })();
-
-    // Persistência leve (sessão companion dedicada, opcional)
-    let sessionId = session_id as string | undefined;
-    try {
-      if (!sessionId) {
-        const { data: sess } = await supabaseAdmin
-          .from('ia_chat_sessions')
-          .insert({
-            user_id: userId,
-            session_title: `Companion: ${prompt.trim().slice(0, 40)}`,
-          })
-          .select('id')
-          .single();
-        sessionId = sess?.id;
-      }
-      if (sessionId) {
-        await supabaseAdmin.from('ia_chat_messages').insert([
-          { session_id: sessionId, role: 'user', content: prompt.trim() },
-          { session_id: sessionId, role: 'assistant', content: replyText },
-        ]);
-      }
-    } catch (persistErr) {
-      console.warn('[Companion] persist skip:', persistErr);
-    }
-
     return NextResponse.json({
       reply: replyText,
       commands,
-      session_id: sessionId,
+      session_id: session_id || null,
+      dashboard: null,
       navigation: navMatch
         ? {
             path: navMatch.route.path,
@@ -342,3 +388,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

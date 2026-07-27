@@ -47,6 +47,9 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - `/kpi` usa AuthContext `user.id` / `profile.id` (não `abz_user_id` localStorage)
 - `html_sandbox`: nunca `dangerouslySetInnerHTML` no origin; CSP no srcdoc; size cap ~100KB
 - `ia_dashboard_cache` = summary TTL apenas (não confundir com boards)
+- **Widget data binding**: `normalizeWidgetData` / `adaptToolResultToWidget` em `kpi-board-shared.ts` — coerção de shapes LLM (`label`/`value`/`assunto`/`labels+datasets`) → metric/list/chart/table; empty-state textual (não só ícones em branco)
+- GET `/api/ia/kpi-boards?resolve=1` (botão Atualizar): executa `dataSource.tool` allowlisted, opcional `dataSource.path` (ex. `comunicacao.email_sinais`); **prefere resultado da tool** sobre snapshot vazio
+- Companion `/api/ia/companion` devolve `dashboard` normalizado; FAB renderiza `GenerativeDashboard` na bolha
 
 ### Status corretos
 
@@ -91,8 +94,10 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - FAB Companion: disco branco + crop `LC1_Azul` (“abz”) + label **ABZ**; idle respira, listening radar, speaking pulse, executing arco — logo estático; sem SVG arcs 3 cores / glow roxo
 - Skills: `criar_skill_usuario` grava em `ia_user_skills`; índice no prompt; `usar_skill` devolve procedimento; persiste após logout
 - Boards: `criar_quadro_kpi` grava em `ia_kpi_boards`; harness rejeita html_sandbox/jogos para non-admin; `/kpi` resolve dataSources allowlisted do papel
+- Boards com dados: list/metric/chart não ficam com linhas/ícones sem texto — normalizer + empty-state; refresh resolve tools
 - Delete: `excluir_quadro_kpi` / `DELETE /api/ia/kpi-boards?id=` soft-delete (`deleted_at`); board some da lista/abrir
 - ADMIN: `html_sandbox` renderiza em iframe sandboxed (sem same-origin / sem cookies do portal)
+- Companion `render_dashboard` → resposta inclui `dashboard`; FAB mostra cards (mesmo GenerativeDashboard do chat/`/kpi`)
 
 ## Child DOX Index
 

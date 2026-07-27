@@ -2,7 +2,14 @@
  * Persistência client-side da sessão do Companion (STM).
  * LTM fica no DB (ia_user_memory) e NÃO é limpa aqui.
  */
-export type CompanionChatMsg = { sender: 'user' | 'ai'; text: string };
+import type { IADashboardLayout } from '@/types/ia';
+
+export type CompanionChatMsg = {
+  sender: 'user' | 'ai';
+  text: string;
+  /** Layout normalizado de render_dashboard (opcional; omitido em persistência antiga) */
+  dashboard?: IADashboardLayout | null;
+};
 
 export type CompanionSessionSnapshot = {
   userId: string;
@@ -16,6 +23,26 @@ const PREFIX = 'abz:companion:session:';
 
 export function companionStorageKey(userId: string) {
   return `${PREFIX}${userId}`;
+}
+
+/** Strip bulky dashboard payloads except last 2 AI messages (STM quota). */
+function slimMessagesForStorage(messages: CompanionChatMsg[]): CompanionChatMsg[] {
+  const sliced = messages.slice(-40);
+  let aiWithDashLeft = 2;
+  const out: CompanionChatMsg[] = [];
+  for (let i = sliced.length - 1; i >= 0; i--) {
+    const m = sliced[i];
+    if (m.sender === 'ai' && m.dashboard && aiWithDashLeft > 0) {
+      out.unshift(m);
+      aiWithDashLeft -= 1;
+    } else if (m.dashboard) {
+      const { dashboard: _d, ...rest } = m;
+      out.unshift(rest);
+    } else {
+      out.unshift(m);
+    }
+  }
+  return out;
 }
 
 export function loadCompanionSession(userId: string): CompanionSessionSnapshot | null {
@@ -37,12 +64,25 @@ export function saveCompanionSession(snap: CompanionSessionSnapshot): void {
   try {
     const payload: CompanionSessionSnapshot = {
       ...snap,
-      messages: snap.messages.slice(-40),
+      messages: slimMessagesForStorage(snap.messages),
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(companionStorageKey(snap.userId), JSON.stringify(payload));
   } catch {
-    /* quota / private mode */
+    /* quota / private mode — retry without dashboards */
+    try {
+      const stripped = snap.messages.map(({ dashboard: _d, ...rest }) => rest);
+      localStorage.setItem(
+        companionStorageKey(snap.userId),
+        JSON.stringify({
+          ...snap,
+          messages: stripped.slice(-40),
+          updatedAt: new Date().toISOString(),
+        })
+      );
+    } catch {
+      /* ignore */
+    }
   }
 }
 

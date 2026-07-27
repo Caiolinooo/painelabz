@@ -13,9 +13,11 @@ import {
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import AnimatedABZLogo, { AICompanionStatus } from './AnimatedABZLogo';
+import GenerativeDashboard from './GenerativeDashboard';
 import { portalActionBus, AICommandPayload } from '@/lib/ia/portal-action-bus';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useCompanionSession } from '@/contexts/CompanionSessionContext';
+import type { IADashboardLayout } from '@/types/ia';
 import toast from 'react-hot-toast';
 
 export default function AICompanionWidget() {
@@ -108,7 +110,16 @@ export default function AICompanionWidget() {
 
       setMessages(prev => [
         ...prev,
-        { sender: 'ai', text: data.reply || 'Pronto.' },
+        {
+          sender: 'ai',
+          text: data.reply || 'Pronto.',
+          dashboard:
+            data.dashboard &&
+            typeof data.dashboard === 'object' &&
+            Array.isArray((data.dashboard as IADashboardLayout).widgets)
+              ? (data.dashboard as IADashboardLayout)
+              : null,
+        },
       ]);
 
       if (Array.isArray(data.commands) && data.commands.length > 0) {
@@ -235,13 +246,18 @@ export default function AICompanionWidget() {
                 className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm whitespace-pre-wrap ${
+                  className={`max-w-[95%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
                     msg.sender === 'user'
-                      ? 'bg-[#005B96] text-white rounded-br-none'
-                      : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+                      ? 'bg-[#005B96] text-white rounded-br-none whitespace-pre-wrap max-w-[82%]'
+                      : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none w-full'
                   }`}
                 >
-                  {msg.text}
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  {msg.sender === 'ai' && msg.dashboard?.widgets?.length ? (
+                    <div className="mt-2 -mx-1 scale-[0.92] origin-top-left max-h-64 overflow-y-auto">
+                      <GenerativeDashboard layout={msg.dashboard} />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}

@@ -13,6 +13,7 @@ import {
   MAX_BOARD_TITLE,
   MAX_KPI_WIDGETS,
   boardSpecToLayout,
+  normalizeWidgetData,
   type KpiBoardRow,
   type KpiBoardSpec,
   type KpiBoardVisibility,
@@ -66,6 +67,7 @@ function stripSecretKeys(value: unknown, depth = 0): unknown {
 const dataSourceSchema = z.object({
   tool: z.enum(KPI_DATASOURCE_ALLOWLIST as unknown as [string, ...string[]]),
   args: z.record(z.unknown()).optional().default({}),
+  path: z.string().max(120).optional(),
 });
 
 const widgetBaseSchema = z.object({
@@ -125,11 +127,15 @@ export function sanitizeBoardSpec(
   }
   const widgets = parsed.data.widgets.map((w) => ({
     ...w,
-    data: w.data !== undefined ? stripSecretKeys(w.data) : undefined,
+    data:
+      w.data !== undefined
+        ? normalizeWidgetData(w.type, stripSecretKeys(w.data))
+        : undefined,
     dataSource: w.dataSource
       ? {
           tool: w.dataSource.tool,
           args: (stripSecretKeys(w.dataSource.args || {}) as Record<string, unknown>) || {},
+          ...(w.dataSource.path ? { path: String(w.dataSource.path).slice(0, 120) } : {}),
         }
       : undefined,
     config: w.config ? (stripSecretKeys(w.config) as Record<string, unknown>) : undefined,
@@ -163,11 +169,12 @@ export function layoutToBoardSpec(
       const asType = allowed.has(type as KpiBoardWidget['type'])
         ? (type as KpiBoardWidget['type'])
         : 'metric';
+      const rawData = stripSecretKeys((w as IADashboardWidget).data);
       return {
         id: String((w as IADashboardWidget).id || `w${i + 1}`),
         type: asType,
         title: String((w as IADashboardWidget).title || ''),
-        data: stripSecretKeys((w as IADashboardWidget).data),
+        data: rawData !== undefined ? normalizeWidgetData(asType, rawData) : undefined,
         config: (w as IADashboardWidget).config
           ? (stripSecretKeys((w as IADashboardWidget).config) as Record<string, unknown>)
           : undefined,
