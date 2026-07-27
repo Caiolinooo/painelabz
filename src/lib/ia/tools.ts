@@ -213,6 +213,37 @@ export const IA_TOOLS_DEFINITION = [
   {
     type: 'function',
     function: {
+      name: 'excluir_quadro_kpi',
+      description:
+        'Exclui (soft-delete) um quadro KPI do usuário. Use quando pedir apagar/remover/limpar um quadro (ex.: Pac-Man). Informe id e/ou titulo (fuzzy). Só o próprio dono. Nunca diga que exclusão é indisponível.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'UUID do quadro (preferencial)' },
+          board_id: { type: 'string', description: 'Alias de id' },
+          titulo: { type: 'string', description: 'Título aproximado para fuzzy match se id omitido' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'excluir_todos_quadros_kpi',
+      description:
+        'Exclui (soft-delete) TODOS os quadros KPI do usuário autenticado. Use para "apague todos", "limpe os KPI", "remova todos os quadros".',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
       name: 'buscar_reembolsos_global',
       description: 'Lista todos os reembolsos do sistema com filtros. ADMIN vê todos, GERENTE vê apenas da equipe.',
       parameters: {
@@ -2085,6 +2116,49 @@ export async function executeToolCall(name: string, args: any, userRole: string,
           },
         });
       }
+
+      case 'excluir_quadro_kpi': {
+        const { findUserBoard, deleteUserBoard } = await import('./kpi-board');
+        const id = String(args?.id || args?.board_id || '').trim();
+        const titulo = args?.titulo ? String(args.titulo).trim() : '';
+        if (!id && !titulo) {
+          return 'Informe id (UUID) ou titulo do quadro a excluir.';
+        }
+        const target = await findUserBoard(userId, { id, titulo });
+        if (!target) {
+          return JSON.stringify({
+            success: false,
+            error: 'Quadro não encontrado (só seus quadros ativos podem ser excluídos).',
+          });
+        }
+        const result = await deleteUserBoard(userId, target.id);
+        if (!result.ok) {
+          return JSON.stringify({ success: false, error: result.error });
+        }
+        return JSON.stringify({
+          success: true,
+          deleted: { id: result.board.id, title: result.board.title },
+          message: `Quadro "${result.board.title}" excluído.`,
+        });
+      }
+
+      case 'excluir_todos_quadros_kpi': {
+        const { deleteAllUserBoards } = await import('./kpi-board');
+        const result = await deleteAllUserBoards(userId);
+        if (!result.ok) {
+          return JSON.stringify({ success: false, error: result.error });
+        }
+        return JSON.stringify({
+          success: true,
+          deleted: result.deleted,
+          boards: result.boards,
+          message:
+            result.deleted === 0
+              ? 'Nenhum quadro para excluir.'
+              : `${result.deleted} quadro(s) excluído(s).`,
+        });
+      }
+
       case 'buscar_funcionario': {
         const { busca } = args;
         const baseSelect = 'id, first_name, last_name, email, role, department, position';

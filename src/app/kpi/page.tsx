@@ -6,6 +6,7 @@ import {
   FiBarChart2,
   FiLayout,
   FiAlertTriangle,
+  FiTrash2,
 } from 'react-icons/fi';
 import MainLayout from '@/components/Layout/MainLayout';
 import KpiBoardRenderer from '@/components/KPI/KpiBoardRenderer';
@@ -24,6 +25,7 @@ export default function KPIDashboardPage() {
   const [boards, setBoards] = useState<KpiBoardRow[]>([]);
   const [activeBoard, setActiveBoard] = useState<KpiBoardRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const getAuthHeaders = useCallback(() => {
@@ -86,9 +88,16 @@ export default function KPIDashboardPage() {
             try {
               localStorage.setItem(ACTIVE_BOARD_STORAGE_KEY, activeData.board.id);
             } catch { /* ignore */ }
+          } else {
+            try {
+              localStorage.removeItem(ACTIVE_BOARD_STORAGE_KEY);
+            } catch { /* ignore */ }
           }
         } else {
           setActiveBoard(null);
+          try {
+            localStorage.removeItem(ACTIVE_BOARD_STORAGE_KEY);
+          } catch { /* ignore */ }
         }
       } else {
         const boardData = await boardRes.json();
@@ -143,6 +152,43 @@ export default function KPIDashboardPage() {
     }
   };
 
+  const deleteBoard = async (board: KpiBoardRow) => {
+    const ok = window.confirm(
+      `Excluir o quadro "${board.title}"?\nEsta ação não pode ser desfeita pelo Companion (soft-delete).`
+    );
+    if (!ok) return;
+
+    setDeletingId(board.id);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/ia/kpi-boards?id=${encodeURIComponent(board.id)}`,
+        { method: 'DELETE', headers: getAuthHeaders() }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.error || 'Falha ao excluir quadro');
+      }
+
+      if (typeof window !== 'undefined') {
+        const preferred = localStorage.getItem(ACTIVE_BOARD_STORAGE_KEY);
+        if (preferred === board.id || activeBoard?.id === board.id) {
+          try {
+            localStorage.removeItem(ACTIVE_BOARD_STORAGE_KEY);
+          } catch { /* ignore */ }
+          setActiveBoard(null);
+        }
+      }
+
+      await loadBoards();
+    } catch (err) {
+      console.error('[KPI] delete board:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao excluir quadro');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-gray-100">
@@ -174,21 +220,46 @@ export default function KPIDashboardPage() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-          {boards.length > 1 && (
+          {boards.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {boards.map((b) => (
-                <button
+                <div
                   key={b.id}
-                  type="button"
-                  onClick={() => selectBoard(b.id)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                  className={`inline-flex items-center gap-1 rounded-lg border transition-colors ${
                     activeBoard?.id === b.id
                       ? 'bg-[#005B96] text-white border-[#005B96]'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#005B96]/40'
+                      : 'bg-white text-gray-600 border-gray-200'
                   }`}
                 >
-                  {b.title}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => selectBoard(b.id)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-l-lg ${
+                      activeBoard?.id === b.id
+                        ? 'hover:bg-[#004a7a]'
+                        : 'hover:border-[#005B96]/40 hover:text-[#005B96]'
+                    }`}
+                  >
+                    {b.title}
+                  </button>
+                  <button
+                    type="button"
+                    title={`Excluir "${b.title}"`}
+                    aria-label={`Excluir quadro ${b.title}`}
+                    disabled={deletingId === b.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void deleteBoard(b);
+                    }}
+                    className={`px-2 py-1.5 rounded-r-lg disabled:opacity-50 ${
+                      activeBoard?.id === b.id
+                        ? 'text-white/80 hover:bg-rose-600 hover:text-white'
+                        : 'text-gray-400 hover:bg-rose-50 hover:text-rose-600'
+                    }`}
+                  >
+                    <FiTrash2 className={`w-3.5 h-3.5 ${deletingId === b.id ? 'animate-pulse' : ''}`} />
+                  </button>
+                </div>
               ))}
             </div>
           )}

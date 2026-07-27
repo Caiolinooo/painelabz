@@ -1,3 +1,16 @@
+## KPI Quadro Branco — delete (2026-07-27)
+
+### Feito
+- [x] Soft-delete `deleted_at` + migration `20260727_000004_ia_kpi_boards_deleted_at.sql`
+- [x] `deleteUserBoard` / `deleteAllUserBoards` / `findUserBoard` (fuzzy titulo)
+- [x] Tools `excluir_quadro_kpi` + `excluir_todos_quadros_kpi` (tools.ts + portal.tools + agents-router)
+- [x] API `DELETE /api/ia/kpi-boards?id=` / `?all=1`
+- [x] UI `/kpi` lixeira com confirm; limpa active se excluído
+- [x] Prompts Companion: nunca dizer que delete é indisponível
+- [x] DOX + CHANGELOG + v5.48.0
+
+---
+
 ## KPI Quadro Branco — harness de roles (2026-07-27)
 
 ### Feito

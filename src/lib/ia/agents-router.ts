@@ -79,6 +79,8 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'atualizar_quadro_kpi',
       'listar_quadros_kpi',
       'abrir_quadro_kpi',
+      'excluir_quadro_kpi',
+      'excluir_todos_quadros_kpi',
       'gerar_planilha_excel',
       'gerar_relatorio_pdf',
       'gerenciar_notificacoes',
@@ -92,7 +94,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Atendimento geral, navegação no portal e tira-dúvidas.',
     icon: '💬',
     systemPromptAddon:
-      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard (persiste quadro em /kpi). Quadros KPI: criar_quadro_kpi / abrir_quadro_kpi. Salve fatos com salvar_memoria_usuario e procedimentos reutilizáveis com criar_skill_usuario.',
+      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard (persiste quadro em /kpi). Quadros KPI: criar/abrir/excluir_quadro_kpi (e excluir_todos_quadros_kpi). Salve fatos com salvar_memoria_usuario e procedimentos reutilizáveis com criar_skill_usuario.',
     toolNames: [
       'buscar_dados_usuario',
       'buscar_funcionario',
@@ -114,6 +116,8 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'atualizar_quadro_kpi',
       'listar_quadros_kpi',
       'abrir_quadro_kpi',
+      'excluir_quadro_kpi',
+      'excluir_todos_quadros_kpi',
     ],
   },
   companion: {
@@ -122,7 +126,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
     icon: '🧭',
     systemPromptAddon:
-      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. NUNCA diga que vai abrir/levar sem chamar navegar_portal. Tours do portal: chame navegar_portal(destino="dashboard") no primeiro hop. KPI → /kpi. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para alterar /kpi: criar_quadro_kpi ou render_dashboard + abrir_quadro_kpi. Harness: ADMIN pode html_sandbox (minigame/HTML no iframe sandboxed em /kpi); USER/MANAGER só widgets profissionais — recuse jogos/HTML livre; nunca “não consigo injetar” nem “salve .html”.',
+      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. NUNCA diga que vai abrir/levar sem chamar navegar_portal. Tours do portal: chame navegar_portal(destino="dashboard") no primeiro hop. KPI → /kpi. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para alterar /kpi: criar_quadro_kpi ou render_dashboard + abrir_quadro_kpi. Para apagar/limpar/remover quadros: excluir_quadro_kpi (id/titulo) ou excluir_todos_quadros_kpi — NUNCA diga que exclusão é indisponível. Harness: ADMIN pode html_sandbox (minigame/HTML no iframe sandboxed em /kpi); USER/MANAGER só widgets profissionais — recuse jogos/HTML livre; nunca “não consigo injetar” nem “salve .html”.',
     toolNames: [
       'navegar_portal',
       'buscar_dados_usuario',
@@ -154,6 +158,8 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'atualizar_quadro_kpi',
       'listar_quadros_kpi',
       'abrir_quadro_kpi',
+      'excluir_quadro_kpi',
+      'excluir_todos_quadros_kpi',
     ],
   },
 };

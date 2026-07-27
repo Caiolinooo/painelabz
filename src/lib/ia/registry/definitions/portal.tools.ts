@@ -12,6 +12,9 @@ import {
   getKpiBoard,
   setActiveKpiBoard,
   buildOpenKpiBoardCommands,
+  findUserBoard,
+  deleteUserBoard,
+  deleteAllUserBoards,
 } from '../../kpi-board';
 
 const navegarPortalTool: IATool = {
@@ -184,11 +187,70 @@ const atualizarQuadroKpiTool: IATool = {
   },
 };
 
+const excluirQuadroKpiTool: IATool = {
+  id: 'portal_excluir_quadro_kpi',
+  name: 'excluir_quadro_kpi',
+  description: 'Soft-delete de um quadro KPI do usuário',
+  module: 'portal',
+  adminOnly: false,
+  definition: {
+    name: 'excluir_quadro_kpi',
+    description: 'Exclui quadro KPI (id e/ou titulo fuzzy). Só o dono.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', required: false },
+        board_id: { type: 'string', required: false },
+        titulo: { type: 'string', required: false },
+      },
+    },
+  },
+  handler: async (args, ctx): Promise<IAToolResult> => {
+    const id = String(args.id || args.board_id || '').trim();
+    const titulo = args.titulo ? String(args.titulo).trim() : '';
+    if (!id && !titulo) return { success: false, error: 'id ou titulo obrigatório' };
+    const target = await findUserBoard(ctx.userId, { id, titulo });
+    if (!target) return { success: false, error: 'Quadro não encontrado' };
+    const result = await deleteUserBoard(ctx.userId, target.id);
+    if (!result.ok) return { success: false, error: result.error };
+    return {
+      success: true,
+      data: { deleted: { id: result.board.id, title: result.board.title } },
+    };
+  },
+};
+
+const excluirTodosQuadrosKpiTool: IATool = {
+  id: 'portal_excluir_todos_quadros_kpi',
+  name: 'excluir_todos_quadros_kpi',
+  description: 'Soft-delete de todos os quadros KPI do usuário',
+  module: 'portal',
+  adminOnly: false,
+  definition: {
+    name: 'excluir_todos_quadros_kpi',
+    description: 'Exclui todos os quadros KPI do usuário autenticado',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  handler: async (_args, ctx): Promise<IAToolResult> => {
+    const result = await deleteAllUserBoards(ctx.userId);
+    if (!result.ok) return { success: false, error: result.error };
+    return {
+      success: true,
+      data: { deleted: result.deleted, boards: result.boards },
+    };
+  },
+};
+
 export async function registerTools() {
   registerTool(navegarPortalTool);
   registerTool(criarQuadroKpiTool);
   registerTool(atualizarQuadroKpiTool);
   registerTool(listarQuadrosKpiTool);
   registerTool(abrirQuadroKpiTool);
-  console.log('[IA Tools] Portal/Companion loaded (5 tools)');
+  registerTool(excluirQuadroKpiTool);
+  registerTool(excluirTodosQuadrosKpiTool);
+  console.log('[IA Tools] Portal/Companion loaded (7 tools)');
 }

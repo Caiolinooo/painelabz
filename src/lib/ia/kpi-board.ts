@@ -189,6 +189,50 @@ export function layoutToBoardSpec(
   return result.ok ? result.spec : null;
 }
 
+function normalizeBoardTitle(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Resolve owned board by id and/or fuzzy title (owner only). */
+export async function findUserBoard(
+  userId: string,
+  opts: { id?: string; titulo?: string }
+): Promise<KpiBoardRow | null> {
+  const id = String(opts.id || '').trim();
+  if (id) {
+    const byId = await getKpiBoard(userId, id);
+    if (byId) return byId;
+  }
+
+  const titulo = String(opts.titulo || '').trim();
+  if (!titulo) return null;
+
+  const needle = normalizeBoardTitle(titulo);
+  if (!needle) return null;
+
+  const boards = await listKpiBoards(userId, { limit: 50 });
+  const exact = boards.find((b) => normalizeBoardTitle(b.title) === needle);
+  if (exact) return exact;
+
+  const partial = boards.filter((b) => {
+    const t = normalizeBoardTitle(b.title);
+    return t.includes(needle) || needle.includes(t);
+  });
+  if (partial.length === 1) return partial[0];
+  if (partial.length > 1) {
+    // Prefer shortest title distance / active board
+    const active = partial.find((b) => b.is_active);
+    return active || partial[0];
+  }
+  return null;
+}
+
 export async function listKpiBoards(
   userId: string,
   opts?: { limit?: number }
@@ -197,6 +241,7 @@ export async function listKpiBoards(
     .from('ia_kpi_boards')
     .select('*')
     .eq('user_id', userId)
+    .is('deleted_at', null)
     .order('updated_at', { ascending: false })
     .limit(opts?.limit ?? 20);
 
@@ -213,6 +258,7 @@ export async function getKpiBoard(userId: string, boardId: string): Promise<KpiB
     .select('*')
     .eq('user_id', userId)
     .eq('id', boardId)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (error) {
@@ -228,6 +274,7 @@ export async function getActiveKpiBoard(userId: string): Promise<KpiBoardRow | n
     .select('*')
     .eq('user_id', userId)
     .eq('is_active', true)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (error) {
@@ -238,6 +285,73 @@ export async function getActiveKpiBoard(userId: string): Promise<KpiBoardRow | n
 
   const list = await listKpiBoards(userId, { limit: 1 });
   return list[0] || null;
+}
+
+/**
+ * Soft-delete owned board (`deleted_at` + `is_active=false`).
+ * Only the owner (userId) can delete — ADMIN deleting others is out of scope.
+ */
+export async function deleteUserBoard(
+  userId: string,
+  boardId: string
+): Promise<{ ok: true; board: KpiBoardRow } | { ok: false; error: string }> {
+  const existing = await getKpiBoard(userId, boardId);
+  if (!existing) return { ok: false, error: 'Quadro não encontrado' };
+
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from('ia_kpi_boards')
+    .update({
+      deleted_at: now,
+      is_active: false,
+      updated_at: now,
+    })
+    .eq('id', boardId)
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[KpiBoard] delete error:', error.message);
+    return { ok: false, error: error.message };
+  }
+  if (!data) return { ok: false, error: 'Quadro não encontrado' };
+  return { ok: true, board: data as KpiBoardRow };
+}
+
+/** Soft-delete all owned (non-deleted) boards. */
+export async function deleteAllUserBoards(
+  userId: string
+): Promise<{ ok: true; deleted: number; boards: { id: string; title: string }[] } | { ok: false; error: string }> {
+  const boards = await listKpiBoards(userId, { limit: 100 });
+  if (!boards.length) {
+    return { ok: true, deleted: 0, boards: [] };
+  }
+
+  const now = new Date().toISOString();
+  const ids = boards.map((b) => b.id);
+  const { error } = await supabaseAdmin
+    .from('ia_kpi_boards')
+    .update({
+      deleted_at: now,
+      is_active: false,
+      updated_at: now,
+    })
+    .eq('user_id', userId)
+    .in('id', ids)
+    .is('deleted_at', null);
+
+  if (error) {
+    console.warn('[KpiBoard] deleteAll error:', error.message);
+    return { ok: false, error: error.message };
+  }
+
+  return {
+    ok: true,
+    deleted: boards.length,
+    boards: boards.map((b) => ({ id: b.id, title: b.title })),
+  };
 }
 
 async function clearActiveFlags(userId: string): Promise<void> {
@@ -450,11 +564,16 @@ export async function buildKpiBoardsPromptBlock(
       ? `PROIBIDO: dump HTML fora do portal / “salve como .html”. Correto para demos/minigames: widget html_sandbox + abrir /kpi.\n`
       : `PROIBIDO: jogos, HTML/JS livre, “não consigo injetar”, dump HTML, “salve como .html”. Correto: widgets de trabalho + tools + /kpi.\n`;
 
+  const deleteHint =
+    `Excluir: \`excluir_quadro_kpi\` (id e/ou titulo fuzzy) ou \`excluir_todos_quadros_kpi\` quando o usuário pedir apagar/limpar/remover quadros. ` +
+    `NUNCA diga que exclusão é indisponível. Só o dono pode excluir os próprios quadros.\n`;
+
   if (!boards.length) {
     return (
       `\n\n## Quadros KPI (quadro branco)\n` +
       harness +
       forbid +
+      deleteHint +
       `Nenhum quadro salvo. Use \`criar_quadro_kpi\` ou \`render_dashboard\` para montar widgets (${caps.allowedWidgetTypes.join('/')}) e depois \`abrir_quadro_kpi\`.\n` +
       `dataSource só com tools allowlisted do seu papel.\n`
     );
@@ -473,7 +592,8 @@ export async function buildKpiBoardsPromptBlock(
     `\n\n## Quadros KPI (quadro branco)\n` +
     harness +
     forbid +
-    `Quadros persistidos do usuário. Use \`listar_quadros_kpi\` / \`atualizar_quadro_kpi\` / \`abrir_quadro_kpi\`.\n` +
+    deleteHint +
+    `Quadros persistidos do usuário. Use \`listar_quadros_kpi\` / \`atualizar_quadro_kpi\` / \`abrir_quadro_kpi\` / \`excluir_quadro_kpi\`.\n` +
     `Após criar/atualizar, chame \`abrir_quadro_kpi\` (ou navegar_portal kpi) para abrir /kpi.\n` +
     lines.join('\n') +
     `\n`

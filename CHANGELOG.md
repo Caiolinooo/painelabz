@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.48.0] - 2026-07-27
+
+### Added
+- **KPI Quadro Branco — exclusão**:
+  - Soft-delete (`deleted_at` + `is_active=false`) em `deleteUserBoard` / `deleteAllUserBoards`; list/get/open ignoram excluídos.
+  - Tools `excluir_quadro_kpi` (id / `board_id` / titulo fuzzy) e `excluir_todos_quadros_kpi`.
+  - API `DELETE /api/ia/kpi-boards?id=` e `?all=1` (somente boards do usuário autenticado).
+  - UI `/kpi`: botão lixeira com confirmação; limpa quadro ativo se foi o excluído.
+  - Prompts Companion/Chat: nunca afirmar que exclusão é indisponível.
+  - Migration `20260727_000004_ia_kpi_boards_deleted_at.sql`.
+
 ## [5.47.0] - 2026-07-27
 
 ### Added

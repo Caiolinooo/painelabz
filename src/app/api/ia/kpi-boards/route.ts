@@ -3,12 +3,15 @@
  * GET  — list boards (or ?active=1 / ?id=uuid with resolve)
  * POST — create board
  * PATCH — update / set active
+ * DELETE — soft-delete owned board (?id=uuid)
  * Spec create/update enforced by role harness (html_sandbox ADMIN-only).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestToken } from '@/lib/auth';
 import {
   createKpiBoard,
+  deleteAllUserBoards,
+  deleteUserBoard,
   getActiveKpiBoard,
   getKpiBoard,
   listKpiBoards,
@@ -259,6 +262,53 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true, board });
   } catch (err) {
     console.error('[API KPI Boards PATCH]', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Erro interno' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const tokenResult = verifyRequestToken(request);
+    if (!tokenResult.valid || !tokenResult.payload) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
+    const userId = tokenResult.payload.userId as string;
+    const all = request.nextUrl.searchParams.get('all') === '1';
+    const id =
+      request.nextUrl.searchParams.get('id') ||
+      request.nextUrl.searchParams.get('boardId') ||
+      '';
+
+    if (all) {
+      const result = await deleteAllUserBoards(userId);
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: true,
+        deleted: result.deleted,
+        boards: result.boards,
+      });
+    }
+
+    if (!id.trim()) {
+      return NextResponse.json({ error: 'id obrigatório (ou all=1)' }, { status: 400 });
+    }
+
+    const result = await deleteUserBoard(userId, id.trim());
+    if (!result.ok) {
+      const status = result.error === 'Quadro não encontrado' ? 404 : 400;
+      return NextResponse.json({ error: result.error }, { status });
+    }
+    return NextResponse.json({
+      success: true,
+      deleted: { id: result.board.id, title: result.board.title },
+    });
+  } catch (err) {
+    console.error('[API KPI Boards DELETE]', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro interno' },
       { status: 500 }

@@ -9,9 +9,9 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - `src/lib/ia/tools.ts` — caminho ativo do chat (`executeToolCall`)
 - `src/lib/ia/microsoft/client.ts` — Graph (paginação, filtros, Teams search)
 - `src/lib/ia/kpi-comms-signals.ts` — scan e-mail/Teams correlato a pendências/conclusões
-- `src/lib/ia/kpi-board.ts` + `kpi-board-shared.ts` + `kpi-board-harness.ts` — CRUD/Zod + **role harness**
-- `src/app/api/ia/kpi-boards/route.ts` — list/create/update + resolve dataSources
-- `src/app/kpi/page.tsx` + `src/components/KPI/KpiBoardRenderer.tsx` — render allowlisted (+ `html_sandbox` iframe)
+- `src/lib/ia/kpi-board.ts` + `kpi-board-shared.ts` + `kpi-board-harness.ts` — CRUD/Zod + **role harness** + soft-delete
+- `src/app/api/ia/kpi-boards/route.ts` — list/create/update/delete + resolve dataSources
+- `src/app/kpi/page.tsx` + `src/components/KPI/KpiBoardRenderer.tsx` — render allowlisted (+ `html_sandbox` iframe) + lixeira
 - `src/lib/ia/registry/` — modules + bridge no `default` de `executeToolCall`
 - `src/lib/ia/portal-action-bus.ts` + `/api/ia/companion` — navegação Companion + `OPEN_KPI_BOARD`
 - `src/lib/ia/portal-navigation.ts` — catálogo de rotas, fuzzy/typos, contextos
@@ -40,7 +40,9 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
   - MANAGER: work-only; max 16; sem sandbox/jogos; dataTools de equipe/ops; markdown sem scripts
   - USER: work-own-only; max 8; só dataTools pessoais; sem sandbox/jogos
 - `dataSource.tool` filtrado pelo allowlist do papel; execução ainda RBAC
-- Tools: `criar_quadro_kpi`, `atualizar_quadro_kpi`, `listar_quadros_kpi`, `abrir_quadro_kpi`
+- Tools: `criar_quadro_kpi`, `atualizar_quadro_kpi`, `listar_quadros_kpi`, `abrir_quadro_kpi`, `excluir_quadro_kpi`, `excluir_todos_quadros_kpi`
+- **Delete (higiene)**: soft-delete via `deleted_at` (+ `is_active=false`); só o dono (`user_id`); USER/MANAGER/ADMIN podem excluir **os próprios** boards; list/get/open ignoram soft-deleted
+- API: `DELETE /api/ia/kpi-boards?id=` (um) ou `?all=1` (todos do usuário); UI `/kpi` tem botão lixeira com confirm
 - `render_dashboard` persiste board + `_metadata.dashboard` + `portalCommands` (`OPEN_KPI_BOARD` + `NAVIGATE /kpi`)
 - `/kpi` usa AuthContext `user.id` / `profile.id` (não `abz_user_id` localStorage)
 - `html_sandbox`: nunca `dangerouslySetInnerHTML` no origin; CSP no srcdoc; size cap ~100KB
@@ -69,6 +71,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Skills: memória = fatos curtos sempre no contexto; skills = procedimentos mais longos (índice no prompt; corpo via `usar_skill`). Cap ~30/user; sem secrets. Auto-create heurístico + instrução no system prompt.
 - **Companion NAVIGATE contract**: nunca prometer navegação sem emitir `NAVIGATE`. Fast-path (`isNavigationIntent` / `isTourIntent` + `resolvePortalNavigation`) + safety net `ensureNavigationCommand` (injeta se reply promete abrir/levar e não há command). Tour → primeiro hop `/dashboard`. Widget despacha `data.commands` (fallback `navigation` high-confidence).
 - **KPI board contract**: após criar/atualizar, Companion deve emitir `OPEN_KPI_BOARD` + `NAVIGATE /kpi` (via tools). Não executar JS/HTML no origin do portal (`html_sandbox` = iframe sandboxed).
+- **KPI delete contract**: pedidos "apague/limpe/remova" → `excluir_quadro_kpi` / `excluir_todos_quadros_kpi`. Nunca afirmar que delete é indisponível. Soft-delete só dos próprios boards.
 - **KPI harness**: ADMIN pode minigame/HTML via `html_sandbox` no board; USER/MANAGER → recusar jogos/HTML livre + oferecer widgets de trabalho. Nunca “salve .html” / dump HTML fora do portal.
 
 ## Verification
@@ -81,12 +84,14 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Companion "tour pelo portal" / "modulo em modulo" → `NAVIGATE` `/dashboard` imediato (não só texto)
 - Companion "me leva ao kpi" → `/kpi`
 - Companion "monte um quadro KPI com minhas pendências" → `criar_quadro_kpi` ou `render_dashboard` + `OPEN_KPI_BOARD` + `/kpi` mostra widgets
+- Companion "apague o Pac-Man" / "limpe os KPI" → `excluir_quadro_kpi` / `excluir_todos_quadros_kpi`; boards somem de listar/abrir
 - Resposta com "vou te levar… Home/Dashboard" sem tool → server injeta `NAVIGATE` via `ensureNavigationCommand`
 - Companion pergunta de dados → resposta via LLM+tools (não canned)
 - Registry bridge: tool só no registry ainda responde via `executeToolCall`
 - FAB Companion: disco branco + crop `LC1_Azul` (“abz”) + label **ABZ**; idle respira, listening radar, speaking pulse, executing arco — logo estático; sem SVG arcs 3 cores / glow roxo
 - Skills: `criar_skill_usuario` grava em `ia_user_skills`; índice no prompt; `usar_skill` devolve procedimento; persiste após logout
 - Boards: `criar_quadro_kpi` grava em `ia_kpi_boards`; harness rejeita html_sandbox/jogos para non-admin; `/kpi` resolve dataSources allowlisted do papel
+- Delete: `excluir_quadro_kpi` / `DELETE /api/ia/kpi-boards?id=` soft-delete (`deleted_at`); board some da lista/abrir
 - ADMIN: `html_sandbox` renderiza em iframe sandboxed (sem same-origin / sem cookies do portal)
 
 ## Child DOX Index

@@ -55,7 +55,10 @@ if (!supabaseUrl || !serviceKey) {
   process.exit(1);
 }
 
-const migrations = ['supabase/migrations/20260727_000003_ia_kpi_boards.sql'];
+const migrations = [
+  'supabase/migrations/20260727_000003_ia_kpi_boards.sql',
+  'supabase/migrations/20260727_000004_ia_kpi_boards_deleted_at.sql',
+];
 
 async function runViaPg(sql) {
   const { Client } = require('pg');
