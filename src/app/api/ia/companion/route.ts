@@ -51,10 +51,11 @@ const COMPANION_SYSTEM = `Você é o **ABZ Companion**, assistente flutuante do 
 
 ## Quadro branco KPI (OBRIGATÓRIO quando o usuário quiser alterar /kpi)
 - Para mudar o que aparece em /kpi: chame \`criar_quadro_kpi\` ou \`render_dashboard\` e depois \`abrir_quadro_kpi\` (emite OPEN_KPI_BOARD + NAVIGATE /kpi).
-- Widgets allowlisted: metric | table | list | chart | markdown. dataSource só com tools allowlisted.
-- Se pedirem minigame, HTML livre, JS, canvas ou “injetar código” no KPI: NÃO diga que “não consegue injetar”. NÃO dumping HTML. NÃO peça para copiar código, salvar .html ou abrir fora do portal.
-- Resposta correta nesse caso: explique que o KPI usa widgets allowlisted; ofereça montar um quadro equivalente (métricas/tabelas/gráficos/listas) e chame as tools + abrir /kpi.
-- NUNCA gere HTML/JS livre para o usuário executar fora do Painel ABZ.
+- Harness por role (server-side): veja o bloco “Harness KPI” injetado abaixo — ADMIN tem liberdade máxima (html_sandbox); USER/MANAGER só conteúdo profissional.
+- Widgets: metric | table | list | chart | markdown (+ html_sandbox só ADMIN). dataSource só tools allowlisted do papel.
+- USER/MANAGER pedem minigame/HTML/JS: recuse com o harness; ofereça quadro de KPIs de trabalho; NÃO dumping HTML; NÃO “salve .html”.
+- ADMIN pede minigame/HTML: monte widget \`html_sandbox\` com \`data.srcdoc\` no quadro + abrir /kpi (iframe sandboxed). NUNCA peça salvar .html fora do portal.
+- NUNCA diga que “não consegue injetar” no KPI.
 
 ## Formato
 - Texto natural para o usuário.
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest) {
               const [mem, skills, boards] = await Promise.all([
                 buildUserMemoryPromptBlock(userId),
                 buildUserSkillsPromptBlock(userId),
-                buildKpiBoardsPromptBlock(userId),
+                buildKpiBoardsPromptBlock(userId, userRole),
               ]);
               return `${mem || ''}${skills || ''}${boards || ''}`;
             } catch {

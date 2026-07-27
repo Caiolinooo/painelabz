@@ -146,14 +146,15 @@ export const IA_TOOLS_DEFINITION = [
     function: {
       name: 'criar_quadro_kpi',
       description:
-        'Cria um quadro branco KPI persistido em /kpi (widgets allowlisted: metric|table|list|chart|markdown). Use isto quando o usuário pedir alterar o módulo KPI, dashboard visual ou “minigame” no portal — monte o mais próximo com widgets; NÃO dump HTML nem peça salvar .html. Spec Zod-validated; dataSource só allowlisted. Após criar, use abrir_quadro_kpi.',
+        'Cria um quadro branco KPI persistido em /kpi. Widgets: metric|table|list|chart|markdown (+ html_sandbox só ADMIN). Harness por role: USER/MANAGER só trabalho (sem jogos/HTML); ADMIN pode sandbox HTML. NÃO dump HTML nem peça salvar .html. Após criar, use abrir_quadro_kpi.',
       parameters: {
         type: 'object',
         properties: {
           titulo: { type: 'string', description: 'Título do quadro' },
           spec: {
             type: 'object',
-            description: 'BoardSpec { version:1, columns?, widgets:[{id,type,title,data?,dataSource?}] }',
+            description:
+              'BoardSpec { version:1, columns?, widgets:[{id,type,title,data?,dataSource?}] }. html_sandbox: data.srcdoc (ADMIN).',
           },
           abrir: { type: 'boolean', description: 'Se true (padrão), emite OPEN_KPI_BOARD + NAVIGATE /kpi' },
         },
@@ -1958,6 +1959,7 @@ export async function executeToolCall(name: string, args: any, userRole: string,
               userId,
               layout,
               title: args?.titulo_quadro ? String(args.titulo_quadro) : undefined,
+              role: userRole,
             });
             if (board) {
               boardId = board.id;
@@ -1991,9 +1993,10 @@ export async function executeToolCall(name: string, args: any, userRole: string,
           title: titulo,
           spec: args?.spec,
           setActive: true,
+          role: userRole,
         });
         if (!board) {
-          return error || 'Falha ao criar quadro (verifique spec Zod / tabela ia_kpi_boards).';
+          return error || 'Falha ao criar quadro (verifique harness/spec Zod / tabela ia_kpi_boards).';
         }
         const abrir = args?.abrir !== false && args?.abrir !== 'false';
         const commands = abrir ? buildOpenKpiBoardCommands(board.id, board.title) : [];
@@ -2020,6 +2023,7 @@ export async function executeToolCall(name: string, args: any, userRole: string,
           title: args?.titulo ? String(args.titulo) : undefined,
           spec: args?.spec,
           setActive: true,
+          role: userRole,
         });
         if (!board) return error || 'Falha ao atualizar quadro.';
         const abrir = args?.abrir !== false && args?.abrir !== 'false';

@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.47.0] - 2026-07-27
+
+### Added
+- **KPI Quadro Branco — harness de roles**:
+  - `src/lib/ia/kpi-board-harness.ts`: `getKpiBoardCapabilities(role)`, `assertBoardSpecAllowed(spec, role)`, prompts por papel.
+  - **ADMIN**: liberdade máxima; widget `html_sandbox` (iframe `sandbox="allow-scripts"` sem `allow-same-origin` + CSP no srcdoc; sem cookies/localStorage do portal).
+  - **MANAGER / USER**: somente conteúdo profissional; blocklist de jogos/off-topic; sem `html_sandbox`; caps de widgets e dataTools por papel.
+  - Enforcement server-side em tools (`criar_quadro_kpi` / `atualizar_quadro_kpi` / `render_dashboard`) e `/api/ia/kpi-boards` (POST/PATCH + strip no GET non-admin).
+  - Prompts Companion / context-builder / agents-router injetam regras do harness por role.
+
+### Changed
+- Spec Zod aceita `html_sandbox`; `KpiBoardRenderer` renderiza sandbox sem `dangerouslySetInnerHTML` no origin.
+
 ## [5.46.0] - 2026-07-27
 
 ### Features

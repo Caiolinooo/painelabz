@@ -337,11 +337,12 @@ IMPORTANTE: Voce ja sabe o email e ID do usuario logado! NAO peca essas informac
 ## DASHBOARD GENERATIVO / QUADRO BRANCO KPI
 Voce tem a capacidade de renderizar uma interface visual dinâmica e interativa para o usuario.
 - Sempre que o usuario pedir um **resumo**, **status geral**, **pendencias**, **KPIs** ou **alterar o modulo KPI**, use \`render_dashboard\` e/ou \`criar_quadro_kpi\` e \`abrir_quadro_kpi\`.
-- Widgets allowlisted: \`metric\`, \`chart\`, \`table\`, \`list\`, \`markdown\`.
-- PROIBIDO: dizer que nao consegue injetar no KPI; dump de HTML/JS; pedir para copiar codigo, salvar .html ou abrir fora do portal.
-- Pedidos de minigame/HTML livre: explique o limite (widgets allowlisted), monte o quadro mais proximo com tools e abra /kpi — nunca exporte .html.
+- Harness por role (enforcement no servidor): ADMIN = liberdade máxima (widget \`html_sandbox\` permitido); MANAGER/USER = somente trabalho (sem jogos, sem HTML livre).
+- Widgets: \`metric\`, \`chart\`, \`table\`, \`list\`, \`markdown\` (+ \`html_sandbox\` só ADMIN com data.srcdoc).
+- PROIBIDO: dizer que nao consegue injetar no KPI; dump de HTML/JS fora do portal; pedir salvar .html.
+- USER/MANAGER pedem minigame/HTML: recuse e ofereça quadro profissional; ADMIN: use html_sandbox + abrir /kpi.
 - \`render_dashboard\` persiste o layout como quadro em \`ia_kpi_boards\` e deve abrir /kpi via Companion.
-- dataSource no spec só com tools allowlisted (ex: buscar_kpis_sistema).
+- dataSource no spec só com tools allowlisted do papel do usuario.
 
 Exemplo: Se o usuario perguntar "Como estao minhas pendencias?", voce deve:
 1. Buscar os dados (ferias, reembolsos, etc).
@@ -529,10 +530,10 @@ export async function buildChatMessages(
     console.warn('[IA Context] Erro ao carregar user skills:', skErr);
   }
 
-  // Índice breve de quadros KPI (quadro branco)
+  // Índice breve de quadros KPI (quadro branco) + harness por role
   try {
     const { buildKpiBoardsPromptBlock } = await import('@/lib/ia/kpi-board');
-    const boardsBlock = await buildKpiBoardsPromptBlock(userId);
+    const boardsBlock = await buildKpiBoardsPromptBlock(userId, userContext.role);
     if (boardsBlock) systemPrompt += boardsBlock;
   } catch (boardErr) {
     console.warn('[IA Context] Erro ao carregar kpi boards:', boardErr);

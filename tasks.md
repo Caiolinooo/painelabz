@@ -1,6 +1,14 @@
-## KPI Quadro Branco v1 (2026-07-27)
+## KPI Quadro Branco — harness de roles (2026-07-27)
 
 ### Feito
+- [x] `kpi-board-harness.ts` — `getKpiBoardCapabilities` / `assertBoardSpecAllowed` / prompt por role
+- [x] Widget `html_sandbox` (ADMIN) — iframe `sandbox="allow-scripts"` sem same-origin + CSP
+- [x] Enforcement em create/update (tools + `/api/ia/kpi-boards`) — non-admin não smuggling
+- [x] Prompts Companion / context-builder / agents-router por role
+- [x] KpiBoardRenderer renderiza sandbox; strip html_sandbox no GET non-admin
+- [x] DOX + CHANGELOG + v5.47.0
+
+### Feito (v1 anterior)
 - [x] Migration `ia_kpi_boards` + script `apply-ia-kpi-boards-migration.js`
 - [x] `kpi-board.ts` / `kpi-board-shared.ts` — Zod spec, CRUD, prompt block
 - [x] API `/api/ia/kpi-boards` + resolve dataSources allowlisted
@@ -10,8 +18,8 @@
 - [x] Prompt hardening: forbid HTML dump / “salve .html” / “não consigo injetar” — board tools + `/kpi`
 - [x] v5.46.0
 
-### Fora de escopo (v2)
-- [ ] Sandboxed HTML/JS, Vega-Lite, team sharing UI polish
+### Fora de escopo (v2+)
+- [ ] Vega-Lite, team sharing UI polish, postMessage data inject bridge
 - [ ] Fix completo dos stubs do agente autónomo / PDF placeholders
 
 ---

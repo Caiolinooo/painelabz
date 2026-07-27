@@ -1,7 +1,7 @@
 /**
- * KPI Quadro Branco v1 — board store (Zod-validated spec)
- * Widgets allowlisted: metric | table | list | chart | markdown
- * dataSource refs allowlisted portal tools only — never secrets / free-form JS.
+ * KPI Quadro Branco v1 — board store (Zod-validated spec + role harness)
+ * Widgets: metric | table | list | chart | markdown | html_sandbox (ADMIN)
+ * dataSource refs allowlisted portal tools only — never secrets / free-form JS on parent origin.
  */
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -9,6 +9,7 @@ import type { IADashboardLayout, IADashboardWidget } from '@/types/ia';
 import {
   ACTIVE_BOARD_STORAGE_KEY,
   KPI_DATASOURCE_ALLOWLIST,
+  KPI_WIDGET_TYPES,
   MAX_BOARD_TITLE,
   MAX_KPI_WIDGETS,
   boardSpecToLayout,
@@ -17,6 +18,12 @@ import {
   type KpiBoardVisibility,
   type KpiBoardWidget,
 } from './kpi-board-shared';
+import {
+  assertBoardSpecAllowed,
+  buildKpiHarnessPromptBlock,
+  getKpiBoardCapabilities,
+  normalizeKpiHarnessRole,
+} from './kpi-board-harness';
 
 export {
   ACTIVE_BOARD_STORAGE_KEY,
@@ -63,7 +70,7 @@ const dataSourceSchema = z.object({
 
 const widgetBaseSchema = z.object({
   id: z.string().min(1).max(80),
-  type: z.enum(['metric', 'table', 'list', 'chart', 'markdown']),
+  type: z.enum(KPI_WIDGET_TYPES as unknown as [KpiBoardWidget['type'], ...KpiBoardWidget['type'][]]),
   title: z.string().max(120).optional().default(''),
   data: z.unknown().optional(),
   dataSource: dataSourceSchema.optional(),
@@ -86,6 +93,17 @@ export const kpiBoardSpecSchema = z
     }
     for (let i = 0; i < spec.widgets.length; i++) {
       const w = spec.widgets[i];
+      if (w.type === 'html_sandbox') {
+        // html_sandbox uses data.srcdoc — dataSource not allowed
+        if (w.dataSource) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Widget ${w.id}: html_sandbox não aceita dataSource`,
+            path: ['widgets', i, 'dataSource'],
+          });
+        }
+        continue;
+      }
       if (w.data === undefined && !w.dataSource) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -97,7 +115,8 @@ export const kpiBoardSpecSchema = z
   });
 
 export function sanitizeBoardSpec(
-  raw: unknown
+  raw: unknown,
+  role?: string | null
 ): { ok: true; spec: KpiBoardSpec } | { ok: false; error: string } {
   const cleaned = stripSecretKeys(raw);
   const parsed = kpiBoardSpecSchema.safeParse(cleaned);
@@ -115,28 +134,38 @@ export function sanitizeBoardSpec(
       : undefined,
     config: w.config ? (stripSecretKeys(w.config) as Record<string, unknown>) : undefined,
   }));
-  return { ok: true, spec: { version: 1, columns: parsed.data.columns, widgets } };
+  const base: KpiBoardSpec = { version: 1, columns: parsed.data.columns, widgets };
+
+  // When role is provided, enforce harness (server path). Client reads may omit role.
+  if (role !== undefined && role !== null) {
+    const harnessed = assertBoardSpecAllowed(base, role);
+    if (!harnessed.ok) return { ok: false, error: harnessed.error };
+    return { ok: true, spec: harnessed.spec };
+  }
+  return { ok: true, spec: base };
 }
 
 /** Convert GenerativeDashboard / render_dashboard layout → BoardSpec */
 export function layoutToBoardSpec(
-  layout: IADashboardLayout | Record<string, unknown>
+  layout: IADashboardLayout | Record<string, unknown>,
+  role?: string | null
 ): KpiBoardSpec | null {
   const widgetsRaw =
     (layout as IADashboardLayout)?.widgets || (layout as { widgets?: unknown[] }).widgets;
   if (!Array.isArray(widgetsRaw) || widgetsRaw.length === 0) return null;
 
-  const widgets = widgetsRaw.slice(0, MAX_KPI_WIDGETS).map(
+  const caps = getKpiBoardCapabilities(role);
+  const allowed = new Set(caps.allowedWidgetTypes);
+
+  const widgets = widgetsRaw.slice(0, caps.maxWidgets).map(
     (w: IADashboardWidget | Record<string, unknown>, i: number) => {
       const type = String((w as IADashboardWidget).type || 'metric');
-      const allowed = (['metric', 'table', 'list', 'chart', 'markdown'] as const).includes(
-        type as 'metric'
-      )
+      const asType = allowed.has(type as KpiBoardWidget['type'])
         ? (type as KpiBoardWidget['type'])
         : 'metric';
       return {
         id: String((w as IADashboardWidget).id || `w${i + 1}`),
-        type: allowed,
+        type: asType,
         title: String((w as IADashboardWidget).title || ''),
         data: stripSecretKeys((w as IADashboardWidget).data),
         config: (w as IADashboardWidget).config
@@ -149,11 +178,14 @@ export function layoutToBoardSpec(
   const columns =
     Number((layout as IADashboardLayout).columns) ||
     (widgets.length > 2 ? 3 : Math.max(1, widgets.length));
-  const result = sanitizeBoardSpec({
-    version: 1,
-    columns: Math.min(4, Math.max(1, columns)),
-    widgets,
-  });
+  const result = sanitizeBoardSpec(
+    {
+      version: 1,
+      columns: Math.min(4, Math.max(1, columns)),
+      widgets,
+    },
+    role ?? 'USER'
+  );
   return result.ok ? result.spec : null;
 }
 
@@ -222,10 +254,25 @@ export async function createKpiBoard(input: {
   spec: unknown;
   visibility?: KpiBoardVisibility;
   setActive?: boolean;
+  role?: string | null;
 }): Promise<{ board: KpiBoardRow | null; error?: string }> {
   const title = (input.title || 'Quadro KPI').trim().slice(0, MAX_BOARD_TITLE);
-  const sanitized = sanitizeBoardSpec(input.spec);
+  const role = input.role ?? 'USER';
+  const sanitized = sanitizeBoardSpec(input.spec, role);
   if (!sanitized.ok) return { board: null, error: sanitized.error };
+
+  if (normalizeKpiHarnessRole(role) !== 'ADMIN') {
+    const titleProbe = assertBoardSpecAllowed(
+      {
+        version: 1,
+        columns: 1,
+        widgets: [{ id: 't', type: 'markdown', title, data: { content: title } }],
+      },
+      role,
+      input.userId
+    );
+    if (!titleProbe.ok) return { board: null, error: titleProbe.error };
+  }
 
   const setActive = input.setActive !== false;
   if (setActive) await clearActiveFlags(input.userId);
@@ -257,21 +304,36 @@ export async function updateKpiBoard(input: {
   spec?: unknown;
   visibility?: KpiBoardVisibility;
   setActive?: boolean;
+  role?: string | null;
 }): Promise<{ board: KpiBoardRow | null; error?: string }> {
   const existing = await getKpiBoard(input.userId, input.boardId);
   if (!existing) return { board: null, error: 'Quadro não encontrado' };
 
+  const role = input.role ?? 'USER';
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
     revision: (existing.revision || 1) + 1,
   };
 
   if (input.title !== undefined) {
-    patch.title = String(input.title).trim().slice(0, MAX_BOARD_TITLE) || existing.title;
+    const title = String(input.title).trim().slice(0, MAX_BOARD_TITLE) || existing.title;
+    if (normalizeKpiHarnessRole(role) !== 'ADMIN') {
+      const titleProbe = assertBoardSpecAllowed(
+        {
+          version: 1,
+          columns: 1,
+          widgets: [{ id: 't', type: 'markdown', title, data: { content: title } }],
+        },
+        role,
+        input.userId
+      );
+      if (!titleProbe.ok) return { board: null, error: titleProbe.error };
+    }
+    patch.title = title;
   }
   if (input.visibility) patch.visibility = input.visibility;
   if (input.spec !== undefined) {
-    const sanitized = sanitizeBoardSpec(input.spec);
+    const sanitized = sanitizeBoardSpec(input.spec, role);
     if (!sanitized.ok) return { board: null, error: sanitized.error };
     patch.spec = sanitized.spec;
   }
@@ -321,8 +383,10 @@ export async function upsertBoardFromDashboardLayout(input: {
   userId: string;
   layout: IADashboardLayout | Record<string, unknown>;
   title?: string;
+  role?: string | null;
 }): Promise<KpiBoardRow | null> {
-  const spec = layoutToBoardSpec(input.layout);
+  const role = input.role ?? 'USER';
+  const spec = layoutToBoardSpec(input.layout, role);
   if (!spec) return null;
 
   const title =
@@ -340,6 +404,7 @@ export async function upsertBoardFromDashboardLayout(input: {
       title: title!,
       spec,
       setActive: true,
+      role,
     });
     return board;
   }
@@ -349,6 +414,7 @@ export async function upsertBoardFromDashboardLayout(input: {
     title: title!,
     spec,
     setActive: true,
+    role,
   });
   return board;
 }
@@ -370,18 +436,27 @@ export function buildOpenKpiBoardCommands(boardId: string, title?: string) {
 }
 
 /** Brief index for Companion / Chat system prompts */
-export async function buildKpiBoardsPromptBlock(userId: string): Promise<string> {
+export async function buildKpiBoardsPromptBlock(
+  userId: string,
+  role?: string | null
+): Promise<string> {
   const boards = await listKpiBoards(userId, { limit: 8 });
+  const harness = buildKpiHarnessPromptBlock(role);
+  const caps = getKpiBoardCapabilities(role);
+  const harnessRole = normalizeKpiHarnessRole(role);
+
   const forbid =
-    `PROIBIDO ao usuário pedir alterar KPI/minigame/HTML: dizer “não consigo injetar”, dump HTML/JS, “salve como .html” ou abrir fora do portal. ` +
-    `Correto: widgets allowlisted + tools + abrir /kpi.\n`;
+    harnessRole === 'ADMIN'
+      ? `PROIBIDO: dump HTML fora do portal / “salve como .html”. Correto para demos/minigames: widget html_sandbox + abrir /kpi.\n`
+      : `PROIBIDO: jogos, HTML/JS livre, “não consigo injetar”, dump HTML, “salve como .html”. Correto: widgets de trabalho + tools + /kpi.\n`;
 
   if (!boards.length) {
     return (
       `\n\n## Quadros KPI (quadro branco)\n` +
+      harness +
       forbid +
-      `Nenhum quadro salvo. Use \`criar_quadro_kpi\` ou \`render_dashboard\` para montar widgets (metric/table/list/chart/markdown) e depois \`abrir_quadro_kpi\`.\n` +
-      `dataSource só com tools allowlisted (ex: buscar_kpis_sistema).\n`
+      `Nenhum quadro salvo. Use \`criar_quadro_kpi\` ou \`render_dashboard\` para montar widgets (${caps.allowedWidgetTypes.join('/')}) e depois \`abrir_quadro_kpi\`.\n` +
+      `dataSource só com tools allowlisted do seu papel.\n`
     );
   }
 
@@ -396,6 +471,7 @@ export async function buildKpiBoardsPromptBlock(userId: string): Promise<string>
 
   return (
     `\n\n## Quadros KPI (quadro branco)\n` +
+    harness +
     forbid +
     `Quadros persistidos do usuário. Use \`listar_quadros_kpi\` / \`atualizar_quadro_kpi\` / \`abrir_quadro_kpi\`.\n` +
     `Após criar/atualizar, chame \`abrir_quadro_kpi\` (ou navegar_portal kpi) para abrir /kpi.\n` +

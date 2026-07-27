@@ -3,6 +3,7 @@
  * GET  — list boards (or ?active=1 / ?id=uuid with resolve)
  * POST — create board
  * PATCH — update / set active
+ * Spec create/update enforced by role harness (html_sandbox ADMIN-only).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestToken } from '@/lib/auth';
@@ -14,8 +15,8 @@ import {
   setActiveKpiBoard,
   updateKpiBoard,
   type KpiBoardSpec,
-  KPI_DATASOURCE_ALLOWLIST,
 } from '@/lib/ia/kpi-board';
+import { getKpiBoardCapabilities } from '@/lib/ia/kpi-board-harness';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -26,18 +27,25 @@ async function resolveWidgetData(
   userRole: string
 ): Promise<KpiBoardSpec> {
   const { executeToolCall } = await import('@/lib/ia/tools');
+  const caps = getKpiBoardCapabilities(userRole);
+  const allowedTools = new Set(caps.allowedDataTools as readonly string[]);
   const widgets = [];
 
   for (const w of spec.widgets) {
+    if (w.type === 'html_sandbox') {
+      // Never resolve dataSources into sandbox; strip if smuggled
+      widgets.push({ ...w, dataSource: undefined });
+      continue;
+    }
     if (!w.dataSource) {
       widgets.push(w);
       continue;
     }
     const tool = w.dataSource.tool;
-    if (!(KPI_DATASOURCE_ALLOWLIST as readonly string[]).includes(tool)) {
+    if (!allowedTools.has(tool)) {
       widgets.push({
         ...w,
-        data: w.data ?? { error: `dataSource não allowlisted: ${tool}` },
+        data: w.data ?? { error: `dataSource bloqueado pelo harness (${tool})` },
       });
       continue;
     }
@@ -161,6 +169,14 @@ export async function GET(request: NextRequest) {
     }
 
     let spec = board.spec as KpiBoardSpec;
+    // Defense: never surface html_sandbox to non-admin even if smuggled into JSONB
+    const caps = getKpiBoardCapabilities(role);
+    if (!caps.allowHtmlSandbox) {
+      spec = {
+        ...spec,
+        widgets: (spec.widgets || []).filter((w) => w.type !== 'html_sandbox'),
+      };
+    }
     if (resolve) {
       spec = await resolveWidgetData(spec, userId, role);
     }
@@ -185,6 +201,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
     const userId = tokenResult.payload.userId as string;
+    const role = String(tokenResult.payload.role || 'USER');
     const body = await request.json();
     const { board, error } = await createKpiBoard({
       userId,
@@ -192,6 +209,7 @@ export async function POST(request: NextRequest) {
       spec: body.spec,
       visibility: body.visibility,
       setActive: body.setActive !== false,
+      role,
     });
     if (!board) {
       return NextResponse.json({ error: error || 'Falha ao criar' }, { status: 400 });
@@ -213,6 +231,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
     const userId = tokenResult.payload.userId as string;
+    const role = String(tokenResult.payload.role || 'USER');
     const body = await request.json();
     const boardId = String(body.id || body.boardId || '');
     if (!boardId) {
@@ -232,6 +251,7 @@ export async function PATCH(request: NextRequest) {
       spec: body.spec,
       visibility: body.visibility,
       setActive: body.setActive,
+      role,
     });
     if (!board) {
       return NextResponse.json({ error: error || 'Falha ao atualizar' }, { status: 400 });

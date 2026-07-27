@@ -9,9 +9,9 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - `src/lib/ia/tools.ts` — caminho ativo do chat (`executeToolCall`)
 - `src/lib/ia/microsoft/client.ts` — Graph (paginação, filtros, Teams search)
 - `src/lib/ia/kpi-comms-signals.ts` — scan e-mail/Teams correlato a pendências/conclusões
-- `src/lib/ia/kpi-board.ts` + `kpi-board-shared.ts` — CRUD/Zod boards `ia_kpi_boards`
+- `src/lib/ia/kpi-board.ts` + `kpi-board-shared.ts` + `kpi-board-harness.ts` — CRUD/Zod + **role harness**
 - `src/app/api/ia/kpi-boards/route.ts` — list/create/update + resolve dataSources
-- `src/app/kpi/page.tsx` + `src/components/KPI/KpiBoardRenderer.tsx` — render allowlisted
+- `src/app/kpi/page.tsx` + `src/components/KPI/KpiBoardRenderer.tsx` — render allowlisted (+ `html_sandbox` iframe)
 - `src/lib/ia/registry/` — modules + bridge no `default` de `executeToolCall`
 - `src/lib/ia/portal-action-bus.ts` + `/api/ia/companion` — navegação Companion + `OPEN_KPI_BOARD`
 - `src/lib/ia/portal-navigation.ts` — catálogo de rotas, fuzzy/typos, contextos
@@ -32,13 +32,18 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - `analisar_kpis_negocio`: anomalias vs meta + scan Graph opcional
 - `buscar_sinais_kpi_comunicacao`: scan explícito por domínio (`ferias|reembolso|compras|...`)
 
-### KPI Quadro Branco v1
+### KPI Quadro Branco v1 + harness de roles
 
-- Spec Zod em `ia_kpi_boards.spec` — widgets `metric|table|list|chart|markdown` (max 24)
-- `dataSource.tool` só allowlist (`KPI_DATASOURCE_ALLOWLIST`); nunca secrets / HTML/JS livre
+- Spec Zod em `ia_kpi_boards.spec` — widgets `metric|table|list|chart|markdown|html_sandbox`
+- **Harness** (`kpi-board-harness.ts`): enforcement server-side em create/update (tools + API); prompts sozinhos NÃO bastam
+  - ADMIN: liberdade máxima; `html_sandbox` (iframe `sandbox="allow-scripts"` **sem** `allow-same-origin`); max 24 widgets; conteúdo experimental OK
+  - MANAGER: work-only; max 16; sem sandbox/jogos; dataTools de equipe/ops; markdown sem scripts
+  - USER: work-own-only; max 8; só dataTools pessoais; sem sandbox/jogos
+- `dataSource.tool` filtrado pelo allowlist do papel; execução ainda RBAC
 - Tools: `criar_quadro_kpi`, `atualizar_quadro_kpi`, `listar_quadros_kpi`, `abrir_quadro_kpi`
 - `render_dashboard` persiste board + `_metadata.dashboard` + `portalCommands` (`OPEN_KPI_BOARD` + `NAVIGATE /kpi`)
 - `/kpi` usa AuthContext `user.id` / `profile.id` (não `abz_user_id` localStorage)
+- `html_sandbox`: nunca `dangerouslySetInnerHTML` no origin; CSP no srcdoc; size cap ~100KB
 - `ia_dashboard_cache` = summary TTL apenas (não confundir com boards)
 
 ### Status corretos
@@ -63,8 +68,8 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Assistant (`/api/ia/chat` stream) vs Companion (`/api/ia/companion` sync): stream envia status inicial; Companion sync + LTM/skills/boards no prompt
 - Skills: memória = fatos curtos sempre no contexto; skills = procedimentos mais longos (índice no prompt; corpo via `usar_skill`). Cap ~30/user; sem secrets. Auto-create heurístico + instrução no system prompt.
 - **Companion NAVIGATE contract**: nunca prometer navegação sem emitir `NAVIGATE`. Fast-path (`isNavigationIntent` / `isTourIntent` + `resolvePortalNavigation`) + safety net `ensureNavigationCommand` (injeta se reply promete abrir/levar e não há command). Tour → primeiro hop `/dashboard`. Widget despacha `data.commands` (fallback `navigation` high-confidence).
-- **KPI board contract**: após criar/atualizar, Companion deve emitir `OPEN_KPI_BOARD` + `NAVIGATE /kpi` (via tools). Não executar JS/HTML gerado pelo LLM no origin.
-- **KPI UX forbid**: nunca responder “não consigo injetar no KPI” + dump HTML + “salve .html / abra no browser”. Pedidos de minigame/HTML → honest widget limits + board tools + `/kpi`.
+- **KPI board contract**: após criar/atualizar, Companion deve emitir `OPEN_KPI_BOARD` + `NAVIGATE /kpi` (via tools). Não executar JS/HTML no origin do portal (`html_sandbox` = iframe sandboxed).
+- **KPI harness**: ADMIN pode minigame/HTML via `html_sandbox` no board; USER/MANAGER → recusar jogos/HTML livre + oferecer widgets de trabalho. Nunca “salve .html” / dump HTML fora do portal.
 
 ## Verification
 
@@ -81,7 +86,8 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Registry bridge: tool só no registry ainda responde via `executeToolCall`
 - FAB Companion: disco branco + crop `LC1_Azul` (“abz”) + label **ABZ**; idle respira, listening radar, speaking pulse, executing arco — logo estático; sem SVG arcs 3 cores / glow roxo
 - Skills: `criar_skill_usuario` grava em `ia_user_skills`; índice no prompt; `usar_skill` devolve procedimento; persiste após logout
-- Boards: `criar_quadro_kpi` grava em `ia_kpi_boards`; `/kpi` resolve dataSources allowlisted
+- Boards: `criar_quadro_kpi` grava em `ia_kpi_boards`; harness rejeita html_sandbox/jogos para non-admin; `/kpi` resolve dataSources allowlisted do papel
+- ADMIN: `html_sandbox` renderiza em iframe sandboxed (sem same-origin / sem cookies do portal)
 
 ## Child DOX Index
 

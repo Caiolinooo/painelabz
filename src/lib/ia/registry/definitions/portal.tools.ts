@@ -66,7 +66,7 @@ const criarQuadroKpiTool: IATool = {
   adminOnly: false,
   definition: {
     name: 'criar_quadro_kpi',
-    description: 'Cria quadro KPI (widgets allowlisted). Sem HTML/JS livre.',
+    description: 'Cria quadro KPI (harness por role; html_sandbox só ADMIN). Sem HTML no origin do portal.',
     parameters: {
       type: 'object',
       properties: {
@@ -83,6 +83,7 @@ const criarQuadroKpiTool: IATool = {
       title: String(args.titulo || 'Quadro KPI'),
       spec: args.spec,
       setActive: true,
+      role: ctx.userRole,
     });
     if (!board) return { success: false, error: error || 'Falha ao criar' };
     const abrir = args.abrir !== false;
@@ -174,6 +175,7 @@ const atualizarQuadroKpiTool: IATool = {
       title: args.titulo ? String(args.titulo) : undefined,
       spec: args.spec,
       setActive: true,
+      role: ctx.userRole,
     });
     if (!board) return { success: false, error: error || 'Falha' };
     const abrir = args.abrir !== false;
