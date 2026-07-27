@@ -464,9 +464,9 @@ export default function AdminLeaveRequestsPage() {
                                     type="button"
                                     onClick={() => handleDownloadComprovante(selectedReq)}
                                     disabled={isProcessing}
-                                    className="w-full sm:w-auto inline-flex justify-center items-center rounded-md border border-blue-200 shadow-sm px-4 py-2 bg-blue-50 text-base font-medium text-blue-700 hover:bg-blue-100 focus:outline-none sm:text-sm disabled:opacity-50"
+                                    className="w-full sm:w-auto inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:text-sm disabled:opacity-50"
                                 >
-                                    <FiDownload className="mr-2" /> Comprovante (PDF)
+                                    <FiDownload className="mr-2" /> Baixar formulário PDF (preenchido)
                                 </button>
 
                                 <button

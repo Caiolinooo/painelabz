@@ -37,6 +37,7 @@ import {
   buildNavCommand,
   resolvePortalNavigation,
 } from './portal-navigation';
+import { normalizeLeaveStatus } from '@/lib/leaveExport';
 
 // Definição da interface das ferramentas para a OpenAI / LM Studio
 export const IA_TOOLS_DEFINITION = [
@@ -269,13 +270,22 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'buscar_ferias_global',
-      description: 'Lista todas as solicitações de férias com filtros. ADMIN vê todos, GERENTE vê apenas da equipe.',
+      description:
+        'Lista solicitações de férias com filtros (histórico incluso por padrão). ADMIN vê todos; GERENTE/MANAGER vê equipe. Status: PENDING_LEADER|PENDING_MANAGER|APPROVED|REJECTED|CANCELLED.',
       parameters: {
         type: 'object',
         properties: {
-          status: { type: 'string', description: 'Filtrar por status: pending, approved, cancelled' },
-          data_inicio: { type: 'string', description: 'Data inicial (YYYY-MM-DD)' },
-          data_fim: { type: 'string', description: 'Data final (YYYY-MM-DD)' },
+          status: {
+            type: 'string',
+            description: 'PENDING_LEADER, PENDING_MANAGER, APPROVED, REJECTED, CANCELLED (ou aliases pt)',
+          },
+          ano: { type: 'number', description: 'Ano do gozo (start_date), ex. 2024' },
+          incluir_historico: {
+            type: 'boolean',
+            description: 'true (padrão) inclui passado; false só fim >= hoje',
+          },
+          data_inicio: { type: 'string', description: 'Data inicial start_date (YYYY-MM-DD)' },
+          data_fim: { type: 'string', description: 'Data final end_date (YYYY-MM-DD)' },
           departamento: { type: 'string', description: 'Filtrar por departamento' },
           limite: { type: 'number', description: 'Limite de resultados (padrão: 100, máx: 500)' },
           ordenar_por: { type: 'string', enum: ['start_date', 'created_at', 'status'], description: 'Campo para ordenação' },
@@ -470,7 +480,7 @@ export const IA_TOOLS_DEFINITION = [
     function: {
       name: 'buscar_ferias',
       description:
-        'Busca solicitações de férias. Sem funcionario_id usa o usuário logado ("minhas férias"). Com ID, respeita RBAC.',
+        'Busca solicitações de férias (inclui histórico/passado por padrão). Sem funcionario_id usa o usuário logado. Use ano / status / incluir_historico para filtrar.',
       parameters: {
         type: 'object',
         properties: {
@@ -480,9 +490,19 @@ export const IA_TOOLS_DEFINITION = [
           },
           status: {
             type: 'string',
-            description: 'Filtro opcional: PENDING_LEADER, PENDING_MANAGER, APPROVED, CANCELLED',
+            description:
+              'Filtro: PENDING_LEADER, PENDING_MANAGER, APPROVED, REJECTED, CANCELLED (aliases: aprovado, pendente)',
           },
-          limite: { type: 'number', description: 'Máximo de registros (padrão 20)' },
+          ano: {
+            type: 'number',
+            description: 'Ano do gozo (start_date), ex. 2025 para férias do ano passado',
+          },
+          incluir_historico: {
+            type: 'boolean',
+            description:
+              'true (padrão) = inclui passadas/aprovadas/concluídas; false = só períodos com fim >= hoje',
+          },
+          limite: { type: 'number', description: 'Máximo de registros (padrão 50, máx 100)' },
         },
         required: [],
       },
@@ -2667,41 +2687,79 @@ return JSON.stringify(data);
       }
 
       case 'buscar_ferias_global': {
-        const { status, data_inicio, data_fim, departamento, limite = 100, ordenar_por = 'start_date', ordem = 'desc', agrupar_por } = args;
-        
+        const {
+          status: statusRaw,
+          ano,
+          incluir_historico = true,
+          data_inicio,
+          data_fim,
+          departamento,
+          limite = 100,
+          ordenar_por = 'start_date',
+          ordem = 'desc',
+          agrupar_por,
+        } = args;
+
+        const statusNorm = normalizeLeaveStatus(statusRaw) || statusRaw;
+
+        let effectiveDataInicio = data_inicio;
+        let effectiveDataFim = data_fim;
+        if (ano && Number(ano) >= 2000 && Number(ano) <= 2100) {
+          effectiveDataInicio = effectiveDataInicio || `${ano}-01-01`;
+          effectiveDataFim = effectiveDataFim || `${ano}-12-31`;
+        }
+
         const result = await executeGlobalSearchQuery({
           table: 'leave_requests',
-          select: 'id, user_id, start_date, end_date, status, created_at',
+          select: 'id, user_id, start_date, end_date, status, justification, created_at, updated_at, pecuniary_allowance, advance_13th_salary',
           userId,
           userRole,
-          filters: { status, data_inicio, data_fim, departamento },
+          filters: {
+            status: statusNorm,
+            data_inicio: effectiveDataInicio,
+            data_fim: effectiveDataFim,
+            departamento,
+          },
           limit: Math.min(limite, 500),
           orderBy: { column: ordenar_por, ascending: ordem === 'asc' }
         });
 
         if (!result.success) return result.error!;
 
-        const userMap = await fetchAssociatedUsers(result.data);
+        let rows = result.data;
+        if (incluir_historico === false) {
+          const today = new Date().toISOString().slice(0, 10);
+          rows = rows.filter((f: any) => f.end_date >= today);
+        }
 
-        const formattedData = result.data.map((f: any) => {
+        const userMap = await fetchAssociatedUsers(rows);
+
+        const formattedData = rows.map((f: any) => {
           const u = userMap.get(f.user_id);
           const start = new Date(f.start_date);
           const end = new Date(f.end_date);
           const dias = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           return {
             id: f.id,
-            usuario: u ? `${u.first_name} ${u.last_name}`.trim() : 'N/A',
+            usuario: u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() || (u as any).name || 'N/A' : 'N/A',
             email: u?.email || 'N/A',
             departamento: u?.department || 'N/A',
             start_date: f.start_date,
             end_date: f.end_date,
             dias,
             status: f.status,
-            reason: f.reason,
+            justification: f.justification,
+            created_at: f.created_at,
+            updated_at: f.updated_at,
           };
         });
 
-        let output: any = { total: formattedData.length, ferias: formattedData };
+        let output: any = {
+          total: formattedData.length,
+          ferias: formattedData,
+          filtros: { status: statusNorm || null, ano: ano || null, incluir_historico },
+          _summary: `buscar_ferias_global: ${formattedData.length} registro(s)`,
+        };
 
         if (agrupar_por) {
           const grouped: Record<string, number> = {};
@@ -3428,7 +3486,13 @@ return JSON.stringify(data);
       }
 
       case 'buscar_ferias': {
-        const { funcionario_id, status, limite = 20 } = args || {};
+        const {
+          funcionario_id,
+          status: statusRaw,
+          ano,
+          incluir_historico = true,
+          limite = 50,
+        } = args || {};
         const targetId = (funcionario_id && String(funcionario_id).trim()) || userId;
         const effectiveRole =
           userRole === 'ADMIN' ? 'ADMIN' : userRole === 'GERENTE' || userRole === 'MANAGER' ? 'GERENTE' : 'USER';
@@ -3441,15 +3505,25 @@ return JSON.stringify(data);
           });
         }
 
+        const statusNorm = normalizeLeaveStatus(statusRaw) || statusRaw;
         let query = supabaseAdmin
           .from('leave_requests')
-          .select('id, start_date, end_date, status, reason, created_at, user_id')
+          .select(
+            'id, start_date, end_date, status, justification, created_at, updated_at, user_id, pecuniary_allowance, advance_13th_salary, periods'
+          )
           .eq('user_id', targetId)
           .order('start_date', { ascending: false })
-          .limit(Math.min(Number(limite) || 20, 50));
+          .limit(Math.min(Number(limite) || 50, 100));
 
-        if (status) {
-          query = query.eq('status', status);
+        if (statusNorm) {
+          query = query.eq('status', statusNorm);
+        }
+        if (ano && Number(ano) >= 2000 && Number(ano) <= 2100) {
+          query = query.gte('start_date', `${ano}-01-01`).lte('start_date', `${ano}-12-31`);
+        }
+        if (incluir_historico === false) {
+          const today = new Date().toISOString().slice(0, 10);
+          query = query.gte('end_date', today);
         }
 
         const { data, error } = await query;
@@ -3462,6 +3536,7 @@ return JSON.stringify(data);
             total: 0,
             ferias: [],
             escopo: targetId === userId ? 'proprio' : 'outro',
+            filtros: { status: statusNorm || null, ano: ano || null, incluir_historico },
             _summary: 'buscar_ferias: nenhuma solicitação encontrada',
           });
         }
@@ -3469,13 +3544,16 @@ return JSON.stringify(data);
         const pendentes = data.filter(
           (f) => f.status === 'PENDING_LEADER' || f.status === 'PENDING_MANAGER'
         );
+        const passadas = data.filter((f) => f.end_date < new Date().toISOString().slice(0, 10));
         return JSON.stringify({
           success: true,
           total: data.length,
           pendentes_count: pendentes.length,
+          historico_count: passadas.length,
           ferias: data,
           escopo: targetId === userId ? 'proprio' : 'outro',
-          _summary: `buscar_ferias: ${data.length} registro(s), ${pendentes.length} pendente(s)`,
+          filtros: { status: statusNorm || null, ano: ano || null, incluir_historico },
+          _summary: `buscar_ferias: ${data.length} registro(s), ${pendentes.length} pendente(s), ${passadas.length} no passado`,
         });
       }
 

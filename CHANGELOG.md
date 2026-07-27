@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.50.0] - 2026-07-27
+
+### Added
+- **Férias — histórico + extração + formulário preenchido**:
+  - Filtros de **status** e **ano** em Minhas Solicitações, Histórico da equipe (aprovadores) e Todas as Solicitações (admin); listagens incluem passado/aprovadas/gozadas.
+  - Export **XLSX/CSV** do conjunto filtrado (`src/lib/leaveExport.ts`) com campos: colaborador, datas, períodos, status, abono, 13º, observações, criação/atualização.
+  - **Detalhes** → prévia do formulário preenchido + **Baixar PDF** via `GET /api/leave/[id]/pdf` (dados reais + líder/gerente); funciona também para histórico.
+  - APIs: `year`/`status`/`history` em leave-requests e leave-approvals; limite admin default 500.
+  - IA: `buscar_ferias` / `buscar_ferias_global` com `ano`, `status`, `incluir_historico` (default true).
+  - DOX: `src/app/ferias/AGENTS.md`.
+
 ## [5.49.0] - 2026-07-27
 
 ### Improved

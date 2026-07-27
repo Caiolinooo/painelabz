@@ -122,9 +122,26 @@ export async function getUserLeaveRequests(userId: string): Promise<LeaveRequest
     return data as LeaveRequest[];
 }
 
-export async function getPendingLeaveRequestsForApprover(approverId: string, hasGlobalAccess: boolean = false): Promise<LeaveRequest[]> {
+export type ApproverLeaveQueryOptions = {
+    hasGlobalAccess?: boolean;
+    /** When true, return all statuses for the approver's sectors (histórico), not only pending. */
+    includeHistory?: boolean;
+    status?: string;
+    year?: number;
+};
+
+export async function getPendingLeaveRequestsForApprover(
+    approverId: string,
+    hasGlobalAccess: boolean = false,
+    options: ApproverLeaveQueryOptions = {}
+): Promise<LeaveRequest[]> {
+    const includeHistory = options.includeHistory === true;
+    const statusFilter = options.status && options.status !== 'ALL' ? options.status : undefined;
+    const year = options.year;
+
     let sectorIdsWhereLeader: string[] = [];
     let sectorIdsWhereManager: string[] = [];
+    let allApproverSectorIds: string[] = [];
 
     if (!hasGlobalAccess) {
         // Busca configs onde o approverId é líder ou gerente
@@ -144,24 +161,28 @@ export async function getPendingLeaveRequestsForApprover(approverId: string, has
 
         sectorIdsWhereLeader = configs.filter(c => c.leader_id === approverId).map(c => c.sector_id);
         sectorIdsWhereManager = configs.filter(c => c.manager_id === approverId).map(c => c.sector_id);
+        allApproverSectorIds = [...new Set([...sectorIdsWhereLeader, ...sectorIdsWhereManager])];
     }
 
-    // Precisamos buscar as requests dos usuários que pertencem a esses setores
-    // E filtrar pelo status apropriado
-
-    // As we can't easily join and filter in a single Supabase query with complex ORs and related tables,
-    // we'll fetch potentially relevant ones and filter in memory, or use a broad query.
-    // However, the cleanest way is a raw supabase query if we have the view, but let's do it via REST.
-
-    // Get all requests that are pending leader OR pending manager
-    const { data: requests, error: reqError } = await supabaseAdmin
+    let query = supabaseAdmin
         .from('leave_requests')
         .select(`
             *,
-            user:users_unified!inner(id, name, email, sector_id)
+            user:users_unified!inner(id, name, email, sector_id, sector:sectors(name))
         `)
-        .in('status', ['PENDING_LEADER', 'PENDING_MANAGER'])
         .order('created_at', { ascending: false });
+
+    if (!includeHistory) {
+        query = query.in('status', ['PENDING_LEADER', 'PENDING_MANAGER']);
+    } else if (statusFilter) {
+        query = query.eq('status', statusFilter);
+    }
+
+    if (year && year >= 2000 && year <= 2100) {
+        query = query.gte('start_date', `${year}-01-01`).lte('start_date', `${year}-12-31`);
+    }
+
+    const { data: requests, error: reqError } = await query.limit(500);
 
     if (reqError) {
         console.error('Error fetching pending requests:', reqError);
@@ -170,12 +191,16 @@ export async function getPendingLeaveRequestsForApprover(approverId: string, has
 
     // Now filter based on approver role per sector
     const filteredRequests = (requests as any[]).filter(req => {
-        // Prevent users from approving their own request
-        if (req.user_id === approverId) return false;
+        // Prevent users from approving their own request in the pending queue
+        if (!includeHistory && req.user_id === approverId) return false;
 
         if (hasGlobalAccess) return true;
 
         const userSectorId = req.user.sector_id;
+
+        if (includeHistory) {
+            return allApproverSectorIds.includes(userSectorId);
+        }
 
         if (req.status === 'PENDING_LEADER' && sectorIdsWhereLeader.includes(userSectorId)) {
             return true;
@@ -189,6 +214,36 @@ export async function getPendingLeaveRequestsForApprover(approverId: string, has
     });
 
     return filteredRequests as LeaveRequest[];
+}
+
+export async function getUserLeaveRequestsFiltered(
+    userId: string,
+    options: { status?: string; year?: number } = {}
+): Promise<LeaveRequest[]> {
+    let query = supabaseAdmin
+        .from('leave_requests')
+        .select(`
+      *,
+      user:users_unified(id, name, email, sector_id)
+    `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+    if (options.status && options.status !== 'ALL') {
+        query = query.eq('status', options.status);
+    }
+    if (options.year && options.year >= 2000 && options.year <= 2100) {
+        query = query.gte('start_date', `${options.year}-01-01`).lte('start_date', `${options.year}-12-31`);
+    }
+
+    const { data, error } = await query.limit(200);
+
+    if (error) {
+        console.error(`Error fetching leave requests for user ${userId}:`, error);
+        return [];
+    }
+
+    return data as LeaveRequest[];
 }
 
 export async function getAllLeaveRequests(): Promise<LeaveRequest[]> {

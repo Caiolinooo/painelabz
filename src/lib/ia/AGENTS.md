@@ -44,6 +44,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - `buscar_ferias` / `buscar_reembolsos`: sem ID → usuário autenticado; com ID → RBAC via `canAccessUserData`
 - Status férias: `PENDING_LEADER` | `PENDING_MANAGER` | `APPROVED` | `REJECTED` | `CANCELLED`
+- `buscar_ferias` / `buscar_ferias_global`: `ano`, `status`, `incluir_historico` (default **true** = histórico/passado); limite maior para consultas anuais
 - Status reembolso: `pendente` / `aprovado` / `rejeitado` / `pago` — valor `valorTotal`
 
 ### Mutações (RBAC)
@@ -92,6 +93,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 ## Verification
 
 - USER "minhas férias" sem ID → `buscar_ferias` do autenticado
+- USER "férias do ano passado" → `buscar_ferias` com `ano` (histórico incluso por padrão)
 - USER "minhas pendências" → `buscar_dados_usuario` resumo (números reais)
 - Tool results no loop trazem `_summary`
 - ADMIN `buscar_kpis_sistema` → totais + comunicação; USER/MANAGER → escopo RBAC

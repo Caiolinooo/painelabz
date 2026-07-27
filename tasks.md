@@ -1,3 +1,14 @@
+## Férias — histórico + formulário PDF (2026-07-27)
+
+### Feito
+- [x] Filtros status + ano (minhas / equipe / admin); histórico não filtrado para “só futuro”
+- [x] Export XLSX/CSV (`leaveExport.ts`) do conjunto filtrado
+- [x] Detalhes → prévia formulário preenchido + Baixar PDF (`/api/leave/[id]/pdf`)
+- [x] IA `buscar_ferias` / `buscar_ferias_global` com `ano` / `incluir_historico` / `status`
+- [x] DOX `src/app/ferias/AGENTS.md` + CHANGELOG + **v5.50.0**
+
+---
+
 ## IA Companion — data path audit (2026-07-27)
 
 ### Feito

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             .select(`
                 *,
                 user:users_unified!inner(
-                    id, name, email, sector_id, position,
+                    id, name, email, cpf, sector_id, position,
                     sector:sectors(id, name)
                 )
             `)
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             updated_at: req.updated_at,
             user_name: req.user?.name || '',
             user_email: req.user?.email || '',
-            user_cpf: (req.user as any)?.cpf,
+            user_cpf: req.user?.cpf || (req.user as any)?.cpf,
             user_position: (req.user as any)?.position,
             user_sector: (req.user as any)?.sector?.name,
             start_date: req.start_date,
