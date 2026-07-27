@@ -1782,7 +1782,7 @@ export const IA_TOOLS_DEFINITION = [
         properties: {
           destino: {
             type: 'string',
-            description: 'Nome do módulo, frase ou path: ferias, reembolso, tripulantes, academy, epi, ponto, compras, calendario, esocial, dashboard, admin, ou /path',
+            description: 'Nome do módulo, frase ou path: ferias, reembolso, tripulantes, academy, epi, ponto, compras, calendario, esocial, kpi, /kpi, dashboard, admin, ou /path',
           },
           highlight: { type: 'string', description: 'CSS selector opcional para destacar após navegar' },
         },

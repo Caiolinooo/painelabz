@@ -13,11 +13,11 @@ const navegarPortalTool: IATool = {
   adminOnly: false,
   definition: {
     name: 'navegar_portal',
-    description: 'Navega o usuário para um módulo do portal',
+    description: 'Navega o usuário para um módulo do portal (ex: ferias, reembolso, kpi, /kpi, tripulantes)',
     parameters: {
       type: 'object',
       properties: {
-        destino: { type: 'string', description: 'Alias, frase ou path /...', required: true },
+        destino: { type: 'string', description: 'Alias, frase ou path: ferias, reembolso, kpi, /kpi, tripulantes, academy, …', required: true },
         highlight: { type: 'string', description: 'CSS selector opcional', required: false },
       },
       required: ['destino'],

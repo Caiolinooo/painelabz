@@ -27,7 +27,7 @@ const COMPANION_SYSTEM = `Você é o **ABZ Companion**, assistente flutuante do 
 ## Navegação
 - Para abrir módulos, chame a tool \`navegar_portal\` com o destino (aceita typos: feririas, reemboso, tripuentes…).
 - Confirme na resposta para onde está levando o usuário.
-- Intenções: "abre ferias", "ir pra reembolso", "quero ver tripulantes", "e-social", "kpi", "minhas férias".
+- Intenções: "abre ferias", "ir pra reembolso", "quero ver tripulantes", "e-social", "kpi" → /kpi, "minhas férias".
 - Contextos compostos: "aprovar férias" → férias/aprovações; "estoque epi" → EPI; "meus cursos" → Academy.
 
 ## Consultas

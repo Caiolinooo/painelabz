@@ -178,10 +178,10 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   },
   {
     id: 'kpi',
-    path: '/dashboard',
-    label: 'KPIs / Dashboard',
+    path: '/kpi',
+    label: 'KPIs',
     keywords: ['kpi', 'kpis', 'indicadores', 'metricas'],
-    contexts: ['ver kpis', 'mostrar indicadores', 'status do sistema'],
+    contexts: ['ver kpis', 'mostrar indicadores', 'status do sistema', 'abrir kpi', 'me leva ao kpi'],
   },
   {
     id: 'email-settings',

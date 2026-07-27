@@ -56,6 +56,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - KPI com pendências → bloco `comunicacao.email_sinais` / `teams_sinais`
 - USER chama `meus_emails` → só a própria mailbox
 - `navegar_portal` destino `feririas` → `/ferias` (fuzzy)
+- `navegar_portal` / `resolvePortalNavigation("kpi")` → `/kpi` (não `/dashboard`)
 - Companion pergunta de dados → resposta via LLM+tools (não canned)
 - Registry bridge: tool só no registry ainda responde via `executeToolCall`
 - FAB Companion: disco branco + crop `LC1_Azul` (“abz”) + label **ABZ**; idle respira, listening radar, speaking pulse, executing arco — logo estático; sem SVG arcs 3 cores / glow roxo
