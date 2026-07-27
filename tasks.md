@@ -1,7 +1,9 @@
 ## IA Companion UX (2026-07-27)
 
 ### Feito
-- [x] Logo Companion = `LC1_Azul.png` estável + anel de status (sem girar a marca) + wordmark ABZ no FAB
+- [x] Logo Companion = `LC1_Azul.png` estável (crop “abz”) + anéis/aura de status (Framer Motion + `useReducedMotion`) + label tipográfico ABZ no FAB
+- [x] Motion só em rings/aura/segmento — marca nunca gira; cores brand `#005B96` / `#0B72E7` (sem glow roxo)
+- [x] Removido SVG morto `PortalLogo` (arcs 3 cores) de `MainLayout`
 - [x] Companion conectado à IA real (`chatCompletion` + tools), sem respostas canned
 - [x] `portal-navigation.ts` — fuzzy/typos/contextos + `navegar_portal` unificado
 - [x] Commands de `navegar_portal` propagados via `_metadata.portalCommands`

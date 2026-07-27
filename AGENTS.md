@@ -82,7 +82,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Secrets / credenciais**: nunca hardcodar senhas, app passwords, JWT secrets ou fallbacks reais em código, docs ou scripts. Usar `src/lib/email-env.ts`, `src/lib/jwt-secret.ts`, `WKRADAR_DEFAULT_PASSWORD`. CI: Gitleaks (`.gitleaks.toml`). Incidentes de exposição: seguir `tasks.md` + `SECURITY.md`.
 - **Email no portal**: admin em `/admin/email-settings`; `app_secrets` (senha AES); runtime DB → env; transporte `smtp` | `graph` | `auto` (O365 com erro 535 → preferir Graph + `MS_GRAPH_*`). Ver `src/app/api/admin/email-settings/AGENTS.md`.
 - **IA Graph**: extrair dados conforme solicitação do usuário (filtros + `limite=0` até hard cap 1000). KPIs com pendências disparam scan e-mail/Teams. Ver `src/lib/ia/AGENTS.md`.
-- **IA Companion**: logo ABZ estável (`LC1_Azul`); navegação tolerante a typos; respostas via LLM+tools (não canned). Ver `src/lib/ia/AGENTS.md`.
+- **IA Companion**: logo ABZ estável (`LC1_Azul`, crop “abz” + label tipográfico); motion só rings/aura (`useReducedMotion`); navegação tolerante a typos; respostas via LLM+tools (não canned). Ver `src/lib/ia/AGENTS.md`.
 
 ## Child DOX Index
 

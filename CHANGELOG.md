@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.43.1] - 2026-07-27
+
+### Features
+- **AI Companion — Ícone oficial**:
+  - FAB com crop `LC1_Azul` na marca “abz” + label tipográfico ABZ e placa branca/brand.
+  - Motion rings por estado (`idle` / `listening` / `speaking` / `executing`) em `companion-logo-motion.ts`; a logo nunca gira.
+  - Respeito a `useReducedMotion`.
+
+### Changed
+- Removido SVG morto `PortalLogo` (arcos 3 cores) do `MainLayout`.
+
 ## [5.43.0] - 2026-07-27
 
 ### Features

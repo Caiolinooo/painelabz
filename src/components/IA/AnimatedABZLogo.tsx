@@ -2,117 +2,167 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
+import {
+  AICompanionStatus,
+  BRAND_BLUE,
+  getCompanionMotion,
+  statusAccent,
+} from './companion-logo-motion';
 
-export type AICompanionStatus = 'idle' | 'listening' | 'speaking' | 'executing';
+export type { AICompanionStatus };
 
 interface AnimatedABZLogoProps {
   status?: AICompanionStatus;
   size?: number;
   className?: string;
-  /** Exibe a marca "ABZ" abaixo do logo */
+  /** Wordmark tipográfico "ABZ" abaixo do disco (painel aberto) */
   showWordmark?: boolean;
+  /** Mini-rótulo "ABZ" sob o disco (FAB compacto) */
+  compactLabel?: boolean;
 }
 
-const STATUS_RING: Record<AICompanionStatus, string> = {
-  idle: '#005B96',
-  listening: '#0A7AB8',
-  speaking: '#2563EB',
-  executing: '#059669',
-};
-
 /**
- * Ícone do Companion = logo oficial ABZ (LC1_Azul) estável + anel de status.
- * O logo NÃO gira (permanece legível como marca ABZ); só o anel anima.
+ * Ícone Companion = marca oficial ABZ (`LC1_Azul`) estável + anéis/aura de status.
+ * O logo NUNCA gira; só rings/aura/segmento animam. Crop focado na porção "abz".
  */
 export default function AnimatedABZLogo({
   status = 'idle',
   size = 48,
   className = '',
   showWordmark = false,
+  compactLabel = false,
 }: AnimatedABZLogoProps) {
-  const ring = STATUS_RING[status];
-  const logoSize = Math.round(size * 0.78);
-
-  const ringPulse =
-    status === 'idle'
-      ? { scale: [1, 1.04, 1], opacity: [0.65, 1, 0.65] }
-      : status === 'listening'
-        ? { scale: [1, 1.12, 1], opacity: [0.75, 1, 0.75] }
-        : status === 'speaking'
-          ? { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }
-          : { scale: [1, 1.1, 1], opacity: [0.85, 1, 0.85] };
+  const shouldReduceMotion = useReducedMotion();
+  const accent = statusAccent(status);
+  const motionPreset = getCompanionMotion(status, !!shouldReduceMotion);
+  const discSize = Math.round(size * 0.72);
+  const labelSpace = showWordmark ? 18 : compactLabel ? 12 : 0;
 
   return (
     <div
-      className={`relative inline-flex flex-col items-center justify-center ${className}`}
-      style={{ width: size, height: showWordmark ? size + 16 : size }}
+      className={`relative inline-flex flex-col items-center ${className}`}
+      style={{ width: size, height: size + labelSpace }}
       aria-label="ABZ Companion"
       title="ABZ Companion"
     >
-      {/* Anel de status — único elemento que pulsa/gira */}
-      <motion.div
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          width: size,
-          height: size,
-          top: 0,
-          left: 0,
-          border: `2.5px solid ${ring}`,
-          boxShadow: `0 0 0 3px ${ring}22, 0 0 12px ${ring}44`,
-        }}
-        animate={{
-          ...ringPulse,
-          ...(status === 'executing' ? { rotate: 360 } : {}),
-        }}
-        transition={{
-          duration: status === 'executing' ? 1.4 : 2.2,
-          repeat: Infinity,
-          ease: status === 'executing' ? 'linear' : 'easeInOut',
-        }}
-      />
-
-      {/* Segmento curto no anel (idle/listening) — reforça “ao vivo” sem girar o logo */}
-      {(status === 'listening' || status === 'speaking') && (
+      <div className="relative" style={{ width: size, height: size }}>
+        {/* Soft aura — idle breath / speaking pulse (never purple) */}
         <motion.div
           className="absolute rounded-full pointer-events-none"
           style={{
-            width: size,
-            height: size,
-            top: 0,
-            left: 0,
-            border: '2.5px solid transparent',
-            borderTopColor: ring,
-            borderRightColor: `${ring}88`,
+            inset: 0,
+            background: `radial-gradient(circle, ${accent}33 0%, ${accent}00 70%)`,
           }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: status === 'listening' ? 1.8 : 2.4, repeat: Infinity, ease: 'linear' }}
+          animate={motionPreset.aura}
+          transition={motionPreset.auraTransition}
         />
-      )}
 
-      {/* Logo oficial ABZ — estático e legível */}
-      <div
-        className="relative z-10 flex items-center justify-center rounded-full bg-white overflow-hidden"
-        style={{
-          width: logoSize,
-          height: logoSize,
-          boxShadow: 'inset 0 0 0 1px rgba(0,91,150,0.12)',
-        }}
-      >
-        <Image
-          src="/images/LC1_Azul.png"
-          alt="ABZ Group"
-          width={logoSize}
-          height={logoSize}
-          className="object-contain p-[10%]"
-          priority
+        {/* Listening radar ripples */}
+        {motionPreset.showRadar &&
+          [0, 1].map(i => (
+            <motion.div
+              key={`radar-${i}`}
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                inset: 0,
+                border: `1.5px solid ${accent}`,
+              }}
+              initial={{ scale: 0.72, opacity: 0.55 }}
+              animate={{ scale: 1.28, opacity: 0 }}
+              transition={{
+                duration: 1.6,
+                repeat: Infinity,
+                ease: 'easeOut',
+                delay: i * 0.55,
+              }}
+            />
+          ))}
+
+        {/* Static / breathing status ring */}
+        <motion.div
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            inset: 0,
+            border: `2px solid ${accent}`,
+            boxShadow: `0 0 0 2px ${accent}18, 0 0 10px ${accent}28`,
+          }}
+          animate={motionPreset.ring}
+          transition={motionPreset.ringTransition}
         />
+
+        {/* Progress / radar tip segment — rotates independently of the logo */}
+        {(motionPreset.showProgressArc || status === 'listening') && !shouldReduceMotion && (
+          <motion.div
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              inset: 0,
+              border: '2.5px solid transparent',
+              borderTopColor: accent,
+              borderRightColor: status === 'executing' ? `${accent}99` : `${accent}55`,
+            }}
+            animate={motionPreset.segment}
+            transition={motionPreset.segmentTransition}
+          />
+        )}
+
+        {/* Reduced-motion: static progress hint for executing */}
+        {shouldReduceMotion && motionPreset.showProgressArc && (
+          <div
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              inset: 0,
+              border: '2.5px solid transparent',
+              borderTopColor: accent,
+              borderRightColor: `${accent}66`,
+              transform: 'rotate(-45deg)',
+            }}
+          />
+        )}
+
+        {/* Brand disc — logo STATIC; crop focado na porção esquerda "abz" */}
+        <div
+          className="absolute z-10 rounded-full bg-white overflow-hidden"
+          style={{
+            width: discSize,
+            height: discSize,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            boxShadow: `inset 0 0 0 1px ${BRAND_BLUE}14, 0 1px 2px rgba(0,91,150,0.08)`,
+          }}
+        >
+          <Image
+            src="/images/LC1_Azul.png"
+            alt="ABZ Group"
+            fill
+            sizes={`${discSize}px`}
+            className="select-none pointer-events-none object-cover"
+            style={{
+              // Wordmark 4.2:1 — object-cover + position esquerda = “abz” no FAB
+              objectPosition: '14% 50%',
+              transform: 'scale(1.15)',
+              transformOrigin: '14% 50%',
+            }}
+            priority
+            draggable={false}
+          />
+        </div>
       </div>
 
       {showWordmark && (
         <span
-          className="relative z-10 mt-1 font-extrabold tracking-[0.2em] text-[10px] leading-none"
-          style={{ color: ring }}
+          className="relative z-10 mt-1 font-extrabold tracking-[0.22em] text-[10px] leading-none"
+          style={{ color: accent }}
+        >
+          ABZ
+        </span>
+      )}
+
+      {compactLabel && !showWordmark && (
+        <span
+          className="relative z-10 -mt-0.5 font-extrabold tracking-[0.2em] leading-none"
+          style={{ color: BRAND_BLUE, fontSize: Math.max(8, Math.round(size * 0.16)) }}
         >
           ABZ
         </span>

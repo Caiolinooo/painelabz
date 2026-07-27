@@ -36,14 +36,14 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - `meus_emails`, `meu_calendario`, `criar_evento_calendario`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `navegar_portal`
 - Registry: `microsoft.tools`, `calendario.tools`, `chat.tools`, `portal.tools`
-- Companion (`/api/ia/companion`): IA real + tools; fuzzy nav (`portal-navigation.ts`); commands via `_metadata.portalCommands`; logo `LC1_Azul.png` estável
+- Companion (`/api/ia/companion`): IA real + tools; fuzzy nav (`portal-navigation.ts`); commands via `_metadata.portalCommands`; logo `LC1_Azul.png` estável (crop “abz” + label ABZ; motion só em rings/aura via `companion-logo-motion.ts` + `useReducedMotion`)
 - Sub-agente `companion` no `agents-router` (ativado por `[ABZ_COMPANION]` / verbos de navegação)
 
 ## Work Guidance
 
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
-- Companion: preferir `commands` tipados (`NAVIGATE` / `HIGHLIGHT_ELEMENT`); não girar o logo ABZ na animação
+- Companion: preferir `commands` tipados (`NAVIGATE` / `HIGHLIGHT_ELEMENT`); não girar o logo ABZ na animação; FAB usa brand blue (`#005B96`), sem IC_colorido / glow roxo
 
 ## Verification
 
@@ -52,6 +52,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - `navegar_portal` destino `feririas` → `/ferias` (fuzzy)
 - Companion pergunta de dados → resposta via LLM+tools (não canned)
 - Registry bridge: tool só no registry ainda responde via `executeToolCall`
+- FAB Companion: disco branco + crop `LC1_Azul` (“abz”) + label **ABZ**; idle respira, listening radar, speaking pulse, executing arco — logo estático; sem SVG arcs 3 cores / glow roxo
 
 ## Child DOX Index
 

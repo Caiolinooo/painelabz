@@ -46,25 +46,13 @@ import UserAvatar from '@/components/UserAvatar';
 import HelpWidget from '@/components/Help/HelpWidget';
 import AICompanionWidget from '@/components/IA/AICompanionWidget';
 import MenuCustomizer from '@/components/admin/MenuCustomizer'; // Import
+import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
+import { SYSTEM_MODULES, MODULE_CATEGORIES, SystemModule } from '@/constants/modules';
+import { getModuleIcon } from '@/constants/moduleIcons';
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
-
-// Logo Component
-const PortalLogo = () => (
-  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4C9.37258 4 4 9.37258 4 16C4 22.6274 9.37258 28 16 28Z" stroke="white" strokeWidth="0" />
-    <path d="M16.5 7C13 7 10 9 9 12C8 15 9.5 19 12 21C14.5 23 18 23 21 21" stroke="#0EA5E9" strokeWidth="3.5" strokeLinecap="round" />
-    <path d="M12 21C10 23 8 23 6 22" stroke="#22C55E" strokeWidth="3.5" strokeLinecap="round" />
-    <path d="M21 10C24 10 26 12 26 15C26 18 24 20 21 21" stroke="#F59E0B" strokeWidth="3.5" strokeLinecap="round" />
-    <circle cx="16" cy="15" r="3" fill="#3B82F6" />
-  </svg>
-);
-
-import { useEffectivePermissions } from '@/hooks/useEffectivePermissions';
-import { SYSTEM_MODULES, MODULE_CATEGORIES, SystemModule } from '@/constants/modules';
-import { getModuleIcon } from '@/constants/moduleIcons';
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();

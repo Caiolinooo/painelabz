@@ -157,26 +157,23 @@ export default function AICompanionWidget() {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-24 z-[60] relative w-16 h-16 rounded-full shadow-2xl flex flex-col items-center justify-center transition-all duration-300 bg-white ${
+        className={`fixed bottom-6 right-24 z-[60] relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 bg-white border border-[#005B96]/15 ${
           status === 'executing'
-            ? 'scale-110 ring-4 ring-emerald-300'
+            ? 'scale-110 ring-4 ring-emerald-300/70'
             : status === 'listening'
-              ? 'animate-pulse ring-4 ring-[#005B96]/50'
-              : 'hover:scale-105 ring-2 ring-[#005B96]/40'
+              ? 'ring-4 ring-[#005B96]/35'
+              : status === 'speaking'
+                ? 'ring-4 ring-[#0B72E7]/30'
+                : 'hover:scale-105 ring-2 ring-[#005B96]/25 hover:ring-[#005B96]/45'
         }`}
-        style={{ boxShadow: '0 4px 25px rgba(0, 91, 150, 0.35)' }}
+        style={{ boxShadow: '0 6px 28px rgba(0, 91, 150, 0.28), 0 1px 0 rgba(255,255,255,0.9) inset' }}
         title="Companion ABZ"
         aria-label="Abrir Companion ABZ"
       >
         {isOpen ? (
           <FiX className="w-6 h-6 text-[#005B96]" />
         ) : (
-          <>
-            <AnimatedABZLogo status={status} size={40} />
-            <span className="absolute -bottom-0.5 text-[9px] font-extrabold tracking-[0.18em] text-[#005B96] bg-white/95 px-1 rounded">
-              ABZ
-            </span>
-          </>
+          <AnimatedABZLogo status={status} size={48} compactLabel />
         )}
       </button>
 
