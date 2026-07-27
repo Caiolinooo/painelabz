@@ -123,7 +123,7 @@ export async function notifyLeaveRequestCreated(requestId: string) {
             type: 'new_request',
             title: 'Nova Solicitação de Férias',
             message: `${user.name} solicitou férias do dia ${start_date} até ${end_date}.`,
-            actionUrl: '/admin/leave-approvals',
+            actionUrl: '/ferias?tab=approvals',
             priority: 'normal',
             channels: ['in-app', 'email', 'push']
         });
@@ -336,7 +336,7 @@ export async function triggerLeaveNotifications(requestId: string, newStatus: st
                 type: 'pending_approval',
                 title: 'Aprovação Pendente: Férias',
                 message: `O líder aprovou as férias de ${user.name}. Agora aguarda sua aprovação final como gerente.`,
-                actionUrl: '/admin/leave-approvals',
+                actionUrl: '/ferias?tab=approvals',
                 priority: 'normal',
                 channels: ['in-app', 'email', 'push']
             });

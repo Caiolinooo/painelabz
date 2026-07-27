@@ -39,6 +39,15 @@ export default function FeriasPage() {
 
     useEffect(() => {
         setMounted(true);
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const tabParam = params.get('tab');
+            if (tabParam === 'approvals') {
+                setActiveTab('approvals');
+            } else if (tabParam === 'all_requests') {
+                setActiveTab('all_requests');
+            }
+        }
     }, []);
 
     // ==========================================

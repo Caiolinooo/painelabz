@@ -1625,7 +1625,7 @@ export const leaveApprovalPendingTemplate = (
     </div>
     <p>Por favor, acesse o portal para aprovar ou reprovar esta solicitação.</p>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${config.appUrl}/admin/leave-approvals" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;">
+      <a href="${config.appUrl}/ferias?tab=approvals" class="button" style="background: ${config.primaryColor}; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;">
         Acessar Aprovações
       </a>
     </div>

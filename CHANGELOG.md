@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.41.1] - 2026-07-27
+
+### Fixed
+- **Redirecionamento e Links de Aprovação de Férias (`/admin/leave-approvals`)**:
+  - Criada a página de redirecionamento `src/app/admin/leave-approvals/page.tsx` para direcionar automaticamente e-mails antigos e acessos diretos para `/ferias?tab=approvals`.
+  - Atualizada a página `/ferias` (`src/app/ferias/page.tsx`) para selecionar automaticamente a aba "Aprovações Pendentes" quando o parâmetro `?tab=approvals` estiver presente na URL.
+  - Corrigido o modelo de e-mail de aprovação pendente (`src/lib/emailTemplates.ts`) e as notificações globais (`src/services/leaveNotifications.ts`) para utilizarem a URL correta `/ferias?tab=approvals`.
+
 ## [5.41.0] - 2026-07-24
 
 ### Changed
