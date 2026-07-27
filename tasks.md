@@ -76,7 +76,8 @@
 - [x] FAB sumiu: `fixed`+`relative` no mesmo botão — removido `relative` (2026-07-27)
 - [x] FAB = pinwheel colorido oficial flutuante (`abz-icon-color.png`) — 2026-07-27
 - [x] FIX KPI nav: catálogo `kpi` → `/kpi` (não `/dashboard`) em `portal-navigation.ts` — 2026-07-27
-- [x] FIX Companion tour/nav: "disse que navega mas não navega" — `isTourIntent` + `ensureNavigationCommand` injeta NAVIGATE; prompt proíbe promessa sem tool; widget fallback — 2026-07-27
+  - [x] FIX Companion tour/nav: "disse que navega mas não navega" — `isTourIntent` + `ensureNavigationCommand` injeta NAVIGATE; prompt proíbe promessa sem tool; widget fallback — 2026-07-27
+  - [x] FIX Companion chat: ao abrir / após hidratação, scroll para o fim (mensagens recentes); `behavior: auto` no open, smooth no chat — 2026-07-27
 
 ---
 

@@ -29,6 +29,7 @@ export default function AICompanionWidget() {
     setMessages,
     isOpen,
     setIsOpen,
+    hydrated,
   } = useCompanionSession();
   const router = useRouter();
   const [status, setStatus] = useState<AICompanionStatus>('idle');
@@ -38,6 +39,7 @@ export default function AICompanionWidget() {
   const [isSending, setIsSending] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(false);
   const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -63,9 +65,32 @@ export default function AICompanionWidget() {
     };
   }, []);
 
+  // Scroll to latest messages on open / rehydrate, and while chatting
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isSending]);
+    if (!isOpen || !hydrated) {
+      wasOpenRef.current = false;
+      return;
+    }
+
+    const justOpened = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    // Instant jump when panel opens or session hydrates; smooth only for ongoing chat
+    const behavior: ScrollBehavior = justOpened ? 'auto' : 'smooth';
+
+    const scrollToEnd = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    };
+
+    const raf = requestAnimationFrame(() => {
+      scrollToEnd();
+      // Second pass after flex layout settles (open / mount with history)
+      if (justOpened) {
+        requestAnimationFrame(scrollToEnd);
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [isOpen, hydrated, messages.length, isSending]);
 
   const handleSendMessage = useCallback(async () => {
     if (!inputText.trim() || isSending) return;
