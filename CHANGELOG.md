@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.42.0] - 2026-07-27
+
+### Features
+- **IA Tools — Auditoria e expansão**:
+  - Correção de KPIs (`PENDING_LEADER|PENDING_MANAGER`, reembolso `pendente`), Excel/PDF (`ponto`, `compras`, `eventos`, `cursos`, `epis`) e `buscar_reembolsos` (user_id + email / `valorTotal`).
+  - Microsoft Graph com paginação (`@odata.nextLink`), filtros ricos e `limite=0` até hard cap 1000.
+  - KPIs cruzam pendências do portal com sinais de **e-mail e Teams** (`kpi-comms-signals.ts`, `buscar_sinais_kpi_comunicacao`).
+  - Novos módulos: tripulantes, afastamentos, acidentes, fatores e-Social, escalas (local), EPI estoque/CA/entrega, ponto resumo/inconsistências, Academy matrícula/certificados/quizzes.
+  - Fase 3: `meus_emails`, `meu_calendario`, `criar_evento_calendario`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `navegar_portal`.
+  - Registry modular (`microsoft` / `calendario` / `chat` / `portal`) + bridge no `executeToolCall`.
+  - AI Companion (`AICompanionWidget`, `/api/ia/companion`, `portal-action-bus`).
+- **DOX**: `src/lib/ia/AGENTS.md` + preferência Graph/KPI no root `AGENTS.md`.
+
+### Fixed
+- Limites fixos de e-mail Graph (`$top=5` / descrição “últimos 5”) substituídos por extração conforme a solicitação do usuário.
+
 ## [5.41.1] - 2026-07-27
 
 ### Fixed

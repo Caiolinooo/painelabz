@@ -81,12 +81,14 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Reembolso emails**: três listas no admin — `recipients` (@groupabz.com), `externalRecipients` (outros domínios), `financeEmails` (pós-aprovação/pago). Ver `src/app/api/reembolso/AGENTS.md`.
 - **Secrets / credenciais**: nunca hardcodar senhas, app passwords, JWT secrets ou fallbacks reais em código, docs ou scripts. Usar `src/lib/email-env.ts`, `src/lib/jwt-secret.ts`, `WKRADAR_DEFAULT_PASSWORD`. CI: Gitleaks (`.gitleaks.toml`). Incidentes de exposição: seguir `tasks.md` + `SECURITY.md`.
 - **Email no portal**: admin em `/admin/email-settings`; `app_secrets` (senha AES); runtime DB → env; transporte `smtp` | `graph` | `auto` (O365 com erro 535 → preferir Graph + `MS_GRAPH_*`). Ver `src/app/api/admin/email-settings/AGENTS.md`.
+- **IA Graph**: extrair dados conforme solicitação do usuário (filtros + `limite=0` até hard cap 1000). KPIs com pendências disparam scan e-mail/Teams. Ver `src/lib/ia/AGENTS.md`.
 
 ## Child DOX Index
 
 - `src/app/api/reembolso/AGENTS.md` — fluxo de emails e status de reembolso
 - `src/app/api/admin/email-settings/AGENTS.md` — credenciais SMTP no admin (app_secrets)
 - `src/app/api/gestao-tripulantes/AGENTS.md` — ASO identity gate, e-Social sync, Man Schedule tipos/cores/observações
+- `src/lib/ia/AGENTS.md` — tools LLM, Graph pagination/filtros, Excel/PDF, módulos GT/EPI/Academy
 
 ## Index of Modules
 

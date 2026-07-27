@@ -301,8 +301,11 @@ export interface MSGraphEmail {
   };
   receivedDateTime: string;
   bodyPreview?: string;
+  body?: string;
   isRead: boolean;
   hasAttachments: boolean;
+  toRecipients?: Array<{ emailAddress: { name?: string; address: string } }>;
+  ccRecipients?: Array<{ emailAddress: { name?: string; address: string } }>;
 }
 
 export interface MSGraphCalendarEvent {
@@ -326,12 +329,15 @@ export interface MSGraphCalendarEvent {
     };
   };
   isAllDay: boolean;
+  bodyPreview?: string;
 }
 
 export interface MSGraphChat {
   id: string;
   topic?: string;
   lastMessagePreview?: string;
+  chatType?: string;
+  lastUpdatedDateTime?: string;
   members: Array<{
     displayName: string;
     email: string;

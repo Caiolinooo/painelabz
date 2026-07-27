@@ -184,7 +184,7 @@ async function getUserEmails(userId: string): Promise<Array<{subject: string; fr
       }
     }
 
-    const res = await fetch('https://graph.microsoft.com/v1.0/me/messages?$top=5&$select=subject,from,receivedDateTime', {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me/messages?$top=25&$select=subject,from,receivedDateTime', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
 

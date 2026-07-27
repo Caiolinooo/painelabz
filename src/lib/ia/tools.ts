@@ -14,17 +14,24 @@ import {
   formatFeriasForExcel,
   formatAvaliacoesForExcel,
   formatUsuariosForExcel,
-  formatEpisForExcel
+  formatEpisForExcel,
+  formatPontoForExcel,
+  formatComprasForExcel,
+  formatEventosForExcel,
+  formatCursosForExcel,
 } from './excel-generator';
 import { generatePDFBase64 } from './pdf-generator';
 import { sendReportEmail, sendSimpleEmail, sendEmailWithNodemailer } from './email-tool';
-import { msGraphClient } from './microsoft/client';
+import { msGraphClient, resolveGraphLimit, GRAPH_HARD_CAP } from './microsoft/client';
 import {
   executeGlobalSearchQuery,
   fetchAssociatedUsers,
   formatGlobalResponse
 } from './query-helpers';
 import { collectHolisticForUser } from './holistic-aggregator';
+import { createEPIRegistration, updateEPIRegistration } from '@/services/epiService';
+import { getStockLevels, getLowStockAlerts } from '@/services/epiStockService';
+import { mapCodigoToDbTipo } from '@/lib/gestao-tripulantes/escala-tipos';
 
 // Definição da interface das ferramentas para a OpenAI / LM Studio
 export const IA_TOOLS_DEFINITION = [
@@ -423,7 +430,7 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'ler_email_funcionario',
-      description: 'Lê os últimos 5 e-mails da caixa de entrada corporativa de um funcionário. Apenas ADMIN pode usar isso.',
+      description: 'Lê e-mails da caixa corporativa de um funcionário via Microsoft Graph. Aplica filtros conforme a solicitação (remetente, assunto, período, pasta, anexos, lidos). Use limite=0 para trazer o máximo disponível (até 1000). Apenas ADMIN.',
       parameters: {
         type: 'object',
         properties: {
@@ -431,6 +438,17 @@ export const IA_TOOLS_DEFINITION = [
             type: 'string',
             description: 'E-mail corporativo completo do funcionário (@groupabz.com)',
           },
+          consulta: { type: 'string', description: 'Texto livre para busca (assunto/corpo)' },
+          de: { type: 'string', description: 'Filtrar por e-mail do remetente' },
+          para: { type: 'string', description: 'Filtrar por destinatário' },
+          assunto: { type: 'string', description: 'Filtrar por assunto (contém)' },
+          data_inicio: { type: 'string', description: 'Data início YYYY-MM-DD' },
+          data_fim: { type: 'string', description: 'Data fim YYYY-MM-DD' },
+          pasta: { type: 'string', description: 'Pasta: inbox, sentitems, drafts, deleteditems' },
+          apenas_nao_lidos: { type: 'boolean', description: 'Se true, só não lidos' },
+          com_anexos: { type: 'boolean', description: 'Se true, só com anexos' },
+          incluir_corpo: { type: 'boolean', description: 'Se true, inclui trecho do corpo completo' },
+          limite: { type: 'number', description: 'Qtd. máxima. Padrão 50. Use 0 para máximo (1000).' },
         },
         required: ['email_corporativo'],
       },
@@ -539,10 +557,21 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'buscar_kpis_sistema',
-      description: 'Retorna KPIs globais do sistema: total de usuários, sessões de IA, solicitações pendentes de férias e reembolsos. Apenas ADMIN.',
+      description: 'Retorna KPIs globais do portal (usuários, sessões IA, pendências de férias/reembolsos/compras/avaliações/EPI). Opcionalmente varre e-mail e Teams em busca de sinais de pendência/conclusão correlatos. Apenas ADMIN.',
       parameters: {
         type: 'object',
-        properties: {},
+        properties: {
+          incluir_comunicacao: {
+            type: 'boolean',
+            description: 'Se true (padrão quando há pendências), pesquisa e-mails e conversas Teams relacionados',
+          },
+          email_monitoramento: {
+            type: 'string',
+            description: 'Mailbox a monitorar no Graph (padrão: e-mail do admin logado)',
+          },
+          dias: { type: 'number', description: 'Janela de dias para scan de comunicação (padrão: 14)' },
+          limite_sinais: { type: 'number', description: 'Máx. sinais por fonte (padrão: 25)' },
+        },
         required: [],
       },
     },
@@ -837,18 +866,22 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'pesquisar_emails_outlook',
-      description: 'Busca avançada de e-mails no Outlook via Microsoft Graph. Permite filtros por remetente, assunto, data, pasta e mais. Retorna até 50 resultados. Use para buscar e-mails específicos quando o usuário pedir.',
+      description: 'Busca avançada de e-mails no Outlook via Microsoft Graph. Filtra por remetente, destinatário, assunto, data, pasta, anexos e texto livre. Extraia conforme o pedido do usuário: se pedir "tudo" use limite=0 (até 1000); se pedir de um remetente específico, use o filtro "de".',
       parameters: {
         type: 'object',
         properties: {
           email_usuario: { type: 'string', description: 'E-mail do usuário cujos e-mails serão pesquisados' },
           consulta: { type: 'string', description: 'Texto livre para busca nos e-mails (assunto e corpo)' },
           de: { type: 'string', description: 'Filtrar por remetente (e-mail)' },
+          para: { type: 'string', description: 'Filtrar por destinatário (e-mail)' },
           assunto: { type: 'string', description: 'Filtrar por assunto (contém)' },
           data_inicio: { type: 'string', description: 'Data início (YYYY-MM-DD)' },
           data_fim: { type: 'string', description: 'Data fim (YYYY-MM-DD)' },
           pasta: { type: 'string', description: 'Pasta específica (inbox, sentitems, drafts)' },
-          limite: { type: 'number', description: 'Quantidade máxima de resultados (padrão: 20, máx: 50)' },
+          apenas_nao_lidos: { type: 'boolean', description: 'Se true, apenas não lidos' },
+          com_anexos: { type: 'boolean', description: 'Se true, apenas com anexos' },
+          incluir_corpo: { type: 'boolean', description: 'Se true, inclui trecho do corpo' },
+          limite: { type: 'number', description: 'Quantidade máxima (padrão: 50, máx: 1000). Use 0 para máximo.' },
         },
         required: ['email_usuario'],
       },
@@ -924,12 +957,15 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'analisar_kpis_negocio',
-      description: 'Analisa os KPIs de performance e soluções do portal, comparando valores atuais com metas definidas. Identifica anomalias e sugere ações. Dados incluem: avaliações, férias, reembolsos, EPIs.',
+      description: 'Analisa KPIs vs metas e, se houver anomalias/pendências, pesquisa e-mails e Teams por sinais de aprovação, conclusão ou cobrança. Use incluir_comunicacao=true para forçar o scan Graph.',
       parameters: {
         type: 'object',
         properties: {
           departamento: { type: 'string', description: 'Filtrar análise por departamento específico (opcional)' },
           tipo_kpi: { type: 'string', enum: ['performance', 'solucoes', 'todos'], description: 'Tipo de KPI: performance (avaliações), solucoes (ações/entregas), todos' },
+          incluir_comunicacao: { type: 'boolean', description: 'Incluir scan de e-mail/Teams (padrão: true se houver anomalias)' },
+          email_monitoramento: { type: 'string', description: 'Mailbox Graph a monitorar (padrão: e-mail do usuário)' },
+          dias: { type: 'number', description: 'Janela de dias para comunicação (padrão: 14)' },
         },
         required: [],
       },
@@ -1254,6 +1290,397 @@ export const IA_TOOLS_DEFINITION = [
     },
     adminOnly: false,
     requireModule: 'lista-presenca',
+  },
+  // =====================================================
+  // Gestão Tripulantes / e-Social / Escala / EPI / Academy
+  // =====================================================
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_tripulantes',
+      description: 'Lista tripulantes (gt_vw_colaboradores_completo) com filtros por busca, empresa, embarcação, cargo, status de embarque, ASO vencido.',
+      parameters: {
+        type: 'object',
+        properties: {
+          busca: { type: 'string', description: 'Nome, matrícula, CPF ou email' },
+          empresa: { type: 'string' },
+          embarcacao: { type: 'string' },
+          cargo: { type: 'string' },
+          status: { type: 'string', description: 'status_embarque' },
+          apenas_docs_vencidos: { type: 'boolean' },
+          limite: { type: 'number', description: 'Padrão 50, máx 200' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'gestao-tripulantes',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_afastamentos',
+      description: 'Lista afastamentos de tripulantes (ativos ou histórico). Informe colaborador_id ou busca por nome/CPF.',
+      parameters: {
+        type: 'object',
+        properties: {
+          colaborador_id: { type: 'string' },
+          busca: { type: 'string', description: 'Nome ou CPF do colaborador' },
+          apenas_ativos: { type: 'boolean', description: 'Se true, só afastamentos sem data_fim ou data_fim futura' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'gestao-tripulantes',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_acidentes',
+      description: 'Lista acidentes de trabalho (CAT) registrados na Gestão de Tripulantes.',
+      parameters: {
+        type: 'object',
+        properties: {
+          colaborador_id: { type: 'string' },
+          busca: { type: 'string' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'gestao-tripulantes',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_fatores_risco_esocial',
+      description: 'Lista fatores de risco e-Social (tabela esocial_fatores_risco), filtráveis por cargo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          cargo: { type: 'string' },
+          busca: { type: 'string' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'e-social',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_escalas',
+      description: 'Busca escalas/embarques (gt_historico_embarques) por CPF, colaborador_id ou período. Inclui origem MIO e local.',
+      parameters: {
+        type: 'object',
+        properties: {
+          cpf: { type: 'string' },
+          colaborador_id: { type: 'string' },
+          data_inicio: { type: 'string', description: 'YYYY-MM-DD' },
+          data_fim: { type: 'string', description: 'YYYY-MM-DD' },
+          origem: { type: 'string', enum: ['local', 'mio'] },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'man-schedule',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'atualizar_escala',
+      description: 'Atualiza evento de escala LOCAL (tipo, datas, observações). Não edita eventos origem=mio.',
+      parameters: {
+        type: 'object',
+        properties: {
+          evento_id: { type: 'string', description: 'UUID do gt_historico_embarques' },
+          tipo: { type: 'string', description: 'Código: normal, fi, dba, stb, offc ou custom' },
+          data_embarque: { type: 'string' },
+          data_desembarque: { type: 'string' },
+          observacoes: { type: 'string' },
+          local_embarque: { type: 'string' },
+          local_desembarque: { type: 'string' },
+        },
+        required: ['evento_id'],
+      },
+    },
+    requireModule: 'man-schedule',
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'registrar_entrega_epi',
+      description: 'Registra solicitação/entrega de EPI para um funcionário. ADMIN/GERENTE pode marcar como delivered.',
+      parameters: {
+        type: 'object',
+        properties: {
+          funcionario_id: { type: 'string', description: 'UUID do usuário' },
+          tipo_equipamento: { type: 'string', description: 'Nome/tipo do EPI' },
+          quantidade: { type: 'number' },
+          motivo: { type: 'string' },
+          marcar_entregue: { type: 'boolean', description: 'Se true (ADMIN/GERENTE), já marca como delivered' },
+        },
+        required: ['funcionario_id', 'tipo_equipamento', 'quantidade', 'motivo'],
+      },
+    },
+    requireModule: 'epi',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_estoque_epi',
+      description: 'Consulta estoque atual de EPIs, com opção de apenas itens em estoque baixo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          apenas_baixo: { type: 'boolean' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'epi',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_vencimentos_epi',
+      description: 'Lista tipos de EPI com CA próximo do vencimento (ou já vencido).',
+      parameters: {
+        type: 'object',
+        properties: {
+          dias: { type: 'number', description: 'Janela de dias para vencimento (padrão 90)' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'epi',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'resumo_ponto_funcionario',
+      description: 'Resumo de presenças/ponto do funcionário no período: total de registros, por evento/local, dias distintos.',
+      parameters: {
+        type: 'object',
+        properties: {
+          funcionario_id: { type: 'string' },
+          data_inicio: { type: 'string' },
+          data_fim: { type: 'string' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'ponto',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_inconsistencias_ponto',
+      description: 'Detecta possíveis inconsistências de ponto: dias sem registro em listas abertas do período, ou registros duplicados no mesmo dia/evento.',
+      parameters: {
+        type: 'object',
+        properties: {
+          funcionario_id: { type: 'string' },
+          data_inicio: { type: 'string' },
+          data_fim: { type: 'string' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'ponto',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'matricular_usuario_curso',
+      description: 'Matricula um usuário em um curso da Academy. ADMIN pode matricular qualquer um; USER só a si mesmo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          curso_id: { type: 'string' },
+          usuario_id: { type: 'string', description: 'Opcional; padrão = usuário atual' },
+        },
+        required: ['curso_id'],
+      },
+    },
+    requireModule: 'academy',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_certificados',
+      description: 'Lista certificados emitidos (matrículas concluídas com certificate_url).',
+      parameters: {
+        type: 'object',
+        properties: {
+          usuario_id: { type: 'string' },
+          curso_id: { type: 'string' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'academy',
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_quizzes_pendentes',
+      description: 'Lista quizzes da Academy pendentes de correção (needs_grading) ou tentativas não aprovadas do usuário.',
+      parameters: {
+        type: 'object',
+        properties: {
+          curso_id: { type: 'string' },
+          usuario_id: { type: 'string' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'academy',
+  },
+  // =====================================================
+  // Fase 3 — Graph non-admin, Calendário write, Companion, KPI comms
+  // =====================================================
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_sinais_kpi_comunicacao',
+      description: 'Pesquisa e-mails e conversas Teams por sinais de pendência, aprovação ou conclusão ligados a KPIs (férias, reembolso, compras, etc.). Use quando o usuário pedir contexto de comunicação sobre pendências.',
+      parameters: {
+        type: 'object',
+        properties: {
+          email_usuario: { type: 'string', description: 'Mailbox a pesquisar (padrão: próprio usuário; ADMIN pode informar outro)' },
+          dominios: {
+            type: 'string',
+            description: 'Domínios separados por vírgula: ferias,reembolso,compras,avaliacao,epi,pendencia,conclusao',
+          },
+          dias: { type: 'number', description: 'Janela em dias (padrão 14)' },
+          limite: { type: 'number', description: 'Máx. resultados por fonte (padrão 30, 0=máximo)' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'meus_emails',
+      description: 'Lista/pesquisa e-mails da própria caixa do usuário logado (non-admin). Extrai conforme filtros: remetente, assunto, período, limite=0 para máximo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          consulta: { type: 'string' },
+          de: { type: 'string' },
+          assunto: { type: 'string' },
+          data_inicio: { type: 'string' },
+          data_fim: { type: 'string' },
+          pasta: { type: 'string' },
+          apenas_nao_lidos: { type: 'boolean' },
+          com_anexos: { type: 'boolean' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'meu_calendario',
+      description: 'Lista eventos do calendário do usuário (portal + Microsoft Graph) no período solicitado.',
+      parameters: {
+        type: 'object',
+        properties: {
+          dias_futuros: { type: 'number', description: 'Dias à frente (padrão 14)' },
+          dias_passados: { type: 'number', description: 'Dias para trás (padrão 0)' },
+          limite: { type: 'number' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_evento_calendario',
+      description: 'Cria evento no calendário do portal e opcionalmente no Outlook (Graph) do usuário.',
+      parameters: {
+        type: 'object',
+        properties: {
+          titulo: { type: 'string' },
+          inicio: { type: 'string', description: 'ISO ou YYYY-MM-DDTHH:mm' },
+          fim: { type: 'string' },
+          local: { type: 'string' },
+          descricao: { type: 'string' },
+          tambem_outlook: { type: 'boolean', description: 'Se true, cria também no calendário Outlook' },
+        },
+        required: ['titulo', 'inicio', 'fim'],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'minhas_conversas_teams',
+      description: 'Lista chats do Teams do usuário e/ou pesquisa mensagens por texto.',
+      parameters: {
+        type: 'object',
+        properties: {
+          consulta: { type: 'string', description: 'Filtrar mensagens contendo este texto' },
+          limite: { type: 'number' },
+          listar_chats: { type: 'boolean', description: 'Se true, também lista os chats (padrão true se sem consulta)' },
+        },
+        required: [],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'pesquisar_mensagens_teams',
+      description: 'Pesquisa mensagens em conversas Teams. ADMIN pode informar email de outro usuário; demais usam a própria conta.',
+      parameters: {
+        type: 'object',
+        properties: {
+          email_usuario: { type: 'string' },
+          consulta: { type: 'string', description: 'Texto a buscar nas mensagens' },
+          limite: { type: 'number' },
+        },
+        required: ['consulta'],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'navegar_portal',
+      description: 'Gera comando de navegação do AI Companion para uma rota do portal (ferias, reembolso, dashboard, gestao-tripulantes, etc.).',
+      parameters: {
+        type: 'object',
+        properties: {
+          destino: {
+            type: 'string',
+            description: 'Alias ou path: ferias, reembolso, dashboard, admin, tripulantes, academy, epi, ponto, compras, calendario, ou path absoluto /...',
+          },
+          highlight: { type: 'string', description: 'CSS selector opcional para destacar após navegar' },
+        },
+        required: ['destino'],
+      },
+    },
+    adminOnly: false,
   },
 ];
 
@@ -2030,40 +2457,85 @@ return JSON.stringify(data);
             userColumn: 'user_id',
             formatter: formatEpisForExcel,
             dateColumn: 'delivery_date'
+          },
+          'ponto': {
+            table: 'registros_presenca',
+            select: 'id, user_id, nome_completo, funcao, empresa, created_at, lista_presenca(titulo, local, data_evento)',
+            userColumn: 'user_id',
+            formatter: formatPontoForExcel,
+            dateColumn: 'created_at'
+          },
+          'compras': {
+            table: 'purchase_requests',
+            select: 'id, created_by, status, total_value, description, provider_name, buyer_name, rqf_number, created_at',
+            userColumn: 'created_by',
+            formatter: formatComprasForExcel,
+            dateColumn: 'created_at'
+          },
+          'eventos': {
+            table: 'calendar_events',
+            select: 'id, user_id, summary, description, start_time, end_time, location, created_at',
+            userColumn: 'user_id',
+            formatter: formatEventosForExcel,
+            dateColumn: 'start_time'
+          },
+          'cursos': {
+            table: 'academy_courses',
+            select: 'id, title, description, level, is_active, created_at, academy_categories(name)',
+            userColumn: 'id',
+            formatter: formatCursosForExcel,
+            dateColumn: 'created_at',
+            skipUserEnrichment: true
           }
         };
 
         const config = configMap[tipo_dados];
         if (!config) return `Tipo de dados não suportado para planilha: ${tipo_dados}`;
 
-        // Fetch data using helper
-        const result = await executeGlobalSearchQuery({
-          table: config.table,
-          select: config.select,
-          userId,
-          userRole,
-          userColumn: config.userColumn,
-          filters: { 
-            status: filtros.status, 
-            data_inicio: filtros.data_inicio, 
-            data_fim: filtros.data_fim, 
-            departamento: filtros.departamento || filtros.department,
-            busca: filtros.busca 
-          },
-          limit: 1000, // Higher limit for spreadsheets
-          orderBy: { column: config.dateColumn, ascending: false }
-        });
+        // Cursos Academy: catálogo global (não filtra por user_id)
+        let result: { success: boolean; error?: string; data: any[] };
+        if (tipo_dados === 'cursos') {
+          let q = supabaseAdmin
+            .from('academy_courses')
+            .select(config.select)
+            .order(config.dateColumn, { ascending: false })
+            .limit(1000);
+          if (filtros.busca) q = q.ilike('title', `%${filtros.busca}%`);
+          if (filtros.status === 'active' || filtros.status === true) q = q.eq('is_active', true);
+          const { data: cursosData, error: cursosErr } = await q;
+          if (cursosErr) return `Erro ao buscar cursos: ${cursosErr.message}`;
+          result = { success: true, data: cursosData || [] };
+        } else {
+          result = await executeGlobalSearchQuery({
+            table: config.table,
+            select: config.select,
+            userId,
+            userRole,
+            userColumn: config.userColumn,
+            filters: { 
+              status: filtros.status, 
+              data_inicio: filtros.data_inicio, 
+              data_fim: filtros.data_fim, 
+              departamento: filtros.departamento || filtros.department,
+              busca: filtros.busca 
+            },
+            limit: 1000,
+            orderBy: { column: config.dateColumn, ascending: false }
+          });
+        }
 
         if (!result.success) return result.error!;
 
         // Enrichment
-        const userMap = await fetchAssociatedUsers(result.data, config.userColumn);
+        const userMap = config.skipUserEnrichment
+          ? new Map()
+          : await fetchAssociatedUsers(result.data, config.userColumn);
 
         // Transform for spreadsheet
         data = result.data.map((item: any) => {
           const u = userMap.get(item[config.userColumn]);
           const base = {
-            usuario: u ? `${u.first_name} ${u.last_name}`.trim() : 'N/A',
+            usuario: u ? `${u.first_name} ${u.last_name}`.trim() : (item.nome_completo || 'N/A'),
             email: u?.email || '-',
             departamento: u?.department || '-',
             ...item
@@ -2087,6 +2559,19 @@ return JSON.stringify(data);
           }
           if (tipo_dados === 'usuarios') {
             base.nome = base.usuario;
+          }
+          if (tipo_dados === 'ponto') {
+            base.evento = item.lista_presenca?.titulo || 'Presença Manual';
+            base.local = item.lista_presenca?.local || '-';
+            base.data_evento = item.lista_presenca?.data_evento || item.created_at;
+            base.registrado_em = item.created_at;
+          }
+          if (tipo_dados === 'compras') {
+            base.numero = item.rqf_number || item.id;
+            base.valor = item.total_value || 0;
+          }
+          if (tipo_dados === 'cursos') {
+            base.categoria = item.academy_categories?.name || '-';
           }
 
           return base;
@@ -2169,7 +2654,10 @@ return JSON.stringify(data);
             'reembolsos': { table: 'Reimbursement', select: 'id, user_id, status, valorTotal, data, descricao, tipo_reembolso', userColumn: 'user_id', dateColumn: 'data' },
             'ferias': { table: 'leave_requests', select: 'id, user_id, start_date, end_date, status', userColumn: 'user_id', dateColumn: 'start_date' },
             'avaliacoes': { table: 'avaliacoes_desempenho', select: 'id, colaborador_id, nota_final, status, periodo_id, data_inicio, data_fim', userColumn: 'colaborador_id', dateColumn: 'created_at' },
-            'usuarios': { table: 'users_unified', select: 'id, first_name, last_name, email, department, position, status', userColumn: 'id', dateColumn: 'created_at' }
+            'usuarios': { table: 'users_unified', select: 'id, first_name, last_name, email, department, position, status', userColumn: 'id', dateColumn: 'created_at' },
+            'ponto': { table: 'registros_presenca', select: 'id, user_id, nome_completo, funcao, empresa, created_at, lista_presenca(titulo, local, data_evento)', userColumn: 'user_id', dateColumn: 'created_at' },
+            'epis': { table: 'epi_registrations', select: 'id, user_id, delivery_date, status, epi_types(name, ca_number)', userColumn: 'user_id', dateColumn: 'delivery_date' },
+            'compras': { table: 'purchase_requests', select: 'id, created_by, status, total_value, description, provider_name, buyer_name, rqf_number, created_at', userColumn: 'created_by', dateColumn: 'created_at' },
           };
 
           const config = configMap[tipo_dados];
@@ -2225,6 +2713,23 @@ return JSON.stringify(data);
             if (tipo_dados === 'usuarios') {
               base.nome = `${item.first_name || ''} ${item.last_name || ''}`.trim();
               base.cargo = item.position || '-';
+            }
+
+            if (tipo_dados === 'ponto') {
+              base.evento = item.lista_presenca?.titulo || 'Presença Manual';
+              base.local = item.lista_presenca?.local || '-';
+              base.usuario = item.nome_completo || base.usuario;
+            }
+
+            if (tipo_dados === 'epis') {
+              base.tipo_epi = item.epi_types?.name || 'N/A';
+              base.ca = item.epi_types?.ca_number || 'N/A';
+            }
+
+            if (tipo_dados === 'compras') {
+              base.numero = item.rqf_number || item.id;
+              base.valor = item.total_value || 0;
+              totalValor += parseFloat(String(base.valor)) || 0;
             }
 
             return base;
@@ -2457,49 +2962,71 @@ return JSON.stringify(data);
         const { funcionario_id, cpf, email } = args || {};
 
         // Resolve userId a partir de qualquer identificador disponível
-        let userId = funcionario_id;
+        let resolvedUserId = funcionario_id;
+        let resolvedEmail: string | null = email || null;
 
-        if (!userId) {
+        if (!resolvedUserId) {
           if (cpf) {
             const { data, error } = await supabaseAdmin
               .from('users_unified')
-              .select('id')
+              .select('id, email')
               .eq('cpf', cpf)
               .maybeSingle();
             if (error || !data) {
               return `Erro ao buscar reembolsos: usuário com CPF não encontrado.`;
             }
-            userId = data.id;
+            resolvedUserId = data.id;
+            resolvedEmail = data.email;
           } else if (email) {
             const { data, error } = await supabaseAdmin
               .from('users_unified')
-              .select('id')
+              .select('id, email')
               .eq('email', email)
               .maybeSingle();
             if (error || !data) {
               return `Erro ao buscar reembolsos: usuário com email não encontrado.`;
             }
-            userId = data.id;
+            resolvedUserId = data.id;
+            resolvedEmail = data.email;
           }
+        } else if (!resolvedEmail) {
+          const { data } = await supabaseAdmin
+            .from('users_unified')
+            .select('email')
+            .eq('id', resolvedUserId)
+            .maybeSingle();
+          resolvedEmail = data?.email || null;
         }
 
-        if (!userId) {
+        if (!resolvedUserId && !resolvedEmail) {
           return `Erro: informe o ID do funcionário (UUID) ou forneça CPF/email válido para resolução automática.`;
         }
 
-        // Validação básica de UUID (optativa, apenas para evitar queries desastrosas)
-        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-        if (userId && !uuidPattern.test(userId)) {
-          // Não vale a pena quebrar; apenas avisa o usuário e tenta prosseguir com a consulta, o que pode falhar de forma elegante
-          // return `Erro: UUID inválido.`;
+        // Reimbursement pode indexar por user_id e/ou email — tenta ambos
+        let data: any[] | null = null;
+        let error: any = null;
+
+        if (resolvedUserId) {
+          const byUser = await supabaseAdmin
+            .from('Reimbursement')
+            .select('status, valorTotal, descricao, data, email, user_id')
+            .eq('user_id', resolvedUserId)
+            .order('data', { ascending: false })
+            .limit(50);
+          data = byUser.data;
+          error = byUser.error;
         }
 
-        const { data, error } = await supabaseAdmin
-          .from('Reimbursement')
-          .select('status, valor_total, descricao, data')
-          .eq('user_id', userId)
-          .order('data', { ascending: false })
-          .limit(10);
+        if ((!data || data.length === 0) && resolvedEmail) {
+          const byEmail = await supabaseAdmin
+            .from('Reimbursement')
+            .select('status, valorTotal, descricao, data, email, user_id')
+            .eq('email', resolvedEmail)
+            .order('data', { ascending: false })
+            .limit(50);
+          data = byEmail.data;
+          error = byEmail.error || error;
+        }
           
         if (error) return `Erro ao buscar reembolsos: ${error.message}`;
         if (!data || data.length === 0) return `Nenhuma solicitação de reembolso encontrada para este funcionário.`;
@@ -2535,22 +3062,66 @@ return JSON.stringify(data);
           return `Acesso negado. Apenas administradores podem ler e-mails de outros funcionários.`;
         }
         
-        const { email_corporativo } = args;
-        // Usar msGraphClient.searchEmails sem limite fixo de 5
+        const {
+          email_corporativo,
+          consulta,
+          de,
+          para,
+          assunto,
+          data_inicio,
+          data_fim,
+          pasta,
+          apenas_nao_lidos,
+          com_anexos,
+          incluir_corpo,
+          limite,
+        } = args;
+
         try {
-          const emails = await msGraphClient.searchEmails(email_corporativo, undefined, { top: 25 });
-          if (emails.length === 0) return `A caixa de entrada de ${email_corporativo} está vazia ou inacessível.`;
-          return JSON.stringify(emails.map(e => ({
-            subject: e.subject,
-            from: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
-            date: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
-            preview: e.bodyPreview,
-            isRead: e.isRead,
-            hasAttachments: e.hasAttachments,
-          })));
+          const emails = await msGraphClient.searchEmails(email_corporativo, consulta, {
+            from: de,
+            to: para,
+            subject: assunto,
+            dateFrom: data_inicio,
+            dateTo: data_fim,
+            folder: pasta,
+            isRead: apenas_nao_lidos === true ? false : undefined,
+            hasAttachments: com_anexos === true ? true : undefined,
+            includeBody: !!incluir_corpo,
+            top: resolveGraphLimit(limite, 50),
+          });
+          if (emails.length === 0) {
+            return await getGlobalUserEmails(email_corporativo, {
+              limite: resolveGraphLimit(limite, 50),
+              de,
+              assunto,
+              data_inicio,
+              data_fim,
+            });
+          }
+          return JSON.stringify({
+            total: emails.length,
+            limite_aplicado: resolveGraphLimit(limite, 50),
+            emails: emails.map(e => ({
+              id: e.id,
+              subject: e.subject,
+              from: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
+              from_email: (e.from as any)?.emailAddress?.address,
+              date: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
+              preview: e.bodyPreview,
+              body: (e as any).body,
+              isRead: e.isRead,
+              hasAttachments: e.hasAttachments,
+            })),
+          });
         } catch (err) {
-          // Fallback para método antigo
-          return await getGlobalUserEmails(email_corporativo);
+          return await getGlobalUserEmails(email_corporativo, {
+            limite: resolveGraphLimit(limite, 50),
+            de,
+            assunto,
+            data_inicio,
+            data_fim,
+          });
         }
       }
 
@@ -2714,23 +3285,84 @@ return JSON.stringify(data);
       case 'buscar_kpis_sistema': {
         if (userRole !== 'ADMIN') return `Acesso negado. Apenas administradores podem acessar KPIs do sistema.`;
 
+        const {
+          incluir_comunicacao,
+          email_monitoramento,
+          dias = 14,
+          limite_sinais = 25,
+        } = args || {};
+
         const [
           { count: totalUsuarios },
           { count: totalSessoes },
           { count: feriaspen },
           { count: reembolsopen },
+          { count: comprasp },
+          { count: avaliacoesp },
+          { count: episp },
         ] = await Promise.all([
           supabaseAdmin.from('users_unified').select('*', { count: 'exact', head: true }),
           supabaseAdmin.from('ia_chat_sessions').select('*', { count: 'exact', head: true }),
-          supabaseAdmin.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-          supabaseAdmin.from('Reimbursement').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
+          supabaseAdmin.from('leave_requests').select('*', { count: 'exact', head: true }).in('status', ['PENDING_LEADER', 'PENDING_MANAGER']),
+          supabaseAdmin.from('Reimbursement').select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
+          supabaseAdmin.from('purchase_requests').select('*', { count: 'exact', head: true }).in('status', ['pending', 'PENDING', 'aguardando', 'em_aprovacao']),
+          supabaseAdmin.from('avaliacoes_desempenho').select('*', { count: 'exact', head: true }).in('status', ['pendente', 'pending', 'pendente_autoavaliacao', 'aguardando_aprovacao']),
+          supabaseAdmin.from('epi_registrations').select('*', { count: 'exact', head: true }).in('status', ['pending', 'approved']),
         ]);
+
+        const pendencias = {
+          ferias_pendentes: feriaspen,
+          reembolsos_pendentes: reembolsopen,
+          compras_pendentes: comprasp,
+          avaliacoes_pendentes: avaliacoesp,
+          epis_pendentes: episp,
+        };
+
+        const totalPendencias =
+          (feriaspen || 0) + (reembolsopen || 0) + (comprasp || 0) + (avaliacoesp || 0) + (episp || 0);
+
+        const shouldScanComms =
+          incluir_comunicacao === true ||
+          (incluir_comunicacao !== false && totalPendencias > 0);
+
+        let comunicacao: any = null;
+        if (shouldScanComms) {
+          try {
+            const { collectKpiCommunicationSignals } = await import('./kpi-comms-signals');
+            let mailbox = email_monitoramento as string | undefined;
+            if (!mailbox) {
+              const { data: me } = await supabaseAdmin
+                .from('users_unified')
+                .select('email')
+                .eq('id', userId)
+                .maybeSingle();
+              mailbox = me?.email || process.env.EMAIL_FROM || undefined;
+            }
+            if (mailbox) {
+              comunicacao = await collectKpiCommunicationSignals({
+                emailUsuario: mailbox,
+                pendencias,
+                dias: Number(dias) || 14,
+                limite: Number(limite_sinais) || 25,
+              });
+            } else {
+              comunicacao = { resumo: 'Mailbox de monitoramento não configurada.', email_sinais: [], teams_sinais: [] };
+            }
+          } catch (e) {
+            comunicacao = {
+              resumo: `Falha ao escanear comunicação: ${e instanceof Error ? e.message : String(e)}`,
+              email_sinais: [],
+              teams_sinais: [],
+            };
+          }
+        }
 
         return JSON.stringify({
           total_usuarios: totalUsuarios,
           total_sessoes_ia: totalSessoes,
-          ferias_pendentes: feriaspen,
-          reembolsos_pendentes: reembolsopen,
+          ...pendencias,
+          total_pendencias: totalPendencias,
+          comunicacao,
           gerado_em: new Date().toLocaleString('pt-BR'),
         });
       }
@@ -2993,7 +3625,7 @@ return JSON.stringify(data);
         return await executeAgendarTarefaAgente(args, userId);
 
       case 'analisar_kpis_negocio':
-        return await executeAnalisarKPIs(args);
+        return await executeAnalisarKPIs(args, userId, userRole);
 
       case 'enviar_notificacao_proativa':
         return await executeEnviarNotificacaoProativa(args, userId);
@@ -3404,8 +4036,708 @@ case 'coletar_dados_holisticos': {
         return JSON.stringify(data || []);
       }
 
-       default:
+      case 'buscar_tripulantes': {
+        const { busca, empresa, embarcacao, cargo, status, apenas_docs_vencidos, limite = 50 } = args;
+        let query = supabaseAdmin
+          .from('gt_vw_colaboradores_completo')
+          .select('*')
+          .order('nome_completo', { ascending: true })
+          .limit(Math.min(limite || 50, 200));
+
+        if (busca) {
+          query = query.or(`nome_completo.ilike.%${busca}%,matricula.ilike.%${busca}%,cpf.ilike.%${busca}%,email.ilike.%${busca}%`);
+        }
+        if (empresa) query = query.eq('empresa_nome', empresa);
+        if (embarcacao) query = query.eq('embarcacao_nome', embarcacao);
+        if (cargo) query = query.eq('cargo_nome', cargo);
+        if (status) query = query.eq('status_embarque', status);
+        if (apenas_docs_vencidos) query = query.gt('qtd_docs_vencidos', 0);
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar tripulantes: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, tripulantes: data || [] });
+      }
+
+      case 'buscar_afastamentos': {
+        const { colaborador_id, busca, apenas_ativos, limite = 50 } = args;
+        let colabId = colaborador_id;
+
+        if (!colabId && busca) {
+          const { data: colab } = await supabaseAdmin
+            .from('gt_colaboradores')
+            .select('id')
+            .or(`nome_completo.ilike.%${busca}%,cpf.ilike.%${busca}%`)
+            .limit(1)
+            .maybeSingle();
+          colabId = colab?.id;
+        }
+
+        let query = supabaseAdmin
+          .from('gt_afastamentos')
+          .select('*, gt_colaboradores:colaborador_id (nome_completo, cpf, matricula)')
+          .is('deleted_at', null)
+          .order('data_inicio', { ascending: false })
+          .limit(Math.min(limite || 50, 200));
+
+        if (colabId) query = query.eq('colaborador_id', colabId);
+        if (apenas_ativos) {
+          const today = new Date().toISOString().slice(0, 10);
+          query = query.or(`data_fim.is.null,data_fim.gte.${today}`);
+        }
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar afastamentos: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, afastamentos: data || [] });
+      }
+
+      case 'buscar_acidentes': {
+        const { colaborador_id, busca, limite = 50 } = args;
+        let colabId = colaborador_id;
+
+        if (!colabId && busca) {
+          const { data: colab } = await supabaseAdmin
+            .from('gt_colaboradores')
+            .select('id')
+            .or(`nome_completo.ilike.%${busca}%,cpf.ilike.%${busca}%`)
+            .limit(1)
+            .maybeSingle();
+          colabId = colab?.id;
+        }
+
+        let query = supabaseAdmin
+          .from('gt_acidentes')
+          .select('*, gt_colaboradores:colaborador_id (nome_completo, cpf, matricula)')
+          .order('created_at', { ascending: false })
+          .limit(Math.min(limite || 50, 200));
+
+        if (colabId) query = query.eq('colaborador_id', colabId);
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar acidentes: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, acidentes: data || [] });
+      }
+
+      case 'buscar_fatores_risco_esocial': {
+        const { cargo, busca, limite = 100 } = args;
+        let query = supabaseAdmin
+          .from('esocial_fatores_risco')
+          .select('*')
+          .order('cargo', { ascending: true })
+          .limit(Math.min(limite || 100, 500));
+
+        if (cargo) query = query.ilike('cargo', cargo);
+        else if (busca) query = query.ilike('cargo', `%${busca}%`);
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar fatores de risco: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, fatores: data || [] });
+      }
+
+      case 'buscar_escalas': {
+        const { cpf, colaborador_id, data_inicio, data_fim, origem, limite = 50 } = args;
+        let colabId = colaborador_id;
+
+        if (!colabId && cpf) {
+          const clean = String(cpf).replace(/\D/g, '');
+          const { data: colab } = await supabaseAdmin
+            .from('gt_colaboradores')
+            .select('id')
+            .or(`cpf.eq.${clean},cpf.ilike.%${clean}%`)
+            .limit(1)
+            .maybeSingle();
+          colabId = colab?.id;
+        }
+
+        let query = supabaseAdmin
+          .from('gt_historico_embarques')
+          .select('*, gt_colaboradores:colaborador_id (nome_completo, cpf, matricula)')
+          .is('deleted_at', null)
+          .order('data_embarque', { ascending: false })
+          .limit(Math.min(limite || 50, 200));
+
+        if (colabId) query = query.eq('colaborador_id', colabId);
+        if (origem) query = query.eq('origem', origem);
+        if (data_inicio) query = query.gte('data_embarque', data_inicio);
+        if (data_fim) query = query.lte('data_desembarque', data_fim);
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar escalas: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, escalas: data || [] });
+      }
+
+      case 'atualizar_escala': {
+        if (userRole !== 'ADMIN' && userRole !== 'GERENTE' && userRole !== 'MANAGER') {
+          return 'Acesso negado. Apenas ADMIN/GERENTE podem editar escalas.';
+        }
+        const { evento_id, tipo, data_embarque, data_desembarque, observacoes, local_embarque, local_desembarque } = args;
+        if (!evento_id) return 'evento_id é obrigatório.';
+
+        const { data: existing, error: findErr } = await supabaseAdmin
+          .from('gt_historico_embarques')
+          .select('id, origem, deleted_at')
+          .eq('id', evento_id)
+          .maybeSingle();
+
+        if (findErr || !existing || existing.deleted_at) {
+          return 'Evento de escala não encontrado.';
+        }
+        if (existing.origem !== 'local') {
+          return 'Apenas eventos de origem local podem ser editados (origem MIO é somente leitura).';
+        }
+
+        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (tipo !== undefined) updates.tipo = mapCodigoToDbTipo(String(tipo));
+        if (data_embarque !== undefined) updates.data_embarque = data_embarque;
+        if (data_desembarque !== undefined) updates.data_desembarque = data_desembarque;
+        if (observacoes !== undefined) updates.observacoes = observacoes;
+        if (local_embarque !== undefined) updates.local_embarque = local_embarque;
+        if (local_desembarque !== undefined) updates.local_desembarque = local_desembarque;
+
+        const { data, error } = await supabaseAdmin
+          .from('gt_historico_embarques')
+          .update(updates)
+          .eq('id', evento_id)
+          .select('*')
+          .single();
+
+        if (error) return `Erro ao atualizar escala: ${error.message}`;
+        return JSON.stringify({ success: true, escala: data });
+      }
+
+      case 'registrar_entrega_epi': {
+        const { funcionario_id, tipo_equipamento, quantidade, motivo, marcar_entregue } = args;
+        if (!funcionario_id || !tipo_equipamento || !quantidade || !motivo) {
+          return 'funcionario_id, tipo_equipamento, quantidade e motivo são obrigatórios.';
+        }
+
+        try {
+          const reg = await createEPIRegistration(funcionario_id, {
+            equipment_type: tipo_equipamento,
+            quantity: Number(quantidade),
+            reason: motivo,
+          });
+
+          if (marcar_entregue && (userRole === 'ADMIN' || userRole === 'GERENTE' || userRole === 'MANAGER')) {
+            await updateEPIRegistration(reg.id, { status: 'delivered' });
+            return JSON.stringify({ success: true, message: 'EPI registrado e marcado como entregue.', registration_id: reg.id });
+          }
+
+          return JSON.stringify({ success: true, message: 'Solicitação de EPI criada.', registration: reg });
+        } catch (e) {
+          return `Erro ao registrar EPI: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+
+      case 'buscar_estoque_epi': {
+        try {
+          const { apenas_baixo, limite = 100 } = args;
+          const stock = apenas_baixo ? await getLowStockAlerts() : await getStockLevels();
+          const sliced = (stock || []).slice(0, Math.min(limite || 100, 500));
+          return JSON.stringify({
+            total: sliced.length,
+            estoque: sliced.map((s: any) => ({
+              id: s.id,
+              epi: s.epi_type?.name || s.epi_types?.name,
+              ca: s.epi_type?.ca_number || s.epi_types?.ca_number,
+              quantidade: s.current_quantity,
+              minimo: s.minimum_quantity,
+              baixo: s.is_low_stock ?? (s.current_quantity <= s.minimum_quantity),
+            })),
+          });
+        } catch (e) {
+          return `Erro ao buscar estoque EPI: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+
+      case 'buscar_vencimentos_epi': {
+        const { dias = 90, limite = 100 } = args;
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() + Number(dias || 90));
+        const cutoffIso = cutoff.toISOString().slice(0, 10);
+
+        const { data, error } = await supabaseAdmin
+          .from('epi_types')
+          .select('id, name, ca_number, ca_validity_date, ca_status, category')
+          .not('ca_validity_date', 'is', null)
+          .lte('ca_validity_date', cutoffIso)
+          .order('ca_validity_date', { ascending: true })
+          .limit(Math.min(limite || 100, 500));
+
+        if (error) return `Erro ao buscar vencimentos de CA: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, ate: cutoffIso, itens: data || [] });
+      }
+
+      case 'resumo_ponto_funcionario': {
+        const { funcionario_id, data_inicio, data_fim } = args;
+        const target = funcionario_id || userId;
+        if (userRole !== 'ADMIN' && userRole !== 'GERENTE' && userRole !== 'MANAGER' && target !== userId) {
+          return 'Acesso negado: você só pode ver o próprio resumo de ponto.';
+        }
+
+        let query = supabaseAdmin
+          .from('registros_presenca')
+          .select('id, created_at, lista_presenca(titulo, local, data_evento)')
+          .eq('user_id', target)
+          .order('created_at', { ascending: false })
+          .limit(1000);
+
+        if (data_inicio) query = query.gte('created_at', data_inicio);
+        if (data_fim) query = query.lte('created_at', `${data_fim}T23:59:59`);
+
+        const { data, error } = await query;
+        if (error) return `Erro ao gerar resumo de ponto: ${error.message}`;
+
+        const porEvento: Record<string, number> = {};
+        const dias = new Set<string>();
+        for (const r of data || []) {
+          const ev = (r as any).lista_presenca?.titulo || 'Presença Manual';
+          porEvento[ev] = (porEvento[ev] || 0) + 1;
+          dias.add(String(r.created_at).slice(0, 10));
+        }
+
+        return JSON.stringify({
+          funcionario_id: target,
+          total_registros: data?.length || 0,
+          dias_distintos: dias.size,
+          por_evento: porEvento,
+          periodo: { inicio: data_inicio || null, fim: data_fim || null },
+        });
+      }
+
+      case 'buscar_inconsistencias_ponto': {
+        const { funcionario_id, data_inicio, data_fim, limite = 50 } = args;
+        const target = funcionario_id || userId;
+        if (userRole !== 'ADMIN' && userRole !== 'GERENTE' && userRole !== 'MANAGER' && target !== userId) {
+          return 'Acesso negado.';
+        }
+
+        let query = supabaseAdmin
+          .from('registros_presenca')
+          .select('id, created_at, lista_presenca_id, lista_presenca(titulo, data_evento)')
+          .eq('user_id', target)
+          .order('created_at', { ascending: false })
+          .limit(1000);
+
+        if (data_inicio) query = query.gte('created_at', data_inicio);
+        if (data_fim) query = query.lte('created_at', `${data_fim}T23:59:59`);
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar inconsistências: ${error.message}`;
+
+        const seen = new Map<string, number>();
+        const duplicados: any[] = [];
+        for (const r of data || []) {
+          const day = String(r.created_at).slice(0, 10);
+          const key = `${r.lista_presenca_id || 'manual'}|${day}`;
+          const count = (seen.get(key) || 0) + 1;
+          seen.set(key, count);
+          if (count === 2) {
+            duplicados.push({
+              lista_presenca_id: r.lista_presenca_id,
+              evento: (r as any).lista_presenca?.titulo,
+              dia: day,
+              ocorrencias: count,
+            });
+          } else if (count > 2) {
+            const last = duplicados.find(d => d.dia === day && d.lista_presenca_id === r.lista_presenca_id);
+            if (last) last.ocorrencias = count;
+          }
+        }
+
+        return JSON.stringify({
+          funcionario_id: target,
+          duplicados: duplicados.slice(0, limite || 50),
+          total_duplicados: duplicados.length,
+        });
+      }
+
+      case 'matricular_usuario_curso': {
+        const { curso_id, usuario_id } = args;
+        if (!curso_id) return 'curso_id é obrigatório.';
+        const target = usuario_id || userId;
+        if (userRole !== 'ADMIN' && target !== userId) {
+          return 'Acesso negado: você só pode se matricular a si mesmo.';
+        }
+
+        const { data: existing } = await supabaseAdmin
+          .from('academy_enrollments')
+          .select('id, is_active')
+          .eq('user_id', target)
+          .eq('course_id', curso_id)
+          .maybeSingle();
+
+        if (existing?.is_active) {
+          return JSON.stringify({ success: true, message: 'Usuário já matriculado neste curso.', enrollment_id: existing.id });
+        }
+
+        if (existing && !existing.is_active) {
+          const { data, error } = await supabaseAdmin
+            .from('academy_enrollments')
+            .update({ is_active: true, enrolled_at: new Date().toISOString() })
+            .eq('id', existing.id)
+            .select('id, enrolled_at')
+            .single();
+          if (error) return `Erro ao reativar matrícula: ${error.message}`;
+          return JSON.stringify({ success: true, message: 'Matrícula reativada.', enrollment: data });
+        }
+
+        const { data, error } = await supabaseAdmin
+          .from('academy_enrollments')
+          .insert({
+            user_id: target,
+            course_id: curso_id,
+            is_active: true,
+            enrolled_at: new Date().toISOString(),
+          })
+          .select('id, enrolled_at')
+          .single();
+
+        if (error) return `Erro ao matricular: ${error.message}`;
+        return JSON.stringify({ success: true, message: 'Matrícula criada.', enrollment: data });
+      }
+
+      case 'buscar_certificados': {
+        const { usuario_id, curso_id, limite = 50 } = args;
+        const target = usuario_id || userId;
+        if (userRole !== 'ADMIN' && userRole !== 'GERENTE' && userRole !== 'MANAGER' && target !== userId) {
+          return 'Acesso negado.';
+        }
+
+        let query = supabaseAdmin
+          .from('academy_enrollments')
+          .select('id, enrolled_at, completed_at, certificate_url, certificate_issued_at, course:academy_courses(id, title)')
+          .not('certificate_url', 'is', null)
+          .order('certificate_issued_at', { ascending: false })
+          .limit(Math.min(limite || 50, 200));
+
+        query = query.eq('user_id', target);
+        if (curso_id) query = query.eq('course_id', curso_id);
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar certificados: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, certificados: data || [] });
+      }
+
+      case 'buscar_quizzes_pendentes': {
+        const { curso_id, usuario_id, limite = 50 } = args;
+        const isAdmin = userRole === 'ADMIN' || userRole === 'GERENTE' || userRole === 'MANAGER';
+
+        let query = supabaseAdmin
+          .from('academy_quiz_attempts')
+          .select('id, course_id, user_id, score_percentage, needs_grading, is_passed, created_at')
+          .order('created_at', { ascending: false })
+          .limit(Math.min(limite || 50, 200));
+
+        if (curso_id) query = query.eq('course_id', curso_id);
+
+        if (isAdmin) {
+          if (usuario_id) query = query.eq('user_id', usuario_id);
+          else query = query.eq('needs_grading', true);
+        } else {
+          query = query.eq('user_id', userId).or('needs_grading.eq.true,is_passed.eq.false');
+        }
+
+        const { data, error } = await query;
+        if (error) return `Erro ao buscar quizzes pendentes: ${error.message}`;
+        return JSON.stringify({ total: data?.length || 0, quizzes: data || [] });
+      }
+
+      case 'buscar_sinais_kpi_comunicacao': {
+        const { email_usuario, dominios, dias = 14, limite = 30 } = args || {};
+        let mailbox = email_usuario as string | undefined;
+        if (mailbox && userRole !== 'ADMIN') {
+          const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+          if (!me?.email || me.email.toLowerCase() !== String(mailbox).toLowerCase()) {
+            return 'Acesso negado: você só pode pesquisar a própria caixa de e-mail.';
+          }
+        }
+        if (!mailbox) {
+          const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+          mailbox = me?.email;
+        }
+        if (!mailbox) return 'Não foi possível determinar o e-mail do usuário.';
+
+        const { collectKpiCommunicationSignals } = await import('./kpi-comms-signals');
+        const domainList = dominios
+          ? String(dominios).split(',').map((d: string) => d.trim()).filter(Boolean)
+          : undefined;
+
+        const result = await collectKpiCommunicationSignals({
+          emailUsuario: mailbox,
+          dominios: domainList as any,
+          dias: Number(dias) || 14,
+          limite: resolveGraphLimit(limite, 30),
+        });
+        return JSON.stringify(result);
+      }
+
+      case 'meus_emails': {
+        const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+        if (!me?.email) return 'Usuário sem e-mail corporativo cadastrado.';
+
+        const emails = await msGraphClient.searchEmails(me.email, args?.consulta, {
+          from: args?.de,
+          subject: args?.assunto,
+          dateFrom: args?.data_inicio,
+          dateTo: args?.data_fim,
+          folder: args?.pasta,
+          isRead: args?.apenas_nao_lidos === true ? false : undefined,
+          hasAttachments: args?.com_anexos === true ? true : undefined,
+          top: resolveGraphLimit(args?.limite, 50),
+        });
+
+        if (!emails.length) return 'Nenhum e-mail encontrado com os filtros informados.';
+        return JSON.stringify({
+          total: emails.length,
+          emails: emails.map(e => ({
+            id: e.id,
+            assunto: e.subject,
+            de: (e.from as any)?.emailAddress?.address,
+            data: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
+            preview: e.bodyPreview,
+            lido: e.isRead,
+            anexos: e.hasAttachments,
+          })),
+        });
+      }
+
+      case 'meu_calendario': {
+        const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+        const daysFwd = Number(args?.dias_futuros ?? 14);
+        const daysBack = Number(args?.dias_passados ?? 0);
+        const start = new Date();
+        start.setDate(start.getDate() - daysBack);
+        const end = new Date();
+        end.setDate(end.getDate() + daysFwd);
+        const startIso = start.toISOString();
+        const endIso = end.toISOString();
+        const limit = resolveGraphLimit(args?.limite, 50);
+
+        const events: any[] = [];
+
+        if (me?.email) {
+          try {
+            const graphEvents = await msGraphClient.listCalendarEvents(
+              me.email,
+              startIso,
+              endIso,
+              limit
+            );
+            for (const e of graphEvents) {
+              events.push({
+                fonte: 'outlook',
+                titulo: e.subject,
+                inicio: e.start?.dateTime,
+                fim: e.end?.dateTime,
+                local: (e.location as any)?.displayName,
+              });
+            }
+          } catch { /* ignore graph */ }
+        }
+
+        const { data: portalEvents } = await supabaseAdmin
+          .from('calendar_events')
+          .select('id, summary, description, start_time, end_time, location')
+          .eq('user_id', userId)
+          .gte('start_time', startIso)
+          .lte('start_time', endIso)
+          .order('start_time', { ascending: true })
+          .limit(limit);
+
+        for (const e of portalEvents || []) {
+          events.push({
+            fonte: 'portal',
+            id: e.id,
+            titulo: e.summary,
+            inicio: e.start_time,
+            fim: e.end_time,
+            local: e.location,
+            descricao: e.description,
+          });
+        }
+
+        if (!events.length) return `Nenhum evento encontrado no período (${daysBack} dias atrás → ${daysFwd} à frente).`;
+        return JSON.stringify({ total: events.length, eventos: events });
+      }
+
+      case 'criar_evento_calendario': {
+        const { titulo, inicio, fim, local, descricao, tambem_outlook } = args || {};
+        if (!titulo || !inicio || !fim) return 'titulo, inicio e fim são obrigatórios.';
+
+        const { data: created, error } = await supabaseAdmin
+          .from('calendar_events')
+          .insert({
+            user_id: userId,
+            summary: titulo,
+            description: descricao || null,
+            start_time: inicio,
+            end_time: fim,
+            location: local || null,
+            attendees: [],
+            reminders: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select('id, summary, start_time, end_time')
+          .single();
+
+        if (error) return `Erro ao criar evento no portal: ${error.message}`;
+
+        let outlook: any = null;
+        if (tambem_outlook) {
+          const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+          if (me?.email) {
+            outlook = await msGraphClient.createCalendarEvent(me.email, {
+              subject: titulo,
+              start: inicio,
+              end: fim,
+              location: local,
+              body: descricao,
+            });
+          }
+        }
+
+        return JSON.stringify({
+          success: true,
+          portal: created,
+          outlook: outlook ? { id: outlook.id, subject: outlook.subject } : null,
+        });
+      }
+
+      case 'minhas_conversas_teams': {
+        const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+        if (!me?.email) return 'Usuário sem e-mail corporativo.';
+
+        const limit = resolveGraphLimit(args?.limite, 40);
+        const out: any = {};
+
+        if (args?.consulta) {
+          out.mensagens = await msGraphClient.searchTeamsMessages(me.email, {
+            consulta: args.consulta,
+            limite: limit,
+          });
+        }
+
+        if (args?.listar_chats !== false && !args?.consulta) {
+          const chats = await msGraphClient.listTeamsChats(me.email);
+          out.chats = chats.slice(0, limit).map(c => ({
+            id: c.id,
+            topico: c.topic,
+            tipo: (c as any).chatType,
+            atualizado: (c as any).lastUpdatedDateTime,
+          }));
+        } else if (args?.listar_chats === true) {
+          const chats = await msGraphClient.listTeamsChats(me.email);
+          out.chats = chats.slice(0, Math.min(limit, 30)).map(c => ({
+            id: c.id,
+            topico: c.topic,
+            tipo: (c as any).chatType,
+          }));
+        }
+
+        if (!out.chats?.length && !out.mensagens?.length) {
+          return 'Nenhuma conversa/mensagem Teams encontrada.';
+        }
+        return JSON.stringify(out);
+      }
+
+      case 'pesquisar_mensagens_teams': {
+        const { consulta, limite = 40 } = args || {};
+        if (!consulta) return 'consulta é obrigatória.';
+
+        let mailbox = args?.email_usuario as string | undefined;
+        if (mailbox && userRole !== 'ADMIN') {
+          return 'Acesso negado: apenas ADMIN pode pesquisar Teams de outro usuário.';
+        }
+        if (!mailbox) {
+          const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
+          mailbox = me?.email;
+        }
+        if (!mailbox) return 'E-mail do usuário não encontrado.';
+
+        const msgs = await msGraphClient.searchTeamsMessages(mailbox, {
+          consulta,
+          limite: resolveGraphLimit(limite, 40),
+        });
+        if (!msgs.length) return 'Nenhuma mensagem Teams encontrada para a consulta.';
+        return JSON.stringify({ total: msgs.length, mensagens: msgs });
+      }
+
+      case 'navegar_portal': {
+        const destino = String(args?.destino || '').trim();
+        if (!destino) return 'destino é obrigatório.';
+
+        const aliases: Record<string, string> = {
+          ferias: '/ferias',
+          férias: '/ferias',
+          reembolso: '/reembolso',
+          reembolsos: '/reembolso',
+          dashboard: '/dashboard',
+          inicio: '/dashboard',
+          home: '/dashboard',
+          admin: '/admin',
+          tripulantes: '/department/gestao-tripulantes',
+          'gestao-tripulantes': '/department/gestao-tripulantes',
+          academy: '/academy',
+          epi: '/epi',
+          ponto: '/ponto',
+          compras: '/compras',
+          calendario: '/calendario',
+          calendário: '/calendario',
+          'e-social': '/department/e-social',
+          esocial: '/department/e-social',
+          ia: '/ia',
+        };
+
+        const path = destino.startsWith('/')
+          ? destino
+          : (aliases[destino.toLowerCase()] || `/${destino.replace(/^\//, '')}`);
+
+        const commands = [
+          {
+            action: 'NAVIGATE',
+            target: path,
+            label: `Navegando para ${path}`,
+          },
+        ];
+        if (args?.highlight) {
+          commands.push({
+            action: 'HIGHLIGHT_ELEMENT',
+            target: String(args.highlight),
+            label: 'Destacando elemento',
+          } as any);
+        }
+
+        return JSON.stringify({
+          success: true,
+          message: `Comando de navegação pronto para ${path}`,
+          commands,
+          instrucao_companion: 'O AI Companion deve despachar estes commands via portalActionBus.',
+        });
+      }
+
+       default: {
+         // Bridge: tenta registry modular (Fase 3)
+         try {
+           const { executeTool, hasTool, initializeTools } = await import('./registry/tools-registry');
+           if (!hasTool(name)) {
+             await initializeTools();
+           }
+           if (hasTool(name)) {
+             const result = await executeTool(name, args || {}, {
+               userId,
+               userRole: (userRole === 'ADMIN' ? 'ADMIN' : userRole === 'GERENTE' || userRole === 'MANAGER' ? 'GERENTE' : 'USER') as any,
+             });
+             if (result.success) {
+               return typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+             }
+             return result.error || `Erro ao executar ${name}`;
+           }
+         } catch (bridgeErr) {
+           console.warn('[IA Tools] Registry bridge falhou:', bridgeErr);
+         }
          return `Ferramenta desconhecida: ${name}`;
+       }
     }
   } catch (err) {
     return `Erro interno ao executar ferramenta: ${err instanceof Error ? err.message : String(err)}`;
@@ -3413,9 +4745,18 @@ case 'coletar_dados_holisticos': {
 }
 
 /**
- * Busca e-mails globais usando Client Credentials Flow
+ * Busca e-mails globais usando Client Credentials Flow (fallback)
  */
-async function getGlobalUserEmails(email: string): Promise<string> {
+async function getGlobalUserEmails(
+  email: string,
+  options?: {
+    limite?: number;
+    de?: string;
+    assunto?: string;
+    data_inicio?: string;
+    data_fim?: string;
+  }
+): Promise<string> {
   const MS_CLIENT_ID = process.env.MS_GRAPH_CLIENT_ID || '';
   const MS_CLIENT_SECRET = process.env.MS_GRAPH_CLIENT_SECRET || '';
   const MS_TENANT_ID = process.env.MS_GRAPH_TENANT_ID || 'common';
@@ -3450,32 +4791,51 @@ async function getGlobalUserEmails(email: string): Promise<string> {
       return `Erro ao obter Token de App. A aplicação pode não ter sido configurada para o fluxo Client Credentials. Detalhes: ${JSON.stringify(tokenData)}`;
     }
 
-    // 2. Buscar E-mails do Usuário Específico
-    const mailRes = await fetch(`https://graph.microsoft.com/v1.0/users/${email}/messages?$top=5&$select=subject,from,receivedDateTime,bodyPreview`, {
-      headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
-    });
+    const limit = resolveGraphLimit(options?.limite, 50);
+    const filters: string[] = [];
+    if (options?.de) filters.push(`from/emailAddress/address eq '${options.de.replace(/'/g, "''")}'`);
+    if (options?.assunto) filters.push(`contains(subject, '${options.assunto.replace(/'/g, "''")}')`);
+    if (options?.data_inicio) filters.push(`receivedDateTime ge ${options.data_inicio}T00:00:00Z`);
+    if (options?.data_fim) filters.push(`receivedDateTime le ${options.data_fim}T23:59:59Z`);
 
-    if (!mailRes.ok) {
-      const errorData = await mailRes.text();
-      if (mailRes.status === 403) {
-        return `Erro 403 (Acesso Negado). Você configurou a Application Permission "Mail.Read.All" no Azure AD? Detalhes: ${errorData}`;
+    const collected: any[] = [];
+    let nextUrl: string | null =
+      `https://graph.microsoft.com/v1.0/users/${email}/messages?$top=${Math.min(limit, 100)}&$select=subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments&$orderby=receivedDateTime desc` +
+      (filters.length ? `&$filter=${filters.join(' and ')}` : '');
+
+    while (nextUrl && collected.length < limit) {
+      const mailRes = await fetch(nextUrl, {
+        headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+      });
+
+      if (!mailRes.ok) {
+        const errorData = await mailRes.text();
+        if (mailRes.status === 403) {
+          return `Erro 403 (Acesso Negado). Você configurou a Application Permission "Mail.Read.All" no Azure AD? Detalhes: ${errorData}`;
+        }
+        return `Erro ao ler e-mails do usuário via Graph API: ${mailRes.status} - ${errorData}`;
       }
-      return `Erro ao ler e-mails do usuário via Graph API: ${mailRes.status} - ${errorData}`;
+
+      const mailData = await mailRes.json();
+      collected.push(...(mailData.value || []));
+      nextUrl = mailData['@odata.nextLink'] || null;
     }
 
-    const mailData = await mailRes.json();
-    if (!mailData.value || mailData.value.length === 0) {
+    if (collected.length === 0) {
       return `A caixa de entrada de ${email} está vazia ou inacessível.`;
     }
 
-    const emails = mailData.value.map((msg: any) => ({
+    const emails = collected.slice(0, limit).map((msg: any) => ({
       subject: msg.subject,
       from: msg.from?.emailAddress?.name || msg.from?.emailAddress?.address || 'Desconhecido',
+      from_email: msg.from?.emailAddress?.address,
       date: new Date(msg.receivedDateTime).toLocaleString('pt-BR'),
-      preview: msg.bodyPreview
+      preview: msg.bodyPreview,
+      isRead: msg.isRead,
+      hasAttachments: msg.hasAttachments,
     }));
 
-    return JSON.stringify(emails);
+    return JSON.stringify({ total: emails.length, limite_aplicado: limit, emails });
   } catch (err) {
     return `Erro de rede ao conectar com Microsoft Graph: ${err instanceof Error ? err.message : String(err)}`;
   }
@@ -3487,29 +4847,42 @@ async function getGlobalUserEmails(email: string): Promise<string> {
 
 async function executePesquisarEmailsOutlook(args: any): Promise<string> {
   try {
+    const limit = resolveGraphLimit(args.limite, 50);
     const emails = await msGraphClient.searchEmails(
       args.email_usuario,
       args.consulta,
       {
         from: args.de,
+        to: args.para,
         subject: args.assunto,
         dateFrom: args.data_inicio,
         dateTo: args.data_fim,
         folder: args.pasta,
-        top: Math.min(args.limite || 20, 50),
+        isRead: args.apenas_nao_lidos === true ? false : undefined,
+        hasAttachments: args.com_anexos === true ? true : undefined,
+        includeBody: !!args.incluir_corpo,
+        top: limit,
       }
     );
 
     if (emails.length === 0) return 'Nenhum e-mail encontrado com os filtros informados.';
 
-    return JSON.stringify(emails.map(e => ({
-      assunto: e.subject,
-      de: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
-      data: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
-      preview: e.bodyPreview?.substring(0, 200),
-      lido: e.isRead,
-      anexos: e.hasAttachments,
-    })));
+    return JSON.stringify({
+      total: emails.length,
+      limite_aplicado: limit,
+      hard_cap: GRAPH_HARD_CAP,
+      emails: emails.map(e => ({
+        id: e.id,
+        assunto: e.subject,
+        de: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
+        de_email: (e.from as any)?.emailAddress?.address,
+        data: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
+        preview: e.bodyPreview?.substring(0, 400),
+        body: (e as any).body,
+        lido: e.isRead,
+        anexos: e.hasAttachments,
+      })),
+    });
   } catch (err) {
     return `Erro ao pesquisar e-mails: ${err instanceof Error ? err.message : String(err)}`;
   }
@@ -3617,31 +4990,68 @@ async function executeAgendarTarefaAgente(args: any, userId: string): Promise<st
   }
 }
 
-async function executeAnalisarKPIs(args: any): Promise<string> {
+async function executeAnalisarKPIs(args: any, userId?: string, userRole?: string): Promise<string> {
   try {
     const { analyzeKPIs } = await import('@/lib/ia/agent-service');
     const analyses = await analyzeKPIs(args.departamento);
 
-    if (analyses.length === 0) {
-      return 'Todos os KPIs estão dentro das metas! Nenhuma anomalia detectada.';
-    }
-
-    const report = analyses.map(a => ({
-      kpi: a.kpiLabel,
-      atual: `${a.currentValue}${a.unit === 'percent' ? '%' : ''}`,
-      meta: `${a.targetValue}${a.unit === 'percent' ? '%' : ''}`,
-      gap: `${a.gap.toFixed(1)}%`,
-      prioridade: a.priority,
-      acao: a.suggestedAction,
-      departamento: a.department || 'Global',
-    }));
-
-    return JSON.stringify({
-      resumo: `${analyses.length} KPI(s) abaixo da meta`,
+    const base: any = {
+      resumo: analyses.length === 0
+        ? 'Todos os KPIs estão dentro das metas! Nenhuma anomalia detectada.'
+        : `${analyses.length} KPI(s) abaixo da meta`,
       criticos: analyses.filter(a => a.priority === 'critical').length,
       altos: analyses.filter(a => a.priority === 'high').length,
-      detalhes: report,
-    });
+      detalhes: analyses.map(a => ({
+        kpi: a.kpiLabel,
+        atual: `${a.currentValue}${a.unit === 'percent' ? '%' : ''}`,
+        meta: `${a.targetValue}${a.unit === 'percent' ? '%' : ''}`,
+        gap: `${a.gap.toFixed(1)}%`,
+        prioridade: a.priority,
+        acao: a.suggestedAction,
+        departamento: a.department || 'Global',
+      })),
+    };
+
+    const shouldScan =
+      args?.incluir_comunicacao === true ||
+      (args?.incluir_comunicacao !== false && analyses.length > 0);
+
+    if (shouldScan && userId) {
+      try {
+        const { collectKpiCommunicationSignals } = await import('./kpi-comms-signals');
+        let mailbox = args?.email_monitoramento as string | undefined;
+        if (!mailbox) {
+          const { data: me } = await supabaseAdmin
+            .from('users_unified')
+            .select('email')
+            .eq('id', userId)
+            .maybeSingle();
+          mailbox = me?.email;
+        }
+        if (mailbox && (userRole === 'ADMIN' || !args?.email_monitoramento)) {
+          const pendencias: Record<string, number> = {};
+          for (const a of analyses) {
+            const key = String(a.kpiKey || '');
+            if (key.includes('vacation') || key.includes('ferias')) pendencias.ferias_pendentes = 1;
+            if (key.includes('reimburs') || key.includes('reembolso')) pendencias.reembolsos_pendentes = 1;
+            if (key.includes('purchase') || key.includes('compra')) pendencias.compras_pendentes = 1;
+            if (key.includes('evaluation') || key.includes('avaliacao')) pendencias.avaliacoes_pendentes = 1;
+          }
+          base.comunicacao = await collectKpiCommunicationSignals({
+            emailUsuario: mailbox,
+            pendencias,
+            dias: Number(args?.dias) || 14,
+            limite: 25,
+          });
+        }
+      } catch (e) {
+        base.comunicacao = {
+          resumo: `Scan de comunicação indisponível: ${e instanceof Error ? e.message : String(e)}`,
+        };
+      }
+    }
+
+    return JSON.stringify(base);
   } catch (err) {
     return `Erro ao analisar KPIs: ${err instanceof Error ? err.message : String(err)}`;
   }

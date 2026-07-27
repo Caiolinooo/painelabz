@@ -44,6 +44,7 @@ import GlobalTimeTracker from '@/components/tracking/GlobalTimeTracker';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import UserAvatar from '@/components/UserAvatar';
 import HelpWidget from '@/components/Help/HelpWidget';
+import AICompanionWidget from '@/components/IA/AICompanionWidget';
 import MenuCustomizer from '@/components/admin/MenuCustomizer'; // Import
 
 interface MainLayoutProps {
@@ -443,6 +444,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       </div>
       <HelpWidget />
+      <AICompanionWidget />
 
       {/* Menu Customizer Drawer */}
       <MenuCustomizer

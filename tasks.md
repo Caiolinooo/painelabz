@@ -1,3 +1,22 @@
+## IA Tools — Auditoria e correções (2026-07-27)
+
+### Feito
+- [x] FIX `buscar_kpis_sistema` — status férias `PENDING_LEADER|PENDING_MANAGER`, reembolso `pendente`
+- [x] FIX `gerar_planilha_excel` — configs `ponto`, `compras`, `eventos`, `cursos`
+- [x] FIX `gerar_relatorio_pdf` — configs `ponto`, `epis`, `compras`
+- [x] FIX `buscar_reembolsos` — user_id + fallback email; coluna `valorTotal`
+- [x] Graph: paginação + filtros + `limite=0` até hard cap 1000 (`microsoft/client.ts`, `ler_email_funcionario`, `pesquisar_emails_outlook`)
+- [x] P2 tools: tripulantes, afastamentos, acidentes, fatores risco, escalas, EPI estoque/vencimento/entrega, ponto resumo/inconsistências, academy matrícula/certificados/quizzes
+- [x] KPIs expandidos + sinais e-mail/Teams (`kpi-comms-signals.ts`, `buscar_sinais_kpi_comunicacao`)
+- [x] Fase 3: `meus_emails`, `meu_calendario`, `criar_evento_calendario`, Teams search, `navegar_portal`, registry microsoft/calendario/chat/portal + bridge
+
+### Pendente
+- [ ] Migrar restante do monolito `tools.ts` para registry (ferias/reembolso/etc. já parciais)
+- [ ] Workflows tools
+- [ ] Playwright: companion NAVIGATE + KPI scan com mailbox de teste
+
+---
+
 ## Reembolso — Fluxo de emails (aprovação / fiscal)
 
 - **Listas no admin** (`/admin/reimbursement-settings`)
