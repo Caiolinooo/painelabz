@@ -12,6 +12,7 @@ import tokenRefreshManager, { startTokenRefreshManager, stopTokenRefreshManager 
 import { attemptSessionRecovery, recoverSessionOnReturn } from '@/lib/sessionRecovery';
 import { activateUserAfterEmailVerification } from '@/lib/user-approval';
 import { getDefaultPermissionsForRole } from '@/config/modules';
+import { clearCompanionSession } from '@/lib/ia/companion-session-storage';
 // Import a browser-compatible JWT library or use a safer approach
 
 // Função para gerar um token JWT (deve ser feito no servidor)
@@ -1141,6 +1142,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('logout_in_progress', 'true');
       sessionStorage.setItem('logout_in_progress', 'true');
 
+      const loggingOutUserId = user?.id || null;
+
+      // STM Companion: limpa contexto/sessão local ANTES de zerar user (LTM no DB permanece)
+      clearCompanionSession(loggingOutUserId);
+
       // Limpar estado DO REACT PRIMEIRO (antes de qualquer operação assíncrona)
       setUser(null);
       setProfile(null);
@@ -1183,6 +1189,9 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       // Remover TODOS os dados de autenticação do localStorage
       const keysToRemove = ['auth', 'token', 'abzToken', 'user', 'rememberMe', 'sb-access-token', 'sb-refresh-token'];
       keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // Garante limpeza de leftovers do Companion STM
+      clearCompanionSession(loggingOutUserId);
 
       // Limpar todos os cookies relacionados à autenticação
       const cookiesToClear = ['token', 'abzToken', 'auth', 'refreshToken', 'sb-access-token', 'sb-refresh-token'];

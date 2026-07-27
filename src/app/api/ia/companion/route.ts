@@ -34,6 +34,10 @@ const COMPANION_SYSTEM = `Você é o **ABZ Companion**, assistente flutuante do 
 - Use tools para férias, reembolsos, KPIs, e-mails, calendário, Teams, EPI, Academy, tripulantes, etc.
 - Se a pergunta for ambígua, faça UMA pergunta curta OU escolha o destino mais provável e diga o que fez.
 
+## Memória
+- Use \`salvar_memoria_usuario\` quando o usuário pedir para lembrar algo ou revelar preferências duráveis.
+- Fatos importantes já salvos aparecem no contexto — use-os; não invente.
+
 ## Formato
 - Texto natural para o usuário.
 - Não exponha JSON cru, tags de pensamento ou nomes internos de tools.`;
@@ -144,7 +148,15 @@ export async function POST(req: NextRequest) {
           (firstName ? `\nUsuário logado: ${firstName} (role ${userRole}).` : '') +
           (navMatch
             ? `\nSugestão de navegação detectada: ${navMatch.route.label} → ${navMatch.route.path} (score ${navMatch.score.toFixed(2)}, match "${navMatch.matchedOn}"). Se fizer sentido, confirme e use navegar_portal.`
-            : ''),
+            : '') +
+          (await (async () => {
+            try {
+              const { buildUserMemoryPromptBlock } = await import('@/lib/ia/user-memory');
+              return await buildUserMemoryPromptBlock(userId);
+            } catch {
+              return '';
+            }
+          })()),
       },
       ...historyMessages,
       // Prefixo interno para o router de sub-agentes priorizar o agente companion
@@ -214,6 +226,22 @@ export async function POST(req: NextRequest) {
     if (!replyText) {
       replyText = 'Pronto — como posso ajudar?';
     }
+
+    // Extrai / salva LTM (Hermes-like) — não bloqueia resposta
+    void (async () => {
+      try {
+        const { extractAndSaveMemoriesFromTurn } = await import('@/lib/ia/user-memory');
+        await extractAndSaveMemoriesFromTurn({
+          userId,
+          userMessage: prompt.trim(),
+          assistantReply: replyText,
+          source: 'companion',
+          sessionId: session_id,
+        });
+      } catch (memErr) {
+        console.warn('[Companion] memory extract skip:', memErr);
+      }
+    })();
 
     // Persistência leve (sessão companion dedicada, opcional)
     let sessionId = session_id as string | undefined;

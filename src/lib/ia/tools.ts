@@ -1025,6 +1025,42 @@ export const IA_TOOLS_DEFINITION = [
     {
       type: 'function',
       function: {
+        name: 'salvar_memoria_usuario',
+        description:
+          'Salva um fato importante de longo prazo sobre o usuário (preferência, meta, correção). Persiste entre sessões e logins. Use quando o usuário pedir para lembrar algo ou revelar preferências duráveis.',
+        parameters: {
+          type: 'object',
+          properties: {
+            conteudo: { type: 'string', description: 'Fato a lembrar (curto e objetivo)' },
+            tipo: {
+              type: 'string',
+              enum: ['preference', 'fact', 'goal', 'correction', 'context', 'skill'],
+              description: 'Categoria da memória',
+            },
+            importancia: { type: 'number', description: '1–10 (padrão 5)' },
+          },
+          required: ['conteudo'],
+        },
+      },
+      adminOnly: false,
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'listar_memorias_usuario',
+        description: 'Lista as memórias de longo prazo ativas do usuário autenticado.',
+        parameters: {
+          type: 'object',
+          properties: {
+            limite: { type: 'number', description: 'Máximo de itens (padrão 20)' },
+          },
+        },
+      },
+      adminOnly: false,
+    },
+    {
+      type: 'function',
+      function: {
         name: 'iniciar_agente_autonomo',
         description: 'Inicia o agente IA autônomo para monitoramento e otimização contínua de KPIs. O agente executa ciclos periódicos para analisar KPIs, identificar gaps, gerar planos de ação e executar intervenções automaticamente.',
         parameters: {
@@ -3637,6 +3673,29 @@ return JSON.stringify(data);
 
       case 'gerenciar_base_conhecimento':
         return await executeGerenciarBaseConhecimento(args, userId);
+
+      case 'salvar_memoria_usuario': {
+        const { saveUserMemory } = await import('./user-memory');
+        const conteudo = String(args?.conteudo || '').trim();
+        if (!conteudo) return 'conteudo é obrigatório.';
+        const saved = await saveUserMemory({
+          userId,
+          content: conteudo,
+          kind: (args?.tipo as any) || 'fact',
+          importance: Number(args?.importancia) || 5,
+          source: 'tool',
+        });
+        if (!saved) return 'Não foi possível salvar a memória (verifique se a tabela ia_user_memory existe).';
+        return JSON.stringify({ success: true, memory: saved });
+      }
+
+      case 'listar_memorias_usuario': {
+        const { listUserMemories } = await import('./user-memory');
+        const mems = await listUserMemories(userId, {
+          limit: Number(args?.limite) || 20,
+        });
+        return JSON.stringify({ total: mems.length, memorias: mems });
+      }
 
       case 'iniciar_agente_autonomo': {
           const { usuario_id, setor_id, config } = args;

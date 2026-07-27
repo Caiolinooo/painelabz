@@ -1,3 +1,16 @@
+## IA Companion global + memória Hermes (2026-07-27)
+
+### Feito
+- [x] `CompanionSessionProvider` global (sobrevive troca de módulo)
+- [x] STM `localStorage` — limpa só no logout
+- [x] LTM `ia_user_memory` + inject no prompt + tools + extract heurístico
+- [x] Migration SQL + v5.44.0
+
+### Ops
+- [ ] Aplicar `supabase/migrations/20260727_000001_ia_user_memory.sql` no Supabase SQL Editor
+
+---
+
 ## IA Companion UX (2026-07-27)
 
 ### Feito

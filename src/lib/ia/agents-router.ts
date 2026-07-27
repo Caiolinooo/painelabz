@@ -95,6 +95,8 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'buscar_ferias',
       'buscar_reembolsos',
       'gerenciar_base_conhecimento',
+      'salvar_memoria_usuario',
+      'listar_memorias_usuario',
       'navegar_portal',
       'meu_calendario',
       'meus_emails',
@@ -108,7 +110,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
     icon: '🧭',
     systemPromptAddon:
-      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas. Para pendências: buscar_dados_usuario (resumo); render_dashboard só se couber na resposta curta.',
+      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Para pendências: buscar_dados_usuario (resumo) + render_dashboard se útil.',
     toolNames: [
       'navegar_portal',
       'buscar_dados_usuario',
@@ -129,6 +131,8 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'buscar_tripulantes',
       'buscar_escalas',
       'gerenciar_base_conhecimento',
+      'salvar_memoria_usuario',
+      'listar_memorias_usuario',
       'render_dashboard',
     ],
   },

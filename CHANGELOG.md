@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.44.0] - 2026-07-27
+
+### Features
+- **Companion global + memória Hermes-like**:
+  - Sessão do Companion acompanha o usuário em todos os módulos (`CompanionSessionProvider` no `ClientProviders`; STM em `localStorage`).
+  - Contexto/sessão de conversa limpos **somente no logout** (STM); memória de longo prazo (`ia_user_memory`) **persiste** entre logins.
+  - LTM curada por usuário (fatos/preferências/metas), injetada no system prompt do Companion e do Chat.
+  - Tools `salvar_memoria_usuario` / `listar_memorias_usuario` + extração heurística pós-turno.
+  - Migration: `supabase/migrations/20260727_000001_ia_user_memory.sql` (aplicar no Supabase).
+
+### Changed
+- Companion removido do `MainLayout` (evita remount/perda de estado); montagem global autenticada.
+
 ## [5.43.1] - 2026-07-27
 
 ### Features

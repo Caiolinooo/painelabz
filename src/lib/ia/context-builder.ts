@@ -508,6 +508,15 @@ export async function buildChatMessages(
     console.warn('[IA Context] Erro ao carregar knowledge base:', kbErr);
   }
 
+  // Memória de longo prazo do usuário (Hermes-like — persiste entre logins)
+  try {
+    const { buildUserMemoryPromptBlock } = await import('@/lib/ia/user-memory');
+    const memBlock = await buildUserMemoryPromptBlock(userId);
+    if (memBlock) systemPrompt += memBlock;
+  } catch (memErr) {
+    console.warn('[IA Context] Erro ao carregar user memory:', memErr);
+  }
+
   const messages: LLMMessage[] = [
     { role: 'system', content: systemPrompt },
     ...history,
