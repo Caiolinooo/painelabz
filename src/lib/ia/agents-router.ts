@@ -114,7 +114,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
     icon: '🧭',
     systemPromptAddon:
-      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para pendências: buscar_dados_usuario (resumo) + render_dashboard se útil.',
+      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. NUNCA diga que vai abrir/levar sem chamar navegar_portal. Tours do portal: chame navegar_portal(destino="dashboard") no primeiro hop. KPI → /kpi. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para pendências: buscar_dados_usuario (resumo) + render_dashboard se útil.',
     toolNames: [
       'navegar_portal',
       'buscar_dados_usuario',

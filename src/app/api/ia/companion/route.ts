@@ -10,7 +10,10 @@ import { chatCompletion } from '@/lib/ia/client';
 import type { AICommandPayload } from '@/lib/ia/portal-action-bus';
 import {
   buildNavCommand,
+  ensureNavigationCommand,
+  getDashboardNavMatch,
   isNavigationIntent,
+  isTourIntent,
   resolvePortalNavigation,
 } from '@/lib/ia/portal-navigation';
 import type { LLMMessage } from '@/types/ia';
@@ -24,10 +27,13 @@ const COMPANION_SYSTEM = `Você é o **ABZ Companion**, assistente flutuante do 
 - Você ESTÁ conectado à IA real do portal — use tools para dados e navegação. Nunca diga que é um atalho genérico ou que o usuário deve "usar o chat completo".
 - Respostas curtas (2–6 frases), português do Brasil, cordial e objetivo.
 
-## Navegação
+## Navegação (OBRIGATÓRIO)
 - Para abrir módulos, chame a tool \`navegar_portal\` com o destino (aceita typos: feririas, reemboso, tripuentes…).
-- Confirme na resposta para onde está levando o usuário.
-- Intenções: "abre ferias", "ir pra reembolso", "quero ver tripulantes", "e-social", "kpi" → /kpi, "minhas férias".
+- NUNCA diga que vai abrir/levar o usuário a um módulo sem chamar \`navegar_portal\` na mesma resposta.
+- Se escrever "vou te levar", "abrindo", "vamos começar pela Home/Dashboard", etc., a tool DEVE ter sido chamada.
+- Tours / "modulo a modulo" / "guia do portal": SEMPRE chame \`navegar_portal\` com destino \`dashboard\` (primeiro hop) antes de descrever o roteiro.
+- Confirme na resposta para onde está levando o usuário (só depois da tool).
+- Intenções: "abre ferias", "ir pra reembolso", "quero ver tripulantes", "e-social", "kpi" → /kpi, "me leva ao dashboard" → /dashboard, "minhas férias".
 - Contextos compostos: "aprovar férias" → férias/aprovações; "estoque epi" → EPI; "meus cursos" → Academy.
 
 ## Consultas
@@ -118,10 +124,15 @@ export async function POST(req: NextRequest) {
     const commands: AICommandPayload[] = [];
 
     // 1) Navegação fuzzy (typos / sinônimos) — caminho rápido quando intenção é clara
+    const tourIntent = isTourIntent(prompt);
     const navIntent = isNavigationIntent(prompt);
-    const navMatch = resolvePortalNavigation(prompt);
-    // Limiar 0.78 com verbo de navegação; 0.88 se for frase curta só com destino
-    const fuzzyThreshold = navIntent ? 0.78 : 0.9;
+    let navMatch = resolvePortalNavigation(prompt);
+    // Tour sem destino explícito → primeiro hop = Dashboard/Home
+    if (tourIntent && (!navMatch || navMatch.score < 0.78)) {
+      navMatch = getDashboardNavMatch();
+    }
+    // Limiar 0.78 com verbo/tour; 0.9 se for frase sem intenção clara
+    const fuzzyThreshold = navIntent || tourIntent ? 0.78 : 0.9;
     if (navMatch && navMatch.score >= fuzzyThreshold) {
       commands.push(buildNavCommand(navMatch));
     }
@@ -152,7 +163,10 @@ export async function POST(req: NextRequest) {
           COMPANION_SYSTEM +
           (firstName ? `\nUsuário logado: ${firstName} (role ${userRole}).` : '') +
           (navMatch
-            ? `\nSugestão de navegação detectada: ${navMatch.route.label} → ${navMatch.route.path} (score ${navMatch.score.toFixed(2)}, match "${navMatch.matchedOn}"). Se fizer sentido, confirme e use navegar_portal.`
+            ? `\nSugestão de navegação detectada: ${navMatch.route.label} → ${navMatch.route.path} (score ${navMatch.score.toFixed(2)}, match "${navMatch.matchedOn}"). Você DEVE chamar navegar_portal com este destino (não só descrever).`
+            : '') +
+          (tourIntent
+            ? `\nTour do portal pedido: chame navegar_portal(destino="dashboard") AGORA como primeiro passo, depois descreva o roteiro.`
             : '') +
           (await (async () => {
             try {
@@ -228,6 +242,17 @@ export async function POST(req: NextRequest) {
           { status: 502 }
         );
       }
+    }
+
+    // Safety net: resposta prometeu navegação / tour sem NAVIGATE → injeta comando
+    const injected = ensureNavigationCommand({
+      prompt,
+      reply: replyText,
+      commands,
+      navMatch,
+    });
+    if (injected && !navMatch) {
+      navMatch = injected;
     }
 
     if (!replyText && commands.length > 0 && navMatch) {

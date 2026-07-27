@@ -50,6 +50,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Sub-agentes: `rh_tripulantes` / `geral` / `companion` incluem `render_dashboard`; nomes alinhados (`analisar_kpis_negocio`, `gerar_planilha_excel`)
 - Assistant (`/api/ia/chat` stream) vs Companion (`/api/ia/companion` sync): stream envia status inicial; Companion sync + LTM/skills no prompt
 - Skills: memória = fatos curtos sempre no contexto; skills = procedimentos mais longos (índice no prompt; corpo via `usar_skill`). Cap ~30/user; sem secrets. Auto-create heurístico + instrução no system prompt.
+- **Companion NAVIGATE contract**: nunca prometer navegação sem emitir `NAVIGATE`. Fast-path (`isNavigationIntent` / `isTourIntent` + `resolvePortalNavigation`) + safety net `ensureNavigationCommand` (injeta se reply promete abrir/levar e não há command). Tour → primeiro hop `/dashboard`. Widget despacha `data.commands` (fallback `navigation` high-confidence).
 
 ## Verification
 
@@ -57,6 +58,10 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - USER chama `meus_emails` → só a própria mailbox
 - `navegar_portal` destino `feririas` → `/ferias` (fuzzy)
 - `navegar_portal` / `resolvePortalNavigation("kpi")` → `/kpi` (não `/dashboard`)
+- Companion "me leva ao dashboard" (ex.: de `/ferias`) → `commands` com `NAVIGATE` `/dashboard`
+- Companion "tour pelo portal" / "modulo em modulo" → `NAVIGATE` `/dashboard` imediato (não só texto)
+- Companion "me leva ao kpi" → `/kpi`
+- Resposta com "vou te levar… Home/Dashboard" sem tool → server injeta `NAVIGATE` via `ensureNavigationCommand`
 - Companion pergunta de dados → resposta via LLM+tools (não canned)
 - Registry bridge: tool só no registry ainda responde via `executeToolCall`
 - FAB Companion: disco branco + crop `LC1_Azul` (“abz”) + label **ABZ**; idle respira, listening radar, speaking pulse, executing arco — logo estático; sem SVG arcs 3 cores / glow roxo

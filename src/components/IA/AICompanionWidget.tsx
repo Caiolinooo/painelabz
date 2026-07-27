@@ -115,6 +115,13 @@ export default function AICompanionWidget() {
         data.commands.forEach((cmd: AICommandPayload) => {
           portalActionBus.dispatch(cmd);
         });
+      } else if (data.navigation?.path && data.navigation?.confidence === 'high') {
+        // Fallback: API sinalizou destino claro sem array commands (não deve ocorrer após safety net)
+        portalActionBus.dispatch({
+          action: 'NAVIGATE',
+          target: data.navigation.path,
+          label: `Abrindo ${data.navigation.label || data.navigation.path}...`,
+        });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao comunicar com o assistente';

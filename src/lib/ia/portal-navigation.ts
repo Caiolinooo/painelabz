@@ -65,8 +65,20 @@ export const PORTAL_ROUTES: PortalRoute[] = [
     id: 'dashboard',
     path: '/dashboard',
     label: 'Dashboard',
-    keywords: ['dashboard', 'inicio', 'home', 'painel', 'principal', 'dash'],
-    contexts: ['voltar ao inicio', 'pagina inicial', 'tela inicial', 'voltar pro painel'],
+    keywords: ['dashboard', 'inicio', 'home', 'painel', 'principal', 'dash', 'home dashboard'],
+    contexts: [
+      'voltar ao inicio',
+      'pagina inicial',
+      'tela inicial',
+      'voltar pro painel',
+      'me leva ao dashboard',
+      'me leva a home',
+      'abrir dashboard',
+      'comecar pela home',
+      'comecar pelo dashboard',
+      'vamos comecar pela home',
+      'vamos comecar pelo dashboard',
+    ],
   },
   {
     id: 'admin',
@@ -196,6 +208,51 @@ const NAV_INTENT_VERBS = [
   'abrir', 'abre', 'abra', 'ir', 'vai', 'va', 'levar', 'leve', 'mostrar', 'mostra',
   'acessar', 'acesse', 'navegar', 'navegue', 'entrar', 'entre', 'ir para', 'vai para',
   'quero ir', 'preciso ir', 'me leve', 'me leva', 'redirecionar', 'goto', 'go to',
+  'traz', 'traga', 'leva', 'leve me', 'me mostre', 'quero ver', 'quero abrir',
+];
+
+/** Frases de tour / guia do portal (primeiro hop = Dashboard) */
+const TOUR_INTENT_PHRASES = [
+  'tour',
+  'passeio',
+  'guia do portal',
+  'guia pelo portal',
+  'modulo a modulo',
+  'modulo em modulo',
+  'modulos um a um',
+  'um modulo por vez',
+  'conhecer o portal',
+  'apresentar o portal',
+  'mostrar o portal',
+  'mostra o portal',
+  'me mostra o portal',
+  'vamos comecar',
+  'comece pela',
+  'comecar pela',
+  'comecar pelo',
+  'passe pelos modulos',
+  'percorrer o portal',
+  'recorrer o portal',
+];
+
+/** Linguagem de promessa de navegação na resposta do Companion */
+const REPLY_NAV_PROMISE_PHRASES = [
+  'vou te levar',
+  'vou levar',
+  'te levando',
+  'vou abrir',
+  'abrindo',
+  'navegando',
+  'indo para',
+  'indo pra',
+  'vamos comecar',
+  'vamos iniciar',
+  'comecamos pela',
+  'comecei pela',
+  'primeiro passo',
+  'primeira parada',
+  'levar voce',
+  'levando voce',
 ];
 
 export function normalizeText(input: string): string {
@@ -269,8 +326,23 @@ function tokenFuzzyIncludes(haystack: string, needle: string): number {
   return best;
 }
 
+export function isTourIntent(prompt: string): boolean {
+  const n = normalizeText(prompt);
+  if (!n) return false;
+  if (TOUR_INTENT_PHRASES.some(p => n.includes(normalizeText(p)))) return true;
+  // "portal" + verbo de mostrar/conhecer/guiar
+  if (
+    n.includes('portal') &&
+    /(tour|passeio|guia|conhecer|apresent|mostrar|mostra|percorr|recorr|modulo)/.test(n)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function isNavigationIntent(prompt: string): boolean {
   const n = normalizeText(prompt);
+  if (isTourIntent(n)) return true;
   if (NAV_INTENT_VERBS.some(v => n.includes(v))) return true;
   // Frases curtas só com destino: "ferias", "reembolso"
   if (n.split(/\s+/).length <= 4) {
@@ -279,6 +351,79 @@ export function isNavigationIntent(prompt: string): boolean {
     );
   }
   return false;
+}
+
+/** Resposta do LLM promete abrir/levar sem necessariamente ter chamado a tool */
+export function replyImpliesNavigation(reply: string): boolean {
+  const n = normalizeText(reply);
+  if (!n) return false;
+  if (REPLY_NAV_PROMISE_PHRASES.some(p => n.includes(normalizeText(p)))) return true;
+  // "vamos começar pela **Home/Dashboard**" etc.
+  if (/comec(ar|amos|ei)? pela|primeira (parada|tela|etapa)/.test(n)) return true;
+  return false;
+}
+
+export function getDashboardNavMatch(): PortalNavMatch {
+  const route = PORTAL_ROUTES.find(r => r.id === 'dashboard')!;
+  return {
+    route,
+    score: 1,
+    matchedOn: 'tour-first-stop',
+    confidence: 'high',
+  };
+}
+
+/**
+ * Garante pelo menos um NAVIGATE quando o usuário pediu tour/ir a um módulo
+ * ou a resposta promete navegação sem commands. Retorna o match usado (se injetou).
+ */
+export function ensureNavigationCommand(opts: {
+  prompt: string;
+  reply?: string;
+  commands: Array<{ action: string; target?: string; label?: string; value?: unknown }>;
+  navMatch?: PortalNavMatch | null;
+}): PortalNavMatch | null {
+  const hasNavigate = opts.commands.some(
+    c => c.action === 'NAVIGATE' && typeof c.target === 'string' && c.target.length > 0
+  );
+  if (hasNavigate) return null;
+
+  const tour = isTourIntent(opts.prompt);
+  const navIntent = isNavigationIntent(opts.prompt);
+  const replyPromise = opts.reply ? replyImpliesNavigation(opts.reply) : false;
+
+  if (tour) {
+    const first = getDashboardNavMatch();
+    opts.commands.push(buildNavCommand(first));
+    return first;
+  }
+
+  if (opts.navMatch && (navIntent || replyPromise) && opts.navMatch.score >= 0.78) {
+    opts.commands.push(buildNavCommand(opts.navMatch));
+    return opts.navMatch;
+  }
+
+  if (replyPromise && opts.reply) {
+    const fromReply = resolvePortalNavigation(opts.reply);
+    if (fromReply && fromReply.score >= 0.78) {
+      opts.commands.push(buildNavCommand(fromReply));
+      return fromReply;
+    }
+    // Prometeu home/dashboard sem match forte → dashboard
+    const n = normalizeText(opts.reply);
+    if (/(home|dashboard|inicio|painel principal)/.test(n)) {
+      const first = getDashboardNavMatch();
+      opts.commands.push(buildNavCommand(first));
+      return first;
+    }
+  }
+
+  if (navIntent && opts.navMatch && opts.navMatch.score >= 0.78) {
+    opts.commands.push(buildNavCommand(opts.navMatch));
+    return opts.navMatch;
+  }
+
+  return null;
 }
 
 /**
