@@ -32,6 +32,11 @@ import { collectHolisticForUser } from './holistic-aggregator';
 import { createEPIRegistration, updateEPIRegistration } from '@/services/epiService';
 import { getStockLevels, getLowStockAlerts } from '@/services/epiStockService';
 import { mapCodigoToDbTipo } from '@/lib/gestao-tripulantes/escala-tipos';
+import {
+  aliasToPath,
+  buildNavCommand,
+  resolvePortalNavigation,
+} from './portal-navigation';
 
 // Definição da interface das ferramentas para a OpenAI / LM Studio
 export const IA_TOOLS_DEFINITION = [
@@ -1667,13 +1672,13 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'navegar_portal',
-      description: 'Gera comando de navegação do AI Companion para uma rota do portal (ferias, reembolso, dashboard, gestao-tripulantes, etc.).',
+      description: 'Navega o usuário para um módulo do portal. Aceita typos e sinônimos (ex: feririas→férias, reemboso→reembolso, tripulantes, e-social). Use quando o usuário pedir para abrir/ir a uma tela.',
       parameters: {
         type: 'object',
         properties: {
           destino: {
             type: 'string',
-            description: 'Alias ou path: ferias, reembolso, dashboard, admin, tripulantes, academy, epi, ponto, compras, calendario, ou path absoluto /...',
+            description: 'Nome do módulo, frase ou path: ferias, reembolso, tripulantes, academy, epi, ponto, compras, calendario, esocial, dashboard, admin, ou /path',
           },
           highlight: { type: 'string', description: 'CSS selector opcional para destacar após navegar' },
         },
@@ -4667,52 +4672,32 @@ case 'coletar_dados_holisticos': {
         const destino = String(args?.destino || '').trim();
         if (!destino) return 'destino é obrigatório.';
 
-        const aliases: Record<string, string> = {
-          ferias: '/ferias',
-          férias: '/ferias',
-          reembolso: '/reembolso',
-          reembolsos: '/reembolso',
-          dashboard: '/dashboard',
-          inicio: '/dashboard',
-          home: '/dashboard',
-          admin: '/admin',
-          tripulantes: '/department/gestao-tripulantes',
-          'gestao-tripulantes': '/department/gestao-tripulantes',
-          academy: '/academy',
-          epi: '/epi',
-          ponto: '/ponto',
-          compras: '/compras',
-          calendario: '/calendario',
-          calendário: '/calendario',
-          'e-social': '/department/e-social',
-          esocial: '/department/e-social',
-          ia: '/ia',
-        };
+        const match = resolvePortalNavigation(destino);
+        const path = match && match.score >= 0.78
+          ? match.route.path
+          : aliasToPath(destino);
+        const label = match?.route.label || path;
 
-        const path = destino.startsWith('/')
-          ? destino
-          : (aliases[destino.toLowerCase()] || `/${destino.replace(/^\//, '')}`);
-
-        const commands = [
-          {
-            action: 'NAVIGATE',
-            target: path,
-            label: `Navegando para ${path}`,
-          },
+        const commands: Array<{ action: string; target: string; label: string }> = [
+          match && match.score >= 0.78
+            ? buildNavCommand(match)
+            : { action: 'NAVIGATE', target: path, label: `Navegando para ${label}...` },
         ];
         if (args?.highlight) {
           commands.push({
             action: 'HIGHLIGHT_ELEMENT',
             target: String(args.highlight),
             label: 'Destacando elemento',
-          } as any);
+          });
         }
 
         return JSON.stringify({
           success: true,
-          message: `Comando de navegação pronto para ${path}`,
+          message: `Navegação pronta: ${label} (${path})` +
+            (match ? ` [match: ${match.matchedOn}, confiança: ${match.confidence}]` : ''),
           commands,
           instrucao_companion: 'O AI Companion deve despachar estes commands via portalActionBus.',
+          _metadata: { portalCommands: commands },
         });
       }
 

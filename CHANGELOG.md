@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.43.0] - 2026-07-27
+
+### Features
+- **AI Companion UX**:
+  - Ícone com logo oficial ABZ (`LC1_Azul.png`) estável + anel de status (sem girar a marca) e wordmark no FAB.
+  - Companion conectado à IA real (`chatCompletion` + tools); removidas respostas canned por keyword.
+  - Navegação fuzzy com typos/sinônimos/contextos (`portal-navigation.ts`); `navegar_portal` unificado.
+  - Commands da tool propagados via `_metadata.portalCommands` para o Portal Action Bus.
+  - Sub-agente `companion` no `agents-router` (prefixo `[ABZ_COMPANION]` / verbos de navegação).
+
+### Fixed
+- Falso positivo de navegação: keywords curtas (ex. `ca`) não batem mais como substring em palavras como `calendario`.
+
 ## [5.42.0] - 2026-07-27
 
 ### Features

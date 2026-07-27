@@ -145,6 +145,10 @@ export function sanitizeMessagesForLLM(messages: LLMMessage[]): LLMMessage[] {
 
       const role = msg.role;
       let rawContent = typeof msg.content === 'string' ? msg.content : (msg.content ? String(msg.content) : '');
+      // Prefixo interno de roteamento do Companion — não enviar ao LLM
+      if (role === 'user') {
+        rawContent = rawContent.replace(/^\[ABZ_COMPANION\]\s*/i, '');
+      }
 
       const cleanMsg: any = {
         role,
@@ -330,7 +334,20 @@ export async function chatCompletion(
           try {
             const parsedResult = JSON.parse(result);
             if (parsedResult._metadata) {
-              mergedMetadata = { ...mergedMetadata, ...parsedResult._metadata };
+              const incoming = parsedResult._metadata;
+              // Concatena portalCommands em vez de sobrescrever
+              if (Array.isArray(incoming.portalCommands)) {
+                const prev = Array.isArray(mergedMetadata.portalCommands)
+                  ? mergedMetadata.portalCommands
+                  : [];
+                mergedMetadata = {
+                  ...mergedMetadata,
+                  ...incoming,
+                  portalCommands: [...prev, ...incoming.portalCommands],
+                };
+              } else {
+                mergedMetadata = { ...mergedMetadata, ...incoming };
+              }
             }
             if (tc.function.name === 'render_dashboard') {
               toolContent = parsedResult.message || 'Dashboard renderizado.';
@@ -629,7 +646,19 @@ export async function chatCompletionStream(
         try {
           const parsedResult = JSON.parse(rawResult);
           if (parsedResult._metadata) {
-            accumulatedMetadata = { ...accumulatedMetadata, ...parsedResult._metadata };
+            const incoming = parsedResult._metadata;
+            if (Array.isArray(incoming.portalCommands)) {
+              const prev = Array.isArray(accumulatedMetadata.portalCommands)
+                ? accumulatedMetadata.portalCommands
+                : [];
+              accumulatedMetadata = {
+                ...accumulatedMetadata,
+                ...incoming,
+                portalCommands: [...prev, ...incoming.portalCommands],
+              };
+            } else {
+              accumulatedMetadata = { ...accumulatedMetadata, ...incoming };
+            }
           }
           // Se for o render_dashboard, podemos limpar o conteúdo para não poluir o contexto se for muito grande
           // Mas o LLM precisa saber que funcionou.

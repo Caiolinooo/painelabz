@@ -11,6 +11,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - `src/lib/ia/kpi-comms-signals.ts` — scan e-mail/Teams correlato a pendências/conclusões
 - `src/lib/ia/registry/` — modules + bridge no `default` de `executeToolCall`
 - `src/lib/ia/portal-action-bus.ts` + `/api/ia/companion` — navegação Companion
+- `src/lib/ia/portal-navigation.ts` — catálogo de rotas, fuzzy/typos, contextos
 
 ## Local Contracts
 
@@ -35,18 +36,21 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - `meus_emails`, `meu_calendario`, `criar_evento_calendario`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `navegar_portal`
 - Registry: `microsoft.tools`, `calendario.tools`, `chat.tools`, `portal.tools`
+- Companion (`/api/ia/companion`): IA real + tools; fuzzy nav (`portal-navigation.ts`); commands via `_metadata.portalCommands`; logo `LC1_Azul.png` estável
+- Sub-agente `companion` no `agents-router` (ativado por `[ABZ_COMPANION]` / verbos de navegação)
 
 ## Work Guidance
 
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
-- Companion: preferir `commands` tipados (`NAVIGATE` / `HIGHLIGHT_ELEMENT`)
+- Companion: preferir `commands` tipados (`NAVIGATE` / `HIGHLIGHT_ELEMENT`); não girar o logo ABZ na animação
 
 ## Verification
 
 - KPI com pendências → bloco `comunicacao.email_sinais` / `teams_sinais`
 - USER chama `meus_emails` → só a própria mailbox
-- `navegar_portal` destino `ferias` → `commands[0].target` `/ferias`
+- `navegar_portal` destino `feririas` → `/ferias` (fuzzy)
+- Companion pergunta de dados → resposta via LLM+tools (não canned)
 - Registry bridge: tool só no registry ainda responde via `executeToolCall`
 
 ## Child DOX Index

@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.42.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.43.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -114,12 +114,12 @@ Camada de cache unificada para API MIO:
 - **Validacao de Identidade**: Verificacao multi-fator (CPF, email, data de nascimento) com erro por campo
 - **PDF Editor**: Insercao de campos e assinaturas em PDF com suporte multi-pagina
 
-### Inteligencia Artificial [v5.42.0]
+### Inteligencia Artificial [v5.43.0]
 - **Agente de Voz Real-Time**: Canal WebRTC bidirecional via LiveKit com baixa latencia
 - **Agente Autonomo KPI**: Ciclo continuo de analise; KPIs cruzam pendencias do portal com sinais de e-mail e Teams
 - **Chat com Streaming Real**: SSE com processamento recursivo de tools e persistencia
 - **Graph sob demanda**: extracao de e-mails/calendario/Teams conforme filtros do usuario (`limite=0` ate hard cap 1000)
-- **AI Companion**: widget de navegacao no portal (`navegar_portal` + Portal Action Bus)
+- **AI Companion**: logo ABZ estavel + IA real (tools); navegacao fuzzy com typos (`portal-navigation.ts` + `navegar_portal`)
 - **Tools modulares**: Gestao Tripulantes, e-Social, Escala, EPI, Ponto, Academy + Graph non-admin (`meus_emails`, `meu_calendario`, Teams)
 - **Base de Conhecimento**: Memoria corporativa injetada no contexto por cargo/departamento
 - **Feature Toggles**: Ativacao/desativacao de ferramentas da IA por usuario
@@ -422,6 +422,7 @@ Desenvolvido com ❤️ pela equipe ABZ Group.
 # IA Pendências e Orquestração
 - Detecção e orquestração de pendências entre Teams, Emails, Calendar e Knowledge.
 - Em **v5.42.0**, KPIs do sistema (`buscar_kpis_sistema` / `analisar_kpis_negocio`) disparam scan de e-mail e Teams quando há pendências ou conclusões correlatas (`kpi-comms-signals`).
+- Em **v5.43.0**, o AI Companion usa IA real + navegação fuzzy (`portal-navigation.ts`) e ícone com logo ABZ estável.
 - Tools Graph respeitam a solicitação do usuário (remetente, período, pasta, `limite=0` = máximo).
 - Companion (`/api/ia/companion` + `portalActionBus`) navega o usuário no portal; o Chat IA completo mantém tools e streaming.
 - Documentação operacional: `src/lib/ia/AGENTS.md`.

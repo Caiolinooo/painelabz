@@ -3,31 +3,12 @@
  */
 import { registerTool } from '../tools-registry';
 import type { IATool, IAToolResult } from '@/types/ia-global';
-
-const PORTAL_ALIASES: Record<string, string> = {
-  ferias: '/ferias',
-  reembolso: '/reembolso',
-  reembolsos: '/reembolso',
-  dashboard: '/dashboard',
-  inicio: '/dashboard',
-  home: '/dashboard',
-  admin: '/admin',
-  tripulantes: '/department/gestao-tripulantes',
-  'gestao-tripulantes': '/department/gestao-tripulantes',
-  academy: '/academy',
-  epi: '/epi',
-  ponto: '/ponto',
-  compras: '/compras',
-  calendario: '/calendario',
-  'e-social': '/department/e-social',
-  esocial: '/department/e-social',
-  ia: '/ia',
-};
+import { aliasToPath, buildNavCommand, resolvePortalNavigation } from '../../portal-navigation';
 
 const navegarPortalTool: IATool = {
   id: 'portal_navegar',
   name: 'navegar_portal',
-  description: 'Gera comando NAVIGATE para o AI Companion',
+  description: 'Gera comando NAVIGATE para o AI Companion (typos/sinônimos ok)',
   module: 'portal',
   adminOnly: false,
   definition: {
@@ -36,7 +17,7 @@ const navegarPortalTool: IATool = {
     parameters: {
       type: 'object',
       properties: {
-        destino: { type: 'string', description: 'Alias ou path /...', required: true },
+        destino: { type: 'string', description: 'Alias, frase ou path /...', required: true },
         highlight: { type: 'string', description: 'CSS selector opcional', required: false },
       },
       required: ['destino'],
@@ -46,16 +27,16 @@ const navegarPortalTool: IATool = {
     const destino = String(args.destino || '').trim();
     if (!destino) return { success: false, error: 'destino obrigatório' };
 
-    const path = destino.startsWith('/')
-      ? destino
-      : (PORTAL_ALIASES[destino.toLowerCase()] || `/${destino}`);
-
-    const commands: Array<{ action: string; target: string; label: string }> = [
-      { action: 'NAVIGATE', target: path, label: `Navegando para ${path}` },
+    const match = resolvePortalNavigation(destino);
+    const path = match && match.score >= 0.78 ? match.route.path : aliasToPath(destino);
+    const commands = [
+      match && match.score >= 0.78
+        ? buildNavCommand(match)
+        : { action: 'NAVIGATE' as const, target: path, label: `Navegando para ${path}...` },
     ];
     if (args.highlight) {
       commands.push({
-        action: 'HIGHLIGHT_ELEMENT',
+        action: 'HIGHLIGHT_ELEMENT' as const,
         target: String(args.highlight),
         label: 'Destacando elemento',
       });
@@ -63,7 +44,7 @@ const navegarPortalTool: IATool = {
 
     return {
       success: true,
-      data: { path, commands },
+      data: { path, commands, match },
     };
   },
 };

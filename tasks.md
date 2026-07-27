@@ -1,3 +1,17 @@
+## IA Companion UX (2026-07-27)
+
+### Feito
+- [x] Logo Companion = `LC1_Azul.png` estável + anel de status (sem girar a marca) + wordmark ABZ no FAB
+- [x] Companion conectado à IA real (`chatCompletion` + tools), sem respostas canned
+- [x] `portal-navigation.ts` — fuzzy/typos/contextos + `navegar_portal` unificado
+- [x] Commands de `navegar_portal` propagados via `_metadata.portalCommands`
+- [x] Sub-agente `companion` no router
+
+### Pendente
+- [ ] Playwright: companion NAVIGATE com typo ("feririas") + pergunta real à IA
+
+---
+
 ## IA Tools — Auditoria e correções (2026-07-27)
 
 ### Feito

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 
 export type AICompanionStatus = 'idle' | 'listening' | 'speaking' | 'executing';
@@ -9,177 +10,113 @@ interface AnimatedABZLogoProps {
   status?: AICompanionStatus;
   size?: number;
   className?: string;
+  /** Exibe a marca "ABZ" abaixo do logo */
+  showWordmark?: boolean;
 }
 
+const STATUS_RING: Record<AICompanionStatus, string> = {
+  idle: '#005B96',
+  listening: '#0A7AB8',
+  speaking: '#2563EB',
+  executing: '#059669',
+};
+
+/**
+ * Ícone do Companion = logo oficial ABZ (LC1_Azul) estável + anel de status.
+ * O logo NÃO gira (permanece legível como marca ABZ); só o anel anima.
+ */
 export default function AnimatedABZLogo({
   status = 'idle',
   size = 48,
-  className = ''
+  className = '',
+  showWordmark = false,
 }: AnimatedABZLogoProps) {
-  // Variantes de Animação para cada elemento do Logo ABZ
+  const ring = STATUS_RING[status];
+  const logoSize = Math.round(size * 0.78);
 
-  // 1. Arco Azul (#0EA5E9) - Topo/Esquerda
-  const blueArcVariants = {
-    idle: {
-      rotate: [0, 360],
-      scale: [1, 1.05, 1],
-      transition: { rotate: { duration: 14, repeat: Infinity, ease: 'linear' }, scale: { duration: 3, repeat: Infinity } }
-    },
-    listening: {
-      scale: [1, 1.3, 1.1, 1.25],
-      rotate: [0, 90, 180, 270, 360],
-      transition: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
-    },
-    speaking: {
-      scale: [0.9, 1.2, 0.95, 1.15],
-      strokeWidth: [3.5, 5, 3.5],
-      transition: { duration: 0.6, repeat: Infinity, ease: 'easeInOut' }
-    },
-    executing: {
-      rotate: [0, 720],
-      scale: 1.1,
-      transition: { duration: 1, repeat: Infinity, ease: 'linear' }
-    }
-  };
-
-  // 2. Arco Verde (#22C55E) - Base Esquerda
-  const greenArcVariants = {
-    idle: {
-      scale: [1, 1.12, 1],
-      y: [0, -1, 0],
-      transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
-    },
-    listening: {
-      scale: [1.1, 1.4, 1],
-      x: [-1, 2, -1],
-      transition: { duration: 0.8, repeat: Infinity, ease: 'easeInOut' }
-    },
-    speaking: {
-      scale: [1, 1.35, 0.9],
-      transition: { duration: 0.5, repeat: Infinity, ease: 'easeInOut' }
-    },
-    executing: {
-      rotate: [360, 0],
-      scale: [1, 1.2, 1],
-      transition: { rotate: { duration: 1.5, repeat: Infinity, ease: 'linear' }, scale: { duration: 0.5, repeat: Infinity } }
-    }
-  };
-
-  // 3. Arco Amarelo/Laranja (#F59E0B) - Direita
-  const yellowArcVariants = {
-    idle: {
-      rotate: [360, 0],
-      scale: [1, 1.08, 1],
-      transition: { rotate: { duration: 18, repeat: Infinity, ease: 'linear' }, scale: { duration: 4, repeat: Infinity } }
-    },
-    listening: {
-      rotate: [-30, 30, -30],
-      scale: [1, 1.3, 1],
-      transition: { duration: 1, repeat: Infinity, ease: 'easeInOut' }
-    },
-    speaking: {
-      scale: [1.2, 0.9, 1.3, 1],
-      transition: { duration: 0.7, repeat: Infinity, ease: 'easeInOut' }
-    },
-    executing: {
-      rotate: [0, -720],
-      scale: 1.15,
-      transition: { duration: 1, repeat: Infinity, ease: 'linear' }
-    }
-  };
-
-  // 4. Núcleo Central / Círculo (#3B82F6)
-  const coreNodeVariants = {
-    idle: {
-      scale: [1, 1.25, 1],
-      opacity: [0.85, 1, 0.85],
-      transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' }
-    },
-    listening: {
-      scale: [1.2, 1.8, 1.2],
-      fill: '#A855F7', // Purpura quando ouvindo
-      transition: { duration: 0.6, repeat: Infinity, ease: 'easeInOut' }
-    },
-    speaking: {
-      scale: [1, 2, 1.1, 1.7, 1],
-      fill: '#3B82F6',
-      transition: { duration: 0.4, repeat: Infinity, ease: 'easeInOut' }
-    },
-    executing: {
-      scale: [1.3, 1.7, 1.3],
-      fill: '#10B981', // Verde Esmeralda quando executando ações no portal
-      transition: { duration: 0.5, repeat: Infinity, ease: 'easeInOut' }
-    }
-  };
+  const ringPulse =
+    status === 'idle'
+      ? { scale: [1, 1.04, 1], opacity: [0.65, 1, 0.65] }
+      : status === 'listening'
+        ? { scale: [1, 1.12, 1], opacity: [0.75, 1, 0.75] }
+        : status === 'speaking'
+          ? { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }
+          : { scale: [1, 1.1, 1], opacity: [0.85, 1, 0.85] };
 
   return (
-    <div className={`relative inline-flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-      {/* Halo de Brilho Dinâmico ao fundo */}
+    <div
+      className={`relative inline-flex flex-col items-center justify-center ${className}`}
+      style={{ width: size, height: showWordmark ? size + 16 : size }}
+      aria-label="ABZ Companion"
+      title="ABZ Companion"
+    >
+      {/* Anel de status — único elemento que pulsa/gira */}
       <motion.div
-        className="absolute inset-0 rounded-full blur-md opacity-40"
-        animate={{
-          backgroundColor:
-            status === 'listening' ? '#A855F7' :
-            status === 'speaking' ? '#3B82F6' :
-            status === 'executing' ? '#10B981' : '#0EA5E9',
-          scale: status === 'idle' ? [1, 1.15, 1] : [1.1, 1.4, 1.1]
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: size,
+          height: size,
+          top: 0,
+          left: 0,
+          border: `2.5px solid ${ring}`,
+          boxShadow: `0 0 0 3px ${ring}22, 0 0 12px ${ring}44`,
         }}
-        transition={{ duration: 1.5, repeat: Infinity }}
+        animate={{
+          ...ringPulse,
+          ...(status === 'executing' ? { rotate: 360 } : {}),
+        }}
+        transition={{
+          duration: status === 'executing' ? 1.4 : 2.2,
+          repeat: Infinity,
+          ease: status === 'executing' ? 'linear' : 'easeInOut',
+        }}
       />
 
-      {/* SVG do Logo ABZ com elementos independentes */}
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="relative z-10 overflow-visible"
+      {/* Segmento curto no anel (idle/listening) — reforça “ao vivo” sem girar o logo */}
+      {(status === 'listening' || status === 'speaking') && (
+        <motion.div
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: size,
+            height: size,
+            top: 0,
+            left: 0,
+            border: '2.5px solid transparent',
+            borderTopColor: ring,
+            borderRightColor: `${ring}88`,
+          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: status === 'listening' ? 1.8 : 2.4, repeat: Infinity, ease: 'linear' }}
+        />
+      )}
+
+      {/* Logo oficial ABZ — estático e legível */}
+      <div
+        className="relative z-10 flex items-center justify-center rounded-full bg-white overflow-hidden"
+        style={{
+          width: logoSize,
+          height: logoSize,
+          boxShadow: 'inset 0 0 0 1px rgba(0,91,150,0.12)',
+        }}
       >
-        {/* Arco 1: Azul (#0EA5E9) */}
-        <motion.path
-          d="M16.5 7C13 7 10 9 9 12C8 15 9.5 19 12 21C14.5 23 18 23 21 21"
-          stroke="#0EA5E9"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          style={{ transformOrigin: '50% 47%' }}
-          animate={status}
-          variants={blueArcVariants}
+        <Image
+          src="/images/LC1_Azul.png"
+          alt="ABZ Group"
+          width={logoSize}
+          height={logoSize}
+          className="object-contain p-[10%]"
+          priority
         />
+      </div>
 
-        {/* Arco 2: Verde (#22C55E) */}
-        <motion.path
-          d="M12 21C10 23 8 23 6 22"
-          stroke="#22C55E"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          style={{ transformOrigin: '50% 47%' }}
-          animate={status}
-          variants={greenArcVariants}
-        />
-
-        {/* Arco 3: Amarelo/Laranja (#F59E0B) */}
-        <motion.path
-          d="M21 10C24 10 26 12 26 15C26 18 24 20 21 21"
-          stroke="#F59E0B"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          style={{ transformOrigin: '50% 47%' }}
-          animate={status}
-          variants={yellowArcVariants}
-        />
-
-        {/* Núcleo Central (#3B82F6) */}
-        <motion.circle
-          cx="16"
-          cy="15"
-          r="3"
-          fill="#3B82F6"
-          style={{ transformOrigin: '50% 47%' }}
-          animate={status}
-          variants={coreNodeVariants}
-        />
-      </svg>
+      {showWordmark && (
+        <span
+          className="relative z-10 mt-1 font-extrabold tracking-[0.2em] text-[10px] leading-none"
+          style={{ color: ring }}
+        >
+          ABZ
+        </span>
+      )}
     </div>
   );
 }

@@ -26,6 +26,9 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'buscar_usuarios_global',
       'gerenciar_embarques',
       'gerenciar_treinamentos',
+      'navegar_portal',
+      'buscar_ferias',
+      'buscar_reembolsos',
     ],
   },
   aso_saude: {
@@ -39,6 +42,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'consultar_quarentena_aso',
       'validar_aso_identidade',
       'buscar_dados_usuario',
+      'navegar_portal',
     ],
   },
   esocial_compliance: {
@@ -52,6 +56,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'gerar_xml_esocial',
       'consultar_afastamentos',
       'consultar_acidentes_cat',
+      'navegar_portal',
     ],
   },
   analytics_admin: {
@@ -62,10 +67,13 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     systemPromptAddon: 'Você é o Sub-Agente de Analytics & Gestão Executiva. Apresente relatórios detalhados e dashboards interativos.',
     toolNames: [
       'analisar_kpis',
+      'analisar_kpis_negocio',
+      'buscar_kpis_sistema',
       'render_dashboard',
       'gerar_relatorio_excel',
       'gerenciar_notificacoes',
       'gerenciar_base_conhecimento',
+      'navegar_portal',
     ],
   },
   geral: {
@@ -73,9 +81,44 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     name: 'Assistente Geral',
     description: 'Atendimento geral, navegação no portal e tira-dúvidas.',
     icon: '💬',
-    systemPromptAddon: 'Você é o Assistente Geral da ABZ. Seja cordial, objetivo e ajude o usuário com navegação e orientações.',
+    systemPromptAddon:
+      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação).',
     toolNames: [
       'buscar_dados_usuario',
+      'buscar_funcionario',
+      'gerenciar_base_conhecimento',
+      'navegar_portal',
+      'meu_calendario',
+      'meus_emails',
+      'minhas_conversas_teams',
+    ],
+  },
+  companion: {
+    id: 'companion',
+    name: 'ABZ Companion',
+    description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
+    icon: '🧭',
+    systemPromptAddon:
+      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas.',
+    toolNames: [
+      'navegar_portal',
+      'buscar_dados_usuario',
+      'buscar_funcionario',
+      'buscar_ferias',
+      'buscar_reembolsos',
+      'buscar_kpis_sistema',
+      'analisar_kpis_negocio',
+      'buscar_sinais_kpi_comunicacao',
+      'meus_emails',
+      'meu_calendario',
+      'criar_evento_calendario',
+      'minhas_conversas_teams',
+      'pesquisar_mensagens_teams',
+      'buscar_epis',
+      'buscar_cursos_disponiveis',
+      'buscar_progresso_academy',
+      'buscar_tripulantes',
+      'buscar_escalas',
       'gerenciar_base_conhecimento',
     ],
   },
@@ -87,15 +130,28 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
 export function routeToSubAgent(userMessage: string): SubAgentDefinition {
   const msg = (userMessage || '').toLowerCase();
 
+  if (msg.includes('[abz_companion]') || msg.includes('abz_companion')) {
+    return SUB_AGENTS.companion;
+  }
+
+  // Intenção clara de navegação → companion/geral com navegar_portal
+  if (
+    /\b(abrir|abre|abra|ir para|vai para|vai pra|me leva|me leve|navegar|acessar|acesse|goto)\b/i.test(msg) ||
+    msg.includes('abrir ') ||
+    msg.includes('ir pra')
+  ) {
+    return SUB_AGENTS.companion;
+  }
+
   if (msg.includes('esocial') || msg.includes('e-social') || msg.includes('cat') || msg.includes('afastamento') || msg.includes('s-22') || msg.includes('s-1.3')) {
     return SUB_AGENTS.esocial_compliance;
   }
 
-  if (msg.includes('aso') || msg.includes('exame') || msg.includes('médico') || msg.includes('atestado') || msg.includes('quarentena')) {
+  if (msg.includes('aso') || msg.includes('exame') || msg.includes('médico') || msg.includes('medico') || msg.includes('atestado') || msg.includes('quarentena')) {
     return SUB_AGENTS.aso_saude;
   }
 
-  if (msg.includes('dashboard') || msg.includes('kpi') || msg.includes('excel') || msg.includes('relatório') || msg.includes('relatorio') || msg.includes('métrica')) {
+  if (msg.includes('dashboard') || msg.includes('kpi') || msg.includes('excel') || msg.includes('relatório') || msg.includes('relatorio') || msg.includes('métrica') || msg.includes('metrica')) {
     return SUB_AGENTS.analytics_admin;
   }
 
