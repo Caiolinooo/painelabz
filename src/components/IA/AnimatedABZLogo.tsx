@@ -16,15 +16,17 @@ interface AnimatedABZLogoProps {
   status?: AICompanionStatus;
   size?: number;
   className?: string;
-  /** Wordmark tipográfico "ABZ" abaixo do disco (painel aberto) */
+  /** No painel aberto: mostra LC1 completo (object-contain) + rótulo */
   showWordmark?: boolean;
-  /** Mini-rótulo "ABZ" sob o disco (FAB compacto) */
+  /** FAB: tipografia "abz" + mini-rótulo (sem crop destruído) */
   compactLabel?: boolean;
 }
 
 /**
- * Ícone Companion = marca oficial ABZ (`LC1_Azul`) estável + anéis/aura de status.
- * O logo NUNCA gira; só rings/aura/segmento animam. Crop focado na porção "abz".
+ * Ícone Companion ABZ.
+ * FAB (~40–56px): tipografia bold "abz" — o PNG horizontal LC1 NÃO cabe em círculo
+ * sem virar mancha. Painel maior: LC1_Azul com object-contain.
+ * Motion só em rings/aura; a marca nunca gira.
  */
 export default function AnimatedABZLogo({
   status = 'idle',
@@ -36,8 +38,10 @@ export default function AnimatedABZLogo({
   const shouldReduceMotion = useReducedMotion();
   const accent = statusAccent(status);
   const motionPreset = getCompanionMotion(status, !!shouldReduceMotion);
-  const discSize = Math.round(size * 0.72);
-  const labelSpace = showWordmark ? 18 : compactLabel ? 12 : 0;
+  const discSize = Math.round(size * (showWordmark ? 0.78 : 0.76));
+  const labelSpace = showWordmark ? 16 : compactLabel ? 11 : 0;
+  /** Tipografia "abz" no FAB — escala com o disco */
+  const abzFontSize = Math.max(11, Math.round(discSize * 0.38));
 
   return (
     <div
@@ -47,7 +51,6 @@ export default function AnimatedABZLogo({
       title="ABZ Companion"
     >
       <div className="relative" style={{ width: size, height: size }}>
-        {/* Soft aura — idle breath / speaking pulse (never purple) */}
         <motion.div
           className="absolute rounded-full pointer-events-none"
           style={{
@@ -58,7 +61,6 @@ export default function AnimatedABZLogo({
           transition={motionPreset.auraTransition}
         />
 
-        {/* Listening radar ripples */}
         {motionPreset.showRadar &&
           [0, 1].map(i => (
             <motion.div
@@ -79,7 +81,6 @@ export default function AnimatedABZLogo({
             />
           ))}
 
-        {/* Static / breathing status ring */}
         <motion.div
           className="absolute rounded-full pointer-events-none"
           style={{
@@ -91,7 +92,6 @@ export default function AnimatedABZLogo({
           transition={motionPreset.ringTransition}
         />
 
-        {/* Progress / radar tip segment — rotates independently of the logo */}
         {(motionPreset.showProgressArc || status === 'listening') && !shouldReduceMotion && (
           <motion.div
             className="absolute rounded-full pointer-events-none"
@@ -106,7 +106,6 @@ export default function AnimatedABZLogo({
           />
         )}
 
-        {/* Reduced-motion: static progress hint for executing */}
         {shouldReduceMotion && motionPreset.showProgressArc && (
           <div
             className="absolute rounded-full pointer-events-none"
@@ -120,9 +119,9 @@ export default function AnimatedABZLogo({
           />
         )}
 
-        {/* Brand disc — logo STATIC; crop focado na porção esquerda "abz" */}
+        {/* Disco da marca — tipografia no FAB; PNG só no painel (contain) */}
         <div
-          className="absolute z-10 rounded-full bg-white overflow-hidden"
+          className="absolute z-10 rounded-full bg-white overflow-hidden flex items-center justify-center"
           style={{
             width: discSize,
             height: discSize,
@@ -132,40 +131,43 @@ export default function AnimatedABZLogo({
             boxShadow: `inset 0 0 0 1px ${BRAND_BLUE}14, 0 1px 2px rgba(0,91,150,0.08)`,
           }}
         >
-          {/* relative obrigatório para next/image `fill` */}
-          <div className="relative w-full h-full">
-            <Image
-              src="/images/LC1_Azul.png"
-              alt="ABZ Group"
-              fill
-              sizes={`${discSize}px`}
-              className="select-none pointer-events-none object-cover"
+          {showWordmark ? (
+            <div className="relative w-[88%] h-[55%]">
+              <Image
+                src="/images/LC1_Azul.png"
+                alt="abz group"
+                fill
+                sizes={`${discSize}px`}
+                className="object-contain select-none pointer-events-none"
+                priority
+                draggable={false}
+              />
+            </div>
+          ) : (
+            <span
+              className="select-none pointer-events-none font-extrabold lowercase leading-none tracking-tight"
               style={{
-                // Wordmark 4.2:1 — object-cover + position esquerda = “abz” no FAB
-                objectPosition: '14% 50%',
-                transform: 'scale(1.15)',
-                transformOrigin: '14% 50%',
+                color: BRAND_BLUE,
+                fontSize: abzFontSize,
+                letterSpacing: '-0.04em',
+                fontFamily:
+                  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
               }}
-              priority
-              draggable={false}
-            />
-          </div>
+            >
+              abz
+            </span>
+          )}
         </div>
       </div>
 
-      {showWordmark && (
+      {(showWordmark || compactLabel) && (
         <span
-          className="relative z-10 mt-1 font-extrabold tracking-[0.22em] text-[10px] leading-none"
-          style={{ color: accent }}
-        >
-          ABZ
-        </span>
-      )}
-
-      {compactLabel && !showWordmark && (
-        <span
-          className="relative z-10 -mt-0.5 font-extrabold tracking-[0.2em] leading-none"
-          style={{ color: BRAND_BLUE, fontSize: Math.max(8, Math.round(size * 0.16)) }}
+          className="relative z-10 font-extrabold tracking-[0.2em] leading-none"
+          style={{
+            color: accent,
+            fontSize: showWordmark ? 10 : Math.max(8, Math.round(size * 0.15)),
+            marginTop: showWordmark ? 4 : 2,
+          }}
         >
           ABZ
         </span>
