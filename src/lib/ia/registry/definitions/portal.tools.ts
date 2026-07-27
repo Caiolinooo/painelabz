@@ -1,9 +1,18 @@
 /**
- * Ferramentas de navegação do AI Companion / Portal Action Bus
+ * Ferramentas de navegação do AI Companion / Portal Action Bus + KPI boards
  */
 import { registerTool } from '../tools-registry';
 import type { IATool, IAToolResult } from '@/types/ia-global';
 import { aliasToPath, buildNavCommand, resolvePortalNavigation } from '../../portal-navigation';
+import {
+  createKpiBoard,
+  updateKpiBoard,
+  listKpiBoards,
+  getActiveKpiBoard,
+  getKpiBoard,
+  setActiveKpiBoard,
+  buildOpenKpiBoardCommands,
+} from '../../kpi-board';
 
 const navegarPortalTool: IATool = {
   id: 'portal_navegar',
@@ -49,7 +58,135 @@ const navegarPortalTool: IATool = {
   },
 };
 
+const criarQuadroKpiTool: IATool = {
+  id: 'portal_criar_quadro_kpi',
+  name: 'criar_quadro_kpi',
+  description: 'Cria quadro branco KPI persistido',
+  module: 'portal',
+  adminOnly: false,
+  definition: {
+    name: 'criar_quadro_kpi',
+    description: 'Cria quadro KPI (widgets allowlisted). Sem HTML/JS livre.',
+    parameters: {
+      type: 'object',
+      properties: {
+        titulo: { type: 'string', required: true },
+        spec: { type: 'object', required: true },
+        abrir: { type: 'boolean', required: false },
+      },
+      required: ['titulo', 'spec'],
+    },
+  },
+  handler: async (args, ctx): Promise<IAToolResult> => {
+    const { board, error } = await createKpiBoard({
+      userId: ctx.userId,
+      title: String(args.titulo || 'Quadro KPI'),
+      spec: args.spec,
+      setActive: true,
+    });
+    if (!board) return { success: false, error: error || 'Falha ao criar' };
+    const abrir = args.abrir !== false;
+    const commands = abrir ? buildOpenKpiBoardCommands(board.id, board.title) : [];
+    return {
+      success: true,
+      data: { board: { id: board.id, title: board.title }, commands },
+    };
+  },
+};
+
+const listarQuadrosKpiTool: IATool = {
+  id: 'portal_listar_quadros_kpi',
+  name: 'listar_quadros_kpi',
+  description: 'Lista quadros KPI do usuário',
+  module: 'portal',
+  adminOnly: false,
+  definition: {
+    name: 'listar_quadros_kpi',
+    description: 'Lista quadros KPI',
+    parameters: {
+      type: 'object',
+      properties: {
+        limite: { type: 'number', required: false },
+      },
+    },
+  },
+  handler: async (args, ctx): Promise<IAToolResult> => {
+    const boards = await listKpiBoards(ctx.userId, { limit: Number(args.limite) || 20 });
+    return { success: true, data: { total: boards.length, boards } };
+  },
+};
+
+const abrirQuadroKpiTool: IATool = {
+  id: 'portal_abrir_quadro_kpi',
+  name: 'abrir_quadro_kpi',
+  description: 'Abre quadro KPI em /kpi',
+  module: 'portal',
+  adminOnly: false,
+  definition: {
+    name: 'abrir_quadro_kpi',
+    description: 'OPEN_KPI_BOARD + NAVIGATE /kpi',
+    parameters: {
+      type: 'object',
+      properties: {
+        board_id: { type: 'string', required: false },
+      },
+    },
+  },
+  handler: async (args, ctx): Promise<IAToolResult> => {
+    let board = null;
+    const requested = String(args.board_id || '').trim();
+    if (requested) {
+      board = await setActiveKpiBoard(ctx.userId, requested);
+      if (!board) board = await getKpiBoard(ctx.userId, requested);
+    } else {
+      board = await getActiveKpiBoard(ctx.userId);
+    }
+    if (!board) return { success: false, error: 'Nenhum quadro encontrado' };
+    const commands = buildOpenKpiBoardCommands(board.id, board.title);
+    return { success: true, data: { board: { id: board.id, title: board.title }, commands } };
+  },
+};
+
+const atualizarQuadroKpiTool: IATool = {
+  id: 'portal_atualizar_quadro_kpi',
+  name: 'atualizar_quadro_kpi',
+  description: 'Atualiza quadro KPI',
+  module: 'portal',
+  adminOnly: false,
+  definition: {
+    name: 'atualizar_quadro_kpi',
+    description: 'Atualiza quadro KPI existente',
+    parameters: {
+      type: 'object',
+      properties: {
+        board_id: { type: 'string', required: true },
+        titulo: { type: 'string', required: false },
+        spec: { type: 'object', required: false },
+        abrir: { type: 'boolean', required: false },
+      },
+      required: ['board_id'],
+    },
+  },
+  handler: async (args, ctx): Promise<IAToolResult> => {
+    const { board, error } = await updateKpiBoard({
+      userId: ctx.userId,
+      boardId: String(args.board_id),
+      title: args.titulo ? String(args.titulo) : undefined,
+      spec: args.spec,
+      setActive: true,
+    });
+    if (!board) return { success: false, error: error || 'Falha' };
+    const abrir = args.abrir !== false;
+    const commands = abrir ? buildOpenKpiBoardCommands(board.id, board.title) : [];
+    return { success: true, data: { board: { id: board.id, title: board.title }, commands } };
+  },
+};
+
 export async function registerTools() {
   registerTool(navegarPortalTool);
-  console.log('[IA Tools] Portal/Companion loaded (1 tool)');
+  registerTool(criarQuadroKpiTool);
+  registerTool(atualizarQuadroKpiTool);
+  registerTool(listarQuadrosKpiTool);
+  registerTool(abrirQuadroKpiTool);
+  console.log('[IA Tools] Portal/Companion loaded (5 tools)');
 }

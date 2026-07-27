@@ -68,7 +68,7 @@ export interface IAChatMessage {
 // Tipos de Dashboard Generativo (AI-Driven)
 // =====================================================
 
-export type IADashboardWidgetType = 'metric' | 'table' | 'chart' | 'list';
+export type IADashboardWidgetType = 'metric' | 'table' | 'chart' | 'list' | 'markdown';
 
 export interface IADashboardWidget {
   id: string;

@@ -9,12 +9,16 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
+/** Keep in sync with `ACTIVE_BOARD_STORAGE_KEY` in kpi-board.ts (client-safe; no server import). */
+const KPI_ACTIVE_BOARD_KEY = 'abz_kpi_active_board_id';
+
 export type AIActionType = 
   | 'NAVIGATE'           // Navega para uma rota (ex: /ferias, /admin/users)
   | 'FILL_INPUT'         // Preenche um campo por id ou CSS selector
   | 'CLICK_ELEMENT'      // Simula clique em um botão/elemento
   | 'OPEN_MODAL'         // Notifica a UI para abrir um modal específico
-  | 'HIGHLIGHT_ELEMENT'; // Destaca visualmente um elemento na tela (efeito guia)
+  | 'HIGHLIGHT_ELEMENT'  // Destaca visualmente um elemento na tela (efeito guia)
+  | 'OPEN_KPI_BOARD'     // Define quadro KPI ativo e dispara refresh em /kpi
 
 export interface AICommandPayload {
   action: AIActionType;
@@ -53,6 +57,23 @@ class PortalActionBus {
     if (typeof window === 'undefined') return;
 
     console.log('[Portal Action Bus] Executando comando da IA:', cmd);
+
+    // 0. Abrir / definir quadro KPI ativo (antes do NAVIGATE típico)
+    if (cmd.action === 'OPEN_KPI_BOARD') {
+      const boardId =
+        cmd.target ||
+        (typeof cmd.value === 'object' && cmd.value && 'boardId' in (cmd.value as object)
+          ? String((cmd.value as { boardId?: string }).boardId || '')
+          : '');
+      if (boardId) {
+        try {
+          localStorage.setItem(KPI_ACTIVE_BOARD_KEY, boardId);
+        } catch { /* ignore */ }
+        window.dispatchEvent(
+          new CustomEvent('abz-kpi-board-open', { detail: { boardId } })
+        );
+      }
+    }
 
     // 1. Navegação SPA via Next.js Router (sem full reload)
     if (cmd.action === 'NAVIGATE' && cmd.target) {

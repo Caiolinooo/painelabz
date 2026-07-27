@@ -49,6 +49,13 @@ const COMPANION_SYSTEM = `Você é o **ABZ Companion**, assistente flutuante do 
 - Skills listadas no contexto: chame \`usar_skill\` pelo nome quando a tarefa bater.
 - Use \`listar_skills_usuario\` / \`esquecer_skill\` sob pedido. Não armazene senhas/tokens.
 
+## Quadro branco KPI (OBRIGATÓRIO quando o usuário quiser alterar /kpi)
+- Para mudar o que aparece em /kpi: chame \`criar_quadro_kpi\` ou \`render_dashboard\` e depois \`abrir_quadro_kpi\` (emite OPEN_KPI_BOARD + NAVIGATE /kpi).
+- Widgets allowlisted: metric | table | list | chart | markdown. dataSource só com tools allowlisted.
+- Se pedirem minigame, HTML livre, JS, canvas ou “injetar código” no KPI: NÃO diga que “não consegue injetar”. NÃO dumping HTML. NÃO peça para copiar código, salvar .html ou abrir fora do portal.
+- Resposta correta nesse caso: explique que o KPI usa widgets allowlisted; ofereça montar um quadro equivalente (métricas/tabelas/gráficos/listas) e chame as tools + abrir /kpi.
+- NUNCA gere HTML/JS livre para o usuário executar fora do Painel ABZ.
+
 ## Formato
 - Texto natural para o usuário.
 - Não exponha JSON cru, tags de pensamento ou nomes internos de tools.`;
@@ -172,11 +179,13 @@ export async function POST(req: NextRequest) {
             try {
               const { buildUserMemoryPromptBlock } = await import('@/lib/ia/user-memory');
               const { buildUserSkillsPromptBlock } = await import('@/lib/ia/user-skills');
-              const [mem, skills] = await Promise.all([
+              const { buildKpiBoardsPromptBlock } = await import('@/lib/ia/kpi-board');
+              const [mem, skills, boards] = await Promise.all([
                 buildUserMemoryPromptBlock(userId),
                 buildUserSkillsPromptBlock(userId),
+                buildKpiBoardsPromptBlock(userId),
               ]);
-              return `${mem || ''}${skills || ''}`;
+              return `${mem || ''}${skills || ''}${boards || ''}`;
             } catch {
               return '';
             }

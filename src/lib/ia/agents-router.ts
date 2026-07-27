@@ -68,13 +68,17 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     name: 'Agente de Analytics & Dashboards',
     description: 'Especialista em métricas, relatórios em Excel, dashboards visuais e automação.',
     icon: '📊',
-    systemPromptAddon: 'Você é o Sub-Agente de Analytics & Gestão Executiva. Apresente relatórios detalhados e dashboards interativos. Use render_dashboard para pendências/KPIs.',
+    systemPromptAddon: 'Você é o Sub-Agente de Analytics & Gestão Executiva. Apresente relatórios detalhados e dashboards interativos. Use render_dashboard / criar_quadro_kpi para pendências/KPIs (abre /kpi).',
     toolNames: [
       'analisar_kpis_negocio',
       'buscar_kpis_sistema',
       'buscar_sinais_kpi_comunicacao',
       'buscar_dados_usuario',
       'render_dashboard',
+      'criar_quadro_kpi',
+      'atualizar_quadro_kpi',
+      'listar_quadros_kpi',
+      'abrir_quadro_kpi',
       'gerar_planilha_excel',
       'gerar_relatorio_pdf',
       'gerenciar_notificacoes',
@@ -88,7 +92,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Atendimento geral, navegação no portal e tira-dúvidas.',
     icon: '💬',
     systemPromptAddon:
-      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard. Salve fatos com salvar_memoria_usuario e procedimentos reutilizáveis com criar_skill_usuario.',
+      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard (persiste quadro em /kpi). Quadros KPI: criar_quadro_kpi / abrir_quadro_kpi. Salve fatos com salvar_memoria_usuario e procedimentos reutilizáveis com criar_skill_usuario.',
     toolNames: [
       'buscar_dados_usuario',
       'buscar_funcionario',
@@ -106,6 +110,10 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'meus_emails',
       'minhas_conversas_teams',
       'render_dashboard',
+      'criar_quadro_kpi',
+      'atualizar_quadro_kpi',
+      'listar_quadros_kpi',
+      'abrir_quadro_kpi',
     ],
   },
   companion: {
@@ -114,7 +122,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
     icon: '🧭',
     systemPromptAddon:
-      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. NUNCA diga que vai abrir/levar sem chamar navegar_portal. Tours do portal: chame navegar_portal(destino="dashboard") no primeiro hop. KPI → /kpi. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para pendências: buscar_dados_usuario (resumo) + render_dashboard se útil.',
+      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. NUNCA diga que vai abrir/levar sem chamar navegar_portal. Tours do portal: chame navegar_portal(destino="dashboard") no primeiro hop. KPI → /kpi. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para alterar /kpi: criar_quadro_kpi ou render_dashboard + abrir_quadro_kpi (nunca diga “não consigo injetar”; nunca peça copiar HTML/.html fora do portal; minigames HTML/JS fora de escopo — ofereça widgets metric/table/chart/list e abra /kpi).',
     toolNames: [
       'navegar_portal',
       'buscar_dados_usuario',
@@ -142,6 +150,10 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'usar_skill',
       'esquecer_skill',
       'render_dashboard',
+      'criar_quadro_kpi',
+      'atualizar_quadro_kpi',
+      'listar_quadros_kpi',
+      'abrir_quadro_kpi',
     ],
   },
 };

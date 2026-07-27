@@ -97,8 +97,18 @@ function renderWidgetContent(widget: IADashboardWidget) {
       return <ListWidget data={widget.data} />;
     case 'chart':
       return <ChartWidget data={widget.data} />;
-    default:
-      return <div className="text-xs text-gray-400 italic">Widget não suportado: {widget.type}</div>;
+    case 'markdown':
+      return (
+        <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap text-xs">
+          {typeof widget.data === 'object' && widget.data && 'content' in widget.data
+            ? String((widget.data as { content?: string }).content || '')
+            : String(widget.data ?? '')}
+        </div>
+      );
+    default: {
+      const _exhaustive: never = widget.type;
+      return <div className="text-xs text-gray-400 italic">Widget não suportado: {String(_exhaustive)}</div>;
+    }
   }
 }
 

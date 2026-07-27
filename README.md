@@ -114,12 +114,13 @@ Camada de cache unificada para API MIO:
 - **Validacao de Identidade**: Verificacao multi-fator (CPF, email, data de nascimento) com erro por campo
 - **PDF Editor**: Insercao de campos e assinaturas em PDF com suporte multi-pagina
 
-### Inteligencia Artificial [v5.45.0]
+### Inteligencia Artificial [v5.46.0]
 - **Agente de Voz Real-Time**: Canal WebRTC bidirecional via LiveKit com baixa latencia
+- **KPI Quadro Branco**: boards persistidos (`ia_kpi_boards`) com widgets allowlisted; Companion cria/abre em `/kpi`
 - **Agente Autonomo KPI**: Ciclo continuo de analise; KPIs cruzam pendencias do portal com sinais de e-mail e Teams
 - **Chat com Streaming Real**: SSE com processamento recursivo de tools e persistencia
 - **Graph sob demanda**: extracao de e-mails/calendario/Teams conforme filtros do usuario (`limite=0` ate hard cap 1000)
-- **AI Companion**: global em todos os modulos; sessao STM segue o usuario (limpa so no logout); LTM Hermes-like (`ia_user_memory`); skills procedurais Hermes Agent (`ia_user_skills`); FAB pinwheel colorido
+- **AI Companion**: global em todos os modulos; sessao STM segue o usuario (limpa so no logout); LTM Hermes-like (`ia_user_memory`); skills procedurais Hermes Agent (`ia_user_skills`); FAB pinwheel colorido; quadro KPI via tools + `OPEN_KPI_BOARD`
 - **Tools modulares**: Gestao Tripulantes, e-Social, Escala, EPI, Ponto, Academy + Graph non-admin (`meus_emails`, `meu_calendario`, Teams)
 - **Base de Conhecimento**: Memoria corporativa injetada no contexto por cargo/departamento
 - **Feature Toggles**: Ativacao/desativacao de ferramentas da IA por usuario
@@ -426,6 +427,7 @@ Desenvolvido com ❤️ pela equipe ABZ Group.
 - Em **v5.43.1**, polish do ícone: FAB wordmark oficial (crop `LC1_Azul` + label tipográfico), rings de status por estado (`companion-logo-motion.ts`, `useReducedMotion`) e remoção do SVG `PortalLogo` do `MainLayout`.
 - Em **v5.44.0**, Companion global (sessão STM cross-módulo; limpa só no logout) + memória LTM Hermes-like (`ia_user_memory`) + FAB pinwheel colorido.
 - Em **v5.45.0**, skills procedurais Hermes Agent–like (`ia_user_skills`) com tools create/list/use/forget, inject no prompt e auto-criação a partir de fluxos ensinados.
+- Em **v5.46.0**, KPI Quadro Branco: `ia_kpi_boards` + tools de board + `/kpi` renderer + Companion `OPEN_KPI_BOARD` (sem JS/HTML livre).
 - Tools Graph respeitam a solicitação do usuário (remetente, período, pasta, `limite=0` = máximo).
 - Companion (`/api/ia/companion` + `portalActionBus`) navega o usuário no portal; o Chat IA completo mantém tools e streaming.
 - Documentação operacional: `src/lib/ia/AGENTS.md`.

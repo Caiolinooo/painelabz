@@ -1,3 +1,21 @@
+## KPI Quadro Branco v1 (2026-07-27)
+
+### Feito
+- [x] Migration `ia_kpi_boards` + script `apply-ia-kpi-boards-migration.js`
+- [x] `kpi-board.ts` / `kpi-board-shared.ts` — Zod spec, CRUD, prompt block
+- [x] API `/api/ia/kpi-boards` + resolve dataSources allowlisted
+- [x] Tools criar/atualizar/listar/abrir_quadro_kpi + `render_dashboard` persiste
+- [x] `/kpi` BoardRenderer + AuthContext identity (sem localStorage quebrado)
+- [x] `OPEN_KPI_BOARD` no portal-action-bus + Companion metadata
+- [x] Prompt hardening: forbid HTML dump / “salve .html” / “não consigo injetar” — board tools + `/kpi`
+- [x] v5.46.0
+
+### Fora de escopo (v2)
+- [ ] Sandboxed HTML/JS, Vega-Lite, team sharing UI polish
+- [ ] Fix completo dos stubs do agente autónomo / PDF placeholders
+
+---
+
 ## IA Companion global + memória/skills Hermes (2026-07-27)
 
 ### Feito

@@ -334,17 +334,20 @@ IMPORTANTE: Voce ja sabe o email e ID do usuario logado! NAO peca essas informac
 
   prompt += `
 
-## DASHBOARD GENERATIVO (NOVIDADE)
+## DASHBOARD GENERATIVO / QUADRO BRANCO KPI
 Voce tem a capacidade de renderizar uma interface visual dinâmica e interativa para o usuario.
-- Sempre que o usuario pedir um **resumo**, **status geral**, **pendencias** ou **KPIs**, use a ferramenta \`render_dashboard\`.
-- O dashboard deve ser usado para COMPLEMENTAR sua resposta de texto.
-- Voce pode criar widgets de: \`metric\` (numeros), \`chart\` (graficos bar/line/pie), \`table\` (tabelas de dados) e \`list\` (listas de tarefas).
-- Seja criativo e use cores/icones para tornar o dashboard profissional.
+- Sempre que o usuario pedir um **resumo**, **status geral**, **pendencias**, **KPIs** ou **alterar o modulo KPI**, use \`render_dashboard\` e/ou \`criar_quadro_kpi\` e \`abrir_quadro_kpi\`.
+- Widgets allowlisted: \`metric\`, \`chart\`, \`table\`, \`list\`, \`markdown\`.
+- PROIBIDO: dizer que nao consegue injetar no KPI; dump de HTML/JS; pedir para copiar codigo, salvar .html ou abrir fora do portal.
+- Pedidos de minigame/HTML livre: explique o limite (widgets allowlisted), monte o quadro mais proximo com tools e abra /kpi — nunca exporte .html.
+- \`render_dashboard\` persiste o layout como quadro em \`ia_kpi_boards\` e deve abrir /kpi via Companion.
+- dataSource no spec só com tools allowlisted (ex: buscar_kpis_sistema).
 
 Exemplo: Se o usuario perguntar "Como estao minhas pendencias?", voce deve:
 1. Buscar os dados (ferias, reembolsos, etc).
-2. Chamar \`render_dashboard\` com um layout contendo métricas e tabelas dos dados encontrados.
-3. Responder em texto fazendo um resumo do que foi mostrado no dashboard.
+2. Chamar \`render_dashboard\` ou \`criar_quadro_kpi\` com widgets dos dados.
+3. Chamar \`abrir_quadro_kpi\` (ou deixar o persist emitir OPEN_KPI_BOARD) para mostrar em /kpi.
+4. Responder em texto fazendo um resumo do que foi mostrado.
 - NUNCA imprima o JSON do dashboard no texto da resposta. Use exclusivamente a ferramenta.`;
 
   if (userContext.evaluations && userContext.evaluations.count > 0) {
@@ -524,6 +527,15 @@ export async function buildChatMessages(
     if (skillsBlock) systemPrompt += skillsBlock;
   } catch (skErr) {
     console.warn('[IA Context] Erro ao carregar user skills:', skErr);
+  }
+
+  // Índice breve de quadros KPI (quadro branco)
+  try {
+    const { buildKpiBoardsPromptBlock } = await import('@/lib/ia/kpi-board');
+    const boardsBlock = await buildKpiBoardsPromptBlock(userId);
+    if (boardsBlock) systemPrompt += boardsBlock;
+  } catch (boardErr) {
+    console.warn('[IA Context] Erro ao carregar kpi boards:', boardErr);
   }
 
   const messages: LLMMessage[] = [

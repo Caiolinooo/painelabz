@@ -106,7 +106,8 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'render_dashboard',
-      description: 'Renderiza um dashboard interativo com métricas, tabelas ou listas para apresentar dados complexos ao usuário de forma visual e profissional.',
+      description:
+        'Renderiza e persiste um dashboard/quadro KPI (widgets metric|table|list|chart|markdown) e abre /kpi. Use para alterar o que aparece no módulo KPI. NÃO gere HTML/JS para o usuário copiar ou salvar .html fora do portal.',
       parameters: {
         type: 'object',
         properties: {
@@ -120,7 +121,7 @@ export const IA_TOOLS_DEFINITION = [
                   type: 'object',
                   properties: {
                     id: { type: 'string' },
-                    type: { type: 'string', enum: ['metric', 'table', 'list', 'chart'] },
+                    type: { type: 'string', enum: ['metric', 'table', 'list', 'chart', 'markdown'] },
                     title: { type: 'string' },
                     data: { type: 'object', description: 'Dados específicos para o widget' }
                   },
@@ -129,11 +130,84 @@ export const IA_TOOLS_DEFINITION = [
               }
             },
             required: ['widgets']
-          }
+          },
+          persistir_quadro: {
+            type: 'boolean',
+            description: 'Se true (padrão no Companion), salva o layout como quadro KPI e abre /kpi',
+          },
+          titulo_quadro: { type: 'string', description: 'Título do quadro KPI ao persistir' },
         },
         required: ['layout']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_quadro_kpi',
+      description:
+        'Cria um quadro branco KPI persistido em /kpi (widgets allowlisted: metric|table|list|chart|markdown). Use isto quando o usuário pedir alterar o módulo KPI, dashboard visual ou “minigame” no portal — monte o mais próximo com widgets; NÃO dump HTML nem peça salvar .html. Spec Zod-validated; dataSource só allowlisted. Após criar, use abrir_quadro_kpi.',
+      parameters: {
+        type: 'object',
+        properties: {
+          titulo: { type: 'string', description: 'Título do quadro' },
+          spec: {
+            type: 'object',
+            description: 'BoardSpec { version:1, columns?, widgets:[{id,type,title,data?,dataSource?}] }',
+          },
+          abrir: { type: 'boolean', description: 'Se true (padrão), emite OPEN_KPI_BOARD + NAVIGATE /kpi' },
+        },
+        required: ['titulo', 'spec'],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'atualizar_quadro_kpi',
+      description: 'Atualiza título/spec de um quadro KPI existente do usuário.',
+      parameters: {
+        type: 'object',
+        properties: {
+          board_id: { type: 'string', description: 'UUID do quadro' },
+          titulo: { type: 'string' },
+          spec: { type: 'object', description: 'Novo BoardSpec completo' },
+          abrir: { type: 'boolean', description: 'Abrir /kpi após atualizar' },
+        },
+        required: ['board_id'],
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_quadros_kpi',
+      description: 'Lista os quadros KPI (quadro branco) do usuário autenticado.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limite: { type: 'number', description: 'Máximo (padrão 20)' },
+        },
+      },
+    },
+    adminOnly: false,
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'abrir_quadro_kpi',
+      description:
+        'Define o quadro ativo e emite OPEN_KPI_BOARD + NAVIGATE /kpi para o Companion abrir a página KPI.',
+      parameters: {
+        type: 'object',
+        properties: {
+          board_id: { type: 'string', description: 'UUID do quadro (omitir = ativo/mais recente)' },
+        },
+      },
+    },
+    adminOnly: false,
   },
   {
     type: 'function',
@@ -1867,10 +1941,144 @@ export async function executeToolCall(name: string, args: any, userRole: string,
   try {
     switch (name) {
       case 'render_dashboard': {
-        return JSON.stringify({ 
-          success: true, 
-          message: 'Dashboard renderizado com sucesso. O usuário verá os componentes logo abaixo desta resposta.',
-          _metadata: { dashboard: args.layout } 
+        const layout = args?.layout;
+        const persist =
+          args?.persistir_quadro !== false && args?.persistir_quadro !== 'false';
+        let boardMeta: Record<string, unknown> = {};
+        let portalCommands: Array<{ action: string; target: string; label: string; value?: unknown }> = [];
+        let boardId: string | undefined;
+
+        if (persist && layout && userId) {
+          try {
+            const {
+              upsertBoardFromDashboardLayout,
+              buildOpenKpiBoardCommands,
+            } = await import('./kpi-board');
+            const board = await upsertBoardFromDashboardLayout({
+              userId,
+              layout,
+              title: args?.titulo_quadro ? String(args.titulo_quadro) : undefined,
+            });
+            if (board) {
+              boardId = board.id;
+              boardMeta = { kpiBoard: { id: board.id, title: board.title, revision: board.revision } };
+              portalCommands = buildOpenKpiBoardCommands(board.id, board.title);
+            }
+          } catch (persistErr) {
+            console.warn('[IA Tools] render_dashboard persist board skip:', persistErr);
+          }
+        }
+
+        return JSON.stringify({
+          success: true,
+          message: boardId
+            ? `Dashboard renderizado e salvo como quadro KPI (${boardId}). Abrindo /kpi.`
+            : 'Dashboard renderizado com sucesso. O usuário verá os componentes logo abaixo desta resposta.',
+          board_id: boardId,
+          _metadata: {
+            dashboard: layout,
+            ...boardMeta,
+            ...(portalCommands.length ? { portalCommands } : {}),
+          },
+        });
+      }
+
+      case 'criar_quadro_kpi': {
+        const { createKpiBoard, buildOpenKpiBoardCommands } = await import('./kpi-board');
+        const titulo = String(args?.titulo || 'Quadro KPI').trim();
+        const { board, error } = await createKpiBoard({
+          userId,
+          title: titulo,
+          spec: args?.spec,
+          setActive: true,
+        });
+        if (!board) {
+          return error || 'Falha ao criar quadro (verifique spec Zod / tabela ia_kpi_boards).';
+        }
+        const abrir = args?.abrir !== false && args?.abrir !== 'false';
+        const commands = abrir ? buildOpenKpiBoardCommands(board.id, board.title) : [];
+        return JSON.stringify({
+          success: true,
+          board: { id: board.id, title: board.title, revision: board.revision },
+          message: abrir
+            ? `Quadro "${board.title}" criado. Abrindo /kpi.`
+            : `Quadro "${board.title}" criado.`,
+          _metadata: {
+            kpiBoard: { id: board.id, title: board.title },
+            ...(commands.length ? { portalCommands: commands } : {}),
+          },
+        });
+      }
+
+      case 'atualizar_quadro_kpi': {
+        const { updateKpiBoard, buildOpenKpiBoardCommands } = await import('./kpi-board');
+        const boardId = String(args?.board_id || '').trim();
+        if (!boardId) return 'board_id é obrigatório.';
+        const { board, error } = await updateKpiBoard({
+          userId,
+          boardId,
+          title: args?.titulo ? String(args.titulo) : undefined,
+          spec: args?.spec,
+          setActive: true,
+        });
+        if (!board) return error || 'Falha ao atualizar quadro.';
+        const abrir = args?.abrir !== false && args?.abrir !== 'false';
+        const commands = abrir ? buildOpenKpiBoardCommands(board.id, board.title) : [];
+        return JSON.stringify({
+          success: true,
+          board: { id: board.id, title: board.title, revision: board.revision },
+          _metadata: {
+            kpiBoard: { id: board.id, title: board.title },
+            ...(commands.length ? { portalCommands: commands } : {}),
+          },
+        });
+      }
+
+      case 'listar_quadros_kpi': {
+        const { listKpiBoards } = await import('./kpi-board');
+        const boards = await listKpiBoards(userId, {
+          limit: Number(args?.limite) || 20,
+        });
+        return JSON.stringify({
+          total: boards.length,
+          boards: boards.map((b) => ({
+            id: b.id,
+            title: b.title,
+            revision: b.revision,
+            is_active: b.is_active,
+            widgets: Array.isArray(b.spec?.widgets) ? b.spec.widgets.length : 0,
+            updated_at: b.updated_at,
+          })),
+        });
+      }
+
+      case 'abrir_quadro_kpi': {
+        const {
+          getActiveKpiBoard,
+          getKpiBoard,
+          setActiveKpiBoard,
+          buildOpenKpiBoardCommands,
+        } = await import('./kpi-board');
+        let board = null;
+        const requested = String(args?.board_id || '').trim();
+        if (requested) {
+          board = await setActiveKpiBoard(userId, requested);
+          if (!board) board = await getKpiBoard(userId, requested);
+        } else {
+          board = await getActiveKpiBoard(userId);
+        }
+        if (!board) {
+          return 'Nenhum quadro KPI encontrado. Use criar_quadro_kpi ou render_dashboard primeiro.';
+        }
+        const commands = buildOpenKpiBoardCommands(board.id, board.title);
+        return JSON.stringify({
+          success: true,
+          board: { id: board.id, title: board.title },
+          message: `Abrindo quadro "${board.title}" em /kpi.`,
+          _metadata: {
+            kpiBoard: { id: board.id, title: board.title },
+            portalCommands: commands,
+          },
         });
       }
       case 'buscar_funcionario': {

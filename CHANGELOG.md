@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.46.0] - 2026-07-27
+
+### Features
+- **KPI Quadro Branco v1**:
+  - Tabela `ia_kpi_boards` (spec JSON Zod-validated; widgets allowlisted `metric|table|list|chart|markdown`; max 24; RLS + service_role).
+  - Tools `criar_quadro_kpi` / `atualizar_quadro_kpi` / `listar_quadros_kpi` / `abrir_quadro_kpi`.
+  - `render_dashboard` persiste board + emite `OPEN_KPI_BOARD` + `NAVIGATE /kpi` (Companion não perde mais o dashboard).
+  - `/kpi` carrega quadro ativo via AuthContext `user.id` (remove `abz_user_id` / `abz_sector_id` quebrados).
+  - `portalActionBus` action `OPEN_KPI_BOARD`; índice de boards no prompt Companion/Chat.
+  - Sem HTML/JS livre no origin do portal. `ia_dashboard_cache` permanece só para summary TTL.
+  - Prompt hardening: Companion proibido de pedir copiar HTML / salvar `.html` / abrir fora do portal; minigames → widgets allowlisted + abrir `/kpi`.
+
 ## [5.45.0] - 2026-07-27
 
 ### Features
