@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.45.0] - 2026-07-27
+
+### Features
+- **Companion skills Hermes Agent–like**:
+  - Tabela `ia_user_skills` (procedimentos reutilizáveis por usuário; persistem entre logins).
+  - Tools `criar_skill_usuario` / `listar_skills_usuario` / `usar_skill` / `esquecer_skill`.
+  - Índice de skills injetado no system prompt (Companion + Chat/`context-builder`); `usar_skill` carrega o procedimento completo.
+  - Criação automática heurística pós-turno + instrução no prompt para o LLM criar skills de fluxos multi-passos.
+  - Cap ~30 skills/usuário; sanitize; rejeita conteúdo com secrets.
+  - Migrations aplicadas: `20260727_000001_ia_user_memory.sql` + `20260727_000002_ia_user_skills.sql`.
+
 ## [5.44.0] - 2026-07-27
 
 ### Features

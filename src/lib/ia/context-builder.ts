@@ -517,6 +517,15 @@ export async function buildChatMessages(
     console.warn('[IA Context] Erro ao carregar user memory:', memErr);
   }
 
+  // Skills procedurais do usuário (Hermes Agent–like — persistem entre logins)
+  try {
+    const { buildUserSkillsPromptBlock } = await import('@/lib/ia/user-skills');
+    const skillsBlock = await buildUserSkillsPromptBlock(userId);
+    if (skillsBlock) systemPrompt += skillsBlock;
+  } catch (skErr) {
+    console.warn('[IA Context] Erro ao carregar user skills:', skErr);
+  }
+
   const messages: LLMMessage[] = [
     { role: 'system', content: systemPrompt },
     ...history,

@@ -1061,6 +1061,74 @@ export const IA_TOOLS_DEFINITION = [
     {
       type: 'function',
       function: {
+        name: 'criar_skill_usuario',
+        description:
+          'Cria/atualiza uma skill procedural reutilizável (Hermes Agent–like). Use quando o usuário ensinar um fluxo OU você descobrir um procedimento multi-passos útil no portal. Não armazene senhas/tokens. Persiste entre logins.',
+        parameters: {
+          type: 'object',
+          properties: {
+            nome: { type: 'string', description: 'Nome curto da skill (slug)' },
+            descricao: { type: 'string', description: 'Quando usar esta skill (1 frase)' },
+            procedimento: {
+              type: 'string',
+              description: 'Passos/procedimento (markdown). Inclua When to use + Steps.',
+            },
+            tags: { type: 'string', description: 'Tags separadas por vírgula' },
+          },
+          required: ['nome', 'procedimento'],
+        },
+      },
+      adminOnly: false,
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'listar_skills_usuario',
+        description: 'Lista skills procedurais ativas do usuário (persistentes entre sessões).',
+        parameters: {
+          type: 'object',
+          properties: {
+            busca: { type: 'string', description: 'Filtro opcional por nome/descrição/tag' },
+            limite: { type: 'number', description: 'Máximo de itens (padrão 20)' },
+          },
+        },
+      },
+      adminOnly: false,
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'usar_skill',
+        description:
+          'Carrega o procedimento completo de uma skill pelo nome ou id e incrementa use_count. Use quando a tarefa bater com uma skill listada no contexto.',
+        parameters: {
+          type: 'object',
+          properties: {
+            skill: { type: 'string', description: 'Nome ou UUID da skill' },
+          },
+          required: ['skill'],
+        },
+      },
+      adminOnly: false,
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'esquecer_skill',
+        description: 'Desativa (esquece) uma skill do usuário pelo nome ou id.',
+        parameters: {
+          type: 'object',
+          properties: {
+            skill: { type: 'string', description: 'Nome ou UUID da skill' },
+          },
+          required: ['skill'],
+        },
+      },
+      adminOnly: false,
+    },
+    {
+      type: 'function',
+      function: {
         name: 'iniciar_agente_autonomo',
         description: 'Inicia o agente IA autônomo para monitoramento e otimização contínua de KPIs. O agente executa ciclos periódicos para analisar KPIs, identificar gaps, gerar planos de ação e executar intervenções automaticamente.',
         parameters: {
@@ -3695,6 +3763,74 @@ return JSON.stringify(data);
           limit: Number(args?.limite) || 20,
         });
         return JSON.stringify({ total: mems.length, memorias: mems });
+      }
+
+      case 'criar_skill_usuario': {
+        const { createUserSkill } = await import('./user-skills');
+        const nome = String(args?.nome || '').trim();
+        const procedimento = String(args?.procedimento || '').trim();
+        if (!nome || !procedimento) return 'nome e procedimento são obrigatórios.';
+        const { skill, error } = await createUserSkill({
+          userId,
+          name: nome,
+          description: String(args?.descricao || ''),
+          procedure: procedimento,
+          tags: args?.tags,
+          source: 'tool',
+        });
+        if (!skill) {
+          return error || 'Não foi possível criar a skill (verifique se ia_user_skills existe).';
+        }
+        return JSON.stringify({ success: true, skill });
+      }
+
+      case 'listar_skills_usuario': {
+        const { listUserSkills } = await import('./user-skills');
+        const skills = await listUserSkills(userId, {
+          limit: Number(args?.limite) || 20,
+          query: args?.busca ? String(args.busca) : undefined,
+        });
+        return JSON.stringify({
+          total: skills.length,
+          skills: skills.map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            tags: s.tags,
+            use_count: s.use_count,
+            updated_at: s.updated_at,
+          })),
+        });
+      }
+
+      case 'usar_skill': {
+        const { useUserSkill } = await import('./user-skills');
+        const key = String(args?.skill || '').trim();
+        if (!key) return 'skill (nome ou id) é obrigatório.';
+        const { skill, promptBlock, error } = await useUserSkill(userId, key);
+        if (!skill) return error || 'Skill não encontrada.';
+        return JSON.stringify({
+          success: true,
+          skill: {
+            id: skill.id,
+            name: skill.name,
+            description: skill.description,
+            tags: skill.tags,
+            use_count: (skill.use_count || 0) + 1,
+          },
+          procedimento: skill.procedure,
+          instrucao: 'Siga o procedimento abaixo para esta tarefa.',
+          prompt_block: promptBlock,
+        });
+      }
+
+      case 'esquecer_skill': {
+        const { forgetUserSkill } = await import('./user-skills');
+        const key = String(args?.skill || '').trim();
+        if (!key) return 'skill (nome ou id) é obrigatório.';
+        const ok = await forgetUserSkill(userId, key);
+        if (!ok) return 'Não foi possível esquecer a skill.';
+        return JSON.stringify({ success: true, forgotten: key });
       }
 
       case 'iniciar_agente_autonomo': {

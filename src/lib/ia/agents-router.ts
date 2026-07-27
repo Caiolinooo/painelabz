@@ -88,7 +88,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Atendimento geral, navegação no portal e tira-dúvidas.',
     icon: '💬',
     systemPromptAddon:
-      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard.',
+      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard. Salve fatos com salvar_memoria_usuario e procedimentos reutilizáveis com criar_skill_usuario.',
     toolNames: [
       'buscar_dados_usuario',
       'buscar_funcionario',
@@ -97,6 +97,10 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'gerenciar_base_conhecimento',
       'salvar_memoria_usuario',
       'listar_memorias_usuario',
+      'criar_skill_usuario',
+      'listar_skills_usuario',
+      'usar_skill',
+      'esquecer_skill',
       'navegar_portal',
       'meu_calendario',
       'meus_emails',
@@ -110,7 +114,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
     icon: '🧭',
     systemPromptAddon:
-      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Para pendências: buscar_dados_usuario (resumo) + render_dashboard se útil.',
+      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para pendências: buscar_dados_usuario (resumo) + render_dashboard se útil.',
     toolNames: [
       'navegar_portal',
       'buscar_dados_usuario',
@@ -133,6 +137,10 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'gerenciar_base_conhecimento',
       'salvar_memoria_usuario',
       'listar_memorias_usuario',
+      'criar_skill_usuario',
+      'listar_skills_usuario',
+      'usar_skill',
+      'esquecer_skill',
       'render_dashboard',
     ],
   },

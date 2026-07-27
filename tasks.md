@@ -1,13 +1,15 @@
-## IA Companion global + memória Hermes (2026-07-27)
+## IA Companion global + memória/skills Hermes (2026-07-27)
 
 ### Feito
 - [x] `CompanionSessionProvider` global (sobrevive troca de módulo)
 - [x] STM `localStorage` — limpa só no logout
 - [x] LTM `ia_user_memory` + inject no prompt + tools + extract heurístico
-- [x] Migration SQL + v5.44.0
+- [x] Migration SQL LTM aplicada via service role (`scripts/apply-ia-memory-skills-migration.js`)
+- [x] Skills procedurais Hermes Agent–like (`ia_user_skills`) + tools + inject + auto-create
+- [x] Migration SQL skills aplicada + v5.45.0
 
 ### Ops
-- [ ] Aplicar `supabase/migrations/20260727_000001_ia_user_memory.sql` no Supabase SQL Editor
+- [x] Tabelas `ia_user_memory` e `ia_user_skills` confirmadas no Supabase
 
 ---
 

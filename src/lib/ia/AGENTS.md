@@ -12,6 +12,8 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - `src/lib/ia/registry/` — modules + bridge no `default` de `executeToolCall`
 - `src/lib/ia/portal-action-bus.ts` + `/api/ia/companion` — navegação Companion
 - `src/lib/ia/portal-navigation.ts` — catálogo de rotas, fuzzy/typos, contextos
+- `src/lib/ia/user-memory.ts` — LTM `ia_user_memory`
+- `src/lib/ia/user-skills.ts` — skills procedurais `ia_user_skills` (Hermes Agent–like)
 
 ## Local Contracts
 
@@ -43,10 +45,11 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
-- Companion: global (`CompanionSessionProvider`); STM localStorage limpa no logout; LTM `ia_user_memory` + tools `salvar_memoria_usuario` / `listar_memorias_usuario`
+- Companion: global (`CompanionSessionProvider`); STM localStorage limpa no logout; LTM `ia_user_memory` + tools `salvar_memoria_usuario` / `listar_memorias_usuario`; skills `ia_user_skills` + tools `criar_skill_usuario` / `listar_skills_usuario` / `usar_skill` / `esquecer_skill` (persistem; inject no prompt)
 - FAB = pinwheel colorido `abz-icon-color.png` (float + spin suave, `useReducedMotion`); `fixed` sem `relative`
 - Sub-agentes: `rh_tripulantes` / `geral` / `companion` incluem `render_dashboard`; nomes alinhados (`analisar_kpis_negocio`, `gerar_planilha_excel`)
-- Assistant (`/api/ia/chat` stream) vs Companion (`/api/ia/companion` sync): stream envia status inicial; Companion sync + LTM no prompt
+- Assistant (`/api/ia/chat` stream) vs Companion (`/api/ia/companion` sync): stream envia status inicial; Companion sync + LTM/skills no prompt
+- Skills: memória = fatos curtos sempre no contexto; skills = procedimentos mais longos (índice no prompt; corpo via `usar_skill`). Cap ~30/user; sem secrets. Auto-create heurístico + instrução no system prompt.
 
 ## Verification
 
@@ -56,6 +59,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Companion pergunta de dados → resposta via LLM+tools (não canned)
 - Registry bridge: tool só no registry ainda responde via `executeToolCall`
 - FAB Companion: disco branco + crop `LC1_Azul` (“abz”) + label **ABZ**; idle respira, listening radar, speaking pulse, executing arco — logo estático; sem SVG arcs 3 cores / glow roxo
+- Skills: `criar_skill_usuario` grava em `ia_user_skills`; índice no prompt; `usar_skill` devolve procedimento; persiste após logout
 
 ## Child DOX Index
 

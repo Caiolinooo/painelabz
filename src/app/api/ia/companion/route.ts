@@ -38,6 +38,11 @@ const COMPANION_SYSTEM = `Você é o **ABZ Companion**, assistente flutuante do 
 - Use \`salvar_memoria_usuario\` quando o usuário pedir para lembrar algo ou revelar preferências duráveis.
 - Fatos importantes já salvos aparecem no contexto — use-os; não invente.
 
+## Skills (procedimentos Hermes-like)
+- Use \`criar_skill_usuario\` quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos útil no portal.
+- Skills listadas no contexto: chame \`usar_skill\` pelo nome quando a tarefa bater.
+- Use \`listar_skills_usuario\` / \`esquecer_skill\` sob pedido. Não armazene senhas/tokens.
+
 ## Formato
 - Texto natural para o usuário.
 - Não exponha JSON cru, tags de pensamento ou nomes internos de tools.`;
@@ -152,7 +157,12 @@ export async function POST(req: NextRequest) {
           (await (async () => {
             try {
               const { buildUserMemoryPromptBlock } = await import('@/lib/ia/user-memory');
-              return await buildUserMemoryPromptBlock(userId);
+              const { buildUserSkillsPromptBlock } = await import('@/lib/ia/user-skills');
+              const [mem, skills] = await Promise.all([
+                buildUserMemoryPromptBlock(userId),
+                buildUserSkillsPromptBlock(userId),
+              ]);
+              return `${mem || ''}${skills || ''}`;
             } catch {
               return '';
             }
@@ -227,19 +237,28 @@ export async function POST(req: NextRequest) {
       replyText = 'Pronto — como posso ajudar?';
     }
 
-    // Extrai / salva LTM (Hermes-like) — não bloqueia resposta
+    // Extrai / salva LTM + skills (Hermes-like) — não bloqueia resposta
     void (async () => {
       try {
         const { extractAndSaveMemoriesFromTurn } = await import('@/lib/ia/user-memory');
-        await extractAndSaveMemoriesFromTurn({
-          userId,
-          userMessage: prompt.trim(),
-          assistantReply: replyText,
-          source: 'companion',
-          sessionId: session_id,
-        });
+        const { extractAndSaveSkillsFromTurn } = await import('@/lib/ia/user-skills');
+        await Promise.all([
+          extractAndSaveMemoriesFromTurn({
+            userId,
+            userMessage: prompt.trim(),
+            assistantReply: replyText,
+            source: 'companion',
+            sessionId: session_id,
+          }),
+          extractAndSaveSkillsFromTurn({
+            userId,
+            userMessage: prompt.trim(),
+            assistantReply: replyText,
+            source: 'companion-auto',
+          }),
+        ]);
       } catch (memErr) {
-        console.warn('[Companion] memory extract skip:', memErr);
+        console.warn('[Companion] memory/skill extract skip:', memErr);
       }
     })();
 
