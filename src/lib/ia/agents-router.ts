@@ -19,7 +19,8 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     name: 'Agente de RH & Tripulantes',
     description: 'Especialista em perfil de colaboradores, férias, reembolsos, EPIs e embarques.',
     icon: '👥',
-    systemPromptAddon: 'Você é o Sub-Agente de RH & Gestão de Tripulantes. Responda com foco em colaboradores, férias, reembolsos, EPIs e embarques.',
+    systemPromptAddon:
+      'Você é o Sub-Agente de RH & Gestão de Tripulantes. Responda com foco em colaboradores, férias, reembolsos, EPIs e embarques. Para "minhas pendências", use buscar_dados_usuario (tipo resumo) e depois render_dashboard.',
     toolNames: [
       'buscar_funcionario',
       'buscar_dados_usuario',
@@ -29,6 +30,8 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'navegar_portal',
       'buscar_ferias',
       'buscar_reembolsos',
+      'buscar_epis',
+      'render_dashboard',
     ],
   },
   aso_saude: {
@@ -43,6 +46,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'validar_aso_identidade',
       'buscar_dados_usuario',
       'navegar_portal',
+      'render_dashboard',
     ],
   },
   esocial_compliance: {
@@ -64,13 +68,15 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     name: 'Agente de Analytics & Dashboards',
     description: 'Especialista em métricas, relatórios em Excel, dashboards visuais e automação.',
     icon: '📊',
-    systemPromptAddon: 'Você é o Sub-Agente de Analytics & Gestão Executiva. Apresente relatórios detalhados e dashboards interativos.',
+    systemPromptAddon: 'Você é o Sub-Agente de Analytics & Gestão Executiva. Apresente relatórios detalhados e dashboards interativos. Use render_dashboard para pendências/KPIs.',
     toolNames: [
-      'analisar_kpis',
       'analisar_kpis_negocio',
       'buscar_kpis_sistema',
+      'buscar_sinais_kpi_comunicacao',
+      'buscar_dados_usuario',
       'render_dashboard',
-      'gerar_relatorio_excel',
+      'gerar_planilha_excel',
+      'gerar_relatorio_pdf',
       'gerenciar_notificacoes',
       'gerenciar_base_conhecimento',
       'navegar_portal',
@@ -82,15 +88,18 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Atendimento geral, navegação no portal e tira-dúvidas.',
     icon: '💬',
     systemPromptAddon:
-      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação).',
+      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard.',
     toolNames: [
       'buscar_dados_usuario',
       'buscar_funcionario',
+      'buscar_ferias',
+      'buscar_reembolsos',
       'gerenciar_base_conhecimento',
       'navegar_portal',
       'meu_calendario',
       'meus_emails',
       'minhas_conversas_teams',
+      'render_dashboard',
     ],
   },
   companion: {
@@ -99,7 +108,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
     icon: '🧭',
     systemPromptAddon:
-      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas.',
+      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. Use tools para dados reais. Respostas curtas. Para pendências: buscar_dados_usuario (resumo); render_dashboard só se couber na resposta curta.',
     toolNames: [
       'navegar_portal',
       'buscar_dados_usuario',
@@ -120,6 +129,7 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'buscar_tripulantes',
       'buscar_escalas',
       'gerenciar_base_conhecimento',
+      'render_dashboard',
     ],
   },
 };
@@ -163,6 +173,10 @@ export function routeToSubAgent(userMessage: string): SubAgentDefinition {
     msg.includes('pendência') || msg.includes('pendencia') ||
     msg.includes('equipe')
   ) {
+    // Pendências do usuário → RH (agora com render_dashboard). KPIs/sistema → analytics.
+    if (msg.includes('kpi') || msg.includes('sistema') || msg.includes('dashboard')) {
+      return SUB_AGENTS.analytics_admin;
+    }
     return SUB_AGENTS.rh_tripulantes;
   }
 

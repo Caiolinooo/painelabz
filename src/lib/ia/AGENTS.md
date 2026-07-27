@@ -43,8 +43,9 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
-- Companion: preferir `commands` tipados (`NAVIGATE` / `HIGHLIGHT_ELEMENT`); não girar o logo ABZ na animação
-- FAB Companion: classe `fixed` apenas (nunca misturar `relative` no mesmo botão — some da viewport); FAB usa brand blue (`#005B96`), sem IC_colorido / glow roxo
+- Companion: FAB `fixed` apenas (nunca misturar `relative`); wordmark LC1 + rings
+- Sub-agentes: `rh_tripulantes` / `geral` / `companion` incluem `render_dashboard` (prompt de pendências exige); nomes de tools alinhados (`analisar_kpis_negocio`, `gerar_planilha_excel`)
+- Assistant (`/api/ia/chat` stream) vs Companion (`/api/ia/companion` sync): stream envia status inicial; Companion não usa SSE; FAB usa brand blue (`#005B96`), sem IC_colorido / glow roxo
 
 ## Verification
 

@@ -717,10 +717,30 @@ export async function chatCompletionStream(
   return new ReadableStream<Uint8Array>({
     async start(streamController) {
       try {
-        await startStream(messages, streamController);
+        // Feedback imediato na UI (evita só "..." enquanto o LLM ainda não emitiu delta)
+        streamController.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ status: 'Consultando a IA...' })}\n\n`)
+        );
+        await startStream(cleanMessages, streamController);
       } catch (err) {
         console.error('[IA Stream] Erro na orquestração:', err);
-        streamController.error(err);
+        const msg = err instanceof Error ? err.message : 'Erro no streaming da IA';
+        try {
+          streamController.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                content: `❌ ${msg}`,
+                done: true,
+                fullContent: `❌ ${msg}`,
+              })}\n\n`
+            )
+          );
+          streamController.close();
+        } catch {
+          streamController.error(err);
+        }
+      } finally {
+        clearTimeout(timeout);
       }
     },
     cancel() {
