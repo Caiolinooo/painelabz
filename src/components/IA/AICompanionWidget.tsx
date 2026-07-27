@@ -15,26 +15,25 @@ import { useRouter } from 'next/navigation';
 import AnimatedABZLogo, { AICompanionStatus } from './AnimatedABZLogo';
 import { portalActionBus, AICommandPayload } from '@/lib/ia/portal-action-bus';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { useCompanionSession } from '@/contexts/CompanionSessionContext';
 import toast from 'react-hot-toast';
-
-type ChatMsg = { sender: 'user' | 'ai'; text: string };
 
 export default function AICompanionWidget() {
   const { getToken } = useSupabaseAuth();
+  const {
+    sessionId,
+    setSessionId,
+    messages,
+    setMessages,
+    isOpen,
+    setIsOpen,
+  } = useCompanionSession();
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<AICompanionStatus>('idle');
   const [actionLabel, setActionLabel] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    {
-      sender: 'ai',
-      text: 'Olá! Sou o Companion ABZ — conectado à IA do portal. Posso buscar dados, abrir módulos (mesmo com erro de digitação) e te guiar. Como posso ajudar?',
-    },
-  ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,6 +70,7 @@ export default function AICompanionWidget() {
 
     const userQuery = inputText.trim();
     setInputText('');
+    const historySnapshot = messages.slice(-8);
     setMessages(prev => [...prev, { sender: 'user', text: userQuery }]);
     setIsSending(true);
     setStatus('speaking');
@@ -83,12 +83,10 @@ export default function AICompanionWidget() {
         return;
       }
 
-      const history = messages
-        .slice(-8)
-        .map(m => ({
-          role: m.sender === 'user' ? 'user' : 'assistant',
-          content: m.text,
-        }));
+      const history = historySnapshot.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      }));
 
       const res = await fetch('/api/ia/companion', {
         method: 'POST',
@@ -133,7 +131,7 @@ export default function AICompanionWidget() {
       setIsSending(false);
       setStatus('idle');
     }
-  }, [inputText, isSending, getToken, messages, sessionId]);
+  }, [inputText, isSending, getToken, messages, sessionId, setMessages, setSessionId]);
 
   const toggleVoiceMode = useCallback(() => {
     if (status === 'listening') {
@@ -155,7 +153,6 @@ export default function AICompanionWidget() {
         </div>
       )}
 
-      {/* FAB = só o ícone colorido flutuante (sem placa branca / label) */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -193,7 +190,7 @@ export default function AICompanionWidget() {
                   Companion ABZ
                   <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
                 </h3>
-                <p className="text-[11px] text-blue-100/90">IA conectada ao portal</p>
+                <p className="text-[11px] text-blue-100/90">Sessão global · memória ativa</p>
               </div>
             </div>
 
