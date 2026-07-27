@@ -132,21 +132,24 @@ export default function AnimatedABZLogo({
             boxShadow: `inset 0 0 0 1px ${BRAND_BLUE}14, 0 1px 2px rgba(0,91,150,0.08)`,
           }}
         >
-          <Image
-            src="/images/LC1_Azul.png"
-            alt="ABZ Group"
-            fill
-            sizes={`${discSize}px`}
-            className="select-none pointer-events-none object-cover"
-            style={{
-              // Wordmark 4.2:1 — object-cover + position esquerda = “abz” no FAB
-              objectPosition: '14% 50%',
-              transform: 'scale(1.15)',
-              transformOrigin: '14% 50%',
-            }}
-            priority
-            draggable={false}
-          />
+          {/* relative obrigatório para next/image `fill` */}
+          <div className="relative w-full h-full">
+            <Image
+              src="/images/LC1_Azul.png"
+              alt="ABZ Group"
+              fill
+              sizes={`${discSize}px`}
+              className="select-none pointer-events-none object-cover"
+              style={{
+                // Wordmark 4.2:1 — object-cover + position esquerda = “abz” no FAB
+                objectPosition: '14% 50%',
+                transform: 'scale(1.15)',
+                transformOrigin: '14% 50%',
+              }}
+              priority
+              draggable={false}
+            />
+          </div>
         </div>
       </div>
 

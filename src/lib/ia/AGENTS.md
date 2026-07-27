@@ -43,7 +43,8 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
-- Companion: preferir `commands` tipados (`NAVIGATE` / `HIGHLIGHT_ELEMENT`); não girar o logo ABZ na animação; FAB usa brand blue (`#005B96`), sem IC_colorido / glow roxo
+- Companion: preferir `commands` tipados (`NAVIGATE` / `HIGHLIGHT_ELEMENT`); não girar o logo ABZ na animação
+- FAB Companion: classe `fixed` apenas (nunca misturar `relative` no mesmo botão — some da viewport); FAB usa brand blue (`#005B96`), sem IC_colorido / glow roxo
 
 ## Verification
 

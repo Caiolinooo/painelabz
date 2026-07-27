@@ -155,9 +155,11 @@ export default function AICompanionWidget() {
         </div>
       )}
 
+      {/* NÃO misturar `fixed` com `relative` — o relative anula o fixed e o FAB some da viewport */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-24 z-[60] relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 bg-white border border-[#005B96]/15 ${
+        className={`fixed bottom-6 right-[5.25rem] md:right-24 z-[60] w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 bg-white border border-[#005B96]/15 ${
           status === 'executing'
             ? 'scale-110 ring-4 ring-emerald-300/70'
             : status === 'listening'
@@ -173,7 +175,7 @@ export default function AICompanionWidget() {
         {isOpen ? (
           <FiX className="w-6 h-6 text-[#005B96]" />
         ) : (
-          <AnimatedABZLogo status={status} size={48} compactLabel />
+          <AnimatedABZLogo status={status} size={44} compactLabel />
         )}
       </button>
 

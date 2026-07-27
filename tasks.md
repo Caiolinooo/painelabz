@@ -11,6 +11,7 @@
 
 ### Pendente
 - [ ] Playwright: companion NAVIGATE com typo ("feririas") + pergunta real à IA
+- [x] FAB sumiu: `fixed`+`relative` no mesmo botão — removido `relative` (2026-07-27)
 
 ---
 
@@ -100,7 +101,7 @@ Achado: credencial O365 em repo **público** `Caiolinooo/EmployeeHub` (`src/lib/
 | [ ] | Auditar **Sign-in logs** no período de exposição pública |
 | [ ] | Rotacionar Gmail app password antiga (se ainda válida) |
 | [ ] | Revogar SendGrid API key antiga (mencionada em docs — já redigida) |
-| [ ] | Atualizar `EMAIL_*` / `WKRADAR_DEFAULT_PASSWORD` no host (Vercel/Netlify) |
+| [ ] | Atualizar `EMAIL_*` / `WKRADAR_DEFAULT_PASSWORD` no host (Vercel) |
 
 ### Manual — GitHub org / histórico — PENDENTE
 
