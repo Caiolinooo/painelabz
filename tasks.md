@@ -1,3 +1,22 @@
+## Companion — mascote livro azul (2026-07-28)
+
+### Feito
+- [x] Chroma/knockout do sheet transparente → RGBA em `public/images/companion-mascot/body|face/`
+- [x] `frames.json` + `companion-mascot-frames.ts` (idle/listen/speak/exec)
+- [x] Drop-in `AnimatedABZLogo` (props `status`/`size`/`className`); FAB/header/hero intactos
+- [x] DOX `src/lib/ia/AGENTS.md` + CHANGELOG + **v5.53.0**
+
+### Como testar
+- Abrir Companion FAB → mascote idle (bob + troca lenta de poses)
+- Enviar mensagem → speaking/executing ciclo de frames
+- `prefers-reduced-motion` → frame estático
+
+### Tweak frames
+- Editar `MASCOT_STATUS_CYCLES` em `src/components/IA/companion-mascot-frames.ts` ou `public/images/companion-mascot/frames.json`
+- Trocar PNGs em `body/*.png` (ids: `idle_stand`, `listen_ear`, `speak_*`, `exec_*`)
+
+---
+
 ## IA — Graph email/Teams rich payloads (2026-07-28)
 
 ### Feito

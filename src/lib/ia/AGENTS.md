@@ -82,7 +82,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - `meus_emails`, `meu_calendario`, `criar_evento_calendario`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `navegar_portal`
 - Registry: `microsoft.tools`, `calendario.tools`, `chat.tools`, `portal.tools` (inclui board tools)
-- Companion (`/api/ia/companion`): IA real + tools; fuzzy nav (`portal-navigation.ts`); commands via `_metadata.portalCommands`; logo `LC1_Azul.png` estável
+- Companion (`/api/ia/companion`): IA real + tools; fuzzy nav (`portal-navigation.ts`); commands via `_metadata.portalCommands`; UI mascote livro (`AnimatedABZLogo` / frames em `companion-mascot/`)
 - Sub-agente `companion` no `agents-router` (ativado por `[ABZ_COMPANION]` / verbos de navegação) — inclui globals, KPIs, mutate, boards, memória/skills
 
 ## Work Guidance
@@ -90,7 +90,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
 - Companion: global (`CompanionSessionProvider`); STM localStorage limpa no logout; LTM `ia_user_memory` + skills `ia_user_skills`; boards `ia_kpi_boards` + índice no prompt
-- FAB = pinwheel colorido `abz-icon-color.png` (float + spin suave, `useReducedMotion`); `fixed` sem `relative`
+- FAB = mascote livro azul (`public/images/companion-mascot/body/*` via `AnimatedABZLogo` + `companion-mascot-frames.ts`; status→frames; float/aura, `useReducedMotion`); `fixed` sem `relative`
 - Sub-agentes: `rh_tripulantes` / `geral` / `companion` / `analytics` — `enviar_notificacao_proativa` (não `gerenciar_notificacoes` fantasma)
 - Assistant stream vs Companion sync; histórico Companion ~12 msgs; multi-tool permitido
 - **Companion NAVIGATE contract**: nunca prometer navegação sem `NAVIGATE` (`isTourIntent` / `ensureNavigationCommand`; tour → `/dashboard`)

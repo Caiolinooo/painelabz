@@ -1,16 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   AICompanionStatus,
-  ICON_CYAN,
-  ICON_GOLD,
-  ICON_GREEN,
   getCompanionMotion,
   statusAccent,
 } from './companion-logo-motion';
+import {
+  MASCOT_BODY,
+  MASCOT_STATUS_CYCLES,
+  mascotFrameSrc,
+} from './companion-mascot-frames';
 
 export type { AICompanionStatus };
 
@@ -18,17 +20,15 @@ interface AnimatedABZLogoProps {
   status?: AICompanionStatus;
   size?: number;
   className?: string;
-  /** @deprecated — FAB usa só o ícone colorido */
+  /** @deprecated — kept for API compat */
   showWordmark?: boolean;
-  /** @deprecated — FAB usa só o ícone colorido */
+  /** @deprecated — kept for API compat */
   compactLabel?: boolean;
 }
 
-const ICON_SRC = '/images/abz-icon-color.png';
-
 /**
- * Ícone flutuante do Companion = pinwheel oficial ABZ (verde / ouro / azul).
- * Anima float + rotação suave; reduced motion = estático.
+ * Companion FAB / panel mascot — blue-book sprite keyed to RGBA frames.
+ * Drop-in props: status | size | className. Status owned by AICompanionWidget.
  */
 export default function AnimatedABZLogo({
   status = 'idle',
@@ -38,7 +38,27 @@ export default function AnimatedABZLogo({
   const shouldReduceMotion = useReducedMotion();
   const accent = statusAccent(status);
   const motionPreset = getCompanionMotion(status, !!shouldReduceMotion);
-  const iconSize = Math.round(size * 0.78);
+  const cycle = MASCOT_STATUS_CYCLES[status];
+  const [frameIdx, setFrameIdx] = useState(0);
+
+  useEffect(() => {
+    setFrameIdx(0);
+  }, [status]);
+
+  useEffect(() => {
+    if (shouldReduceMotion || cycle.fps <= 0 || cycle.frames.length <= 1) {
+      return;
+    }
+    const ms = Math.max(80, Math.round(1000 / cycle.fps));
+    const id = window.setInterval(() => {
+      setFrameIdx(i => (i + 1) % cycle.frames.length);
+    }, ms);
+    return () => window.clearInterval(id);
+  }, [cycle, shouldReduceMotion, status]);
+
+  const frameId = cycle.frames[Math.min(frameIdx, cycle.frames.length - 1)] ?? 'idle_stand';
+  const src = mascotFrameSrc(frameId in MASCOT_BODY ? frameId : 'idle_stand');
+  const iconSize = Math.round(size * 0.92);
 
   return (
     <motion.div
@@ -46,23 +66,19 @@ export default function AnimatedABZLogo({
       style={{ width: size, height: size }}
       aria-label="ABZ Companion"
       title="ABZ Companion"
-      animate={motionPreset.float}
+      animate={shouldReduceMotion ? undefined : motionPreset.float}
       transition={motionPreset.floatTransition}
     >
-      {/* Aura multicolor suave */}
       <motion.div
         className="absolute rounded-full pointer-events-none"
         style={{
           inset: -4,
-          background: `radial-gradient(circle at 30% 30%, ${ICON_GREEN}44 0%, transparent 45%),
-            radial-gradient(circle at 80% 40%, ${ICON_GOLD}44 0%, transparent 45%),
-            radial-gradient(circle at 40% 80%, ${ICON_CYAN}44 0%, transparent 50%)`,
+          background: `radial-gradient(circle at 40% 35%, ${accent}33 0%, transparent 62%)`,
         }}
-        animate={motionPreset.aura}
+        animate={shouldReduceMotion ? undefined : motionPreset.aura}
         transition={motionPreset.auraTransition}
       />
 
-      {/* Radar rings (listening / executing) */}
       {motionPreset.showRadar &&
         !shouldReduceMotion &&
         [0, 1].map(i => (
@@ -84,23 +100,21 @@ export default function AnimatedABZLogo({
           />
         ))}
 
-      {/* Pinwheel — gira conforme status */}
-      <motion.div
+      <div
         className="relative z-10 flex items-center justify-center"
         style={{ width: iconSize, height: iconSize }}
-        animate={motionPreset.icon}
-        transition={motionPreset.iconTransition}
       >
         <Image
-          src={ICON_SRC}
-          alt="ABZ"
+          src={src}
+          alt="Companion ABZ"
           width={iconSize}
           height={iconSize}
           className="object-contain select-none pointer-events-none drop-shadow-md"
           priority
           draggable={false}
+          unoptimized
         />
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

@@ -6,7 +6,6 @@ export type AICompanionStatus = 'idle' | 'listening' | 'speaking' | 'executing';
 export const BRAND_BLUE = '#005B96';
 export const BRAND_BLUE_BRIGHT = '#0B72E7';
 
-/** Cores oficiais do ícone pinwheel ABZ */
 export const ICON_GREEN = '#22C55E';
 export const ICON_GOLD = '#F59E0B';
 export const ICON_CYAN = '#0EA5E9';
@@ -29,10 +28,10 @@ export function statusAccent(status: AICompanionStatus): string {
 }
 
 export type CompanionMotionPreset = {
-  /** Flutuação vertical do FAB */
+  /** Flutuação vertical do FAB / mascote */
   float?: TargetAndTransition;
   floatTransition?: Transition;
-  /** Rotação suave do pinwheel (ícone circular) */
+  /** @deprecated pinwheel spin — mascote usa troca de frames */
   icon?: TargetAndTransition;
   iconTransition?: Transition;
   aura?: TargetAndTransition;
@@ -41,7 +40,7 @@ export type CompanionMotionPreset = {
 };
 
 /**
- * Motion para o ícone colorido ABZ (pinwheel).
+ * Motion wrapper for the blue-book mascot (float + aura; frames handle pose).
  * Reduced motion → estático.
  */
 export function getCompanionMotion(
@@ -56,40 +55,33 @@ export function getCompanionMotion(
     case 'idle':
       return {
         showRadar: false,
-        float: { y: [0, -5, 0] },
+        float: { y: [0, -4, 0] },
         floatTransition: { duration: 3.4, repeat: Infinity, ease: 'easeInOut' },
-        icon: { rotate: 360 },
-        iconTransition: { duration: 18, repeat: Infinity, ease: 'linear' },
-        aura: { opacity: [0.35, 0.6, 0.35], scale: [1, 1.08, 1] },
+        aura: { opacity: [0.35, 0.55, 0.35], scale: [1, 1.06, 1] },
         auraTransition: { duration: 3.4, repeat: Infinity, ease: 'easeInOut' },
       };
     case 'listening':
       return {
         showRadar: true,
-        float: { y: [0, -3, 0] },
-        floatTransition: { duration: 1.4, repeat: Infinity, ease: 'easeInOut' },
-        icon: { rotate: 360 },
-        iconTransition: { duration: 4.5, repeat: Infinity, ease: 'linear' },
-        aura: { opacity: [0.45, 0.75, 0.45], scale: [1, 1.14, 1] },
-        auraTransition: { duration: 1.4, repeat: Infinity, ease: 'easeInOut' },
+        float: { y: [0, -2, 0] },
+        floatTransition: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
+        aura: { opacity: [0.4, 0.7, 0.4], scale: [1, 1.1, 1] },
+        auraTransition: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
       };
     case 'speaking':
       return {
         showRadar: false,
-        float: { y: [0, -4, 0] },
-        floatTransition: { duration: 0.85, repeat: Infinity, ease: 'easeInOut' },
-        icon: { rotate: [0, 12, -12, 8, 0], scale: [1, 1.06, 1] },
-        iconTransition: { duration: 1.1, repeat: Infinity, ease: 'easeInOut' },
-        aura: { opacity: [0.5, 0.85, 0.5], scale: [1, 1.16, 1] },
-        auraTransition: { duration: 0.85, repeat: Infinity, ease: 'easeInOut' },
+        float: { y: [0, -3, 0] },
+        floatTransition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut' },
+        aura: { opacity: [0.45, 0.8, 0.45], scale: [1, 1.12, 1] },
+        auraTransition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut' },
       };
     case 'executing':
       return {
         showRadar: true,
-        float: { y: 0 },
-        icon: { rotate: 360 },
-        iconTransition: { duration: 1.35, repeat: Infinity, ease: 'linear' },
-        aura: { opacity: [0.55, 0.9, 0.55], scale: [1, 1.12, 1] },
+        float: { y: [0, -2, 0] },
+        floatTransition: { duration: 1.1, repeat: Infinity, ease: 'easeInOut' },
+        aura: { opacity: [0.5, 0.85, 0.5], scale: [1, 1.1, 1] },
         auraTransition: { duration: 1.0, repeat: Infinity, ease: 'easeInOut' },
       };
     default: {

@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.53.0] - 2026-07-28
+
+### Added
+- **Companion — mascote livro azul animado**:
+  - `AnimatedABZLogo` troca o pinwheel por sprites RGBA do livro (`public/images/companion-mascot/body/*`).
+  - Status → frames: idle (stand/wave), listening (mão no rosto), speaking (gesto + boca), executing (pensar / lâmpada / digitar).
+  - Mapa em `companion-mascot-frames.ts` + `frames.json`; `useReducedMotion` congela no 1º frame.
+  - FAB 60 / header 36 / hero 80 inalterados; sem mudanças em bus/session.
+
 ## [5.52.0] - 2026-07-28
 
 ### Improved
