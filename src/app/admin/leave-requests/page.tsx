@@ -176,16 +176,25 @@ export default function AdminLeaveRequestsPage() {
     const handleDownloadComprovante = async (req: RequestWithUser) => {
         try {
             const token = getToken();
+            if (!token) {
+                toast.error('Sessão expirada. Faça login novamente para baixar o formulário.');
+                return;
+            }
             const res = await fetch(`/api/leave/${req.id}/pdf`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData?.error || 'Falha ao gerar comprovante');
+                const errData = await res.json().catch(() => ({} as { error?: string }));
+                if (errData?.error) throw new Error(errData.error);
+                if (res.status === 401) throw new Error('Sessão expirada. Faça login novamente.');
+                if (res.status === 403) throw new Error('Sem permissão para baixar este formulário.');
+                if (res.status === 404) throw new Error('Solicitação não encontrada ou dados do colaborador indisponíveis.');
+                throw new Error('Falha ao gerar comprovante');
             }
 
             const blob = await res.blob();
+            if (!blob.size) throw new Error('PDF vazio recebido do servidor.');
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

@@ -30,7 +30,8 @@ Módulo de solicitações de férias (`/ferias`): criação, aprovação por set
 - **Detalhes** → prévia do formulário preenchido + botão **Baixar PDF** → `GET /api/leave/[id]/pdf` (mesmo gerador ABZ, dados reais + líder/gerente do setor)
 - Histórico antigo também gera PDF preenchido (mesmo endpoint)
 - Formulário em branco: `GET /api/leave/form-pdf`
-- Preenchimento PDF: CPF ← `users_unified.tax_id`; cargo ← `position`; setor ← `sectors.name` (fallback `department`); nome ← `name` ou `first_name`+`last_name`; duração recalculada se `periods[].duration` ausente; líder/gerente ← `leave_sector_configs`; **não** há colunas `leader_approved_at`/`manager_approved_at` em `leave_requests` (datas de aprovação ficam “—” até existir audit trail)
+- Preenchimento PDF: CPF ← `users_unified.tax_id` (**nunca** coluna `cpf` — não existe e quebra o select PostgREST); cargo ← `position`; setor ← `sectors.name` (fallback `department`); nome ← `name` ou `first_name`+`last_name`; duração recalculada se `periods[].duration` ausente; líder/gerente ← `leave_sector_configs` (lookup por id, sem FK nomeada obrigatória); **não** há colunas `leader_approved_at`/`manager_approved_at` em `leave_requests` (datas de aprovação ficam “—” até existir audit trail)
+- Download: cliente envia `Authorization: Bearer` (mesmo padrão das demais APIs leave); toast por status; body PDF como `Uint8Array`
 
 ### RBAC
 

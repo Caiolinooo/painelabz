@@ -26,14 +26,16 @@ export async function GET(request: NextRequest) {
         }
 
         const pdfBuffer = await generateLeaveFormPDF();
+        const pdfBytes = new Uint8Array(pdfBuffer);
 
         const fileName = `Formulario_Ferias_ABZ_${new Date().toISOString().slice(0, 10)}.pdf`;
 
-        return new NextResponse(pdfBuffer, {
+        return new NextResponse(pdfBytes, {
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="${fileName}"`,
-                'Content-Length': String(pdfBuffer.length)
+                'Content-Length': String(pdfBytes.byteLength),
+                'Cache-Control': 'no-store'
             }
         });
     } catch (error) {

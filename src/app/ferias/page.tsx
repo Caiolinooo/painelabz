@@ -641,6 +641,19 @@ export default function FeriasPage() {
     // ==========================================
 
     /**
+     * Interpreta erro HTTP do download de PDF de férias para toast claro.
+     */
+    const leavePdfDownloadError = async (res: Response, fallback: string): Promise<string> => {
+        const errData = await res.json().catch(() => ({} as { error?: string }));
+        if (errData?.error) return errData.error;
+        if (res.status === 401) return 'Sessão expirada. Faça login novamente para baixar o formulário.';
+        if (res.status === 403) return 'Você não tem permissão para baixar este formulário.';
+        if (res.status === 404) return 'Solicitação não encontrada ou dados do colaborador indisponíveis.';
+        if (res.status >= 500) return 'Erro no servidor ao gerar o PDF. Tente novamente em instantes.';
+        return fallback;
+    };
+
+    /**
      * Download do formulário/comprovante preenchido (PDF) da solicitação.
      * Usa GET /api/leave/[id]/pdf — dados reais do pedido + colaborador + aprovadores.
      */
@@ -648,16 +661,27 @@ export default function FeriasPage() {
         try {
             setDownloadingPdfId(req.id);
             const token = getToken();
+            if (!token) {
+                toast.error('Sessão expirada. Faça login novamente para baixar o formulário.');
+                return;
+            }
             const res = await fetch(`/api/leave/${req.id}/pdf`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData?.error || 'Falha ao gerar formulário preenchido');
+                throw new Error(await leavePdfDownloadError(res, 'Falha ao gerar formulário preenchido'));
+            }
+
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/pdf')) {
+                throw new Error('Resposta inválida do servidor (esperado PDF). Tente novamente.');
             }
 
             const blob = await res.blob();
+            if (!blob.size) {
+                throw new Error('PDF vazio recebido do servidor. Tente novamente.');
+            }
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -684,16 +708,27 @@ export default function FeriasPage() {
     const handleDownloadFormulario = async () => {
         try {
             const token = getToken();
+            if (!token) {
+                toast.error('Sessão expirada. Faça login novamente para baixar o formulário.');
+                return;
+            }
             const res = await fetch('/api/leave/form-pdf', {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData?.error || 'Falha ao gerar formulário');
+                throw new Error(await leavePdfDownloadError(res, 'Falha ao gerar formulário'));
+            }
+
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/pdf')) {
+                throw new Error('Resposta inválida do servidor (esperado PDF). Tente novamente.');
             }
 
             const blob = await res.blob();
+            if (!blob.size) {
+                throw new Error('PDF vazio recebido do servidor. Tente novamente.');
+            }
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

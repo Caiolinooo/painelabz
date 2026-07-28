@@ -1,3 +1,16 @@
+## Férias — PDF download fix (2026-07-28)
+
+### Feito
+- [x] Causa real (Vercel): `GET /api/leave/[id]/pdf` 404 — `column users_unified_1.cpf does not exist`
+- [x] Fix query `tax_id` (5.50.1) + harden download body/toasts/logo (5.50.2)
+- [x] Blank `form-pdf` já 200; filled volta a gerar após deploy
+
+### Como testar
+- `/ferias` → Formulário (branco) → baixa PDF
+- Detalhes → Baixar formulário PDF → baixa preenchido (owner/admin/aprovador)
+
+---
+
 ## Férias — PDF fill audit (2026-07-28)
 
 ### Feito

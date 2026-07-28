@@ -177,8 +177,9 @@ function buildHeader(doc: jsPDF, logoBase64: string, docCode: string, docTitle: 
         { content: `Data/Date: ${new Date().toLocaleDateString('pt-BR')}    PAG.: 1`, styles: { fontSize: 7, valign: 'middle' as const, halign: 'left' as const } }
       ]
     ] as any[][],
+    // A4 útil ≈ 182mm (210 − margens 14+14). 50+100+40=190 estourava 8mm e gerava warning.
     columnStyles: {
-      0: { cellWidth: 50 },
+      0: { cellWidth: 42 },
       1: { cellWidth: 100 },
       2: { cellWidth: 40 }
     },
@@ -194,11 +195,12 @@ function buildHeader(doc: jsPDF, logoBase64: string, docCode: string, docTitle: 
       if (data.section === 'body' && data.column.index === 0 && data.row.index === 0 && logoBase64) {
         const cellHeight = data.cell.height;
         const imgHeight = 12;
-        const imgWidth = 40;
+        const imgWidth = 36;
         const xPos = data.cell.x + (data.cell.width - imgWidth) / 2;
         const yPos = data.cell.y + (cellHeight - imgHeight) / 2;
         try {
-          doc.addImage(logoBase64, 'PNG', xPos, yPos, imgWidth, imgHeight);
+          // FAST evita embutir o PNG 1367×324 como bitmap ~1.7MB no PDF
+          doc.addImage(logoBase64, 'PNG', xPos, yPos, imgWidth, imgHeight, undefined, 'FAST');
         } catch (e) {
           console.warn('[Leave PDF] Erro ao adicionar logo:', e);
         }

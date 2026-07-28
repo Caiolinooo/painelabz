@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.50.2] - 2026-07-28
+
+### Fixed
+- **Férias PDF download** (root cause confirmed in Vercel logs on 5.50.0):
+  - `GET /api/leave/[id]/pdf` retornava **404** com `column users_unified_1.cpf does not exist` (seleção inválida introduzida em 5.50.0); preenchimento já usa `tax_id` desde 5.50.1.
+  - Resposta PDF via `Uint8Array` + `Cache-Control: no-store` (blank + filled).
+  - Lookup de líder/gerente sem FK nomeada (não derruba o PDF se join falhar).
+  - Cliente `/ferias` e admin: exige Bearer, toast claro por 401/403/404/500, valida `content-type` PDF e blob não vazio.
+  - Header ABZ: larguras cabem na página A4; logo com compressão `FAST` (evita PDF ~1.8MB).
+
 ## [5.50.1] - 2026-07-28
 
 ### Fixed

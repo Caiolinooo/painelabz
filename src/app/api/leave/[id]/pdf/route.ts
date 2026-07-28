@@ -85,23 +85,34 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             }
         }
 
-        // Busca nomes do líder e gerente (se aplicável)
+        // Busca nomes do líder e gerente (se aplicável) — não pode derrubar o PDF
         let leaderName: string | undefined;
         let managerName: string | undefined;
         if (req.user?.sector_id) {
-            const { data: config } = await supabaseAdmin
-                .from('leave_sector_configs')
-                .select(`
-                    leader:users_unified!leave_sector_configs_leader_id_fkey(name),
-                    manager:users_unified!leave_sector_configs_manager_id_fkey(name)
-                `)
-                .eq('sector_id', req.user.sector_id)
-                .single();
+            try {
+                const { data: config } = await supabaseAdmin
+                    .from('leave_sector_configs')
+                    .select('leader_id, manager_id')
+                    .eq('sector_id', req.user.sector_id)
+                    .maybeSingle();
 
-            const leader = Array.isArray(config?.leader) ? config?.leader[0] : config?.leader;
-            const manager = Array.isArray(config?.manager) ? config?.manager[0] : config?.manager;
-            leaderName = (leader as { name?: string } | null)?.name;
-            managerName = (manager as { name?: string } | null)?.name;
+                const ids = [config?.leader_id, config?.manager_id].filter(Boolean) as string[];
+                if (ids.length > 0) {
+                    const { data: people } = await supabaseAdmin
+                        .from('users_unified')
+                        .select('id, name, first_name, last_name')
+                        .in('id', ids);
+
+                    const label = (u: { name?: string | null; first_name?: string | null; last_name?: string | null } | undefined) =>
+                        (u?.name || '').trim() || [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim() || undefined;
+
+                    const byId = new Map((people || []).map((p) => [p.id, p]));
+                    leaderName = label(byId.get(config?.leader_id));
+                    managerName = label(byId.get(config?.manager_id));
+                }
+            } catch (approverErr) {
+                console.warn('[Leave PDF] Não foi possível carregar líder/gerente:', approverErr);
+            }
         }
 
         // Monta os dados para o PDF
@@ -144,6 +155,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
         // Gera o PDF
         const pdfBuffer = await generateLeaveRequestPDF(pdfData);
+        const pdfBytes = new Uint8Array(pdfBuffer);
 
         // Nome do arquivo
         const safeUserName = (resolvedName || 'colaborador')
@@ -153,11 +165,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             .substring(0, 30);
         const fileName = `Comprovante_Ferias_${safeUserName}_${req.id.slice(0, 8)}.pdf`;
 
-        return new NextResponse(pdfBuffer, {
+        return new NextResponse(pdfBytes, {
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="${fileName}"`,
-                'Content-Length': String(pdfBuffer.length)
+                'Content-Length': String(pdfBytes.byteLength),
+                'Cache-Control': 'no-store'
             }
         });
     } catch (error) {
