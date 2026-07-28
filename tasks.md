@@ -1,3 +1,32 @@
+## Férias — assinaturas no PDF (2026-07-28)
+
+### Feito
+- [x] Carregar `signature_url` (colaborador + líder/gerente) via supabaseAdmin em `GET /api/leave/[id]/pdf`
+- [x] Carimbar PNG no `leavePDFGenerator`; missing → “Assinatura não cadastrada”; blank `form-pdf` inalterado
+- [x] DOX `ferias/AGENTS.md` + CHANGELOG + **v5.51.0**
+
+### Como testar
+- Perfil com assinatura cadastrada → Detalhes → Baixar PDF → imagem na coluna Colaborador
+- Sem assinatura → caption “Assinatura não cadastrada”
+- Formulário (branco) → linhas vazias
+
+---
+
+## Férias — signature registration prompt (2026-07-28)
+
+### Feito
+- [x] Soft banner + soft-gate em `/ferias` (Nova Solicitação / Baixar PDF) quando `!hasSignature`
+- [x] CTA reutiliza `useSignature().requestSignature` → SignatureModal global (`SignatureProvider`)
+- [x] Dismiss sessionStorage `ferias_signature_prompt_dismissed` (não bloqueia o módulo)
+- [x] DOX ferias + root preference + CHANGELOG + **v5.51.0**
+
+### Como testar
+- Usuário sem assinatura → `/ferias` → vê banner; Nova Solicitação / Baixar PDF → soft-gate → Cadastrar → modal global
+- “Continuar sem assinatura” → fluxo segue; não reaparece na mesma sessão
+- `/profile` → Assinatura ainda salva via `POST /api/user/signature`
+
+---
+
 ## Férias — PDF download fix (2026-07-28)
 
 ### Feito

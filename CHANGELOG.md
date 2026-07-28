@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.51.0] - 2026-07-28
+
+### Added
+- **Férias PDF — assinaturas cadastradas**:
+  - `GET /api/leave/[id]/pdf` lê `users_unified.signature_url` do colaborador e do líder/gerente do setor (supabaseAdmin; bucket `user-signatures/{userId}.png`).
+  - `leavePDFGenerator` carimba a imagem na área de assinatura quando a URL carrega; sem cadastro / `PASSKEY_SIGNED` / falha de fetch → caption **“Assinatura não cadastrada”** (não inventa).
+  - Formulário em branco (`form-pdf`) permanece com linhas de assinatura vazias.
+
 ## [5.50.2] - 2026-07-28
 
 ### Fixed

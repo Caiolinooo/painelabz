@@ -35,12 +35,13 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
         // Busca a solicitação com os dados do usuário e do setor
         // CPF no portal vive em users_unified.tax_id (não há coluna `cpf` confiável).
+        // Assinatura cadastrada: users_unified.signature_url (bucket user-signatures/{userId}.png).
         const { data: req, error } = await supabaseAdmin
             .from('leave_requests')
             .select(`
                 *,
                 user:users_unified!inner(
-                    id, name, first_name, last_name, email, tax_id, sector_id, position, department,
+                    id, name, first_name, last_name, email, tax_id, sector_id, position, department, signature_url,
                     sector:sectors(id, name)
                 )
             `)
@@ -85,9 +86,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             }
         }
 
-        // Busca nomes do líder e gerente (se aplicável) — não pode derrubar o PDF
+        // Busca nomes + signature_url do líder e gerente (se aplicável) — não pode derrubar o PDF
         let leaderName: string | undefined;
         let managerName: string | undefined;
+        let leaderSignatureUrl: string | null | undefined;
+        let managerSignatureUrl: string | null | undefined;
         if (req.user?.sector_id) {
             try {
                 const { data: config } = await supabaseAdmin
@@ -100,15 +103,27 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
                 if (ids.length > 0) {
                     const { data: people } = await supabaseAdmin
                         .from('users_unified')
-                        .select('id, name, first_name, last_name')
+                        .select('id, name, first_name, last_name, signature_url')
                         .in('id', ids);
 
-                    const label = (u: { name?: string | null; first_name?: string | null; last_name?: string | null } | undefined) =>
+                    type ApproverRow = {
+                        id: string;
+                        name?: string | null;
+                        first_name?: string | null;
+                        last_name?: string | null;
+                        signature_url?: string | null;
+                    };
+
+                    const label = (u: ApproverRow | undefined) =>
                         (u?.name || '').trim() || [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim() || undefined;
 
-                    const byId = new Map((people || []).map((p) => [p.id, p]));
-                    leaderName = label(byId.get(config?.leader_id));
-                    managerName = label(byId.get(config?.manager_id));
+                    const byId = new Map((people || []).map((p: ApproverRow) => [p.id, p]));
+                    const leader = byId.get(config?.leader_id);
+                    const manager = byId.get(config?.manager_id);
+                    leaderName = label(leader);
+                    managerName = label(manager);
+                    leaderSignatureUrl = leader?.signature_url || null;
+                    managerSignatureUrl = manager?.signature_url || null;
                 }
             } catch (approverErr) {
                 console.warn('[Leave PDF] Não foi possível carregar líder/gerente:', approverErr);
@@ -124,6 +139,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             tax_id?: string | null;
             position?: string | null;
             department?: string | null;
+            signature_url?: string | null;
             sector?: { id?: string; name?: string } | { id?: string; name?: string }[] | null;
         } | null;
 
@@ -141,6 +157,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             user_cpf: userRow?.tax_id || undefined,
             user_position: userRow?.position || undefined,
             user_sector: sectorObj?.name || userRow?.department || undefined,
+            user_signature_url: userRow?.signature_url || null,
             start_date: req.start_date,
             end_date: req.end_date,
             periods: req.periods,
@@ -150,7 +167,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             pecuniary_allowance: req.pecuniary_allowance,
             advance_13th_salary: req.advance_13th_salary,
             leader_name: leaderName,
-            manager_name: managerName
+            manager_name: managerName,
+            leader_signature_url: leaderSignatureUrl,
+            manager_signature_url: managerSignatureUrl
         };
 
         // Gera o PDF

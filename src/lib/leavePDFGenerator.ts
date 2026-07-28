@@ -79,6 +79,8 @@ export interface LeaveRequestPDFData {
   user_cpf?: string;
   user_position?: string;
   user_sector?: string;
+  /** URL pública da assinatura cadastrada (`users_unified.signature_url`) */
+  user_signature_url?: string | null;
   start_date: string;
   end_date: string;
   periods: LeavePeriod[] | null;
@@ -89,8 +91,47 @@ export interface LeaveRequestPDFData {
   advance_13th_salary?: boolean;
   leader_name?: string;
   manager_name?: string;
+  leader_signature_url?: string | null;
+  manager_signature_url?: string | null;
   leader_approved_at?: string;
   manager_approved_at?: string;
+}
+
+type SignatureImage = {
+  dataUrl: string;
+  format: 'PNG' | 'JPEG';
+};
+
+/**
+ * Carrega assinatura cadastrada (users_unified.signature_url → PNG no bucket user-signatures).
+ * Null-safe: URL ausente, PASSKEY_SIGNED sem imagem, ou falha de fetch → null (não inventa).
+ */
+async function loadSignatureImage(url?: string | null): Promise<SignatureImage | null> {
+  if (!url || url === 'PASSKEY_SIGNED') return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[Leave PDF] Assinatura HTTP ${res.status}: ${url.slice(0, 80)}`);
+      return null;
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 8) return null;
+
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    const isJpeg =
+      ct.includes('jpeg') ||
+      ct.includes('jpg') ||
+      (buf[0] === 0xff && buf[1] === 0xd8);
+    const format: 'PNG' | 'JPEG' = isJpeg ? 'JPEG' : 'PNG';
+    const mime = isJpeg ? 'image/jpeg' : 'image/png';
+    return {
+      dataUrl: `data:${mime};base64,${buf.toString('base64')}`,
+      format
+    };
+  } catch (e) {
+    console.warn('[Leave PDF] Falha ao carregar assinatura:', e);
+    return null;
+  }
 }
 
 /** Dias corridos inclusivos entre duas datas YYYY-MM-DD (mesma regra da UI /ferias). */
@@ -405,8 +446,8 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
     currentY = (doc as any).lastAutoTable.finalY + 4;
   }
 
-  // --- Assinaturas ---
-  currentY = buildSignatureSection(doc, currentY, data);
+  // --- Assinaturas (carimba signature_url do perfil quando existir) ---
+  currentY = await buildSignatureSection(doc, currentY, data);
 
   // --- Rodapé ---
   buildFooter(doc, `Documento gerado em ${formatDateTimePTBR(new Date())} | Solicitação ID: ${data.id.slice(0, 8)}`);
@@ -584,9 +625,54 @@ export async function generateLeaveFormPDF(): Promise<Buffer> {
 }
 
 /**
- * Seção de assinaturas para o comprovante (com dados).
+ * Texto da célula de assinatura quando a role está resolvida mas sem imagem cadastrada/carregável.
+ * Role não resolvida (sem nome) → linha em branco para preenchimento manual.
  */
-function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRequestPDFData): number {
+function signatureCellCaption(
+  roleResolved: boolean,
+  hasImage: boolean
+): { content: string; styles: Record<string, unknown> } {
+  if (hasImage) {
+    return {
+      content: '',
+      styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 22 }
+    };
+  }
+  if (roleResolved) {
+    return {
+      content: 'Assinatura não cadastrada',
+      styles: {
+        halign: 'center' as const,
+        fontSize: 7,
+        fontStyle: 'italic' as const,
+        textColor: [120, 120, 120],
+        minCellHeight: 22
+      }
+    };
+  }
+  return {
+    content: '_______________________________________\nAssinatura',
+    styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 22 }
+  };
+}
+
+/**
+ * Seção de assinaturas para o comprovante (com dados + carimbo de assinatura cadastrada).
+ */
+async function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRequestPDFData): Promise<number> {
+  const leaderResolved = Boolean(data.leader_name?.trim());
+  const managerResolved = Boolean(data.manager_name?.trim());
+
+  const [userSig, leaderSig, managerSig] = await Promise.all([
+    loadSignatureImage(data.user_signature_url),
+    leaderResolved ? loadSignatureImage(data.leader_signature_url) : Promise.resolve(null),
+    managerResolved ? loadSignatureImage(data.manager_signature_url) : Promise.resolve(null)
+  ]);
+
+  const images: Array<SignatureImage | null> = [userSig, leaderSig, managerSig];
+  // body row index 2 = área de assinatura (0=roles, 1=nomes, 2=assinaturas, 3=datas)
+  const SIGNATURE_ROW_INDEX = 2;
+
   autoTable(doc, {
     startY: currentY,
     theme: 'grid',
@@ -600,14 +686,14 @@ function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRequestP
         { content: 'Gerente', styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 9, fillColor: COLORS.GREY_LIGHT } }
       ],
       [
-        { content: data.user_name || '', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 18 } },
-        { content: data.leader_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 18 } },
-        { content: data.manager_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 18 } }
+        { content: data.user_name || '', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 10 } },
+        { content: data.leader_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 10 } },
+        { content: data.manager_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 10 } }
       ],
       [
-        { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } },
-        { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } },
-        { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } }
+        signatureCellCaption(true, Boolean(userSig)),
+        signatureCellCaption(leaderResolved, Boolean(leaderSig)),
+        signatureCellCaption(managerResolved, Boolean(managerSig))
       ],
       ...(data.leader_approved_at || data.manager_approved_at || data.created_at ? [[
         {
@@ -629,6 +715,20 @@ function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRequestP
       0: { cellWidth: 'auto' },
       1: { cellWidth: 'auto' },
       2: { cellWidth: 'auto' }
+    },
+    didDrawCell: (hookData) => {
+      if (hookData.section !== 'body' || hookData.row.index !== SIGNATURE_ROW_INDEX) return;
+      const img = images[hookData.column.index];
+      if (!img) return;
+      try {
+        const maxW = Math.min(hookData.cell.width - 6, 48);
+        const maxH = Math.min(hookData.cell.height - 4, 18);
+        const xPos = hookData.cell.x + (hookData.cell.width - maxW) / 2;
+        const yPos = hookData.cell.y + (hookData.cell.height - maxH) / 2;
+        doc.addImage(img.dataUrl, img.format, xPos, yPos, maxW, maxH, undefined, 'FAST');
+      } catch (e) {
+        console.warn('[Leave PDF] Erro ao carimbar assinatura:', e);
+      }
     }
   });
 
