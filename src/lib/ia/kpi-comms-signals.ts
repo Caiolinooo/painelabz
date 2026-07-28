@@ -1,8 +1,14 @@
 /**
  * Sinais de comunicação (Email + Teams) para enriquecer KPIs.
  * Quando há pendências / conclusões no portal, varre Graph por evidências correlatas.
+ * Payloads ricos: datas ISO+pt-BR, ids, previews, participantes, links.
  */
 import { msGraphClient, resolveGraphLimit } from './microsoft/client';
+import {
+  enrichGraphEmail,
+  enrichTeamsMessage,
+  formatDatePtBr,
+} from './graph-comms-format';
 
 export type KpiSignalDomain =
   | 'ferias'
@@ -19,12 +25,27 @@ export interface KpiCommSignal {
   dominio: KpiSignalDomain;
   relevancia: 'alta' | 'media' | 'baixa';
   assunto_ou_preview: string;
+  preview?: string;
   de?: string;
+  de_nome?: string;
+  para?: string[];
+  /** ISO 8601 */
+  data_iso?: string;
+  /** pt-BR */
   data?: string;
   chat_id?: string;
+  chat_topico?: string;
   message_id?: string;
   email_id?: string;
+  conversationId?: string;
+  webLink?: string;
+  importancia?: string;
+  lido?: boolean;
+  anexos?: boolean;
+  pasta?: string;
   motivo: string;
+  /** Detalhe estruturado opcional (e-mail/Teams enriquecido) */
+  detalhe?: Record<string, unknown>;
 }
 
 export interface KpiCommsScanOptions {
@@ -103,7 +124,8 @@ export async function scanEmailsForKpiSignals(
     });
 
     for (const e of emails) {
-      const text = `${e.subject || ''} ${e.bodyPreview || ''}`;
+      const rich = enrichGraphEmail(e);
+      const text = `${rich.assunto || ''} ${rich.preview || ''}`;
       const relevancia = classifyRelevance(text, dominio);
       if (relevancia === 'baixa' && dominio === 'geral') continue;
 
@@ -111,13 +133,22 @@ export async function scanEmailsForKpiSignals(
         fonte: 'email',
         dominio,
         relevancia,
-        assunto_ou_preview: e.subject || e.bodyPreview?.slice(0, 160) || '(sem assunto)',
-        de: (e.from as any)?.emailAddress?.address || (e.from as any)?.emailAddress?.name,
-        data: e.receivedDateTime
-          ? new Date(e.receivedDateTime).toLocaleString('pt-BR')
-          : undefined,
-        email_id: e.id,
+        assunto_ou_preview: rich.assunto || rich.preview?.slice(0, 160) || '(sem assunto)',
+        preview: rich.preview,
+        de: rich.de.email,
+        de_nome: rich.de.nome,
+        para: rich.para.map((p) => p.email || p.nome || '').filter(Boolean),
+        data_iso: rich.data_recebido_iso,
+        data: rich.data_recebido,
+        email_id: rich.id,
+        conversationId: rich.conversationId,
+        webLink: rich.webLink,
+        importancia: rich.importancia,
+        lido: rich.lido,
+        anexos: rich.anexos,
+        pasta: rich.pasta,
         motivo: `E-mail correlacionado a ${dominio}`,
+        detalhe: rich as unknown as Record<string, unknown>,
       });
     }
   }
@@ -145,11 +176,12 @@ export async function scanTeamsForKpiSignals(
     const messages = await msGraphClient.listChatMessages(chat.id, 25);
 
     for (const m of messages) {
-      const bodyText = typeof m.body === 'string'
-        ? m.body
-        : (m.body as any)?.content
-          ? String((m.body as any).content).replace(/<[^>]*>/g, ' ')
-          : '';
+      const rich = enrichTeamsMessage(m, {
+        id: chat.id,
+        topic: chat.topic,
+        chatType: chat.chatType,
+      });
+      const bodyText = rich.corpo_texto || rich.preview || '';
       const lower = bodyText.toLowerCase();
       const hit = keywords.find(k => lower.includes(k));
       if (!hit) continue;
@@ -163,13 +195,18 @@ export async function scanTeamsForKpiSignals(
         dominio,
         relevancia: classifyRelevance(bodyText, dominio),
         assunto_ou_preview: bodyText.replace(/\s+/g, ' ').trim().slice(0, 200),
-        de: (m.from as any)?.user?.displayName || (m.from as any)?.emailAddress?.address,
-        data: m.createdDateTime
-          ? new Date(m.createdDateTime).toLocaleString('pt-BR')
-          : undefined,
+        preview: rich.preview,
+        de: rich.de.email || rich.de.nome,
+        de_nome: rich.de.nome,
+        data_iso: rich.data_iso,
+        data: rich.data || formatDatePtBr(rich.data_iso),
         chat_id: chat.id,
-        message_id: m.id,
+        chat_topico: chat.topic,
+        message_id: rich.id,
+        webLink: rich.webLink,
+        importancia: rich.importancia,
         motivo: `Mensagem Teams com termo "${hit}" (chat: ${chat.topic || chat.id})`,
+        detalhe: rich as unknown as Record<string, unknown>,
       });
 
       if (signals.length >= limit) break;
@@ -189,6 +226,7 @@ export async function collectKpiCommunicationSignals(
   teams_sinais: KpiCommSignal[];
   dominios: KpiSignalDomain[];
   resumo: string;
+  detalhe: 'completo';
 }> {
   const dominios =
     options.dominios?.length
@@ -209,7 +247,7 @@ export async function collectKpiCommunicationSignals(
       : `Encontrados ${email_sinais.length} e-mail(s) e ${teams_sinais.length} mensagem(ns) Teams` +
         (altas > 0 ? ` (${altas} de relevância alta).` : '.');
 
-  return { email_sinais, teams_sinais, dominios, resumo };
+  return { email_sinais, teams_sinais, dominios, resumo, detalhe: 'completo' };
 }
 
 function dedupeSignals(signals: KpiCommSignal[]): KpiCommSignal[] {

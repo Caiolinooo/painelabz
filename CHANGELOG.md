@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.52.0] - 2026-07-28
+
+### Improved
+- **IA Graph/email/Teams — payloads ricos**:
+  - Novo `src/lib/ia/graph-comms-format.ts`: enrichers com datas ISO + pt-BR, remetente/destinatários, preview, corpo texto truncado (HTML stripped), pasta, webLink, importância, conversationId, participantes Teams.
+  - Tools enriquecidas: `meus_emails`, `ler_email_funcionario`, `pesquisar_emails_outlook`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `buscar_sinais_kpi_comunicacao` (+ registry microsoft/chat).
+  - Graph `$select` expandido; `formatToolResultForLLM` cap ~28k para tools de comms e preserva arrays detalhados (não só `_summary`).
+  - Listas tipicamente 20–50 itens **completos** (não thin stubs).
+
 ## [5.51.2] - 2026-07-28
 
 ### Fixed

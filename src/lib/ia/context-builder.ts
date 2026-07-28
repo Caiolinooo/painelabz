@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getEffectiveRole, getTeamMemberIds } from './permissions';
 import { getIAConfig } from './client';
 import { getAvailableTools } from './tools';
+import { enrichGraphEmails } from './graph-comms-format';
 import type { IAUserContext, IAUserRole, LLMMessage, IAChatMessage } from '@/types/ia';
 
 const MAX_HISTORY_MESSAGES = 30; // ate 30 mensagens para manter contexto
@@ -184,18 +185,17 @@ async function getUserEmails(userId: string): Promise<Array<{subject: string; fr
       }
     }
 
-    const res = await fetch('https://graph.microsoft.com/v1.0/me/messages?$top=25&$select=subject,from,receivedDateTime', {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/messages?$top=25&$select=id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,isRead,hasAttachments,importance,webLink,parentFolderId`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
 
     if (!res.ok) return [];
 
     const mailData = await res.json();
-    return (mailData.value || []).map((msg: any) => ({
-      subject: msg.subject,
-      from: msg.from?.emailAddress?.name || msg.from?.emailAddress?.address || 'Desconhecido',
-      date: new Date(msg.receivedDateTime).toLocaleString('pt-BR')
-    }));
+    return enrichGraphEmails(mailData.value || [], { maxItems: 25 });
 
   } catch {
     return [];

@@ -8,6 +8,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - `src/lib/ia/tools.ts` — caminho ativo do chat (`executeToolCall`)
 - `src/lib/ia/tool-result-format.ts` — `_summary` + truncagem de resultados para o LLM
+- `src/lib/ia/graph-comms-format.ts` — enrichers e-mail/Teams (datas ISO+pt-BR, participantes, preview, webLink)
 - `src/lib/ia/microsoft/client.ts` — Graph (paginação, filtros, Teams search)
 - `src/lib/ia/kpi-comms-signals.ts` — scan e-mail/Teams correlato a pendências/conclusões
 - `src/lib/ia/kpi-board.ts` + `kpi-board-shared.ts` + `kpi-board-harness.ts` — CRUD/Zod + **role harness** + soft-delete
@@ -24,14 +25,18 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 ### Anti-alucinação (obrigatório)
 
 - Companion + `context-builder`: NUNCA inventar números/status/valores; sempre chamar tool antes de afirmar fatos do portal
-- Resultados de tools passam por `formatToolResultForLLM` (`_summary` + cap ~10k) no loop `chatCompletion` / stream
+- Resultados de tools passam por `formatToolResultForLLM` (`_summary` + cap ~10k; e-mail/Teams ~28k) no loop `chatCompletion` / stream
 - Loop sync: até **12** rodadas de tools; stream: até **10** (sem abort prematuro em rodada 3 sem texto)
 
 ### Graph — extração conforme solicitação
 
 - `limite=0` → até `GRAPH_HARD_CAP` (1000) com `@odata.nextLink`
-- Emails: `de`, `para`, `assunto`, datas, pasta, não lidos, anexos, corpo
-- Teams: `listTeamsChats(user)`, `searchTeamsMessages(user, consulta)`
+- Emails/Teams: payload **rico** via `graph-comms-format.ts` (`enrichGraphEmail` / `enrichTeamsMessage` / `buildEmailListPayload`)
+  - Por item: `id`, `conversationId`, `assunto`, `de`/`para`/`cc` (nome+email), datas **ISO + pt-BR**, `preview`, `corpo_texto` opcional (HTML stripped, cap ~500–2000), `lido`, `anexos`, `importancia`, `pasta`/`pasta_id`, `webLink`, `categorias`, `flag_status`
+  - Listas: tipicamente 20–50 itens completos (não thin stubs); `detalhe: "completo"`
+- Tools: `meus_emails`, `ler_email_funcionario`, `pesquisar_emails_outlook`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `buscar_sinais_kpi_comunicacao`
+- `formatToolResultForLLM`: tools de comms usam cap ~28k e **preservam** arrays `emails`/`mensagens` (não só `_summary`)
+- Teams: `listTeamsChats(user)`, `searchTeamsMessages(user, consulta)` → chats com participantes + msgs com datas/preview
 
 ### KPIs + comunicação
 
@@ -97,6 +102,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - USER "férias do ano passado" → `buscar_ferias` com `ano` (histórico incluso por padrão)
 - USER "minhas pendências" → `buscar_dados_usuario` resumo (números reais)
 - Tool results no loop trazem `_summary`
+- `meus_emails` / `pesquisar_emails_outlook` → cada item com `data_recebido_iso` + `data_recebido` (pt-BR), `de`/`para`/`cc`, `preview`, `webLink`
 - ADMIN `buscar_kpis_sistema` → totais + comunicação; USER/MANAGER → escopo RBAC
 - GERENTE/ADMIN `aprovar_ferias` com status `PENDING_*` reais
 - `navegar_portal` typo `feririas` → `/ferias`; `kpi` → `/kpi`

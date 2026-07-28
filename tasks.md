@@ -1,3 +1,19 @@
+## IA — Graph email/Teams rich payloads (2026-07-28)
+
+### Feito
+- [x] `graph-comms-format.ts` — enrichers e-mail/Teams (ISO+pt-BR, participantes, preview, webLink, corpo truncado)
+- [x] Expandir `$select` Graph + mapear em `microsoft/client.ts`
+- [x] Tools: `meus_emails`, `ler_email_funcionario`, `pesquisar_emails_outlook`, Teams + `buscar_sinais_kpi_comunicacao`
+- [x] `formatToolResultForLLM` — cap maior + preservar arrays detalhados
+- [x] DOX `src/lib/ia/AGENTS.md` + root preference + CHANGELOG + **v5.52.0**
+
+### Como testar
+- Companion: "quais meus últimos e-mails?" → tool `meus_emails` com `data_recebido` + `de` + `preview`
+- ADMIN: `pesquisar_emails_outlook` / `ler_email_funcionario` → campos completos por item
+- Teams: `minhas_conversas_teams` / `pesquisar_mensagens_teams` → datas + participantes
+
+---
+
 ## Férias — assinaturas no PDF (2026-07-28)
 
 ### Feito

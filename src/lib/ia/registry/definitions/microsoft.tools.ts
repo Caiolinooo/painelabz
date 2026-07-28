@@ -3,9 +3,14 @@
  */
 import { registerTool } from '../tools-registry';
 import type { IATool, IAToolResult } from '@/types/ia-global';
-import { msGraphClient, resolveGraphLimit } from '../../microsoft/client';
+import { msGraphClient, resolveGraphLimit, GRAPH_HARD_CAP } from '../../microsoft/client';
 import { supabaseAdmin } from '@/lib/supabase';
 import { collectKpiCommunicationSignals } from '../../kpi-comms-signals';
+import {
+  buildEmailListPayload,
+  enrichTeamsChats,
+  enrichTeamsMessages,
+} from '../../graph-comms-format';
 
 async function resolveOwnEmail(userId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
@@ -19,17 +24,25 @@ async function resolveOwnEmail(userId: string): Promise<string | null> {
 const meusEmailsTool: IATool = {
   id: 'ms_meus_emails',
   name: 'meus_emails',
-  description: 'Lista/pesquisa e-mails da própria caixa do usuário',
+  description: 'Lista/pesquisa e-mails da própria caixa do usuário (detalhe completo)',
   module: 'microsoft',
   adminOnly: false,
   definition: {
     name: 'meus_emails',
-    description: 'E-mails da própria caixa com filtros flexíveis',
+    description:
+      'E-mails da própria caixa com filtros flexíveis. Retorna datas ISO+pt-BR, remetente/destinatários, preview, pasta, webLink, status.',
     parameters: {
       type: 'object',
       properties: {
         consulta: { type: 'string', description: 'Texto livre', required: false },
         de: { type: 'string', description: 'Remetente', required: false },
+        assunto: { type: 'string', description: 'Assunto contém', required: false },
+        data_inicio: { type: 'string', description: 'YYYY-MM-DD', required: false },
+        data_fim: { type: 'string', description: 'YYYY-MM-DD', required: false },
+        pasta: { type: 'string', description: 'inbox|sentitems|drafts|…', required: false },
+        apenas_nao_lidos: { type: 'boolean', required: false },
+        com_anexos: { type: 'boolean', required: false },
+        incluir_corpo: { type: 'boolean', description: 'Corpo texto truncado', required: false },
         limite: { type: 'number', description: 'Limite (0=máx)', required: false },
       },
       required: [],
@@ -38,23 +51,40 @@ const meusEmailsTool: IATool = {
   handler: async (args, ctx): Promise<IAToolResult> => {
     const email = await resolveOwnEmail(ctx.userId);
     if (!email) return { success: false, error: 'E-mail não cadastrado' };
+    const limit = resolveGraphLimit(args.limite as number | undefined, 50);
     const emails = await msGraphClient.searchEmails(email, args.consulta as string | undefined, {
       from: args.de as string | undefined,
-      top: resolveGraphLimit(args.limite as number | undefined, 50),
+      subject: args.assunto as string | undefined,
+      dateFrom: args.data_inicio as string | undefined,
+      dateTo: args.data_fim as string | undefined,
+      folder: args.pasta as string | undefined,
+      isRead: args.apenas_nao_lidos === true ? false : undefined,
+      hasAttachments: args.com_anexos === true ? true : undefined,
+      includeBody: !!args.incluir_corpo,
+      top: limit,
     });
-    return { success: true, data: { total: emails.length, emails } };
+    return {
+      success: true,
+      data: buildEmailListPayload(emails, {
+        includeBody: !!args.incluir_corpo,
+        folderHint: args.pasta as string | undefined,
+        limiteAplicado: limit,
+        hardCap: GRAPH_HARD_CAP,
+        maxItems: Math.min(limit, 50),
+      }),
+    };
   },
 };
 
 const minhasConversasTeamsTool: IATool = {
   id: 'ms_minhas_conversas_teams',
   name: 'minhas_conversas_teams',
-  description: 'Chats/mensagens Teams do usuário',
+  description: 'Chats/mensagens Teams do usuário (payload rico)',
   module: 'microsoft',
   adminOnly: false,
   definition: {
     name: 'minhas_conversas_teams',
-    description: 'Lista chats ou pesquisa mensagens Teams',
+    description: 'Lista chats ou pesquisa mensagens Teams com datas, participantes e preview',
     parameters: {
       type: 'object',
       properties: {
@@ -67,27 +97,42 @@ const minhasConversasTeamsTool: IATool = {
   handler: async (args, ctx): Promise<IAToolResult> => {
     const email = await resolveOwnEmail(ctx.userId);
     if (!email) return { success: false, error: 'E-mail não cadastrado' };
+    const limit = resolveGraphLimit(args.limite as number | undefined, 40);
     if (args.consulta) {
-      const mensagens = await msGraphClient.searchTeamsMessages(email, {
+      const raw = await msGraphClient.searchTeamsMessages(email, {
         consulta: String(args.consulta),
-        limite: resolveGraphLimit(args.limite as number | undefined, 40),
+        limite: limit,
       });
-      return { success: true, data: { mensagens } };
+      return {
+        success: true,
+        data: {
+          detalhe: 'completo',
+          total: raw.length,
+          mensagens: enrichTeamsMessages(raw, { maxItems: limit }),
+        },
+      };
     }
     const chats = await msGraphClient.listTeamsChats(email);
-    return { success: true, data: { chats } };
+    return {
+      success: true,
+      data: {
+        detalhe: 'completo',
+        total: Math.min(chats.length, limit),
+        chats: enrichTeamsChats(chats, limit),
+      },
+    };
   },
 };
 
 const sinaisKpiCommsTool: IATool = {
   id: 'ms_sinais_kpi_comms',
   name: 'buscar_sinais_kpi_comunicacao',
-  description: 'Sinais de e-mail/Teams ligados a KPIs',
+  description: 'Sinais de e-mail/Teams ligados a KPIs (detalhe completo)',
   module: 'microsoft',
   adminOnly: false,
   definition: {
     name: 'buscar_sinais_kpi_comunicacao',
-    description: 'Varre e-mail e Teams por pendências/conclusões de KPI',
+    description: 'Varre e-mail e Teams por pendências/conclusões de KPI; retorna datas, ids, previews e links',
     parameters: {
       type: 'object',
       properties: {

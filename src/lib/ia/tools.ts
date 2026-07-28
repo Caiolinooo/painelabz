@@ -24,6 +24,12 @@ import { generatePDFBase64 } from './pdf-generator';
 import { sendReportEmail, sendSimpleEmail, sendEmailWithNodemailer } from './email-tool';
 import { msGraphClient, resolveGraphLimit, GRAPH_HARD_CAP } from './microsoft/client';
 import {
+  buildEmailListPayload,
+  enrichTeamsChats,
+  enrichTeamsMessages,
+  GRAPH_EMAIL_SELECT_LIST,
+} from './graph-comms-format';
+import {
   executeGlobalSearchQuery,
   fetchAssociatedUsers,
   formatGlobalResponse
@@ -1823,7 +1829,7 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'meus_emails',
-      description: 'Lista/pesquisa e-mails da própria caixa do usuário logado (non-admin). Extrai conforme filtros: remetente, assunto, período, limite=0 para máximo.',
+      description: 'Lista/pesquisa e-mails da própria caixa do usuário logado (non-admin). Retorna detalhe completo (datas ISO+pt-BR, remetente/destinatários, preview, pasta, webLink, status). Extrai conforme filtros; limite=0 para máximo; incluir_corpo=true para texto truncado.',
       parameters: {
         type: 'object',
         properties: {
@@ -1835,6 +1841,7 @@ export const IA_TOOLS_DEFINITION = [
           pasta: { type: 'string' },
           apenas_nao_lidos: { type: 'boolean' },
           com_anexos: { type: 'boolean' },
+          incluir_corpo: { type: 'boolean', description: 'Se true, inclui corpo em texto plano truncado (~2000 chars)' },
           limite: { type: 'number' },
         },
         required: [],
@@ -3754,23 +3761,19 @@ return JSON.stringify(data);
               assunto,
               data_inicio,
               data_fim,
+              pasta,
+              incluir_corpo: !!incluir_corpo,
             });
           }
-          return JSON.stringify({
-            total: emails.length,
-            limite_aplicado: resolveGraphLimit(limite, 50),
-            emails: emails.map(e => ({
-              id: e.id,
-              subject: e.subject,
-              from: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
-              from_email: (e.from as any)?.emailAddress?.address,
-              date: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
-              preview: e.bodyPreview,
-              body: (e as any).body,
-              isRead: e.isRead,
-              hasAttachments: e.hasAttachments,
-            })),
-          });
+          return JSON.stringify(
+            buildEmailListPayload(emails, {
+              includeBody: !!incluir_corpo,
+              folderHint: pasta,
+              limiteAplicado: resolveGraphLimit(limite, 50),
+              hardCap: GRAPH_HARD_CAP,
+              maxItems: resolveGraphLimit(limite, 50),
+            })
+          );
         } catch (err) {
           return await getGlobalUserEmails(email_corporativo, {
             limite: resolveGraphLimit(limite, 50),
@@ -3778,6 +3781,8 @@ return JSON.stringify(data);
             assunto,
             data_inicio,
             data_fim,
+            pasta,
+            incluir_corpo: !!incluir_corpo,
           });
         }
       }
@@ -5285,6 +5290,7 @@ case 'coletar_dados_holisticos': {
         const { data: me } = await supabaseAdmin.from('users_unified').select('email').eq('id', userId).maybeSingle();
         if (!me?.email) return 'Usuário sem e-mail corporativo cadastrado.';
 
+        const limit = resolveGraphLimit(args?.limite, 50);
         const emails = await msGraphClient.searchEmails(me.email, args?.consulta, {
           from: args?.de,
           subject: args?.assunto,
@@ -5293,22 +5299,20 @@ case 'coletar_dados_holisticos': {
           folder: args?.pasta,
           isRead: args?.apenas_nao_lidos === true ? false : undefined,
           hasAttachments: args?.com_anexos === true ? true : undefined,
-          top: resolveGraphLimit(args?.limite, 50),
+          includeBody: !!args?.incluir_corpo,
+          top: limit,
         });
 
         if (!emails.length) return 'Nenhum e-mail encontrado com os filtros informados.';
-        return JSON.stringify({
-          total: emails.length,
-          emails: emails.map(e => ({
-            id: e.id,
-            assunto: e.subject,
-            de: (e.from as any)?.emailAddress?.address,
-            data: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
-            preview: e.bodyPreview,
-            lido: e.isRead,
-            anexos: e.hasAttachments,
-          })),
-        });
+        return JSON.stringify(
+          buildEmailListPayload(emails, {
+            includeBody: !!args?.incluir_corpo,
+            folderHint: args?.pasta,
+            limiteAplicado: limit,
+            hardCap: GRAPH_HARD_CAP,
+            maxItems: Math.min(limit, 50),
+          })
+        );
       }
 
       case 'meu_calendario': {
@@ -5419,33 +5423,28 @@ case 'coletar_dados_holisticos': {
         if (!me?.email) return 'Usuário sem e-mail corporativo.';
 
         const limit = resolveGraphLimit(args?.limite, 40);
-        const out: any = {};
+        const out: Record<string, unknown> = { detalhe: 'completo' };
 
         if (args?.consulta) {
-          out.mensagens = await msGraphClient.searchTeamsMessages(me.email, {
+          const rawMsgs = await msGraphClient.searchTeamsMessages(me.email, {
             consulta: args.consulta,
             limite: limit,
           });
+          out.total_mensagens = rawMsgs.length;
+          out.mensagens = enrichTeamsMessages(rawMsgs, { maxItems: limit });
         }
 
         if (args?.listar_chats !== false && !args?.consulta) {
           const chats = await msGraphClient.listTeamsChats(me.email);
-          out.chats = chats.slice(0, limit).map(c => ({
-            id: c.id,
-            topico: c.topic,
-            tipo: (c as any).chatType,
-            atualizado: (c as any).lastUpdatedDateTime,
-          }));
+          out.total_chats = Math.min(chats.length, limit);
+          out.chats = enrichTeamsChats(chats, limit);
         } else if (args?.listar_chats === true) {
           const chats = await msGraphClient.listTeamsChats(me.email);
-          out.chats = chats.slice(0, Math.min(limit, 30)).map(c => ({
-            id: c.id,
-            topico: c.topic,
-            tipo: (c as any).chatType,
-          }));
+          out.total_chats = Math.min(chats.length, Math.min(limit, 30));
+          out.chats = enrichTeamsChats(chats, Math.min(limit, 30));
         }
 
-        if (!out.chats?.length && !out.mensagens?.length) {
+        if (!(out.chats as any[])?.length && !(out.mensagens as any[])?.length) {
           return 'Nenhuma conversa/mensagem Teams encontrada.';
         }
         return JSON.stringify(out);
@@ -5465,12 +5464,17 @@ case 'coletar_dados_holisticos': {
         }
         if (!mailbox) return 'E-mail do usuário não encontrado.';
 
+        const limit = resolveGraphLimit(limite, 40);
         const msgs = await msGraphClient.searchTeamsMessages(mailbox, {
           consulta,
-          limite: resolveGraphLimit(limite, 40),
+          limite: limit,
         });
         if (!msgs.length) return 'Nenhuma mensagem Teams encontrada para a consulta.';
-        return JSON.stringify({ total: msgs.length, mensagens: msgs });
+        return JSON.stringify({
+          total: msgs.length,
+          detalhe: 'completo',
+          mensagens: enrichTeamsMessages(msgs, { maxItems: limit }),
+        });
       }
 
       case 'aprovar_ferias': {
@@ -5763,6 +5767,8 @@ async function getGlobalUserEmails(
     assunto?: string;
     data_inicio?: string;
     data_fim?: string;
+    pasta?: string;
+    incluir_corpo?: boolean;
   }
 ): Promise<string> {
   const MS_CLIENT_ID = process.env.MS_GRAPH_CLIENT_ID || '';
@@ -5806,9 +5812,16 @@ async function getGlobalUserEmails(
     if (options?.data_inicio) filters.push(`receivedDateTime ge ${options.data_inicio}T00:00:00Z`);
     if (options?.data_fim) filters.push(`receivedDateTime le ${options.data_fim}T23:59:59Z`);
 
+    const selectFields = options?.incluir_corpo
+      ? `${GRAPH_EMAIL_SELECT_LIST},body`
+      : GRAPH_EMAIL_SELECT_LIST;
+    const basePath = options?.pasta
+      ? `https://graph.microsoft.com/v1.0/users/${email}/mailFolders/${options.pasta}/messages`
+      : `https://graph.microsoft.com/v1.0/users/${email}/messages`;
+
     const collected: any[] = [];
     let nextUrl: string | null =
-      `https://graph.microsoft.com/v1.0/users/${email}/messages?$top=${Math.min(limit, 100)}&$select=subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments&$orderby=receivedDateTime desc` +
+      `${basePath}?$top=${Math.min(limit, 100)}&$select=${selectFields}&$orderby=receivedDateTime desc` +
       (filters.length ? `&$filter=${filters.join(' and ')}` : '');
 
     while (nextUrl && collected.length < limit) {
@@ -5833,17 +5846,15 @@ async function getGlobalUserEmails(
       return `A caixa de entrada de ${email} está vazia ou inacessível.`;
     }
 
-    const emails = collected.slice(0, limit).map((msg: any) => ({
-      subject: msg.subject,
-      from: msg.from?.emailAddress?.name || msg.from?.emailAddress?.address || 'Desconhecido',
-      from_email: msg.from?.emailAddress?.address,
-      date: new Date(msg.receivedDateTime).toLocaleString('pt-BR'),
-      preview: msg.bodyPreview,
-      isRead: msg.isRead,
-      hasAttachments: msg.hasAttachments,
-    }));
-
-    return JSON.stringify({ total: emails.length, limite_aplicado: limit, emails });
+    return JSON.stringify(
+      buildEmailListPayload(collected.slice(0, limit), {
+        includeBody: !!options?.incluir_corpo,
+        folderHint: options?.pasta,
+        limiteAplicado: limit,
+        hardCap: GRAPH_HARD_CAP,
+        maxItems: limit,
+      })
+    );
   } catch (err) {
     return `Erro de rede ao conectar com Microsoft Graph: ${err instanceof Error ? err.message : String(err)}`;
   }
@@ -5875,22 +5886,15 @@ async function executePesquisarEmailsOutlook(args: any): Promise<string> {
 
     if (emails.length === 0) return 'Nenhum e-mail encontrado com os filtros informados.';
 
-    return JSON.stringify({
-      total: emails.length,
-      limite_aplicado: limit,
-      hard_cap: GRAPH_HARD_CAP,
-      emails: emails.map(e => ({
-        id: e.id,
-        assunto: e.subject,
-        de: (e.from as any)?.emailAddress?.name || (e.from as any)?.emailAddress?.address || 'Desconhecido',
-        de_email: (e.from as any)?.emailAddress?.address,
-        data: new Date(e.receivedDateTime).toLocaleString('pt-BR'),
-        preview: e.bodyPreview?.substring(0, 400),
-        body: (e as any).body,
-        lido: e.isRead,
-        anexos: e.hasAttachments,
-      })),
-    });
+    return JSON.stringify(
+      buildEmailListPayload(emails, {
+        includeBody: !!args.incluir_corpo,
+        folderHint: args.pasta,
+        limiteAplicado: limit,
+        hardCap: GRAPH_HARD_CAP,
+        maxItems: Math.min(limit, 50),
+      })
+    );
   } catch (err) {
     return `Erro ao pesquisar e-mails: ${err instanceof Error ? err.message : String(err)}`;
   }

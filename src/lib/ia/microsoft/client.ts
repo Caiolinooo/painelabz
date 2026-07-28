@@ -572,13 +572,19 @@ export async function listChatMessages(chatId: string, top: number = 20): Promis
   try {
     const limit = resolveGraphLimit(top, 20);
     const pageTop = Math.min(limit, GRAPH_PAGE_SIZE);
-    const rows = await graphCallPaginated<any>(`/chats/${chatId}/messages?$top=${pageTop}`, limit);
+    const rows = await graphCallPaginated<any>(
+      `/chats/${chatId}/messages?$top=${pageTop}&$select=id,body,from,createdDateTime,importance,messageType,webUrl`,
+      limit
+    );
     return rows.map((m: any) => ({
       id: m.id,
       body: m.body,
       from: m.from,
       createdDateTime: m.createdDateTime,
-    }));
+      importance: m.importance,
+      messageType: m.messageType,
+      webUrl: m.webUrl,
+    } as MSGraphTeamsMessage & { importance?: string; messageType?: string; webUrl?: string }));
   } catch (error) {
     console.error('[MS Graph] Error listing chat messages:', error);
     return [];
@@ -957,8 +963,8 @@ export async function searchEmails(
     const top = resolveGraphLimit(options?.top, 50);
     const pageTop = Math.min(top, GRAPH_PAGE_SIZE);
     const selectFields = options?.includeBody
-      ? 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,isRead,hasAttachments'
-      : 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments';
+      ? GRAPH_EMAIL_SELECT_WITH_BODY
+      : GRAPH_EMAIL_SELECT_LIST;
 
     const filters: string[] = [];
     const escapeOData = (v: string) => v.replace(/'/g, "''");
@@ -1013,22 +1019,7 @@ export async function searchEmails(
     }
 
     const rows = await graphCallPaginated<any>(endpoint, top, extraHeaders);
-    return rows.map((m: any) => ({
-      id: m.id,
-      subject: m.subject,
-      from: m.from,
-      receivedDateTime: m.receivedDateTime,
-      bodyPreview: options?.includeBody && m.body?.content
-        ? (m.body.contentType === 'html'
-            ? String(m.body.content).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000)
-            : String(m.body.content).slice(0, 2000))
-        : m.bodyPreview,
-      isRead: m.isRead,
-      hasAttachments: m.hasAttachments,
-      toRecipients: m.toRecipients,
-      ccRecipients: m.ccRecipients,
-      body: options?.includeBody ? m.body?.content : undefined,
-    }));
+    return rows.map((m: any) => mapRawMessageToEmail(m, !!options?.includeBody));
   } catch (error) {
     console.error('[MS Graph] Error searching emails:', error);
     return [];
