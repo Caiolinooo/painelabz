@@ -71,6 +71,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - **Widget data binding**: `normalizeWidgetData` / `adaptToolResultToWidget` em `kpi-board-shared.ts` — coerção de shapes LLM (`label`/`value`/`assunto`/`labels+datasets`) → metric/list/chart/table; empty-state textual (não só ícones em branco)
 - GET `/api/ia/kpi-boards?resolve=1` (botão Atualizar): executa `dataSource.tool` allowlisted, opcional `dataSource.path` (ex. `comunicacao.email_sinais`); **prefere resultado da tool** sobre snapshot vazio
 - Companion `/api/ia/companion` devolve `dashboard` normalizado; FAB renderiza `GenerativeDashboard` na bolha
+- Companion UI: mensagens da IA via `renderChatMarkdown` (`src/components/IA/chatMarkdown.tsx`, shared com `MessageBubble`); user = plain text
 
 ### Fase 3 tools (non-admin + write)
 

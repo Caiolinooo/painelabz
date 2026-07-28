@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import AnimatedABZLogo, { AICompanionStatus } from './AnimatedABZLogo';
 import GenerativeDashboard from './GenerativeDashboard';
+import { renderChatMarkdown, stripReasoningBlocks } from './chatMarkdown';
 import { portalActionBus, AICommandPayload } from '@/lib/ia/portal-action-bus';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useCompanionSession } from '@/contexts/CompanionSessionContext';
@@ -277,7 +278,13 @@ export default function AICompanionWidget() {
                       : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none w-full'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  {msg.sender === 'user' ? (
+                    <div className="whitespace-pre-wrap">{msg.text}</div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0 prose-headings:my-1.5 text-xs text-gray-800">
+                      {renderChatMarkdown(stripReasoningBlocks(msg.text))}
+                    </div>
+                  )}
                   {msg.sender === 'ai' && msg.dashboard?.widgets?.length ? (
                     <div className="mt-2 -mx-1 scale-[0.92] origin-top-left max-h-64 overflow-y-auto">
                       <GenerativeDashboard layout={msg.dashboard} />

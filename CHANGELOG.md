@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.51.2] - 2026-07-28
+
+### Fixed
+- **Companion — Markdown nas bolhas da IA**:
+  - Mensagens do assistente no FAB passam por `renderChatMarkdown` (`src/components/IA/chatMarkdown.tsx`), o mesmo renderer leve do ABZ Assistant (`MessageBubble`) — bold, itálico, listas, links seguros, code/fences.
+  - Sem HTML cru (sem XSS): só nós React + href allowlist (`http`/`https`/`mailto`/path relativo).
+  - Mensagens do usuário continuam texto puro (`whitespace-pre-wrap`).
+
 ## [5.51.1] - 2026-07-28
 
 ### Added
