@@ -13,6 +13,7 @@ Módulo de solicitações de férias (`/ferias`): criação, aprovação por set
 - PDF: `src/lib/leavePDFGenerator.ts` + `GET /api/leave/[id]/pdf` (preenchido) + `GET /api/leave/form-pdf` (branco)
 - Export: `src/lib/leaveExport.ts`
 - IA: `buscar_ferias` / `buscar_ferias_global` em `src/lib/ia/tools.ts` (+ registry `ferias.tools.ts`)
+- Assinatura: global `useSignature()` / `SignatureProvider` (`src/contexts/SignatureContext.tsx`) + `GET/POST /api/user/signature` + perfil `SignatureTab`
 
 ## Local Contracts
 
@@ -34,6 +35,13 @@ Módulo de solicitações de férias (`/ferias`): criação, aprovação por set
 - Assinaturas no PDF preenchido: carimba `users_unified.signature_url` (bucket `user-signatures/{userId}.png`) do colaborador + líder/gerente quando resolvidos; fetch null-safe; sem URL/`PASSKEY_SIGNED`/falha → caption **“Assinatura não cadastrada”**; formulário em branco (`form-pdf`) mantém linhas vazias
 - Download: cliente envia `Authorization: Bearer` (mesmo padrão das demais APIs leave); toast por status; body PDF como `Uint8Array`
 
+### Soft prompt de assinatura
+
+- Se `!hasSignature` (via `useSignature`), `/ferias` mostra banner dismissível + soft-gate em **Nova Solicitação** e **Baixar PDF**
+- CTA **Cadastrar assinatura** chama `requestSignature({ title, description })` — reutiliza o `SignatureModal` global do `SignatureProvider` (não montar segundo modal)
+- “Continuar sem assinatura” / “Agora não” grava `sessionStorage` key `ferias_signature_prompt_dismissed` — não bloqueia o módulo pelo resto da sessão
+- Cadastro também em `/profile` aba Assinatura (`SignatureTab` → `POST /api/user/signature`)
+
 ### RBAC
 
 - USER: próprias solicitações
@@ -48,11 +56,13 @@ Módulo de solicitações de férias (`/ferias`): criação, aprovação por set
 ## Work Guidance
 
 - Não inventar segundo UX de formulário: reutilizar `leavePDFGenerator` + Detalhes
+- Não inventar segundo modal de assinatura: sempre `useSignature().requestSignature`
 - Status DB: `PENDING_LEADER` | `PENDING_MANAGER` | `APPROVED` | `REJECTED` | `CANCELLED`
 - Antecedência: `leaveConfig` / `/api/leave/config`
 
 ## Verification
 
+- `/ferias` sem assinatura → banner + soft-gate em Nova Solicitação / Baixar PDF; CTA abre SignatureModal global; dismiss em sessionStorage libera o fluxo
 - `/ferias` → filtrar ano passado → vê aprovadas/gozadas
 - Detalhes (Todas as Solicitações) → prévia + Baixar PDF com nome/datas/status
 - PDF preenchido: assinatura cadastrada carimbada (ou “Assinatura não cadastrada”); blank `form-pdf` sem carimbo

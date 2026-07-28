@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox, FiSearch, FiEye, FiTrash2, FiDownload, FiFileText } from 'react-icons/fi';
+import Link from 'next/link';
+import { FiCalendar, FiPlus, FiClock, FiCheckCircle, FiXCircle, FiX, FiAlertCircle, FiUser, FiInfo, FiList, FiInbox, FiSearch, FiEye, FiTrash2, FiDownload, FiFileText, FiEdit3 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { useSignature } from '@/contexts/SignatureContext';
 import { LeaveRequest } from '@/services/leaveService';
 import MainLayout from '@/components/Layout/MainLayout';
 import { format, parseISO } from 'date-fns';
@@ -22,6 +24,9 @@ import {
     filterLeavesByYearAndStatus,
 } from '@/lib/leaveExport';
 
+/** sessionStorage: dismiss soft signature prompt for this browser tab/session */
+const FERIAS_SIG_PROMPT_DISMISS_KEY = 'ferias_signature_prompt_dismissed';
+
 interface UnifiedUser {
     id: string;
     name: string;
@@ -35,15 +40,52 @@ interface RequestWithUser extends LeaveRequest {
     sector?: { name: string };
 }
 
+type SignaturePromptPending =
+    | { type: 'create' }
+    | { type: 'pdf'; req: LeaveRequest | RequestWithUser };
+
+function isSignaturePromptDismissed(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+        return sessionStorage.getItem(FERIAS_SIG_PROMPT_DISMISS_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function dismissSignaturePrompt(): void {
+    if (typeof window === 'undefined') return;
+    try {
+        sessionStorage.setItem(FERIAS_SIG_PROMPT_DISMISS_KEY, '1');
+    } catch {
+        /* ignore quota / private mode */
+    }
+}
+
+/** Interpreta erro HTTP do download de PDF de férias para toast claro. */
+async function leavePdfDownloadError(res: Response, fallback: string): Promise<string> {
+    const errData = await res.json().catch(() => ({} as { error?: string }));
+    if (errData?.error) return errData.error;
+    if (res.status === 401) return 'Sessão expirada. Faça login novamente para baixar o formulário.';
+    if (res.status === 403) return 'Você não tem permissão para baixar este formulário.';
+    if (res.status === 404) return 'Solicitação não encontrada ou dados do colaborador indisponíveis.';
+    if (res.status >= 500) return 'Erro no servidor ao gerar o PDF. Tente novamente em instantes.';
+    return fallback;
+}
+
 export default function FeriasPage() {
     const { user, getToken } = useSupabaseAuth();
+    const { hasSignature, isLoading: signatureLoading, requestSignature } = useSignature();
     const [activeTab, setActiveTab] = useState<'my_leaves' | 'approvals' | 'all_requests'>('my_leaves');
     const [isApprover, setIsApprover] = useState(false);
     const [hasFeriasAdmin, setHasFeriasAdmin] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [sigPromptDismissed, setSigPromptDismissed] = useState(false);
+    const [signaturePromptPending, setSignaturePromptPending] = useState<SignaturePromptPending | null>(null);
 
     useEffect(() => {
         setMounted(true);
+        setSigPromptDismissed(isSignaturePromptDismissed());
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             const tabParam = params.get('tab');
@@ -104,6 +146,108 @@ export default function FeriasPage() {
     const [allReqActionReason, setAllReqActionReason] = useState('');
     const [allReqModalProcessing, setAllReqModalProcessing] = useState(false);
     const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+
+    const needsSignaturePrompt = !signatureLoading && !hasSignature && !sigPromptDismissed;
+
+    const openCreateModal = useCallback(() => {
+        setShowModal(true);
+    }, []);
+
+    const runPdfDownload = useCallback(async (req: LeaveRequest | RequestWithUser) => {
+        try {
+            setDownloadingPdfId(req.id);
+            const token = getToken();
+            if (!token) {
+                toast.error('Sessão expirada. Faça login novamente para baixar o formulário.');
+                return;
+            }
+            const res = await fetch(`/api/leave/${req.id}/pdf`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!res.ok) {
+                throw new Error(await leavePdfDownloadError(res, 'Falha ao gerar formulário preenchido'));
+            }
+
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/pdf')) {
+                throw new Error('Resposta inválida do servidor (esperado PDF). Tente novamente.');
+            }
+
+            const blob = await res.blob();
+            if (!blob.size) {
+                throw new Error('PDF vazio recebido do servidor. Tente novamente.');
+            }
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const nameHint = ('user' in req && req.user?.name)
+                ? req.user.name.replace(/[^\w\s-]/g, '').slice(0, 24).trim().replace(/\s+/g, '_')
+                : req.id.slice(0, 8);
+            link.download = `Formulario_Ferias_${nameHint || req.id.slice(0, 8)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success('Formulário preenchido baixado!');
+        } catch (error: any) {
+            console.error('Error downloading comprovante:', error);
+            toast.error(error.message || 'Erro ao baixar formulário');
+        } finally {
+            setDownloadingPdfId(null);
+        }
+    }, [getToken]);
+
+    const proceedAfterSignaturePrompt = useCallback(async (pending: SignaturePromptPending) => {
+        if (pending.type === 'create') {
+            openCreateModal();
+            return;
+        }
+        await runPdfDownload(pending.req);
+    }, [openCreateModal, runPdfDownload]);
+
+    const handleDismissSignaturePrompt = useCallback(() => {
+        dismissSignaturePrompt();
+        setSigPromptDismissed(true);
+        const pending = signaturePromptPending;
+        setSignaturePromptPending(null);
+        if (pending) void proceedAfterSignaturePrompt(pending);
+    }, [signaturePromptPending, proceedAfterSignaturePrompt]);
+
+    const handleRegisterSignatureFromPrompt = useCallback(async () => {
+        const pending = signaturePromptPending;
+        setSignaturePromptPending(null);
+        const result = await requestSignature({
+            title: 'Cadastrar assinatura',
+            description: 'Cadastre sua assinatura digital para formulários de férias e outros documentos do portal.',
+        });
+        if (pending) {
+            await proceedAfterSignaturePrompt(pending);
+        }
+        if (result) {
+            toast.success('Assinatura pronta para uso nos formulários.');
+        }
+    }, [signaturePromptPending, requestSignature, proceedAfterSignaturePrompt]);
+
+    const handleOpenNovaSolicitacao = useCallback(() => {
+        if (needsSignaturePrompt) {
+            setSignaturePromptPending({ type: 'create' });
+            return;
+        }
+        openCreateModal();
+    }, [needsSignaturePrompt, openCreateModal]);
+
+    const handleBannerRegisterSignature = useCallback(async () => {
+        await requestSignature({
+            title: 'Cadastrar assinatura',
+            description: 'Cadastre sua assinatura digital para formulários de férias e outros documentos do portal.',
+        });
+    }, [requestSignature]);
+
+    const handleDismissBanner = useCallback(() => {
+        dismissSignaturePrompt();
+        setSigPromptDismissed(true);
+    }, []);
 
     // ==========================================
     // LEAVE CONFIG (carregado do banco via API)
@@ -641,65 +785,15 @@ export default function FeriasPage() {
     // ==========================================
 
     /**
-     * Interpreta erro HTTP do download de PDF de férias para toast claro.
-     */
-    const leavePdfDownloadError = async (res: Response, fallback: string): Promise<string> => {
-        const errData = await res.json().catch(() => ({} as { error?: string }));
-        if (errData?.error) return errData.error;
-        if (res.status === 401) return 'Sessão expirada. Faça login novamente para baixar o formulário.';
-        if (res.status === 403) return 'Você não tem permissão para baixar este formulário.';
-        if (res.status === 404) return 'Solicitação não encontrada ou dados do colaborador indisponíveis.';
-        if (res.status >= 500) return 'Erro no servidor ao gerar o PDF. Tente novamente em instantes.';
-        return fallback;
-    };
-
-    /**
      * Download do formulário/comprovante preenchido (PDF) da solicitação.
-     * Usa GET /api/leave/[id]/pdf — dados reais do pedido + colaborador + aprovadores.
+     * Soft-gate: se o usuário não tem assinatura e não dispensou o prompt nesta sessão, pede cadastro antes.
      */
     const handleDownloadComprovante = async (req: LeaveRequest | RequestWithUser) => {
-        try {
-            setDownloadingPdfId(req.id);
-            const token = getToken();
-            if (!token) {
-                toast.error('Sessão expirada. Faça login novamente para baixar o formulário.');
-                return;
-            }
-            const res = await fetch(`/api/leave/${req.id}/pdf`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (!res.ok) {
-                throw new Error(await leavePdfDownloadError(res, 'Falha ao gerar formulário preenchido'));
-            }
-
-            const contentType = res.headers.get('content-type') || '';
-            if (!contentType.includes('application/pdf')) {
-                throw new Error('Resposta inválida do servidor (esperado PDF). Tente novamente.');
-            }
-
-            const blob = await res.blob();
-            if (!blob.size) {
-                throw new Error('PDF vazio recebido do servidor. Tente novamente.');
-            }
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            const nameHint = ('user' in req && req.user?.name)
-                ? req.user.name.replace(/[^\w\s-]/g, '').slice(0, 24).trim().replace(/\s+/g, '_')
-                : req.id.slice(0, 8);
-            link.download = `Formulario_Ferias_${nameHint || req.id.slice(0, 8)}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            toast.success('Formulário preenchido baixado!');
-        } catch (error: any) {
-            console.error('Error downloading comprovante:', error);
-            toast.error(error.message || 'Erro ao baixar formulário');
-        } finally {
-            setDownloadingPdfId(null);
+        if (needsSignaturePrompt) {
+            setSignaturePromptPending({ type: 'pdf', req });
+            return;
         }
+        await runPdfDownload(req);
     };
 
     /**
@@ -847,7 +941,7 @@ export default function FeriasPage() {
                                 <span className="hidden sm:inline">Formulário</span>
                             </button>
                             <button
-                                onClick={() => setShowModal(true)}
+                                onClick={handleOpenNovaSolicitacao}
                                 className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all shadow-sm active:scale-95"
                             >
                                 <FiPlus className="w-5 h-5" />
@@ -856,6 +950,41 @@ export default function FeriasPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Soft prompt: assinatura não cadastrada (dismissível nesta sessão) */}
+                {needsSignaturePrompt && (
+                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                        <div className="flex gap-3 items-start">
+                            <FiEdit3 className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-amber-900">
+                                <p className="font-semibold">Cadastre sua assinatura digital</p>
+                                <p className="text-amber-800/90 mt-0.5">
+                                    Ela será usada nos formulários de férias (PDF) e outros documentos do portal.{' '}
+                                    <Link href="/profile" className="underline font-medium hover:text-amber-950">
+                                        Ver no perfil
+                                    </Link>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={handleDismissBanner}
+                                className="px-3 py-2 text-sm text-amber-800 hover:bg-amber-100 rounded-lg transition-colors"
+                            >
+                                Agora não
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleBannerRegisterSignature()}
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                            >
+                                <FiEdit3 className="w-4 h-4" />
+                                Cadastrar assinatura
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* TAB CONTENT: MY LEAVES */}
                 {activeTab === 'my_leaves' && (
@@ -1355,6 +1484,59 @@ export default function FeriasPage() {
                 )}
 
                 {/* MODALS RENDERED VIA PORTAL TO PREVENT Z-INDEX ISOLATION AND 'WHITE LINE' GLITCHES */}
+
+                {/* Soft gate: cadastrar assinatura (NÃO é o SignatureModal — só CTA que chama requestSignature) */}
+                {signaturePromptPending && mounted && createPortal(
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-in zoom-in-95 overflow-hidden">
+                            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-amber-50/80">
+                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                    <FiEdit3 className="text-amber-600" />
+                                    Assinatura digital
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={handleDismissSignaturePrompt}
+                                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors"
+                                    aria-label="Fechar"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="px-5 py-5 space-y-3 text-sm text-gray-700">
+                                <p>
+                                    Você ainda não possui assinatura cadastrada. Cadastre agora para que os formulários de férias (PDF) usem sua assinatura.
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                    Pode continuar sem cadastrar nesta sessão; o aviso não bloqueia o módulo.
+                                    Também disponível em{' '}
+                                    <Link href="/profile" className="text-blue-600 underline font-medium">
+                                        Perfil → Assinatura
+                                    </Link>
+                                    .
+                                </p>
+                            </div>
+                            <div className="px-5 py-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 bg-gray-50/50">
+                                <button
+                                    type="button"
+                                    onClick={handleDismissSignaturePrompt}
+                                    className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+                                >
+                                    Continuar sem assinatura
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void handleRegisterSignatureFromPrompt()}
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+                                >
+                                    <FiEdit3 className="w-4 h-4" />
+                                    Cadastrar assinatura
+                                </button>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
 
                 {/* 1. Modal Nova Solicitação */}
                 {showModal && mounted && createPortal(

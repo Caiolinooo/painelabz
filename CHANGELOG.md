@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.51.1] - 2026-07-28
+
+### Added
+- **Férias — prompt de cadastro de assinatura**:
+  - Em `/ferias`, se o usuário não tem assinatura (`useSignature().hasSignature`), mostra banner dismissível + soft-gate em **Nova Solicitação** e **Baixar PDF**.
+  - CTA **Cadastrar assinatura** abre o `SignatureModal` global via `requestSignature` (mesmo `SignatureProvider` de EPI/contratos/lista de presença) — sem segundo modal.
+  - “Continuar sem assinatura” / “Agora não” grava `sessionStorage` (`ferias_signature_prompt_dismissed`) e não bloqueia o módulo na sessão.
+  - Link para `/profile` (aba Assinatura / `SignatureTab`); save path existente `POST /api/user/signature`.
+
 ## [5.51.0] - 2026-07-28
 
 ### Added

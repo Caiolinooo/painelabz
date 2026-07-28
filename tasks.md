@@ -18,7 +18,7 @@
 - [x] Soft banner + soft-gate em `/ferias` (Nova Solicitação / Baixar PDF) quando `!hasSignature`
 - [x] CTA reutiliza `useSignature().requestSignature` → SignatureModal global (`SignatureProvider`)
 - [x] Dismiss sessionStorage `ferias_signature_prompt_dismissed` (não bloqueia o módulo)
-- [x] DOX ferias + root preference + CHANGELOG + **v5.51.0**
+- [x] DOX ferias + root preference + CHANGELOG + **v5.51.1**
 
 ### Como testar
 - Usuário sem assinatura → `/ferias` → vê banner; Nova Solicitação / Baixar PDF → soft-gate → Cadastrar → modal global

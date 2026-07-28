@@ -83,6 +83,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Email no portal**: admin em `/admin/email-settings`; `app_secrets` (senha AES); runtime DB → env; transporte `smtp` | `graph` | `auto` (O365 com erro 535 → preferir Graph + `MS_GRAPH_*`). Ver `src/app/api/admin/email-settings/AGENTS.md`.
 - **IA Graph**: extrair dados conforme solicitação do usuário (filtros + `limite=0` até hard cap 1000). KPIs com pendências disparam scan e-mail/Teams. Ver `src/lib/ia/AGENTS.md`.
 - **IA Companion**: global em todos os módulos; STM em `localStorage` (limpa só no logout); LTM `ia_user_memory` (persiste); skills procedurais `ia_user_skills` (Hermes Agent–like, persistem); FAB pinwheel. Navegação: nunca prometer abrir módulo sem `NAVIGATE` (`isTourIntent` / `ensureNavigationCommand`; tour → `/dashboard`; kpi → `/kpi`). Quadro branco KPI: `ia_kpi_boards` + harness por role (`kpi-board-harness.ts`) — ADMIN livre (`html_sandbox`); USER/MANAGER só trabalho; tools board (criar/atualizar/listar/abrir/**excluir**/excluir_todos) + `OPEN_KPI_BOARD` → `/kpi` (nunca “salve .html” / dump HTML fora do portal; nunca dizer que delete é indisponível). Cards IA: `normalizeWidgetData` (KPI + chat + Companion); resolve `dataSource` no refresh `/kpi`. **Dados**: nunca inventar números — sempre tools; `formatToolResultForLLM` (`_summary`); `buscar_ferias`/`buscar_reembolsos` default = usuário logado; `buscar_ferias` aceita `ano`/`status`/`incluir_historico` (histórico por padrão); mutate `aprovar_*`/`reprovar_*` com RBAC. **Férias UI**: histórico (status+ano), export XLSX/CSV, Detalhes → formulário PDF preenchido (`/api/leave/[id]/pdf`) com carimbo de `signature_url` (sem cadastro → “Assinatura não cadastrada”). Ver `src/lib/ia/AGENTS.md` e `src/app/ferias/AGENTS.md`.
+- **Assinatura digital**: global via `SignatureProvider` / `useSignature().requestSignature` (`SignatureModal` único); API `GET/POST /api/user/signature`; perfil `SignatureTab`. Em `/ferias`, soft prompt se `!hasSignature` (banner + gate em criar/baixar PDF), dismissível com `sessionStorage` `ferias_signature_prompt_dismissed` — não bloquear o módulo. Não montar segundo SignatureModal.
 - **Deploy / hosting**: produção e previews no **Vercel** apenas. Não usar Netlify (legado); ao falar de deploy, env vars, cron ou build, referir Vercel.
 
 ## Child DOX Index
@@ -91,6 +92,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/app/api/admin/email-settings/AGENTS.md` — credenciais SMTP no admin (app_secrets)
 - `src/app/api/gestao-tripulantes/AGENTS.md` — ASO identity gate, e-Social sync, Man Schedule tipos/cores/observações
 - `src/lib/ia/AGENTS.md` — tools LLM, Graph, Companion (`portal-navigation` fuzzy + IA real)
-- `src/app/ferias/AGENTS.md` — histórico, export XLSX/CSV, PDF preenchido + assinaturas cadastradas
+- `src/app/ferias/AGENTS.md` — histórico, export XLSX/CSV, PDF preenchido + assinaturas + soft prompt de cadastro
 ## Index of Modules
 
