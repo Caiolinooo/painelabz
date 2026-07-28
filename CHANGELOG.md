@@ -6,8 +6,17 @@
 - **Companion — Fase 1A Rive / Rive-like mascot**:
   - `CompanionMascotRiveLike`: sprite state machine com crossfade suave, face layer (blink + visemes), fake lip-sync em speaking.
   - Gate `CompanionMascotRive`: se existir `public/rive/companion-mascot.riv`, lazy-load `@rive-app/react-canvas-lite` (`CompanionSM` inputs `status` + `viseme`); senão fallback Rive-like.
-  - Assets Fase 0: body extras (listen_tilt/point, exec_point/read/stretch) + face overlays bake; `AnimatedABZLogo` API intacta; FAB/session/bus inalterados; reduced-motion → estático.
+  - Builds on Fase 0 face overlays + body extras; `AnimatedABZLogo` API intacta; FAB/session/bus inalterados; reduced-motion → estático.
   - Docs drop-in: `public/rive/README.md` + `src/components/IA/AGENTS.md`.
+
+## [5.54.0] - 2026-07-28
+
+### Improved
+- **Companion — Fase 0 sprite compositor (body + face)**:
+  - `AnimatedABZLogo` compõe body + face overlay (`face_neutral` / `face_blink` / `viseme_*`).
+  - Idle: blink em intervalo aleatório; speaking: fake lip-sync ciclando `viseme_a/e/i/u` + rest (`face_neutral`).
+  - Listening/executing: ciclos de body mais ricos; prefetch dos PNGs chave; `useReducedMotion` congela face/body.
+  - Mapa em `companion-mascot-frames.ts` + `frames.json` (`faceOverlay`, `lipSync`, `blink`); FAB 60 / header 36 / hero 80; props API intacta.
 
 ## [5.53.0] - 2026-07-28
 

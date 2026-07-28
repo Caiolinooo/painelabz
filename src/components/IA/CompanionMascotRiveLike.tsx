@@ -4,10 +4,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import type { AICompanionStatus } from './companion-logo-motion';
 import {
+  MASCOT_BLINK,
   MASCOT_BODY,
   MASCOT_FACE_OVERLAY,
+  MASCOT_LIP_SYNC_FPS,
   MASCOT_STATUS_CYCLES,
-  MASCOT_VISEME_IDS,
+  MASCOT_VISEMES,
+  type MascotBodyId,
   mascotFaceSrc,
   mascotFrameSrc,
   visemeIdAt,
@@ -30,7 +33,6 @@ type LayerSlot = {
 /**
  * High-quality sprite state machine (Rive-like):
  * smooth body crossfades, face layer, viseme driver for speaking.
- * Same visual contract as a future `.riv` artboard.
  */
 export default function CompanionMascotRiveLike({
   status,
@@ -106,30 +108,33 @@ export default function CompanionMascotRiveLike({
       setVisemeIdx(visemeIndexProp);
       return;
     }
-    if (reducedMotion || status !== 'speaking') {
+    if (reducedMotion || cycle.face !== 'lipSync') {
       setVisemeIdx(0);
       return;
     }
+    const ms = Math.max(60, Math.round(1000 / MASCOT_LIP_SYNC_FPS));
     const id = window.setInterval(() => {
-      setVisemeIdx(i => (i + 1 + (Math.random() > 0.55 ? 1 : 0)) % MASCOT_VISEME_IDS.length);
-    }, 110);
+      setVisemeIdx(i => (i + 1 + (Math.random() > 0.55 ? 1 : 0)) % MASCOT_VISEMES.length);
+    }, ms);
     return () => window.clearInterval(id);
-  }, [status, reducedMotion, visemeIndexProp]);
+  }, [cycle.face, reducedMotion, visemeIndexProp]);
 
   useEffect(() => {
-    if (reducedMotion || (status !== 'idle' && status !== 'listening')) {
+    if (reducedMotion || cycle.face !== 'blink') {
       setBlink(false);
       return;
     }
     let blinkOff: number | null = null;
     const schedule = (): number => {
-      const wait = 2200 + Math.random() * 2800;
+      const wait =
+        MASCOT_BLINK.idleMsMin +
+        Math.random() * Math.max(1, MASCOT_BLINK.idleMsMax - MASCOT_BLINK.idleMsMin);
       return window.setTimeout(() => {
         setBlink(true);
         blinkOff = window.setTimeout(() => {
           setBlink(false);
           timer = schedule();
-        }, 120);
+        }, MASCOT_BLINK.holdMs);
       }, wait);
     };
     let timer = schedule();
@@ -137,18 +142,24 @@ export default function CompanionMascotRiveLike({
       window.clearTimeout(timer);
       if (blinkOff != null) window.clearTimeout(blinkOff);
     };
-  }, [status, reducedMotion]);
+  }, [cycle.face, reducedMotion]);
 
-  const showFace =
-    !reducedMotion && (status === 'speaking' || blink || status === 'listening');
-
+  const showFace = !reducedMotion && cycle.face !== undefined;
   const faceSrc = (() => {
-    if (blink) return mascotFaceSrc('face_blink');
-    if (status === 'speaking') return mascotFaceSrc(visemeIdAt(visemeIdx));
+    if (cycle.face === 'blink') {
+      return mascotFaceSrc(blink ? 'face_blink' : 'face_neutral');
+    }
+    if (cycle.face === 'lipSync') {
+      return mascotFaceSrc(MASCOT_VISEMES[visemeIdx] ?? visemeIdAt(visemeIdx));
+    }
     return mascotFaceSrc('face_neutral');
   })();
 
   const fadeMs = reducedMotion ? 0 : cycle.crossfadeMs;
+  const faceLeft = Math.round(size * MASCOT_FACE_OVERLAY.x);
+  const faceTop = Math.round(size * MASCOT_FACE_OVERLAY.y);
+  const faceW = Math.max(1, Math.round(size * MASCOT_FACE_OVERLAY.w));
+  const faceH = Math.max(1, Math.round(size * MASCOT_FACE_OVERLAY.h));
 
   return (
     <div
@@ -189,30 +200,24 @@ export default function CompanionMascotRiveLike({
       />
 
       {showFace && (
-        <div
-          className="absolute pointer-events-none select-none"
+        <Image
+          src={faceSrc}
+          alt=""
+          width={faceW}
+          height={faceH}
+          className="absolute select-none pointer-events-none object-fill"
           style={{
-            left: MASCOT_FACE_OVERLAY.left,
-            top: MASCOT_FACE_OVERLAY.top,
-            width: MASCOT_FACE_OVERLAY.width,
-            height: MASCOT_FACE_OVERLAY.height,
-            opacity: status === 'speaking' ? 1 : blink ? 1 : 0.85,
+            left: faceLeft,
+            top: faceTop,
+            width: faceW,
+            height: faceH,
+            opacity: cycle.face === 'lipSync' ? 1 : blink ? 1 : 0.95,
             transition: `opacity ${Math.max(60, fadeMs / 2)}ms ease-out`,
           }}
           aria-hidden
-        >
-          <div className="relative w-full h-full">
-            <Image
-              src={faceSrc}
-              alt=""
-              fill
-              className="object-contain"
-              sizes={`${Math.round(size * 0.5)}px`}
-              draggable={false}
-              unoptimized
-            />
-          </div>
-        </div>
+          draggable={false}
+          unoptimized
+        />
       )}
     </div>
   );
@@ -223,7 +228,7 @@ function slotFromCycle(
   idx: number
 ): LayerSlot {
   const frameId = cycle.frames[Math.min(idx, cycle.frames.length - 1)] ?? 'idle_stand';
-  const safeId = (frameId in MASCOT_BODY ? frameId : 'idle_stand') as keyof typeof MASCOT_BODY;
+  const safeId: MascotBodyId = frameId in MASCOT_BODY ? frameId : 'idle_stand';
   return {
     src: mascotFrameSrc(safeId),
     key: `${safeId}-${idx}`,
