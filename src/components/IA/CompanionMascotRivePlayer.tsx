@@ -21,8 +21,8 @@ export interface CompanionMascotRivePlayerProps {
 
 /**
  * Real Rive runtime for companion-mascot.riv.
- * SM inputs: status (0–3), viseme (0–3 = a/e/i/u).
- * Mouth group is opacity-gated by Status anim — never poke viseme=0 on idle.
+ * SM inputs: status (0–3), viseme (0–3, body-only build = visual no-op).
+ * Never poke viseme on idle/listen/exec (avoids open-A flashes during mixes).
  */
 export default function CompanionMascotRivePlayer({
   status,

@@ -2,15 +2,13 @@
 
 ## [5.57.0] - 2026-07-28
 
-### Improved
-- **Companion — calm natural motion (runtime + `.riv` body-only)**:
-  - API wait uses `executing` (thinking poses), not `speaking` — no fake lip-sync spam while consulting IA.
-  - Never write Rive `viseme=0` (open A) on idle; lip-sync only if overlays on + `speaking` (~2.5 Hz).
-  - Face overlays off by default (`MASCOT_USE_FACE_OVERLAY`) — body PNGs already include faces.
-  - Soft body crossfades (280–340ms); status blends keep previous frame until new ready.
-  - Calm Framer float/aura; disabled when Rive runtime owns motion (avoids double bob).
-  - Regenerated `companion-mascot.riv` (body-only opacity crossfades + soft SM mixes; viseme contract no-op).
-  - `prefers-reduced-motion` still freezes the mascot.
+### Fixed
+- **Companion — kill double-face + natural body-only motion**:
+  - Rebuilt `companion-mascot.riv` with **14 body frames only** (no face/viseme image layers — overlays caused gray skull / ghost mouth on faced bodies).
+  - Opacity crossfades + `float-idle` / sway / breathing; soft SM mixes (~420ms); no hard solo snaps.
+  - API wait → `executing` (calm think), never `speaking` + lip-sync spam; `viseme` contract kept but visually no-op.
+  - React: `MASCOT_USE_FACE_OVERLAY=false`; Rive-like body-only; calm Framer float (disabled when Rive owns motion).
+  - Docs: `public/rive/README.md` + `src/components/IA/AGENTS.md`.
 
 ## [5.56.0] - 2026-07-28
 
