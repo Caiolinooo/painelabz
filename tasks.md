@@ -1,3 +1,26 @@
+## Companion — Fase 0 compositor body+face (2026-07-28)
+
+### Feito
+- [x] Composite body + face overlay (`AnimatedABZLogo` + `companion-mascot-frames.ts`)
+- [x] Idle blink (intervalo aleatório) + speaking fake lip-sync (`viseme_a/e/i/u` + rest)
+- [x] Ciclos listening/executing mais ricos; prefetch PNGs; `useReducedMotion`
+- [x] Face overlays re-bake em `public/images/companion-mascot/face/*` + `frames.json` v2
+- [x] DOX + CHANGELOG + **v5.54.0**
+
+### Como testar
+- FAB idle → bob + blink ocasional dos olhos
+- Enviar mensagem → speaking com boca ciclando visemes
+- `prefers-reduced-motion` → frame estático (sem blink/lip-sync)
+
+### Tweak visemes
+1. Ordem/lista: `MASCOT_VISEMES` em `src/components/IA/companion-mascot-frames.ts` (ou `frames.json` → `lipSync.visemes`)
+2. FPS boca: `MASCOT_LIP_SYNC_FPS` (default 6)
+3. Alinhamento face: `MASCOT_FACE_OVERLAY` (`x/y/w/h` ou `%` left/top/width/height)
+4. Trocar PNGs: `public/images/companion-mascot/face/viseme_*.png` + `face_blink.png`
+5. Re-bake overlays: `python scratch/build_face_overlays.py`
+
+---
+
 ## Companion — Fase 1A Rive / Rive-like (2026-07-28)
 
 ### Feito

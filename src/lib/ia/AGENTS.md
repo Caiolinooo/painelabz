@@ -82,7 +82,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - `meus_emails`, `meu_calendario`, `criar_evento_calendario`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `navegar_portal`
 - Registry: `microsoft.tools`, `calendario.tools`, `chat.tools`, `portal.tools` (inclui board tools)
-- Companion (`/api/ia/companion`): IA real + tools; fuzzy nav (`portal-navigation.ts`); commands via `_metadata.portalCommands`; UI mascote livro (`AnimatedABZLogo` → `CompanionMascotRive` / frames em `companion-mascot/`)
+- Companion (`/api/ia/companion`): IA real + tools; fuzzy nav (`portal-navigation.ts`); commands via `_metadata.portalCommands`; UI mascote livro (`AnimatedABZLogo` → Rive/Rive-like; frames em `companion-mascot/`)
 - Sub-agente `companion` no `agents-router` (ativado por `[ABZ_COMPANION]` / verbos de navegação) — inclui globals, KPIs, mutate, boards, memória/skills
 
 ## Work Guidance
@@ -90,8 +90,8 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
 - Companion: global (`CompanionSessionProvider`); STM localStorage limpa no logout; LTM `ia_user_memory` + skills `ia_user_skills`; boards `ia_kpi_boards` + índice no prompt
-- FAB = mascote livro azul via `AnimatedABZLogo` → `CompanionMascotRive` (Rive se `/rive/companion-mascot.riv` existir; senão `CompanionMascotRiveLike` crossfade + face/visemes); mapa `companion-mascot-frames.ts`; float/aura; `useReducedMotion` → estático; `fixed` sem `relative`
-- Drop-in Rive: designer coloca `.riv` em `public/rive/companion-mascot.riv` (SM `CompanionSM`, inputs `status` 0–3 + `viseme` 0–3) — ver `public/rive/README.md` e `src/components/IA/AGENTS.md`
+- FAB = mascote livro azul via `AnimatedABZLogo` → `CompanionMascotRive` (Rive se `.riv`; senão Rive-like com body+face/blink/visemes Fase 0); mapa `companion-mascot-frames.ts` + `frames.json`; float/aura/prefetch; `useReducedMotion` → estático; `fixed` sem `relative`
+- Tweak visemes: `MASCOT_VISEMES` / `MASCOT_LIP_SYNC_FPS` / `MASCOT_FACE_OVERLAY` em `companion-mascot-frames.ts`
 - Sub-agentes: `rh_tripulantes` / `geral` / `companion` / `analytics` — `enviar_notificacao_proativa` (não `gerenciar_notificacoes` fantasma)
 - Assistant stream vs Companion sync; histórico Companion ~12 msgs; multi-tool permitido
 - **Companion NAVIGATE contract**: nunca prometer navegação sem `NAVIGATE` (`isTourIntent` / `ensureNavigationCommand`; tour → `/dashboard`)
