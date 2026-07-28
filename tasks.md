@@ -1,3 +1,25 @@
+## Companion — Fase 1A Rive / Rive-like (2026-07-28)
+
+### Feito
+- [x] `CompanionMascotRiveLike` — crossfade + face layer + fake lip-sync (viseme)
+- [x] Gate `CompanionMascotRive` + lazy `@rive-app/react-canvas-lite` quando `.riv` presente
+- [x] Drop-in docs `public/rive/README.md` (SM `CompanionSM`, `status` + `viseme`)
+- [x] `AnimatedABZLogo` API intacta; FAB/session/bus intactos
+- [x] DOX + CHANGELOG + **v5.55.0**
+
+### Como testar
+- FAB idle → crossfade suave entre poses + blink ocasional
+- Enviar mensagem → speaking com boca/visemes animados
+- `prefers-reduced-motion` → estático
+- (Opcional) dropar `public/rive/companion-mascot.riv` → runtime Rive sem mudar API
+
+### Swap .riv
+1. Exportar artboard no Rive Editor com SM `CompanionSM`
+2. Inputs Number: `status` (0–3), `viseme` (0–3)
+3. Salvar em `public/rive/companion-mascot.riv`
+
+---
+
 ## Companion — mascote livro azul (2026-07-28)
 
 ### Feito

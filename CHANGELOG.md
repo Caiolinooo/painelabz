@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.55.0] - 2026-07-28
+
+### Improved
+- **Companion — Fase 1A Rive / Rive-like mascot**:
+  - `CompanionMascotRiveLike`: sprite state machine com crossfade suave, face layer (blink + visemes), fake lip-sync em speaking.
+  - Gate `CompanionMascotRive`: se existir `public/rive/companion-mascot.riv`, lazy-load `@rive-app/react-canvas-lite` (`CompanionSM` inputs `status` + `viseme`); senão fallback Rive-like.
+  - Assets Fase 0: body extras (listen_tilt/point, exec_point/read/stretch) + face overlays bake; `AnimatedABZLogo` API intacta; FAB/session/bus inalterados; reduced-motion → estático.
+  - Docs drop-in: `public/rive/README.md` + `src/components/IA/AGENTS.md`.
+
 ## [5.53.0] - 2026-07-28
 
 ### Added

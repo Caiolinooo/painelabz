@@ -1,6 +1,6 @@
 {
   "name": "painel-abz",
-  "version": "5.53.0",
+  "version": "5.54.0",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -94,6 +94,7 @@
     "@react-pdf-viewer/core": "^3.12.0",
     "@react-pdf-viewer/default-layout": "^3.12.0",
     "@react-pdf/renderer": "^4.3.0",
+    "@rive-app/react-canvas-lite": "^4.30.0",
     "@sendgrid/mail": "^8.1.5",
     "@simplewebauthn/browser": "^13.2.2",
     "@simplewebauthn/server": "^13.2.3",

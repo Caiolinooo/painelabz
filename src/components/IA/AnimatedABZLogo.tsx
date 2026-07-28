@@ -9,8 +9,17 @@ import {
   statusAccent,
 } from './companion-logo-motion';
 import {
+  MASCOT_BLINK,
   MASCOT_BODY,
+  MASCOT_FACE_OVERLAY,
+  MASCOT_LIP_SYNC_FPS,
+  MASCOT_PREFETCH_SRC,
   MASCOT_STATUS_CYCLES,
+  MASCOT_VISEMES,
+  MascotBodyId,
+  MascotFaceId,
+  hasMascotFaceAssets,
+  mascotFaceSrc,
   mascotFrameSrc,
 } from './companion-mascot-frames';
 
@@ -26,8 +35,13 @@ interface AnimatedABZLogoProps {
   compactLabel?: boolean;
 }
 
+function randomBlinkDelay(): number {
+  const span = MASCOT_BLINK.idleMsMax - MASCOT_BLINK.idleMsMin;
+  return MASCOT_BLINK.idleMsMin + Math.floor(Math.random() * Math.max(1, span));
+}
+
 /**
- * Companion FAB / panel mascot — blue-book sprite keyed to RGBA frames.
+ * Companion FAB / panel mascot — blue-book body + face overlay (blink / fake lip-sync).
  * Drop-in props: status | size | className. Status owned by AICompanionWidget.
  */
 export default function AnimatedABZLogo({
@@ -39,12 +53,29 @@ export default function AnimatedABZLogo({
   const accent = statusAccent(status);
   const motionPreset = getCompanionMotion(status, !!shouldReduceMotion);
   const cycle = MASCOT_STATUS_CYCLES[status];
+  const faceEnabled = hasMascotFaceAssets();
+
   const [frameIdx, setFrameIdx] = useState(0);
+  const [visemeIdx, setVisemeIdx] = useState(0);
+  const [blinking, setBlinking] = useState(false);
 
   useEffect(() => {
     setFrameIdx(0);
+    setVisemeIdx(0);
+    setBlinking(false);
   }, [status]);
 
+  // Prefetch key PNGs once (body + face) to avoid flicker on status changes.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    for (const src of MASCOT_PREFETCH_SRC) {
+      const img = new window.Image();
+      img.decoding = 'async';
+      img.src = src;
+    }
+  }, []);
+
+  // Body pose cycle
   useEffect(() => {
     if (shouldReduceMotion || cycle.fps <= 0 || cycle.frames.length <= 1) {
       return;
@@ -56,9 +87,84 @@ export default function AnimatedABZLogo({
     return () => window.clearInterval(id);
   }, [cycle, shouldReduceMotion, status]);
 
-  const frameId = cycle.frames[Math.min(frameIdx, cycle.frames.length - 1)] ?? 'idle_stand';
-  const src = mascotFrameSrc(frameId in MASCOT_BODY ? frameId : 'idle_stand');
+  // Idle blink (random interval)
+  useEffect(() => {
+    if (shouldReduceMotion || !faceEnabled || cycle.face !== 'blink') {
+      setBlinking(false);
+      return;
+    }
+    let cancelled = false;
+    let timeoutId = 0;
+    let holdId = 0;
+
+    const schedule = () => {
+      timeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        setBlinking(true);
+        holdId = window.setTimeout(() => {
+          if (cancelled) return;
+          setBlinking(false);
+          schedule();
+        }, MASCOT_BLINK.holdMs);
+      }, randomBlinkDelay());
+    };
+
+    schedule();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      window.clearTimeout(holdId);
+    };
+  }, [cycle.face, faceEnabled, shouldReduceMotion, status]);
+
+  // Speaking fake lip-sync (viseme cycle)
+  useEffect(() => {
+    if (
+      shouldReduceMotion ||
+      !faceEnabled ||
+      cycle.face !== 'lipSync' ||
+      MASCOT_VISEMES.length === 0
+    ) {
+      return;
+    }
+    const ms = Math.max(60, Math.round(1000 / MASCOT_LIP_SYNC_FPS));
+    const id = window.setInterval(() => {
+      setVisemeIdx(i => (i + 1) % MASCOT_VISEMES.length);
+    }, ms);
+    return () => window.clearInterval(id);
+  }, [cycle.face, faceEnabled, shouldReduceMotion, status]);
+
+  const bodyId: MascotBodyId =
+    cycle.frames[Math.min(frameIdx, cycle.frames.length - 1)] ?? 'idle_stand';
+  const bodySrc = mascotFrameSrc(bodyId in MASCOT_BODY ? bodyId : 'idle_stand');
+
+  let faceId: MascotFaceId | null = null;
+  if (faceEnabled && !shouldReduceMotion) {
+    switch (cycle.face) {
+      case 'blink':
+        faceId = blinking ? 'face_blink' : 'face_neutral';
+        break;
+      case 'lipSync':
+        faceId = MASCOT_VISEMES[visemeIdx] ?? 'face_neutral';
+        break;
+      case 'neutral':
+        faceId = 'face_neutral';
+        break;
+      default: {
+        const _exhaustive: never = cycle.face;
+        void _exhaustive;
+        faceId = 'face_neutral';
+      }
+    }
+  } else if (faceEnabled && shouldReduceMotion) {
+    faceId = 'face_neutral';
+  }
+
   const iconSize = Math.round(size * 0.92);
+  const faceLeft = Math.round(iconSize * MASCOT_FACE_OVERLAY.x);
+  const faceTop = Math.round(iconSize * MASCOT_FACE_OVERLAY.y);
+  const faceW = Math.max(1, Math.round(iconSize * MASCOT_FACE_OVERLAY.w));
+  const faceH = Math.max(1, Math.round(iconSize * MASCOT_FACE_OVERLAY.h));
 
   return (
     <motion.div
@@ -101,19 +207,39 @@ export default function AnimatedABZLogo({
         ))}
 
       <div
-        className="relative z-10 flex items-center justify-center"
+        className="relative z-10 overflow-hidden"
         style={{ width: iconSize, height: iconSize }}
       >
         <Image
-          src={src}
+          src={bodySrc}
           alt="Companion ABZ"
           width={iconSize}
           height={iconSize}
           className="object-contain select-none pointer-events-none drop-shadow-md"
+          style={{ background: 'transparent' }}
           priority
           draggable={false}
           unoptimized
         />
+        {faceId && (
+          <Image
+            src={mascotFaceSrc(faceId)}
+            alt=""
+            width={faceW}
+            height={faceH}
+            className="absolute select-none pointer-events-none object-fill"
+            style={{
+              left: faceLeft,
+              top: faceTop,
+              width: faceW,
+              height: faceH,
+              background: 'transparent',
+            }}
+            aria-hidden
+            draggable={false}
+            unoptimized
+          />
+        )}
       </div>
     </motion.div>
   );
