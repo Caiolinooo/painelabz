@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.50.1] - 2026-07-28
+
+### Fixed
+- **Férias PDF preenchido** (`leavePDFGenerator` + `GET /api/leave/[id]/pdf`):
+  - CPF agora vem de `users_unified.tax_id` (antes lia coluna `cpf` inexistente/errada → campo vazio ou query quebrada).
+  - Nome com fallback `name` → `first_name` + `last_name`; setor com fallback `sectors.name` → `department`.
+  - Duração dos períodos recalculada quando ausente/`0` (fallback start/end não gera mais “0 dias”).
+  - Seção Observações sempre presente; linha de datas nas assinaturas corrigida (colaborador = solicitado em; líder/gerente = aprovado em).
+
 ## [5.50.0] - 2026-07-27
 
 ### Added

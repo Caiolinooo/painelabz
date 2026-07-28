@@ -34,12 +34,13 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
 
         // Busca a solicitação com os dados do usuário e do setor
+        // CPF no portal vive em users_unified.tax_id (não há coluna `cpf` confiável).
         const { data: req, error } = await supabaseAdmin
             .from('leave_requests')
             .select(`
                 *,
                 user:users_unified!inner(
-                    id, name, email, cpf, sector_id, position,
+                    id, name, first_name, last_name, email, tax_id, sector_id, position, department,
                     sector:sectors(id, name)
                 )
             `)
@@ -104,15 +105,31 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
 
         // Monta os dados para o PDF
+        const userRow = req.user as {
+            name?: string | null;
+            first_name?: string | null;
+            last_name?: string | null;
+            email?: string | null;
+            tax_id?: string | null;
+            position?: string | null;
+            department?: string | null;
+            sector?: { id?: string; name?: string } | { id?: string; name?: string }[] | null;
+        } | null;
+
+        const sectorRel = userRow?.sector;
+        const sectorObj = Array.isArray(sectorRel) ? sectorRel[0] : sectorRel;
+        const resolvedName = (userRow?.name || '').trim()
+            || [userRow?.first_name, userRow?.last_name].filter(Boolean).join(' ').trim();
+
         const pdfData: LeaveRequestPDFData = {
             id: req.id,
             created_at: req.created_at,
             updated_at: req.updated_at,
-            user_name: req.user?.name || '',
-            user_email: req.user?.email || '',
-            user_cpf: req.user?.cpf || (req.user as any)?.cpf,
-            user_position: (req.user as any)?.position,
-            user_sector: (req.user as any)?.sector?.name,
+            user_name: resolvedName,
+            user_email: userRow?.email || '',
+            user_cpf: userRow?.tax_id || undefined,
+            user_position: userRow?.position || undefined,
+            user_sector: sectorObj?.name || userRow?.department || undefined,
             start_date: req.start_date,
             end_date: req.end_date,
             periods: req.periods,
@@ -129,7 +146,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         const pdfBuffer = await generateLeaveRequestPDF(pdfData);
 
         // Nome do arquivo
-        const safeUserName = (req.user?.name || 'colaborador')
+        const safeUserName = (resolvedName || 'colaborador')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .replace(/[^a-zA-Z0-9]/g, '_')

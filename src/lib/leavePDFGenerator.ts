@@ -15,6 +15,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import fs from 'fs';
 import path from 'path';
+import { formatCpf } from '@/lib/utils/identity';
 
 type ColorTuple = [number, number, number];
 
@@ -90,6 +91,38 @@ export interface LeaveRequestPDFData {
   manager_name?: string;
   leader_approved_at?: string;
   manager_approved_at?: string;
+}
+
+/** Dias corridos inclusivos entre duas datas YYYY-MM-DD (mesma regra da UI /ferias). */
+function computeDurationDays(startDate: string | undefined | null, endDate: string | undefined | null): number {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(`${String(startDate).slice(0, 10)}T12:00:00Z`);
+  const end = new Date(`${String(endDate).slice(0, 10)}T12:00:00Z`);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0;
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function normalizePeriods(data: LeaveRequestPDFData): LeavePeriod[] {
+  const raw: LeavePeriod[] = (data.periods && data.periods.length > 0)
+    ? data.periods
+    : [{ start_date: data.start_date, end_date: data.end_date, duration: 0 }];
+
+  return raw.map((p) => {
+    const duration = (p.duration && p.duration > 0)
+      ? p.duration
+      : computeDurationDays(p.start_date, p.end_date);
+    return {
+      start_date: p.start_date,
+      end_date: p.end_date,
+      duration
+    };
+  });
+}
+
+function formatCpfForPdf(cpf: string | undefined | null): string {
+  if (!cpf) return '—';
+  const formatted = formatCpf(cpf);
+  return formatted || '—';
 }
 
 /**
@@ -222,7 +255,7 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
         { content: 'E-mail:', styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', fontSize: 8 } },
         { content: data.user_email || '', styles: { fontSize: 9 } },
         { content: 'CPF:', styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', fontSize: 8 } },
-        { content: data.user_cpf || '—', styles: { fontSize: 9 } }
+        { content: formatCpfForPdf(data.user_cpf), styles: { fontSize: 9 } }
       ],
       [
         { content: 'Cargo:', styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', fontSize: 8 } },
@@ -274,9 +307,7 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
   currentY = (doc as any).lastAutoTable.finalY + 4;
 
   // --- Períodos de Férias ---
-  const periods: LeavePeriod[] = (data.periods && data.periods.length > 0)
-    ? data.periods
-    : [{ start_date: data.start_date, end_date: data.end_date, duration: 0 }];
+  const periods = normalizePeriods(data);
 
   const periodsBody: any[][] = periods.map((p, idx) => [
     String(idx + 1),
@@ -343,19 +374,20 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
 
   currentY = (doc as any).lastAutoTable.finalY + 4;
 
-  // --- Observações do Colaborador ---
-  if (data.justification) {
-    autoTable(doc, {
-      startY: currentY,
-      theme: 'grid',
-      head: [[
-        { content: 'OBSERVAÇÕES DO COLABORADOR:', styles: { halign: 'left', fillColor: COLORS.BLUE_HEADER, textColor: COLORS.WHITE, fontStyle: 'bold', fontSize: 9 } }
-      ]],
-      body: [[{ content: data.justification, styles: { fontSize: 9, cellPadding: 2 } }]],
-      styles: { lineColor: COLORS.BLACK, lineWidth: 0.1, cellPadding: 1.5, valign: 'top' }
-    });
-    currentY = (doc as any).lastAutoTable.finalY + 4;
-  }
+  // --- Observações do Colaborador (sempre no formulário, mesmo vazias) ---
+  autoTable(doc, {
+    startY: currentY,
+    theme: 'grid',
+    head: [[
+      { content: 'OBSERVAÇÕES DO COLABORADOR:', styles: { halign: 'left', fillColor: COLORS.BLUE_HEADER, textColor: COLORS.WHITE, fontStyle: 'bold', fontSize: 9 } }
+    ]],
+    body: [[{
+      content: data.justification?.trim() || '—',
+      styles: { fontSize: 9, cellPadding: 2, minCellHeight: data.justification?.trim() ? undefined : 12 }
+    }]],
+    styles: { lineColor: COLORS.BLACK, lineWidth: 0.1, cellPadding: 1.5, valign: 'top' }
+  });
+  currentY = (doc as any).lastAutoTable.finalY + 4;
 
   // --- Motivo da Rejeição (se aplicável) ---
   if (data.status === 'REJECTED' && data.rejection_reason) {
@@ -575,10 +607,19 @@ function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRequestP
         { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } },
         { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } }
       ],
-      ...(data.leader_approved_at || data.manager_approved_at ? [[
-        { content: `Aprovado em: ${data.leader_approved_at ? formatDatePTBR(data.leader_approved_at) : '—'}`, styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT } },
-        { content: `Aprovado em: ${data.leader_approved_at ? formatDatePTBR(data.leader_approved_at) : '—'}`, styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT } },
-        { content: `Aprovado em: ${data.manager_approved_at ? formatDatePTBR(data.manager_approved_at) : '—'}`, styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT } }
+      ...(data.leader_approved_at || data.manager_approved_at || data.created_at ? [[
+        {
+          content: data.created_at ? `Solicitado em: ${formatDatePTBR(data.created_at)}` : '—',
+          styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT }
+        },
+        {
+          content: data.leader_approved_at ? `Aprovado em: ${formatDatePTBR(data.leader_approved_at)}` : '—',
+          styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT }
+        },
+        {
+          content: data.manager_approved_at ? `Aprovado em: ${formatDatePTBR(data.manager_approved_at)}` : '—',
+          styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT }
+        }
       ]] : [])
     ] as any[][],
     styles: { lineColor: COLORS.BLACK, lineWidth: 0.1, cellPadding: 1.5, valign: 'middle' as const },

@@ -1,3 +1,16 @@
+## Férias — PDF fill audit (2026-07-28)
+
+### Feito
+- [x] Audit fill path: blank `form-pdf` vs filled `[id]/pdf` + `leavePDFGenerator`
+- [x] Fix CPF (`tax_id`), nome/setor fallbacks, duração recalculada, observações + assinaturas
+- [x] DOX `ferias/AGENTS.md` + CHANGELOG + **v5.50.1**
+
+### Pendente
+- [ ] Colunas/audit de `leader_approved_at` / `manager_approved_at` em `leave_requests` (hoje não existem)
+- [ ] Prévia Detalhes: CPF/cargo (UI ainda não mostra; só no PDF)
+
+---
+
 ## Férias — histórico + formulário PDF (2026-07-27)
 
 ### Feito
