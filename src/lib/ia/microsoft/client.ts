@@ -9,10 +9,53 @@ import type {
   MSGraphChat,
   MSGraphTeamsMessage 
 } from '@/types/ia-global';
+import {
+  GRAPH_EMAIL_SELECT_LIST,
+  GRAPH_EMAIL_SELECT_WITH_BODY,
+  stripHtmlToText,
+} from '../graph-comms-format';
 
 const MS_CLIENT_ID = process.env.MS_GRAPH_CLIENT_ID || '';
 const MS_CLIENT_SECRET = process.env.MS_GRAPH_CLIENT_SECRET || '';
 const MS_TENANT_ID = process.env.MS_GRAPH_TENANT_ID || 'common';
+
+/** Mapeia message Graph bruto → MSGraphEmail (campos completos para enrichers). */
+function mapRawMessageToEmail(m: any, includeBody = false): MSGraphEmail {
+  const bodyContent = includeBody ? m.body?.content : undefined;
+  const bodyType = includeBody ? m.body?.contentType : undefined;
+  const preview =
+    includeBody && bodyContent
+      ? stripHtmlToText(bodyContent, 2000) || m.bodyPreview
+      : m.bodyPreview;
+
+  return {
+    id: m.id,
+    conversationId: m.conversationId,
+    internetMessageId: m.internetMessageId,
+    subject: m.subject,
+    from: m.from,
+    receivedDateTime: m.receivedDateTime,
+    sentDateTime: m.sentDateTime,
+    createdDateTime: m.createdDateTime,
+    lastModifiedDateTime: m.lastModifiedDateTime,
+    bodyPreview: preview,
+    body: bodyContent,
+    bodyType,
+    isRead: m.isRead,
+    isDraft: m.isDraft,
+    hasAttachments: m.hasAttachments,
+    importance: m.importance,
+    categories: m.categories,
+    flag: m.flag,
+    parentFolderId: m.parentFolderId,
+    webLink: m.webLink,
+    inferenceClassification: m.inferenceClassification,
+    toRecipients: m.toRecipients,
+    ccRecipients: m.ccRecipients,
+    bccRecipients: m.bccRecipients,
+    replyTo: m.replyTo,
+  };
+}
 
 interface TokenCache {
   accessToken: string;
@@ -256,20 +299,10 @@ export async function listEmails(userId: string, top: number = 10): Promise<MSGr
     const limit = resolveGraphLimit(top, 10);
     const pageTop = Math.min(limit, GRAPH_PAGE_SIZE);
     const rows = await graphCallPaginated<any>(
-      `/users/${userId}/messages?$top=${pageTop}&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments&$orderby=receivedDateTime desc`,
+      `/users/${userId}/messages?$top=${pageTop}&$select=${GRAPH_EMAIL_SELECT_LIST}&$orderby=receivedDateTime desc`,
       limit
     );
-    return rows.map((m: any) => ({
-      id: m.id,
-      subject: m.subject,
-      from: m.from,
-      receivedDateTime: m.receivedDateTime,
-      bodyPreview: m.bodyPreview,
-      isRead: m.isRead,
-      hasAttachments: m.hasAttachments,
-      toRecipients: m.toRecipients,
-      ccRecipients: m.ccRecipients,
-    }));
+    return rows.map((m: any) => mapRawMessageToEmail(m, false));
   } catch (error) {
     console.error('[MS Graph] Error listing emails:', error);
     return [];
@@ -282,21 +315,9 @@ export async function listEmails(userId: string, top: number = 10): Promise<MSGr
 export async function getEmail(userId: string, messageId: string): Promise<(MSGraphEmail & { body?: string; bodyType?: string }) | null> {
   try {
     const data = await graphCall<any>(
-      `/users/${userId}/messages/${messageId}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,isRead,hasAttachments`
+      `/users/${userId}/messages/${messageId}?$select=${GRAPH_EMAIL_SELECT_WITH_BODY}`
     );
-    return {
-      id: data.id,
-      subject: data.subject,
-      from: data.from,
-      receivedDateTime: data.receivedDateTime,
-      bodyPreview: data.bodyPreview,
-      isRead: data.isRead,
-      hasAttachments: data.hasAttachments,
-      body: data.body?.content,
-      bodyType: data.body?.contentType,
-      toRecipients: data.toRecipients,
-      ccRecipients: data.ccRecipients,
-    };
+    return mapRawMessageToEmail(data, true);
   } catch (error) {
     return null;
   }
@@ -520,10 +541,15 @@ export async function searchTeamsMessages(
 ): Promise<Array<{
   chatId: string;
   chatTopic?: string;
+  chatType?: string;
   id: string;
   bodyPreview: string;
-  from?: string;
+  body?: { contentType?: string; content?: string };
+  from?: any;
   createdDateTime?: string;
+  importance?: string;
+  messageType?: string;
+  webUrl?: string;
 }>> {
   const limit = resolveGraphLimit(options?.limite, 40);
   const maxChats = Math.min(options?.maxChats || 12, 25);
@@ -532,31 +558,42 @@ export async function searchTeamsMessages(
   const results: Array<{
     chatId: string;
     chatTopic?: string;
+    chatType?: string;
     id: string;
     bodyPreview: string;
-    from?: string;
+    body?: { contentType?: string; content?: string };
+    from?: any;
     createdDateTime?: string;
+    importance?: string;
+    messageType?: string;
+    webUrl?: string;
   }> = [];
 
   for (const chat of chats.slice(0, maxChats)) {
     if (results.length >= limit) break;
     const messages = await listChatMessages(chat.id, 30);
     for (const m of messages) {
-      const bodyText = typeof m.body === 'string'
-        ? m.body
-        : (m.body as any)?.content
-          ? String((m.body as any).content).replace(/<[^>]*>/g, ' ')
-          : '';
-      const preview = bodyText.replace(/\s+/g, ' ').trim();
+      const bodyContent =
+        typeof m.body === 'string'
+          ? m.body
+          : (m.body as any)?.content
+            ? String((m.body as any).content)
+            : '';
+      const preview = stripHtmlToText(bodyContent, 2000) || '';
       if (needle && !preview.toLowerCase().includes(needle)) continue;
 
       results.push({
         chatId: chat.id,
         chatTopic: chat.topic,
+        chatType: chat.chatType,
         id: m.id,
-        bodyPreview: preview.slice(0, 300),
-        from: (m.from as any)?.user?.displayName || (m.from as any)?.emailAddress?.address,
+        bodyPreview: preview.slice(0, 500),
+        body: typeof m.body === 'object' ? (m.body as any) : { contentType: 'text', content: bodyContent },
+        from: m.from,
         createdDateTime: m.createdDateTime,
+        importance: (m as any).importance,
+        messageType: (m as any).messageType,
+        webUrl: (m as any).webUrl,
       });
       if (results.length >= limit) break;
     }
