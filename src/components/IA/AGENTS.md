@@ -20,8 +20,9 @@ Componentes React do Companion FAB / chat IA (`AnimatedABZLogo`, mascote, bolhas
 - Status: `idle` | `listening` | `speaking` | `executing`
 - Fase 0 assets: `public/images/companion-mascot/body|face/` + `frames.json`
 - Idle → blink aleatório; speaking → ciclo `MASCOT_VISEMES` / `MASCOT_VISEME_IDS`
-- Rive drop-in: `public/rive/companion-mascot.riv` — SM `CompanionSM`, inputs Number `status` (0–3) + `viseme` (0–3)
-- Sem `.riv` → `CompanionMascotRiveLike`; load error → fallback
+- Rive drop-in: `public/rive/companion-mascot.riv` (shipped spike) — SM `CompanionSM`, inputs Number `status` (0–3) + `viseme` (0–3)
+- Regenerar: `scratch/build-companion-mascot-riv.mjs` via `rive-mcp-server` createRiv (não vendorar o server)
+- Sem `.riv` / load error → `CompanionMascotRiveLike`
 - `prefers-reduced-motion` → estático
 - Tamanhos FAB 60 / header 36 / hero 80
 - Não quebrar FAB `fixed`, session provider ou `portal-action-bus`

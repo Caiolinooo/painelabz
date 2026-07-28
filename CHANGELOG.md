@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.56.0] - 2026-07-28
+
+### Added
+- **Companion — real `companion-mascot.riv`**:
+  - Shipped `public/rive/companion-mascot.riv` (~126 KB) with SM `CompanionSM` and Number inputs `status` (0–3) + `viseme` (0–3).
+  - Headless build from keyed PNGs via `rive-mcp-server` `createRiv` (`scratch/build-companion-mascot-riv.mjs`); body/face image solos; validated with official Rive runtime.
+  - Opening Companion auto-detects the file and uses `@rive-app/react-canvas-lite`; sprite Rive-like remains fallback on miss/error/reduced-motion.
+  - Docs: `public/rive/README.md` + `src/components/IA/AGENTS.md` (regen notes; do not redistribute rive-mcp-server source).
+
 ## [5.55.0] - 2026-07-28
 
 ### Improved

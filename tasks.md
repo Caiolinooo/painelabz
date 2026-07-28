@@ -34,12 +34,27 @@
 - FAB idle → crossfade suave entre poses + blink ocasional
 - Enviar mensagem → speaking com boca/visemes animados
 - `prefers-reduced-motion` → estático
-- (Opcional) dropar `public/rive/companion-mascot.riv` → runtime Rive sem mudar API
 
-### Swap .riv
-1. Exportar artboard no Rive Editor com SM `CompanionSM`
-2. Inputs Number: `status` (0–3), `viseme` (0–3)
-3. Salvar em `public/rive/companion-mascot.riv`
+---
+
+## Companion — ship real companion-mascot.riv (2026-07-28)
+
+### Feito
+- [x] Headless generate via `rive-mcp-server` `createRiv` (`scratch/build-companion-mascot-riv.mjs`)
+- [x] `public/rive/companion-mascot.riv` — SM `CompanionSM`, Number `status`/`viseme`, body+face solos
+- [x] Validate with official runtime (headless Chrome + RiveHost): status/viseme transitions OK
+- [x] README / DOX; sprite fallback permanece se load falhar
+- [x] CHANGELOG + **v5.56.0**
+
+### Como testar
+- Abrir Companion → probe encontra `.riv` → `data-mascot-runtime="rive"`
+- Idle / listening / speaking / executing → troca de pose visível
+- Speaking → `viseme` muda boca; reduced-motion → Rive-like estático
+
+### Regenerar
+1. `cd scratch/rive-gen && npm install rive-mcp-server@0.4.1`
+2. `node scratch/build-companion-mascot-riv.mjs`
+3. `node scratch/validate-companion-mascot-riv.mjs`
 
 ---
 
