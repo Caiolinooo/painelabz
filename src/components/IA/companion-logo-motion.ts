@@ -28,7 +28,7 @@ export function statusAccent(status: AICompanionStatus): string {
 }
 
 export type CompanionMotionPreset = {
-  /** Flutuação vertical do FAB / mascote */
+  /** Subtle vertical float — keep amplitude small so Rive/sprites stay premium */
   float?: TargetAndTransition;
   floatTransition?: Transition;
   /** @deprecated pinwheel spin — mascote usa troca de frames */
@@ -40,8 +40,8 @@ export type CompanionMotionPreset = {
 };
 
 /**
- * Motion wrapper for the blue-book mascot (float + aura; frames handle pose).
- * Reduced motion → estático.
+ * Calm wrapper motion (soft float + aura). Pose/lip-sync live in the mascot runtime.
+ * Avoid spin/wobble — reduced motion → estático.
  */
 export function getCompanionMotion(
   status: AICompanionStatus,
@@ -51,38 +51,55 @@ export function getCompanionMotion(
     return { showRadar: false };
   }
 
+  // Shared calm float — slow breath, tiny travel (no robotic bounce)
+  const calmFloat: TargetAndTransition = { y: [0, -2.5, 0] };
+  const calmFloatTransition: Transition = {
+    duration: 4.8,
+    repeat: Infinity,
+    ease: 'easeInOut',
+  };
+  const softAura: TargetAndTransition = {
+    opacity: [0.28, 0.42, 0.28],
+    scale: [1, 1.04, 1],
+  };
+  const softAuraTransition: Transition = {
+    duration: 4.8,
+    repeat: Infinity,
+    ease: 'easeInOut',
+  };
+
   switch (status) {
     case 'idle':
       return {
         showRadar: false,
-        float: { y: [0, -4, 0] },
-        floatTransition: { duration: 3.4, repeat: Infinity, ease: 'easeInOut' },
-        aura: { opacity: [0.35, 0.55, 0.35], scale: [1, 1.06, 1] },
-        auraTransition: { duration: 3.4, repeat: Infinity, ease: 'easeInOut' },
+        float: calmFloat,
+        floatTransition: calmFloatTransition,
+        aura: softAura,
+        auraTransition: softAuraTransition,
       };
     case 'listening':
       return {
         showRadar: true,
-        float: { y: [0, -2, 0] },
-        floatTransition: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
-        aura: { opacity: [0.4, 0.7, 0.4], scale: [1, 1.1, 1] },
-        auraTransition: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
+        float: { y: [0, -1.5, 0] },
+        floatTransition: { duration: 3.6, repeat: Infinity, ease: 'easeInOut' },
+        aura: { opacity: [0.32, 0.5, 0.32], scale: [1, 1.05, 1] },
+        auraTransition: { duration: 3.6, repeat: Infinity, ease: 'easeInOut' },
       };
     case 'speaking':
       return {
         showRadar: false,
-        float: { y: [0, -3, 0] },
-        floatTransition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut' },
-        aura: { opacity: [0.45, 0.8, 0.45], scale: [1, 1.12, 1] },
-        auraTransition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut' },
+        float: calmFloat,
+        floatTransition: { duration: 4.2, repeat: Infinity, ease: 'easeInOut' },
+        aura: { opacity: [0.34, 0.52, 0.34], scale: [1, 1.05, 1] },
+        auraTransition: { duration: 4.2, repeat: Infinity, ease: 'easeInOut' },
       };
     case 'executing':
       return {
-        showRadar: true,
-        float: { y: [0, -2, 0] },
-        floatTransition: { duration: 1.1, repeat: Infinity, ease: 'easeInOut' },
-        aura: { opacity: [0.5, 0.85, 0.5], scale: [1, 1.1, 1] },
-        auraTransition: { duration: 1.0, repeat: Infinity, ease: 'easeInOut' },
+        showRadar: false,
+        float: { y: [0, -1.5, 0] },
+        floatTransition: { duration: 3.8, repeat: Infinity, ease: 'easeInOut' },
+        aura: { opacity: [0.3, 0.48, 0.3], scale: [1, 1.04, 1] },
+        auraTransition: { duration: 3.8, repeat: Infinity, ease: 'easeInOut' },
       };
     default: {
       const _exhaustive: never = status;

@@ -101,7 +101,8 @@ export default function AICompanionWidget() {
     const historySnapshot = messages.slice(-8);
     setMessages(prev => [...prev, { sender: 'user', text: userQuery }]);
     setIsSending(true);
-    setStatus('speaking');
+    // API wait = calm thinking (executing), NOT speaking/lip-sync spam
+    setStatus('executing');
 
     try {
       const token = getToken();
@@ -259,9 +260,10 @@ export default function AICompanionWidget() {
             <AnimatedABZLogo status={status} size={80} />
             <p className="text-xs font-medium text-gray-600 mt-2">
               {status === 'idle' && !isSending && 'Pronto — digite ou peça para abrir um módulo'}
-              {(status === 'speaking' || isSending) && 'Consultando a IA...'}
-              {status === 'listening' && 'Ouvindo...'}
-              {status === 'executing' && 'Executando no portal...'}
+              {isSending && 'Consultando a IA...'}
+              {status === 'speaking' && !isSending && 'Respondendo...'}
+              {status === 'listening' && !isSending && 'Ouvindo...'}
+              {status === 'executing' && !isSending && 'Executando no portal...'}
             </p>
           </div>
 

@@ -10,10 +10,11 @@
     "h": 0.46875
   },
   "blink": {
-    "idleMsMin": 2200,
-    "idleMsMax": 5200,
+    "idleMsMin": 2800,
+    "idleMsMax": 6200,
     "holdMs": 140
   },
+  "useFaceOverlay": false,
   "lipSync": {
     "visemes": [
       "viseme_a",
@@ -22,8 +23,9 @@
       "viseme_u",
       "face_neutral"
     ],
-    "fps": 6,
-    "tweak": "Edit lipSync.visemes order/list or MASCOT_VISEMES in companion-mascot-frames.ts"
+    "fps": 2.5,
+    "faceCrossfadeMs": 280,
+    "tweak": "Face overlay OFF by default (bodies include faces). Lip-sync only if MASCOT_USE_FACE_OVERLAY + status=speaking (~2–3 Hz)."
   },
   "statuses": {
     "idle": {
@@ -33,29 +35,31 @@
         "idle_alt",
         "idle_stand"
       ],
-      "fps": 1.2,
-      "face": "blink"
+      "fps": 0.85,
+      "crossfadeMs": 320,
+      "face": "none"
     },
     "listening": {
       "frames": [
         "listen_ear",
-        "think_chin",
-        "idle_alt",
-        "listen_ear",
-        "think_chin"
+        "listen_tilt",
+        "listen_point",
+        "listen_ear"
       ],
-      "fps": 1.5,
-      "face": "neutral"
+      "fps": 1.0,
+      "crossfadeMs": 300,
+      "face": "none"
     },
     "speaking": {
       "frames": [
         "speak_open",
         "speak_grin",
-        "speak_gesture",
-        "speak_active"
+        "speak_active",
+        "speak_gesture"
       ],
-      "fps": 3.2,
-      "face": "lipSync"
+      "fps": 1.6,
+      "crossfadeMs": 280,
+      "face": "none"
     },
     "executing": {
       "frames": [
@@ -63,13 +67,13 @@
         "exec_bulb",
         "exec_type_a",
         "exec_type_b",
-        "speak_gesture",
-        "speak_active",
-        "exec_bulb",
-        "exec_type_a"
+        "exec_point",
+        "exec_read",
+        "exec_stretch"
       ],
-      "fps": 2.8,
-      "face": "neutral"
+      "fps": 1.4,
+      "crossfadeMs": 300,
+      "face": "none"
     }
   },
   "body": [

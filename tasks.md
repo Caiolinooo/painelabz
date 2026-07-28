@@ -1,3 +1,19 @@
+## Companion — calm natural motion runtime (2026-07-28)
+
+### Feito
+- [x] API wait → `executing` (thinking), never `speaking` during wait (`AICompanionWidget`)
+- [x] Lip-sync ~2.5 Hz only when `speaking`; no `viseme=0` open-A on idle (Rive player)
+- [x] Face overlay off by default; body crossfades 280–340ms; status blend
+- [x] Framer float/aura off when Rive drives; calm presets otherwise; reduced-motion OK
+- [x] DOX + CHANGELOG + **v5.57.0**
+
+### Como testar
+- Idle: boca fechada, poses lentas
+- Enviar mensagem → thinking (executing), sem flicker de boca
+- Reduced-motion → estático
+
+---
+
 ## Companion — Fase 0 compositor body+face (2026-07-28)
 
 ### Feito
@@ -37,24 +53,34 @@
 
 ---
 
-## Companion — ship real companion-mascot.riv (2026-07-28)
+## Companion — natural body-only motion (2026-07-28)
 
 ### Feito
-- [x] Headless generate via `rive-mcp-server` `createRiv` (`scratch/build-companion-mascot-riv.mjs`)
-- [x] `public/rive/companion-mascot.riv` — SM `CompanionSM`, Number `status`/`viseme`, body+face solos
-- [x] Validate with official runtime (headless Chrome + RiveHost): status/viseme transitions OK
-- [x] README / DOX; sprite fallback permanece se load falhar
-- [x] CHANGELOG + **v5.56.0**
+- [x] Kill double-face: `.riv` body-only (14 body PNGs, no face overlays)
+- [x] Soft opacity crossfades + float-idle/sway/breathing; SM mix ~420ms
+- [x] API wait → `executing` (not speaking/viseme spam)
+- [x] `MASCOT_USE_FACE_OVERLAY=false` + Rive-like body-only
+- [x] Docs motion + CHANGELOG + **v5.57.0**
 
 ### Como testar
-- Abrir Companion → probe encontra `.riv` → `data-mascot-runtime="rive"`
-- Idle / listening / speaking / executing → troca de pose visível
-- Speaking → `viseme` muda boca; reduced-motion → Rive-like estático
+- Idle: face limpa (sem gray skull), bob suave, crossfade lento
+- Enviar mensagem → pose think/exec (sem boca epiléptica)
+- reduced-motion → estático
 
 ### Regenerar
 1. `cd scratch/rive-gen && npm install rive-mcp-server@0.4.1`
 2. `node scratch/build-companion-mascot-riv.mjs`
 3. `node scratch/validate-companion-mascot-riv.mjs`
+
+---
+
+## Companion — ship real companion-mascot.riv (2026-07-28)
+
+### Feito
+- [x] Headless generate via `rive-mcp-server` `createRiv` (`scratch/build-companion-mascot-riv.mjs`)
+- [x] `public/rive/companion-mascot.riv` — SM `CompanionSM`, Number `status`/`viseme` (superseded by 5.57 body-only)
+- [x] Validate with official runtime (headless Chrome + RiveHost)
+- [x] CHANGELOG + **v5.56.0**
 
 ---
 

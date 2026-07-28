@@ -13,6 +13,7 @@ export interface CompanionMascotRivePlayerProps {
   status: AICompanionStatus;
   size: number;
   reducedMotion?: boolean;
+  /** Only applied while speaking. Omit / undefined = leave mouth rest (do NOT force 0 = open A). */
   visemeIndex?: number;
   className?: string;
   onLoadError?: () => void;
@@ -20,14 +21,14 @@ export interface CompanionMascotRivePlayerProps {
 
 /**
  * Real Rive runtime for companion-mascot.riv.
- * State machine inputs: status (0–3), viseme (0–3).
- * Lazy-imported only when the .riv asset is present.
+ * SM inputs: status (0–3), viseme (0–3 = a/e/i/u).
+ * Mouth group is opacity-gated by Status anim — never poke viseme=0 on idle.
  */
 export default function CompanionMascotRivePlayer({
   status,
   size,
   reducedMotion = false,
-  visemeIndex = 0,
+  visemeIndex,
   className = '',
   onLoadError,
 }: CompanionMascotRivePlayerProps) {
@@ -58,8 +59,13 @@ export default function CompanionMascotRivePlayer({
 
   useEffect(() => {
     if (!visemeInput) return;
+    // Idle/listen/exec: do not write viseme — Status anim keeps mouthGroup at opacity 0.
+    // Writing 0 would select mouth_a (open A) and can flash during SM mixes.
+    if (status !== 'speaking' || reducedMotion || typeof visemeIndex !== 'number') {
+      return;
+    }
     visemeInput.value = ((visemeIndex % 4) + 4) % 4;
-  }, [visemeIndex, visemeInput]);
+  }, [visemeIndex, visemeInput, status, reducedMotion]);
 
   useEffect(() => {
     if (!rive) return;
@@ -76,6 +82,9 @@ export default function CompanionMascotRivePlayer({
       style={{ width: size, height: size }}
       data-mascot-runtime="rive"
       data-mascot-status={status}
+      data-mascot-viseme={
+        status === 'speaking' && typeof visemeIndex === 'number' ? visemeIndex : 'rest'
+      }
     >
       <RiveComponent style={{ width: size, height: size }} />
     </div>

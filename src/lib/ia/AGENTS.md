@@ -90,8 +90,8 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - Não hardcodar `$top=5` em Graph
 - Escala MIO read-only; calendário write no portal (+ Outlook opcional)
 - Companion: global (`CompanionSessionProvider`); STM localStorage limpa no logout; LTM `ia_user_memory` + skills `ia_user_skills`; boards `ia_kpi_boards` + índice no prompt
-- FAB = mascote livro azul via `AnimatedABZLogo` → `CompanionMascotRive` (Rive se `.riv`; senão Rive-like com body+face/blink/visemes Fase 0); mapa `companion-mascot-frames.ts` + `frames.json`; float/aura/prefetch; `useReducedMotion` → estático; `fixed` sem `relative`
-- Tweak visemes: `MASCOT_VISEMES` / `MASCOT_LIP_SYNC_FPS` / `MASCOT_FACE_OVERLAY` em `companion-mascot-frames.ts`
+- FAB = mascote livro azul via `AnimatedABZLogo` → `CompanionMascotRive` (Rive se `.riv`; senão Rive-like); body-only por default (`MASCOT_USE_FACE_OVERLAY=false`); API wait = `executing` (não `speaking`); float Framer off quando Rive drive; `useReducedMotion` → estático; `fixed` sem `relative`
+- Tweak timing: `MASCOT_STATUS_CYCLES` / `MASCOT_LIP_SYNC_FPS` / `MASCOT_STATUS_BLEND_MS` em `companion-mascot-frames.ts`
 - Sub-agentes: `rh_tripulantes` / `geral` / `companion` / `analytics` — `enviar_notificacao_proativa` (não `gerenciar_notificacoes` fantasma)
 - Assistant stream vs Companion sync; histórico Companion ~12 msgs; multi-tool permitido
 - **Companion NAVIGATE contract**: nunca prometer navegação sem `NAVIGATE` (`isTourIntent` / `ensureNavigationCommand`; tour → `/dashboard`)

@@ -21,7 +21,14 @@ export const MASCOT_BODY = {
   exec_stretch: '/images/companion-mascot/body/exec_stretch.png',
 } as const;
 
-/** Face overlays (64×64) composited over body via MASCOT_FACE_OVERLAY. */
+/**
+ * Face overlays exist as assets but are OFF by default.
+ * Body PNGs already include faces — stacking overlays causes gray skull / double-face.
+ * Keep for future blank-face bodies + true alpha cutouts only.
+ */
+export const MASCOT_USE_FACE_OVERLAY = false;
+
+/** Face overlays (64×64) — only when MASCOT_USE_FACE_OVERLAY + blank-face bodies. */
 export const MASCOT_FACE = {
   face_neutral: '/images/companion-mascot/face/face_neutral.png',
   face_blink: '/images/companion-mascot/face/face_blink.png',
@@ -52,14 +59,15 @@ export const MASCOT_FACE_OVERLAY = {
 
 /** Idle blink timing (random interval between min/max). */
 export const MASCOT_BLINK = {
-  idleMsMin: 2200,
-  idleMsMax: 5200,
-  holdMs: 120,
+  idleMsMin: 2800,
+  idleMsMax: 6200,
+  holdMs: 140,
 } as const;
 
 /**
  * Fake lip-sync cycle while status === 'speaking'.
  * Order = mouth shapes; `face_neutral` = rest.
+ * Keep ~2–3 fps — faster looks like a strobe.
  */
 export const MASCOT_VISEMES: MascotFaceId[] = [
   'viseme_a',
@@ -77,7 +85,21 @@ export const MASCOT_VISEME_IDS: MascotFaceId[] = [
   'viseme_u',
 ];
 
-export const MASCOT_LIP_SYNC_FPS = 9;
+/** Mouth cycle rate (~2.5 fps). Never flash every animation frame. */
+export const MASCOT_LIP_SYNC_FPS = 2.5;
+
+/** Face / viseme opacity crossfade (ms). */
+export const MASCOT_FACE_CROSSFADE_MS = 280;
+
+/** Default body crossfade when a cycle omits an override. */
+export const MASCOT_DEFAULT_CROSSFADE_MS = 300;
+
+/** Status-change blend when swapping cycles (keep previous until new ready). */
+export const MASCOT_STATUS_BLEND_MS = 340;
+
+export function lipSyncIntervalMs(): number {
+  return Math.max(320, Math.round(1000 / MASCOT_LIP_SYNC_FPS));
+}
 
 export function visemeIdAt(index: number): MascotFaceId {
   const ids = MASCOT_VISEME_IDS;
@@ -90,33 +112,37 @@ export type MascotStatusCycle = {
   frames: MascotBodyId[];
   /** Frames per second; 0 = static first frame */
   fps: number;
-  /** Body crossfade duration (Rive-like) */
+  /** Body crossfade duration (Rive-like) — prefer 200–400ms */
   crossfadeMs: number;
-  /** Face driver: blink (idle), lipSync (speaking), or static neutral */
-  face: 'blink' | 'lipSync' | 'neutral';
+  /**
+   * Face driver (only if MASCOT_USE_FACE_OVERLAY).
+   * Default body-only: use `none` — mouths live in speak_* body keyframes.
+   */
+  face: 'none' | 'blink' | 'lipSync' | 'neutral';
 };
 
 /**
- * Status → pose cycle. Edit here or frames.json to retune without redesign.
+ * Status → pose cycle. Body-only natural look — slow poses, long crossfades.
+ * Mouth variation = speak_* body frames (no face overlay stack).
  */
 export const MASCOT_STATUS_CYCLES: Record<AICompanionStatus, MascotStatusCycle> = {
   idle: {
     frames: ['idle_stand', 'idle_wave', 'idle_alt', 'idle_stand'],
-    fps: 1.35,
-    crossfadeMs: 220,
-    face: 'blink',
+    fps: 0.85,
+    crossfadeMs: 320,
+    face: 'none',
   },
   listening: {
     frames: ['listen_ear', 'listen_tilt', 'listen_point', 'listen_ear'],
-    fps: 1.6,
-    crossfadeMs: 200,
-    face: 'neutral',
+    fps: 1.0,
+    crossfadeMs: 300,
+    face: 'none',
   },
   speaking: {
     frames: ['speak_open', 'speak_grin', 'speak_active', 'speak_gesture'],
-    fps: 7.5,
-    crossfadeMs: 90,
-    face: 'lipSync',
+    fps: 1.6,
+    crossfadeMs: 280,
+    face: 'none',
   },
   executing: {
     frames: [
@@ -128,9 +154,9 @@ export const MASCOT_STATUS_CYCLES: Record<AICompanionStatus, MascotStatusCycle> 
       'exec_read',
       'exec_stretch',
     ],
-    fps: 3.2,
-    crossfadeMs: 140,
-    face: 'neutral',
+    fps: 1.4,
+    crossfadeMs: 300,
+    face: 'none',
   },
 };
 

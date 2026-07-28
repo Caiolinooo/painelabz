@@ -14,18 +14,30 @@ Served as `/rive/companion-mascot.riv`.
 |------|--------|
 | State machine name | `CompanionSM` |
 | Input `status` (Number) | `0` idle · `1` listening · `2` speaking · `3` executing |
-| Input `viseme` (Number) | `0`–`3` mouth shapes while speaking (A/E/I/U) |
+| Input `viseme` (Number) | `0`–`3` reserved (no-op visually in body-only build) |
 
-## Shipped spike (v5.56.0)
+## Motion design (v5.57+)
 
-A real `.riv` is committed here, generated headlessly (no Rive Editor) with **`rive-mcp-server`** (`createRiv` / `riv_create` scene writer — npm package only; **do not vendor/redistribute that server source** into this repo).
+**Body-only.** Body PNGs already include faces. Face/viseme image overlays are **not** embedded — stacking them caused a gray skull / double-face artifact.
 
-| Detail | Value |
-|--------|--------|
-| Artboard | `Companion` 128×128 |
-| Body solos | `idle_stand`, `listen_ear`, `speak_open`, `exec_bulb` |
-| Face solos | `viseme_a/e/i/u` (overlay placement matches `MASCOT_FACE_OVERLAY`) |
-| SM layers | `Status` + `Viseme` (number conditions on `any` → pose animations) |
+| Layer | Behavior |
+|-------|----------|
+| Status | Opacity crossfades between keyed body poses + `float-idle` / sway / breathing on `root` |
+| Status mixes | ~420ms SM blend (`durationMs`) — no hard solo snaps |
+| Viseme | Contract input only; mouth variation comes from `speak_*` body frames |
+| Idle | Slow stand → wave → alt crossfade + subtle bob/sway |
+| Listening | Ear / tilt / point poses + soft sway |
+| Speaking | Soft speak body cycle (open/grin/active/gesture) — use only for real speech/TTS |
+| Executing | Think / bulb / type poses — **API wait / portal work** (calm, no lip-sync) |
+
+### Status semantics (React)
+
+- **executing** — waiting on `/api/ia/companion` or running portal commands (thinking pose)
+- **speaking** — reserved for actual speech / TTS (not the HTTP wait)
+- **listening** — mic / voice mode
+- **idle** — rest
+
+Fake lip-sync is off for body-only; never drive epileptic viseme spam on idle.
 
 ### Regenerate
 
@@ -42,12 +54,13 @@ License note: `rive-mcp-server` freeware allows unlimited use of **generated** `
 
 ## Designer / Editor path (optional upgrade)
 
-1. Open or rebuild the artboard in the Rive Editor from `public/images/companion-mascot/`.
+1. Open artboard from `public/images/companion-mascot/body/` (faces already in bodies).
 2. Keep SM **CompanionSM** + Number inputs `status` / `viseme`.
-3. Export optimized `.riv` over this file.
-4. Prefer richer flipbooks/bones; keep the same input contract so the React player stays unchanged.
+3. Prefer bones / longer holds / blend — never opaque face overlays on faced bodies.
+4. Export optimized `.riv` over this file.
 
 ## Notes
 
-- Keep production `.riv` optimized (current spike ~126 KB with 8 embedded PNGs).
+- Prefer quality: calm crossfades beat dense flipbooks.
 - `prefers-reduced-motion` freezes on the sprite fallback (never autoplays Rive).
+- Face overlay path in React is gated by `MASCOT_USE_FACE_OVERLAY` (default `false`).

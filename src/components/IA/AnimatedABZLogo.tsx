@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   AICompanionStatus,
@@ -8,7 +8,7 @@ import {
   statusAccent,
 } from './companion-logo-motion';
 import { MASCOT_PREFETCH_SRC } from './companion-mascot-frames';
-import CompanionMascotRive from './CompanionMascotRive';
+import CompanionMascotRive, { type CompanionMascotRuntime } from './CompanionMascotRive';
 
 export type { AICompanionStatus };
 
@@ -25,9 +25,8 @@ interface AnimatedABZLogoProps {
 }
 
 /**
- * Companion FAB / panel mascot — Rive when `.riv` present, else Rive-like sprite SM
- * (crossfade + face/visemes from Fase 0 assets).
- * Drop-in props: status | size | className | visemeIndex.
+ * Companion FAB / panel mascot — Rive when `.riv` present, else Rive-like sprites.
+ * Calm float/aura only when Rive is NOT driving (avoids double bob). No spin/wobble.
  */
 export default function AnimatedABZLogo({
   status = 'idle',
@@ -37,7 +36,14 @@ export default function AnimatedABZLogo({
 }: AnimatedABZLogoProps) {
   const shouldReduceMotion = useReducedMotion();
   const accent = statusAccent(status);
-  const motionPreset = getCompanionMotion(status, !!shouldReduceMotion);
+  const [runtime, setRuntime] = useState<CompanionMascotRuntime>('rive-like');
+  const onRuntimeChange = useCallback((next: CompanionMascotRuntime) => {
+    setRuntime(next);
+  }, []);
+
+  // Rive file already bakes float/breathe — do not stack Framer bob on top
+  const wrapperMotionOff = !!shouldReduceMotion || runtime === 'rive';
+  const motionPreset = getCompanionMotion(status, wrapperMotionOff);
   const iconSize = Math.round(size * 0.92);
 
   useEffect(() => {
@@ -55,39 +61,37 @@ export default function AnimatedABZLogo({
       style={{ width: size, height: size }}
       aria-label="ABZ Companion"
       title="ABZ Companion"
-      animate={shouldReduceMotion ? undefined : motionPreset.float}
+      animate={wrapperMotionOff ? undefined : motionPreset.float}
       transition={motionPreset.floatTransition}
     >
-      <motion.div
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          inset: -4,
-          background: `radial-gradient(circle at 40% 35%, ${accent}33 0%, transparent 62%)`,
-        }}
-        animate={shouldReduceMotion ? undefined : motionPreset.aura}
-        transition={motionPreset.auraTransition}
-      />
+      {!wrapperMotionOff && (
+        <motion.div
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            inset: -4,
+            background: `radial-gradient(circle at 40% 35%, ${accent}22 0%, transparent 65%)`,
+          }}
+          animate={motionPreset.aura}
+          transition={motionPreset.auraTransition}
+        />
+      )}
 
-      {motionPreset.showRadar &&
-        !shouldReduceMotion &&
-        [0, 1].map(i => (
-          <motion.div
-            key={`radar-${i}`}
-            className="absolute rounded-full pointer-events-none"
-            style={{
-              inset: -2,
-              border: `1.5px solid ${accent}`,
-            }}
-            initial={{ scale: 0.85, opacity: 0.5 }}
-            animate={{ scale: 1.45, opacity: 0 }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: 'easeOut',
-              delay: i * 0.5,
-            }}
-          />
-        ))}
+      {motionPreset.showRadar && !wrapperMotionOff && (
+        <motion.div
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            inset: -2,
+            border: `1px solid ${accent}`,
+          }}
+          initial={{ scale: 0.9, opacity: 0.3 }}
+          animate={{ scale: 1.35, opacity: 0 }}
+          transition={{
+            duration: 2.4,
+            repeat: Infinity,
+            ease: 'easeOut',
+          }}
+        />
+      )}
 
       <div className="relative z-10 flex items-center justify-center">
         <CompanionMascotRive
@@ -95,6 +99,7 @@ export default function AnimatedABZLogo({
           size={iconSize}
           reducedMotion={!!shouldReduceMotion}
           visemeIndex={visemeIndex}
+          onRuntimeChange={onRuntimeChange}
         />
       </div>
     </motion.div>

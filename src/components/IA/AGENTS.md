@@ -8,19 +8,20 @@ Componentes React do Companion FAB / chat IA (`AnimatedABZLogo`, mascote, bolhas
 
 - `AnimatedABZLogo.tsx` — API pública (status / size / className / visemeIndex); float/aura + prefetch; delega ao runtime
 - `CompanionMascotRive.tsx` — gate Rive vs Rive-like
-- `CompanionMascotRiveLike.tsx` — sprite SM Fase 0 (crossfade + face blink/visemes)
+- `CompanionMascotRiveLike.tsx` — sprite SM body crossfade (face overlay gated off)
 - `CompanionMascotRivePlayer.tsx` — runtime `@rive-app/react-canvas-lite` (lazy)
-- `companion-mascot-frames.ts` — body/face maps, cycles, blink/visemes, faceOverlay, Rive SM contract
+- `companion-mascot-frames.ts` — body maps, cycles, Rive SM contract, `MASCOT_USE_FACE_OVERLAY`
 - `companion-mascot-rive-probe.ts` — HEAD probe de `/rive/companion-mascot.riv`
-- `companion-logo-motion.ts` — float/aura/radar por status
-- `AICompanionWidget.tsx` — FAB + session UI (não alterar bus/session aqui)
+- `companion-logo-motion.ts` — float/aura/radar por status (calm amplitudes)
+- `AICompanionWidget.tsx` — FAB + session UI; status semantics for mascot
 
 ## Local Contracts
 
 - Status: `idle` | `listening` | `speaking` | `executing`
-- Fase 0 assets: `public/images/companion-mascot/body|face/` + `frames.json`
-- Idle → blink aleatório; speaking → ciclo `MASCOT_VISEMES` / `MASCOT_VISEME_IDS`
-- Rive drop-in: `public/rive/companion-mascot.riv` (shipped spike) — SM `CompanionSM`, inputs Number `status` (0–3) + `viseme` (0–3)
+- **Semantics**: API wait / tools → `executing` (calm think poses). `speaking` only for real speech/TTS — never lip-sync spam during HTTP wait
+- Body assets: `public/images/companion-mascot/body/` (+ optional `face/` for future blank-face cutouts)
+- **Body-only default**: `MASCOT_USE_FACE_OVERLAY = false` — body PNGs already have faces; overlays cause gray skull / double-face
+- Rive: `public/rive/companion-mascot.riv` — SM `CompanionSM`, Number `status` (0–3) + `viseme` (0–3, no-op visually). Opacity crossfades + float-idle; soft SM mixes ~420ms
 - Regenerar: `scratch/build-companion-mascot-riv.mjs` via `rive-mcp-server` createRiv (não vendorar o server)
 - Sem `.riv` / load error → `CompanionMascotRiveLike`
 - `prefers-reduced-motion` → estático
@@ -29,14 +30,16 @@ Componentes React do Companion FAB / chat IA (`AnimatedABZLogo`, mascote, bolhas
 
 ## Work Guidance
 
-- Preferir trocar PNGs / retunes em `companion-mascot-frames.ts` a redesenhar o shell do FAB
-- Tweak visemes: `MASCOT_VISEMES` + `MASCOT_LIP_SYNC_FPS` + `MASCOT_FACE_OVERLAY`
-- Re-bake face overlays: `python scratch/build_face_overlays.py`
+- Preferir trocar body PNGs / retunes em `MASCOT_STATUS_CYCLES` a overlays de face
+- Só reativar face overlay com corpos blank-face + cutouts alpha verdadeiros
+- Motion docs: `public/rive/README.md`
 - Manter `@rive-app/react-canvas-lite` só no player lazy
 
 ## Verification
 
-- Idle: poses + blink; speaking: boca/visemes; reduced-motion: estático
+- Idle: body crossfade + bob; sem boca/ghost overlay
+- Send message → `executing` (think), not epileptic visemes
+- `prefers-reduced-motion` → estático
 - FAB open/close + send message sem regressão de session/bus
 
 ## Child DOX Index

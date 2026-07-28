@@ -1,7 +1,12 @@
 /**
- * Spike: build public/rive/companion-mascot.riv via rive-mcp-server createRiv.
- * Does NOT vendor/redistribute rive-mcp-server source — only consumes the npm package
- * (install under scratch/rive-gen) and commits the generated .riv output.
+ * Build public/rive/companion-mascot.riv via rive-mcp-server createRiv.
+ *
+ * Natural-motion body-only (v5.57):
+ * - NO face/viseme image overlays (body PNGs already include faces — overlays = gray skull)
+ * - Opacity crossfades between body poses (NOT soloActive hard cuts)
+ * - float-idle / sway / breathing presets on root
+ * - Soft SM mix durations between status states
+ * - `viseme` input kept for contract; Viseme layer is a no-op (mouth lives in body keyframes)
  *
  * Usage (from repo root):
  *   node scratch/build-companion-mascot-riv.mjs
@@ -14,9 +19,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const OUT = join(ROOT, 'public', 'rive', 'companion-mascot.riv');
 const BODY = join(ROOT, 'public', 'images', 'companion-mascot', 'body');
-const FACE = join(ROOT, 'public', 'images', 'companion-mascot', 'face');
 
-const writerPath = join(__dirname, 'rive-gen', 'node_modules', 'rive-mcp-server', 'dist', 'rivWriter.js');
+const writerPath = join(
+  __dirname,
+  'rive-gen',
+  'node_modules',
+  'rive-mcp-server',
+  'dist',
+  'rivWriter.js'
+);
 if (!existsSync(writerPath)) {
   console.error(
     'Missing rive-mcp-server. Install once:\n' +
@@ -27,10 +38,11 @@ if (!existsSync(writerPath)) {
 const { createRiv } = await import(pathToFileURL(writerPath).href);
 
 const AB = 128;
-// Face overlay placement (matches MASCOT_FACE_OVERLAY in companion-mascot-frames.ts)
-const FACE_CX = AB * (0.21875 + 0.5 / 2); // 60
-const FACE_CY = AB * (0.140625 + 0.46875 / 2); // 48
-const FACE_REL = { x: FACE_CX - AB / 2, y: FACE_CY - AB / 2 }; // -4, -16
+const FPS = 60;
+const CX = AB / 2;
+const CY = AB / 2;
+const STATUS_MIX_MS = 420;
+const VISEME_MIX_MS = 200;
 
 function mustPng(dir, name) {
   const p = join(dir, name);
@@ -38,72 +50,225 @@ function mustPng(dir, name) {
   return p;
 }
 
-const bodyMap = {
-  body_idle: mustPng(BODY, 'idle_stand.png'),
-  body_listen: mustPng(BODY, 'listen_ear.png'),
-  body_speak: mustPng(BODY, 'speak_open.png'),
-  body_exec: mustPng(BODY, 'exec_bulb.png'),
-};
+const bodyIds = [
+  'idle_stand',
+  'idle_wave',
+  'idle_alt',
+  'listen_ear',
+  'listen_tilt',
+  'listen_point',
+  'speak_open',
+  'speak_grin',
+  'speak_gesture',
+  'speak_active',
+  'exec_bulb',
+  'exec_type_a',
+  'exec_type_b',
+  'think_chin',
+];
 
-const faceMap = {
-  face_a: mustPng(FACE, 'viseme_a.png'),
-  face_e: mustPng(FACE, 'viseme_e.png'),
-  face_i: mustPng(FACE, 'viseme_i.png'),
-  face_u: mustPng(FACE, 'viseme_u.png'),
-};
+const bodyFiles = Object.fromEntries(
+  bodyIds.map(id => [id, mustPng(BODY, `${id}.png`)])
+);
 
-function soloAnim(name, soloId, childId) {
+/** Hold each pose, ease crossfade to next. */
+function opacityCycleTracks(ids, { holdSec = 1.35, fadeSec = 0.45, durationSec = 8 } = {}) {
+  const hold = Math.round(holdSec * FPS);
+  const fade = Math.round(fadeSec * FPS);
+  const step = hold + fade;
+  const duration = Math.round(durationSec * FPS);
+  const tracks = ids.map(id => ({
+    target: id,
+    property: 'opacity',
+    keyframes: [{ frame: 0, value: 0, easing: 'hold' }],
+  }));
+  const byId = Object.fromEntries(tracks.map(t => [t.target, t]));
+
+  let t = 0;
+  let i = 0;
+  while (t + hold <= duration) {
+    const cur = ids[i % ids.length];
+    const next = ids[(i + 1) % ids.length];
+    const tFade = t + hold;
+    const tEnd = Math.min(duration, tFade + fade);
+
+    for (const id of ids) {
+      const kf = byId[id].keyframes;
+      const last = kf[kf.length - 1];
+      if (last.frame < t) {
+        kf.push({ frame: t, value: last.value, easing: 'hold' });
+      }
+    }
+
+    byId[cur].keyframes.push({ frame: t, value: 1, easing: 'hold' });
+    if (tFade < duration) {
+      byId[cur].keyframes.push({ frame: tFade, value: 1, easing: 'smooth' });
+      byId[cur].keyframes.push({
+        frame: tEnd,
+        value: cur === next ? 1 : 0,
+        easing: 'hold',
+      });
+    }
+
+    if (next !== cur && tFade < duration) {
+      byId[next].keyframes.push({ frame: tFade, value: 0, easing: 'smooth' });
+      byId[next].keyframes.push({ frame: tEnd, value: 1, easing: 'hold' });
+    }
+
+    t += step;
+    i += 1;
+  }
+
+  for (const id of ids) {
+    const kf = byId[id].keyframes;
+    const endVal = id === ids[0] ? 1 : 0;
+    const last = kf[kf.length - 1];
+    if (last.frame < duration) {
+      kf.push({ frame: duration, value: endVal, easing: 'smooth' });
+    } else {
+      last.value = endVal;
+    }
+  }
+
+  return tracks;
+}
+
+function staticOpacityTracks(onIds, allIds, durationSec) {
+  const duration = Math.round(durationSec * FPS);
+  const on = new Set(onIds);
+  return allIds.map(id => ({
+    target: id,
+    property: 'opacity',
+    keyframes: [
+      { frame: 0, value: on.has(id) ? 1 : 0, easing: 'hold' },
+      { frame: duration, value: on.has(id) ? 1 : 0, easing: 'hold' },
+    ],
+  }));
+}
+
+/** Contract-only viseme anim — no visual change (body keyframes own mouths). */
+function noopAnim(name, durationSec = 1.2) {
+  const duration = Math.round(durationSec * FPS);
   return {
     name,
-    fps: 60,
-    duration: 2,
+    fps: FPS,
+    duration,
     loop: 'loop',
     tracks: [
       {
-        target: soloId,
-        property: 'soloActive',
-        keyframes: [{ frame: 0, ref: childId }],
+        target: 'root',
+        property: 'opacity',
+        keyframes: [
+          { frame: 0, value: 1, easing: 'hold' },
+          { frame: duration, value: 1, easing: 'hold' },
+        ],
       },
     ],
   };
 }
 
+const IDLE_SEC = 8;
+const LISTEN_SEC = 6.4;
+const SPEAK_SEC = 5.2;
+const EXEC_SEC = 5.6;
+
+const idleBodies = ['idle_stand', 'idle_wave', 'idle_alt'];
+const listenBodies = ['listen_ear', 'listen_tilt', 'listen_point'];
+const speakBodies = ['speak_open', 'speak_grin', 'speak_active', 'speak_gesture'];
+const execBodies = ['think_chin', 'exec_bulb', 'exec_type_a', 'exec_type_b'];
+
 const scene = {
   artboard: { name: 'Companion', width: AB, height: AB },
-  // Transparent artboard — no background fill (FAB overlays cleanly)
   groups: [
-    { id: 'bodySolo', x: AB / 2, y: AB / 2, solo: true, active: 'body_idle' },
-    { id: 'faceSolo', x: AB / 2, y: AB / 2, solo: true, active: 'face_a' },
+    { id: 'root', x: CX, y: CY },
+    { id: 'bodyStack', x: 0, y: 0, parent: 'root' },
   ],
-  images: [
-    ...Object.entries(bodyMap).map(([id, pngPath], i) => ({
-      id,
-      pngPath,
-      x: 0,
-      y: 0,
-      scale: 1,
-      parent: 'bodySolo',
-      z: 1000 + i,
-    })),
-    ...Object.entries(faceMap).map(([id, pngPath], i) => ({
-      id,
-      pngPath,
-      x: FACE_REL.x,
-      y: FACE_REL.y,
-      scale: 1,
-      parent: 'faceSolo',
-      z: 2000 + i,
-    })),
-  ],
+  images: bodyIds.map((id, i) => ({
+    id,
+    pngPath: bodyFiles[id],
+    x: 0,
+    y: 0,
+    scale: 1,
+    opacity: id === 'idle_stand' ? 1 : 0,
+    parent: 'bodyStack',
+    z: 1000 + i,
+  })),
   animations: [
-    soloAnim('pose_idle', 'bodySolo', 'body_idle'),
-    soloAnim('pose_listen', 'bodySolo', 'body_listen'),
-    soloAnim('pose_speak', 'bodySolo', 'body_speak'),
-    soloAnim('pose_exec', 'bodySolo', 'body_exec'),
-    soloAnim('mouth_a', 'faceSolo', 'face_a'),
-    soloAnim('mouth_e', 'faceSolo', 'face_e'),
-    soloAnim('mouth_i', 'faceSolo', 'face_i'),
-    soloAnim('mouth_u', 'faceSolo', 'face_u'),
+    {
+      name: 'pose_idle',
+      fps: FPS,
+      duration: Math.round(IDLE_SEC * FPS),
+      loop: 'loop',
+      presets: [
+        { preset: 'float-idle', target: 'root', intensity: 0.5, cycleSeconds: 4.2 },
+      ],
+      tracks: [
+        ...opacityCycleTracks(idleBodies, {
+          holdSec: 1.6,
+          fadeSec: 0.55,
+          durationSec: IDLE_SEC,
+        }),
+        ...staticOpacityTracks([], [...listenBodies, ...speakBodies, ...execBodies], IDLE_SEC),
+      ],
+    },
+    {
+      name: 'pose_listen',
+      fps: FPS,
+      duration: Math.round(LISTEN_SEC * FPS),
+      loop: 'loop',
+      presets: [
+        { preset: 'sway', target: 'root', intensity: 0.4, cycleSeconds: 2.8 },
+        { preset: 'float', target: 'root', intensity: 0.3, cycleSeconds: 2.4 },
+      ],
+      tracks: [
+        ...opacityCycleTracks(listenBodies, {
+          holdSec: 1.2,
+          fadeSec: 0.4,
+          durationSec: LISTEN_SEC,
+        }),
+        ...staticOpacityTracks([], [...idleBodies, ...speakBodies, ...execBodies], LISTEN_SEC),
+      ],
+    },
+    {
+      name: 'pose_speak',
+      fps: FPS,
+      duration: Math.round(SPEAK_SEC * FPS),
+      loop: 'loop',
+      presets: [
+        { preset: 'float', target: 'root', intensity: 0.35, cycleSeconds: 2.0 },
+        { preset: 'breathing', target: 'root', intensity: 0.7, cycleSeconds: 1.8 },
+      ],
+      tracks: [
+        // Slow body mouth/gesture cycle — natural speech without overlay spam
+        ...opacityCycleTracks(speakBodies, {
+          holdSec: 0.9,
+          fadeSec: 0.4,
+          durationSec: SPEAK_SEC,
+        }),
+        ...staticOpacityTracks([], [...idleBodies, ...listenBodies, ...execBodies], SPEAK_SEC),
+      ],
+    },
+    {
+      name: 'pose_exec',
+      fps: FPS,
+      duration: Math.round(EXEC_SEC * FPS),
+      loop: 'loop',
+      presets: [
+        { preset: 'float-idle', target: 'root', intensity: 0.45, cycleSeconds: 2.8 },
+      ],
+      tracks: [
+        ...opacityCycleTracks(execBodies, {
+          holdSec: 0.95,
+          fadeSec: 0.4,
+          durationSec: EXEC_SEC,
+        }),
+        ...staticOpacityTracks([], [...idleBodies, ...listenBodies, ...speakBodies], EXEC_SEC),
+      ],
+    },
+    noopAnim('mouth_a'),
+    noopAnim('mouth_e'),
+    noopAnim('mouth_i'),
+    noopAnim('mouth_u'),
   ],
   stateMachine: {
     name: 'CompanionSM',
@@ -122,13 +287,34 @@ const scene = {
         ],
         transitions: [
           { from: 'entry', to: 'idle' },
-          { from: 'any', to: 'idle', condition: { input: 'status', op: '==', value: 0 } },
-          { from: 'any', to: 'listening', condition: { input: 'status', op: '==', value: 1 } },
-          { from: 'any', to: 'speaking', condition: { input: 'status', op: '==', value: 2 } },
-          { from: 'any', to: 'executing', condition: { input: 'status', op: '==', value: 3 } },
+          {
+            from: 'any',
+            to: 'idle',
+            durationMs: STATUS_MIX_MS,
+            condition: { input: 'status', op: '==', value: 0 },
+          },
+          {
+            from: 'any',
+            to: 'listening',
+            durationMs: STATUS_MIX_MS,
+            condition: { input: 'status', op: '==', value: 1 },
+          },
+          {
+            from: 'any',
+            to: 'speaking',
+            durationMs: STATUS_MIX_MS,
+            condition: { input: 'status', op: '==', value: 2 },
+          },
+          {
+            from: 'any',
+            to: 'executing',
+            durationMs: STATUS_MIX_MS,
+            condition: { input: 'status', op: '==', value: 3 },
+          },
         ],
       },
       {
+        // Contract-only — no visual mouth overlays (avoids double-face)
         name: 'Viseme',
         states: [
           { name: 'v0', animation: 'mouth_a' },
@@ -138,119 +324,55 @@ const scene = {
         ],
         transitions: [
           { from: 'entry', to: 'v0' },
-          { from: 'any', to: 'v0', condition: { input: 'viseme', op: '==', value: 0 } },
-          { from: 'any', to: 'v1', condition: { input: 'viseme', op: '==', value: 1 } },
-          { from: 'any', to: 'v2', condition: { input: 'viseme', op: '==', value: 2 } },
-          { from: 'any', to: 'v3', condition: { input: 'viseme', op: '==', value: 3 } },
+          {
+            from: 'any',
+            to: 'v0',
+            durationMs: VISEME_MIX_MS,
+            condition: { input: 'viseme', op: '==', value: 0 },
+          },
+          {
+            from: 'any',
+            to: 'v1',
+            durationMs: VISEME_MIX_MS,
+            condition: { input: 'viseme', op: '==', value: 1 },
+          },
+          {
+            from: 'any',
+            to: 'v2',
+            durationMs: VISEME_MIX_MS,
+            condition: { input: 'viseme', op: '==', value: 2 },
+          },
+          {
+            from: 'any',
+            to: 'v3',
+            durationMs: VISEME_MIX_MS,
+            condition: { input: 'viseme', op: '==', value: 3 },
+          },
         ],
       },
     ],
   },
 };
 
-// Resolve pngPath → bytes (same as riv_create tool)
 for (const img of scene.images) {
   img.bytes = new Uint8Array(readFileSync(img.pngPath));
   delete img.pngPath;
 }
 
-const { bytes, warnings } = createRiv(scene);
-mkdirSync(dirname(OUT), { recursive: true });
-writeFileSync(OUT, bytes);
-
-console.log(`Wrote ${OUT} (${bytes.length} bytes)`);
-if (warnings?.length) console.log('warnings:', warnings);
-
-// Validate with official @rive-app/canvas if available
-async function validate() {
-  let Rive;
-  try {
-    ({ default: Rive } = await import(
-      join(__dirname, 'rive-gen', 'node_modules', '@rive-app', 'canvas', 'rive.js')
-    ));
-  } catch {
-    try {
-      ({ default: Rive } = await import('@rive-app/canvas'));
-    } catch (e) {
-      console.warn('Skip runtime validate (no @rive-app/canvas):', e.message);
-      return;
-    }
-  }
-
-  // Node has no canvas — use buffer load / inspect via WASM if possible.
-  // Prefer canvas-advanced file loader from the same package tree.
-  try {
-    const advancedPath = join(
-      __dirname,
-      'rive-gen',
-      'node_modules',
-      '@rive-app',
-      'canvas-advanced',
-      'canvas_advanced.mjs'
-    );
-    const riveMod = await import(advancedPath);
-    const wasmPath = join(
-      __dirname,
-      'rive-gen',
-      'node_modules',
-      '@rive-app',
-      'canvas-advanced',
-      'rive.wasm'
-    );
-    const runtime = await riveMod.default({
-      locateFile: () => wasmPath,
-    });
-    const file = await runtime.load(new Uint8Array(bytes));
-    const ab = file.defaultArtboard();
-    const sm = new runtime.StateMachineInstance(
-      ab.stateMachineByName('CompanionSM'),
-      ab
-    );
-    const inputs = [];
-    for (let i = 0; i < sm.inputCount(); i++) {
-      const inp = sm.input(i);
-      inputs.push({ name: inp.name, type: inp.constructor?.name ?? '?' });
-    }
-    console.log('Runtime validate OK');
-    console.log(
-      JSON.stringify(
-        {
-          artboard: ab.name,
-          stateMachine: 'CompanionSM',
-          inputs,
-          animationCount: ab.animationCount?.() ?? 'n/a',
-        },
-        null,
-        2
-      )
-    );
-    // Drive status 0→3 and advance
-    let statusInp = null;
-    let visemeInp = null;
-    for (let i = 0; i < sm.inputCount(); i++) {
-      const inp = sm.input(i);
-      if (inp.name === 'status') statusInp = inp.asNumber();
-      if (inp.name === 'viseme') visemeInp = inp.asNumber();
-    }
-    if (!statusInp || !visemeInp) throw new Error('Missing status/viseme number inputs');
-    for (const s of [0, 1, 2, 3]) {
-      statusInp.value = s;
-      visemeInp.value = s;
-      sm.advance(1 / 60);
-      ab.advance(1 / 60);
-    }
-    console.log('State machine inputs driven 0–3 successfully');
-    sm.delete();
-    ab.delete();
-    file.delete();
-    runtime.cleanup();
-  } catch (e) {
-    console.warn('Advanced runtime validate failed, trying magic-header check:', e.message);
-    const magic = Buffer.from(bytes.slice(0, 4)).toString('ascii');
-    if (magic !== 'RIVE') throw new Error(`Bad magic: ${magic}`);
-    console.log('File magic RIVE OK; size', bytes.length);
-  }
+let bytes;
+let warnings;
+try {
+  ({ bytes, warnings } = createRiv(scene));
+} catch (e) {
+  console.error('createRiv failed:', e.message);
+  process.exit(1);
 }
 
-await validate();
+mkdirSync(dirname(OUT), { recursive: true });
+writeFileSync(OUT, bytes);
+console.log(`Wrote ${OUT} (${bytes.length} bytes) — body-only, no face overlays`);
+if (warnings?.length) console.log('warnings:', warnings);
+
+const magic = Buffer.from(bytes.slice(0, 4)).toString('ascii');
+if (magic !== 'RIVE') throw new Error(`Bad magic: ${magic}`);
 console.log('Done.');

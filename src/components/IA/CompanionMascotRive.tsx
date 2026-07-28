@@ -3,18 +3,22 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import type { AICompanionStatus } from './companion-logo-motion';
 import CompanionMascotRiveLike from './CompanionMascotRiveLike';
-import { MASCOT_VISEME_IDS } from './companion-mascot-frames';
+import { lipSyncIntervalMs, MASCOT_VISEME_IDS } from './companion-mascot-frames';
 import { probeCompanionRiveAsset } from './companion-mascot-rive-probe';
 
 const CompanionMascotRivePlayer = lazy(() => import('./CompanionMascotRivePlayer'));
+
+export type CompanionMascotRuntime = 'rive' | 'rive-like';
 
 export interface CompanionMascotRiveProps {
   status: AICompanionStatus;
   size: number;
   reducedMotion?: boolean;
   className?: string;
-  /** Optional TTS-driven viseme; omit for fake lip-sync. */
+  /** Optional TTS-driven viseme (0–3). Omit for fake lip-sync while speaking. */
   visemeIndex?: number;
+  /** Notify shell when Rive owns motion (so Framer float/aura can stay off). */
+  onRuntimeChange?: (runtime: CompanionMascotRuntime) => void;
 }
 
 function useCompanionRiveAvailable(): boolean | null {
@@ -34,7 +38,9 @@ function useCompanionRiveAvailable(): boolean | null {
 /**
  * Companion mascot runtime gate:
  * - If `/rive/companion-mascot.riv` exists → lazy Rive player
- * - Else → CompanionMascotRiveLike (crossfade + face + visemes)
+ * - Else → CompanionMascotRiveLike (crossfade body; face overlay optional)
+ *
+ * Fake lip-sync only while status === 'speaking' (~2–3 Hz). Idle never drives open-A.
  */
 export default function CompanionMascotRive({
   status,
@@ -42,25 +48,44 @@ export default function CompanionMascotRive({
   reducedMotion = false,
   className = '',
   visemeIndex: visemeIndexProp,
+  onRuntimeChange,
 }: CompanionMascotRiveProps) {
   const riveAvailable = useCompanionRiveAvailable();
   const [riveFailed, setRiveFailed] = useState(false);
-  const [fakeViseme, setFakeViseme] = useState(0);
+  /** null = mouth at rest (do not feed open-A / viseme 0 to idle) */
+  const [fakeViseme, setFakeViseme] = useState<number | null>(null);
+
+  const useRiveRuntime = riveAvailable === true && !riveFailed && !reducedMotion;
+  const runtime: CompanionMascotRuntime = useRiveRuntime ? 'rive' : 'rive-like';
+
+  useEffect(() => {
+    onRuntimeChange?.(runtime);
+  }, [runtime, onRuntimeChange]);
 
   useEffect(() => {
     if (typeof visemeIndexProp === 'number') return;
     if (reducedMotion || status !== 'speaking') {
-      setFakeViseme(0);
+      setFakeViseme(null);
       return;
     }
+    // Start on E (1), not A (0) — softer first mouth shape
+    setFakeViseme(1);
     const id = window.setInterval(() => {
-      setFakeViseme(i => (i + 1) % MASCOT_VISEME_IDS.length);
-    }, 110);
+      setFakeViseme(i => {
+        const cur = i ?? 1;
+        return (cur + 1) % MASCOT_VISEME_IDS.length;
+      });
+    }, lipSyncIntervalMs());
     return () => window.clearInterval(id);
   }, [status, reducedMotion, visemeIndexProp]);
 
-  const visemeIndex = typeof visemeIndexProp === 'number' ? visemeIndexProp : fakeViseme;
-  const useRiveRuntime = riveAvailable === true && !riveFailed && !reducedMotion;
+  // Only pass a viseme while speaking. null → player/Rive-like keep mouth rest / hide layer.
+  const activeViseme: number | undefined =
+    status !== 'speaking'
+      ? undefined
+      : typeof visemeIndexProp === 'number'
+        ? visemeIndexProp
+        : fakeViseme ?? undefined;
 
   if (useRiveRuntime) {
     return (
@@ -71,7 +96,7 @@ export default function CompanionMascotRive({
             size={size}
             reducedMotion={reducedMotion}
             className={className}
-            visemeIndex={visemeIndex}
+            visemeIndex={activeViseme}
           />
         }
       >
@@ -79,7 +104,7 @@ export default function CompanionMascotRive({
           status={status}
           size={size}
           reducedMotion={reducedMotion}
-          visemeIndex={visemeIndex}
+          visemeIndex={activeViseme}
           className={className}
           onLoadError={() => setRiveFailed(true)}
         />
@@ -93,7 +118,7 @@ export default function CompanionMascotRive({
       size={size}
       reducedMotion={reducedMotion}
       className={className}
-      visemeIndex={visemeIndex}
+      visemeIndex={activeViseme}
     />
   );
 }
