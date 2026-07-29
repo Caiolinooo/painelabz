@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.58.0] - 2026-07-28
+
+### Improved
+- **Companion — quality-gated motion polish (clearly better than 5.57.0)**:
+  - Rebuilt body-only `companion-mascot.riv` (**17 body poses**, still no face overlays): adds missing exec parity `exec_point` / `exec_read` / `exec_stretch`.
+  - Status SM mixes **500ms** (was ~420ms); idle pose step **~2.7s** (hold 2.05s + fade 0.65s; was ~2.15s); calmer float-idle (intensity 0.38 / 5.0s cycle).
+  - Rive-like cycles match: longer crossfades; status blend **480ms**; idle fps 0.37; face PNG prefetch skipped while `MASCOT_USE_FACE_OVERLAY=false`.
+  - Size: `.riv` ~441 KB (was ~347 KB) — under 600 KB gate; win = exec parity + softer mixes.
+  - Bones prep (not runtime): `docs/assets/companion-mascot/cutouts/` layer PNGs + Editor README; 3D remains NO-GO (`3d-spike-2026/SPIKE.md`).
+  - Validated: `scratch/validate-companion-mascot-riv.mjs` → CompanionSM + status/viseme OK.
+
 ## [5.57.0] - 2026-07-28
 
 ### Fixed

@@ -21,7 +21,9 @@ Componentes React do Companion FAB / chat IA (`AnimatedABZLogo`, mascote, bolhas
 - **Semantics**: API wait / tools → `executing` (calm think poses). `speaking` only for real speech/TTS — never lip-sync spam during HTTP wait
 - Body assets: `public/images/companion-mascot/body/` (+ optional `face/` for future blank-face cutouts)
 - **Body-only default**: `MASCOT_USE_FACE_OVERLAY = false` — body PNGs already have faces; overlays cause gray skull / double-face
-- Rive: `public/rive/companion-mascot.riv` — SM `CompanionSM`, Number `status` (0–3) + `viseme` (0–3, no-op visually). Opacity crossfades + float-idle; soft SM mixes ~420ms
+- Rive: `public/rive/companion-mascot.riv` — SM `CompanionSM`, Number `status` (0–3) + `viseme` (0–3, no-op visually). Opacity crossfades + float-idle; soft SM mixes ~500ms; 17 body poses (exec parity with Rive-like)
+- Prefetch: body PNGs only while `MASCOT_USE_FACE_OVERLAY=false` (no unused face warm)
+- Bones prep (Editor): `docs/assets/companion-mascot/cutouts/` — not a finished bone-skinned riv
 - Regenerar: `scratch/build-companion-mascot-riv.mjs` via `rive-mcp-server` createRiv (não vendorar o server)
 - Sem `.riv` / load error → `CompanionMascotRiveLike`
 - `prefers-reduced-motion` → estático

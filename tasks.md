@@ -1,3 +1,35 @@
+## Companion — quality-gated polish 5.58.0 (2026-07-28)
+
+### Feito
+- [x] Rebuild body-only `.riv`: 17 poses (exec_point/read/stretch), SM mix **500ms**, idle step **≥2.5s**, calmer float
+- [x] Runtime: longer Rive-like crossfades/blend; stop face prefetch when overlays off; no Framer double-bob on Rive
+- [x] Validate `scratch/validate-companion-mascot-riv.mjs` OK; `.riv` ~441 KB (<600 KB)
+- [x] Bones prep cutouts + README (`docs/assets/companion-mascot/cutouts/`) — human Editor still required
+- [x] 3D NO-GO docs kept (`3d-spike-2026/SPIKE.md`); CHANGELOG + **v5.58.0**
+
+### Gate
+- No double-face; API wait = executing; reduced-motion static; FAB 60 readable
+
+### Leftover
+- True bone-skinned mesh deformation in Rive Editor (cutouts are prep only)
+
+---
+
+## Companion — image-to-3D spike (2026-07-28)
+
+### Feito
+- [x] Research Meshy / Tripo / Rodin / Luma / CSM / Sculptor (+ Hunyuan3D-2)
+- [x] Env scan: no `MESHY_*` / `TRIPO_*` / `LUMA_*` / `FAL_*` keys
+- [x] Free gen: HF `tencent/Hunyuan3D-2` shape GLB → `docs/assets/companion-mascot/3d-spike-2026/`
+- [x] Verdict **NO-GO** — runtime stays 2D (Rive / Fase 0); do not wait for 3D
+- [x] `SPIKE.md` + previews; uncommitted evidence (no runtime change)
+
+### Próximo (só se revisitar)
+- Paid Meshy/Tripo multi-view + textured export that passes face/limbs/side bar
+- Hand-model low-poly book as alternative to AI mesh
+
+---
+
 ## Companion — calm natural motion runtime (2026-07-28)
 
 ### Feito

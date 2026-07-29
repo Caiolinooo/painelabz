@@ -92,10 +92,10 @@ export const MASCOT_LIP_SYNC_FPS = 2.5;
 export const MASCOT_FACE_CROSSFADE_MS = 280;
 
 /** Default body crossfade when a cycle omits an override. */
-export const MASCOT_DEFAULT_CROSSFADE_MS = 300;
+export const MASCOT_DEFAULT_CROSSFADE_MS = 360;
 
 /** Status-change blend when swapping cycles (keep previous until new ready). */
-export const MASCOT_STATUS_BLEND_MS = 340;
+export const MASCOT_STATUS_BLEND_MS = 480;
 
 export function lipSyncIntervalMs(): number {
   return Math.max(320, Math.round(1000 / MASCOT_LIP_SYNC_FPS));
@@ -127,21 +127,22 @@ export type MascotStatusCycle = {
  */
 export const MASCOT_STATUS_CYCLES: Record<AICompanionStatus, MascotStatusCycle> = {
   idle: {
+    // ~2.7s per pose step (≥2.5s gate) — stand / wave / alt holds
     frames: ['idle_stand', 'idle_wave', 'idle_alt', 'idle_stand'],
-    fps: 0.85,
-    crossfadeMs: 320,
+    fps: 0.37,
+    crossfadeMs: 420,
     face: 'none',
   },
   listening: {
     frames: ['listen_ear', 'listen_tilt', 'listen_point', 'listen_ear'],
-    fps: 1.0,
-    crossfadeMs: 300,
+    fps: 0.7,
+    crossfadeMs: 380,
     face: 'none',
   },
   speaking: {
     frames: ['speak_open', 'speak_grin', 'speak_active', 'speak_gesture'],
-    fps: 1.6,
-    crossfadeMs: 280,
+    fps: 1.2,
+    crossfadeMs: 340,
     face: 'none',
   },
   executing: {
@@ -154,14 +155,14 @@ export const MASCOT_STATUS_CYCLES: Record<AICompanionStatus, MascotStatusCycle> 
       'exec_read',
       'exec_stretch',
     ],
-    fps: 1.4,
-    crossfadeMs: 300,
+    fps: 0.85,
+    crossfadeMs: 380,
     face: 'none',
   },
 };
 
-/** Key PNGs to warm the browser cache (body + face used by all statuses). */
-export const MASCOT_PREFETCH_SRC: string[] = [
+/** Body PNGs only — face overlays off by default (skip unused face prefetch). */
+const MASCOT_BODY_PREFETCH: string[] = [
   MASCOT_BODY.idle_stand,
   MASCOT_BODY.idle_wave,
   MASCOT_BODY.idle_alt,
@@ -179,6 +180,9 @@ export const MASCOT_PREFETCH_SRC: string[] = [
   MASCOT_BODY.exec_point,
   MASCOT_BODY.exec_read,
   MASCOT_BODY.exec_stretch,
+];
+
+const MASCOT_FACE_PREFETCH: string[] = [
   MASCOT_FACE.face_neutral,
   MASCOT_FACE.face_blink,
   MASCOT_FACE.viseme_a,
@@ -186,6 +190,11 @@ export const MASCOT_PREFETCH_SRC: string[] = [
   MASCOT_FACE.viseme_i,
   MASCOT_FACE.viseme_u,
 ];
+
+/** Key PNGs to warm the browser cache (body always; face only if overlays on). */
+export const MASCOT_PREFETCH_SRC: string[] = MASCOT_USE_FACE_OVERLAY
+  ? [...MASCOT_BODY_PREFETCH, ...MASCOT_FACE_PREFETCH]
+  : MASCOT_BODY_PREFETCH;
 
 /** Drop-in Rive artboard (optional). */
 export const COMPANION_RIVE_SRC = '/rive/companion-mascot.riv';

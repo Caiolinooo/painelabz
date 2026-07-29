@@ -1,11 +1,12 @@
 /**
  * Build public/rive/companion-mascot.riv via rive-mcp-server createRiv.
  *
- * Natural-motion body-only (v5.57):
+ * Natural-motion body-only (v5.58):
  * - NO face/viseme image overlays (body PNGs already include faces — overlays = gray skull)
  * - Opacity crossfades between body poses (NOT soloActive hard cuts)
- * - float-idle / sway / breathing presets on root
- * - Soft SM mix durations between status states
+ * - float-idle / sway / breathing presets on root (calmer premium idle)
+ * - Soft SM mix durations (~500ms) between status states
+ * - Exec parity with Rive-like: think + bulb + type + point + read + stretch
  * - `viseme` input kept for contract; Viseme layer is a no-op (mouth lives in body keyframes)
  *
  * Usage (from repo root):
@@ -41,7 +42,8 @@ const AB = 128;
 const FPS = 60;
 const CX = AB / 2;
 const CY = AB / 2;
-const STATUS_MIX_MS = 420;
+/** Soft status blends — gate prefers ≥420–500ms */
+const STATUS_MIX_MS = 500;
 const VISEME_MIX_MS = 200;
 
 function mustPng(dir, name) {
@@ -61,10 +63,13 @@ const bodyIds = [
   'speak_grin',
   'speak_gesture',
   'speak_active',
+  'think_chin',
   'exec_bulb',
   'exec_type_a',
   'exec_type_b',
-  'think_chin',
+  'exec_point',
+  'exec_read',
+  'exec_stretch',
 ];
 
 const bodyFiles = Object.fromEntries(
@@ -167,15 +172,24 @@ function noopAnim(name, durationSec = 1.2) {
   };
 }
 
-const IDLE_SEC = 8;
-const LISTEN_SEC = 6.4;
-const SPEAK_SEC = 5.2;
-const EXEC_SEC = 5.6;
+/** Idle step = hold+fade ≥2.5s so motion stays continuously alive without twitch. */
+const IDLE_SEC = 10.5;
+const LISTEN_SEC = 7.2;
+const SPEAK_SEC = 6.0;
+const EXEC_SEC = 12.0;
 
 const idleBodies = ['idle_stand', 'idle_wave', 'idle_alt'];
 const listenBodies = ['listen_ear', 'listen_tilt', 'listen_point'];
 const speakBodies = ['speak_open', 'speak_grin', 'speak_active', 'speak_gesture'];
-const execBodies = ['think_chin', 'exec_bulb', 'exec_type_a', 'exec_type_b'];
+const execBodies = [
+  'think_chin',
+  'exec_bulb',
+  'exec_type_a',
+  'exec_type_b',
+  'exec_point',
+  'exec_read',
+  'exec_stretch',
+];
 
 const scene = {
   artboard: { name: 'Companion', width: AB, height: AB },
@@ -200,12 +214,13 @@ const scene = {
       duration: Math.round(IDLE_SEC * FPS),
       loop: 'loop',
       presets: [
-        { preset: 'float-idle', target: 'root', intensity: 0.5, cycleSeconds: 4.2 },
+        // Calmer premium bob — longer cycle, lower intensity than v5.57
+        { preset: 'float-idle', target: 'root', intensity: 0.38, cycleSeconds: 5.0 },
       ],
       tracks: [
         ...opacityCycleTracks(idleBodies, {
-          holdSec: 1.6,
-          fadeSec: 0.55,
+          holdSec: 2.05,
+          fadeSec: 0.65,
           durationSec: IDLE_SEC,
         }),
         ...staticOpacityTracks([], [...listenBodies, ...speakBodies, ...execBodies], IDLE_SEC),
@@ -217,13 +232,13 @@ const scene = {
       duration: Math.round(LISTEN_SEC * FPS),
       loop: 'loop',
       presets: [
-        { preset: 'sway', target: 'root', intensity: 0.4, cycleSeconds: 2.8 },
-        { preset: 'float', target: 'root', intensity: 0.3, cycleSeconds: 2.4 },
+        { preset: 'sway', target: 'root', intensity: 0.32, cycleSeconds: 3.2 },
+        { preset: 'float', target: 'root', intensity: 0.25, cycleSeconds: 2.8 },
       ],
       tracks: [
         ...opacityCycleTracks(listenBodies, {
-          holdSec: 1.2,
-          fadeSec: 0.4,
+          holdSec: 1.45,
+          fadeSec: 0.5,
           durationSec: LISTEN_SEC,
         }),
         ...staticOpacityTracks([], [...idleBodies, ...speakBodies, ...execBodies], LISTEN_SEC),
@@ -235,14 +250,14 @@ const scene = {
       duration: Math.round(SPEAK_SEC * FPS),
       loop: 'loop',
       presets: [
-        { preset: 'float', target: 'root', intensity: 0.35, cycleSeconds: 2.0 },
-        { preset: 'breathing', target: 'root', intensity: 0.7, cycleSeconds: 1.8 },
+        { preset: 'float', target: 'root', intensity: 0.3, cycleSeconds: 2.4 },
+        { preset: 'breathing', target: 'root', intensity: 0.55, cycleSeconds: 2.1 },
       ],
       tracks: [
         // Slow body mouth/gesture cycle — natural speech without overlay spam
         ...opacityCycleTracks(speakBodies, {
-          holdSec: 0.9,
-          fadeSec: 0.4,
+          holdSec: 1.05,
+          fadeSec: 0.48,
           durationSec: SPEAK_SEC,
         }),
         ...staticOpacityTracks([], [...idleBodies, ...listenBodies, ...execBodies], SPEAK_SEC),
@@ -254,12 +269,12 @@ const scene = {
       duration: Math.round(EXEC_SEC * FPS),
       loop: 'loop',
       presets: [
-        { preset: 'float-idle', target: 'root', intensity: 0.45, cycleSeconds: 2.8 },
+        { preset: 'float-idle', target: 'root', intensity: 0.36, cycleSeconds: 3.4 },
       ],
       tracks: [
         ...opacityCycleTracks(execBodies, {
-          holdSec: 0.95,
-          fadeSec: 0.4,
+          holdSec: 1.15,
+          fadeSec: 0.5,
           durationSec: EXEC_SEC,
         }),
         ...staticOpacityTracks([], [...idleBodies, ...listenBodies, ...speakBodies], EXEC_SEC),
