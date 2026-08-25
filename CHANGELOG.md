@@ -1,5 +1,287 @@
 # Changelog
 
+## [5.59.0] - 2026-08-25
+
+### 🚢 Gestão de Tripulantes — Confiabilidade de Ponta a Ponta
+
+Esta versão transforma o módulo Gestão de Tripulantes numa fonte confiável de verdade documental: sincronização auditável com o MIO, integridade obrigatória dos documentos, exportação organizada e rastreabilidade bidirecional com o e-Social.
+
+### Added
+- **Sync MIO consolidado e idempotente** (`src/lib/gestao-tripulantes/mio-sync.ts`):
+  - Fluxo único canônico para colaboradores + treinamentos + embarques + usuários do portal (`syncAllFromMIO`); `src/lib/mio/sync.ts` virou compat shim sem lógica própria.
+  - Upsert por chave natural `mio_id → CPF digits-only → CPF mascarado legado`: correspondente encontrado é sempre UPDATE, **nunca INSERT duplicado**.
+  - Integrante ausente do MIO é marcado `ativo=false` (jamais deletado); registros sem nome/CPF são logados, pulados e contabilizados.
+  - Novo endpoint `GET /api/gestao-tripulantes/mio-auditoria`: total MIO vs portal, criados/atualizados/ignorados/inativados/erros — cobertura de 100% verificável. Resultado persistido em `gt_configuracoes` (`mio_sync_ultimo_resultado`).
+- **Integridade documental 100%** (migration `20260825_000001_gt_documento_integrity.sql`, aplicada em produção):
+  - Coluna `numero_rastreio` + unique index; backfill determinístico para todos os docs existentes.
+  - Validação dura: `data_emissao` + `data_validade` obrigatórias (HTTP 422) em upload, POST manual, PUT e service — quarentena é a única exceção.
+  - Anti-duplicação por hash sha256 → path → colab+tipo+título: duplicado vira UPDATE do existente (`merged: true`), nunca novo registro.
+  - Gate de identidade estendido a TODOS os tipos de documento (antes só ASO): CPF do documento tem que bater com o perfil do colaborador; ambíguo/sem CPF ⇒ quarentena; identidade congelada nunca move.
+- **Painel de Auditoria de Documentos**: nova aba "Auditoria Documentos" em `/admin/gestao-tripulantes` + API `GET|POST /api/gestao-tripulantes/auditoria` — buckets clicáveis (sem emissão, sem validade, sem rastreio, duplicados, quarentena, vencidos/vencendo) com ações corretivas inline: `gerar_rastreio`, `corrigir_datas`, `corrigir_rastreio`, `resolver_quarentena`, `mesclar_duplicados`.
+- **Cross-reference e-Social ↔ Gestão de Tripulantes**:
+  - `GET /api/gestao-tripulantes/documentos/[id]/esocial` — eventos e-Social de um ASO com protocolo, recibo, datas e erros.
+  - Novo `GET /api/gestao-tripulantes/esocial-crossref?cpf=|evento_id=` — caminho inverso: dado um evento ou CPF, retorna os ASOs vinculados + colaborador + verificações (vínculo, CPF nos dois lados, órfãos).
+  - Novo `src/lib/gestao-tripulantes/esocial-consistency.ts` + `GET /api/gestao-tripulantes/esocial-consistencia` — detecta CPF divergente entre laudo e evento transmitido, eventos órfãos e status divergentes.
+  - UI: selo "e-Social" por ASO no modal do colaborador com recibo/protocolo/processamento em tooltip.
+- **Exportação organizada em pastas (.zip)**:
+  - Nova rota `GET /api/gestao-tripulantes/export` + núcleo em `src/lib/gestao-tripulantes/export-service.ts` (JSZip, já presente no projeto).
+  - Pasta por funcionário com documentos baixados do Storage em formato original (extensão/conteúdo preservados, nunca convertidos) + resumo JSON e CSV (matrícula, CPF, cargo, empresa, centro de custo, tabela de documentos com emissão/rastreio/validade) + `_export/resumo_geral.{json,csv}` e `_export/avisos.txt`.
+  - Filtros combináveis: funcionários (ids/nomes), empresa, centro de custo.
+  - Hierarquia configurável via template com placeholders `{empresa} {centro_custo} {funcionario} {cpf} {cargo} {tipo_documento} {ano}`, persistida em `gt_configuracoes` (`gt_export_template`) com 4 presets; sanitização segura para Windows.
+  - Nova aba "Exportar" no admin com preview da árvore antes do download; caps de proteção (50 funcionários default / hard 200, 25MB/arquivo).
+
+### Fixed
+- **Validade dos ASOs**: 31 ASOs recuperaram `data_validade` extraída do texto OCR real dos laudos (nenhuma data presumida); status de validação recalculado. 73 PDFs escaneados ficaram pendentes para OCR vision/digitação na aba Auditoria.
+- **Números próprios de documento como rastreio**: OCR agora extrai o número intrínseco do documento (nº do ASO no laudo, nº do passaporte ICAO, nº de certificado NR), rejeitando falsos positivos (CRM/CPF/CNPJ/Portaria). O código interno `GT-*` é apenas fallback legítimo para documentos sem numeração própria; sobrescrita só ocorre sobre fallback/vazio, com checagem de unicidade.
+
+### Docs
+- `src/app/api/gestao-tripulantes/AGENTS.md` atualizado com as novas regras (integridade, rastreio = número próprio, fallback, auditoria).
+- Backups e relatórios da execução em `scratch/` (`backup-backfill-*.json`, `relatorio-backfill-rastreio-validade.json`).
+
+## [5.58.0] - 2026-07-28
+
+### Improved
+- **Companion — quality-gated motion polish (clearly better than 5.57.0)**:
+  - Rebuilt body-only `companion-mascot.riv` (**17 body poses**, still no face overlays): adds missing exec parity `exec_point` / `exec_read` / `exec_stretch`.
+  - Status SM mixes **500ms** (was ~420ms); idle pose step **~2.7s** (hold 2.05s + fade 0.65s; was ~2.15s); calmer float-idle (intensity 0.38 / 5.0s cycle).
+  - Rive-like cycles match: longer crossfades; status blend **480ms**; idle fps 0.37; face PNG prefetch skipped while `MASCOT_USE_FACE_OVERLAY=false`.
+  - Size: `.riv` ~441 KB (was ~347 KB) — under 600 KB gate; win = exec parity + softer mixes.
+  - Bones prep (not runtime): `docs/assets/companion-mascot/cutouts/` layer PNGs + Editor README; 3D remains NO-GO (`3d-spike-2026/SPIKE.md`).
+  - Validated: `scratch/validate-companion-mascot-riv.mjs` → CompanionSM + status/viseme OK.
+
+## [5.57.0] - 2026-07-28
+
+### Fixed
+- **Companion — kill double-face + natural body-only motion**:
+  - Rebuilt `companion-mascot.riv` with **14 body frames only** (no face/viseme image layers — overlays caused gray skull / ghost mouth on faced bodies).
+  - Opacity crossfades + `float-idle` / sway / breathing; soft SM mixes (~420ms); no hard solo snaps.
+  - API wait → `executing` (calm think), never `speaking` + lip-sync spam; `viseme` contract kept but visually no-op.
+  - React: `MASCOT_USE_FACE_OVERLAY=false`; Rive-like body-only; calm Framer float (disabled when Rive owns motion).
+  - Docs: `public/rive/README.md` + `src/components/IA/AGENTS.md`.
+
+## [5.56.0] - 2026-07-28
+
+### Added
+- **Companion — real `companion-mascot.riv`**:
+  - Shipped `public/rive/companion-mascot.riv` (~126 KB) with SM `CompanionSM` and Number inputs `status` (0–3) + `viseme` (0–3).
+  - Headless build from keyed PNGs via `rive-mcp-server` `createRiv` (`scratch/build-companion-mascot-riv.mjs`); body/face image solos; validated with official Rive runtime.
+  - Opening Companion auto-detects the file and uses `@rive-app/react-canvas-lite`; sprite Rive-like remains fallback on miss/error/reduced-motion.
+  - Docs: `public/rive/README.md` + `src/components/IA/AGENTS.md` (regen notes; do not redistribute rive-mcp-server source).
+
+## [5.55.0] - 2026-07-28
+
+### Improved
+- **Companion — Fase 1A Rive / Rive-like mascot**:
+  - `CompanionMascotRiveLike`: sprite state machine com crossfade suave, face layer (blink + visemes), fake lip-sync em speaking.
+  - Gate `CompanionMascotRive`: se existir `public/rive/companion-mascot.riv`, lazy-load `@rive-app/react-canvas-lite` (`CompanionSM` inputs `status` + `viseme`); senão fallback Rive-like.
+  - Builds on Fase 0 face overlays + body extras; `AnimatedABZLogo` API intacta; FAB/session/bus inalterados; reduced-motion → estático.
+  - Docs drop-in: `public/rive/README.md` + `src/components/IA/AGENTS.md`.
+
+## [5.54.0] - 2026-07-28
+
+### Improved
+- **Companion — Fase 0 sprite compositor (body + face)**:
+  - `AnimatedABZLogo` compõe body + face overlay (`face_neutral` / `face_blink` / `viseme_*`).
+  - Idle: blink em intervalo aleatório; speaking: fake lip-sync ciclando `viseme_a/e/i/u` + rest (`face_neutral`).
+  - Listening/executing: ciclos de body mais ricos; prefetch dos PNGs chave; `useReducedMotion` congela face/body.
+  - Mapa em `companion-mascot-frames.ts` + `frames.json` (`faceOverlay`, `lipSync`, `blink`); FAB 60 / header 36 / hero 80; props API intacta.
+
+## [5.53.0] - 2026-07-28
+
+### Added
+- **Companion — mascote livro azul animado**:
+  - `AnimatedABZLogo` troca o pinwheel por sprites RGBA do livro (`public/images/companion-mascot/body/*`).
+  - Status → frames: idle (stand/wave), listening (mão no rosto), speaking (gesto + boca), executing (pensar / lâmpada / digitar).
+  - Mapa em `companion-mascot-frames.ts` + `frames.json`; `useReducedMotion` congela no 1º frame.
+  - FAB 60 / header 36 / hero 80 inalterados; sem mudanças em bus/session.
+
+## [5.52.0] - 2026-07-28
+
+### Improved
+- **IA Graph/email/Teams — payloads ricos**:
+  - Novo `src/lib/ia/graph-comms-format.ts`: enrichers com datas ISO + pt-BR, remetente/destinatários, preview, corpo texto truncado (HTML stripped), pasta, webLink, importância, conversationId, participantes Teams.
+  - Tools enriquecidas: `meus_emails`, `ler_email_funcionario`, `pesquisar_emails_outlook`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `buscar_sinais_kpi_comunicacao` (+ registry microsoft/chat).
+  - Graph `$select` expandido; `formatToolResultForLLM` cap ~28k para tools de comms e preserva arrays detalhados (não só `_summary`).
+  - Listas tipicamente 20–50 itens **completos** (não thin stubs).
+
+## [5.51.2] - 2026-07-28
+
+### Fixed
+- **Companion — Markdown nas bolhas da IA**:
+  - Mensagens do assistente no FAB passam por `renderChatMarkdown` (`src/components/IA/chatMarkdown.tsx`), o mesmo renderer leve do ABZ Assistant (`MessageBubble`) — bold, itálico, listas, links seguros, code/fences.
+  - Sem HTML cru (sem XSS): só nós React + href allowlist (`http`/`https`/`mailto`/path relativo).
+  - Mensagens do usuário continuam texto puro (`whitespace-pre-wrap`).
+
+## [5.51.1] - 2026-07-28
+
+### Added
+- **Férias — prompt de cadastro de assinatura**:
+  - Em `/ferias`, se o usuário não tem assinatura (`useSignature().hasSignature`), mostra banner dismissível + soft-gate em **Nova Solicitação** e **Baixar PDF**.
+  - CTA **Cadastrar assinatura** abre o `SignatureModal` global via `requestSignature` (mesmo `SignatureProvider` de EPI/contratos/lista de presença) — sem segundo modal.
+  - “Continuar sem assinatura” / “Agora não” grava `sessionStorage` (`ferias_signature_prompt_dismissed`) e não bloqueia o módulo na sessão.
+  - Link para `/profile` (aba Assinatura / `SignatureTab`); save path existente `POST /api/user/signature`.
+
+## [5.51.0] - 2026-07-28
+
+### Added
+- **Férias PDF — assinaturas cadastradas**:
+  - `GET /api/leave/[id]/pdf` lê `users_unified.signature_url` do colaborador e do líder/gerente do setor (supabaseAdmin; bucket `user-signatures/{userId}.png`).
+  - `leavePDFGenerator` carimba a imagem na área de assinatura quando a URL carrega; sem cadastro / `PASSKEY_SIGNED` / falha de fetch → caption **“Assinatura não cadastrada”** (não inventa).
+  - Formulário em branco (`form-pdf`) permanece com linhas de assinatura vazias.
+
+## [5.50.2] - 2026-07-28
+
+### Fixed
+- **Férias PDF download** (root cause confirmed in Vercel logs on 5.50.0):
+  - `GET /api/leave/[id]/pdf` retornava **404** com `column users_unified_1.cpf does not exist` (seleção inválida introduzida em 5.50.0); preenchimento já usa `tax_id` desde 5.50.1.
+  - Resposta PDF via `Uint8Array` + `Cache-Control: no-store` (blank + filled).
+  - Lookup de líder/gerente sem FK nomeada (não derruba o PDF se join falhar).
+  - Cliente `/ferias` e admin: exige Bearer, toast claro por 401/403/404/500, valida `content-type` PDF e blob não vazio.
+  - Header ABZ: larguras cabem na página A4; logo com compressão `FAST` (evita PDF ~1.8MB).
+
+## [5.50.1] - 2026-07-28
+
+### Fixed
+- **Férias PDF preenchido** (`leavePDFGenerator` + `GET /api/leave/[id]/pdf`):
+  - CPF agora vem de `users_unified.tax_id` (antes lia coluna `cpf` inexistente/errada → campo vazio ou query quebrada).
+  - Nome com fallback `name` → `first_name` + `last_name`; setor com fallback `sectors.name` → `department`.
+  - Duração dos períodos recalculada quando ausente/`0` (fallback start/end não gera mais “0 dias”).
+  - Seção Observações sempre presente; linha de datas nas assinaturas corrigida (colaborador = solicitado em; líder/gerente = aprovado em).
+
+## [5.50.0] - 2026-07-27
+
+### Added
+- **Férias — histórico + extração + formulário preenchido**:
+  - Filtros de **status** e **ano** em Minhas Solicitações, Histórico da equipe (aprovadores) e Todas as Solicitações (admin); listagens incluem passado/aprovadas/gozadas.
+  - Export **XLSX/CSV** do conjunto filtrado (`src/lib/leaveExport.ts`) com campos: colaborador, datas, períodos, status, abono, 13º, observações, criação/atualização.
+  - **Detalhes** → prévia do formulário preenchido + **Baixar PDF** via `GET /api/leave/[id]/pdf` (dados reais + líder/gerente); funciona também para histórico.
+  - APIs: `year`/`status`/`history` em leave-requests e leave-approvals; limite admin default 500.
+  - IA: `buscar_ferias` / `buscar_ferias_global` com `ano`, `status`, `incluir_historico` (default true).
+  - DOX: `src/app/ferias/AGENTS.md`.
+
+## [5.49.0] - 2026-07-27
+
+### Improved
+- **IA Companion / Assistant — data path audit + fixes**:
+  - Hard anti-hallucination in Companion system prompt + `context-builder` (never invent numbers; always call tools; multi-tool workflows allowed).
+  - `buscar_ferias` / `buscar_reembolsos` default to authenticated user; structured JSON + `_summary`.
+  - `buscar_kpis_sistema` no longer ADMIN-only: USER/MANAGER get RBAC-scoped pendências; ADMIN keeps global + Graph scan.
+  - New mutate tools: `aprovar_ferias` / `reprovar_ferias` / `aprovar_reembolso` / `reprovar_reembolso` (correct leave/reimbursement statuses).
+  - `formatToolResultForLLM` (`tool-result-format.ts`) — short `_summary` + size cap for LLM reasoning.
+  - Tool loop: sync max **12** rounds; stream **10**; removed premature abort at round 3 without content.
+  - Companion allowlist: globals, mutate, KPIs; history window 12; `MANAGER` treated as GERENTE for team tools.
+  - Fixed ghost tool `gerenciar_notificacoes` → `enviar_notificacao_proativa`; ferias/reembolso actions status alignment; KPI export stubs use real Excel/PDF generators.
+
+## [5.48.1] - 2026-07-27
+
+### Fixed
+- **Companion chat scroll**: panel always opens (and rehydrates) scrolled to the latest messages; instant jump on open, smooth while chatting.
+- **IA interactive cards — empty/blank data** (KPI `/kpi`, Assistant `/ia`, Companion FAB):
+  - Shared `normalizeWidgetData` + `adaptToolResultToWidget` (`kpi-board-shared.ts`) coerce LLM/tool variance (`label`/`value`/`assunto`/`labels+datasets`/nested `email_sinais`) into paint-able metric/list/chart/table shapes.
+  - `GenerativeDashboard` normalizes on render; clear empty-states (“Nenhum e-mail pendente”) instead of icon-only blank rows.
+  - GET `/api/ia/kpi-boards?resolve=1` prefers live allowlisted `dataSource` tool results over empty snapshots; optional `dataSource.path`.
+  - Companion returns + renders `_metadata.dashboard` (was dropped).
+
+## [5.48.0] - 2026-07-27
+
+### Added
+- **KPI Quadro Branco — exclusão**:
+  - Soft-delete (`deleted_at` + `is_active=false`) em `deleteUserBoard` / `deleteAllUserBoards`; list/get/open ignoram excluídos.
+  - Tools `excluir_quadro_kpi` (id / `board_id` / titulo fuzzy) e `excluir_todos_quadros_kpi`.
+  - API `DELETE /api/ia/kpi-boards?id=` e `?all=1` (somente boards do usuário autenticado).
+  - UI `/kpi`: botão lixeira com confirmação; limpa quadro ativo se foi o excluído.
+  - Prompts Companion/Chat: nunca afirmar que exclusão é indisponível.
+  - Migration `20260727_000004_ia_kpi_boards_deleted_at.sql`.
+
+## [5.47.0] - 2026-07-27
+
+### Added
+- **KPI Quadro Branco — harness de roles**:
+  - `src/lib/ia/kpi-board-harness.ts`: `getKpiBoardCapabilities(role)`, `assertBoardSpecAllowed(spec, role)`, prompts por papel.
+  - **ADMIN**: liberdade máxima; widget `html_sandbox` (iframe `sandbox="allow-scripts"` sem `allow-same-origin` + CSP no srcdoc; sem cookies/localStorage do portal).
+  - **MANAGER / USER**: somente conteúdo profissional; blocklist de jogos/off-topic; sem `html_sandbox`; caps de widgets e dataTools por papel.
+  - Enforcement server-side em tools (`criar_quadro_kpi` / `atualizar_quadro_kpi` / `render_dashboard`) e `/api/ia/kpi-boards` (POST/PATCH + strip no GET non-admin).
+  - Prompts Companion / context-builder / agents-router injetam regras do harness por role.
+
+### Changed
+- Spec Zod aceita `html_sandbox`; `KpiBoardRenderer` renderiza sandbox sem `dangerouslySetInnerHTML` no origin.
+
+## [5.46.0] - 2026-07-27
+
+### Features
+- **KPI Quadro Branco v1**:
+  - Tabela `ia_kpi_boards` (spec JSON Zod-validated; widgets allowlisted `metric|table|list|chart|markdown`; max 24; RLS + service_role).
+  - Tools `criar_quadro_kpi` / `atualizar_quadro_kpi` / `listar_quadros_kpi` / `abrir_quadro_kpi`.
+  - `render_dashboard` persiste board + emite `OPEN_KPI_BOARD` + `NAVIGATE /kpi` (Companion não perde mais o dashboard).
+  - `/kpi` carrega quadro ativo via AuthContext `user.id` (remove `abz_user_id` / `abz_sector_id` quebrados).
+  - `portalActionBus` action `OPEN_KPI_BOARD`; índice de boards no prompt Companion/Chat.
+  - Sem HTML/JS livre no origin do portal. `ia_dashboard_cache` permanece só para summary TTL.
+  - Prompt hardening: Companion proibido de pedir copiar HTML / salvar `.html` / abrir fora do portal; minigames → widgets allowlisted + abrir `/kpi`.
+
+## [5.45.0] - 2026-07-27
+
+### Features
+- **Companion skills Hermes Agent–like**:
+  - Tabela `ia_user_skills` (procedimentos reutilizáveis por usuário; persistem entre logins).
+  - Tools `criar_skill_usuario` / `listar_skills_usuario` / `usar_skill` / `esquecer_skill`.
+  - Índice de skills injetado no system prompt (Companion + Chat/`context-builder`); `usar_skill` carrega o procedimento completo.
+  - Criação automática heurística pós-turno + instrução no prompt para o LLM criar skills de fluxos multi-passos.
+  - Cap ~30 skills/usuário; sanitize; rejeita conteúdo com secrets.
+  - Migrations aplicadas: `20260727_000001_ia_user_memory.sql` + `20260727_000002_ia_user_skills.sql`.
+
+## [5.44.0] - 2026-07-27
+
+### Features
+- **Companion global + memória Hermes-like**:
+  - Sessão do Companion acompanha o usuário em todos os módulos (`CompanionSessionProvider` no `ClientProviders`; STM em `localStorage`).
+  - Contexto/sessão de conversa limpos **somente no logout** (STM); memória de longo prazo (`ia_user_memory`) **persiste** entre logins.
+  - LTM curada por usuário (fatos/preferências/metas), injetada no system prompt do Companion e do Chat.
+  - Tools `salvar_memoria_usuario` / `listar_memorias_usuario` + extração heurística pós-turno.
+  - Migration: `supabase/migrations/20260727_000001_ia_user_memory.sql` (aplicar no Supabase).
+
+### Changed
+- Companion removido do `MainLayout` (evita remount/perda de estado); montagem global autenticada.
+
+## [5.43.1] - 2026-07-27
+
+### Features
+- **AI Companion — Ícone oficial**:
+  - FAB com crop `LC1_Azul` na marca “abz” + label tipográfico ABZ e placa branca/brand.
+  - Motion rings por estado (`idle` / `listening` / `speaking` / `executing`) em `companion-logo-motion.ts`; a logo nunca gira.
+  - Respeito a `useReducedMotion`.
+
+### Changed
+- Removido SVG morto `PortalLogo` (arcos 3 cores) do `MainLayout`.
+
+## [5.43.0] - 2026-07-27
+
+### Features
+- **AI Companion UX**:
+  - Ícone com logo oficial ABZ (`LC1_Azul.png`) estável + anel de status (sem girar a marca) e wordmark no FAB.
+  - Companion conectado à IA real (`chatCompletion` + tools); removidas respostas canned por keyword.
+  - Navegação fuzzy com typos/sinônimos/contextos (`portal-navigation.ts`); `navegar_portal` unificado.
+  - Commands da tool propagados via `_metadata.portalCommands` para o Portal Action Bus.
+  - Sub-agente `companion` no `agents-router` (prefixo `[ABZ_COMPANION]` / verbos de navegação).
+
+### Fixed
+- Falso positivo de navegação: keywords curtas (ex. `ca`) não batem mais como substring em palavras como `calendario`.
+
+## [5.42.0] - 2026-07-27
+
+### Features
+- **IA Tools — Auditoria e expansão**:
+  - Correção de KPIs (`PENDING_LEADER|PENDING_MANAGER`, reembolso `pendente`), Excel/PDF (`ponto`, `compras`, `eventos`, `cursos`, `epis`) e `buscar_reembolsos` (user_id + email / `valorTotal`).
+  - Microsoft Graph com paginação (`@odata.nextLink`), filtros ricos e `limite=0` até hard cap 1000.
+  - KPIs cruzam pendências do portal com sinais de **e-mail e Teams** (`kpi-comms-signals.ts`, `buscar_sinais_kpi_comunicacao`).
+  - Novos módulos: tripulantes, afastamentos, acidentes, fatores e-Social, escalas (local), EPI estoque/CA/entrega, ponto resumo/inconsistências, Academy matrícula/certificados/quizzes.
+  - Fase 3: `meus_emails`, `meu_calendario`, `criar_evento_calendario`, `minhas_conversas_teams`, `pesquisar_mensagens_teams`, `navegar_portal`.
+  - Registry modular (`microsoft` / `calendario` / `chat` / `portal`) + bridge no `executeToolCall`.
+  - AI Companion (`AICompanionWidget`, `/api/ia/companion`, `portal-action-bus`).
+- **DOX**: `src/lib/ia/AGENTS.md` + preferência Graph/KPI no root `AGENTS.md`.
+
+### Fixed
+- Limites fixos de e-mail Graph (`$top=5` / descrição “últimos 5”) substituídos por extração conforme a solicitação do usuário.
+
 ## [5.41.1] - 2026-07-27
 
 ### Fixed

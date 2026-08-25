@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { processarDocumentoOCR, processarImagensPreRenderizadas, extrairDadosTexto } from '@/lib/ocr';
-import { extrairDadosASODoTexto } from '@/lib/gestao-tripulantes/ocr-processor';
+import { extrairDadosASODoTexto, aplicarGateIdentidadeDocumento } from '@/lib/gestao-tripulantes/ocr-processor';
 import type { OCRTipoDocumento } from '@/types/ocr';
 
 export const dynamic = 'force-dynamic';
@@ -119,6 +119,10 @@ export async function POST(
     }
 
     let asoIdentity: { identity_match?: string | null; cpf_documento?: string | null; colaborador_id?: string | null; esocial_status?: string | null } | null = null;
+    let gateResultado: { identity_match: string | null; cpf_documento: string | null } = {
+      identity_match: null,
+      cpf_documento: null,
+    };
 
     if (documento.tipo_documento === 'aso') {
       try {
@@ -135,8 +139,36 @@ export async function POST(
           .eq('documento_id', id)
           .maybeSingle();
         asoIdentity = asoRow;
+        // Espelha o resultado do gate no documento (auditoria/quarentena na UI)
+        if (asoRow?.identity_match) {
+          await supabaseAdmin
+            .from('gt_documentos')
+            .update({
+              identity_match: asoRow.identity_match,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', id);
+        }
+        gateResultado = {
+          identity_match: asoRow?.identity_match ?? null,
+          cpf_documento: asoRow?.cpf_documento ?? null,
+        };
       } catch (asoErr) {
         console.error('Erro ao processar dados de ASO:', asoErr);
+      }
+    } else {
+      // Gate de identidade para TODOS os tipos de documento:
+      // passaporte, CNH, treinamentos etc. só podem ficar no dono do CPF.
+      try {
+        const gate = await aplicarGateIdentidadeDocumento(
+          id,
+          result.data.texto,
+          result.data.dadosExtraidos,
+          documento.colaborador_id
+        );
+        gateResultado = { identity_match: gate.identityMatch, cpf_documento: gate.cpfDocumento };
+      } catch (gateErr) {
+        console.error('Erro no gate de identidade do documento:', gateErr);
       }
     }
 
@@ -145,6 +177,7 @@ export async function POST(
       data: {
         documento: updated,
         aso_identity: asoIdentity,
+        identity_gate: gateResultado,
         ocr: {
           confianca: result.data.confianca,
           dados_extraidos: result.data.dadosExtraidos,

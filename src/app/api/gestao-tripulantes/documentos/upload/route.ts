@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import {
+  calcularArquivoHash,
+  garantirNumeroRastreioUnico,
+  buscarDuplicado,
+  validarDatasObrigatorias,
+  calcularStatusValidacaoPorValidade,
+} from '@/lib/gestao-tripulantes/documento-integrity';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +34,8 @@ export async function POST(request: NextRequest) {
     const orgao_emissor = formData.get('orgao_emissor') as string | null;
     const data_emissao = formData.get('data_emissao') as string | null;
     const data_validade = formData.get('data_validade') as string | null;
+    // Quarentena é o único caminho que salva sem emissão/validade
+    const emQuarentena = String(formData.get('quarentena') || '') === 'true';
 
     if (!file || !colaborador_id || !tipo_documento || !titulo) {
       return NextResponse.json({
@@ -36,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const { data: colaborador, error: colError } = await supabaseAdmin
       .from('gt_colaboradores')
-      .select('id')
+      .select('id, cpf')
       .eq('id', colaborador_id)
       .is('deleted_at', null)
       .maybeSingle();
@@ -53,6 +62,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tipo de documento inválido' }, { status: 400 });
     }
 
+    // ---- Validação dura de integridade (emissão + validade) ----------------
+    const validacao = validarDatasObrigatorias(
+      { data_emissao, data_validade },
+      { permitirQuarentena: emQuarentena }
+    );
+    if (!validacao.ok) {
+      return NextResponse.json({
+        error: 'Documento incompleto: integridade exige data de emissão e data de validade',
+        detalhes: validacao.errors,
+      }, { status: 422 });
+    }
+
     const maxSize = 20 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json({ error: 'Arquivo muito grande. Tamanho máximo: 20MB' }, { status: 400 });
@@ -66,11 +87,78 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Formato de arquivo não permitido. Use PDF, JPEG, PNG ou WebP' }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop() || 'pdf';
-    const filePath = `gestao-tripulantes/${colaborador_id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
-
     const arrayBuffer = await file.arrayBuffer();
     const buffer = new Uint8Array(arrayBuffer);
+    const arquivo_hash = calcularArquivoHash(buffer);
+
+    // ---- Anti-duplicação: atualiza o existente em vez de criar novo --------
+    const duplicado = await buscarDuplicado({
+      colaborador_id,
+      tipo_documento,
+      titulo,
+      numero_documento,
+      arquivo_hash,
+    });
+
+    if (duplicado) {
+      const updateData: Record<string, any> = {
+        titulo,
+        descricao: descricao ?? duplicado.descricao ?? null,
+        numero_documento: numero_documento ?? duplicado.numero_documento ?? null,
+        orgao_emissor: orgao_emissor ?? duplicado.orgao_emissor ?? null,
+        data_emissao: data_emissao ?? duplicado.data_emissao ?? null,
+        data_validade: data_validade ?? duplicado.data_validade ?? null,
+        arquivo_tamanho_bytes: file.size,
+        arquivo_tipo: file.type,
+        arquivo_hash,
+        updated_at: new Date().toISOString(),
+      };
+      // Só substitui o arquivo se o conteúdo realmente mudou
+      if (duplicado.arquivo_hash !== arquivo_hash) {
+        const ext = file.name.split('.').pop() || 'pdf';
+        const filePath = `gestao-tripulantes/${colaborador_id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+        const { error: upErr } = await supabaseAdmin.storage
+          .from('gestao-tripulantes-documentos')
+          .upload(filePath, buffer, { contentType: file.type, upsert: false });
+        if (!upErr) {
+          const { data: urlData } = supabaseAdmin.storage
+            .from('gestao-tripulantes-documentos')
+            .getPublicUrl(filePath);
+          updateData.arquivo_path = filePath;
+          updateData.arquivo_url = urlData?.publicUrl || duplicado.arquivo_url || null;
+        }
+      }
+      updateData.status_validacao = calcularStatusValidacaoPorValidade(updateData.data_validade);
+
+      let numero_rastreio = duplicado.numero_rastreio;
+      if (!numero_rastreio) {
+        numero_rastreio = await garantirNumeroRastreioUnico(tipo_documento, colaborador.cpf);
+        updateData.numero_rastreio = numero_rastreio;
+      }
+
+      const { data: updated, error: updError } = await supabaseAdmin
+        .from('gt_documentos')
+        .update(updateData)
+        .eq('id', duplicado.id)
+        .select('*')
+        .single();
+
+      if (updError) {
+        console.error('Erro ao atualizar documento duplicado:', updError);
+        return NextResponse.json({ error: 'Erro ao atualizar documento existente' }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: updated,
+        merged: true,
+        message: 'Documento idêntico já existia — registro existente foi atualizado (sem duplicação)'
+      }, { status: 200 });
+    }
+
+    // ---- Upload novo --------------------------------------------------------
+    const ext = file.name.split('.').pop() || 'pdf';
+    const filePath = `gestao-tripulantes/${colaborador_id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('gestao-tripulantes-documentos')
@@ -90,10 +178,7 @@ export async function POST(request: NextRequest) {
 
     const arquivo_url = urlData?.publicUrl || '';
 
-    const status_validacao = data_validade
-      ? (new Date(data_validade) < new Date() ? 'vencido' :
-         new Date(data_validade) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? 'vencendo' : 'valido')
-      : 'pendente';
+    const numero_rastreio = await garantirNumeroRastreioUnico(tipo_documento, colaborador.cpf);
 
     const { data: documento, error: insertError } = await supabaseAdmin
       .from('gt_documentos')
@@ -110,11 +195,14 @@ export async function POST(request: NextRequest) {
         arquivo_path: filePath,
         arquivo_tamanho_bytes: file.size,
         arquivo_tipo: file.type,
+        arquivo_hash,
+        numero_rastreio,
         origem: 'upload',
         ocr_status: 'pendente',
-        status_validacao,
+        status_validacao: calcularStatusValidacaoPorValidade(data_validade),
         notificado_vencimento: false,
         status_revisao: 'nao_necessita',
+        identity_match: 'match',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })

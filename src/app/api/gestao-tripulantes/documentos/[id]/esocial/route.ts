@@ -6,6 +6,171 @@ import { cpfsMatch, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 
 export const dynamic = 'force-dynamic';
 
+// ────────────────────────────────────────────────────────────────
+// GET — cross-reference Documento ASO → eventos e-Social
+// Retorna todos os eventos e-Social vinculados ao documento com
+// protocolo, recibo, datas de envio/processamento, status e erros.
+// ────────────────────────────────────────────────────────────────
+interface EsocialEventoRef {
+  id: string;
+  evento_codigo: string;
+  cpf_trabalhador: string | null;
+  matricula: string | null;
+  cnpj_empregador: string | null;
+  status: string;
+  protocolo_envio: string | null;
+  numero_recibo: string | null;
+  data_envio: string | null;
+  data_processamento: string | null;
+  erros_processamento: unknown;
+  ultimo_erro: string | null;
+  tentativas_envio: number;
+  created_at: string;
+}
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = request.headers.get('authorization') || undefined;
+    const token = extractTokenFromHeader(authHeader);
+    if (!token) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    const payload = verifyToken(token);
+    if (!payload) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+
+    const { id: docId } = await context.params;
+
+    // Validate UUID format early (avoids Postgres cast errors)
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docId)) {
+      return NextResponse.json({ error: 'ID de documento inválido' }, { status: 400 });
+    }
+
+    const { data: doc, error: docError } = await supabaseAdmin
+      .from('gt_documentos')
+      .select('id, tipo_documento, titulo, data_emissao, data_validade, colaborador_id, colaborador:gt_colaboradores!colaborador_id(id, nome_completo, cpf, matricula, matricula_esocial)')
+      .eq('id', docId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (docError || !doc) {
+      return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
+    }
+
+    const isAso = doc.tipo_documento === 'aso';
+
+    const { data: asoData } = isAso
+      ? await supabaseAdmin
+          .from('gt_documentos_aso')
+          .select('*')
+          .eq('documento_id', docId)
+          .maybeSingle()
+      : { data: null };
+
+    // Collect events linked to this document:
+    // 1) direct link via entidade_origem_id
+    // 2) tracked link via gt_documentos_aso.esocial_evento_id
+    const eventoIds = new Set<string>();
+
+    const { data: byOrigem } = await supabaseAdmin
+      .from('esocial_eventos')
+      .select('*')
+      .eq('entidade_origem_id', docId)
+      .order('created_at', { ascending: false });
+
+    (byOrigem || []).forEach(ev => eventoIds.add(ev.id));
+
+    if (asoData?.esocial_evento_id) {
+      eventoIds.add(asoData.esocial_evento_id);
+    }
+
+    let eventos: EsocialEventoRef[] = [];
+    if (eventoIds.size > 0) {
+      const { data: fetched, error } = await supabaseAdmin
+        .from('esocial_eventos')
+        .select('id, evento_codigo, cpf_trabalhador, matricula, cnpj_empregador, status, protocolo_envio, numero_recibo, data_envio, data_processamento, erros_processamento, ultimo_erro, tentativas_envio, created_at')
+        .in('id', Array.from(eventoIds))
+        .order('created_at', { ascending: false });
+
+      if (!error) eventos = (fetched || []) as EsocialEventoRef[];
+    }
+
+    const ultimoEvento = eventos.length > 0 ? eventos[0] : null;
+
+    // Consistency signals surfaced alongside the cross-reference
+    const inconsistencias: string[] = [];
+    if (isAso && asoData?.cpf_documento && ultimoEvento?.cpf_trabalhador) {
+      if (!cpfsMatch(asoData.cpf_documento, ultimoEvento.cpf_trabalhador)) {
+        inconsistencias.push(
+          `cpf_documento (${normalizeCpf(asoData.cpf_documento)}) difere do cpf_trabalhador do evento (${normalizeCpf(ultimoEvento.cpf_trabalhador)})`
+        );
+      }
+    }
+    if (isAso && asoData?.esocial_status && ultimoEvento?.status) {
+      const esperado = mapEventoStatusParaAso(ultimoEvento.status);
+      if (esperado && asoData.esocial_status !== esperado && asoData.esocial_status !== 'quarentena') {
+        inconsistencias.push(
+          `esocial_status do documento (${asoData.esocial_status}) diverge do status do último evento (${ultimoEvento.status} → ${esperado})`
+        );
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        documento: {
+          id: doc.id,
+          tipo_documento: doc.tipo_documento,
+          titulo: doc.titulo,
+          data_emissao: doc.data_emissao,
+          data_validade: doc.data_validade,
+          colaborador: doc.colaborador,
+        },
+        aso: asoData
+          ? {
+              esocial_status: asoData.esocial_status,
+              esocial_evento_id: asoData.esocial_evento_id,
+              esocial_protocolo: asoData.esocial_protocolo,
+              esocial_numero_recibo: asoData.esocial_numero_recibo,
+              esocial_data_envio: asoData.esocial_data_envio,
+              identity_match: asoData.identity_match,
+            }
+          : null,
+        eventos: eventos,
+        total_eventos: eventos.length,
+        ultimo_evento: ultimoEvento,
+        inconsistencias,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao consultar eventos E-Social do documento:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+  }
+}
+
+/** Maps esocial_eventos.status → mirrored gt_documentos_aso.esocial_status (same CASE as tracking backfills). */
+function mapEventoStatusParaAso(status: string): string | null {
+  switch (status) {
+    case 'rascunho':
+    case 'devolvido':
+    case 'revisao_rejeitado':
+      return 'erro_validacao';
+    case 'erro':
+      return 'erro';
+    case 'processado':
+      return 'processado';
+    case 'enviado':
+    case 'enviando':
+    case 'fila_envio':
+      return 'enviado';
+    case 'pendente_revisao':
+    case 'revisao_aprovado':
+      return 'pendente_revisao';
+    default:
+      return 'pendente';
+  }
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

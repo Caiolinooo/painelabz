@@ -2,7 +2,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import type { GTColaborador } from '@/types/gestao-tripulantes';
 import type { MIOIntegrante, MIOTreinamento, MIOEmbarque } from '@/types/mio';
 import { mioClient } from '@/lib/mio/client';
-import { mioSyncService } from '@/lib/mio/sync';
+import { v4 as uuidv4 } from 'uuid';
+import { sendEmailVerificationLink } from '@/lib/email-verification';
 
 interface MIOConfig {
   baseUrl: string;
@@ -59,6 +60,8 @@ function mapMIOToColaborador(mio: MIOIntegrante): Partial<GTColaborador> {
     dados_bancarios: mio.dados_bancarios || undefined,
     origem: 'mio',
     mio_id: mio.id ? String(mio.id) : undefined,
+    ativo: true,
+    ultimo_sync_mio: new Date().toISOString(),
   };
 }
 
@@ -81,7 +84,7 @@ function getStatusValidacao(dataValidade: string | null | undefined): string {
 
 export async function syncFromMIO(): Promise<{
   success: boolean;
-  data?: { importados: number; atualizados: number; erros: string[] };
+  data?: { importados: number; atualizados: number; ignorados: number; inativados: number; erros: string[] };
   error?: string;
 }> {
   try {
@@ -92,47 +95,77 @@ export async function syncFromMIO(): Promise<{
       return { success: false, error: 'Nenhum integrante retornado do MIO' };
     }
 
-    const importados: string[] = [];
-    const atualizados: string[] = [];
+    let importados = 0;
+    let atualizados = 0;
+    let ignorados = 0;
     const erros: string[] = [];
+
+    // Chaves naturais vistas nesta execução (para detectar ausentes do MIO).
+    const vistosMioIds = new Set<string>();
+    const vistosCpfs = new Set<string>();
 
     for (const integrante of integrantes) {
       try {
+        // Borda: sem nome ou sem CPF → logar, pular e contabilizar.
+        const nome = integrante.nome?.trim();
         const cpfLimpo = integrante.cpf?.replace(/\D/g, '');
-        if (!cpfLimpo) {
-          console.warn(`Colaborador sem CPF ignorado: ${integrante.nome || 'sem nome'}`);
+        if (!nome || !cpfLimpo) {
+          console.warn(`[MIO Sync] Integrante ignorado (sem nome/CPF): ${nome || 'Sem Nome'} (id ${integrante.id ?? '?'})`);
+          ignorados++;
           continue;
         }
+        if (integrante.id != null) vistosMioIds.add(String(integrante.id));
+        vistosCpfs.add(cpfLimpo);
 
-        let { data: existing } = await supabase
-          .from('gt_colaboradores')
-          .select('id')
-          .eq('cpf', cpfLimpo)
-          .is('deleted_at', null)
-          .maybeSingle();
+        // Upsert idempotente: localiza pela chave natural mio_id,
+        // depois CPF digits-only, depois CPF legado mascarado.
+        const mioIdStr = integrante.id != null ? String(integrante.id) : null;
+        let existing: { id: string } | null = null;
+
+        if (mioIdStr) {
+          const { data } = await supabase
+            .from('gt_colaboradores')
+            .select('id')
+            .eq('mio_id', mioIdStr)
+            .is('deleted_at', null)
+            .maybeSingle();
+          existing = data ?? null;
+        }
 
         if (!existing) {
+          const { data } = await supabase
+            .from('gt_colaboradores')
+            .select('id')
+            .eq('cpf', cpfLimpo)
+            .is('deleted_at', null)
+            .maybeSingle();
+          existing = data ?? null;
+        }
+
+        if (!existing && cpfLimpo !== integrante.cpf) {
           const { data: existingRaw } = await supabase
             .from('gt_colaboradores')
             .select('id')
             .eq('cpf', integrante.cpf)
             .is('deleted_at', null)
             .maybeSingle();
-          existing = existingRaw;
+          existing = existingRaw ?? null;
         }
 
-        const colaboradorData = mapMIOToColaborador(integrante);
+        const agoraIso = new Date().toISOString();
+        const colaboradorData = { ...mapMIOToColaborador(integrante), updated_at: agoraIso };
 
         if (existing) {
+          // Nunca insert duplicado: sempre UPDATE na linha já existente.
           const { error: updateErr } = await supabase
             .from('gt_colaboradores')
-            .update({ ...colaboradorData, updated_at: new Date().toISOString() })
+            .update(colaboradorData)
             .eq('id', existing.id);
 
           if (updateErr) {
-            erros.push(`Erro ao atualizar ${integrante.nome}: ${updateErr.message}`);
+            erros.push(`Erro ao atualizar ${nome}: ${updateErr.message}`);
           } else {
-            atualizados.push(integrante.nome);
+            atualizados++;
           }
         } else {
           const { error: insertErr } = await supabase
@@ -140,21 +173,53 @@ export async function syncFromMIO(): Promise<{
             .insert(colaboradorData);
 
           if (insertErr) {
-            erros.push(`Erro ao importar ${integrante.nome}: ${insertErr.message}`);
+            erros.push(`Erro ao importar ${nome}: ${insertErr.message}`);
           } else {
-            importados.push(integrante.nome);
+            importados++;
           }
         }
       } catch (err) {
-        erros.push(`Erro ao processar ${integrante.nome}: ${err}`);
+        erros.push(`Erro ao processar ${integrante.nome || 'Sem Nome'}: ${err}`);
+      }
+    }
+
+    // Borda: integrante presente no portal mas ausente do MIO → marcar INATIVO (nunca deletar).
+    let inativados = 0;
+    const { data: portalMio, error: portalErr } = await supabase
+      .from('gt_colaboradores')
+      .select('id, mio_id, cpf')
+      .eq('origem', 'mio')
+      .is('deleted_at', null);
+
+    if (portalErr) {
+      erros.push(`Erro ao listar colaboradores origem='mio' para inativação: ${portalErr.message}`);
+    } else {
+      for (const col of portalMio || []) {
+        const colCpfDigits = typeof col.cpf === 'string' ? col.cpf.replace(/\D/g, '') : '';
+        const presente =
+          (col.mio_id != null && vistosMioIds.has(String(col.mio_id))) ||
+          (!!colCpfDigits && vistosCpfs.has(colCpfDigits));
+        if (!presente) {
+          const { error: inatErr } = await supabase
+            .from('gt_colaboradores')
+            .update({ ativo: false, updated_at: new Date().toISOString() })
+            .eq('id', col.id);
+          if (inatErr) {
+            erros.push(`Erro ao marcar inativo ${col.mio_id || col.cpf || col.id}: ${inatErr.message}`);
+          } else {
+            inativados++;
+          }
+        }
       }
     }
 
     return {
       success: true,
       data: {
-        importados: importados.length,
-        atualizados: atualizados.length,
+        importados,
+        atualizados,
+        ignorados,
+        inativados,
         erros,
       },
     };
@@ -676,20 +741,328 @@ async function syncColaboradorUserLinks(): Promise<{ linkados: number; erros: st
   return { linkados, erros };
 }
 
+/** Persiste o resultado da última execução em gt_configuracoes (chave 'mio_sync_ultimo_resultado'). */
+async function salvarUltimoResultado(resultado: Record<string, unknown>): Promise<void> {
+  try {
+    const payload = { ...resultado, executado_em: new Date().toISOString() };
+    const { error } = await supabaseAdmin
+      .from('gt_configuracoes')
+      .upsert(
+        {
+          chave: 'mio_sync_ultimo_resultado',
+          valor: payload,
+          descricao: 'Resultado da última sincronização MIO → portal (Gestão de Tripulantes)',
+        },
+        { onConflict: 'chave' }
+      );
+    if (error) {
+      console.error('[MIO Sync] Falha ao persistir último resultado:', error.message);
+    }
+  } catch (e) {
+    console.error('[MIO Sync] Exceção ao persistir último resultado:', e);
+  }
+}
+
+/**
+ * Provisionamento de usuários do portal (users_unified) a partir dos integrantes do MIO.
+ * Idempotente: localiza por mio_id → tax_id (CPF digits-only) → email; nunca duplica.
+ */
+export async function syncUsuariosPortal(): Promise<{
+  success: boolean;
+  criados: number;
+  atualizados: number;
+  ignorados: number;
+  total: number;
+  erros: string[];
+}> {
+  console.log('[MIO Sync] Iniciando sincronização de usuários do portal...');
+  const supabase = supabaseAdmin;
+
+  let integrantes: MIOIntegrante[] = [];
+  try {
+    integrantes = await mioClient.getIntegrantes();
+  } catch (e: any) {
+    return { success: false, criados: 0, atualizados: 0, ignorados: 0, total: 0, erros: [e?.message || String(e)] };
+  }
+
+  if (!integrantes || integrantes.length === 0) {
+    console.log('[MIO Sync] Nenhum integrante encontrado ou falha na conexão.');
+    return { success: false, criados: 0, atualizados: 0, ignorados: 0, total: 0, erros: ['Nenhum integrante encontrado ou falha na conexão.'] };
+  }
+
+  let criadosCount = 0;
+  let atualizadosCount = 0;
+  let ignoradosCount = 0;
+  const erros: string[] = [];
+
+  const defaultModules = [
+    'dashboard', 'manual', 'procedimentos', 'politicas', 'calendario',
+    'noticias', 'reembolso', 'contracheque', 'ponto'
+  ];
+
+  for (const integrante of integrantes) {
+    try {
+      // Borda: sem nome/CPF → logar, pular e contabilizar.
+      const taxId = integrante.cpf?.replace(/\D/g, '');
+      const email = integrante.email?.trim().toLowerCase() || null;
+
+      if (!integrante.nome || !taxId) {
+        console.warn(`[MIO Sync] Usuário ignorado (sem nome/CPF): ${integrante.nome || 'Sem Nome'} (id ${integrante.id ?? '?'})`);
+        ignoradosCount++;
+        continue;
+      }
+
+      // Upsert idempotente: mio_id → CPF → email.
+      let targetUser: any = null;
+
+      const mioIdStr = integrante.id != null ? String(integrante.id) : null;
+      if (mioIdStr) {
+        const { data: userByMio } = await supabase
+          .from('users_unified')
+          .select('*')
+          .eq('mio_id', mioIdStr)
+          .maybeSingle();
+        if (userByMio) targetUser = userByMio;
+      }
+
+      if (!targetUser) {
+        const { data: userByCpf } = await supabase
+          .from('users_unified')
+          .select('*')
+          .eq('tax_id', taxId)
+          .maybeSingle();
+        if (userByCpf) {
+          targetUser = userByCpf;
+        } else if (email) {
+          const { data: userByEmail } = await supabase
+            .from('users_unified')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
+          if (userByEmail) {
+            targetUser = userByEmail;
+          }
+        }
+      }
+
+      const isMioActive = integrante.situacao === 'Ativo';
+
+      if (targetUser) {
+        const updatePayload: any = {
+          position: integrante.cargo || targetUser.position,
+          department: integrante.setor || integrante.departamento || targetUser.department,
+          mio_id: mioIdStr ?? targetUser.mio_id,
+          mio_matricula: integrante.matricula || targetUser.mio_matricula,
+          mio_data: integrante,
+          mio_last_sync: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          active: isMioActive,
+          authorization_status: isMioActive ? 'active' : 'pending'
+        };
+
+        if (!targetUser.tax_id && taxId) {
+          updatePayload.tax_id = taxId;
+        }
+
+        const { error: updateErr } = await supabase
+          .from('users_unified')
+          .update(updatePayload)
+          .eq('id', targetUser.id);
+
+        if (updateErr) {
+          console.error(`[MIO Sync] Erro ao atualizar usuário ${targetUser.id}:`, updateErr.message);
+          erros.push(`Atualização falhou para ${integrante.nome} (CPF: ${taxId}): ${updateErr.message}`);
+        } else {
+          atualizadosCount++;
+        }
+        continue;
+      }
+
+      const hasValidEmail = !!email && email.includes('@') && !email.includes('placeholder.com');
+      const firstName = integrante.nome.split(' ')[0];
+      const lastName = integrante.nome.split(' ').slice(1).join(' ');
+      const protocol = `REG-MIO-${new Date().toISOString().replace(/\D/g, '').slice(2, 10)}-${uuidv4().slice(0, 4).toUpperCase()}`;
+      const emailVerificationToken = uuidv4();
+
+      let userId: string;
+
+      if (hasValidEmail) {
+        let authUser: any = null;
+        const temporaryPassword = uuidv4().substring(0, 8);
+
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: email!,
+          password: temporaryPassword,
+          user_metadata: { first_name: firstName, last_name: lastName, role: 'USER' }
+        });
+
+        if (authError) {
+          const msg = (authError.message || '').toLowerCase();
+          const isEmailExists = msg.includes('already registered') || msg.includes('already exists') || msg.includes('duplicate') || (authError as any)?.code === 'email_exists' || (authError as any)?.status === 422;
+
+          if (isEmailExists) {
+            const perPage = 200;
+            for (let page = 1; page <= 5 && !authUser; page++) {
+              const listRes = await (supabase as any).auth.admin.listUsers({ page, perPage });
+              const users = listRes?.data?.users || listRes?.users || [];
+              authUser = users.find((u: any) => (u.email || '').toLowerCase() === email);
+              if (users.length < perPage) break;
+            }
+          }
+
+          if (!authUser) {
+            console.error(`[MIO Sync] Erro no Auth para ${email}:`, authError.message);
+            erros.push(`Erro de Auth para ${integrante.nome} (CPF: ${taxId}): ${authError.message}`);
+            userId = uuidv4();
+          } else {
+            userId = authUser.id;
+          }
+        } else {
+          userId = authData.user!.id;
+        }
+      } else {
+        userId = uuidv4();
+      }
+
+      const baseUserData: any = {
+        id: userId,
+        email: email || `${taxId}@mio.sync`,
+        phone_number: integrante.celular || integrante.telefone || null,
+        first_name: firstName,
+        last_name: lastName,
+        position: integrante.cargo || 'Não informado',
+        department: integrante.setor || integrante.departamento || 'Não informado',
+        tax_id: taxId,
+        role: 'USER',
+        active: isMioActive,
+        is_authorized: true,
+        authorization_status: isMioActive ? 'active' : 'pending',
+        email_verified: false,
+        email_verification_token: hasValidEmail ? emailVerificationToken : null,
+        mio_id: mioIdStr,
+        mio_matricula: integrante.matricula || null,
+        mio_data: integrante,
+        mio_last_sync: new Date().toISOString(),
+        protocol: protocol,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Rede de segurança anti-duplicidade antes do insert.
+      const orFilters = [`tax_id.eq.${taxId}`];
+      if (email) orFilters.push(`email.eq.${email}`);
+      if (mioIdStr) orFilters.push(`mio_id.eq.${mioIdStr}`);
+      const { data: existingUnified } = await supabase
+        .from('users_unified')
+        .select('id')
+        .or(orFilters.join(','))
+        .maybeSingle();
+
+      if (existingUnified) {
+        const { error: updateErr } = await supabase
+          .from('users_unified')
+          .update({
+            phone_number: integrante.celular || integrante.telefone || null,
+            first_name: firstName,
+            last_name: lastName,
+            position: integrante.cargo || 'Não informado',
+            department: integrante.setor || integrante.departamento || 'Não informado',
+            mio_id: mioIdStr,
+            mio_matricula: integrante.matricula || null,
+            mio_data: integrante,
+            mio_last_sync: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            active: isMioActive,
+            authorization_status: isMioActive ? 'active' : 'pending'
+          })
+          .eq('id', existingUnified.id);
+
+        if (updateErr) {
+          console.error(`[MIO Sync] Erro ao atualizar users_unified para ${integrante.nome}:`, updateErr.message);
+          erros.push(`Atualização users_unified falhou para ${integrante.nome} (CPF: ${taxId}): ${updateErr.message}`);
+        } else {
+          atualizadosCount++;
+        }
+        continue;
+      }
+
+      const { error: insertErr } = await supabase
+        .from('users_unified')
+        .insert(baseUserData);
+
+      if (insertErr) {
+        console.error(`[MIO Sync] Erro ao cadastrar users_unified para ${integrante.nome}:`, insertErr.message);
+        erros.push(`Cadastro users_unified falhou para ${integrante.nome} (CPF: ${taxId}): ${insertErr.message}`);
+        continue;
+      }
+
+      const { data: existingPerms } = await supabase
+        .from('user_permissions')
+        .select('module')
+        .eq('user_id', userId);
+
+      const existingModules = new Set(existingPerms?.map(p => p.module) || []);
+      const permissionsToInsert = defaultModules
+        .filter(module => !existingModules.has(module))
+        .map(module => ({ user_id: userId, module, feature: null }));
+
+      if (permissionsToInsert.length > 0) {
+        const { error: permErr } = await supabase
+          .from('user_permissions')
+          .insert(permissionsToInsert);
+        if (permErr) {
+          console.error(`[MIO Sync] Erro ao adicionar permissões para ${integrante.nome}:`, permErr.message);
+        }
+      }
+
+      await supabase.from('access_history').insert({
+        user_id: userId,
+        action: 'REGISTERED',
+        details: `Usuário registrado via sincronização automática MIO. Protocolo: ${protocol}`,
+        ip_address: 'system-sync',
+        user_agent: 'MIO Sync Service'
+      }).then(({ error: histErr }) => {
+        if (histErr) console.error('[MIO Sync] Erro ao registrar histórico:', histErr.message);
+      });
+
+      if (hasValidEmail) {
+        const sendResult = await sendEmailVerificationLink(email!, firstName, emailVerificationToken);
+        if (!sendResult.success) {
+          console.error(`[MIO Sync] Erro ao enviar email de verificação para ${email}:`, sendResult.message);
+        }
+      }
+
+      criadosCount++;
+    } catch (err: any) {
+      console.error(`[MIO Sync] Erro ao processar ${integrante.cpf}:`, err);
+      erros.push(`Erro geral processando ${integrante.nome || 'Sem Nome'} (CPF: ${integrante.cpf}): ${err.message || err}`);
+    }
+  }
+
+  return {
+    success: erros.length === 0,
+    criados: criadosCount,
+    atualizados: atualizadosCount,
+    ignorados: ignoradosCount,
+    total: integrantes.length,
+    erros
+  };
+}
+
 export async function syncAllFromMIO(): Promise<{
   success: boolean;
   data?: {
-    colaboradores: { importados: number; atualizados: number; erros: string[] };
+    colaboradores: { importados: number; atualizados: number; ignorados: number; inativados: number; erros: string[] };
     treinamentos: { importados: number; atualizados: number; ignorados: number; erros: string[] };
     embarques: { importados: number; atualizados: number; ignorados: number; erros: string[] };
-    usuarios: { criados: number; atualizados: number; erros: string[] };
+    usuarios: { criados: number; atualizados: number; ignorados: number; total: number; erros: string[] };
   };
   error?: string;
 }> {
   console.log('[MIO Sync] Sincronizando Usuários Portal...');
-  const userResult = await mioSyncService.syncEmployees().catch(e => {
+  const userResult = await syncUsuariosPortal().catch(e => {
     console.error('[MIO Sync] Erro ao sincronizar Usuários Portal:', e);
-    return { success: false, criados: 0, atualizados: 0, erros: [e.message || String(e)] };
+    return { success: false, criados: 0, atualizados: 0, ignorados: 0, total: 0, erros: [e?.message || String(e)] };
   });
 
   console.log('[MIO Sync] Iniciando sincronização de colaboradores/documentos...');
@@ -709,17 +1082,32 @@ export async function syncAllFromMIO(): Promise<{
 
   const allSuccess = colResult.success && treResult.success && embResult.success && userResult.success;
 
+  const resultadoFinal = {
+    success: allSuccess,
+    error: allSuccess ? null : 'Alguns módulos falharam na sincronização',
+    colaboradores: colResult.data || { importados: 0, atualizados: 0, ignorados: 0, inativados: 0, erros: [] },
+    treinamentos: treResult.data || { importados: 0, atualizados: 0, ignorados: 0, erros: [] },
+    embarques: embResult.data || { importados: 0, atualizados: 0, ignorados: 0, erros: [] },
+    usuarios: {
+      criados: userResult.criados || 0,
+      atualizados: userResult.atualizados || 0,
+      ignorados: userResult.ignorados || 0,
+      total: userResult.total || 0,
+      erros: userResult.erros || []
+    },
+    usuarios_linkados: linkResult.linkados
+  };
+
+  // Persiste o resultado da última execução (consumido por GET /api/gestao-tripulantes/mio-auditoria).
+  await salvarUltimoResultado(resultadoFinal);
+
   return {
     success: allSuccess,
     data: {
-      colaboradores: colResult.data || { importados: 0, atualizados: 0, erros: [] },
-      treinamentos: treResult.data || { importados: 0, atualizados: 0, ignorados: 0, erros: [] },
-      embarques: embResult.data || { importados: 0, atualizados: 0, ignorados: 0, erros: [] },
-      usuarios: {
-        criados: userResult.criados || 0,
-        atualizados: userResult.atualizados || 0,
-        erros: userResult.erros || []
-      }
+      colaboradores: resultadoFinal.colaboradores,
+      treinamentos: resultadoFinal.treinamentos,
+      embarques: resultadoFinal.embarques,
+      usuarios: resultadoFinal.usuarios,
     },
     error: allSuccess ? undefined : 'Alguns módulos falharam na sincronização',
   };

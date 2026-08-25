@@ -32,6 +32,20 @@ interface Document {
     esocial_status?: string;
     cpf_documento?: string | null;
     identity_match?: string | null;
+    esocial_evento_id?: string | null;
+    esocial_protocolo?: string | null;
+    esocial_numero_recibo?: string | null;
+    esocial_data_envio?: string | null;
+    /** Cross-reference resolvido pelo backend (colaboradores/[id]) */
+    esocial_evento_ref?: {
+      id: string;
+      evento_codigo: string;
+      status: string;
+      numero_recibo: string | null;
+      protocolo_envio: string | null;
+      data_envio: string | null;
+      data_processamento: string | null;
+    } | null;
   };
 }
 
@@ -80,6 +94,81 @@ function StatusBadge({ status }: { status: string }) {
       {status}
     </span>
   );
+}
+
+interface EsocialRefData {
+  evento_codigo?: string;
+  status?: string;
+  numero_recibo?: string | null;
+  protocolo_envio?: string | null;
+  data_envio?: string | null;
+  data_processamento?: string | null;
+}
+
+/** Selo e-Social do ASO com tooltip de cross-reference (recibo, protocolo, processamento). */
+function EsocialSeal({ status, ref: refData }: { status: string; ref?: EsocialRefData | null }) {
+  const sealColors: Record<string, string> = {
+    pendente: 'bg-orange-100 text-orange-800 border-orange-300',
+    pendente_revisao: 'bg-orange-100 text-orange-800 border-orange-300',
+    enviado: 'bg-blue-100 text-blue-800 border-blue-300',
+    processado: 'bg-green-100 text-green-800 border-green-300',
+    erro: 'bg-red-100 text-red-800 border-red-300',
+    quarentena: 'bg-red-100 text-red-900 border-red-400',
+  };
+  const color = sealColors[status] || 'bg-gray-100 text-gray-600 border-gray-300';
+  return (
+    <span className="relative inline-flex group cursor-help">
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase ${color}`}
+      >
+        e-Social {refData?.evento_codigo ? refData.evento_codigo : ''}
+      </span>
+      {/* Tooltip / painel de cross-reference */}
+      <div
+        className="absolute z-30 left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-lg border border-slate-200 bg-white shadow-xl p-3 text-left hidden group-hover:block"
+        role="tooltip"
+      >
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">
+          Cross-reference e-Social ↔ ASO
+        </p>
+        <dl className="space-y-1 text-xs">
+          <div className="flex justify-between gap-2">
+            <dt className="text-gray-400">Evento</dt>
+            <dd className="font-medium text-gray-700">{refData?.evento_codigo || 'S-2220'}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-gray-400">Status evento</dt>
+            <dd className="font-medium text-gray-700">{(refData?.status || status).replace(/_/g, ' ')}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-gray-400">Nº recibo</dt>
+            <dd className="font-mono text-[11px] text-gray-700 break-all text-right">
+              {refData?.numero_recibo || '—'}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-gray-400">Protocolo</dt>
+            <dd className="font-mono text-[11px] text-gray-700 break-all text-right">
+              {refData?.protocolo_envio || '—'}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-gray-400">Envio</dt>
+            <dd className="font-medium text-gray-700">{formatDateStatic(refData?.data_envio)}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-gray-400">Processamento</dt>
+            <dd className="font-medium text-gray-700">{formatDateStatic(refData?.data_processamento)}</dd>
+          </div>
+        </dl>
+      </div>
+    </span>
+  );
+}
+
+function formatDateStatic(d: string | null | undefined) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleString('pt-BR'); } catch { return d; }
 }
 
 function isDraftStatus(status: string): boolean {
@@ -260,6 +349,17 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
       eSocialStatus === 'quarentena' ||
       (cpfDoc.length === 11 && profileCpf.length === 11 && !matchesProfile);
 
+    // Cross-reference: evento e-Social deste ASO (recibo/protocolo/processamento)
+    const esocialRef: EsocialRefData | null =
+      meta.esocial_evento_ref ||
+      (esocialAsos || []).find(evt => {
+        const docId = evt.entidade_origem_id || evt.dados_evento?.documento_id || evt.dados_evento?.documentoId;
+        if (docId === doc.id) return true;
+        return !!(meta.esocial_evento_id && evt.id === meta.esocial_evento_id);
+      }) ||
+      null;
+    const showEsocialSeal = eSocialStatus !== 'nao_enviado';
+
     const displayTitle = nomeOcr
       ? `ASO — ${nomeOcr}`
       : (doc.titulo?.startsWith('ASO -') ? 'ASO' : doc.titulo);
@@ -290,6 +390,7 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
                   {t(`gestaoTripulantes.aso.${meta.resultado}`, meta.resultado)}
                 </span>
               )}
+              {showEsocialSeal && <EsocialSeal status={eSocialStatus} ref={esocialRef} />}
             </div>
 
             {/* Identity from OCR — never treat filename as identity */}
@@ -523,6 +624,19 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
                           {eventStatus.replace(/_/g, ' ').toUpperCase()}
                         </span>
                       </div>
+                      {(evt.numero_recibo || evt.protocolo_envio) && (
+                        <div className="flex items-center gap-3 text-xs">
+                          {evt.numero_recibo && (
+                            <span className="text-gray-400">Recibo: <span className="font-mono text-gray-700">{evt.numero_recibo}</span></span>
+                          )}
+                          {evt.protocolo_envio && (
+                            <span className="text-gray-400">Protocolo: <span className="font-mono text-gray-700">{evt.protocolo_envio}</span></span>
+                          )}
+                          {evt.data_processamento && (
+                            <span className="text-gray-400">Proc.: <span className="text-gray-700">{formatDate(evt.data_processamento)}</span></span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 

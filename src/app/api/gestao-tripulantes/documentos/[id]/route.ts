@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { buscarCodigoExame } from '@/lib/e-social/codigos';
+import {
+  garantirNumeroRastreioUnico,
+  validarDatasObrigatorias,
+  calcularStatusValidacaoPorValidade,
+} from '@/lib/gestao-tripulantes/documento-integrity';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +90,48 @@ export async function PUT(
     delete updateData.created_at;
     delete updateData.deleted_at;
     delete updateData.colaborador_id;
+    delete updateData.numero_rastreio; // rastreio é gerido pelo sistema, não editável
+    delete updateData.arquivo_hash;
+
+    // ---- Validação dura de integridade -------------------------------------
+    const { data: atual, error: fetchErr } = await supabaseAdmin
+      .from('gt_documentos')
+      .select('data_emissao, data_validade, numero_rastreio, tipo_documento, identity_match')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchErr || !atual) {
+      return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
+    }
+
+    const emQuarentena =
+      atual.identity_match === 'quarantine' || body.quarentena === true;
+
+    const efetivo = {
+      data_emissao: 'data_emissao' in updateData ? updateData.data_emissao : atual.data_emissao,
+      data_validade: 'data_validade' in updateData ? updateData.data_validade : atual.data_validade,
+    };
+    const validacao = validarDatasObrigatorias(efetivo, { permitirQuarentena: emQuarentena });
+    if (!validacao.ok) {
+      return NextResponse.json({
+        error: 'Documento incompleto: integridade exige data de emissão e data de validade',
+        detalhes: validacao.errors,
+      }, { status: 422 });
+    }
+    if ('status_validacao' in updateData) {
+      // status_validacao é derivado da validade — recalculado abaixo
+      delete updateData.status_validacao;
+    }
+    if (efetivo.data_validade !== undefined) {
+      updateData.status_validacao = calcularStatusValidacaoPorValidade(efetivo.data_validade);
+    }
+
+    // Garante numero_rastreio único em qualquer edição
+    let numeroRastreioFinal = atual.numero_rastreio as string | null;
+    if (!numeroRastreioFinal) {
+      numeroRastreioFinal = await garantirNumeroRastreioUnico(atual.tipo_documento);
+      updateData.numero_rastreio = numeroRastreioFinal;
+    }
 
     const { data, error } = await supabaseAdmin
       .from('gt_documentos')

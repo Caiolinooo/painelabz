@@ -5,10 +5,12 @@ import {
   FiSave, FiRefreshCw, FiToggleLeft, FiSliders, FiDatabase,
   FiBell, FiCamera, FiCpu, FiSettings, FiLayout, FiChevronDown, FiChevronRight,
   FiAnchor, FiGlobe, FiBriefcase, FiPlay, FiCheckCircle, FiAlertTriangle, FiClock,
-  FiCalendar
+  FiCalendar, FiDownload
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import TiposEventoEscalaAdmin from '@/components/gestao-tripulantes/admin/TiposEventoEscalaAdmin';
+import AuditoriaDocumentosTab from '@/components/gestao-tripulantes/admin/AuditoriaDocumentosTab';
+import ExportarTab from '@/components/gestao-tripulantes/admin/ExportarTab';
 
 function MioSyncButton() {
   const [syncing, setSyncing] = useState(false);
@@ -243,6 +245,8 @@ export default function GestaoTripulantesAdminPage() {
   };
 
   const tabs = [
+    { id: 'auditoria', label: 'Auditoria Documentos', icon: FiAlertTriangle },
+    { id: 'exportar', label: 'Exportar', icon: FiDownload },
     { id: 'geral', label: 'Configuração Geral', icon: FiSettings },
     { id: 'escala', label: 'Marcadores Escala', icon: FiCalendar },
     { id: 'mio', label: 'Integração MIO', icon: FiDatabase },
@@ -322,6 +326,9 @@ export default function GestaoTripulantesAdminPage() {
         </div>
 
         <div className="p-6">
+          {activeTab === 'auditoria' && <AuditoriaDocumentosTab />}
+          {activeTab === 'exportar' && <ExportarTab />}
+
           {activeTab === 'escala' && <TiposEventoEscalaAdmin />}
 
           {activeTab === 'geral' && (

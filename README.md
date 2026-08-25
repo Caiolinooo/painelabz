@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.41.1-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.59.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -114,10 +114,14 @@ Camada de cache unificada para API MIO:
 - **Validacao de Identidade**: Verificacao multi-fator (CPF, email, data de nascimento) com erro por campo
 - **PDF Editor**: Insercao de campos e assinaturas em PDF com suporte multi-pagina
 
-### Inteligencia Artificial [v5.13-v5.14]
+### Inteligencia Artificial [v5.47.0]
 - **Agente de Voz Real-Time**: Canal WebRTC bidirecional via LiveKit com baixa latencia
-- **Agente Autonomo KPI**: Ciclo continuo de analise, monitoramento e decisoes periodicas
+- **KPI Quadro Branco**: boards persistidos (`ia_kpi_boards`) com widgets allowlisted; Companion cria/abre em `/kpi`
+- **Agente Autonomo KPI**: Ciclo continuo de analise; KPIs cruzam pendencias do portal com sinais de e-mail e Teams
 - **Chat com Streaming Real**: SSE com processamento recursivo de tools e persistencia
+- **Graph sob demanda**: extracao de e-mails/calendario/Teams conforme filtros do usuario (`limite=0` ate hard cap 1000)
+- **AI Companion**: global em todos os modulos; sessao STM segue o usuario (limpa so no logout); LTM Hermes-like (`ia_user_memory`); skills procedurais Hermes Agent (`ia_user_skills`); FAB pinwheel colorido; quadro KPI via tools + `OPEN_KPI_BOARD`
+- **Tools modulares**: Gestao Tripulantes, e-Social, Escala, EPI, Ponto, Academy + Graph non-admin (`meus_emails`, `meu_calendario`, Teams)
 - **Base de Conhecimento**: Memoria corporativa injetada no contexto por cargo/departamento
 - **Feature Toggles**: Ativacao/desativacao de ferramentas da IA por usuario
 - **Pendencias por Fonte**: Teams, Emails, Calendar e Knowledge como fontes de dados
@@ -209,6 +213,42 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### 🚢 v5.59.0 - Gestão de Tripulantes: Confiabilidade de Ponta a Ponta
+
+> O módulo agora é uma **fonte confiável de verdade documental**: sync auditável com o MIO, integridade obrigatória, exportação organizada e rastreabilidade bidirecional com o e-Social.
+
+<table>
+<tr>
+<td align="center" width="25%"><h4>🔄 Sync MIO</h4><sub><b>100% sem duplicar</b><br/>upsert idempotente<br/>(mio_id → CPF) + auditoria</sub></td>
+<td align="center" width="25%"><h4>🛡️ Integridade</h4><sub>dono certo, zero duplicados<br/>emissão + validade + rastreio<br/><b>obrigatórios</b></sub></td>
+<td align="center" width="25%"><h4>📦 Exportação</h4><sub>.zip por funcionário<br/>formato original preservado<br/>hierarquia configurável</sub></td>
+<td align="center" width="25%"><h4>🔗 e-Social</h4><sub>cross-reference bidirecional<br/>recibo + protocolo<br/>por ASO</sub></td>
+</tr>
+</table>
+
+**Destaques:**
+
+- 🔄 **Sync MIO consolidado e idempotente** — fluxo único (`syncAllFromMIO`) com upsert por `mio_id → CPF digits-only`: correspondente encontrado é sempre UPDATE, nunca INSERT duplicado; ausente do MIO vira inativo (jamais deletado). Novo endpoint de auditoria prova cobertura MIO vs portal em tempo real.
+- 🛡️ **Integridade documental obrigatória** — gate de identidade por CPF para TODOS os documentos (ASO, passaporte, certificados...): documento do funcionário errado vai para quarentena, identidade congelada nunca move. Duplicados por hash sha256 viram merge, não linha nova. Emissão + validade são campos obrigatórios no upload.
+- 🔢 **Rastreio = número próprio do documento** — OCR extrai o número real impresso (nº do ASO, nº do passaporte, nº do certificado NR); código interno `GT-*` só como fallback para docs sem numeração. Edição manual com validação de unicidade na aba Auditoria.
+- 📊 **Painel de Auditoria** — nova aba em `/admin/gestao-tripulantes`: pendências clicáveis (sem emissão, sem validade, duplicados, quarentena, vencidos/vencendo) com correção inline.
+- 🔗 **Cross-reference e-Social** — consulte um ASO e veja protocolo/recibo/datas dos eventos transmitidos; ou o inverso: dado um evento/CPF, prove qual documento e funcionário correspondem. Detecção automática de CPF divergente, eventos órfãos e status divergentes.
+- 📦 **Exportação organizada** — download .zip com pasta por funcionário (documentos em formato original + resumo JSON/CSV), filtros combináveis (funcionário/empresa/centro de custo) e hierarquia de pastas configurável via template persistido.
+
+<details>
+<summary><b>Números da execução (produção)</b></summary>
+
+| Métrica | Valor |
+|---|---|
+| Documentos ativos verificados | 1.018 |
+| Docs sem dono / anexados a 2+ pessoas | **0** |
+| Rastreios preenchidos (backfill) | 1.018 → **0 faltando** |
+| Validades de ASO recuperadas via OCR | 31 de 104 (73 pendentes: PDFs escaneados, corrigíveis pela Auditoria) |
+| Duplicados exatos detectados | 116 excedentes em 40 grupos (merge disponível na Auditoria) |
+| Erros de tipo introduzidos | 0 (`tsc --noEmit` limpo em `src/`) |
+
+</details>
 
 ### v5.30.0 - Seguranca + Credenciais de E-mail no Admin
 - **Purge de secrets no historico** e remocao de fallbacks hardcoded (email/JWT/WKRadar); debug routes endurecidas; Gitleaks no CI.
@@ -417,7 +457,14 @@ npm run dev
 Desenvolvido com ❤️ pela equipe ABZ Group.
 </p>
 # IA Pendências e Orquestração
-- MVP para detecção e orquestração de pendências entre Teams, Emails, Calendar e Knowledge.
-- Endpoints adicionados para cada fonte e um endpoint consolidado de overview.
-- O sistema usa um orchestrator simples para decidir a fonte a ser consultada e as ações a serem executadas.
-- A UI permanece inalterada; a IA responde com justificativas e planos de ação via chat.
+- Detecção e orquestração de pendências entre Teams, Emails, Calendar e Knowledge.
+- Em **v5.42.0**, KPIs do sistema (`buscar_kpis_sistema` / `analisar_kpis_negocio`) disparam scan de e-mail e Teams quando há pendências ou conclusões correlatas (`kpi-comms-signals`).
+- Em **v5.43.0**, o AI Companion usa IA real + navegação fuzzy (`portal-navigation.ts`) e ícone com logo ABZ estável.
+- Em **v5.43.1**, polish do ícone: FAB wordmark oficial (crop `LC1_Azul` + label tipográfico), rings de status por estado (`companion-logo-motion.ts`, `useReducedMotion`) e remoção do SVG `PortalLogo` do `MainLayout`.
+- Em **v5.44.0**, Companion global (sessão STM cross-módulo; limpa só no logout) + memória LTM Hermes-like (`ia_user_memory`) + FAB pinwheel colorido.
+- Em **v5.45.0**, skills procedurais Hermes Agent–like (`ia_user_skills`) com tools create/list/use/forget, inject no prompt e auto-criação a partir de fluxos ensinados.
+- Em **v5.47.0**, KPI harness por role: ADMIN livre (`html_sandbox` iframe sandboxed); USER/MANAGER só trabalho (server-side em tools/API).
+- Em **v5.46.0**, KPI Quadro Branco: `ia_kpi_boards` + tools de board + `/kpi` renderer + Companion `OPEN_KPI_BOARD`.
+- Tools Graph respeitam a solicitação do usuário (remetente, período, pasta, `limite=0` = máximo).
+- Companion (`/api/ia/companion` + `portalActionBus`) navega o usuário no portal; o Chat IA completo mantém tools e streaming.
+- Documentação operacional: `src/lib/ia/AGENTS.md`.
