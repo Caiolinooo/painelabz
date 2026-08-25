@@ -1,6 +1,6 @@
 # Changelog
 
-## [5.59.0] - 2026-08-25
+## [5.60.0] - 2026-08-25
 
 ### 🚢 Gestão de Tripulantes — Confiabilidade de Ponta a Ponta
 

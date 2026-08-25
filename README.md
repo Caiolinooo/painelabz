@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.59.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.60.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -66,18 +66,30 @@ O **Painel ABZ** e o nucleo digital da ABZ Group, projetado para centralizar flu
 
 ## Modulos do Sistema
 
-### Gestao de Tripulantes (Offshore) [v5.17.0]
-Sistema completo de gerenciamento de tripulacao offshore:
+### Gestao de Tripulantes (Offshore) [v5.60.0]
+Sistema completo de gerenciamento de tripulacao offshore — agora uma **fonte confiavel de verdade documental**:
+
+> 🆕 **Novidades v5.60.0**
+
+| | Capacidade | Destaque |
+|---|---|---|
+| 🔄 | **Sync MIO auditável** | Upsert idempotente (`mio_id → CPF`): zero duplicados, ausentes viram inativos; auditoria prova cobertura 100% |
+| 🛡️ | **Integridade documental** | Gate de identidade por CPF em TODOS os docs; duplicado vira merge; emissão + validade obrigatórias |
+| 🔢 | **Rastreio real** | OCR extrai o nº próprio do documento (ASO, passaporte, certificado NR); código interno só como fallback |
+| 📊 | **Auditoria visual** | Aba dedicada com pendências clicáveis e correção inline (datas, rastreios, quarentena, merge) |
+| 🔗 | **e-Social cross-reference** | ASO ⇄ evento: protocolo/recibo nos dois sentidos + detecção de CPF divergente e eventos órfãos |
+| 📦 | **Exportação organizada** | .zip por funcionário em formato original, filtros combináveis e hierarquia de pastas configurável |
+
+Funcionalidades de base:
 - **Matriz de Colaboradores** - Tabela interativa com filtros por empresa, embarcacao, cargo, centro de custo, status e documentos
 - **Cadastro Multi-abas** - Formulario de 7 abas (Dados Pessoais, Documentos, Endereco, Contato, Bancarios, Vinculo, e-Social)
 - **Gestao de Documentos** - 14 tipos de documentos com OCR, validacao automatica e notificacoes de vencimento
 - **Pipeline ASO** - Upload PDF -> OCR -> Revisao -> Geracao de evento S-2220
 - **Algoritmo de Back** - Sugestao inteligente de substitutos com 8 criterios ponderados
 - **Historico de Embarques** - Timeline completa com tipos, voos e estatisticas
-- **Sincronizacao MIO** - Importacao/exportacao bidirecional de colaboradores, treinamentos e embarques
 - **PoliWeb Scraper** - Importacao automatica de ASOs do sistema ocupacional
 - **Dashboard** - Metricas em tempo real (total, embarcados, disponiveis, documentos vencendo)
-- **API**: 18 endpoints REST + 13 tabelas no banco (`gt_*`)
+- **API**: 25+ endpoints REST + 13 tabelas no banco (`gt_*`)
 
 ### E-Social [v5.18.0]
 Integracao completa com o sistema governamental brasileiro:
@@ -214,7 +226,7 @@ npm run db:cadastro-fields        # Campos adicionais
 
 ## Ultimas Atualizacoes
 
-### 🚢 v5.59.0 - Gestão de Tripulantes: Confiabilidade de Ponta a Ponta
+### 🚢 v5.60.0 - Gestão de Tripulantes: Confiabilidade de Ponta a Ponta
 
 > O módulo agora é uma **fonte confiável de verdade documental**: sync auditável com o MIO, integridade obrigatória, exportação organizada e rastreabilidade bidirecional com o e-Social.
 
