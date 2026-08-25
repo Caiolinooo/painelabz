@@ -15,7 +15,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import fs from 'fs';
 import path from 'path';
-import { formatCpf } from '@/lib/utils/identity';
 
 type ColorTuple = [number, number, number];
 
@@ -79,8 +78,6 @@ export interface LeaveRequestPDFData {
   user_cpf?: string;
   user_position?: string;
   user_sector?: string;
-  /** URL pública da assinatura cadastrada (`users_unified.signature_url`) */
-  user_signature_url?: string | null;
   start_date: string;
   end_date: string;
   periods: LeavePeriod[] | null;
@@ -91,79 +88,8 @@ export interface LeaveRequestPDFData {
   advance_13th_salary?: boolean;
   leader_name?: string;
   manager_name?: string;
-  leader_signature_url?: string | null;
-  manager_signature_url?: string | null;
   leader_approved_at?: string;
   manager_approved_at?: string;
-}
-
-type SignatureImage = {
-  dataUrl: string;
-  format: 'PNG' | 'JPEG';
-};
-
-/**
- * Carrega assinatura cadastrada (users_unified.signature_url → PNG no bucket user-signatures).
- * Null-safe: URL ausente, PASSKEY_SIGNED sem imagem, ou falha de fetch → null (não inventa).
- */
-async function loadSignatureImage(url?: string | null): Promise<SignatureImage | null> {
-  if (!url || url === 'PASSKEY_SIGNED') return null;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`[Leave PDF] Assinatura HTTP ${res.status}: ${url.slice(0, 80)}`);
-      return null;
-    }
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 8) return null;
-
-    const ct = (res.headers.get('content-type') || '').toLowerCase();
-    const isJpeg =
-      ct.includes('jpeg') ||
-      ct.includes('jpg') ||
-      (buf[0] === 0xff && buf[1] === 0xd8);
-    const format: 'PNG' | 'JPEG' = isJpeg ? 'JPEG' : 'PNG';
-    const mime = isJpeg ? 'image/jpeg' : 'image/png';
-    return {
-      dataUrl: `data:${mime};base64,${buf.toString('base64')}`,
-      format
-    };
-  } catch (e) {
-    console.warn('[Leave PDF] Falha ao carregar assinatura:', e);
-    return null;
-  }
-}
-
-/** Dias corridos inclusivos entre duas datas YYYY-MM-DD (mesma regra da UI /ferias). */
-function computeDurationDays(startDate: string | undefined | null, endDate: string | undefined | null): number {
-  if (!startDate || !endDate) return 0;
-  const start = new Date(`${String(startDate).slice(0, 10)}T12:00:00Z`);
-  const end = new Date(`${String(endDate).slice(0, 10)}T12:00:00Z`);
-  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0;
-  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-}
-
-function normalizePeriods(data: LeaveRequestPDFData): LeavePeriod[] {
-  const raw: LeavePeriod[] = (data.periods && data.periods.length > 0)
-    ? data.periods
-    : [{ start_date: data.start_date, end_date: data.end_date, duration: 0 }];
-
-  return raw.map((p) => {
-    const duration = (p.duration && p.duration > 0)
-      ? p.duration
-      : computeDurationDays(p.start_date, p.end_date);
-    return {
-      start_date: p.start_date,
-      end_date: p.end_date,
-      duration
-    };
-  });
-}
-
-function formatCpfForPdf(cpf: string | undefined | null): string {
-  if (!cpf) return '—';
-  const formatted = formatCpf(cpf);
-  return formatted || '—';
 }
 
 /**
@@ -218,9 +144,8 @@ function buildHeader(doc: jsPDF, logoBase64: string, docCode: string, docTitle: 
         { content: `Data/Date: ${new Date().toLocaleDateString('pt-BR')}    PAG.: 1`, styles: { fontSize: 7, valign: 'middle' as const, halign: 'left' as const } }
       ]
     ] as any[][],
-    // A4 útil ≈ 182mm (210 − margens 14+14). 50+100+40=190 estourava 8mm e gerava warning.
     columnStyles: {
-      0: { cellWidth: 42 },
+      0: { cellWidth: 50 },
       1: { cellWidth: 100 },
       2: { cellWidth: 40 }
     },
@@ -236,12 +161,11 @@ function buildHeader(doc: jsPDF, logoBase64: string, docCode: string, docTitle: 
       if (data.section === 'body' && data.column.index === 0 && data.row.index === 0 && logoBase64) {
         const cellHeight = data.cell.height;
         const imgHeight = 12;
-        const imgWidth = 36;
+        const imgWidth = 40;
         const xPos = data.cell.x + (data.cell.width - imgWidth) / 2;
         const yPos = data.cell.y + (cellHeight - imgHeight) / 2;
         try {
-          // FAST evita embutir o PNG 1367×324 como bitmap ~1.7MB no PDF
-          doc.addImage(logoBase64, 'PNG', xPos, yPos, imgWidth, imgHeight, undefined, 'FAST');
+          doc.addImage(logoBase64, 'PNG', xPos, yPos, imgWidth, imgHeight);
         } catch (e) {
           console.warn('[Leave PDF] Erro ao adicionar logo:', e);
         }
@@ -298,7 +222,7 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
         { content: 'E-mail:', styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', fontSize: 8 } },
         { content: data.user_email || '', styles: { fontSize: 9 } },
         { content: 'CPF:', styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', fontSize: 8 } },
-        { content: formatCpfForPdf(data.user_cpf), styles: { fontSize: 9 } }
+        { content: data.user_cpf || '—', styles: { fontSize: 9 } }
       ],
       [
         { content: 'Cargo:', styles: { fillColor: COLORS.GREY_BG, fontStyle: 'bold', fontSize: 8 } },
@@ -350,7 +274,9 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
   currentY = (doc as any).lastAutoTable.finalY + 4;
 
   // --- Períodos de Férias ---
-  const periods = normalizePeriods(data);
+  const periods: LeavePeriod[] = (data.periods && data.periods.length > 0)
+    ? data.periods
+    : [{ start_date: data.start_date, end_date: data.end_date, duration: 0 }];
 
   const periodsBody: any[][] = periods.map((p, idx) => [
     String(idx + 1),
@@ -417,20 +343,19 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
 
   currentY = (doc as any).lastAutoTable.finalY + 4;
 
-  // --- Observações do Colaborador (sempre no formulário, mesmo vazias) ---
-  autoTable(doc, {
-    startY: currentY,
-    theme: 'grid',
-    head: [[
-      { content: 'OBSERVAÇÕES DO COLABORADOR:', styles: { halign: 'left', fillColor: COLORS.BLUE_HEADER, textColor: COLORS.WHITE, fontStyle: 'bold', fontSize: 9 } }
-    ]],
-    body: [[{
-      content: data.justification?.trim() || '—',
-      styles: { fontSize: 9, cellPadding: 2, minCellHeight: data.justification?.trim() ? undefined : 12 }
-    }]],
-    styles: { lineColor: COLORS.BLACK, lineWidth: 0.1, cellPadding: 1.5, valign: 'top' }
-  });
-  currentY = (doc as any).lastAutoTable.finalY + 4;
+  // --- Observações do Colaborador ---
+  if (data.justification) {
+    autoTable(doc, {
+      startY: currentY,
+      theme: 'grid',
+      head: [[
+        { content: 'OBSERVAÇÕES DO COLABORADOR:', styles: { halign: 'left', fillColor: COLORS.BLUE_HEADER, textColor: COLORS.WHITE, fontStyle: 'bold', fontSize: 9 } }
+      ]],
+      body: [[{ content: data.justification, styles: { fontSize: 9, cellPadding: 2 } }]],
+      styles: { lineColor: COLORS.BLACK, lineWidth: 0.1, cellPadding: 1.5, valign: 'top' }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 4;
+  }
 
   // --- Motivo da Rejeição (se aplicável) ---
   if (data.status === 'REJECTED' && data.rejection_reason) {
@@ -446,8 +371,8 @@ export async function generateLeaveRequestPDF(data: LeaveRequestPDFData): Promis
     currentY = (doc as any).lastAutoTable.finalY + 4;
   }
 
-  // --- Assinaturas (carimba signature_url do perfil quando existir) ---
-  currentY = await buildSignatureSection(doc, currentY, data);
+  // --- Assinaturas ---
+  currentY = buildSignatureSection(doc, currentY, data);
 
   // --- Rodapé ---
   buildFooter(doc, `Documento gerado em ${formatDateTimePTBR(new Date())} | Solicitação ID: ${data.id.slice(0, 8)}`);
@@ -625,54 +550,9 @@ export async function generateLeaveFormPDF(): Promise<Buffer> {
 }
 
 /**
- * Texto da célula de assinatura quando a role está resolvida mas sem imagem cadastrada/carregável.
- * Role não resolvida (sem nome) → linha em branco para preenchimento manual.
+ * Seção de assinaturas para o comprovante (com dados).
  */
-function signatureCellCaption(
-  roleResolved: boolean,
-  hasImage: boolean
-): { content: string; styles: Record<string, unknown> } {
-  if (hasImage) {
-    return {
-      content: '',
-      styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 22 }
-    };
-  }
-  if (roleResolved) {
-    return {
-      content: 'Assinatura não cadastrada',
-      styles: {
-        halign: 'center' as const,
-        fontSize: 7,
-        fontStyle: 'italic' as const,
-        textColor: [120, 120, 120],
-        minCellHeight: 22
-      }
-    };
-  }
-  return {
-    content: '_______________________________________\nAssinatura',
-    styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 22 }
-  };
-}
-
-/**
- * Seção de assinaturas para o comprovante (com dados + carimbo de assinatura cadastrada).
- */
-async function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRequestPDFData): Promise<number> {
-  const leaderResolved = Boolean(data.leader_name?.trim());
-  const managerResolved = Boolean(data.manager_name?.trim());
-
-  const [userSig, leaderSig, managerSig] = await Promise.all([
-    loadSignatureImage(data.user_signature_url),
-    leaderResolved ? loadSignatureImage(data.leader_signature_url) : Promise.resolve(null),
-    managerResolved ? loadSignatureImage(data.manager_signature_url) : Promise.resolve(null)
-  ]);
-
-  const images: Array<SignatureImage | null> = [userSig, leaderSig, managerSig];
-  // body row index 2 = área de assinatura (0=roles, 1=nomes, 2=assinaturas, 3=datas)
-  const SIGNATURE_ROW_INDEX = 2;
-
+function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRequestPDFData): number {
   autoTable(doc, {
     startY: currentY,
     theme: 'grid',
@@ -686,28 +566,19 @@ async function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRe
         { content: 'Gerente', styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 9, fillColor: COLORS.GREY_LIGHT } }
       ],
       [
-        { content: data.user_name || '', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 10 } },
-        { content: data.leader_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 10 } },
-        { content: data.manager_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 10 } }
+        { content: data.user_name || '', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 18 } },
+        { content: data.leader_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 18 } },
+        { content: data.manager_name || '—', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 18 } }
       ],
       [
-        signatureCellCaption(true, Boolean(userSig)),
-        signatureCellCaption(leaderResolved, Boolean(leaderSig)),
-        signatureCellCaption(managerResolved, Boolean(managerSig))
+        { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } },
+        { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } },
+        { content: '_______________________________________\nAssinatura', styles: { halign: 'center' as const, fontSize: 8, minCellHeight: 14 } }
       ],
-      ...(data.leader_approved_at || data.manager_approved_at || data.created_at ? [[
-        {
-          content: data.created_at ? `Solicitado em: ${formatDatePTBR(data.created_at)}` : '—',
-          styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT }
-        },
-        {
-          content: data.leader_approved_at ? `Aprovado em: ${formatDatePTBR(data.leader_approved_at)}` : '—',
-          styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT }
-        },
-        {
-          content: data.manager_approved_at ? `Aprovado em: ${formatDatePTBR(data.manager_approved_at)}` : '—',
-          styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT }
-        }
+      ...(data.leader_approved_at || data.manager_approved_at ? [[
+        { content: `Aprovado em: ${data.leader_approved_at ? formatDatePTBR(data.leader_approved_at) : '—'}`, styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT } },
+        { content: `Aprovado em: ${data.leader_approved_at ? formatDatePTBR(data.leader_approved_at) : '—'}`, styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT } },
+        { content: `Aprovado em: ${data.manager_approved_at ? formatDatePTBR(data.manager_approved_at) : '—'}`, styles: { halign: 'center' as const, fontSize: 7, fillColor: COLORS.GREY_LIGHT } }
       ]] : [])
     ] as any[][],
     styles: { lineColor: COLORS.BLACK, lineWidth: 0.1, cellPadding: 1.5, valign: 'middle' as const },
@@ -715,20 +586,6 @@ async function buildSignatureSection(doc: jsPDF, currentY: number, data: LeaveRe
       0: { cellWidth: 'auto' },
       1: { cellWidth: 'auto' },
       2: { cellWidth: 'auto' }
-    },
-    didDrawCell: (hookData) => {
-      if (hookData.section !== 'body' || hookData.row.index !== SIGNATURE_ROW_INDEX) return;
-      const img = images[hookData.column.index];
-      if (!img) return;
-      try {
-        const maxW = Math.min(hookData.cell.width - 6, 48);
-        const maxH = Math.min(hookData.cell.height - 4, 18);
-        const xPos = hookData.cell.x + (hookData.cell.width - maxW) / 2;
-        const yPos = hookData.cell.y + (hookData.cell.height - maxH) / 2;
-        doc.addImage(img.dataUrl, img.format, xPos, yPos, maxW, maxH, undefined, 'FAST');
-      } catch (e) {
-        console.warn('[Leave PDF] Erro ao carimbar assinatura:', e);
-      }
     }
   });
 

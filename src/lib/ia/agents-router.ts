@@ -19,25 +19,13 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     name: 'Agente de RH & Tripulantes',
     description: 'Especialista em perfil de colaboradores, férias, reembolsos, EPIs e embarques.',
     icon: '👥',
-    systemPromptAddon:
-      'Você é o Sub-Agente de RH & Gestão de Tripulantes. Responda com foco em colaboradores, férias, reembolsos, EPIs e embarques. Para "minhas pendências", use buscar_dados_usuario (tipo resumo) e depois render_dashboard.',
+    systemPromptAddon: 'Você é o Sub-Agente de RH & Gestão de Tripulantes. Responda com foco em colaboradores, férias, reembolsos, EPIs e embarques.',
     toolNames: [
       'buscar_funcionario',
       'buscar_dados_usuario',
       'buscar_usuarios_global',
       'gerenciar_embarques',
       'gerenciar_treinamentos',
-      'navegar_portal',
-      'buscar_ferias',
-      'buscar_reembolsos',
-      'buscar_ferias_global',
-      'buscar_reembolsos_global',
-      'buscar_epis',
-      'aprovar_ferias',
-      'reprovar_ferias',
-      'aprovar_reembolso',
-      'reprovar_reembolso',
-      'render_dashboard',
     ],
   },
   aso_saude: {
@@ -51,8 +39,6 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'consultar_quarentena_aso',
       'validar_aso_identidade',
       'buscar_dados_usuario',
-      'navegar_portal',
-      'render_dashboard',
     ],
   },
   esocial_compliance: {
@@ -66,7 +52,6 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
       'gerar_xml_esocial',
       'consultar_afastamentos',
       'consultar_acidentes_cat',
-      'navegar_portal',
     ],
   },
   analytics_admin: {
@@ -74,25 +59,13 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     name: 'Agente de Analytics & Dashboards',
     description: 'Especialista em métricas, relatórios em Excel, dashboards visuais e automação.',
     icon: '📊',
-    systemPromptAddon:
-      'Você é o Sub-Agente de Analytics & Gestão Executiva. Apresente relatórios detalhados e dashboards interativos. Use render_dashboard / criar_quadro_kpi para pendências/KPIs (abre /kpi).',
+    systemPromptAddon: 'Você é o Sub-Agente de Analytics & Gestão Executiva. Apresente relatórios detalhados e dashboards interativos.',
     toolNames: [
-      'analisar_kpis_negocio',
-      'buscar_kpis_sistema',
-      'buscar_sinais_kpi_comunicacao',
-      'buscar_dados_usuario',
+      'analisar_kpis',
       'render_dashboard',
-      'criar_quadro_kpi',
-      'atualizar_quadro_kpi',
-      'listar_quadros_kpi',
-      'abrir_quadro_kpi',
-      'excluir_quadro_kpi',
-      'excluir_todos_quadros_kpi',
-      'gerar_planilha_excel',
-      'gerar_relatorio_pdf',
-      'enviar_notificacao_proativa',
+      'gerar_relatorio_excel',
+      'gerenciar_notificacoes',
       'gerenciar_base_conhecimento',
-      'navegar_portal',
     ],
   },
   geral: {
@@ -100,86 +73,10 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
     name: 'Assistente Geral',
     description: 'Atendimento geral, navegação no portal e tira-dúvidas.',
     icon: '💬',
-    systemPromptAddon:
-      'Você é o Assistente Geral da ABZ. Seja cordial e objetivo. Para abrir módulos use a tool navegar_portal (tolera erros de digitação). Para pendências use buscar_dados_usuario + render_dashboard (persiste quadro em /kpi). Quadros KPI: criar/abrir/excluir_quadro_kpi (e excluir_todos_quadros_kpi). Salve fatos com salvar_memoria_usuario e procedimentos reutilizáveis com criar_skill_usuario. NUNCA invente números — sempre chame tools.',
+    systemPromptAddon: 'Você é o Assistente Geral da ABZ. Seja cordial, objetivo e ajude o usuário com navegação e orientações.',
     toolNames: [
       'buscar_dados_usuario',
-      'buscar_funcionario',
-      'buscar_ferias',
-      'buscar_reembolsos',
-      'buscar_ferias_global',
-      'buscar_reembolsos_global',
-      'buscar_kpis_sistema',
       'gerenciar_base_conhecimento',
-      'salvar_memoria_usuario',
-      'listar_memorias_usuario',
-      'criar_skill_usuario',
-      'listar_skills_usuario',
-      'usar_skill',
-      'esquecer_skill',
-      'navegar_portal',
-      'meu_calendario',
-      'meus_emails',
-      'minhas_conversas_teams',
-      'render_dashboard',
-      'criar_quadro_kpi',
-      'atualizar_quadro_kpi',
-      'listar_quadros_kpi',
-      'abrir_quadro_kpi',
-      'excluir_quadro_kpi',
-      'excluir_todos_quadros_kpi',
-      'aprovar_ferias',
-      'reprovar_ferias',
-      'aprovar_reembolso',
-      'reprovar_reembolso',
-    ],
-  },
-  companion: {
-    id: 'companion',
-    name: 'ABZ Companion',
-    description: 'Assistente flutuante: navegação + consultas rápidas com tools.',
-    icon: '🧭',
-    systemPromptAddon:
-      'Você é o ABZ Companion. Priorize navegar_portal quando o usuário quiser abrir telas. NUNCA diga que vai abrir/levar sem chamar navegar_portal. Tours do portal: chame navegar_portal(destino="dashboard") no primeiro hop. KPI → /kpi. Use tools para dados reais — NUNCA invente números/status/valores. Pendências: buscar_dados_usuario(tipo=resumo). Respostas curtas. Salve fatos duráveis com salvar_memoria_usuario. Quando o usuário ensinar um fluxo reutilizável OU você descobrir um procedimento multi-passos do portal, chame criar_skill_usuario. Use usar_skill quando a tarefa bater com uma skill listada. Para alterar /kpi: criar_quadro_kpi ou render_dashboard + abrir_quadro_kpi. Para apagar/limpar/remover quadros: excluir_quadro_kpi (id/titulo) ou excluir_todos_quadros_kpi — NUNCA diga que exclusão é indisponível. Harness: ADMIN pode html_sandbox (minigame/HTML no iframe sandboxed em /kpi); USER/MANAGER só widgets profissionais — recuse jogos/HTML livre; nunca “não consigo injetar” nem “salve .html”.',
-    toolNames: [
-      'navegar_portal',
-      'buscar_dados_usuario',
-      'buscar_funcionario',
-      'buscar_ferias',
-      'buscar_reembolsos',
-      'buscar_ferias_global',
-      'buscar_reembolsos_global',
-      'buscar_kpis_sistema',
-      'analisar_kpis_negocio',
-      'buscar_sinais_kpi_comunicacao',
-      'meus_emails',
-      'meu_calendario',
-      'criar_evento_calendario',
-      'minhas_conversas_teams',
-      'pesquisar_mensagens_teams',
-      'buscar_epis',
-      'buscar_cursos_disponiveis',
-      'buscar_progresso_academy',
-      'buscar_tripulantes',
-      'buscar_escalas',
-      'gerenciar_base_conhecimento',
-      'salvar_memoria_usuario',
-      'listar_memorias_usuario',
-      'criar_skill_usuario',
-      'listar_skills_usuario',
-      'usar_skill',
-      'esquecer_skill',
-      'render_dashboard',
-      'criar_quadro_kpi',
-      'atualizar_quadro_kpi',
-      'listar_quadros_kpi',
-      'abrir_quadro_kpi',
-      'excluir_quadro_kpi',
-      'excluir_todos_quadros_kpi',
-      'aprovar_ferias',
-      'reprovar_ferias',
-      'aprovar_reembolso',
-      'reprovar_reembolso',
     ],
   },
 };
@@ -190,28 +87,15 @@ export const SUB_AGENTS: Record<string, SubAgentDefinition> = {
 export function routeToSubAgent(userMessage: string): SubAgentDefinition {
   const msg = (userMessage || '').toLowerCase();
 
-  if (msg.includes('[abz_companion]') || msg.includes('abz_companion')) {
-    return SUB_AGENTS.companion;
-  }
-
-  // Intenção clara de navegação → companion/geral com navegar_portal
-  if (
-    /\b(abrir|abre|abra|ir para|vai para|vai pra|me leva|me leve|navegar|acessar|acesse|goto)\b/i.test(msg) ||
-    msg.includes('abrir ') ||
-    msg.includes('ir pra')
-  ) {
-    return SUB_AGENTS.companion;
-  }
-
   if (msg.includes('esocial') || msg.includes('e-social') || msg.includes('cat') || msg.includes('afastamento') || msg.includes('s-22') || msg.includes('s-1.3')) {
     return SUB_AGENTS.esocial_compliance;
   }
 
-  if (msg.includes('aso') || msg.includes('exame') || msg.includes('médico') || msg.includes('medico') || msg.includes('atestado') || msg.includes('quarentena')) {
+  if (msg.includes('aso') || msg.includes('exame') || msg.includes('médico') || msg.includes('atestado') || msg.includes('quarentena')) {
     return SUB_AGENTS.aso_saude;
   }
 
-  if (msg.includes('dashboard') || msg.includes('kpi') || msg.includes('excel') || msg.includes('relatório') || msg.includes('relatorio') || msg.includes('métrica') || msg.includes('metrica')) {
+  if (msg.includes('dashboard') || msg.includes('kpi') || msg.includes('excel') || msg.includes('relatório') || msg.includes('relatorio') || msg.includes('métrica')) {
     return SUB_AGENTS.analytics_admin;
   }
 
@@ -223,10 +107,6 @@ export function routeToSubAgent(userMessage: string): SubAgentDefinition {
     msg.includes('pendência') || msg.includes('pendencia') ||
     msg.includes('equipe')
   ) {
-    // Pendências do usuário → RH (agora com render_dashboard). KPIs/sistema → analytics.
-    if (msg.includes('kpi') || msg.includes('sistema') || msg.includes('dashboard')) {
-      return SUB_AGENTS.analytics_admin;
-    }
     return SUB_AGENTS.rh_tripulantes;
   }
 

@@ -34,14 +34,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
 
         // Busca a solicitação com os dados do usuário e do setor
-        // CPF no portal vive em users_unified.tax_id (não há coluna `cpf` confiável).
-        // Assinatura cadastrada: users_unified.signature_url (bucket user-signatures/{userId}.png).
         const { data: req, error } = await supabaseAdmin
             .from('leave_requests')
             .select(`
                 *,
                 user:users_unified!inner(
-                    id, name, first_name, last_name, email, tax_id, sector_id, position, department, signature_url,
+                    id, name, email, sector_id, position,
                     sector:sectors(id, name)
                 )
             `)
@@ -86,78 +84,35 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             }
         }
 
-        // Busca nomes + signature_url do líder e gerente (se aplicável) — não pode derrubar o PDF
+        // Busca nomes do líder e gerente (se aplicável)
         let leaderName: string | undefined;
         let managerName: string | undefined;
-        let leaderSignatureUrl: string | null | undefined;
-        let managerSignatureUrl: string | null | undefined;
         if (req.user?.sector_id) {
-            try {
-                const { data: config } = await supabaseAdmin
-                    .from('leave_sector_configs')
-                    .select('leader_id, manager_id')
-                    .eq('sector_id', req.user.sector_id)
-                    .maybeSingle();
+            const { data: config } = await supabaseAdmin
+                .from('leave_sector_configs')
+                .select(`
+                    leader:users_unified!leave_sector_configs_leader_id_fkey(name),
+                    manager:users_unified!leave_sector_configs_manager_id_fkey(name)
+                `)
+                .eq('sector_id', req.user.sector_id)
+                .single();
 
-                const ids = [config?.leader_id, config?.manager_id].filter(Boolean) as string[];
-                if (ids.length > 0) {
-                    const { data: people } = await supabaseAdmin
-                        .from('users_unified')
-                        .select('id, name, first_name, last_name, signature_url')
-                        .in('id', ids);
-
-                    type ApproverRow = {
-                        id: string;
-                        name?: string | null;
-                        first_name?: string | null;
-                        last_name?: string | null;
-                        signature_url?: string | null;
-                    };
-
-                    const label = (u: ApproverRow | undefined) =>
-                        (u?.name || '').trim() || [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim() || undefined;
-
-                    const byId = new Map((people || []).map((p: ApproverRow) => [p.id, p]));
-                    const leader = byId.get(config?.leader_id);
-                    const manager = byId.get(config?.manager_id);
-                    leaderName = label(leader);
-                    managerName = label(manager);
-                    leaderSignatureUrl = leader?.signature_url || null;
-                    managerSignatureUrl = manager?.signature_url || null;
-                }
-            } catch (approverErr) {
-                console.warn('[Leave PDF] Não foi possível carregar líder/gerente:', approverErr);
-            }
+            const leader = Array.isArray(config?.leader) ? config?.leader[0] : config?.leader;
+            const manager = Array.isArray(config?.manager) ? config?.manager[0] : config?.manager;
+            leaderName = (leader as { name?: string } | null)?.name;
+            managerName = (manager as { name?: string } | null)?.name;
         }
 
         // Monta os dados para o PDF
-        const userRow = req.user as {
-            name?: string | null;
-            first_name?: string | null;
-            last_name?: string | null;
-            email?: string | null;
-            tax_id?: string | null;
-            position?: string | null;
-            department?: string | null;
-            signature_url?: string | null;
-            sector?: { id?: string; name?: string } | { id?: string; name?: string }[] | null;
-        } | null;
-
-        const sectorRel = userRow?.sector;
-        const sectorObj = Array.isArray(sectorRel) ? sectorRel[0] : sectorRel;
-        const resolvedName = (userRow?.name || '').trim()
-            || [userRow?.first_name, userRow?.last_name].filter(Boolean).join(' ').trim();
-
         const pdfData: LeaveRequestPDFData = {
             id: req.id,
             created_at: req.created_at,
             updated_at: req.updated_at,
-            user_name: resolvedName,
-            user_email: userRow?.email || '',
-            user_cpf: userRow?.tax_id || undefined,
-            user_position: userRow?.position || undefined,
-            user_sector: sectorObj?.name || userRow?.department || undefined,
-            user_signature_url: userRow?.signature_url || null,
+            user_name: req.user?.name || '',
+            user_email: req.user?.email || '',
+            user_cpf: (req.user as any)?.cpf,
+            user_position: (req.user as any)?.position,
+            user_sector: (req.user as any)?.sector?.name,
             start_date: req.start_date,
             end_date: req.end_date,
             periods: req.periods,
@@ -167,29 +122,25 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             pecuniary_allowance: req.pecuniary_allowance,
             advance_13th_salary: req.advance_13th_salary,
             leader_name: leaderName,
-            manager_name: managerName,
-            leader_signature_url: leaderSignatureUrl,
-            manager_signature_url: managerSignatureUrl
+            manager_name: managerName
         };
 
         // Gera o PDF
         const pdfBuffer = await generateLeaveRequestPDF(pdfData);
-        const pdfBytes = new Uint8Array(pdfBuffer);
 
         // Nome do arquivo
-        const safeUserName = (resolvedName || 'colaborador')
+        const safeUserName = (req.user?.name || 'colaborador')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .replace(/[^a-zA-Z0-9]/g, '_')
             .substring(0, 30);
         const fileName = `Comprovante_Ferias_${safeUserName}_${req.id.slice(0, 8)}.pdf`;
 
-        return new NextResponse(pdfBytes, {
+        return new NextResponse(pdfBuffer, {
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="${fileName}"`,
-                'Content-Length': String(pdfBytes.byteLength),
-                'Cache-Control': 'no-store'
+                'Content-Length': String(pdfBuffer.length)
             }
         });
     } catch (error) {
