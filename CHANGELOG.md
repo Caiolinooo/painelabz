@@ -1,5 +1,43 @@
 # Changelog
 
+## [5.59.0] - 2026-08-25
+
+### 🚢 Gestão de Tripulantes — Confiabilidade de Ponta a Ponta
+
+Esta versão transforma o módulo Gestão de Tripulantes numa fonte confiável de verdade documental: sincronização auditável com o MIO, integridade obrigatória dos documentos, exportação organizada e rastreabilidade bidirecional com o e-Social.
+
+### Added
+- **Sync MIO consolidado e idempotente** (`src/lib/gestao-tripulantes/mio-sync.ts`):
+  - Fluxo único canônico para colaboradores + treinamentos + embarques + usuários do portal (`syncAllFromMIO`); `src/lib/mio/sync.ts` virou compat shim sem lógica própria.
+  - Upsert por chave natural `mio_id → CPF digits-only → CPF mascarado legado`: correspondente encontrado é sempre UPDATE, **nunca INSERT duplicado**.
+  - Integrante ausente do MIO é marcado `ativo=false` (jamais deletado); registros sem nome/CPF são logados, pulados e contabilizados.
+  - Novo endpoint `GET /api/gestao-tripulantes/mio-auditoria`: total MIO vs portal, criados/atualizados/ignorados/inativados/erros — cobertura de 100% verificável. Resultado persistido em `gt_configuracoes` (`mio_sync_ultimo_resultado`).
+- **Integridade documental 100%** (migration `20260825_000001_gt_documento_integrity.sql`, aplicada em produção):
+  - Coluna `numero_rastreio` + unique index; backfill determinístico para todos os docs existentes.
+  - Validação dura: `data_emissao` + `data_validade` obrigatórias (HTTP 422) em upload, POST manual, PUT e service — quarentena é a única exceção.
+  - Anti-duplicação por hash sha256 → path → colab+tipo+título: duplicado vira UPDATE do existente (`merged: true`), nunca novo registro.
+  - Gate de identidade estendido a TODOS os tipos de documento (antes só ASO): CPF do documento tem que bater com o perfil do colaborador; ambíguo/sem CPF ⇒ quarentena; identidade congelada nunca move.
+- **Painel de Auditoria de Documentos**: nova aba "Auditoria Documentos" em `/admin/gestao-tripulantes` + API `GET|POST /api/gestao-tripulantes/auditoria` — buckets clicáveis (sem emissão, sem validade, sem rastreio, duplicados, quarentena, vencidos/vencendo) com ações corretivas inline: `gerar_rastreio`, `corrigir_datas`, `corrigir_rastreio`, `resolver_quarentena`, `mesclar_duplicados`.
+- **Cross-reference e-Social ↔ Gestão de Tripulantes**:
+  - `GET /api/gestao-tripulantes/documentos/[id]/esocial` — eventos e-Social de um ASO com protocolo, recibo, datas e erros.
+  - Novo `GET /api/gestao-tripulantes/esocial-crossref?cpf=|evento_id=` — caminho inverso: dado um evento ou CPF, retorna os ASOs vinculados + colaborador + verificações (vínculo, CPF nos dois lados, órfãos).
+  - Novo `src/lib/gestao-tripulantes/esocial-consistency.ts` + `GET /api/gestao-tripulantes/esocial-consistencia` — detecta CPF divergente entre laudo e evento transmitido, eventos órfãos e status divergentes.
+  - UI: selo "e-Social" por ASO no modal do colaborador com recibo/protocolo/processamento em tooltip.
+- **Exportação organizada em pastas (.zip)**:
+  - Nova rota `GET /api/gestao-tripulantes/export` + núcleo em `src/lib/gestao-tripulantes/export-service.ts` (JSZip, já presente no projeto).
+  - Pasta por funcionário com documentos baixados do Storage em formato original (extensão/conteúdo preservados, nunca convertidos) + resumo JSON e CSV (matrícula, CPF, cargo, empresa, centro de custo, tabela de documentos com emissão/rastreio/validade) + `_export/resumo_geral.{json,csv}` e `_export/avisos.txt`.
+  - Filtros combináveis: funcionários (ids/nomes), empresa, centro de custo.
+  - Hierarquia configurável via template com placeholders `{empresa} {centro_custo} {funcionario} {cpf} {cargo} {tipo_documento} {ano}`, persistida em `gt_configuracoes` (`gt_export_template`) com 4 presets; sanitização segura para Windows.
+  - Nova aba "Exportar" no admin com preview da árvore antes do download; caps de proteção (50 funcionários default / hard 200, 25MB/arquivo).
+
+### Fixed
+- **Validade dos ASOs**: 31 ASOs recuperaram `data_validade` extraída do texto OCR real dos laudos (nenhuma data presumida); status de validação recalculado. 73 PDFs escaneados ficaram pendentes para OCR vision/digitação na aba Auditoria.
+- **Números próprios de documento como rastreio**: OCR agora extrai o número intrínseco do documento (nº do ASO no laudo, nº do passaporte ICAO, nº de certificado NR), rejeitando falsos positivos (CRM/CPF/CNPJ/Portaria). O código interno `GT-*` é apenas fallback legítimo para documentos sem numeração própria; sobrescrita só ocorre sobre fallback/vazio, com checagem de unicidade.
+
+### Docs
+- `src/app/api/gestao-tripulantes/AGENTS.md` atualizado com as novas regras (integridade, rastreio = número próprio, fallback, auditoria).
+- Backups e relatórios da execução em `scratch/` (`backup-backfill-*.json`, `relatorio-backfill-rastreio-validade.json`).
+
 ## [5.58.0] - 2026-07-28
 
 ### Improved

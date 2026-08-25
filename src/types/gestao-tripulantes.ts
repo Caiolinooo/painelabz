@@ -72,6 +72,10 @@ export interface GTColaborador {
     data_proximo_embarque?: string;
     origem: OrigemColaborador;
     mio_id?: string;
+    /** Marcado INATIVO pelo sync quando o integrante desaparece do MIO (nunca deletar). */
+    ativo?: boolean;
+    ultimo_sync_mio?: string;
+    mio_data?: any;
     foto_url?: string;
     deleted_at?: string;
     created_at: string;
@@ -129,6 +133,9 @@ export interface GTDocumento {
     revisado_por?: string;
     revisado_em?: string;
     comentario_revisao?: string;
+    numero_rastreio?: string;
+    arquivo_hash?: string;
+    identity_match?: AsoIdentityMatch;
     deleted_at?: string;
     created_at: string;
     updated_at: string;

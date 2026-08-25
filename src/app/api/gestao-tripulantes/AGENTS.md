@@ -57,6 +57,18 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Migration `20260723_000002_gt_tipos_evento_escala.sql`: tipos table + relax `gt_historico_embarques.tipo` CHECK (allows `fi|dba|stb|offc` + custom).
 - Optional SQL backfill of `gt_colaboradores.cpf` to digits-only (documented in root `tasks.md`); app lookups try digits + masked forms.
 
+### Document integrity gate (ALL document types)
+
+- Migration `20260825_000001_gt_documento_integrity.sql`: `gt_documentos.numero_rastreio` (unique, partial index), `arquivo_hash` (sha256), `identity_match` (doc-level mirror of ASO gate) + deterministic backfill of tracking numbers.
+- **numero_rastreio = NÚMERO PRÓPRIO DO DOCUMENTO**: the number printed on the file itself — nº do ASO impresso no laudo, nº do passaporte, nº do certificado/treinamento. NEVER an invented internal code when the document has its own numbering.
+  - OCR path: `ocr-processor.ts::extrairNumeroDocumentoDoTexto(texto, tipo)` extracts it (ASO nº / "Nº do exame|laudo", Passport No / "Nº do passaporte", Certificado/NR nº; CRM/RQE/CNPJ/CPF are never the doc number); `persistirNumeroProprioRastreio` saves it — overwrites ONLY a `GT-...` fallback or null, never an intrinsic/manual value, and checks uniqueness first. Wired into both `extrairDadosASODoTexto` (ASO) and `aplicarGateIdentidadeDocumento` (all types).
+  - Fallback interno (`documento-integrity.ts::garantirNumeroRastreioUnico`, format `GT-<TIPO>-<cpf4>-<YYYY>-<suffix>`) is acceptable ONLY for documents that genuinely have no intrinsic numbering (e.g. metadata-only MIO rows).
+  - Manual fix: auditoria POST action `corrigir_rastreio` (ADMIN-only; `{documento_id, numero_rastreio}`, uniqueness-checked) + inline "Editar rastreio" in `AuditoriaDocumentosTab`; fallback values render flagged as "(fallback)".
+- **Hard validation on save** (upload route, `POST /colaboradores/[id]/documentos`, `PUT /documentos/[id]`, `documento-service`): `data_emissao` + `data_validade` required (422 otherwise). Quarantine (`quarentena=true` / `identity_match='quarantine'`) is the only exemption.
+- **Anti-duplication** (`buscarDuplicado`): before insert, match by `arquivo_hash` → `arquivo_path` → `(colaborador, tipo, titulo, numero_documento)`. Duplicate ⇒ UPDATE existing row (returns `merged: true`), never a new row.
+- **Identity gate for all types** (`aplicarGateIdentidadeDocumento` in `ocr-processor.ts`, wired into `/documentos/[id]/ocr`): OCR CPF of ANY document type (passaporte, CNH, treinamento…) must match profile CPF; mismatch with no owning colaborador or no extractable CPF ⇒ quarantine (`colaborador_id=null`, `identity_match='quarantine'`). ASO path also mirrors its `gt_documentos_aso.identity_match` onto the doc row. Frozen identities never move.
+- **Auditoria panel**: tab "Auditoria Documentos" in `/admin/gestao-tripulantes` + API `GET|POST /api/gestao-tripulantes/auditoria`. GET returns buckets: sem_emissao, sem_validade, sem_rastreio, duplicados (groups), quarentena, vencidos, vencendo. POST fix actions (ADMIN-only): `gerar_rastreio`, `corrigir_datas`, `resolver_quarentena` (blocks if OCR CPF ≠ target CPF), `mesclar_duplicados`.
+
 ## Work Guidance
 
 - Filename/title is storage label only — never treat as identity.

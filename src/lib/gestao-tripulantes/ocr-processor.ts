@@ -98,6 +98,144 @@ function extrairDataDoTexto(texto: string): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Número próprio do documento → numero_rastreio
+//
+// REGRA (ver AGENTS.md do módulo): `numero_rastreio` é o NÚMERO PRÓPRIO do
+// documento impresso no arquivo — nº do ASO no laudo, nº do passaporte,
+// nº do certificado/treinamento. O código interno `GT-<TIPO>-...` é apenas
+// FALLBACK para documentos sem numeração intrínseca.
+// ---------------------------------------------------------------------------
+
+/** Tokens que NÃO podem ser tratados como número próprio do documento. */
+function tokenValidoComoNumeroDocumento(raw: string): string | null {
+  const token = (raw || '').trim().replace(/\s+/g, '').toUpperCase();
+  if (!token) return null;
+  if (token.length < 4 || token.length > 30) return null;
+  if (!/\d/.test(token)) return null; // precisa ter ao menos um dígito
+  if (/^\d{11}$/.test(token)) return null; // parece CPF
+  if (/^\d{14}$/.test(token)) return null; // parece CNPJ
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(token)) return null; // data
+  if (token.includes('@@') || token.startsWith('HTTP')) return null;
+  return token;
+}
+
+/**
+ * Extrai o número próprio impresso no documento a partir do texto OCR,
+ * conforme o tipo de documento:
+ *  - aso: "ASO nº ...", "Nº do exame/laudo" (CRM/CNPJ nunca são o nº do doc)
+ *  - passaporte: campo "Passport No"/"Nº do passaporte", formato letras+números
+ *  - certificado/treinamento: "Certificado nº ...", "NR-XX ..."
+ *  - demais: rótulos genéricos "Nº do documento/certificado"
+ */
+export function extrairNumeroDocumentoDoTexto(
+  texto: string,
+  tipoDocumento?: string | null
+): string | null {
+  const t = texto || '';
+  if (!t.trim()) return null;
+
+  const padroes: RegExp[] = [];
+
+  const tipo = String(tipoDocumento || '').toLowerCase();
+
+  if (tipo === 'aso' || tipo === '') {
+    padroes.push(
+      // "ASO nº 01234/2025", "ASO n°: ABC-1234"
+      /(?:ASO|ATESTADO\s+DE\s+SA[UÚ]DE\s+OCUPACIONAL)[^\n]{0,40}?\bN[ºo°.]?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/\-. ]{2,24}\d|\d[A-Z0-9\/\-. ]{2,24})/i,
+      // "Nº do exame: ...", "Número do laudo: ...", "Nº do ASO ..."
+      /\bN[ºo°.]?\s*(?:[UÚ]MERO\s*)?(?:DO|DA|DE)?\s*(?:EXAME|LAUDO|ASO)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/\-. ]{2,24})/i
+    );
+  }
+
+  if (tipo === 'passaporte' || tipo === '') {
+    padroes.push(
+      // Campo rotulado: Passport No / Passport Number / Nº do Passaporte
+      /(?:PASSPORT\s*(?:NO\.?|NUMBER|#)|P\.?\s*ASSAPORTE\s*N[ºo°.]?|\bN[ºo°.]?\s*(?:DO\s+)?PASSAPORTE)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 ]{4,12})/i,
+      // Formato ICAO 9303 típico: BR123456 / XX1234567
+      /\b([A-Z]{2}\d{6,7})\b/
+    );
+  }
+
+  if (tipo === 'certificado' || tipo === 'treinamento' || tipo === '') {
+    padroes.push(
+      // "Certificado nº ...", "Certificado N° 12345"
+      /\bCERTIFICADO[^\n:]{0,60}?\bN[ºo°.]?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/\-. ]{2,29})/i,
+      // "NR-35 nº ...", "Treinamento NR-35 - Certificado nº ..."
+      /\b(?:TREINAMENTO|NR\s*-?\s*\d{1,2})[^\n]{0,80}?\bN[ºo°.]?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/\-. ]{2,29})/i
+    );
+  }
+
+  // Genérico para qualquer tipo com numeração própria rotulada
+  padroes.push(
+    /\bN[ºo°.]?\s*(?:[UÚ]MERO\s*)?(?:DO\s+|DA\s+|DE\s+)?(?:DOCUMENTO|CERTIFICADO|REGISTRO)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/\-. ]{2,29})/i,
+    /\b(?:NUMBER|DOC\s*NO\.?|DOCUMENT\s*NO\.?)\s*[:\-#]\s*([A-Z0-9][A-Z0-9\/\-. ]{2,29})/i
+  );
+
+  for (const re0 of padroes) {
+    const re = new RegExp(re0.source, re0.flags.includes('g') ? re0.flags : re0.flags + 'g');
+    for (const m of t.matchAll(re)) {
+      const ctxAntes = t.substring(Math.max(0, (m.index || 0) - 30), m.index || 0).toUpperCase();
+      // CRM/RQE/CNPJ/CPF jamais são o número do próprio documento
+      if (/(CRM|RQE|CNPJ|C\.N\.P\.J|CPF|C\.P\.F\.?)\s*[:\-]?\s*$/.test(ctxAntes)) continue;
+      const token = tokenValidoComoNumeroDocumento(m[1]);
+      if (token) return token;
+    }
+  }
+
+  return null;
+}
+
+const FALLBACK_RASTREIO_RE = /^GT-/;
+
+/**
+ * Persiste o número próprio extraído como `numero_rastreio` do documento.
+ * Só sobrescreve quando o valor atual é fallback interno (`GT-...`) ou vazio —
+ * nunca substitui um número próprio já salvo (OCR anterior ou edição manual).
+ */
+export async function persistirNumeroProprioRastreio(
+  documentoId: string,
+  numeroProprio: string | null | undefined
+): Promise<boolean> {
+  const token = tokenValidoComoNumeroDocumento(String(numeroProprio || ''));
+  if (!token) return false;
+
+  const { data: doc } = await supabaseAdmin
+    .from('gt_documentos')
+    .select('numero_rastreio')
+    .eq('id', documentoId)
+    .maybeSingle();
+
+  const atual = (doc?.numero_rastreio || '').trim();
+  // Número próprio já gravado (ou editado manualmente): não mexe.
+  if (atual && !FALLBACK_RASTREIO_RE.test(atual)) return false;
+
+  const { data: conflito } = await supabaseAdmin
+    .from('gt_documentos')
+    .select('id')
+    .eq('numero_rastreio', token)
+    .neq('id', documentoId)
+    .limit(1)
+    .maybeSingle();
+  if (conflito) {
+    console.warn(
+      `[OCR/Rastreio] ${documentoId}: número próprio ${token} já usado em ${conflito.id}. Mantém fallback.`
+    );
+    return false;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('gt_documentos')
+    .update({ numero_rastreio: token, updated_at: new Date().toISOString() })
+    .eq('id', documentoId);
+  if (error) {
+    console.error('[OCR/Rastreio] falha ao salvar número próprio:', error.message);
+    return false;
+  }
+  console.log(`[OCR/Rastreio] ${documentoId}: numero_rastreio ← ${token} (número próprio do documento)`);
+  return true;
+}
+
 function normalizarCRM(raw: string): string {
   let crm = raw.trim();
   crm = crm.replace(/\s+/g, '');
@@ -632,6 +770,17 @@ export async function extrairDadosASODoTexto(
     }
   }
 
+  // 7. Número próprio do documento (impresso no laudo) → numero_rastreio.
+  // Substitui o fallback GT-... quando o ASO tem numeração própria.
+  try {
+    const numeroProprio = extrairNumeroDocumentoDoTexto(texto, 'aso');
+    if (numeroProprio) {
+      await persistirNumeroProprioRastreio(documentoId, numeroProprio);
+    }
+  } catch (rastreioErr) {
+    console.warn('[OCR/Rastreio] falha ao extrair/persistir número próprio do ASO:', rastreioErr);
+  }
+
   const asoUpsert: Record<string, unknown> = {
     documento_id: documentoId,
     colaborador_id: colaboradorIdFinal,
@@ -679,4 +828,112 @@ export async function extrairDadosASODoTexto(
       console.error('[OCR/ASO] upsert failed:', upsertErr);
     }
   }
+}
+
+/**
+ * Identity gate for ALL document types (not only ASO).
+ * A document may only stay attached to the colaborador that owns the CPF
+ * found in its content. Anything ambiguous goes to quarantine:
+ *   - CPF extracted ≠ profile CPF and no other colaborador owns it → quarantine
+ *   - No CPF extractable at all → quarantine
+ *   - CPF belongs to another colaborador → reassign (CPF-only, never by name)
+ *
+ * Writes identity_match onto gt_documentos so the auditoria panel can list it.
+ */
+export async function aplicarGateIdentidadeDocumento(
+  documentoId: string,
+  texto: string,
+  dadosExtraidos: Record<string, any> | null | undefined,
+  colaboradorId: string | null
+): Promise<{ identityMatch: AsoIdentityMatch; cpfDocumento: string | null }> {
+  const { data: existingDoc } = await supabaseAdmin
+    .from('gt_documentos')
+    .select('identity_match, tipo_documento')
+    .eq('id', documentoId)
+    .maybeSingle();
+
+  // Frozen identities never move (e-Social sent/processed or admin-resolved)
+  if (existingDoc?.identity_match === 'frozen') {
+    return { identityMatch: 'frozen', cpfDocumento: null };
+  }
+
+  // Número próprio do documento (passaporte, certificado, treinamento…).
+  // Substitui o fallback GT-... apenas quando há numeração intrínseca.
+  try {
+    const numeroProprio = extrairNumeroDocumentoDoTexto(texto, existingDoc?.tipo_documento);
+    if (numeroProprio) {
+      await persistirNumeroProprioRastreio(documentoId, numeroProprio);
+    }
+  } catch (rastreioErr) {
+    console.warn('[OCR/Rastreio] falha ao extrair/persistir número próprio do documento:', rastreioErr);
+  }
+
+  let cpfExtraidoRaw = dadosExtraidos?.cpf ? normalizeCpf(String(dadosExtraidos.cpf)) : '';
+  if (cpfExtraidoRaw.length !== 11 && texto) {
+    // Fallback: first CPF-shaped token in the OCR text
+    const m =
+      texto.match(/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/) ||
+      null;
+    if (m) cpfExtraidoRaw = normalizeCpf(m[0]);
+  }
+  const cpfExtraido = cpfExtraidoRaw.length === 11 ? cpfExtraidoRaw : null;
+
+  let identityMatch: AsoIdentityMatch;
+
+  if (!colaboradorId) {
+    // Already orphan/quarantined — keep quarantined until admin resolves
+    identityMatch = 'quarantine';
+  } else if (!cpfExtraido) {
+    console.warn(
+      `[OCR/Identity] Documento ${documentoId}: CPF não extraído pelo OCR. Quarentena para revisão manual.`
+    );
+    identityMatch = 'quarantine';
+    await supabaseAdmin
+      .from('gt_documentos')
+      .update({ colaborador_id: null, updated_at: new Date().toISOString() })
+      .eq('id', documentoId);
+  } else {
+    const profileCpf = await getColaboradorCpfNormalized(colaboradorId);
+
+    if (profileCpf && cpfsMatch(cpfExtraido, profileCpf)) {
+      identityMatch = 'match';
+    } else {
+      const colabCorreto = await findColaboradorByCpf(cpfExtraido);
+
+      if (colabCorreto && colabCorreto.id !== colaboradorId) {
+        console.log(
+          `[OCR/Identity] Documento ${documentoId}: CPF OCR ${cpfExtraido} ≠ perfil. Reassociando → ${colabCorreto.id}`
+        );
+        identityMatch = 'reassigned';
+        await supabaseAdmin
+          .from('gt_documentos')
+          .update({
+            colaborador_id: colabCorreto.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', documentoId);
+      } else if (colabCorreto) {
+        identityMatch = 'match';
+      } else {
+        console.warn(
+          `[OCR/Identity] Documento ${documentoId}: CPF OCR ${cpfExtraido} sem colaborador válido. Quarentena.`
+        );
+        identityMatch = 'quarantine';
+        await supabaseAdmin
+          .from('gt_documentos')
+          .update({ colaborador_id: null, updated_at: new Date().toISOString() })
+          .eq('id', documentoId);
+      }
+    }
+  }
+
+  await supabaseAdmin
+    .from('gt_documentos')
+    .update({
+      identity_match: identityMatch,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', documentoId);
+
+  return { identityMatch, cpfDocumento: cpfExtraido };
 }

@@ -65,6 +65,39 @@ export async function GET(
           return doc;
         });
       }
+
+      // Cross-reference e-Social → ASO: garante que numero_recibo,
+      // protocolo_envio e data_processamento estejam disponíveis na
+      // query de documentos (para UI e resumo exportável futuro).
+      const { data: eventosVinculados } = await supabaseAdmin
+        .from('esocial_eventos')
+        .select('id, evento_codigo, status, protocolo_envio, numero_recibo, data_envio, data_processamento, entidade_origem_id, created_at')
+        .in('entidade_origem_id', asoDocIds)
+        .order('created_at', { ascending: false });
+      const eventoPorDocId: Record<string, any> = {};
+      (eventosVinculados || []).forEach(ev => {
+        const docKey = ev.entidade_origem_id as string;
+        if (!eventoPorDocId[docKey]) eventoPorDocId[docKey] = ev; // mais recente primeiro
+      });
+      documentos = documentos.map(doc => {
+        const ev = eventoPorDocId[doc.id];
+        if (!ev) return doc;
+        return {
+          ...doc,
+          aso_data: {
+            ...(doc.aso_data || {}),
+            esocial_evento_ref: {
+              id: ev.id,
+              evento_codigo: ev.evento_codigo,
+              status: ev.status,
+              numero_recibo: ev.numero_recibo,
+              protocolo_envio: ev.protocolo_envio,
+              data_envio: ev.data_envio,
+              data_processamento: ev.data_processamento,
+            },
+          },
+        };
+      });
     }
 
     // Dedup treinamentos: mantém só o mais recente por título
