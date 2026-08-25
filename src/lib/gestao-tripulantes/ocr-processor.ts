@@ -219,7 +219,7 @@ export async function persistirNumeroProprioRastreio(
     .maybeSingle();
   if (conflito) {
     console.warn(
-      `[OCR/Rastreio] ${documentoId}: número próprio ${token} já usado em ${conflito.id}. Mantém fallback.`
+      `[OCR/Rastreio] ${documentoId}: número próprio já usado em outro documento. Mantém fallback.`
     );
     return false;
   }
@@ -232,7 +232,7 @@ export async function persistirNumeroProprioRastreio(
     console.error('[OCR/Rastreio] falha ao salvar número próprio:', error.message);
     return false;
   }
-  console.log(`[OCR/Rastreio] ${documentoId}: numero_rastreio ← ${token} (número próprio do documento)`);
+  console.log(`[OCR/Rastreio] ${documentoId}: numero_rastreio atualizado (número próprio do documento)`);
   return true;
 }
 
@@ -643,7 +643,7 @@ export async function extrairDadosASODoTexto(
 
       if (colabCorreto && colabCorreto.id !== colaboradorId) {
         console.log(
-          `[OCR/Identity] ASO ${documentoId}: CPF OCR ${cpfExtraido} ≠ perfil. Reassociando → ${colabCorreto.id}`
+          `[OCR/Identity] ASO ${documentoId}: CPF OCR divergente do perfil. Reassociando → ${colabCorreto.id}`
         );
         identityMatch = 'reassigned';
         colaboradorIdFinal = colabCorreto.id;
@@ -660,7 +660,7 @@ export async function extrairDadosASODoTexto(
       } else {
         // CPF OCR exists but no matching colaborador — or profile mismatch without target
         console.warn(
-          `[OCR/Identity] ASO ${documentoId}: CPF OCR ${cpfExtraido} sem colaborador válido. Quarentena.`
+          `[OCR/Identity] ASO ${documentoId}: CPF OCR sem colaborador válido. Quarentena.`
         );
         identityMatch = 'quarantine';
         colaboradorIdFinal = null;
@@ -902,7 +902,7 @@ export async function aplicarGateIdentidadeDocumento(
 
       if (colabCorreto && colabCorreto.id !== colaboradorId) {
         console.log(
-          `[OCR/Identity] Documento ${documentoId}: CPF OCR ${cpfExtraido} ≠ perfil. Reassociando → ${colabCorreto.id}`
+          `[OCR/Identity] Documento ${documentoId}: CPF OCR divergente do perfil. Reassociando → ${colabCorreto.id}`
         );
         identityMatch = 'reassigned';
         await supabaseAdmin
@@ -916,7 +916,7 @@ export async function aplicarGateIdentidadeDocumento(
         identityMatch = 'match';
       } else {
         console.warn(
-          `[OCR/Identity] Documento ${documentoId}: CPF OCR ${cpfExtraido} sem colaborador válido. Quarentena.`
+          `[OCR/Identity] Documento ${documentoId}: CPF OCR sem colaborador válido. Quarentena.`
         );
         identityMatch = 'quarantine';
         await supabaseAdmin

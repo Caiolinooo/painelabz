@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { requireGtAdminOrManager } from '@/lib/gestao-tripulantes/require-gt-privileged';
 import { garantirNumeroRastreioUnico, calcularStatusValidacaoPorValidade } from '@/lib/gestao-tripulantes/documento-integrity';
 
 export const dynamic = 'force-dynamic';
@@ -60,11 +61,8 @@ async function carregarDocumentos(): Promise<DocRow[]> {
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization') || undefined;
-    const token = extractTokenFromHeader(authHeader);
-    if (!token || !verifyToken(token)) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
+    const auth = requireGtAdminOrManager(request.headers.get('authorization'));
+    if (!auth.ok) return auth.response;
 
     const docs = await carregarDocumentos();
     const hoje = new Date();

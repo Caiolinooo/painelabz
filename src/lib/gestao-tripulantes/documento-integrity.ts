@@ -10,7 +10,8 @@ import type { GTDocumento } from '@/types/gestao-tripulantes';
  *   and a unique numero_rastreio (hard validation on save; quarantine exempt).
  * - Anti-duplication: same file content (hash/path) or same
  *   (tipo + titulo + numero_documento) for the same colaborador must UPDATE
- *   the existing row instead of inserting a new one.
+ *   the existing row instead of inserting a new one. Never merge onto a row
+ *   owned by a different colaborador (conflict instead).
  * - Identity gate applies to ALL document types: a document may only live on
  *   the colaborador that owns the CPF; anything ambiguous goes to quarantine.
  */
@@ -73,8 +74,9 @@ export interface DuplicidadeCriterio {
 
 /**
  * Finds an existing non-deleted document that duplicates the candidate:
- * priority 1 — same file hash; 2 — same storage path; 3 — same
- * (colaborador + tipo + titulo normalizado + numero_documento).
+ * priority 1 — same file hash for the same colaborador; 2 — same storage path
+ * for the same colaborador; 3 — same (colaborador + tipo + titulo + numero).
+ * Hash/path matches on a different colaborador are never returned for merge.
  */
 export async function buscarDuplicado(
   criterio: DuplicidadeCriterio
@@ -86,18 +88,25 @@ export async function buscarDuplicado(
     .limit(1);
 
   if (criterio.arquivo_hash) {
-    const { data } = await query.eq('arquivo_hash', criterio.arquivo_hash).maybeSingle();
+    let hashQuery = query.eq('arquivo_hash', criterio.arquivo_hash);
+    if (criterio.colaborador_id) {
+      hashQuery = hashQuery.eq('colaborador_id', criterio.colaborador_id);
+    }
+    const { data } = await hashQuery.maybeSingle();
     if (data) return data as GTDocumento;
   }
 
   if (criterio.arquivo_path) {
-    const { data } = await supabaseAdmin
+    let pathQuery = supabaseAdmin
       .from('gt_documentos')
       .select('*')
       .is('deleted_at', null)
       .eq('arquivo_path', criterio.arquivo_path)
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    if (criterio.colaborador_id) {
+      pathQuery = pathQuery.eq('colaborador_id', criterio.colaborador_id);
+    }
+    const { data } = await pathQuery.maybeSingle();
     if (data) return data as GTDocumento;
   }
 
@@ -125,6 +134,22 @@ export async function buscarDuplicado(
   }
 
   return null;
+}
+
+/** True when this SHA-256 already belongs to a different non-deleted colaborador. */
+export async function arquivoHashEmUsoPorOutroColaborador(
+  arquivoHash: string,
+  colaboradorId: string
+): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('gt_documentos')
+    .select('id')
+    .eq('arquivo_hash', arquivoHash)
+    .neq('colaborador_id', colaboradorId)
+    .is('deleted_at', null)
+    .limit(1)
+    .maybeSingle();
+  return !!data;
 }
 
 // ---------------------------------------------------------------------------
