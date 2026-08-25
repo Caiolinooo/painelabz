@@ -5,6 +5,7 @@ import {
   calcularArquivoHash,
   garantirNumeroRastreioUnico,
   buscarDuplicado,
+  arquivoHashEmUsoPorOutroColaborador,
   validarDatasObrigatorias,
   calcularStatusValidacaoPorValidade,
 } from '@/lib/gestao-tripulantes/documento-integrity';
@@ -91,6 +92,15 @@ export async function POST(request: NextRequest) {
     const buffer = new Uint8Array(arrayBuffer);
     const arquivo_hash = calcularArquivoHash(buffer);
 
+    if (await arquivoHashEmUsoPorOutroColaborador(arquivo_hash, colaborador_id)) {
+      return NextResponse.json(
+        {
+          error: 'Este arquivo já está vinculado a outro colaborador. Upload recusado para evitar sobrescrever o registro existente.',
+        },
+        { status: 409 }
+      );
+    }
+
     // ---- Anti-duplicação: atualiza o existente em vez de criar novo --------
     const duplicado = await buscarDuplicado({
       colaborador_id,
@@ -101,6 +111,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (duplicado) {
+      if (duplicado.colaborador_id && duplicado.colaborador_id !== colaborador_id) {
+        return NextResponse.json(
+          {
+            error: 'Documento duplicado pertence a outro colaborador. Merge recusado.',
+          },
+          { status: 409 }
+        );
+      }
       const updateData: Record<string, any> = {
         titulo,
         descricao: descricao ?? duplicado.descricao ?? null,

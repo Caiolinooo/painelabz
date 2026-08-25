@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { requireGtAdminOrManager } from '@/lib/gestao-tripulantes/require-gt-privileged';
 import {
   DEFAULT_EXPORT_TEMPLATE,
   EXPORT_TEMPLATE_PRESETS,
@@ -46,10 +46,8 @@ function parseFilters(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const token = extractTokenFromHeader(req.headers.get('authorization'));
-  if (!token || !verifyToken(token)) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-  }
+  const auth = requireGtAdminOrManager(req.headers.get('authorization'));
+  if (!auth.ok) return auth.response;
 
   try {
     const filters = parseFilters(req);
@@ -119,10 +117,8 @@ export async function GET(req: NextRequest) {
 
 /** POST — salva o template de pastas em gt_configuracoes ('gt_export_template'). */
 export async function POST(req: NextRequest) {
-  const token = extractTokenFromHeader(req.headers.get('authorization'));
-  if (!token || !verifyToken(token)) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-  }
+  const auth = requireGtAdminOrManager(req.headers.get('authorization'));
+  if (!auth.ok) return auth.response;
 
   try {
     const body = await req.json().catch(() => ({}));
