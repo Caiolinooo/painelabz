@@ -245,8 +245,17 @@ export async function POST(
       }, { status: 400 });
     }
 
-    if (!cpfDocumento && !cpfPerfil) {
-      return NextResponse.json({ error: 'CPF não disponível no ASO nem no perfil do colaborador.' }, { status: 400 });
+    // Gate duro: sem CPF extraído pelo OCR não há prova de identidade — nunca enviar.
+    // (Impede que um ASO trocado seja lançado com o CPF do perfil onde foi upado.)
+    if (!cpfDocumento) {
+      return NextResponse.json({
+        error: 'Execute o OCR / identidade não verificada: este ASO não tem CPF extraído e não pode ser enviado ao E-Social.',
+        code: 'ASO_CPF_NAO_EXTRAIDO',
+      }, { status: 409 });
+    }
+
+    if (!cpfPerfil) {
+      return NextResponse.json({ error: 'CPF não disponível no perfil do colaborador.' }, { status: 400 });
     }
 
     // Fetch CNPJ of the collaborator's employer company

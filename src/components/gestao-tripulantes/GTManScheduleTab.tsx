@@ -70,6 +70,130 @@ function isUuid(id: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
+// ---------------------------------------------------------------------------
+// Module-level date formatters (shared by header cells and memoized rows)
+// ---------------------------------------------------------------------------
+
+const formatHeaderDate = (d: Date, locale: string) => {
+    const dayStr = d.getDate().toString().padStart(2, '0');
+    const monthStr = d.toLocaleString(locale === 'en-US' ? 'en-US' : 'pt-BR', { month: 'short' });
+    const yearStr = d.getFullYear().toString().substring(2);
+    const capitalizedMonth = monthStr.charAt(0).toUpperCase() + monthStr.slice(1).replace('.', '');
+    return `${dayStr}-${capitalizedMonth}-${yearStr}`;
+};
+
+const getDayAbbr = (d: Date, locale: string) => {
+    return d.toLocaleString(locale === 'en-US' ? 'en-US' : 'pt-BR', { weekday: 'short' }).replace('.', '');
+};
+
+// ---------------------------------------------------------------------------
+// Memoized schedule row: pre-computes all cell metas once per (rotations x
+// weeks) change instead of re-scanning every rotation on every parent render.
+// ---------------------------------------------------------------------------
+
+interface ScheduleRowProps {
+    member: { name: string; cpf: string; rotations: RotationCell[] };
+    position: string;
+    groupCount: number;
+    groupBg: string;
+    weeks: { date: Date }[];
+    currentWeekKey: string | null;
+    isOpening: boolean;
+    locale: string;
+    onNameClick: (cpf: string, name: string) => void;
+    onCellClick: (cpf: string, name: string, date: Date, status: string, rotations: RotationCell[]) => void;
+    getWeekRotationMeta: (
+        weekDate: Date,
+        rotations: RotationCell[]
+    ) => { status: string; observacoes: string | null; type?: string };
+    getCellStyle: (rotationType: string) => { bg: string; text: string };
+}
+
+const ScheduleRow = React.memo(function ScheduleRow({
+    member,
+    position,
+    groupCount,
+    groupBg,
+    weeks,
+    currentWeekKey,
+    isOpening,
+    locale,
+    onNameClick,
+    onCellClick,
+    getWeekRotationMeta,
+    getCellStyle,
+}: ScheduleRowProps) {
+    const cellMetas = useMemo(
+        () =>
+            weeks.map((week) => {
+                const meta = getWeekRotationMeta(week.date, member.rotations);
+                const status = meta.status;
+                const hasComment = !!(meta.observacoes && String(meta.observacoes).trim());
+                const isCurrentWeek =
+                    currentWeekKey !== null && new Date(week.date).toDateString() === currentWeekKey;
+                const style = status ? getCellStyle(meta.type || status) : null;
+
+                const tooltipParts = [
+                    `Clique para gerenciar escala de ${member.name} na semana de ${formatHeaderDate(week.date, locale)}`,
+                ];
+                if (hasComment) {
+                    tooltipParts.push(`Observações: ${meta.observacoes}`);
+                }
+
+                return { status, hasComment, isCurrentWeek, style, tooltip: tooltipParts.join('\n\n') };
+            }),
+        [weeks, member.rotations, member.name, getWeekRotationMeta, getCellStyle, currentWeekKey, locale]
+    );
+
+    return (
+        <tr className="hover:bg-slate-50/50">
+            <td
+                onClick={() => onNameClick(member.cpf, member.name)}
+                className={`bg-white text-blue-600 hover:text-blue-800 hover:underline font-bold px-3 py-1.5 border-r border-b border-black whitespace-nowrap overflow-hidden sticky left-0 z-20 uppercase cursor-pointer transition-colors ${
+                    isOpening ? 'opacity-50 animate-pulse' : ''
+                }`}
+            >
+                {member.name || '\u00A0'}
+            </td>
+            <td className={`${groupBg} text-black font-bold text-center border-r border-b border-black sticky left-[300px] z-20`}>
+                {groupCount}
+            </td>
+            <td className={`${groupBg} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[380px] z-20`}>
+                {position}
+            </td>
+            {cellMetas.map((cell, wIdx) => (
+                <td
+                    key={`cell-${wIdx}`}
+                    onClick={() => onCellClick(member.cpf, member.name, weeks[wIdx].date, cell.status, member.rotations)}
+                    className={`border-r border-b text-center cursor-pointer hover:brightness-95 hover:ring-1 hover:ring-blue-400 transition-all relative ${
+                        cell.isCurrentWeek ? '!border-yellow-500 !border-2' : 'border-black'
+                    }`}
+                    style={{
+                        width: '26px',
+                        minWidth: '26px',
+                        fontSize: '9px',
+                        backgroundColor: cell.isCurrentWeek ? '#fef9c3' : cell.style?.bg || '#ffffff',
+                        color: cell.style?.text || '#9ca3af',
+                        fontWeight: cell.status ? 700 : 400,
+                    }}
+                    title={cell.tooltip}
+                >
+                    <span className="inline-flex items-center justify-center gap-0.5">
+                        {cell.status || '-'}
+                        {cell.hasComment && (
+                            <FiMessageSquare
+                                className="inline-block opacity-80"
+                                style={{ width: 8, height: 8 }}
+                                aria-label="Possui observação"
+                            />
+                        )}
+                    </span>
+                </td>
+            ))}
+        </tr>
+    );
+});
+
 export default function GTManScheduleTab({ onColabClick }: Props) {
     const { t, locale } = useI18n();
     const [allSchedules, setAllSchedules] = useState<CrewSchedule[]>([]);
@@ -524,17 +648,38 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         return idx >= 0 ? idx : 0;
     }, [filteredWeeks]);
 
-    const formatHeaderDate = (d: Date) => {
-        const dayStr = d.getDate().toString().padStart(2, '0');
-        const monthStr = d.toLocaleString(locale === 'en-US' ? 'en-US' : 'pt-BR', { month: 'short' });
-        const yearStr = d.getFullYear().toString().substring(2);
-        const capitalizedMonth = monthStr.charAt(0).toUpperCase() + monthStr.slice(1).replace('.', '');
-        return `${dayStr}-${capitalizedMonth}-${yearStr}`;
-    };
+    // ---- Week-window limiting: never render hundreds of columns at once ----
+    const DEFAULT_VISIBLE_WEEKS = 8;
+    /** null = auto-anchor centered on the current week */
+    const [weekAnchor, setWeekAnchor] = useState<number | null>(null);
 
-    const getDayAbbr = (d: Date) => {
-        return d.toLocaleString(locale === 'en-US' ? 'en-US' : 'pt-BR', { weekday: 'short' }).replace('.', '');
-    };
+    const hasDateFilter = !!(filterDateStart || filterDateEnd);
+    const maxAnchor = Math.max(0, filteredWeeks.length - DEFAULT_VISIBLE_WEEKS);
+    const autoAnchor = Math.min(Math.max(currentWeekIndex - 2, 0), maxAnchor);
+    const effectiveAnchor = weekAnchor === null ? autoAnchor : Math.min(Math.max(weekAnchor, 0), maxAnchor);
+
+    const renderedWeeks = useMemo(() => {
+        if (hasDateFilter) {
+            // Explicit date filters widen the view on demand (full range).
+            return filteredWeeks;
+        }
+        return filteredWeeks.slice(effectiveAnchor, effectiveAnchor + DEFAULT_VISIBLE_WEEKS);
+    }, [hasDateFilter, filteredWeeks, effectiveAnchor]);
+
+    const currentWeekKey = useMemo(
+        () =>
+            filteredWeeks[currentWeekIndex]?.date
+                ? new Date(filteredWeeks[currentWeekIndex].date).toDateString()
+                : null,
+        [filteredWeeks, currentWeekIndex]
+    );
+
+    const shiftWeekWindow = useCallback((dir: -1 | 1) => {
+        setWeekAnchor((prev) => {
+            const base = prev === null ? 0 : prev;
+            return base + dir * 4; // half-window step keeps overlap context
+        });
+    }, []);
 
     const getWeekStatus = useCallback((weekDate: Date, rotations: RotationCell[]): string => {
         const wStart = new Date(weekDate);
@@ -585,14 +730,14 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         const statuses = new Set<string>();
         for (const group of positionGroups) {
             for (const member of group.members) {
-                for (const week of filteredWeeks) {
+                for (const week of renderedWeeks) {
                     const s = getWeekStatus(week.date, member.rotations);
                     if (s) statuses.add(s);
                 }
             }
         }
         return statuses;
-    }, [positionGroups, filteredWeeks, getWeekStatus]);
+    }, [positionGroups, renderedWeeks, getWeekStatus]);
 
     const legendItems = useMemo(() => {
         const active = tipos.filter((tipo) => tipo.ativo);
@@ -631,7 +776,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             { wch: 35 },
             { wch: 8 },
             { wch: 25 },
-            ...filteredWeeks.map(() => ({ wch: 12 })),
+            ...renderedWeeks.map(() => ({ wch: 12 })),
         ];
         ws['!cols'] = colWidths;
 
@@ -817,6 +962,33 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         />
                     </div>
 
+                    <div className="flex items-center gap-1 flex-shrink-0 self-end h-[34px]">
+                        <button
+                            onClick={() => shiftWeekWindow(-1)}
+                            disabled={loading || effectiveAnchor <= 0}
+                            title={t('manSchedule.prevWeeks', 'Semanas anteriores')}
+                            className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition text-sm font-bold"
+                        >
+                            ‹
+                        </button>
+                        <button
+                            onClick={() => setWeekAnchor(null)}
+                            disabled={loading}
+                            title={t('manSchedule.currentWeek', 'Ir para semana atual')}
+                            className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition font-semibold text-xs whitespace-nowrap"
+                        >
+                            {t('manSchedule.today', 'Hoje')}
+                        </button>
+                        <button
+                            onClick={() => shiftWeekWindow(1)}
+                            disabled={loading || effectiveAnchor >= maxAnchor}
+                            title={t('manSchedule.nextWeeks', 'Próximas semanas')}
+                            className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition text-sm font-bold"
+                        >
+                            ›
+                        </button>
+                    </div>
+
                     <button
                         onClick={exportToExcel}
                         disabled={loading || allSchedules.length === 0}
@@ -840,7 +1012,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                 {vesselDisplayName}
                             </th>
                             <th
-                                colSpan={filteredWeeks.length}
+                                colSpan={renderedWeeks.length}
                                 className="bg-[#e2efda] text-center border-b border-black p-2 font-bold uppercase text-[#002060]"
                                 style={{ fontSize: '10px' }}
                             >
@@ -862,8 +1034,10 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                             <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[380px] z-30 px-4 py-2 min-w-[150px] w-[150px]">
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
-                            {filteredWeeks.map((week, idx) => {
-                                const isCurrentWeek = idx === currentWeekIndex;
+                            {renderedWeeks.map((week, idx) => {
+                                const isCurrentWeek =
+                                    currentWeekKey !== null &&
+                                    new Date(week.date).toDateString() === currentWeekKey;
                                 return (
                                     <th
                                         key={`date-${idx}`}
@@ -875,7 +1049,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                         style={{ height: '90px' }}
                                     >
                                         <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', letterSpacing: '0.5px', fontSize: '10px' }}>
-                                            {formatHeaderDate(week.date)}
+                                            {formatHeaderDate(week.date, locale)}
                                         </div>
                                     </th>
                                 );
@@ -886,8 +1060,10 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                             <th className="bg-slate-50 border-r border-b border-black sticky left-0 z-30"></th>
                             <th className="bg-slate-50 border-r border-b border-black sticky left-[300px] z-30"></th>
                             <th className="bg-slate-50 border-r border-b border-black sticky left-[380px] z-30"></th>
-                            {filteredWeeks.map((week, idx) => {
-                                const isCurrentWeek = idx === currentWeekIndex;
+                            {renderedWeeks.map((week, idx) => {
+                                const isCurrentWeek =
+                                    currentWeekKey !== null &&
+                                    new Date(week.date).toDateString() === currentWeekKey;
                                 return (
                                     <th
                                         key={`day-${idx}`}
@@ -898,7 +1074,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                         }`}
                                         style={{ fontSize: '10px' }}
                                     >
-                                        {getDayAbbr(week.date)}
+                                        {getDayAbbr(week.date, locale)}
                                     </th>
                                 );
                             })}

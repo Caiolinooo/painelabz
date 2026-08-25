@@ -60,15 +60,110 @@ interface ScheduleEntry {
 
 type DetectedExtraType = 'fi' | 'dba' | 'stb' | 'offc';
 
+// ---------------------------------------------------------------------------
+// Performance infrastructure
+// ---------------------------------------------------------------------------
+
+/** TTL of the in-memory computed-result cache (ms). */
+const RESULT_CACHE_TTL_MS = 90_000;
+
+/**
+ * Janela presets: how far back / forward rotations are processed.
+ * Default `90d` keeps past 45d + future 180d, which covers the rendered grid
+ * without walking years of historical LGP records.
+ */
+const JANELA_PRESETS: Record<string, { pastDays: number; futureDays: number }> = {
+    '30d': { pastDays: 15, futureDays: 60 },
+    '90d': { pastDays: 45, futureDays: 180 },
+    '180d': { pastDays: 90, futureDays: 360 },
+    '365d': { pastDays: 180, futureDays: 540 },
+    all: { pastDays: Number.POSITIVE_INFINITY, futureDays: Number.POSITIVE_INFINITY },
+};
+const DEFAULT_JANELA = '90d';
+
+interface ResultCacheEntry {
+    payload: Record<string, unknown>;
+    /** Signature of the mio_cache rows the payload was built from. */
+    mioSignature: string;
+    builtAt: number;
+}
+
+/** janela key -> computed payload cache. */
+const resultCache = new Map<string, ResultCacheEntry>();
+
+/** Guard so only one background MIO refresh runs at a time. */
+let backgroundRefreshInFlight: Promise<void> | null = null;
+
+/**
+ * Fire-and-forget refresh of the mio_cache table.
+ * NEVER awaited on the request path.
+ */
+function triggerBackgroundMioRefresh(reason: string): void {
+    if (backgroundRefreshInFlight) {
+        console.log(`[ManSchedule] Refresh em background já em andamento (motivo ignorado: ${reason})`);
+        return;
+    }
+    backgroundRefreshInFlight = (async () => {
+        const started = Date.now();
+        try {
+            console.log(`[ManSchedule] Disparando refresh do MIO em background (motivo: ${reason})...`);
+            const [integrantesRes, lgpRes] = await Promise.all([
+                mioClient.getIntegrantes().catch((e) => { console.error('[ManSchedule][bg] Erro integrantes:', e); return []; }),
+                mioClient.getLGPReportsRaw().catch((e) => { console.error('[ManSchedule][bg] Erro LGP:', e); return []; }),
+            ]);
+
+            const now = new Date().toISOString();
+            const entries = [
+                { tipo: 'integrantes', dados: integrantesRes, total_registros: integrantesRes.length, atualizado_em: now },
+                { tipo: 'lgp_reports', dados: lgpRes, total_registros: lgpRes.length, atualizado_em: now },
+            ];
+            for (const entry of entries) {
+                await supabaseAdmin.from('mio_cache').upsert(entry, { onConflict: 'tipo' });
+            }
+            // New data invalidates every cached payload signature.
+            resultCache.clear();
+            console.log(`[ManSchedule] Refresh background concluído em ${Date.now() - started}ms.`);
+        } catch (err) {
+            console.error('[ManSchedule][bg] Falha no refresh em background do MIO:', err);
+        } finally {
+            backgroundRefreshInFlight = null;
+        }
+    })();
+}
+
 function parseDate(str: string | null): Date | null {
     if (!str || str.trim() === '') return null;
     const d = new Date(str + 'T00:00:00');
     return isNaN(d.getTime()) ? null : d;
 }
 
+/** Tolerant date parse for MIO values that may already include time/ISO info. */
+function parseFlexibleDate(value: unknown): Date | null {
+    if (!value || typeof value !== 'string' || value.trim() === '') return null;
+    const direct = new Date(value);
+    if (!isNaN(direct.getTime())) return direct;
+    return parseDate(value.slice(0, 10));
+}
+
 function daysBetween(d1: Date, d2: Date): number {
     const msPerDay = 24 * 60 * 60 * 1000;
     return Math.round((d2.getTime() - d1.getTime()) / msPerDay);
+}
+
+/** True when [start,end] overlaps the processing window (end fallback: start+90d). */
+function rotationOverlapsWindow(
+    startStr: string | null,
+    endStr: string | null,
+    windowStart: number,
+    windowEnd: number
+): boolean {
+    if (!startStr && !endStr) return true; // undated entries always kept
+    const start = startStr ? parseFlexibleDate(startStr)?.getTime() ?? windowEnd : windowEnd;
+    let end = endStr ? parseFlexibleDate(endStr)?.getTime() ?? NaN : NaN;
+    if (isNaN(end)) {
+        end = isNaN(start) ? windowStart : start + 90 * 24 * 60 * 60 * 1000;
+    }
+    return start <= windowEnd && end >= windowStart;
 }
 
 function detectRotationType(
@@ -159,6 +254,7 @@ function detectRotationType(
 }
 
 export async function GET(request: NextRequest) {
+    const t0 = Date.now();
     try {
         let token: string | null = null;
         const authHeader = request.headers.get('authorization') || undefined;
@@ -178,8 +274,65 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
         }
 
-        console.log('[ManSchedule] Buscando dados do cache MIO...');
+        // ---- Janela filter (?janela=90d default; backward compatible when absent)
+        const janelaParam = (request.nextUrl.searchParams.get('janela') || DEFAULT_JANELA).toLowerCase();
+        const preset = JANELA_PRESETS[janelaParam] || JANELA_PRESETS[DEFAULT_JANELA];
+        const nowMs = Date.now();
+        const dayMs = 24 * 60 * 60 * 1000;
+        const windowStart = nowMs - preset.pastDays * dayMs;
+        const windowEnd = nowMs + preset.futureDays * dayMs;
 
+        const timings: Record<string, number> = {};
+
+        // ---- Stage 1: cheap freshness probe of mio_cache (no blobs)
+        const probeStart = Date.now();
+        const { data: probeData, error: probeError } = await supabaseAdmin
+            .from('mio_cache')
+            .select('tipo, atualizado_em, total_registros')
+            .in('tipo', ['integrantes', 'lgp_reports']);
+        timings.probe = Date.now() - probeStart;
+
+        const rows = (probeData || []) as { tipo: string; atualizado_em: string | null; total_registros: number | null }[];
+        const sigParts = ['integrantes', 'lgp_reports'].map(
+            (tipo) => `${tipo}:${rows.find((r) => r.tipo === tipo)?.atualizado_em || 'missing'}:${rows.find((r) => r.tipo === tipo)?.total_registros ?? 'x'}`
+        );
+        const mioSignature = sigParts.join('|');
+
+        // ---- Stage 2: serve computed result from memory when fresh & unchanged
+        const cachedEntry = resultCache.get(janelaParam);
+        if (
+            cachedEntry &&
+            !probeError &&
+            rows.length >= 2 &&
+            cachedEntry.mioSignature === mioSignature &&
+            Date.now() - cachedEntry.builtAt < RESULT_CACHE_TTL_MS
+        ) {
+            timings.cacheRead = Date.now() - probeStart;
+            const ageS = Math.round((Date.now() - cachedEntry.builtAt) / 1000);
+            console.log(
+                `[ManSchedule] CACHE HIT janela=${janelaParam} age=${ageS}s total=${timings.cacheRead}ms (probe ${timings.probe}ms)`
+            );
+            const hitPayload = {
+                ...(cachedEntry.payload as any),
+                meta: {
+                    ...((cachedEntry.payload as any).meta || {}),
+                    cached: true,
+                    cache_age_s: ageS,
+                    janela: janelaParam,
+                    timings_ms: { ...timings },
+                },
+            };
+            return NextResponse.json(hitPayload);
+        }
+        timings.cacheMissCheck = Date.now() - probeStart;
+        console.log(
+            `[ManSchedule] Cache miss (janela=${janelaParam}, signature=${cachedEntry ? 'stale' : 'empty'}, age=${
+                cachedEntry ? Math.round((Date.now() - cachedEntry.builtAt) / 1000) + 's' : 'n/a'
+            }) — reconstruindo schedule.`
+        );
+
+        // ---- Stage 3: load full blobs from mio_cache
+        const blobStart = Date.now();
         const { data: cacheData, error: cacheError } = await supabaseAdmin
             .from('mio_cache')
             .select('tipo, dados')
@@ -188,46 +341,56 @@ export async function GET(request: NextRequest) {
         let integrantes: any[] = [];
         let lgpRecords: any[] = [];
 
-        if (cacheError || !cacheData || cacheData.length < 2) {
-            console.log('[ManSchedule] Cache MIO incompleto ou vazio. Buscando dados em tempo real e atualizando cache...');
-            try {
-                const [integrantesRes, lgpRes] = await Promise.all([
-                    mioClient.getIntegrantes().catch((e) => { console.error('Erro integrantes:', e); return []; }),
-                    mioClient.getLGPReportsRaw().catch((e) => { console.error('Erro LGP:', e); return []; }),
-                ]);
+        const hasIntegrantesRow = !!cacheData?.some((c) => c.tipo === 'integrantes');
+        const hasLgpRow = !!cacheData?.some((c) => c.tipo === 'lgp_reports');
 
-                integrantes = integrantesRes;
-                lgpRecords = lgpRes;
+        if (cacheError || !cacheData || !hasIntegrantesRow || !hasLgpRow) {
+            // NEVER call the MIO API inline on the request path: serve what we
+            // have (or a fast 503) and kick off a fire-and-forget refresh.
+            console.log('[ManSchedule] Cache MIO incompleto/vazio — servindo parcial e disparando refresh em background.');
+            triggerBackgroundMioRefresh('cache incompleto');
 
-                const now = new Date().toISOString();
-                const entries = [
-                    { tipo: 'integrantes', dados: integrantes, total_registros: integrantes.length, atualizado_em: now },
-                    { tipo: 'lgp_reports', dados: lgpRecords, total_registros: lgpRecords.length, atualizado_em: now },
-                ];
+            integrantes = (cacheData?.find((c) => c.tipo === 'integrantes')?.dados as any[]) || [];
+            lgpRecords = (cacheData?.find((c) => c.tipo === 'lgp_reports')?.dados as any[]) || [];
 
-                for (const entry of entries) {
-                    await supabaseAdmin.from('mio_cache').upsert(entry, { onConflict: 'tipo' });
-                }
-            } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : String(err);
-                console.error('Falha ao coletar dados em tempo real do MIO:', err);
-                return NextResponse.json({
-                    success: false,
-                    error: 'Cache MIO indisponível e falha na comunicação em tempo real com a API do MIO.',
-                    message,
-                }, { status: 503 });
+            if (integrantes.length === 0 && lgpRecords.length === 0) {
+                timings.blobRead = Date.now() - blobStart;
+                console.log(`[ManSchedule] Nada para servir (503 rápido) em ${Date.now() - t0}ms.`);
+                return NextResponse.json(
+                    {
+                        success: false,
+                        error: 'Cache MIO indisponível. Atualização em tempo real foi disparada em segundo plano; tente novamente em instantes.',
+                        refreshing: true,
+                    },
+                    { status: 503 }
+                );
             }
         } else {
             integrantes = cacheData.find((c) => c.tipo === 'integrantes')?.dados as any[] || [];
             lgpRecords = cacheData.find((c) => c.tipo === 'lgp_reports')?.dados as any[] || [];
         }
+        timings.blobRead = Date.now() - blobStart;
 
-        console.log(`[ManSchedule] Cache carregado: ${integrantes.length} integrantes, ${lgpRecords.length} registros LGP`);
+        console.log(
+            `[ManSchedule] Cache carregado (${timings.blobRead}ms): ${integrantes.length} integrantes, ${lgpRecords.length} registros LGP`
+        );
+
+        // ---- Stage 4: build schedule (window-filtered)
+        const buildStart = Date.now();
 
         // Index LGP by normalized CPF for reliable joins
         const lgpByCpf = new Map<string, RawLGPRecord[]>();
+        let lgpSkippedByWindow = 0;
         for (const record of lgpRecords || []) {
             if (!record) continue;
+            // Window filter first: skip rotations entirely outside [past, future].
+            const recStart = record['Embarque Real'] || record['Prev. de Emb.'] || null;
+            const recEnd =
+                record['Desembarque Real'] || record['Prev. Desemb. RTPD'] || record['Prev. Desemb.'] || null;
+            if (!rotationOverlapsWindow(recStart, recEnd, windowStart, windowEnd)) {
+                lgpSkippedByWindow++;
+                continue;
+            }
             const cpfKey = normalizeCpf(record['CPF'] || '');
             if (!cpfKey) continue;
             const list = lgpByCpf.get(cpfKey) || [];
@@ -250,7 +413,7 @@ export async function GET(request: NextRequest) {
             if (personRecords.length > 0) {
                 for (let i = 0; i < personRecords.length; i++) {
                     const record = personRecords[i];
-                    const nextRecord = personRecords[i + 1] || null;
+                    const nextRecord = i + 1 < personRecords.length ? personRecords[i + 1] : null;
 
                     const rotationStart = record['Embarque Real'] || record['Prev. de Emb.'] || null;
                     const rotationEnd = record['Desembarque Real'] || record['Prev. Desemb. RTPD'] || record['Prev. Desemb.'] || null;
@@ -312,38 +475,63 @@ export async function GET(request: NextRequest) {
                 });
             }
         }
+        timings.build = Date.now() - buildStart;
 
-        // Merge ONLY local overrides — avoid double-counting MIO-synced rows
+        // ---- Stage 5: merge local overrides via DIRECT queries (no heavy view).
+        const mergeStart = Date.now();
         try {
             const { data: localEmbarques } = await supabaseAdmin
                 .from('gt_historico_embarques')
                 .select(`
                     id,
+                    colaborador_id,
                     tipo,
                     data_embarque,
                     data_desembarque,
                     local_embarque,
                     local_desembarque,
-                    observacoes,
-                    origem,
-                    colaborador:gt_vw_colaboradores_completo(
-                        cpf,
-                        nome_completo,
-                        cargo_nome,
-                        empresa_nome
-                    )
+                    observacoes
                 `)
                 .eq('origem', 'local')
-                .is('deleted_at', null);
+                .is('deleted_at', null)
+                .gte('data_embarque', new Date(windowStart).toISOString().slice(0, 10))
+                .lte('data_embarque', new Date(windowEnd).toISOString().slice(0, 10));
 
             if (localEmbarques && localEmbarques.length > 0) {
+                // Targeted collaborator lookup (base tables, not the view).
+                const colabIds = Array.from(
+                    new Set(localEmbarques.map((e) => e.colaborador_id).filter(Boolean))
+                ) as string[];
+
+                const colabById = new Map<
+                    string,
+                    { cpf?: string; nome_completo?: string; cargo_nome?: string; empresa_nome?: string }
+                >();
+
+                if (colabIds.length > 0) {
+                    const { data: colabs } = await supabaseAdmin
+                        .from('gt_colaboradores')
+                        .select(`
+                            id,
+                            cpf,
+                            nome_completo,
+                            cargo:gt_cargos(nome),
+                            empresa:gt_empresas(nome)
+                        `)
+                        .in('id', colabIds);
+
+                    for (const c of colabs || []) {
+                        colabById.set(c.id, {
+                            cpf: c.cpf,
+                            nome_completo: c.nome_completo,
+                            cargo_nome: (c as any).cargo?.nome,
+                            empresa_nome: (c as any).empresa?.nome,
+                        });
+                    }
+                }
+
                 for (const entry of localEmbarques) {
-                    const colab = entry.colaborador as {
-                        cpf?: string;
-                        nome_completo?: string;
-                        cargo_nome?: string;
-                        empresa_nome?: string;
-                    } | null;
+                    const colab = colabById.get(entry.colaborador_id);
                     if (!colab) continue;
 
                     const rotType = mapDbTipoToCodigo(entry.tipo);
@@ -371,12 +559,19 @@ export async function GET(request: NextRequest) {
         } catch (localErr) {
             console.error('Erro ao buscar embarques locais:', localErr);
         }
+        timings.localMerge = Date.now() - mergeStart;
 
         const vessels = Array.from(new Set(schedules.map((s) => s.vessel).filter(Boolean))).sort();
         const positions = Array.from(new Set(schedules.map((s) => s.position).filter(Boolean))).sort();
         const companies = Array.from(new Set(schedules.map((s) => s.company).filter(Boolean))).sort();
 
-        return NextResponse.json({
+        const totalMs = Date.now() - t0;
+        console.log(
+            `[ManSchedule] Tempos (ms): probe=${timings.probe} blobRead=${timings.blobRead} build=${timings.build} localMerge=${timings.localMerge} TOTAL=${totalMs}` +
+                (lgpSkippedByWindow > 0 ? ` | registros LGP fora da janela=${lgpSkippedByWindow}` : '')
+        );
+
+        const responseBody = {
             success: true,
             count: schedules.length,
             data: schedules,
@@ -384,8 +579,27 @@ export async function GET(request: NextRequest) {
                 vessels,
                 positions,
                 companies,
+                cached: false,
+                janela: janelaParam,
+                window: {
+                    from: new Date(windowStart).toISOString().slice(0, 10),
+                    to: new Date(windowEnd).toISOString().slice(0, 10),
+                },
+                timings_ms: { ...timings, total: totalMs },
             },
-        });
+        };
+
+        // Only cache when we actually had both cache rows (partial builds would
+        // poison the signature-based freshness check).
+        if (!cacheError && hasIntegrantesRow && hasLgpRow) {
+            resultCache.set(janelaParam, {
+                payload: responseBody,
+                mioSignature,
+                builtAt: Date.now(),
+            });
+        }
+
+        return NextResponse.json(responseBody);
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         console.error('[ManSchedule API error]', error);

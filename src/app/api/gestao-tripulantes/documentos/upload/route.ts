@@ -202,7 +202,10 @@ export async function POST(request: NextRequest) {
         status_validacao: calcularStatusValidacaoPorValidade(data_validade),
         notificado_vencimento: false,
         status_revisao: 'nao_necessita',
-        identity_match: 'match',
+        // Identidade NÃO verificada no upload — só o gate de OCR (CPF extraído
+        // batendo com o perfil) pode marcar 'match'. 'unknown' evita que docs
+        // trocados herdem prova falsa antes do OCR.
+        identity_match: 'unknown',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })

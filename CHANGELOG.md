@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.61.0] - 2026-08-25
+
+### 🛡️ Gestão de Tripulantes — Identidade Retroativa & Performance Man Schedule
+
+Correção dos documentos legados trocados entre colaboradores (evidenciados em produção) e eliminação da lentidão extrema da aba Man Schedule.
+
+### Fixed
+- **Documentos trocados entre colaboradores (legado)**: varredura completa nos 1.018 docs vivos identificou **70 vinculados sem prova de identidade** — 5 confirmados de pessoa errada (ASOs de Wendel/Vinicius nos perfis de Adalberto e Gabriela) e 4 sem prova nenhuma. Os **9 casos** receberam quarentena conforme contrato (`identity_match='quarantine'`, `colaborador_id=null`); os 61 restantes tiveram o falso `'match'` corrigido para `'unknown'`. Descoberta-chave: o `identity_match='match'` doc-level era setado no upload, antes do OCR — a única prova real de identidade é `cpf_documento` == CPF do perfil. Backups em `scratch/backup-gt-quarantine-*.json`; relatório completo em `scratch/RELATORIO-DOCUMENTOS-TROCADOS.md`.
+- **Causa raiz do envio errado bloqueada**: a rota S-2220 enviava usando o **CPF do perfil** quando o OCR não extraía nada do documento. Agora retorna **409 `ASO_CPF_NAO_EXTRAIDO`**. UI: botão desabilitado com aviso "Execute o OCR / identidade não verificada" + guard extra.
+- **Reincidência prevenida**: todo upload nasce `identity_match='unknown'`; OCR sem CPF dispara toast claro "⚠️ Documento enviado para QUARENTENA… resolva em Auditoria > Quarentena".
+- **Duplicados**: clusters reais mapeados (Ludmilla ~28x, Vinicius ~15x, Gabriela 9x) já agrupados na Auditoria com ação ADMIN `mesclar_duplicados`.
+
+### Performance
+- **Man Schedule (aba extremamente lenta → rápida)**:
+  - Backend `/api/man-schedule/realtime`: cache do resultado computado com TTL 90s invalidado pela assinatura do `mio_cache`; chamadas à API do MIO nunca mais no caminho da requisição (refresh fire-and-forget em background); filtro `?janela=` limitando processamento às rotações relevantes (retrocompatível); instrumentação de tempo por etapa.
+  - Frontend `GTManScheduleTab`: janela de semanas limitada com navegação ‹ › (fim das centenas de colunas), linha memoizada via `React.memo` com metadados pré-computados por célula, formatação de datas fora do render.
+
+### Docs
+- Relatório de evidência da varredura: `scratch/gt-risk-scan-report-v2.json`, `scratch/RELATORIO-DOCUMENTOS-TROCADOS.md`.
+
 ## [5.60.0] - 2026-08-25
 
 ### 🚢 Gestão de Tripulantes — Confiabilidade de Ponta a Ponta

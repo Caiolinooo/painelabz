@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.60.0-orange?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Version-5.61.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
 
@@ -225,6 +225,20 @@ npm run db:cadastro-fields        # Campos adicionais
 ---
 
 ## Ultimas Atualizacoes
+
+### 🛡️ v5.61.0 - Identidade Retroativa & Performance Man Schedule
+
+> Documentos legados trocados entre colaboradores **corrigidos e prevenidos**; aba Man Schedule de extremamente lenta para rápida.
+
+<details>
+<summary><b>O que mudou</b></summary>
+
+- 🚨 **Documentos trocados (legado)**: varredura nos 1.018 docs vivos → 70 sem prova de identidade, **9 postos em quarentena** (5 confirmados de pessoa errada). Perfil errado fica limpo; resolução manual na Auditoria.
+- 🔒 **Envio S-2220 bloqueado** sem CPF extraído (409 `ASO_CPF_NAO_EXTRAIDO`) — antes enviava com o CPF do perfil. Botão desabilitado com aviso na UI.
+- ⚠️ Upload nasce `identity_match='unknown'` + toast de quarentena quando o OCR não extrai CPF.
+- ⚡ **Man Schedule rápido**: cache do resultado (TTL 90s), MIO só em background, janela de semanas navegável, linhas memoizadas.
+
+</details>
 
 ### 🚢 v5.60.0 - Gestão de Tripulantes: Confiabilidade de Ponta a Ponta
 

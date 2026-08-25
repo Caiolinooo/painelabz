@@ -207,9 +207,11 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
     const cpfDoc = normalizeCpf(doc.aso_data?.cpf_documento || doc.ocr_dados_extraidos?.cpf || '');
     const nomeOcr = doc.ocr_dados_extraidos?.nome_completo || '';
     const match = doc.aso_data?.identity_match;
+    // Prova real de identidade exige CPF extraído batendo com o perfil —
+    // identity_match='match' legado SEM CPF não é prova (docs antigos).
     const matchesProfile = cpfDoc.length === 11 && profileCpf.length === 11
       ? cpfsMatch(cpfDoc, profileCpf)
-      : match === 'match';
+      : false;
     return { cpfDoc, nomeOcr, match, matchesProfile };
   };
 
@@ -301,7 +303,18 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
         const data = await res.json();
         throw new Error(data.error || 'Erro ao processar OCR');
       }
-      toast.success('Processamento OCR executado com sucesso!');
+      const json = await res.json();
+      // Contrato de integridade: OCR sem CPF extraído ⇒ documento vai para QUARENTENA.
+      // O usuário precisa saber disso — não pode parecer que tudo ficou normal.
+      const gate = json?.data?.identity_gate as { identity_match?: string | null; cpf_documento?: string | null } | undefined;
+      if (gate?.identity_match === 'quarantine') {
+        toast.error(
+          '⚠️ Documento enviado para QUARENTENA: CPF não extraído / identidade não verificada. Resolva em Auditoria > Quarentena.',
+          { duration: 8000 }
+        );
+      } else {
+        toast.success('Processamento OCR executado com sucesso!');
+      }
       onRefresh?.();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao processar OCR');
@@ -315,6 +328,10 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
     const { cpfDoc, matchesProfile, match } = getOcrIdentity(doc);
     if (match === 'quarantine' || doc.aso_data?.esocial_status === 'quarentena') {
       toast.error('ASO em quarentena de identidade — não pode enviar ao e-Social.');
+      return;
+    }
+    if (!cpfDoc) {
+      toast.error('Execute o OCR / identidade não verificada: CPF do documento não extraído.');
       return;
     }
     if (cpfDoc && profileCpf && !matchesProfile) {
@@ -344,10 +361,19 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
     const meta = doc.aso_data || {};
     const eSocialStatus = meta.esocial_status || 'nao_enviado';
     const { cpfDoc, nomeOcr, match, matchesProfile } = getOcrIdentity(doc);
+    const semCpfExtraido = cpfDoc.length !== 11; // sem prova de identidade
     const identityBlocked =
       match === 'quarantine' ||
       eSocialStatus === 'quarentena' ||
+      semCpfExtraido ||
       (cpfDoc.length === 11 && profileCpf.length === 11 && !matchesProfile);
+    // Motivo do bloqueio — aviso exigido pelo contrato de integridade
+    const motivoBloqueio =
+      match === 'quarantine' || eSocialStatus === 'quarentena'
+        ? 'Identidade em quarentena — resolva na Auditoria antes de enviar'
+        : semCpfExtraido
+          ? 'Execute o OCR / identidade não verificada'
+          : 'Bloqueado: CPF OCR ≠ perfil';
 
     // Cross-reference: evento e-Social deste ASO (recibo/protocolo/processamento)
     const esocialRef: EsocialRefData | null =
@@ -484,15 +510,23 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
             )}
 
             {eSocialStatus === 'nao_enviado' && doc.ocr_status === 'concluido' && (
-              <button
-                onClick={() => handleSendESocial(doc)}
-                disabled={sending === doc.id || identityBlocked}
-                title={identityBlocked ? 'Bloqueado: CPF OCR ≠ perfil' : undefined}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
-              >
-                <FiSend className="w-3 h-3" />
-                {sending === doc.id ? 'Enviando...' : t('gestaoTripulantes.aso.sendESocial')}
-              </button>
+              <>
+                <button
+                  onClick={() => handleSendESocial(doc)}
+                  disabled={sending === doc.id || identityBlocked}
+                  title={identityBlocked ? motivoBloqueio : undefined}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <FiSend className="w-3 h-3" />
+                  {sending === doc.id ? 'Enviando...' : t('gestaoTripulantes.aso.sendESocial')}
+                </button>
+                {identityBlocked && !sending && (
+                  <p className="flex items-center gap-1 max-w-[180px] text-right text-[10px] font-semibold text-red-600">
+                    <FiAlertCircle className="w-3 h-3 shrink-0" />
+                    {motivoBloqueio}
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
