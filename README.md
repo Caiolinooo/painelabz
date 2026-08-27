@@ -8,10 +8,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Version](https://img.shields.io/badge/Version-5.61.0-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.62.0-orange?style=for-the-badge)](#)
 
-**Portal corporativo unificado para gestao de pessoas, processos, comunicacao interna e compliance trabalhista.**
+**Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
 [![Changelog](https://img.shields.io/badge/Changelog-CHANGELOG.md-blue?style=flat-square)](CHANGELOG.md)
 
@@ -21,7 +20,18 @@
 
 ## Sobre o Projeto
 
-O **Painel ABZ** e o nucleo digital da ABZ Group, projetado para centralizar fluxos de trabalho, facilitar a comunicacao entre colaboradores e automatizar processos administrativos complexos. O sistema abrange desde gestao financeira e avaliacoes de desempenho ate compliance governamental (e-Social) e gestao offshore de tripulantes.
+O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar fluxos de trabalho, facilitar a comunicação entre colaboradores e automatizar processos administrativos complexos. O sistema abrange desde gestão financeira e avaliações de desempenho até compliance governamental (e-Social) e gestão offshore de tripulantes.
+
+---
+
+## Novidades da Versão [v5.62.0]
+
+| | Capacidade | Destaque |
+|---|---|---|
+| 🏢 | **Criação Dinâmica de Setores** | Botão "+ Novo Setor" em `/admin/sectors` com configuração modular por categorias e disponibilidade imediata no cadastro de usuários (`UserEditor`). |
+| 📅 | **Edição e Exclusão de Escala Local** | Desbloqueio completo de lançamentos no Man Schedule (`gt_historico_embarques`) com garantia de isolamento total contra o MIO e preservação contra sincronizações. |
+| ✍️ | **Assinatura Digital Otimizada** | Resolução de ciclos de renderização e movimentação suave no posicionamento de tags e carimbos de assinatura (`SignaturePositionOverlay`). |
+| ⚡ | **Alta Resiliência e Performance** | Otimização com índices compostos em notificações e fail-soft em consultas de ordens de compra e avaliações pendentes. |
 
 ---
 
@@ -32,12 +42,12 @@ O **Painel ABZ** e o nucleo digital da ABZ Group, projetado para centralizar flu
                     │        Next.js 15 App Router         │
                     │  (React 18 + TypeScript 5)           │
                     └──────────┬──────────────────────────┘
-                               │
+                                │
                     ┌──────────┴──────────────────────────┐
                     │          API Routes Layer             │
                     │  /api/auth/*  /api/admin/*  /api/*   │
                     └──────────┬──────────────────────────┘
-                               │
+                                │
           ┌────────────────────┼────────────────────┐
           │                    │                    │
           ▼                    ▼                    ▼
@@ -64,15 +74,16 @@ O **Painel ABZ** e o nucleo digital da ABZ Group, projetado para centralizar flu
 
 ---
 
-## Modulos do Sistema
+## Módulos do Sistema
 
-### Gestao de Tripulantes (Offshore) [v5.60.0]
-Sistema completo de gerenciamento de tripulacao offshore — agora uma **fonte confiavel de verdade documental**:
+### Gestão de Tripulantes (Offshore) [v5.62.0]
+Sistema completo de gerenciamento de tripulação offshore — agora uma **fonte confiável de verdade documental e operacional**:
 
-> 🆕 **Novidades v5.60.0**
+> 🆕 **Novidades v5.62.0 / v5.61.0**
 
 | | Capacidade | Destaque |
 |---|---|---|
+| 📅 | **Escala 100% Editável Localmente** | Edição e exclusão de lançamentos na escala com garantia de isolamento do MIO e proteção contra sobrescrita em syncs periódicos |
 | 🔄 | **Sync MIO auditável** | Upsert idempotente (`mio_id → CPF`): zero duplicados, ausentes viram inativos; auditoria prova cobertura 100% |
 | 🛡️ | **Integridade documental** | Gate de identidade por CPF em TODOS os docs; duplicado vira merge; emissão + validade obrigatórias |
 | 🔢 | **Rastreio real** | OCR extrai o nº próprio do documento (ASO, passaporte, certificado NR); código interno só como fallback |

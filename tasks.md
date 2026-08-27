@@ -1,3 +1,135 @@
+## MIO 100% histórico local (2026-08-26) — HIGHEST PRIORITY
+
+### Objetivo
+Uma fonte canônica no **nosso** banco (`gt_*`). Módulos futuros leem só isso — nunca MIO ao vivo, nunca scrape PoliWeb na feature, nunca blob `mio_cache` como verdade da escala.
+
+Contrato: `src/lib/gestao-tripulantes/gt-canonical.ts` (tabela, origem `mio|poliweb|upload|manual|ocr|local`, join CPF/`colaborador_id`).
+
+### Feito
+- [x] Inventário READ vs WRITE da API MIO (insomnia `scratch/mio_api_doc.html`)
+- [x] Cliente pull-only; `POST /sms-aso` (inclusão) bloqueado; GET probes de ASO allowlisted
+- [x] Pull: integrantes qualquer status, treinamentos, ASOs (treino classificado + probe), anexos com retry/`arquivo_ausente`, LGP 1990→+5y (chunk se vazio), extras FI/DBA/STB/OFF-C em `gt_historico_embarques`, afastamentos, entidades (férias/benefício/dependente/sispat/timesheet/turmas)
+- [x] Man Schedule lê `gt_historico_embarques` (lazy-load intacto). Select usa `gt_embarcacoes`, nunca coluna inexistente `base`.
+- [x] `gt_afastamentos` + `gt_acidentes` criadas no projeto Painel_ABZGroup (migrações do repo não estavam aplicadas).
+- [x] Contrato canônico: `src/lib/gestao-tripulantes/gt-canonical.ts` + seção em `src/app/api/gestao-tripulantes/AGENTS.md`.
+- [x] PoliWeb permanece ingest (`origem=poliweb`); runtime consulta `gt_documentos_aso`
+
+### Como rodar
+```bash
+npm run mio:assert-local-first
+npm run mio:pull:dry
+npm run mio:pull
+# ou autenticado: POST /api/gestao-tripulantes/mio/sync
+```
+
+### Hard-limits da API MIO (evidência no insomnia + probe em runtime 2026-08-26)
+
+- **ASO lista**: insomnia só documenta `POST /sms-aso` (inclusão — nunca chamado). Probe GET/POST `/sms-aso-get`, `/sms-aso-registro-get`, `/sms-aso`, `/sms-exames-get`, `/sms-exame-registro-get`, `/int-aso-get`, `/sms-atestado-get`, `/sms-saude-get` → **HTTP 404** `{"success":false,"message":"Este EndPoint não existe mais."}`. ASOs canônicos = treino classificado como ASO + upload local + ingest PoliWeb (`origem=poliweb`).
+- **LGP histórico antigo**: janela 15 anos OK; chunk `2006-01-01..2010-12-31` → **404**. `lgp_range.apiLimit` grava o cap. Embarques materializados em `gt_historico_embarques` (não `mio_cache`).
+- **Afastamentos**: docs têm `GET /sms-afastamento-get`; live → **404**. Tabela `gt_afastamentos` existe para ingest futuro / lançamento local.
+- **Benefício / SISPAT / RTPE turma**: live **404** (`/int-integrantes-beneficio-get`, `/lgp-sispat-get`, `/lgp-rtpe-turma-get`). Docs ainda citam max 200 para benefício/dependente/sispat.
+- **Férias GET**: 401 após refresh de token (endpoint existe, auth/filtro instável neste pull).
+- **Anexos**: insomnia não documenta download binário estável. Sem URL e sem `Contém Anexo?` → `arquivo_ausente=true` + `gt_mio_anexo_misses` (sem 6 GETs). Com flag/URL, tenta os GETs allowlisted.
+
+---
+
+## Poliweb 503 overlay on GT navigation (2026-08-26)
+
+### Problema
+- `GET /api/gestao-tripulantes/poliweb/asos-pendentes` scrapeava Poliweb sem timeout (~5s) e devolvia **503**
+- `fetchWithToken` fazia `console.error` → overlay vermelho do Next.js via GlobalErrorHandler / HelpWidget
+
+### Passos
+- [x] Abort + timeout 2.5s no client Poliweb (`poliweb-scraper.ts`)
+- [x] GET da página lista o banco (sem scrape); `?sync=1` tenta Poliweb e degrada com **200** + `data: []` + `warning` (nunca 503 de upstream)
+- [x] `AsoReviewPanel` trata falha sem throw / sem `console.error`
+- [x] Verificar curl no endpoint (401 sem token; 200 autenticado em ~3s, sem 503)
+
+---
+
+## MIO local-first (superseded by “MIO 100% histórico local” above)
+
+The previous “honest gaps” (no ASO GET / metadata-only files / Man Schedule from mio_cache) are **not** the end state. Canonical `gt_*` is the source of truth. See the top task.
+
+---
+
+## GT modal — editar todos os campos + export treinamentos (2026-08-26)
+
+### Problemas
+- [x] Bug 1: Dados Pessoais em modo edição só libera Estado Civil, Email, Telefone (identidade + profissionais ficam texto)
+- [x] Bug 2: Após Exportar Planilha de treinamentos, modal do colaborador não carrega mais dados (GET 200)
+
+### Passos
+- [x] DadosPessoaisTab: inputs para identidade + profissionais (FKs cargo/empresa/embarcação/CC)
+- [x] PUT `/colaboradores/[id]`: whitelist de todas as colunas editáveis + validação CPF (não pular campos)
+- [x] TreinamentosTab export: `getToken` + download isolado (sem `fetchWithToken.clone`), sem mutar estado compartilhado
+- [x] CollaboratorModal: não zerar `data` em erro de fetch; error boundary na aba; fetch `?include=all`
+
+---
+
+## GT performance — GET colaborador + Man Schedule (2026-08-26)
+
+### Problemas
+- [ ] `GET /api/gestao-tripulantes/colaboradores/[id]` 10–27s (2 GETs paralelos 1ms apart via `_t`)
+- [ ] Página `/department/gestao-tripulantes` ~21s; aba Man Schedule pesada ao abrir módulo
+
+### Passos
+- [x] GET [id]: sair da view pesada, 2 waves paralelas, payload sem `mio_data`/`ocr_texto`/`xml_gerado`; `?include=`
+- [x] Dedup client: promise in-flight no modal (Strict Mode)
+- [x] List GET: tabelas base + `?cpf=&lite=1`; debounce da busca
+- [x] Man Schedule: dynamic import, mount só ao selecionar aba, cache 60s, lookup CPF lite, xlsx só no export
+- [x] Medir GET [id] no localhost:3000 (curl autenticado)
+
+### Medição (localhost:3000, id `ad6053bc-…`)
+- Antes (logs do usuário): 10328–2793ms, picos 27308 / 19566ms com 2 GETs paralelos
+- Depois servidor (log `[GT GET]`): **745–1155ms** full (2 waves); **299ms** `?include=profile`
+- Depois HTTP client: **3011ms** full warm; **1832ms** profile; 1ª compile 4925ms
+- Gap HTTP vs log: overhead Next.js dev (~2s), not the query plan
+
+### Não mexer
+- Editabilidade de campos, export de treinamentos, Poliweb 503, pipeline OCR
+
+---
+
+## GT OCR — scanned passport PDF fight (2026-08-26)
+
+### Problema
+Scanned passport PDF: pdf-parse 0 chars → vision with `llamacpp` + format `llamacpp_image_url` for model `gemini-3.5-flash` (mismatch, fetch failed) → reconvert same PNG → send empty/weak text into `chatCompletion` with 106 tools. canvasFactory deprecation.
+
+### Passos
+- [x] Tesseract/local OCR on PNG first; regex for passaporte
+- [x] Vision LLM only if local OCR weak AND `visaoLlmCompativel` (skip llamacpp+gemini)
+- [x] Convert PDF→PNG once; reuse buffers for vision
+- [x] Never send empty text to tools-enabled chat; structured extract is tools-free
+- [x] pdf.js `CanvasFactory` class instead of `canvasFactory` instance
+- [x] Keep document saved + editable if OCR still fails
+- [x] Tests: `scripts/test-gt-ocr-routing.ts` (mismatch + skip LLM) + `scripts/test-gt-doc-upload-helpers.ts`
+
+### Restante
+Vision still needs a real Gemini/OpenAI image endpoint + API key (provider must match the model).
+
+---
+
+## GT documentos — upload 400, OCR all types, passport edit, colaborador edit (2026-08-26)
+
+### Problemas
+- [x] Upload `POST /documentos/upload` retorna 400 (MIME / tipo inválido / datas)
+- [x] OCR só roda de fato para ASO (LLM + persistência de campos)
+- [x] Passaporte: edição inline + PUT dos campos
+- [x] Botão Editar colaborador: save + refetch completo
+
+### Passos
+- [x] Relaxar MIME (extensão + magic bytes) e mapear tipos UI (`visto`/`ctm`/…) para CHECK do banco
+- [x] Upload: não exigir datas; status `pendente`; não inventar `data_emissao` = hoje
+- [x] OCR: extrair + persistir `numero_documento`, `orgao_emissor`, datas para TODOS os tipos
+- [x] Gate identidade: sem CPF em não-ASO → `unknown` (não quarentena)
+- [x] PassaportesTab: upload → refresh → OCR cliente (não bloquear); PUT campos
+- [x] DocumentosTab + quick upload: tipos válidos + OCR
+- [x] DadosPessoaisTab: save + refetch; PUT colaboradores devolve view completa
+- [x] Verificar upload/OCR/PUT (script + API localhost)
+
+---
+
 ## Companion — quality-gated polish 5.58.0 (2026-07-28)
 
 ### Feito

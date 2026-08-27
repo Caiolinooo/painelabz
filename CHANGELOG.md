@@ -1,5 +1,32 @@
 # Changelog
 
+## [5.62.0] - 2026-08-27
+
+### ⚡ Gestão de Tripulantes, Setores no Admin & Resiliência de APIs
+
+Esta versão introduz a criação dinâmica de setores com permissões modulares no Admin, desbloqueia a edição e exclusão local de lançamentos da escala na Gestão de Tripulantes com garantia de isolamento do MIO, corrige efeitos colaterais de renderização no posicionamento de assinaturas e otimiza a resiliência de endpoints críticos.
+
+### Added
+- **Criação Dinâmica de Setores no Admin** (`/admin/sectors` + `POST /api/sectors`):
+  - Botão "+ Novo Setor" com modal interativo para cadastro imediato de setores corporativos.
+  - Seleção em lote de módulos permitidos organizados por categoria (Geral, RH, Departamento, Conhecimento, etc.).
+  - Integração instantânea com o fluxo do sistema: o novo setor passa a ficar disponível imediatamente no dropdown de edição/cadastro de usuários (`UserEditor`) e no controle de permissões.
+  - Nova rota `DELETE /api/sectors/[id]` para gestão completa de setores.
+- **Índices de Alta Performance para Notificações**:
+  - Criação de índices compostos `idx_notifications_user_read` (`user_id, read_at`) e `idx_notifications_user_created` (`user_id, created_at DESC`) para consultas ultra-rápidas.
+
+### Fixed
+- **Edição e Exclusão de Escala Local (Gestão de Tripulantes)**:
+  - Desbloqueada a edição e exclusão de qualquer lançamento de escala em `/api/gestao-tripulantes/embarques/[id]` (removido bloqueio 403 `origem !== 'local'`).
+  - **Garantia de Isolamento MIO**: Todas as alterações operam estritamente sobre a base local `gt_historico_embarques` marcando `origem='local'` ou `deleted_at`, sem enviar requisições de escrita para o MIO.
+  - **Proteção contra sobrescrita em Syncs MIO**: Rotina `mio-sync.ts` atualizada para respeitar exclusões locais (`deleted_at`) e edições manuais (`origem='local'`), evitando restaurações indesejadas.
+- **Overlay de Assinatura Digital (`SignaturePositionOverlay`)**:
+  - Corrigido erro de React *"Cannot update a component (`ContratoDetailPage`) while rendering a different component (`SignaturePositionOverlay`)"*.
+  - Desacoplado o rastreamento de arrasto para `useRef`s e disparo limpo de `onDragEnd` fora de callbacks de atualização de estado.
+- **Resiliência e Fail-Soft em APIs Críticas**:
+  - `GET /api/avaliacao-desempenho/avaliacoes/pending-review`: Adicionado tratamento fail-soft para evitar erro 500 no carregamento do `AdminLayout`.
+  - `GET /api/purchase-orders`: Adicionada a coluna `approver_ids TEXT[]` no banco de dados e tratamento fail-soft no endpoint para evitar travamentos de busca de ordens de compra.
+
 ## [5.61.0] - 2026-08-25
 
 ### 🛡️ Gestão de Tripulantes — Identidade Retroativa & Performance Man Schedule
