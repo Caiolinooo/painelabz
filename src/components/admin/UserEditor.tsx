@@ -101,6 +101,24 @@ const UserEditor: React.FC<UserEditorProps> = ({
   // State for available sectors
   const [availableSectors, setAvailableSectors] = useState<Sector[]>([]);
 
+  // Sincronizar editedUser quando a prop user mudar
+  useEffect(() => {
+    if (user) {
+      setEditedUser({
+        ...defaultUser,
+        ...user,
+        startup_splash_enabled: user.startup_splash_enabled !== undefined ? user.startup_splash_enabled : false,
+        startup_splash_url: user.startup_splash_url || '',
+        startup_sound_enabled: user.startup_sound_enabled !== undefined ? user.startup_sound_enabled : false,
+        startup_sound_url: user.startup_sound_url || '',
+        accessPermissions: user.accessPermissions || defaultUser.accessPermissions,
+        reimbursement_email_settings: user.reimbursement_email_settings || defaultUser.reimbursement_email_settings
+      });
+    } else {
+      setEditedUser(defaultUser);
+    }
+  }, [user]);
+
   // DEBUG: Log initial user prop
   useEffect(() => {
     console.log('[DEBUG UserEditor] Initial user prop:', {
@@ -108,7 +126,11 @@ const UserEditor: React.FC<UserEditorProps> = ({
       sector_id: user?.sector_id,
       department: user?.department,
       firstName: user?.firstName,
-      lastName: user?.lastName
+      lastName: user?.lastName,
+      startup_splash_enabled: user?.startup_splash_enabled,
+      startup_splash_url: user?.startup_splash_url,
+      startup_sound_enabled: user?.startup_sound_enabled,
+      startup_sound_url: user?.startup_sound_url
     });
   }, [user]);
 
@@ -413,6 +435,7 @@ const UserEditor: React.FC<UserEditorProps> = ({
       alert(err.message || 'Erro ao carregar foto do splash');
     } finally {
       setUploadingSplash(false);
+      e.target.value = '';
     }
   };
 
@@ -453,6 +476,7 @@ const UserEditor: React.FC<UserEditorProps> = ({
       alert(err.message || 'Erro ao carregar arquivo de áudio');
     } finally {
       setUploadingSound(false);
+      e.target.value = '';
     }
   };
 

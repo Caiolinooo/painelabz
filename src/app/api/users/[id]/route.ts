@@ -191,13 +191,15 @@ export async function PUT(
       updateData.startup_splash_enabled = startup_splash_enabled !== undefined ? !!startup_splash_enabled : !!startupSplashEnabled;
     }
     if (startup_splash_url !== undefined || startupSplashUrl !== undefined) {
-      updateData.startup_splash_url = startup_splash_url !== undefined ? startup_splash_url : startupSplashUrl;
+      const url = startup_splash_url !== undefined ? startup_splash_url : startupSplashUrl;
+      updateData.startup_splash_url = url ? url : null;
     }
     if (startup_sound_enabled !== undefined || startupSoundEnabled !== undefined) {
       updateData.startup_sound_enabled = startup_sound_enabled !== undefined ? !!startup_sound_enabled : !!startupSoundEnabled;
     }
     if (startup_sound_url !== undefined || startupSoundUrl !== undefined) {
-      updateData.startup_sound_url = startup_sound_url !== undefined ? startup_sound_url : startupSoundUrl;
+      const url = startup_sound_url !== undefined ? startup_sound_url : startupSoundUrl;
+      updateData.startup_sound_url = url ? url : null;
     }
 
     console.log('Dados preparados para atualização:', JSON.stringify(updateData, null, 2));

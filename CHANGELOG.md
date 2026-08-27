@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.64.0] - 2026-08-27
+
+### 🔄 Persistência de Assets de Inicialização (Splash & Áudio), Sincronização em Tempo Real do Admin & PWA
+
+Esta versão corrige a persistência e visualização das configurações de Splash Screen e Áudio no gerenciador de usuários, implementa atualização imediata da lista de usuários sem necessidade de recarregar a página (F5) e resolve o conflito de roteamento de manifest PWA no Next.js.
+
+### Added
+- **Badges de Splash e Áudio na Tabela de Usuários**:
+  - Indicadores visuais na tabela de usuários (`UnifiedUserManager` e `/admin/users`) mostrando se o usuário possui Splash ou Áudio customizado e seu estado ativo/inativo.
+
+### Fixed
+- **Persistência e Edição de Splash Screen e Áudio de Usuário**:
+  - Corrigida a omissão dos campos `startup_splash_*` e `startup_sound_*` ao abrir o editor de usuário (`UserEditor`), garantindo que fotos e áudios previamente cadastrados sejam carregados e não sobrescritos por valores vazios.
+  - Sincronização reativa com `useEffect` no `UserEditor` para atualizar o preview de mídia sempre que a prop `user` for alterada.
+  - Ajustada a remoção de assets no backend (`PUT /api/users/[id]` e `POST /api/users`) convertendo URLs vazias em `null` no banco de dados.
+- **Atualização Imediata no Gerenciador de Usuários (sem F5)**:
+  - Adicionado `cache: 'no-store'` e parâmetro de timestamp (`_=${Date.now()}`) no hook `useAllUsers` para anular cache HTTP do navegador em `/api/users`.
+  - Implementada atualização otimista imediata ao excluir usuários e espera da sincronização com o servidor ao salvar ou alterar usuários.
+- **Conflito de Rota PWA (`manifest.webmanifest`)**:
+  - Removido arquivo duplicado em `public/manifest.webmanifest`, eliminando o erro 500 no Next.js e mantendo a geração dinâmica em `src/app/manifest.ts`.
+
 ## [5.63.0] - 2026-08-27
 
 ### 📱 PWA Mobile Durável, Splash & Áudio de Inicialização por Usuário & Gestão de Tripulantes Fullscreen

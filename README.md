@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.63.0-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.64.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
@@ -24,14 +24,14 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ---
 
-## Novidades da Versão [v5.63.0]
+## Novidades da Versão [v5.64.0]
 
 | | Capacidade | Destaque |
 |---|---|---|
-| 📱 | **PWA Mobile & Persistência de Sessão** | Manifest oficial com tema `#0B72E7` e resolução de tela branca na inicialização da tela inicial com renovação de token durável. |
-| 🎨 | **Splash Screen & Som por Usuário** | Envio de imagem e áudio personalizados no editor de usuário (`UserEditor`) com toggles de controle e experiência imersiva de abertura (`StartupExperience`). |
-| 📊 | **Gestão de Tripulantes Fullscreen** | Layout dinâmico sem rolagem externa, sincronização de todas as semanas do ano no cabeçalho e navegação horizontal fluida com auto-scroll para a semana atual. |
-| 🏢 | **Setores Modulares Dinâmicos** | Criação e exclusão de setores no Admin (`/admin/sectors`) com propagação automática de permissões e disponibilidade no cadastro de usuários. |
+| 🎨 | **Persistência de Splash Screen & Áudio** | Resolução da retenção e preview de assets de inicialização no `UserEditor`, garantindo gravação e remoção (`null`) corretas no banco de dados. |
+| ⚡ | **Sincronização Imediata no Admin** | Anulação de cache HTTP no hook `useAllUsers` (`cache: no-store` + timestamp) e atualização otimista imediata sem necessidade de recarregar a página (F5). |
+| 🏷️ | **Badges de Mídia na Tabela de Usuários** | Indicadores visuais na listagem de usuários informando se o usuário possui Splash ou Áudio customizado e seu estado de ativação. |
+| 📱 | **PWA Manifest Otimizado** | Eliminação de rota estática conflitante no Next.js App Router, mantendo o manifest dinâmico e estável. |
 
 ---
 
