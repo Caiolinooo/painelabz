@@ -78,6 +78,10 @@ export interface UserProfile {
   bio?: string | null;
   birth_date?: string | null;
   cover_url?: string | null;
+  startup_splash_enabled?: boolean | null;
+  startup_splash_url?: string | null;
+  startup_sound_enabled?: boolean | null;
+  startup_sound_url?: string | null;
   accessPermissions?: {
     modules?: {
       [key: string]: boolean;

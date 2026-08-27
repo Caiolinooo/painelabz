@@ -1,5 +1,29 @@
 # Changelog
 
+## [5.63.0] - 2026-08-27
+
+### 📱 PWA Mobile Durável, Splash & Áudio de Inicialização por Usuário & Gestão de Tripulantes Fullscreen
+
+Esta versão corrige a inicialização mobile em tela inicial (PWA standalone) e persistência de sessão, implementa telas de splash e sons de abertura customizados por colaborador configuráveis via painel de administração, e aprimora o layout dinâmico em tela inteira da Gestão de Tripulantes.
+
+### Added
+- **Splash Screen e Som de Abertura Personalizados por Usuário**:
+  - Nova seção no modal de edição de usuário (`UserEditor`) permitindo envio de imagem de splash e arquivo de áudio (`.mp3`, `.wav`, `.ogg`, `.m4a`).
+  - Toggles dedicados para habilitar/desabilitar splash e som de forma independente.
+  - Novo endpoint de upload seguro `POST /api/admin/users/upload-startup-asset` integrado ao bucket público `user-startup-assets`.
+  - Componente global `StartupExperience` com animação suave de abertura, temporizador automático, toque para avançar e reprodução de som respeitando políticas de autoplay.
+- **Suporte Oficial a Web App Manifest (PWA)**:
+  - Criação de `src/app/manifest.ts`, `public/manifest.json` e `public/manifest.webmanifest` com configurações standalone, tema `#0B72E7` e ícones multi-resolução para Android e iOS.
+
+### Fixed
+- **Inicialização e Persistência de Sessão Mobile (Tela Inicial / PWA Standalone)**:
+  - Corrigido travamento de tela em branco quando o app é aberto a partir do ícone da tela inicial do dispositivo.
+  - Ampliada a expiração padrão do token local para 30 dias com renovação contínua via refresh token.
+  - Ajustado `ProtectedRoute` para exibir loader de transição e redirecionar imediatamente para `/login` quando o usuário estiver deslogado, eliminando o falso "Acesso Negado" ou tela branca.
+- **Gestão de Tripulantes (Man Schedule) em Tela Cheia**:
+  - Cabeçalho de datas sincronizado com todas as 52+ semanas do ano, alinhando colunas e corrigindo visualização que limitava a Agosto/Setembro.
+  - Layout dinâmico `100vh` sem barra de rolagem externa da janela e rolagem interna suave com centralização automática na semana atual ("Hoje").
+
 ## [5.62.0] - 2026-08-27
 
 ### ⚡ Gestão de Tripulantes, Setores no Admin & Resiliência de APIs

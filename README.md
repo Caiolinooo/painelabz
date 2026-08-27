@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.62.0-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.63.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
@@ -24,14 +24,14 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ---
 
-## Novidades da Versão [v5.62.0]
+## Novidades da Versão [v5.63.0]
 
 | | Capacidade | Destaque |
 |---|---|---|
-| 🏢 | **Criação Dinâmica de Setores** | Botão "+ Novo Setor" em `/admin/sectors` com configuração modular por categorias e disponibilidade imediata no cadastro de usuários (`UserEditor`). |
-| 📅 | **Edição e Exclusão de Escala Local** | Desbloqueio completo de lançamentos no Man Schedule (`gt_historico_embarques`) com garantia de isolamento total contra o MIO e preservação contra sincronizações. |
-| ✍️ | **Assinatura Digital Otimizada** | Resolução de ciclos de renderização e movimentação suave no posicionamento de tags e carimbos de assinatura (`SignaturePositionOverlay`). |
-| ⚡ | **Alta Resiliência e Performance** | Otimização com índices compostos em notificações e fail-soft em consultas de ordens de compra e avaliações pendentes. |
+| 📱 | **PWA Mobile & Persistência de Sessão** | Manifest oficial com tema `#0B72E7` e resolução de tela branca na inicialização da tela inicial com renovação de token durável. |
+| 🎨 | **Splash Screen & Som por Usuário** | Envio de imagem e áudio personalizados no editor de usuário (`UserEditor`) com toggles de controle e experiência imersiva de abertura (`StartupExperience`). |
+| 📊 | **Gestão de Tripulantes Fullscreen** | Layout dinâmico sem rolagem externa, sincronização de todas as semanas do ano no cabeçalho e navegação horizontal fluida com auto-scroll para a semana atual. |
+| 🏢 | **Setores Modulares Dinâmicos** | Criação e exclusão de setores no Admin (`/admin/sectors`) com propagação automática de permissões e disponibilidade no cadastro de usuários. |
 
 ---
 
