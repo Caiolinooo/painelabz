@@ -6,6 +6,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { cpfsMatch, formatCpf, isEsocialGlobalVisible, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
+import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 
 interface Document {
   id: string;
@@ -175,24 +176,6 @@ function isDraftStatus(status: string): boolean {
   return !isEsocialGlobalVisible(status);
 }
 
-/**
- * Extrai texto no navegador e envia ao servidor (sem canvas no Vercel).
- */
-async function renderizarEEnviarOCR(
-  docId: string,
-  arquivoUrl: string,
-  onProgress?: (msg: string) => void
-): Promise<Response> {
-  const { extractTextFromPdfOrImageClient } = await import('@/lib/ocr/pdf-to-images-client');
-  const text = await extractTextFromPdfOrImageClient(arquivoUrl, onProgress);
-
-  return await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}/ocr`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  });
-}
-
 export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esocialAsos = [], onRefresh }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
@@ -246,11 +229,24 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
   };
 
   const linkedDocIds = new Set(asos.map(d => d.id));
+  const linkedRecibos = new Set(
+    asos
+      .map(d => d.aso_data?.esocial_numero_recibo || d.aso_data?.esocial_evento_ref?.numero_recibo)
+      .filter(Boolean)
+  );
+  const linkedDates = new Set(
+    asos
+      .map(d => d.aso_data?.data_realizacao || d.data_emissao)
+      .filter(Boolean)
+  );
+
   const unlinkedEsocialAsos = (esocialAsos || []).filter(evt => {
     const docId = evt.entidade_origem_id || evt.dados_evento?.documento_id || evt.dados_evento?.documentoId;
-    const status = evt.status || '';
-    // Global e-Social events: show when sent/processed (or keep pending visibility as draft-like)
-    return !linkedDocIds.has(docId);
+    if (docId && linkedDocIds.has(docId)) return false;
+    if (evt.numero_recibo && linkedRecibos.has(evt.numero_recibo)) return false;
+    const evtDate = getEventField(evt, 'data_realizacao');
+    if (evtDate && linkedDates.has(evtDate)) return false;
+    return true;
   });
 
   const formatDate = (d: string | null | undefined) => {
@@ -297,7 +293,7 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
       setRunningOcr(docId);
       setOcrProgress('Preparando...');
 
-      const res = await renderizarEEnviarOCR(docId, arquivoUrl, setOcrProgress);
+      const res = await enviarOcrDocumento(docId, arquivoUrl, setOcrProgress);
 
       if (!res.ok) {
         const data = await res.json();

@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { autoGenerateESocialEvents } from '@/services/eSocialAutoService';
-import { mioClient } from '@/lib/mio/client';
+import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
+import { flattenColaboradorRow, LIST_SELECT } from '@/lib/gestao-tripulantes/colaborador-get';
+import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 
 export const dynamic = 'force-dynamic';
 
+async function resolveNomeToId(table: string, nome: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from(table)
+    .select('id')
+    .eq('nome', nome)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function GET(request: NextRequest) {
+  const t0 = Date.now();
   try {
     const authHeader = request.headers.get('authorization') || undefined;
     const token = extractTokenFromHeader(authHeader);
@@ -21,6 +34,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
+    const cpfParam = searchParams.get('cpf');
+    const lite = searchParams.get('lite') === '1';
     const empresa = searchParams.get('empresa');
     const embarcacao = searchParams.get('embarcacao');
     const cargo = searchParams.get('cargo');
@@ -32,26 +47,75 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    let query = supabaseAdmin
-      .from('gt_vw_colaboradores_completo')
-      .select('*', { count: 'exact' });
-
-    if (search) {
-      query = query.or(`nome_completo.ilike.%${search}%,matricula.ilike.%${search}%,cpf.ilike.%${search}%,email.ilike.%${search}%`);
+    const cpfLookup = cpfParam || (search && normalizeCpf(search).length === 11 ? search : null);
+    let cpfMatchId: string | null = null;
+    if (cpfLookup) {
+      const found = await findColaboradorByCpf(cpfLookup);
+      if (!found) {
+        return NextResponse.json({
+          success: true,
+          data: [],
+          pagination: { page: 1, limit, total: 0, totalPages: 0 },
+        });
+      }
+      if (lite) {
+        console.log(`[GT GET /colaboradores?cpf=lite] ${Date.now() - t0}ms`);
+        return NextResponse.json({
+          success: true,
+          data: [{ id: found.id, nome_completo: found.nome_completo, cpf: found.cpf }],
+          pagination: { page: 1, limit: 1, total: 1, totalPages: 1 },
+        });
+      }
+      cpfMatchId = found.id;
     }
 
-    if (empresa) query = query.eq('empresa_nome', empresa);
-    if (embarcacao) query = query.eq('embarcacao_nome', embarcacao);
-    if (cargo) query = query.eq('cargo_nome', cargo);
-    if (centroCusto) query = query.eq('centro_custo_nome', centroCusto);
+    const [empresaId, embarcacaoId, cargoId, centroId] = await Promise.all([
+      empresa ? resolveNomeToId('gt_empresas', empresa) : Promise.resolve(null),
+      embarcacao ? resolveNomeToId('gt_embarcacoes', embarcacao) : Promise.resolve(null),
+      cargo ? resolveNomeToId('gt_cargos', cargo) : Promise.resolve(null),
+      centroCusto ? resolveNomeToId('gt_centros_custo', centroCusto) : Promise.resolve(null),
+    ]);
+
+    if (empresa && !empresaId) {
+      return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+    }
+
+    let vencidoIds: string[] | null = null;
+    if (onlyVencidos === 'true') {
+      const { data: vencidos } = await supabaseAdmin
+        .from('gt_documentos')
+        .select('colaborador_id')
+        .eq('status_validacao', 'vencido')
+        .is('deleted_at', null);
+      vencidoIds = Array.from(new Set((vencidos || []).map((d) => d.colaborador_id).filter(Boolean)));
+      if (vencidoIds.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+    }
+
+    let query = supabaseAdmin
+      .from('gt_colaboradores')
+      .select(LIST_SELECT, { count: 'exact' })
+      .is('deleted_at', null);
+
+    if (cpfMatchId) {
+      query = query.eq('id', cpfMatchId);
+    } else if (search) {
+      query = query.or(
+        `nome_completo.ilike.%${search}%,matricula.ilike.%${search}%,cpf.ilike.%${search}%,email.ilike.%${search}%`
+      );
+    }
+
+    if (empresaId) query = query.eq('empresa_id', empresaId);
+    if (embarcacaoId) query = query.eq('embarcacao_atual_id', embarcacaoId);
+    if (cargoId) query = query.eq('cargo_id', cargoId);
+    if (centroId) query = query.eq('centro_custo_id', centroId);
     if (status) query = query.eq('status_embarque', status);
     if (standby === 'true') query = query.eq('standby', true);
     if (standby === 'false') query = query.eq('standby', false);
-    if (onlyVencidos === 'true') {
-      query = query.gt('qtd_docs_vencidos', 0);
-    }
+    if (vencidoIds) query = query.in('id', vencidoIds);
 
-    const { data: colaboradores, error, count } = await query
+    const { data: rows, error, count } = await query
       .order('nome_completo', { ascending: true })
       .range(offset, offset + limit - 1);
 
@@ -60,9 +124,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
     }
 
+    const flattened = (rows || []).map((row) => flattenColaboradorRow(row as Record<string, unknown>));
+    const ids = flattened.map((c) => c.id as string).filter(Boolean);
+
+    const countsById: Record<string, { qtd_docs_vencidos: number; qtd_docs_vencendo: number; qtd_docs_validos: number }> = {};
+    if (ids.length > 0) {
+      const { data: docRows } = await supabaseAdmin
+        .from('gt_documentos')
+        .select('colaborador_id, status_validacao')
+        .in('colaborador_id', ids)
+        .is('deleted_at', null);
+      for (const id of ids) {
+        countsById[id] = { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 };
+      }
+      for (const d of docRows || []) {
+        const bucket = countsById[d.colaborador_id];
+        if (!bucket) continue;
+        if (d.status_validacao === 'vencido') bucket.qtd_docs_vencidos += 1;
+        else if (d.status_validacao === 'vencendo') bucket.qtd_docs_vencendo += 1;
+        else if (d.status_validacao === 'valido') bucket.qtd_docs_validos += 1;
+      }
+    }
+
+    const colaboradores = flattened.map((c) => ({
+      ...c,
+      ...(countsById[c.id as string] || { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 }),
+    }));
+
+    console.log(`[GT GET /colaboradores list] ${Date.now() - t0}ms n=${colaboradores.length}`);
+
     return NextResponse.json({
       success: true,
-      data: colaboradores || [],
+      data: colaboradores,
       pagination: {
         page,
         limit,
@@ -228,23 +321,9 @@ async function enrichComMIOData(colaboradorId: string, cleanCpf: string): Promis
       });
     }
 
-    // 2. Fallback to MIO API directly only if cache is older than 5 minutes
+    // 2. Local-only: never live-GET MIO on the request path.
     if (!mioData) {
-      const lastUpdated = cacheRow?.atualizado_em ? new Date(cacheRow.atualizado_em).getTime() : 0;
-      const isCacheRecent = (Date.now() - lastUpdated) < 5 * 60 * 1000; // 5 minutos
-
-      if (!isCacheRecent) {
-        console.log(`[MIO Enrich] CPF ${cleanCpf} not found in cache. Cache is stale (${Math.round((Date.now() - lastUpdated)/1000)}s old). Fetching fresh data from MIO...`);
-        const integrantes = await mioClient.getIntegrantes();
-        if (Array.isArray(integrantes)) {
-          mioData = integrantes.find(i => {
-            const c = (i.cpf || '').replace(/\D/g, '');
-            return c === cleanCpf;
-          });
-        }
-      } else {
-        console.log(`[MIO Enrich] CPF ${cleanCpf} not found in cache. Cache is recent (${Math.round((Date.now() - lastUpdated)/1000)}s old). Skipping MIO API fallback.`);
-      }
+      console.log(`[MIO Enrich] CPF ${cleanCpf} not in mio_cache. Runtime stays local; run admin MIO pull to refresh cache.`);
     }
 
     if (!mioData) {

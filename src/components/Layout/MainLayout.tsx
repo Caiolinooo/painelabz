@@ -333,19 +333,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
 
           {/* Top Header */}
-          <header className="h-20 px-4 md:px-8 flex items-center justify-between md:justify-end bg-transparent z-20 sticky top-0 pointer-events-none">
+          <header className="h-16 px-4 md:px-8 flex items-center justify-between md:justify-end bg-gray-50/90 backdrop-blur-md border-b border-gray-200/50 z-20 sticky top-0 transition-colors">
             {/* Mobile Menu Toggle (Left Side) */}
-            <div className="pointer-events-auto md:hidden mt-4">
+            <div className="md:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 bg-white border border-gray-100 rounded-lg shadow-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center h-11 w-11"
+                className="p-2 bg-white border border-gray-100 rounded-lg shadow-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center h-10 w-10"
               >
-                <FiMenu className="w-6 h-6" />
+                <FiMenu className="w-5 h-5" />
               </button>
             </div>
 
             {/* Right Side Actions */}
-            <div className="pointer-events-auto flex items-center bg-white rounded-full shadow-sm border border-gray-100 px-2 py-1.5 mt-4 gap-1">
+            <div className="flex items-center bg-white rounded-full shadow-sm border border-gray-100 px-2 py-1 gap-1">
               {/* Notification Button */}
               <NotificationHUD
                 userId={user?.id || ''}

@@ -50,10 +50,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao listar eventos' }, { status: 500 });
     }
 
-    const eventos = (data || []).map((item: any) => ({
-      ...item,
-      evento_nome: item.esocial_eventos_catalogo?.nome || null,
-    }));
+    // 1. Collect CPFs and Colaborador IDs to resolve worker identity in batch
+    const rawCpfs = (data || []).map((i: any) => i.cpf_trabalhador).filter(Boolean);
+    const cleanCpfs = Array.from(new Set(rawCpfs.map((c: string) => String(c).replace(/\D/g, ''))));
+    
+    const colabMapByCpf = new Map<string, any>();
+    if (cleanCpfs.length > 0) {
+      const allCpfVariants = cleanCpfs.flatMap(c => [
+        c,
+        c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+      ]);
+      const { data: colabs } = await supabaseAdmin
+        .from('gt_colaboradores')
+        .select('id, nome_completo, cpf, matricula, matricula_esocial, foto_url, mio_data, gt_cargos:cargo_id(nome)')
+        .in('cpf', allCpfVariants);
+
+      if (colabs) {
+        for (const colab of colabs) {
+          const normCpf = String(colab.cpf || '').replace(/\D/g, '');
+          if (normCpf) colabMapByCpf.set(normCpf, colab);
+        }
+      }
+    }
+
+    const eventos = (data || []).map((item: any) => {
+      const cleanCpf = item.cpf_trabalhador ? String(item.cpf_trabalhador).replace(/\D/g, '') : '';
+      const colab = cleanCpf ? colabMapByCpf.get(cleanCpf) : null;
+      
+      const nomeEspecifico = item.dados_evento?.dadosEspecificos?.nome 
+        || item.dados_evento?.trabalhador?.nome 
+        || item.dados_evento?.nome
+        || null;
+
+      const cargoEspecifico = item.dados_evento?.dadosEspecificos?.cargo
+        || item.dados_evento?.cargo
+        || null;
+
+      return {
+        ...item,
+        evento_nome: item.esocial_eventos_catalogo?.nome || null,
+        colaborador_nome: colab?.nome_completo || nomeEspecifico || null,
+        colaborador_cargo: colab?.gt_cargos?.nome || colab?.mio_data?.cargo || colab?.mio_data?.cargo_funcao || cargoEspecifico || null,
+        colaborador_matricula: colab?.matricula_esocial || colab?.matricula || item.matricula || null,
+        colaborador_foto: colab?.foto_url || null,
+      };
+    });
 
     // Fetch dashboard summary using admin client
     const { data: dashboardData } = await supabaseAdmin

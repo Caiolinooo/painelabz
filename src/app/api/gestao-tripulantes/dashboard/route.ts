@@ -17,19 +17,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('gt_vw_dashboard_resumo')
-      .select('*')
-      .maybeSingle();
+    const [
+      colabs,
+      embarcados,
+      disponiveis,
+      vencidos,
+      vencendo,
+      asosPendentes,
+    ] = await Promise.all([
+      supabaseAdmin.from('gt_colaboradores').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+      supabaseAdmin.from('gt_colaboradores').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status_embarque', 'embarcado'),
+      supabaseAdmin.from('gt_colaboradores').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('standby', true),
+      supabaseAdmin.from('gt_documentos').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status_validacao', 'vencido'),
+      supabaseAdmin.from('gt_documentos').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status_validacao', 'vencendo'),
+      supabaseAdmin.from('gt_documentos').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status_revisao', 'pendente_revisao'),
+    ]);
 
-    if (error) {
-      console.error('Erro ao buscar dados do dashboard:', error);
+    const firstError = [colabs, embarcados, disponiveis, vencidos, vencendo, asosPendentes].find((r) => r.error);
+    if (firstError?.error) {
+      console.error('Erro ao buscar dados do dashboard:', firstError.error);
       return NextResponse.json({ error: 'Erro ao buscar dados do dashboard' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      data: data || {},
+      data: {
+        total_colaboradores: colabs.count || 0,
+        total_embarcados: embarcados.count || 0,
+        total_disponiveis: disponiveis.count || 0,
+        total_docs_vencidos: vencidos.count || 0,
+        total_docs_vencendo: vencendo.count || 0,
+        asos_pendentes_revisao: asosPendentes.count || 0,
+      },
       meta: {
         module: 'gestao-tripulantes',
         updatedAt: new Date().toISOString()

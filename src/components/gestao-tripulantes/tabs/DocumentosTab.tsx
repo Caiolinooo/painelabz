@@ -5,6 +5,7 @@ import { FiUpload, FiDownload, FiFile, FiAlertCircle, FiCheckCircle, FiClock, Fi
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
+import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 
 interface Document {
   id: string;
@@ -50,7 +51,8 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh }: 
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [newTipo, setNewTipo] = useState('visto');
+  const [newTipo, setNewTipo] = useState('documento_pessoal');
+  const [ocrRunning, setOcrRunning] = useState<string | null>(null);
   const [newTitulo, setNewTitulo] = useState('');
 
   // All docs except ASO, passaporte, treinamento
@@ -80,10 +82,20 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh }: 
         method: 'POST',
         body: fd,
       });
-      if (!res.ok) throw new Error('Upload falhou');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Upload falhou');
       toast.success(t('gestaoTripulantes.upload.success'));
       setNewTitulo('');
       onRefresh?.();
+      const docId = json.data?.id as string | undefined;
+      const arquivoUrl = json.data?.arquivo_url as string | undefined;
+      if (docId) {
+        setOcrRunning(docId);
+        enviarOcrDocumento(docId, arquivoUrl)
+          .then(() => onRefresh?.())
+          .catch(() => onRefresh?.())
+          .finally(() => setOcrRunning(null));
+      }
     } catch {
       toast.error(t('gestaoTripulantes.upload.error'));
     } finally {
@@ -119,12 +131,17 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh }: 
               value={newTipo}
               onChange={e => setNewTipo(e.target.value)}
             >
-              <option value="visto">Visto</option>
-              <option value="ctm">CTM</option>
-              <option value="habilitacao">Habilitação</option>
+              <option value="documento_pessoal">Documento pessoal / Visto / CTM</option>
+              <option value="cnh">CNH / Habilitação</option>
               <option value="certificado">Certificado</option>
-              <option value="declaracao">Declaração</option>
-              <option value="outro">Outro</option>
+              <option value="contrato">Contrato</option>
+              <option value="laudo">Laudo</option>
+              <option value="ctps">CTPS</option>
+              <option value="reservista">Reservista</option>
+              <option value="titulo_eleitor">Título de eleitor</option>
+              <option value="certidao_nascimento">Certidão de nascimento</option>
+              <option value="certidao_casamento">Certidão de casamento</option>
+              <option value="outro">Outro / Declaração</option>
             </select>
           </div>
           <div className="flex-1">
@@ -139,8 +156,8 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh }: 
           </div>
           <label className={`flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-800 transition ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
             <FiUpload className="w-3.5 h-3.5" />
-            {uploading ? t('gestaoTripulantes.upload.uploading') : t('gestaoTripulantes.documents.uploadDocument')}
-            <input type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleUpload} />
+            {uploading ? t('gestaoTripulantes.upload.uploading') : ocrRunning ? 'OCR…' : t('gestaoTripulantes.documents.uploadDocument')}
+            <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleUpload} />
           </label>
         </div>
       </div>

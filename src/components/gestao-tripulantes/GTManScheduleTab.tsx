@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { FiDownload, FiSearch, FiMessageSquare } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
-import * as XLSX from 'xlsx-js-style';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import {
@@ -68,6 +67,37 @@ function getPositionSortKey(pos: string): number {
 
 function isUuid(id: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+const SCHEDULE_CACHE_TTL_MS = 60_000;
+let scheduleCache: { fetchedAt: number; data: CrewSchedule[] } | null = null;
+let scheduleInflight: Promise<CrewSchedule[]> | null = null;
+
+async function loadScheduleRows(force = false): Promise<CrewSchedule[]> {
+    if (force) {
+        scheduleCache = null;
+    }
+    if (!force && scheduleCache && Date.now() - scheduleCache.fetchedAt < SCHEDULE_CACHE_TTL_MS) {
+        return scheduleCache.data;
+    }
+    if (scheduleInflight) return scheduleInflight;
+    scheduleInflight = (async () => {
+        const res = await fetchWithToken('/api/man-schedule/realtime?janela=90d');
+        if (!res.ok) {
+            if (res.status === 503) {
+                throw new Error('Cache MIO indisponível. Por favor, atualize o cache no painel administrativo.');
+            }
+            throw new Error('Erro ao buscar dados da escala.');
+        }
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error || 'Erro na API');
+        const data = (result.data || []) as CrewSchedule[];
+        scheduleCache = { fetchedAt: Date.now(), data };
+        return data;
+    })().finally(() => {
+        scheduleInflight = null;
+    });
+    return scheduleInflight;
 }
 
 // ---------------------------------------------------------------------------
@@ -283,19 +313,11 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         }
     }, []);
 
-    const fetchSchedules = useCallback(async () => {
+    const fetchSchedules = useCallback(async (force = false) => {
         try {
-            setLoading(true);
-            const res = await fetchWithToken('/api/man-schedule/realtime');
-            if (!res.ok) {
-                if (res.status === 503) {
-                    throw new Error('Cache MIO indisponível. Por favor, atualize o cache no painel administrativo.');
-                }
-                throw new Error('Erro ao buscar dados da escala.');
-            }
-            const result = await res.json();
-            if (!result.success) throw new Error(result.error || 'Erro na API');
-            setAllSchedules(result.data || []);
+            if (!scheduleCache) setLoading(true);
+            const data = await loadScheduleRows(force);
+            setAllSchedules(data);
         } catch (error: unknown) {
             console.error('Error fetching schedules:', error);
             toast.error(error instanceof Error ? error.message : 'Erro ao carregar escala do MIO.');
@@ -396,7 +418,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
             toast.success(editingId ? 'Evento de escala atualizado!' : 'Evento de escala inserido com sucesso!');
             setSelectedCell(null);
-            fetchSchedules();
+            fetchSchedules(true);
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Falha ao salvar evento.');
         } finally {
@@ -419,7 +441,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
             toast.success('Evento de escala removido com sucesso!');
             setSelectedCell(null);
-            fetchSchedules();
+            fetchSchedules(true);
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Falha ao remover evento.');
         } finally {
@@ -434,12 +456,14 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             if (!cleanCpf) return;
 
             setOpeningColab(cpf);
-            const res = await fetchWithToken(`/api/gestao-tripulantes/colaboradores?search=${cleanCpf}`);
+            const res = await fetchWithToken(
+                `/api/gestao-tripulantes/colaboradores?cpf=${encodeURIComponent(cleanCpf)}&limit=1&lite=1`
+            );
             if (!res.ok) throw new Error();
             const json = await res.json();
             const colab = json.data?.[0];
 
-            if (colab) {
+            if (colab?.id) {
                 onColabClick(colab);
             } else {
                 toast.error(`Colaborador "${fullName}" não está cadastrado na base local de tripulantes.`);
@@ -766,9 +790,11 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         return fromDb;
     }, [tipos, presentStatuses, getCellStyle]);
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         const table = document.getElementById('man-schedule-table');
         if (!table) return;
+        const xlsxMod = await import('xlsx-js-style') as { utils?: unknown; default?: { utils?: unknown } };
+        const XLSX = (xlsxMod.utils ? xlsxMod : xlsxMod.default) as typeof import('xlsx-js-style');
         const wb = XLSX.utils.table_to_book(table, { sheet: 'Schedule' });
         const ws = wb.Sheets['Schedule'];
 

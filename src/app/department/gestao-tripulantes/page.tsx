@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
@@ -10,7 +11,16 @@ import GTMatrix from '@/components/gestao-tripulantes/GTMatrix';
 import GTMatrixLegend from '@/components/gestao-tripulantes/GTMatrixLegend';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import AsoReviewPanel from '@/components/gestao-tripulantes/AsoReviewPanel';
-import GTManScheduleTab from '@/components/gestao-tripulantes/GTManScheduleTab';
+
+const GTManScheduleTab = dynamic(
+  () => import('@/components/gestao-tripulantes/GTManScheduleTab'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="animate-pulse h-64 bg-gray-100 rounded-xl" aria-hidden="true" />
+    ),
+  }
+);
 
 interface DashboardData {
   total_colaboradores: number;
@@ -55,6 +65,7 @@ export default function GestaoTripulantesPage() {
   const { t } = useI18n();
   const { user } = useSupabaseAuth();
   const [activeTab, setActiveTab] = useState<'matrix' | 'schedule'>('matrix');
+  const [scheduleMounted, setScheduleMounted] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [colaboradores, setColaboradores] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,9 +119,12 @@ export default function GestaoTripulantesPage() {
   }, [user, fetchDashboard]);
 
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+    const delay = filters.search ? 300 : 0;
+    const timer = setTimeout(() => {
       fetchColaboradores();
-    }
+    }, delay);
+    return () => clearTimeout(timer);
   }, [user, filters, fetchColaboradores]);
 
   const handleFilterChange = useCallback((partial: Partial<FiltersState>) => {
@@ -123,15 +137,15 @@ export default function GestaoTripulantesPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-none w-full space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">{t('gestaoTripulantes.title')}</h1>
-          <p className="text-gray-500">{t('gestaoTripulantes.subtitle')}</p>
+          <h1 className="text-2xl font-bold text-gray-800 tracking-tight">{t('gestaoTripulantes.title')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('gestaoTripulantes.subtitle')}</p>
         </div>
         <a href="/department/gestao-tripulantes/novo"
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm font-semibold">
+          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm font-semibold self-start sm:self-auto">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
           Novo Colaborador
         </a>
@@ -151,7 +165,10 @@ export default function GestaoTripulantesPage() {
             Matriz de Conformidade
           </button>
           <button
-            onClick={() => setActiveTab('schedule')}
+            onClick={() => {
+              setActiveTab('schedule');
+              setScheduleMounted(true);
+            }}
             className={`pb-3 text-sm font-bold border-b-2 transition-all ${
               activeTab === 'schedule'
                 ? 'border-blue-600 text-blue-600'
@@ -163,7 +180,7 @@ export default function GestaoTripulantesPage() {
         </nav>
       </div>
 
-      {activeTab === 'matrix' ? (
+      {activeTab === 'matrix' && (
         <div className="space-y-6">
           <AsoReviewPanel compact />
           <DashboardCards data={dashboard} />
@@ -175,8 +192,10 @@ export default function GestaoTripulantesPage() {
           />
           <GTMatrixLegend />
         </div>
-      ) : (
-        <div className="pt-2">
+      )}
+
+      {scheduleMounted && (
+        <div className={activeTab === 'schedule' ? 'pt-2' : 'hidden'}>
           <GTManScheduleTab onColabClick={handleRowClick} />
         </div>
       )}

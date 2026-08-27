@@ -8,6 +8,7 @@ import {
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
+import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 import SugestaoBackModal from './SugestaoBackModal';
 import DadosPessoaisTab from './tabs/DadosPessoaisTab';
 import TreinamentosTab from './tabs/TreinamentosTab';
@@ -77,9 +78,13 @@ interface CollaboratorDetail {
   endereco_uf: string;
   endereco_cep: string;
   matricula: string;
+  cargo_id?: string | null;
   cargo_nome: string;
+  empresa_id?: string | null;
   empresa_nome: string;
+  embarcacao_atual_id?: string | null;
   embarcacao_nome: string;
+  centro_custo_id?: string | null;
   centro_custo_nome: string;
   status_embarque: string;
   standby: boolean;
@@ -120,6 +125,32 @@ function SkeletonBlock() {
   );
 }
 
+class TabErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(err: unknown) {
+    console.error('CollaboratorModal tab crash', err);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <p className="text-sm text-red-600 p-6">
+          Erro ao renderizar esta aba. Feche e abra o perfil novamente, ou troque de aba.
+        </p>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const STATUS_BG: Record<string, string> = {
   embarcado: 'from-green-600 to-emerald-700',
   standby: 'from-orange-500 to-amber-600',
@@ -130,6 +161,32 @@ const STATUS_BG: Record<string, string> = {
   treinamento: 'from-yellow-500 to-orange-600',
 };
 
+/** Shared across React Strict Mode remounts so two effects 1ms apart hit the server once. */
+const colaboradorDetailInflight = new Map<string, Promise<CollaboratorDetail>>();
+
+function fetchColaboradorDetail(colaboradorId: string, opts?: { force?: boolean }): Promise<CollaboratorDetail> {
+  if (opts?.force) colaboradorDetailInflight.delete(colaboradorId);
+  const existing = colaboradorDetailInflight.get(colaboradorId);
+  if (existing) return existing;
+  const pending = (async () => {
+    const res = await fetchWithToken(`/api/gestao-tripulantes/colaboradores/${colaboradorId}?include=all`);
+    if (!res.ok) throw new Error('Erro ao carregar dados');
+    const json = await res.json();
+    const payload = json?.data;
+    if (!payload || typeof payload !== 'object' || !payload.id) {
+      throw new Error('Resposta sem dados do colaborador');
+    }
+    return payload as CollaboratorDetail;
+  })();
+  colaboradorDetailInflight.set(colaboradorId, pending);
+  void pending.finally(() => {
+    if (colaboradorDetailInflight.get(colaboradorId) === pending) {
+      colaboradorDetailInflight.delete(colaboradorId);
+    }
+  });
+  return pending;
+}
+
 export default function CollaboratorModal({ colaboradorId, onClose }: CollaboratorModalProps) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<TabKey>('dados');
@@ -138,14 +195,13 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
   const [showBackModal, setShowBackModal] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
-      const res = await fetchWithToken(`/api/gestao-tripulantes/colaboradores/${colaboradorId}`);
-      if (!res.ok) throw new Error('Erro ao carregar dados');
-      const json = await res.json();
-      setData(json.data);
+      if (!opts?.silent) setLoading(true);
+      const payload = await fetchColaboradorDetail(colaboradorId, { force: Boolean(opts?.silent) });
+      setData(payload);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error(err);
       toast.error(t('gestaoTripulantes.errors.loadError'));
     } finally {
@@ -153,7 +209,17 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
     }
   }, [colaboradorId, t]);
 
+  const silentRefresh = useCallback(() => fetchData({ silent: true }), [fetchData]);
+
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
 
   const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -170,9 +236,14 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
         method: 'POST',
         body: fd,
       });
-      if (!res.ok) throw new Error('Upload falhou');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Upload falhou');
       toast.success(t('gestaoTripulantes.upload.success'));
-      fetchData();
+      await silentRefresh();
+      const docId = json.data?.id as string | undefined;
+      if (docId) {
+        void enviarOcrDocumento(docId, json.data?.arquivo_url).then(() => silentRefresh());
+      }
     } catch {
       toast.error(t('gestaoTripulantes.upload.error'));
     } finally {
@@ -182,14 +253,20 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
   };
 
   const renderTabContent = () => {
-    if (loading) return <SkeletonBlock />;
+    if (loading && !data) return <SkeletonBlock />;
     if (!data) return <p className="text-gray-400 text-sm p-6">{t('gestaoTripulantes.errors.loadError')}</p>;
 
     switch (activeTab) {
       case 'dados':
-        return <DadosPessoaisTab data={data} onUpdate={(updated) => setData(prev => prev ? { ...prev, ...updated } : prev)} />;
+        return (
+          <DadosPessoaisTab
+            data={data}
+            onUpdate={(updated) => setData(prev => prev ? { ...prev, ...updated } : prev)}
+            onRefresh={silentRefresh}
+          />
+        );
       case 'treinamentos':
-        return <TreinamentosTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={fetchData} />;
+        return <TreinamentosTab colaboradorId={data.id} colaborador={data} documentos={data.documentos || []} onRefresh={silentRefresh} />;
       case 'aso':
         return (
           <ASOTab
@@ -197,19 +274,22 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
             colaboradorCpf={data.cpf}
             documentos={data.documentos || []}
             esocialAsos={(data as any).esocial_asos || []}
-            onRefresh={fetchData}
+            onRefresh={silentRefresh}
           />
         );
       case 'passaportes':
-        return <PassaportesTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={fetchData} />;
+        return <PassaportesTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} />;
       case 'documentos':
-        return <DocumentosTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={fetchData} />;
+        return <DocumentosTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} />;
       case 'embarques':
         return <HistoricoEmbarquesTab embarques={data.embarques || []} />;
       case 'substituicoes':
         return <SubstituicoesTab colaboradorId={data.id} substituicoes={data.substituicoes || []} />;
-      default:
+      default: {
+        const _exhaustive: never = activeTab;
+        void _exhaustive;
         return null;
+      }
     }
   };
 
@@ -222,19 +302,19 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto py-6"
+        className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
         onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          initial={{ opacity: 0, y: 15, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.98 }}
+          exit={{ opacity: 0, y: 15, scale: 0.98 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           onClick={e => e.stopPropagation()}
-          className="relative w-full max-w-5xl mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col my-auto"
         >
           {/* Header */}
-          <div className={`bg-gradient-to-r ${gradientClass} px-6 py-5`}>
+          <div className={`bg-gradient-to-r ${gradientClass} px-6 py-5 shrink-0`}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 {/* Avatar */}
@@ -250,7 +330,7 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
 
                 <div className="min-w-0">
                   <h2 className="text-lg font-bold text-white truncate">
-                    {loading ? 'Carregando...' : data?.nome_completo}
+                    {loading && !data ? 'Carregando...' : data?.nome_completo}
                   </h2>
                   <p className="text-sm text-white/70 truncate">
                     {data?.cargo_nome}
@@ -308,7 +388,7 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-gray-200 bg-gray-50/50 overflow-x-auto">
+          <div className="border-b border-gray-200 bg-gray-50/50 overflow-x-auto shrink-0">
             <div className="flex min-w-max">
               {TABS.map(tab => {
                 const Icon = tab.icon;
@@ -332,8 +412,10 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
           </div>
 
           {/* Content */}
-          <div className="max-h-[62vh] overflow-y-auto">
-            {renderTabContent()}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <TabErrorBoundary key={activeTab}>
+              {renderTabContent()}
+            </TabErrorBoundary>
           </div>
         </motion.div>
       </motion.div>

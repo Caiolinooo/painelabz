@@ -2,42 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { mapDbTipoToCodigo, normalizeCpf } from '@/lib/gestao-tripulantes/escala-tipos';
-import { mioClient } from '@/lib/mio/client';
 
 export const dynamic = 'force-dynamic';
-
-interface RawLGPRecord {
-    'Matrícula': string;
-    'Nome': string;
-    'Função/Cargo': string;
-    'Nascido Em': string;
-    'CPF': string;
-    'Regime': string;
-    'Telefone 01': string;
-    'Telefone 02': string;
-    'Origem': string;
-    'Centro de Custo do Integrante': string;
-    'Centro de Custo da RTPE': string;
-    'Nº RTPE': string;
-    'Nº do Projeto': string | null;
-    'Doc. Cliente RTPE': string | null;
-    'Destino': string;
-    'Qtd. Início': string | null;
-    'Qtd. Fim': string | null;
-    'Exame Em': string | null;
-    'Prev. de Emb.': string;
-    'Embarque Real': string;
-    'Prev. Desemb.': string;
-    'RTPE Status': string;
-    'Nº RTPD': string;
-    'Doc. Cliente RTPD': string;
-    'Prev. Desemb. RTPD': string;
-    'Desembarque Real': string;
-    'RTPD Status': string;
-    'Qtd. de Dias': string;
-    'Folga Início': string;
-    'Folga Fim': string;
-}
 
 interface ScheduleEntry {
     id: string;
@@ -57,8 +23,6 @@ interface ScheduleEntry {
     tipo_codigo: string;
     origem?: 'mio' | 'local';
 }
-
-type DetectedExtraType = 'fi' | 'dba' | 'stb' | 'offc';
 
 // ---------------------------------------------------------------------------
 // Performance infrastructure
@@ -83,7 +47,7 @@ const DEFAULT_JANELA = '90d';
 
 interface ResultCacheEntry {
     payload: Record<string, unknown>;
-    /** Signature of the mio_cache rows the payload was built from. */
+    /** Signature of gt_historico_embarques + colaboradores used to build the payload. */
     mioSignature: string;
     builtAt: number;
 }
@@ -91,44 +55,12 @@ interface ResultCacheEntry {
 /** janela key -> computed payload cache. */
 const resultCache = new Map<string, ResultCacheEntry>();
 
-/** Guard so only one background MIO refresh runs at a time. */
-let backgroundRefreshInFlight: Promise<void> | null = null;
-
-/**
- * Fire-and-forget refresh of the mio_cache table.
- * NEVER awaited on the request path.
- */
-function triggerBackgroundMioRefresh(reason: string): void {
-    if (backgroundRefreshInFlight) {
-        console.log(`[ManSchedule] Refresh em background já em andamento (motivo ignorado: ${reason})`);
-        return;
-    }
-    backgroundRefreshInFlight = (async () => {
-        const started = Date.now();
-        try {
-            console.log(`[ManSchedule] Disparando refresh do MIO em background (motivo: ${reason})...`);
-            const [integrantesRes, lgpRes] = await Promise.all([
-                mioClient.getIntegrantes().catch((e) => { console.error('[ManSchedule][bg] Erro integrantes:', e); return []; }),
-                mioClient.getLGPReportsRaw().catch((e) => { console.error('[ManSchedule][bg] Erro LGP:', e); return []; }),
-            ]);
-
-            const now = new Date().toISOString();
-            const entries = [
-                { tipo: 'integrantes', dados: integrantesRes, total_registros: integrantesRes.length, atualizado_em: now },
-                { tipo: 'lgp_reports', dados: lgpRes, total_registros: lgpRes.length, atualizado_em: now },
-            ];
-            for (const entry of entries) {
-                await supabaseAdmin.from('mio_cache').upsert(entry, { onConflict: 'tipo' });
-            }
-            // New data invalidates every cached payload signature.
-            resultCache.clear();
-            console.log(`[ManSchedule] Refresh background concluído em ${Date.now() - started}ms.`);
-        } catch (err) {
-            console.error('[ManSchedule][bg] Falha no refresh em background do MIO:', err);
-        } finally {
-            backgroundRefreshInFlight = null;
-        }
-    })();
+function colabEmbarcacaoNome(colab: {
+    embarcacao_atual?: { nome?: string } | { nome?: string }[] | null;
+}): string {
+    const e = colab.embarcacao_atual;
+    if (Array.isArray(e)) return (e[0]?.nome || '').trim();
+    return (e?.nome || '').trim();
 }
 
 function parseDate(str: string | null): Date | null {
@@ -145,11 +77,6 @@ function parseFlexibleDate(value: unknown): Date | null {
     return parseDate(value.slice(0, 10));
 }
 
-function daysBetween(d1: Date, d2: Date): number {
-    const msPerDay = 24 * 60 * 60 * 1000;
-    return Math.round((d2.getTime() - d1.getTime()) / msPerDay);
-}
-
 /** True when [start,end] overlaps the processing window (end fallback: start+90d). */
 function rotationOverlapsWindow(
     startStr: string | null,
@@ -164,93 +91,6 @@ function rotationOverlapsWindow(
         end = isNaN(start) ? windowStart : start + 90 * 24 * 60 * 60 * 1000;
     }
     return start <= windowEnd && end >= windowStart;
-}
-
-function detectRotationType(
-    currentRecord: RawLGPRecord,
-    nextRecord: RawLGPRecord | null
-): { type: 'normal' | DetectedExtraType; extraPeriods: { start: string; end: string; type: DetectedExtraType }[] } {
-    const extraPeriods: { start: string; end: string; type: DetectedExtraType }[] = [];
-
-    const desembarqueReal = parseDate(currentRecord['Desembarque Real']);
-    const prevDesemb = parseDate(currentRecord['Prev. Desemb.']);
-    const folgaInicio = parseDate(currentRecord['Folga Início']);
-    const folgaFim = parseDate(currentRecord['Folga Fim']);
-
-    const rotationEnd = desembarqueReal || prevDesemb;
-
-    if (!rotationEnd) {
-        return { type: 'normal', extraPeriods };
-    }
-
-    const nextEmbReal = nextRecord ? parseDate(nextRecord['Embarque Real']) : null;
-    const nextPrevEmb = nextRecord ? parseDate(nextRecord['Prev. de Emb.']) : null;
-    const nextEmbarque = nextEmbReal || nextPrevEmb;
-
-    if (!nextEmbarque) {
-        if (folgaInicio && folgaFim) {
-            const daysAfterFolga = daysBetween(rotationEnd, folgaInicio);
-            if (daysAfterFolga > 1) {
-                extraPeriods.push({
-                    start: rotationEnd.toISOString().split('T')[0],
-                    end: folgaInicio.toISOString().split('T')[0],
-                    type: 'offc',
-                });
-            }
-            extraPeriods.push({
-                start: folgaInicio.toISOString().split('T')[0],
-                end: folgaFim.toISOString().split('T')[0],
-                type: 'offc',
-            });
-        }
-        return { type: 'normal', extraPeriods };
-    }
-
-    const daysBetweenRotations = daysBetween(rotationEnd, nextEmbarque);
-
-    if (daysBetweenRotations <= 1) {
-        extraPeriods.push({
-            start: rotationEnd.toISOString().split('T')[0],
-            end: nextEmbarque.toISOString().split('T')[0],
-            type: 'dba',
-        });
-        return { type: 'dba', extraPeriods };
-    }
-
-    if (folgaInicio && folgaFim) {
-        const daysAfterFolga = daysBetween(rotationEnd, folgaInicio);
-        if (daysAfterFolga > 1) {
-            extraPeriods.push({
-                start: rotationEnd.toISOString().split('T')[0],
-                end: folgaInicio.toISOString().split('T')[0],
-                type: 'offc',
-            });
-        }
-
-        extraPeriods.push({
-            start: folgaInicio.toISOString().split('T')[0],
-            end: folgaFim.toISOString().split('T')[0],
-            type: 'offc',
-        });
-
-        const daysFolgaToEnd = daysBetween(folgaFim, nextEmbarque);
-        if (daysFolgaToEnd > 1) {
-            extraPeriods.push({
-                start: folgaFim.toISOString().split('T')[0],
-                end: nextEmbarque.toISOString().split('T')[0],
-                type: 'stb',
-            });
-            return { type: 'stb', extraPeriods };
-        }
-    } else {
-        extraPeriods.push({
-            start: rotationEnd.toISOString().split('T')[0],
-            end: nextEmbarque.toISOString().split('T')[0],
-            type: 'offc',
-        });
-    }
-
-    return { type: 'normal', extraPeriods };
 }
 
 export async function GET(request: NextRequest) {
@@ -284,26 +124,32 @@ export async function GET(request: NextRequest) {
 
         const timings: Record<string, number> = {};
 
-        // ---- Stage 1: cheap freshness probe of mio_cache (no blobs)
+        // ---- Stage 1: cheap freshness probe of gt_* (canonical, not mio_cache blobs)
         const probeStart = Date.now();
-        const { data: probeData, error: probeError } = await supabaseAdmin
-            .from('mio_cache')
-            .select('tipo, atualizado_em, total_registros')
-            .in('tipo', ['integrantes', 'lgp_reports']);
+        const [{ count: embCount }, { data: embStamp }, { count: colCount }] = await Promise.all([
+            supabaseAdmin
+                .from('gt_historico_embarques')
+                .select('id', { count: 'exact', head: true })
+                .is('deleted_at', null),
+            supabaseAdmin
+                .from('gt_historico_embarques')
+                .select('updated_at, created_at')
+                .is('deleted_at', null)
+                .order('updated_at', { ascending: false, nullsFirst: false })
+                .limit(1),
+            supabaseAdmin
+                .from('gt_colaboradores')
+                .select('id', { count: 'exact', head: true })
+                .is('deleted_at', null),
+        ]);
         timings.probe = Date.now() - probeStart;
+        const stamp = embStamp?.[0]?.updated_at || embStamp?.[0]?.created_at || 'none';
+        const mioSignature = `gt_emb:${embCount ?? 0}:${stamp}|gt_col:${colCount ?? 0}`;
 
-        const rows = (probeData || []) as { tipo: string; atualizado_em: string | null; total_registros: number | null }[];
-        const sigParts = ['integrantes', 'lgp_reports'].map(
-            (tipo) => `${tipo}:${rows.find((r) => r.tipo === tipo)?.atualizado_em || 'missing'}:${rows.find((r) => r.tipo === tipo)?.total_registros ?? 'x'}`
-        );
-        const mioSignature = sigParts.join('|');
-
-        // ---- Stage 2: serve computed result from memory when fresh & unchanged
+        // ---- Stage 2: in-memory cache (same TTL; lazy-load UI unchanged)
         const cachedEntry = resultCache.get(janelaParam);
         if (
             cachedEntry &&
-            !probeError &&
-            rows.length >= 2 &&
             cachedEntry.mioSignature === mioSignature &&
             Date.now() - cachedEntry.builtAt < RESULT_CACHE_TTL_MS
         ) {
@@ -313,12 +159,13 @@ export async function GET(request: NextRequest) {
                 `[ManSchedule] CACHE HIT janela=${janelaParam} age=${ageS}s total=${timings.cacheRead}ms (probe ${timings.probe}ms)`
             );
             const hitPayload = {
-                ...(cachedEntry.payload as any),
+                ...(cachedEntry.payload as Record<string, unknown>),
                 meta: {
-                    ...((cachedEntry.payload as any).meta || {}),
+                    ...((cachedEntry.payload as { meta?: Record<string, unknown> }).meta || {}),
                     cached: true,
                     cache_age_s: ageS,
                     janela: janelaParam,
+                    source: 'gt_historico_embarques',
                     timings_ms: { ...timings },
                 },
             };
@@ -326,240 +173,114 @@ export async function GET(request: NextRequest) {
         }
         timings.cacheMissCheck = Date.now() - probeStart;
         console.log(
-            `[ManSchedule] Cache miss (janela=${janelaParam}, signature=${cachedEntry ? 'stale' : 'empty'}, age=${
-                cachedEntry ? Math.round((Date.now() - cachedEntry.builtAt) / 1000) + 's' : 'n/a'
-            }) — reconstruindo schedule.`
+            `[ManSchedule] Cache miss (janela=${janelaParam}, signature=${cachedEntry ? 'stale' : 'empty'}) — rebuilding from gt_*`
         );
 
-        // ---- Stage 3: load full blobs from mio_cache
+        const fromDate = new Date(windowStart).toISOString().slice(0, 10);
+        const toDate = new Date(windowEnd).toISOString().slice(0, 10);
+        const lookback = new Date(windowStart - 180 * dayMs).toISOString().slice(0, 10);
+
         const blobStart = Date.now();
-        const { data: cacheData, error: cacheError } = await supabaseAdmin
-            .from('mio_cache')
-            .select('tipo, dados')
-            .in('tipo', ['integrantes', 'lgp_reports']);
-
-        let integrantes: any[] = [];
-        let lgpRecords: any[] = [];
-
-        const hasIntegrantesRow = !!cacheData?.some((c) => c.tipo === 'integrantes');
-        const hasLgpRow = !!cacheData?.some((c) => c.tipo === 'lgp_reports');
-
-        if (cacheError || !cacheData || !hasIntegrantesRow || !hasLgpRow) {
-            // NEVER call the MIO API inline on the request path: serve what we
-            // have (or a fast 503) and kick off a fire-and-forget refresh.
-            console.log('[ManSchedule] Cache MIO incompleto/vazio — servindo parcial e disparando refresh em background.');
-            triggerBackgroundMioRefresh('cache incompleto');
-
-            integrantes = (cacheData?.find((c) => c.tipo === 'integrantes')?.dados as any[]) || [];
-            lgpRecords = (cacheData?.find((c) => c.tipo === 'lgp_reports')?.dados as any[]) || [];
-
-            if (integrantes.length === 0 && lgpRecords.length === 0) {
-                timings.blobRead = Date.now() - blobStart;
-                console.log(`[ManSchedule] Nada para servir (503 rápido) em ${Date.now() - t0}ms.`);
-                return NextResponse.json(
-                    {
-                        success: false,
-                        error: 'Cache MIO indisponível. Atualização em tempo real foi disparada em segundo plano; tente novamente em instantes.',
-                        refreshing: true,
-                    },
-                    { status: 503 }
-                );
-            }
-        } else {
-            integrantes = cacheData.find((c) => c.tipo === 'integrantes')?.dados as any[] || [];
-            lgpRecords = cacheData.find((c) => c.tipo === 'lgp_reports')?.dados as any[] || [];
-        }
+        const [{ data: colabs, error: colErr }, { data: embarques, error: embErr }] = await Promise.all([
+            supabaseAdmin
+                .from('gt_colaboradores')
+                .select(`
+                    id, cpf, nome_completo, ativo,
+                    cargo:gt_cargos(nome),
+                    empresa:gt_empresas(nome),
+                    embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome)
+                `)
+                .is('deleted_at', null),
+            supabaseAdmin
+                .from('gt_historico_embarques')
+                .select(`
+                    id, colaborador_id, tipo, data_embarque, data_desembarque,
+                    data_prevista_desembarque, local_embarque, local_desembarque,
+                    observacoes, origem, mio_embarque_id
+                `)
+                .is('deleted_at', null)
+                .gte('data_embarque', lookback)
+                .lte('data_embarque', toDate),
+        ]);
         timings.blobRead = Date.now() - blobStart;
 
-        console.log(
-            `[ManSchedule] Cache carregado (${timings.blobRead}ms): ${integrantes.length} integrantes, ${lgpRecords.length} registros LGP`
-        );
+        if (colErr) console.error('[ManSchedule] colaboradores:', colErr.message);
+        if (embErr) console.error('[ManSchedule] embarques:', embErr.message);
 
-        // ---- Stage 4: build schedule (window-filtered)
+        const colaboradores = colabs || [];
+        const hist = embarques || [];
+        if (colaboradores.length === 0 && hist.length === 0) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Sem dados locais. Execute o pull admin /api/gestao-tripulantes/mio/sync.',
+                    refreshing: false,
+                },
+                { status: 503 }
+            );
+        }
+
         const buildStart = Date.now();
+        const colabById = new Map<string, (typeof colaboradores)[number]>();
+        for (const c of colaboradores) colabById.set(c.id, c);
 
-        // Index LGP by normalized CPF for reliable joins
-        const lgpByCpf = new Map<string, RawLGPRecord[]>();
+        const schedules: ScheduleEntry[] = [];
+        const seenColabInWindow = new Set<string>();
         let lgpSkippedByWindow = 0;
-        for (const record of lgpRecords || []) {
-            if (!record) continue;
-            // Window filter first: skip rotations entirely outside [past, future].
-            const recStart = record['Embarque Real'] || record['Prev. de Emb.'] || null;
-            const recEnd =
-                record['Desembarque Real'] || record['Prev. Desemb. RTPD'] || record['Prev. Desemb.'] || null;
-            if (!rotationOverlapsWindow(recStart, recEnd, windowStart, windowEnd)) {
+
+        for (const entry of hist) {
+            const start = entry.data_embarque;
+            const end = entry.data_desembarque || entry.data_prevista_desembarque;
+            if (!rotationOverlapsWindow(start, end, windowStart, windowEnd)) {
                 lgpSkippedByWindow++;
                 continue;
             }
-            const cpfKey = normalizeCpf(record['CPF'] || '');
-            if (!cpfKey) continue;
-            const list = lgpByCpf.get(cpfKey) || [];
-            list.push(record);
-            lgpByCpf.set(cpfKey, list);
+            const colab = colabById.get(entry.colaborador_id);
+            if (!colab) continue;
+            seenColabInWindow.add(colab.id);
+            const rotType = mapDbTipoToCodigo(entry.tipo);
+            const cpfNorm = normalizeCpf(colab.cpf || '');
+            const origem: 'mio' | 'local' = entry.origem === 'local' ? 'local' : 'mio';
+            schedules.push({
+                id: entry.id,
+                cpf: cpfNorm,
+                full_name: (colab.nome_completo || '').toUpperCase().trim(),
+                position: ((colab as { cargo?: { nome?: string } }).cargo?.nome || '').toUpperCase().trim(),
+                vessel: (entry.local_desembarque || colabEmbarcacaoNome(colab)).trim(),
+                company: ((colab as { empresa?: { nome?: string } }).empresa?.nome || '').trim(),
+                rotation_start: start,
+                rotation_end: end,
+                embarque_status: origem === 'local' ? 'Manual' : null,
+                local_embarque: (entry.local_embarque || '').trim(),
+                rotation_type: rotType,
+                observacoes: (entry.observacoes || '').trim() || null,
+                tipo_codigo: rotType,
+                origem,
+            });
         }
 
-        const schedules: ScheduleEntry[] = [];
-
-        for (const integrante of integrantes) {
-            if (!integrante) continue;
-
-            const cpfNorm = normalizeCpf(integrante.cpf || '');
-            const personRecords = (lgpByCpf.get(cpfNorm) || []).slice().sort((a, b) => {
-                const dateA = a['Embarque Real'] || a['Prev. de Emb.'] || '';
-                const dateB = b['Embarque Real'] || b['Prev. de Emb.'] || '';
-                return dateA.localeCompare(dateB);
+        for (const colab of colaboradores) {
+            if (!colab.ativo || seenColabInWindow.has(colab.id)) continue;
+            const cpfNorm = normalizeCpf(colab.cpf || '');
+            schedules.push({
+                id: colab.id,
+                cpf: cpfNorm,
+                full_name: (colab.nome_completo || '').toUpperCase().trim(),
+                position: ((colab as { cargo?: { nome?: string } }).cargo?.nome || '').toUpperCase().trim(),
+                vessel: colabEmbarcacaoNome(colab),
+                company: ((colab as { empresa?: { nome?: string } }).empresa?.nome || '').trim(),
+                rotation_start: null,
+                rotation_end: null,
+                embarque_status: null,
+                local_embarque: '',
+                rotation_type: 'normal',
+                observacoes: null,
+                tipo_codigo: 'normal',
+                origem: 'mio',
             });
-
-            if (personRecords.length > 0) {
-                for (let i = 0; i < personRecords.length; i++) {
-                    const record = personRecords[i];
-                    const nextRecord = i + 1 < personRecords.length ? personRecords[i + 1] : null;
-
-                    const rotationStart = record['Embarque Real'] || record['Prev. de Emb.'] || null;
-                    const rotationEnd = record['Desembarque Real'] || record['Prev. Desemb. RTPD'] || record['Prev. Desemb.'] || null;
-
-                    const { type, extraPeriods } = detectRotationType(record, nextRecord);
-
-                    schedules.push({
-                        id: `${integrante.id}_${record['Nº RTPE'] || i}`,
-                        cpf: cpfNorm || integrante.cpf,
-                        full_name: (integrante.nome || '').toUpperCase().trim(),
-                        position: (integrante.cargo || integrante.funcao || '').toUpperCase().trim(),
-                        vessel: (record['Destino'] || integrante.base || '').trim(),
-                        company: (integrante.departamento || integrante.setor || record['Centro de Custo do Integrante'] || '').trim(),
-                        rotation_start: rotationStart,
-                        rotation_end: rotationEnd,
-                        embarque_status: record['RTPE Status'] || null,
-                        local_embarque: (record['Origem'] || '').trim(),
-                        rotation_type: type,
-                        observacoes: null,
-                        tipo_codigo: type,
-                        origem: 'mio',
-                    });
-
-                    for (const extra of extraPeriods) {
-                        schedules.push({
-                            id: `${integrante.id}_${record['Nº RTPE'] || i}_${extra.type}`,
-                            cpf: cpfNorm || integrante.cpf,
-                            full_name: (integrante.nome || '').toUpperCase().trim(),
-                            position: (integrante.cargo || integrante.funcao || '').toUpperCase().trim(),
-                            vessel: (record['Destino'] || integrante.base || '').trim(),
-                            company: (integrante.departamento || integrante.setor || record['Centro de Custo do Integrante'] || '').trim(),
-                            rotation_start: extra.start,
-                            rotation_end: extra.end,
-                            embarque_status: extra.type,
-                            local_embarque: (record['Origem'] || '').trim(),
-                            rotation_type: extra.type,
-                            observacoes: null,
-                            tipo_codigo: extra.type,
-                            origem: 'mio',
-                        });
-                    }
-                }
-            } else {
-                schedules.push({
-                    id: integrante.id?.toString() || Math.random().toString(),
-                    cpf: cpfNorm || integrante.cpf,
-                    full_name: (integrante.nome || '').toUpperCase().trim(),
-                    position: (integrante.cargo || integrante.funcao || '').toUpperCase().trim(),
-                    vessel: (integrante.base || '').trim(),
-                    company: (integrante.departamento || integrante.setor || '').trim(),
-                    rotation_start: null,
-                    rotation_end: null,
-                    embarque_status: null,
-                    local_embarque: '',
-                    rotation_type: 'normal',
-                    observacoes: null,
-                    tipo_codigo: 'normal',
-                    origem: 'mio',
-                });
-            }
         }
         timings.build = Date.now() - buildStart;
-
-        // ---- Stage 5: merge local overrides via DIRECT queries (no heavy view).
-        const mergeStart = Date.now();
-        try {
-            const { data: localEmbarques } = await supabaseAdmin
-                .from('gt_historico_embarques')
-                .select(`
-                    id,
-                    colaborador_id,
-                    tipo,
-                    data_embarque,
-                    data_desembarque,
-                    local_embarque,
-                    local_desembarque,
-                    observacoes
-                `)
-                .eq('origem', 'local')
-                .is('deleted_at', null)
-                .gte('data_embarque', new Date(windowStart).toISOString().slice(0, 10))
-                .lte('data_embarque', new Date(windowEnd).toISOString().slice(0, 10));
-
-            if (localEmbarques && localEmbarques.length > 0) {
-                // Targeted collaborator lookup (base tables, not the view).
-                const colabIds = Array.from(
-                    new Set(localEmbarques.map((e) => e.colaborador_id).filter(Boolean))
-                ) as string[];
-
-                const colabById = new Map<
-                    string,
-                    { cpf?: string; nome_completo?: string; cargo_nome?: string; empresa_nome?: string }
-                >();
-
-                if (colabIds.length > 0) {
-                    const { data: colabs } = await supabaseAdmin
-                        .from('gt_colaboradores')
-                        .select(`
-                            id,
-                            cpf,
-                            nome_completo,
-                            cargo:gt_cargos(nome),
-                            empresa:gt_empresas(nome)
-                        `)
-                        .in('id', colabIds);
-
-                    for (const c of colabs || []) {
-                        colabById.set(c.id, {
-                            cpf: c.cpf,
-                            nome_completo: c.nome_completo,
-                            cargo_nome: (c as any).cargo?.nome,
-                            empresa_nome: (c as any).empresa?.nome,
-                        });
-                    }
-                }
-
-                for (const entry of localEmbarques) {
-                    const colab = colabById.get(entry.colaborador_id);
-                    if (!colab) continue;
-
-                    const rotType = mapDbTipoToCodigo(entry.tipo);
-                    const cpfNorm = normalizeCpf(colab.cpf || '');
-                    const obs = (entry.observacoes || '').trim() || null;
-
-                    schedules.push({
-                        id: entry.id,
-                        cpf: cpfNorm,
-                        full_name: (colab.nome_completo || '').toUpperCase().trim(),
-                        position: (colab.cargo_nome || '').toUpperCase().trim(),
-                        vessel: (entry.local_desembarque || '').trim(),
-                        company: (colab.empresa_nome || '').trim(),
-                        rotation_start: entry.data_embarque,
-                        rotation_end: entry.data_desembarque,
-                        embarque_status: 'Manual',
-                        local_embarque: (entry.local_embarque || '').trim(),
-                        rotation_type: rotType,
-                        observacoes: obs,
-                        tipo_codigo: rotType,
-                        origem: 'local',
-                    });
-                }
-            }
-        } catch (localErr) {
-            console.error('Erro ao buscar embarques locais:', localErr);
-        }
-        timings.localMerge = Date.now() - mergeStart;
+        timings.localMerge = 0;
 
         const vessels = Array.from(new Set(schedules.map((s) => s.vessel).filter(Boolean))).sort();
         const positions = Array.from(new Set(schedules.map((s) => s.position).filter(Boolean))).sort();
@@ -567,8 +288,8 @@ export async function GET(request: NextRequest) {
 
         const totalMs = Date.now() - t0;
         console.log(
-            `[ManSchedule] Tempos (ms): probe=${timings.probe} blobRead=${timings.blobRead} build=${timings.build} localMerge=${timings.localMerge} TOTAL=${totalMs}` +
-                (lgpSkippedByWindow > 0 ? ` | registros LGP fora da janela=${lgpSkippedByWindow}` : '')
+            `[ManSchedule] gt_* (ms): probe=${timings.probe} read=${timings.blobRead} build=${timings.build} TOTAL=${totalMs}` +
+                (lgpSkippedByWindow > 0 ? ` | fora da janela=${lgpSkippedByWindow}` : '')
         );
 
         const responseBody = {
@@ -581,23 +302,17 @@ export async function GET(request: NextRequest) {
                 companies,
                 cached: false,
                 janela: janelaParam,
-                window: {
-                    from: new Date(windowStart).toISOString().slice(0, 10),
-                    to: new Date(windowEnd).toISOString().slice(0, 10),
-                },
+                source: 'gt_historico_embarques',
+                window: { from: fromDate, to: toDate },
                 timings_ms: { ...timings, total: totalMs },
             },
         };
 
-        // Only cache when we actually had both cache rows (partial builds would
-        // poison the signature-based freshness check).
-        if (!cacheError && hasIntegrantesRow && hasLgpRow) {
-            resultCache.set(janelaParam, {
-                payload: responseBody,
-                mioSignature,
-                builtAt: Date.now(),
-            });
-        }
+        resultCache.set(janelaParam, {
+            payload: responseBody,
+            mioSignature,
+            builtAt: Date.now(),
+        });
 
         return NextResponse.json(responseBody);
     } catch (error: unknown) {
@@ -605,7 +320,7 @@ export async function GET(request: NextRequest) {
         console.error('[ManSchedule API error]', error);
         return NextResponse.json({
             success: false,
-            error: 'Falha ao buscar dados do MIO em tempo real.',
+            error: 'Falha ao buscar escala local (gt_historico_embarques).',
             message,
         }, { status: 500 });
     }

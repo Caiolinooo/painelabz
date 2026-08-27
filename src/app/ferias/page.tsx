@@ -74,7 +74,7 @@ async function leavePdfDownloadError(res: Response, fallback: string): Promise<s
 }
 
 export default function FeriasPage() {
-    const { user, getToken } = useSupabaseAuth();
+    const { user, profile, getToken } = useSupabaseAuth();
     const { hasSignature, isLoading: signatureLoading, requestSignature } = useSignature();
     const [activeTab, setActiveTab] = useState<'my_leaves' | 'approvals' | 'all_requests'>('my_leaves');
     const [isApprover, setIsApprover] = useState(false);
@@ -748,7 +748,7 @@ export default function FeriasPage() {
         }
         const rows = filteredMyRequests.map((r) => ({
             ...r,
-            user: { name: user?.name || '', email: user?.email || '', sector: undefined },
+            user: { name: profile?.first_name || '', email: user?.email || '', sector: undefined },
         }));
         if (format === 'csv') {
             downloadLeaveCsv(rows, 'Minhas_Ferias', { includeCollaborator: false });

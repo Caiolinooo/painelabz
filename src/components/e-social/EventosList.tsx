@@ -42,6 +42,15 @@ const statusI18nKey: Record<ESocialEventoStatus, string> = {
   devolvido: 'returned',
 };
 
+function formatarCPF(cpf?: string | null): string {
+  if (!cpf) return '-';
+  const clean = cpf.replace(/\D/g, '');
+  if (clean.length === 11) {
+    return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  }
+  return cpf;
+}
+
 export default function EventosList({ eventos, loading, onView, onEdit, onSend, onDelete, onConsult, consultLoading }: EventosListProps) {
   const { t } = useI18n();
 
@@ -86,14 +95,41 @@ export default function EventosList({ eventos, loading, onView, onEdit, onSend, 
           <tbody className="bg-white divide-y divide-gray-200">
             {eventos.map((evento) => (
               <tr key={evento.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-700">
+                <td className="px-4 py-3 whitespace-nowrap text-sm font-mono font-bold text-slate-800">
                   {evento.evento_codigo}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                  {evento.evento_nome || evento.evento_codigo}
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      {evento.evento_nome || evento.evento_codigo}
+                    </span>
+                    {evento.modulo_origem && (
+                      <span className="text-[11px] text-gray-400 font-mono">
+                        Origem: <span className="text-slate-600 font-semibold">{evento.modulo_origem}</span>
+                      </span>
+                    )}
+                  </div>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  {evento.cpf_trabalhador || '-'}
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0 border border-blue-200 shadow-xs">
+                      {(evento.colaborador_nome || 'C').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold text-gray-900 truncate max-w-[220px]" title={evento.colaborador_nome || 'Colaborador'}>
+                        {evento.colaborador_nome || 'Colaborador não identificado'}
+                      </span>
+                      <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
+                        <span>{formatarCPF(evento.cpf_trabalhador)}</span>
+                        {evento.colaborador_matricula && (
+                          <span className="text-gray-400 font-sans">• Mat: {evento.colaborador_matricula}</span>
+                        )}
+                        {evento.colaborador_cargo && (
+                          <span className="text-blue-600 font-sans truncate max-w-[120px]" title={evento.colaborador_cargo}>• {evento.colaborador_cargo}</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center gap-2">

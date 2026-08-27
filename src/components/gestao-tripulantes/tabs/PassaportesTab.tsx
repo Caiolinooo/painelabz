@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FiUpload, FiDownload, FiGlobe } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiGlobe, FiEdit2, FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
+import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 
 interface Document {
   id: string;
@@ -50,6 +51,10 @@ function DaysToExpiry({ dateStr }: { dateStr: string | null }) {
 export default function PassaportesTab({ colaboradorId, documentos, onRefresh }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ numero_documento: '', orgao_emissor: '', data_emissao: '', data_validade: '' });
+  const [saving, setSaving] = useState(false);
+  const [ocrRunning, setOcrRunning] = useState<string | null>(null);
 
   const passaportes = documentos.filter(d => d.tipo_documento === 'passaporte');
 
@@ -57,6 +62,8 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
     if (!d) return '—';
     try { return new Date(d).toLocaleDateString('pt-BR'); } catch { return d; }
   };
+
+  const toDateInput = (d: string | null | undefined) => (d ? String(d).slice(0, 10) : '');
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,14 +80,88 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
         method: 'POST',
         body: fd,
       });
-      if (!res.ok) throw new Error('Upload falhou');
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.error || 'Upload falhou');
+      }
+
       toast.success(t('gestaoTripulantes.upload.success'));
       onRefresh?.();
-    } catch {
-      toast.error(t('gestaoTripulantes.upload.error'));
+
+      const docId = result.data?.id as string | undefined;
+      const arquivoUrl = result.data?.arquivo_url as string | undefined;
+      if (docId) {
+        void handleRunOcr(docId, arquivoUrl);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t('gestaoTripulantes.upload.error');
+      toast.error(msg);
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  };
+
+  const handleRunOcr = async (docId: string, arquivoUrl?: string) => {
+    try {
+      setOcrRunning(docId);
+      toast.loading('OCR em andamento…', { id: `ocr-${docId}` });
+      const res = await enviarOcrDocumento(docId, arquivoUrl);
+      const json = await res.json().catch(() => ({}));
+      toast.dismiss(`ocr-${docId}`);
+      if (!res.ok) {
+        toast.error(json.error || 'OCR não extraiu dados — preencha manualmente');
+        onRefresh?.();
+        return;
+      }
+      toast.success('OCR processado. Revise os campos se necessário.');
+      onRefresh?.();
+    } catch {
+      toast.dismiss(`ocr-${docId}`);
+      toast.error('Erro ao processar OCR — preencha os campos manualmente');
+      onRefresh?.();
+    } finally {
+      setOcrRunning(null);
+    }
+  };
+
+  const startEditing = (doc: Document) => {
+    setEditingId(doc.id);
+    setEditForm({
+      numero_documento: doc.numero_documento || '',
+      orgao_emissor: doc.orgao_emissor || '',
+      data_emissao: toDateInput(doc.data_emissao),
+      data_validade: toDateInput(doc.data_validade),
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+  };
+
+  const handleSaveEdit = async (docId: string) => {
+    try {
+      setSaving(true);
+      const payload = {
+        numero_documento: editForm.numero_documento || null,
+        orgao_emissor: editForm.orgao_emissor || null,
+        data_emissao: editForm.data_emissao || null,
+        data_validade: editForm.data_validade || null,
+      };
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || 'Falha ao salvar');
+      toast.success('Passaporte atualizado!');
+      setEditingId(null);
+      onRefresh?.();
+    } catch {
+      toast.error('Erro ao salvar alterações');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -95,7 +176,7 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
         <label className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg cursor-pointer hover:bg-indigo-700 transition ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
           <FiUpload className="w-3.5 h-3.5" />
           {uploading ? t('gestaoTripulantes.upload.uploading') : t('gestaoTripulantes.passports.uploadPassport')}
-          <input type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleUpload} />
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleUpload} />
         </label>
       </div>
 
@@ -113,17 +194,91 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-800 text-sm">{doc.titulo}</p>
-              <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                <span className="text-xs text-gray-500">Nº {doc.numero_documento || '—'}</span>
-                {doc.orgao_emissor && <span className="text-xs text-gray-400">• {doc.orgao_emissor}</span>}
-                <span className="text-xs text-gray-400">Emissão: {formatDate(doc.data_emissao)}</span>
-              </div>
+              {editingId === doc.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500">Nº do Passaporte</label>
+                      <input
+                        className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
+                        value={editForm.numero_documento}
+                        onChange={e => setEditForm(f => ({ ...f, numero_documento: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Órgão Emissor</label>
+                      <input
+                        className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
+                        value={editForm.orgao_emissor}
+                        onChange={e => setEditForm(f => ({ ...f, orgao_emissor: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Data de Emissão</label>
+                      <input
+                        type="date"
+                        className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
+                        value={editForm.data_emissao}
+                        onChange={e => setEditForm(f => ({ ...f, data_emissao: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Data de Validade</label>
+                      <input
+                        type="date"
+                        className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
+                        value={editForm.data_validade}
+                        onChange={e => setEditForm(f => ({ ...f, data_validade: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleSaveEdit(doc.id)}
+                      disabled={saving}
+                      className="flex items-center gap-1 px-3 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      <FiSave className="w-3 h-3" /> {saving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button
+                      onClick={cancelEditing}
+                      className="flex items-center gap-1 px-3 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                    >
+                      <FiX className="w-3 h-3" /> Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-semibold text-gray-800 text-sm">{doc.titulo}</p>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <span className="text-xs text-gray-500">Nº {doc.numero_documento || '—'}</span>
+                    {doc.orgao_emissor && <span className="text-xs text-gray-400">• {doc.orgao_emissor}</span>}
+                    <span className="text-xs text-gray-400">Emissão: {formatDate(doc.data_emissao)}</span>
+              {doc.ocr_status === 'pendente' && (
+                      <span className="text-xs text-yellow-600 font-medium">• OCR pendente</span>
+                    )}
+                    {ocrRunning === doc.id && (
+                      <span className="text-xs text-indigo-600 font-medium">• OCR em andamento</span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-3 flex-shrink-0">
               <DaysToExpiry dateStr={doc.data_validade} />
               <StatusBadge status={doc.status_validacao} />
+              {(doc.ocr_status === 'pendente' || doc.ocr_status === 'erro' || ocrRunning === doc.id) && (
+                <button
+                  onClick={() => handleRunOcr(doc.id, doc.arquivo_url)}
+                  disabled={ocrRunning === doc.id}
+                  className="p-1.5 text-gray-400 hover:text-purple-600 rounded transition"
+                  title="Processar OCR"
+                >
+                  <FiRefreshCw className={`w-4 h-4 ${ocrRunning === doc.id ? 'animate-spin' : ''}`} />
+                </button>
+              )}
               {doc.arquivo_url && (
                 <a
                   href={doc.arquivo_url}
@@ -133,6 +288,15 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
                 >
                   <FiDownload className="w-4 h-4" />
                 </a>
+              )}
+              {editingId !== doc.id && (
+                <button
+                  onClick={() => startEditing(doc)}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition"
+                  title="Editar"
+                >
+                  <FiEdit2 className="w-4 h-4" />
+                </button>
               )}
             </div>
           </div>

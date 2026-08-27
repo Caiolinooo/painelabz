@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiEdit2, FiSave, FiX, FiUser, FiMapPin, FiBriefcase } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
+import { formatCpf, isValidCpf, formatBirthDate } from '@/lib/utils/identity';
 
 interface CollaboratorDetail {
   id: string;
@@ -27,9 +28,13 @@ interface CollaboratorDetail {
   endereco_uf: string;
   endereco_cep: string;
   matricula: string;
+  cargo_id?: string | null;
   cargo_nome: string;
+  empresa_id?: string | null;
   empresa_nome: string;
+  embarcacao_atual_id?: string | null;
   embarcacao_nome: string;
+  centro_custo_id?: string | null;
   centro_custo_nome: string;
   status_embarque: string;
   standby: boolean;
@@ -37,9 +42,72 @@ interface CollaboratorDetail {
   data_proximo_embarque: string;
 }
 
+interface LookupOption {
+  id: string;
+  nome: string;
+}
+
+const ESTADO_CIVIL_OPTIONS = [
+  { value: 'solteiro', label: 'Solteiro(a)' },
+  { value: 'casado', label: 'Casado(a)' },
+  { value: 'divorciado', label: 'Divorciado(a)' },
+  { value: 'viuvo', label: 'Viúvo(a)' },
+  { value: 'uniao_estavel', label: 'União Estável' },
+] as const;
+
+const STATUS_EMBARQUE_OPTIONS = [
+  'embarcado', 'standby', 'folga', 'desembarcado', 'afastado', 'ferias', 'treinamento',
+] as const;
+
+function toDateInput(d?: string | null): string {
+  if (!d) return '';
+  const s = String(d);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return '';
+}
+
+function displayDate(d?: string | null): string {
+  if (!d) return '—';
+  const iso = toDateInput(d);
+  return iso ? formatBirthDate(iso) : '—';
+}
+
+function buildForm(data: CollaboratorDetail) {
+  return {
+    nome_completo: data.nome_completo || '',
+    cpf: data.cpf ? formatCpf(data.cpf) : '',
+    rg: data.rg || '',
+    matricula: data.matricula || '',
+    data_nascimento: toDateInput(data.data_nascimento),
+    nacionalidade: data.nacionalidade || '',
+    naturalidade: data.naturalidade || '',
+    nome_mae: data.nome_mae || '',
+    nome_pai: data.nome_pai || '',
+    estado_civil: data.estado_civil || '',
+    email: data.email || '',
+    telefone: data.telefone || '',
+    cargo_id: data.cargo_id || '',
+    empresa_id: data.empresa_id || '',
+    embarcacao_atual_id: data.embarcacao_atual_id || '',
+    centro_custo_id: data.centro_custo_id || '',
+    data_admissao: toDateInput(data.data_admissao),
+    data_proximo_embarque: toDateInput(data.data_proximo_embarque),
+    status_embarque: data.status_embarque || '',
+    standby: Boolean(data.standby),
+    endereco_logradouro: data.endereco_logradouro || '',
+    endereco_numero: data.endereco_numero || '',
+    endereco_complemento: data.endereco_complemento || '',
+    endereco_bairro: data.endereco_bairro || '',
+    endereco_cidade: data.endereco_cidade || '',
+    endereco_uf: data.endereco_uf || '',
+    endereco_cep: data.endereco_cep || '',
+  };
+}
+
 interface Props {
   data: CollaboratorDetail;
   onUpdate?: (updated: Partial<CollaboratorDetail>) => void;
+  onRefresh?: () => void;
 }
 
 function InfoField({ label, value }: { label: string; value?: string | null }) {
@@ -51,6 +119,17 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3">
+      <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+const inputClass = 'w-full text-sm bg-white border border-gray-200 rounded px-2 py-1';
+
 function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
   return (
     <div className="flex items-center gap-2 mb-3">
@@ -60,43 +139,79 @@ function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: s
   );
 }
 
-export default function DadosPessoaisTab({ data, onUpdate }: Props) {
+export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    email: data.email || '',
-    telefone: data.telefone || '',
-    estado_civil: data.estado_civil || '',
-    endereco_logradouro: data.endereco_logradouro || '',
-    endereco_numero: data.endereco_numero || '',
-    endereco_complemento: data.endereco_complemento || '',
-    endereco_bairro: data.endereco_bairro || '',
-    endereco_cidade: data.endereco_cidade || '',
-    endereco_uf: data.endereco_uf || '',
-    endereco_cep: data.endereco_cep || '',
-  });
+  const [form, setForm] = useState(() => buildForm(data));
+  const [cargos, setCargos] = useState<LookupOption[]>([]);
+  const [empresas, setEmpresas] = useState<LookupOption[]>([]);
+  const [embarcacoes, setEmbarcacoes] = useState<LookupOption[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<LookupOption[]>([]);
 
-  const formatDate = (d: string | null) => {
-    if (!d) return '—';
-    try { return new Date(d).toLocaleDateString('pt-BR'); } catch { return d; }
+  useEffect(() => {
+    setForm(buildForm(data));
+  }, [data]);
+
+  useEffect(() => {
+    if (!editing) return;
+    let cancelled = false;
+    Promise.all([
+      fetchWithToken('/api/gestao-tripulantes/cargos').then(r => r.ok ? r.json() : { data: [] }),
+      fetchWithToken('/api/gestao-tripulantes/empresas').then(r => r.ok ? r.json() : { data: [] }),
+      fetchWithToken('/api/gestao-tripulantes/embarcacoes').then(r => r.ok ? r.json() : { data: [] }),
+      fetchWithToken('/api/gestao-tripulantes/centros-custo').then(r => r.ok ? r.json() : { data: [] }),
+    ]).then(([c, e, emb, cc]) => {
+      if (cancelled) return;
+      setCargos(c.data || []);
+      setEmpresas(e.data || []);
+      setEmbarcacoes(emb.data || []);
+      setCentrosCusto(cc.data || []);
+    }).catch(() => {
+      if (!cancelled) toast.error('Não foi possível carregar cargos/empresas para edição');
+    });
+    return () => { cancelled = true; };
+  }, [editing]);
+
+  const setField = <K extends keyof ReturnType<typeof buildForm>>(key: K, value: ReturnType<typeof buildForm>[K]) => {
+    setForm(f => ({ ...f, [key]: value }));
   };
 
   const handleSave = async () => {
+    if (!form.nome_completo.trim()) {
+      toast.error('Nome completo é obrigatório');
+      return;
+    }
+    if (!form.cpf.trim() || !isValidCpf(form.cpf)) {
+      toast.error('CPF inválido');
+      return;
+    }
     try {
       setSaving(true);
+      const payload = {
+        ...form,
+        cargo_id: form.cargo_id || null,
+        empresa_id: form.empresa_id || null,
+        embarcacao_atual_id: form.embarcacao_atual_id || null,
+        centro_custo_id: form.centro_custo_id || null,
+        data_nascimento: form.data_nascimento || null,
+        data_admissao: form.data_admissao || null,
+        data_proximo_embarque: form.data_proximo_embarque || null,
+        status_embarque: form.status_embarque || null,
+      };
       const res = await fetchWithToken(`/api/gestao-tripulantes/colaboradores/${data.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Falha ao salvar');
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Falha ao salvar');
       onUpdate?.(json.data);
       setEditing(false);
       toast.success(t('gestaoTripulantes.common.save') + ' ✓');
-    } catch {
-      toast.error(t('gestaoTripulantes.errors.saveError'));
+      onRefresh?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('gestaoTripulantes.errors.saveError'));
     } finally {
       setSaving(false);
     }
@@ -119,7 +234,7 @@ export default function DadosPessoaisTab({ data, onUpdate }: Props) {
         {editing ? (
           <div className="flex gap-2">
             <button
-              onClick={() => setEditing(false)}
+              onClick={() => { setForm(buildForm(data)); setEditing(false); }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <FiX className="w-3.5 h-3.5" /> {t('gestaoTripulantes.common.cancel')}
@@ -154,52 +269,70 @@ export default function DadosPessoaisTab({ data, onUpdate }: Props) {
       <div>
         <SectionTitle icon={FiUser} title={t('gestaoTripulantes.personalData.fullName', 'Dados Pessoais')} />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <InfoField label="Nome Completo" value={data.nome_completo} />
-          <InfoField label={t('gestaoTripulantes.personalData.cpf')} value={data.cpf} />
-          <InfoField label={t('gestaoTripulantes.personalData.rg')} value={data.rg} />
-          <InfoField label={t('gestaoTripulantes.personalData.registrationNumber')} value={data.matricula} />
-          <InfoField label={t('gestaoTripulantes.personalData.birthDate')} value={formatDate(data.data_nascimento)} />
-          <InfoField label={t('gestaoTripulantes.personalData.nationality')} value={data.nacionalidade} />
-          <InfoField label={t('gestaoTripulantes.personalData.birthplace')} value={data.naturalidade} />
-          <InfoField label={t('gestaoTripulantes.personalData.motherName')} value={data.nome_mae} />
-          <InfoField label={t('gestaoTripulantes.personalData.fatherName')} value={data.nome_pai} />
-
           {editing ? (
             <>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-400 font-medium mb-1">{t('gestaoTripulantes.personalData.maritalStatus')}</p>
-                <select
-                  className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
-                  value={form.estado_civil}
-                  onChange={e => setForm(f => ({ ...f, estado_civil: e.target.value }))}
-                >
+              <EditField label="Nome Completo">
+                <input className={inputClass} value={form.nome_completo} onChange={e => setField('nome_completo', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.cpf')}>
+                <input
+                  className={inputClass}
+                  value={form.cpf}
+                  onChange={e => setField('cpf', formatCpf(e.target.value))}
+                  inputMode="numeric"
+                  autoComplete="off"
+                />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.rg')}>
+                <input className={inputClass} value={form.rg} onChange={e => setField('rg', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.registrationNumber')}>
+                <input className={inputClass} value={form.matricula} onChange={e => setField('matricula', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.birthDate')}>
+                <input type="date" className={inputClass} value={form.data_nascimento} onChange={e => setField('data_nascimento', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.nationality')}>
+                <input className={inputClass} value={form.nacionalidade} onChange={e => setField('nacionalidade', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.birthplace')}>
+                <input className={inputClass} value={form.naturalidade} onChange={e => setField('naturalidade', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.motherName')}>
+                <input className={inputClass} value={form.nome_mae} onChange={e => setField('nome_mae', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.fatherName')}>
+                <input className={inputClass} value={form.nome_pai} onChange={e => setField('nome_pai', e.target.value)} />
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.maritalStatus')}>
+                <select className={inputClass} value={form.estado_civil} onChange={e => setField('estado_civil', e.target.value)}>
                   <option value="">—</option>
-                  <option value="solteiro">Solteiro(a)</option>
-                  <option value="casado">Casado(a)</option>
-                  <option value="divorciado">Divorciado(a)</option>
-                  <option value="viuvo">Viúvo(a)</option>
-                  <option value="uniao_estavel">União Estável</option>
+                  {ESTADO_CIVIL_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                  {form.estado_civil && !ESTADO_CIVIL_OPTIONS.some(o => o.value === form.estado_civil) && (
+                    <option value={form.estado_civil}>{form.estado_civil}</option>
+                  )}
                 </select>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-400 font-medium mb-1">{t('gestaoTripulantes.personalData.email')}</p>
-                <input
-                  className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
-                  value={form.email}
-                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                />
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-400 font-medium mb-1">{t('gestaoTripulantes.personalData.phone')}</p>
-                <input
-                  className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
-                  value={form.telefone}
-                  onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))}
-                />
-              </div>
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.email')}>
+                <input type="email" className={inputClass} value={form.email} onChange={e => setField('email', e.target.value)} />
+              </EditField>
+              <EditField label="Telefone">
+                <input className={inputClass} value={form.telefone} onChange={e => setField('telefone', e.target.value)} />
+              </EditField>
             </>
           ) : (
             <>
+              <InfoField label="Nome Completo" value={data.nome_completo} />
+              <InfoField label={t('gestaoTripulantes.personalData.cpf')} value={data.cpf} />
+              <InfoField label={t('gestaoTripulantes.personalData.rg')} value={data.rg} />
+              <InfoField label={t('gestaoTripulantes.personalData.registrationNumber')} value={data.matricula} />
+              <InfoField label={t('gestaoTripulantes.personalData.birthDate')} value={displayDate(data.data_nascimento)} />
+              <InfoField label={t('gestaoTripulantes.personalData.nationality')} value={data.nacionalidade} />
+              <InfoField label={t('gestaoTripulantes.personalData.birthplace')} value={data.naturalidade} />
+              <InfoField label={t('gestaoTripulantes.personalData.motherName')} value={data.nome_mae} />
+              <InfoField label={t('gestaoTripulantes.personalData.fatherName')} value={data.nome_pai} />
               <InfoField label={t('gestaoTripulantes.personalData.maritalStatus')} value={data.estado_civil} />
               <InfoField label={t('gestaoTripulantes.personalData.email')} value={data.email} />
               <InfoField label="Telefone" value={data.telefone} />
@@ -212,12 +345,80 @@ export default function DadosPessoaisTab({ data, onUpdate }: Props) {
       <div>
         <SectionTitle icon={FiBriefcase} title="Dados Profissionais" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <InfoField label={t('gestaoTripulantes.personalData.position')} value={data.cargo_nome} />
-          <InfoField label={t('gestaoTripulantes.personalData.company')} value={data.empresa_nome} />
-          <InfoField label={t('gestaoTripulantes.personalData.vessel', 'Embarcação')} value={data.embarcacao_nome} />
-          <InfoField label={t('gestaoTripulantes.personalData.costCenter')} value={data.centro_custo_nome} />
-          <InfoField label={t('gestaoTripulantes.personalData.admissionDate')} value={formatDate(data.data_admissao)} />
-          <InfoField label="Próximo Embarque" value={formatDate(data.data_proximo_embarque)} />
+          {editing ? (
+            <>
+              <EditField label={t('gestaoTripulantes.personalData.position')}>
+                <select className={inputClass} value={form.cargo_id} onChange={e => setField('cargo_id', e.target.value)}>
+                  <option value="">—</option>
+                  {form.cargo_id && !cargos.some(o => o.id === form.cargo_id) && (
+                    <option value={form.cargo_id}>{data.cargo_nome || form.cargo_id}</option>
+                  )}
+                  {cargos.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                </select>
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.company')}>
+                <select className={inputClass} value={form.empresa_id} onChange={e => setField('empresa_id', e.target.value)}>
+                  <option value="">—</option>
+                  {form.empresa_id && !empresas.some(o => o.id === form.empresa_id) && (
+                    <option value={form.empresa_id}>{data.empresa_nome || form.empresa_id}</option>
+                  )}
+                  {empresas.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                </select>
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.vessel', 'Embarcação')}>
+                <select className={inputClass} value={form.embarcacao_atual_id} onChange={e => setField('embarcacao_atual_id', e.target.value)}>
+                  <option value="">—</option>
+                  {form.embarcacao_atual_id && !embarcacoes.some(o => o.id === form.embarcacao_atual_id) && (
+                    <option value={form.embarcacao_atual_id}>{data.embarcacao_nome || form.embarcacao_atual_id}</option>
+                  )}
+                  {embarcacoes.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                </select>
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.costCenter')}>
+                <select className={inputClass} value={form.centro_custo_id} onChange={e => setField('centro_custo_id', e.target.value)}>
+                  <option value="">—</option>
+                  {form.centro_custo_id && !centrosCusto.some(o => o.id === form.centro_custo_id) && (
+                    <option value={form.centro_custo_id}>{data.centro_custo_nome || form.centro_custo_id}</option>
+                  )}
+                  {centrosCusto.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                </select>
+              </EditField>
+              <EditField label={t('gestaoTripulantes.personalData.admissionDate')}>
+                <input type="date" className={inputClass} value={form.data_admissao} onChange={e => setField('data_admissao', e.target.value)} />
+              </EditField>
+              <EditField label="Próximo Embarque">
+                <input type="date" className={inputClass} value={form.data_proximo_embarque} onChange={e => setField('data_proximo_embarque', e.target.value)} />
+              </EditField>
+              <EditField label="Status de embarque">
+                <select className={inputClass} value={form.status_embarque} onChange={e => setField('status_embarque', e.target.value)}>
+                  <option value="">—</option>
+                  {STATUS_EMBARQUE_OPTIONS.map(s => (
+                    <option key={s} value={s}>{t(`gestaoTripulantes.status.${s}`, s)}</option>
+                  ))}
+                </select>
+              </EditField>
+              <EditField label="StandBy">
+                <label className="flex items-center gap-2 text-sm text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={form.standby}
+                    onChange={e => setField('standby', e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                  />
+                  Em StandBy
+                </label>
+              </EditField>
+            </>
+          ) : (
+            <>
+              <InfoField label={t('gestaoTripulantes.personalData.position')} value={data.cargo_nome} />
+              <InfoField label={t('gestaoTripulantes.personalData.company')} value={data.empresa_nome} />
+              <InfoField label={t('gestaoTripulantes.personalData.vessel', 'Embarcação')} value={data.embarcacao_nome} />
+              <InfoField label={t('gestaoTripulantes.personalData.costCenter')} value={data.centro_custo_nome} />
+              <InfoField label={t('gestaoTripulantes.personalData.admissionDate')} value={displayDate(data.data_admissao)} />
+              <InfoField label="Próximo Embarque" value={displayDate(data.data_proximo_embarque)} />
+            </>
+          )}
         </div>
       </div>
 
@@ -234,15 +435,14 @@ export default function DadosPessoaisTab({ data, onUpdate }: Props) {
               { key: 'endereco_cidade', label: 'Cidade' },
               { key: 'endereco_uf', label: 'UF' },
               { key: 'endereco_cep', label: 'CEP' },
-            ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (
-              <div key={key} className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
+            ] as const).map(({ key, label }) => (
+              <EditField key={key} label={label}>
                 <input
-                  className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1"
+                  className={inputClass}
                   value={form[key]}
-                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  onChange={e => setField(key, e.target.value)}
                 />
-              </div>
+              </EditField>
             ))}
           </div>
         ) : (

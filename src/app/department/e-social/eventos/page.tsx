@@ -37,6 +37,7 @@ export default function ESocialEventosPage() {
   const [isNewColabModalOpen, setIsNewColabModalOpen] = useState(false);
   const [consultLoading, setConsultLoading] = useState<string | null>(null);
   const [batchConsultLoading, setBatchConsultLoading] = useState(false);
+  const [isConsolidating, setIsConsolidating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -220,6 +221,24 @@ export default function ESocialEventosPage() {
     }
   };
 
+  const handleConsolidate = async () => {
+    try {
+      setIsConsolidating(true);
+      const res = await fetchWithToken('/api/e-social/consolidar', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Módulos sincronizados com sucesso!');
+        loadEventos();
+      } else {
+        toast.error(data.error || 'Erro ao sincronizar eventos');
+      }
+    } catch {
+      toast.error('Erro ao conectar com o servidor');
+    } finally {
+      setIsConsolidating(false);
+    }
+  };
+
   if (authLoading || !user) return null;
 
   return (
@@ -234,6 +253,15 @@ export default function ESocialEventosPage() {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleConsolidate}
+              disabled={isConsolidating}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all disabled:opacity-50"
+              title="Consolidar e sincronizar admissões, ASOs, afastamentos, acidentes e desligamentos de todos os módulos"
+            >
+              <FiRefreshCw size={15} className={isConsolidating ? 'animate-spin' : ''} />
+              Sincronizar Módulos
+            </button>
             <button
               onClick={handleBatchConsult}
               disabled={batchConsultLoading}

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { autoGenerateESocialEvents } from '@/services/eSocialAutoService';
+import { isValidCpf, normalizeCpf } from '@/lib/utils/identity';
+import { loadColaboradorDetail, parseIncludeParam } from '@/lib/gestao-tripulantes/colaborador-get';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,128 +24,23 @@ export async function GET(
     }
 
     const { id } = await context.params;
+    const include = parseIncludeParam(request.nextUrl.searchParams.get('include'));
+    const result = await loadColaboradorDetail(id, include);
 
-    const { data: colaborador, error } = await supabaseAdmin
-      .from('gt_vw_colaboradores_completo')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Erro ao buscar colaborador:', error);
-      return NextResponse.json({ error: 'Erro ao buscar colaborador' }, { status: 500 });
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
-
-    if (!colaborador) {
+    if (result.notFound) {
       return NextResponse.json({ error: 'Colaborador não encontrado' }, { status: 404 });
     }
 
-    const { data: allDocs } = await supabaseAdmin
-      .from('gt_documentos')
-      .select('*')
-      .eq('colaborador_id', id)
-      .is('deleted_at', null)
-      .order('data_validade', { ascending: false, nullsFirst: false });
-
-    let documentos = allDocs || [];
-    
-    // Populate aso_data for ASO documents
-    const asoDocIds = documentos.filter(d => d.tipo_documento === 'aso').map(d => d.id);
-    if (asoDocIds.length > 0) {
-      const { data: asoRecords } = await supabaseAdmin
-        .from('gt_documentos_aso')
-        .select('*')
-        .in('documento_id', asoDocIds);
-        
-      if (asoRecords) {
-        const asoDataMap: Record<string, any> = {};
-        asoRecords.forEach(rec => { asoDataMap[rec.documento_id] = rec; });
-        documentos = documentos.map(doc => {
-          if (doc.tipo_documento === 'aso') {
-            return { ...doc, aso_data: asoDataMap[doc.id] || null };
-          }
-          return doc;
-        });
-      }
-
-      // Cross-reference e-Social → ASO: garante que numero_recibo,
-      // protocolo_envio e data_processamento estejam disponíveis na
-      // query de documentos (para UI e resumo exportável futuro).
-      const { data: eventosVinculados } = await supabaseAdmin
-        .from('esocial_eventos')
-        .select('id, evento_codigo, status, protocolo_envio, numero_recibo, data_envio, data_processamento, entidade_origem_id, created_at')
-        .in('entidade_origem_id', asoDocIds)
-        .order('created_at', { ascending: false });
-      const eventoPorDocId: Record<string, any> = {};
-      (eventosVinculados || []).forEach(ev => {
-        const docKey = ev.entidade_origem_id as string;
-        if (!eventoPorDocId[docKey]) eventoPorDocId[docKey] = ev; // mais recente primeiro
-      });
-      documentos = documentos.map(doc => {
-        const ev = eventoPorDocId[doc.id];
-        if (!ev) return doc;
-        return {
-          ...doc,
-          aso_data: {
-            ...(doc.aso_data || {}),
-            esocial_evento_ref: {
-              id: ev.id,
-              evento_codigo: ev.evento_codigo,
-              status: ev.status,
-              numero_recibo: ev.numero_recibo,
-              protocolo_envio: ev.protocolo_envio,
-              data_envio: ev.data_envio,
-              data_processamento: ev.data_processamento,
-            },
-          },
-        };
-      });
-    }
-
-    // Dedup treinamentos: mantém só o mais recente por título
-    const seenTitles = new Set<string>();
-    documentos = documentos.filter(d => {
-      if (d.tipo_documento !== 'treinamento') return true;
-      if (!d.titulo) return true;
-      const key = d.titulo.toLowerCase().trim();
-      if (seenTitles.has(key)) return false;
-      seenTitles.add(key);
-      return true;
-    });
-
-    const { data: embarques } = await supabaseAdmin
-      .from('gt_historico_embarques')
-      .select('*, embarcacao:gt_embarcacoes(nome)')
-      .eq('colaborador_id', id)
-      .is('deleted_at', null)
-      .order('data_embarque', { ascending: false });
-
-    const { data: substituicoes } = await supabaseAdmin
-      .from('gt_historico_substituicoes')
-      .select('*, substituto:gt_colaboradores!substituto_id(nome_completo), substituido:gt_colaboradores!substituido_id(nome_completo)')
-      .or(`substituto_id.eq.${id},substituido_id.eq.${id}`)
-      .order('created_at', { ascending: false });
-
-    const cpfClean = colaborador?.cpf ? colaborador.cpf.replace(/\D/g, '') : '';
-    let esocialAsos: any[] = [];
-    if (cpfClean) {
-      const { data: events } = await supabaseAdmin
-        .from('esocial_eventos')
-        .select('*')
-        .eq('evento_codigo', 'S-2220')
-        .eq('cpf_trabalhador', cpfClean);
-      esocialAsos = events || [];
-    }
+    console.log(
+      `[GT GET /colaboradores/${id}] ${result.timingsMs.total}ms wave1=${result.timingsMs.wave1} wave2=${result.timingsMs.wave2} include=${[...include].join(',')}`
+    );
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...colaborador,
-        documentos: documentos || [],
-        embarques: embarques || [],
-        substituicoes: substituicoes || [],
-        esocial_asos: esocialAsos
-      }
+      data: result.data,
     });
   } catch (error) {
     console.error('Erro ao obter colaborador:', error);
@@ -170,11 +67,103 @@ export async function PUT(
     const { id } = await context.params;
     const body = await request.json();
 
-    const updateData: Record<string, any> = { ...body, updated_at: new Date().toISOString() };
+    // Persist every editable gt_colaboradores column. Skip PK/system/view/e-Social tracking.
+    const ALLOWED_COLAB_FIELDS = new Set([
+      'nome_completo', 'cpf', 'rg', 'orgao_emissor', 'data_emissao_rg',
+      'data_nascimento', 'sexo', 'genero', 'estado_civil', 'peso', 'altura',
+      'raca_cor', 'escolaridade', 'deficiencia', 'deficiencia_cid',
+      'nacionalidade', 'naturalidade', 'naturalidade_uf', 'pais_nascimento',
+      'nome_mae', 'nome_pai', 'email', 'telefone', 'foto_url',
+      'endereco_logradouro', 'endereco_numero', 'endereco_complemento',
+      'endereco_bairro', 'endereco_cidade', 'endereco_uf', 'endereco_cep',
+      'dados_bancarios', 'pis_pasep', 'ctps', 'ctps_serie', 'ctps_uf',
+      'cnh', 'cnh_categoria', 'cnh_validade', 'cnh_uf',
+      'titulo_eleitor', 'titulo_eleitor_zona', 'titulo_eleitor_sessao',
+      'certidao_tipo', 'certidao_numero', 'certidao_cartorio',
+      'matricula', 'matricula_esocial', 'departamento',
+      'cargo_id', 'centro_custo_id', 'empresa_id', 'embarcacao_atual_id',
+      'data_admissao', 'data_demissao', 'motivo_demissao',
+      'salario', 'tipo_salario', 'forma_pagamento', 'sindicato', 'cbo',
+      'jornada_semanal', 'jornada_mensal', 'tipo_contrato', 'prazo_contrato',
+      'categoria_contrato', 'tipo_trabalho', 'tipo_mao_de_obra', 'regime_trabalho',
+      'escala_embarque', 'escala_folga', 'status_embarque', 'standby', 'ativo',
+      'data_ultimo_embarque', 'data_ultimo_desembarque', 'data_proximo_embarque',
+      'dados_saude', 'tipo_admissao', 'natureza_atividade', 'tipo_jornada', 'tipo_lotacao',
+    ]);
 
-    delete updateData.id;
-    delete updateData.created_at;
-    delete updateData.deleted_at;
+    const BOOLEAN_FIELDS = new Set(['standby', 'ativo']);
+    const NUMBER_FIELDS = new Set(['peso', 'altura', 'salario']);
+
+    const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+
+    if ('cpf' in body) {
+      const rawCpf = body.cpf == null ? '' : String(body.cpf);
+      if (!rawCpf.trim()) {
+        return NextResponse.json({ error: 'CPF é obrigatório' }, { status: 400 });
+      }
+      if (!isValidCpf(rawCpf)) {
+        return NextResponse.json({ error: 'CPF inválido' }, { status: 400 });
+      }
+      updateData.cpf = normalizeCpf(rawCpf);
+    }
+
+    if ('nome_completo' in body) {
+      const nome = body.nome_completo == null ? '' : String(body.nome_completo).trim();
+      if (!nome) {
+        return NextResponse.json({ error: 'Nome completo é obrigatório' }, { status: 400 });
+      }
+      updateData.nome_completo = nome;
+    }
+
+    for (const [key, value] of Object.entries(body)) {
+      if (!ALLOWED_COLAB_FIELDS.has(key) || key === 'cpf' || key === 'nome_completo') continue;
+
+      if (BOOLEAN_FIELDS.has(key)) {
+        if (typeof value === 'boolean') updateData[key] = value;
+        else if (value === 'true' || value === 'false') updateData[key] = value === 'true';
+        else if (value == null || value === '') updateData[key] = false;
+        else updateData[key] = Boolean(value);
+        continue;
+      }
+
+      if (NUMBER_FIELDS.has(key)) {
+        if (value == null || value === '') { updateData[key] = null; continue; }
+        const n = Number(value);
+        if (Number.isNaN(n)) {
+          return NextResponse.json({ error: `Campo ${key} deve ser numérico` }, { status: 400 });
+        }
+        updateData[key] = n;
+        continue;
+      }
+
+      if (typeof value === 'string' && value.trim() === '') {
+        updateData[key] = null;
+      } else {
+        updateData[key] = value;
+      }
+    }
+
+    // View aliases (cargo_nome etc.) are not table columns — resolve to FKs instead of dropping.
+    const fkNameResolvers: { nameKey: string; idKey: string; table: string }[] = [
+      { nameKey: 'cargo_nome', idKey: 'cargo_id', table: 'gt_cargos' },
+      { nameKey: 'empresa_nome', idKey: 'empresa_id', table: 'gt_empresas' },
+      { nameKey: 'embarcacao_nome', idKey: 'embarcacao_atual_id', table: 'gt_embarcacoes' },
+      { nameKey: 'centro_custo_nome', idKey: 'centro_custo_id', table: 'gt_centros_custo' },
+    ];
+    for (const { nameKey, idKey, table } of fkNameResolvers) {
+      if (idKey in updateData) continue;
+      if (typeof body[nameKey] !== 'string' || !body[nameKey].trim()) continue;
+      const { data: row } = await supabaseAdmin
+        .from(table)
+        .select('id')
+        .ilike('nome', body[nameKey].trim())
+        .limit(1)
+        .maybeSingle();
+      if (!row) {
+        return NextResponse.json({ error: `${nameKey.replace('_nome', '')} não encontrado: ${body[nameKey]}` }, { status: 400 });
+      }
+      updateData[idKey] = row.id;
+    }
 
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('gt_colaboradores')
@@ -185,7 +174,10 @@ export async function PUT(
 
     if (updateError) {
       console.error('Erro ao atualizar colaborador:', updateError);
-      return NextResponse.json({ error: 'Erro ao atualizar colaborador' }, { status: 500 });
+      if (updateError.code === '23505') {
+        return NextResponse.json({ error: 'CPF já cadastrado para outro colaborador' }, { status: 409 });
+      }
+      return NextResponse.json({ error: updateError.message || 'Erro ao atualizar colaborador' }, { status: 500 });
     }
 
     if (updated && updated.id) {
@@ -194,9 +186,11 @@ export async function PUT(
       });
     }
 
+    const result = await loadColaboradorDetail(id, parseIncludeParam('all'));
+
     return NextResponse.json({
       success: true,
-      data: updated
+      data: result.data || updated
     });
   } catch (error) {
     console.error('Erro ao atualizar colaborador:', error);

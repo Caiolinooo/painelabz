@@ -1,5 +1,4 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { mioClient } from '@/lib/mio/client';
 import {
   STATUS_EVENTO,
   validateEventData,
@@ -59,21 +58,7 @@ export async function autoGenerateESocialEvents(colaboradorId: string): Promise<
       }
 
       if (!mioData) {
-        const lastUpdated = cacheRow?.atualizado_em ? new Date(cacheRow.atualizado_em).getTime() : 0;
-        const isCacheRecent = (Date.now() - lastUpdated) < 5 * 60 * 1000; // 5 minutos
-
-        if (!isCacheRecent) {
-          console.log(`[eSocialAuto] CPF ${cleanCpf} not found in cache. Cache is stale (${Math.round((Date.now() - lastUpdated)/1000)}s old). Fetching fresh data from MIO...`);
-          const integrantes = await mioClient.getIntegrantes();
-          if (integrantes && Array.isArray(integrantes)) {
-            mioData = integrantes.find(i => {
-              const c = (i.cpf || '').replace(/\D/g, '');
-              return c === cleanCpf;
-            });
-          }
-        } else {
-          console.log(`[eSocialAuto] CPF ${cleanCpf} not found in cache. Cache is recent (${Math.round((Date.now() - lastUpdated)/1000)}s old). Skipping MIO API fallback.`);
-        }
+        console.log(`[eSocialAuto] CPF ${cleanCpf} not in mio_cache. Proceeding with local gt_colaboradores only.`);
       }
 
       if (mioData) {
@@ -140,7 +125,7 @@ export async function autoGenerateESocialEvents(colaboradorId: string): Promise<
   }
 }
 
-async function generateS2200(colab: any, cnpjEmpregador: string, cleanCpf: string) {
+export async function generateS2200(colab: any, cnpjEmpregador: string, cleanCpf: string) {
   console.log(`[eSocialAuto] Generating S-2200 for ${colab.nome_completo}...`);
   
   // Mapping options to codes
@@ -270,7 +255,7 @@ async function generateS2200(colab: any, cnpjEmpregador: string, cleanCpf: strin
   }
 }
 
-async function generateS2240(colab: any, cnpjEmpregador: string, cleanCpf: string) {
+export async function generateS2240(colab: any, cnpjEmpregador: string, cleanCpf: string) {
   console.log(`[eSocialAuto] Generating S-2240 for ${colab.nome_completo}...`);
 
   const cargoNome = colab.gt_cargos?.nome || 'Colaborador';
@@ -341,7 +326,7 @@ async function generateS2240(colab: any, cnpjEmpregador: string, cleanCpf: strin
   }
 }
 
-async function generateS2299(colab: any, cnpjEmpregador: string, cleanCpf: string) {
+export async function generateS2299(colab: any, cnpjEmpregador: string, cleanCpf: string) {
   console.log(`[eSocialAuto] Generating S-2299 for ${colab.nome_completo}...`);
 
   const payload = {

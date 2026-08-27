@@ -29,6 +29,7 @@ export default function ESocialDashboardPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false);
   const [isNewColabModalOpen, setIsNewColabModalOpen] = useState(false);
+  const [isConsolidating, setIsConsolidating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -54,6 +55,24 @@ export default function ESocialDashboardPage() {
     }
   };
 
+  const handleConsolidate = async () => {
+    try {
+      setIsConsolidating(true);
+      const res = await fetchWithToken('/api/e-social/consolidar', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Módulos sincronizados com sucesso!');
+        loadData();
+      } else {
+        toast.error(data.error || 'Erro ao sincronizar eventos');
+      }
+    } catch {
+      toast.error('Erro ao conectar com o servidor');
+    } finally {
+      setIsConsolidating(false);
+    }
+  };
+
   useEffect(() => {
     if (user) loadData();
   }, [user]);
@@ -72,6 +91,15 @@ export default function ESocialDashboardPage() {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleConsolidate}
+              disabled={isConsolidating}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all disabled:opacity-50"
+              title="Consolidar e sincronizar admissões, ASOs, afastamentos, acidentes e desligamentos de todos os módulos"
+            >
+              <FiRefreshCw size={15} className={isConsolidating ? 'animate-spin' : ''} />
+              Sincronizar Módulos
+            </button>
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all"
