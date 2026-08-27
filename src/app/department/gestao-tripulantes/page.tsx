@@ -137,9 +137,9 @@ export default function GestaoTripulantesPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className={activeTab === 'schedule' ? 'flex flex-col h-[calc(100vh-6.5rem)] overflow-hidden gap-3 -my-4 md:-my-6' : 'space-y-6'}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 tracking-tight">{t('gestaoTripulantes.title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{t('gestaoTripulantes.subtitle')}</p>
@@ -152,7 +152,7 @@ export default function GestaoTripulantesPage() {
       </div>
 
       {/* Tabs Seletor */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 shrink-0">
         <nav className="flex space-x-6 -mb-px">
           <button
             onClick={() => setActiveTab('matrix')}
@@ -195,7 +195,7 @@ export default function GestaoTripulantesPage() {
       )}
 
       {scheduleMounted && (
-        <div className={activeTab === 'schedule' ? 'pt-2' : 'hidden'}>
+        <div className={activeTab === 'schedule' ? 'flex-1 min-h-0 h-full w-full' : 'hidden'}>
           <GTManScheduleTab onColabClick={handleRowClick} />
         </div>
       )}

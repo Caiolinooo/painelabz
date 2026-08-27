@@ -179,16 +179,17 @@ const ScheduleRow = React.memo(function ScheduleRow({
         <tr className="hover:bg-slate-50/50">
             <td
                 onClick={() => onNameClick(member.cpf, member.name)}
-                className={`bg-white text-blue-600 hover:text-blue-800 hover:underline font-bold px-3 py-1.5 border-r border-b border-black whitespace-nowrap overflow-hidden sticky left-0 z-20 uppercase cursor-pointer transition-colors ${
+                className={`bg-white text-blue-600 hover:text-blue-800 hover:underline font-bold px-3 py-1.5 border-r border-b border-black whitespace-nowrap overflow-hidden text-ellipsis sticky left-0 z-20 uppercase cursor-pointer transition-colors min-w-[260px] w-[260px] max-w-[260px] ${
                     isOpening ? 'opacity-50 animate-pulse' : ''
                 }`}
+                title={member.name}
             >
                 {member.name || '\u00A0'}
             </td>
-            <td className={`${groupBg} text-black font-bold text-center border-r border-b border-black sticky left-[300px] z-20`}>
+            <td className={`${groupBg} text-black font-bold text-center border-r border-b border-black sticky left-[260px] z-20 min-w-[70px] w-[70px] max-w-[70px]`}>
                 {groupCount}
             </td>
-            <td className={`${groupBg} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[380px] z-20`}>
+            <td className={`${groupBg} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[330px] z-20 min-w-[170px] w-[170px] max-w-[170px] text-ellipsis overflow-hidden whitespace-nowrap`} title={position}>
                 {position}
             </td>
             {cellMetas.map((cell, wIdx) => (
@@ -199,8 +200,9 @@ const ScheduleRow = React.memo(function ScheduleRow({
                         cell.isCurrentWeek ? '!border-yellow-500 !border-2' : 'border-black'
                     }`}
                     style={{
-                        width: '26px',
-                        minWidth: '26px',
+                        width: '32px',
+                        minWidth: '32px',
+                        maxWidth: '32px',
                         fontSize: '9px',
                         backgroundColor: cell.isCurrentWeek ? '#fef9c3' : cell.style?.bg || '#ffffff',
                         color: cell.style?.text || '#9ca3af',
@@ -672,24 +674,6 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         return idx >= 0 ? idx : 0;
     }, [filteredWeeks]);
 
-    // ---- Week-window limiting: never render hundreds of columns at once ----
-    const DEFAULT_VISIBLE_WEEKS = 8;
-    /** null = auto-anchor centered on the current week */
-    const [weekAnchor, setWeekAnchor] = useState<number | null>(null);
-
-    const hasDateFilter = !!(filterDateStart || filterDateEnd);
-    const maxAnchor = Math.max(0, filteredWeeks.length - DEFAULT_VISIBLE_WEEKS);
-    const autoAnchor = Math.min(Math.max(currentWeekIndex - 2, 0), maxAnchor);
-    const effectiveAnchor = weekAnchor === null ? autoAnchor : Math.min(Math.max(weekAnchor, 0), maxAnchor);
-
-    const renderedWeeks = useMemo(() => {
-        if (hasDateFilter) {
-            // Explicit date filters widen the view on demand (full range).
-            return filteredWeeks;
-        }
-        return filteredWeeks.slice(effectiveAnchor, effectiveAnchor + DEFAULT_VISIBLE_WEEKS);
-    }, [hasDateFilter, filteredWeeks, effectiveAnchor]);
-
     const currentWeekKey = useMemo(
         () =>
             filteredWeeks[currentWeekIndex]?.date
@@ -698,12 +682,27 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         [filteredWeeks, currentWeekIndex]
     );
 
-    const shiftWeekWindow = useCallback((dir: -1 | 1) => {
-        setWeekAnchor((prev) => {
-            const base = prev === null ? 0 : prev;
-            return base + dir * 4; // half-window step keeps overlap context
-        });
+    const scrollByAmount = useCallback((amount: number) => {
+        if (!tableContainerRef.current) return;
+        tableContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
     }, []);
+
+    const scrollToCurrentWeek = useCallback(() => {
+        if (!tableContainerRef.current || currentWeekIndex < 0) return;
+        // Fixed columns take ~500px, 32px per week column
+        const targetScrollLeft = Math.max(0, currentWeekIndex * 32 - 120);
+        tableContainerRef.current.scrollTo({
+            left: targetScrollLeft,
+            behavior: 'smooth'
+        });
+    }, [currentWeekIndex]);
+
+    useEffect(() => {
+        if (!loading && filteredWeeks.length > 0) {
+            const timer = setTimeout(scrollToCurrentWeek, 120);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, filteredWeeks.length, scrollToCurrentWeek]);
 
     const getWeekStatus = useCallback((weekDate: Date, rotations: RotationCell[]): string => {
         const wStart = new Date(weekDate);
@@ -754,14 +753,14 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         const statuses = new Set<string>();
         for (const group of positionGroups) {
             for (const member of group.members) {
-                for (const week of renderedWeeks) {
+                for (const week of filteredWeeks) {
                     const s = getWeekStatus(week.date, member.rotations);
                     if (s) statuses.add(s);
                 }
             }
         }
         return statuses;
-    }, [positionGroups, renderedWeeks, getWeekStatus]);
+    }, [positionGroups, filteredWeeks, getWeekStatus]);
 
     const legendItems = useMemo(() => {
         const active = tipos.filter((tipo) => tipo.ativo);
@@ -802,7 +801,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             { wch: 35 },
             { wch: 8 },
             { wch: 25 },
-            ...renderedWeeks.map(() => ({ wch: 12 })),
+            ...filteredWeeks.map(() => ({ wch: 12 })),
         ];
         ws['!cols'] = colWidths;
 
@@ -909,10 +908,10 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     const editingLocal = !!(selectedCell?.rotationId && isUuid(selectedCell.rotationId));
 
     return (
-        <div className="flex flex-col h-[calc(100vh-14rem)] min-h-[400px] border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
-            <div className="bg-gray-50/80 px-4 py-3 border-b border-gray-200 shrink-0">
-                <div className="flex items-end gap-3 w-full flex-wrap">
-                    <div className="min-w-[180px] flex-shrink-0 flex-1 md:flex-initial">
+        <div className="flex flex-col h-full w-full border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            <div className="bg-gray-50/90 px-3 py-2 border-b border-gray-200 shrink-0">
+                <div className="flex items-end gap-2.5 w-full flex-wrap">
+                    <div className="min-w-[160px] flex-shrink-0 flex-1 md:flex-initial">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.searchLabel', 'Buscar')}</label>
                         <div className="relative">
                             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -926,7 +925,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         </div>
                     </div>
 
-                    <div className="min-w-[120px] flex-shrink-0">
+                    <div className="min-w-[110px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.companyLabel', 'Empresa')}</label>
                         <select
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
@@ -940,7 +939,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         </select>
                     </div>
 
-                    <div className="min-w-[120px] flex-shrink-0">
+                    <div className="min-w-[110px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.vesselLabel', 'Embarcação')}</label>
                         <select
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
@@ -954,7 +953,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         </select>
                     </div>
 
-                    <div className="min-w-[120px] flex-shrink-0">
+                    <div className="min-w-[110px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.positionLabel', 'Cargo')}</label>
                         <select
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
@@ -968,7 +967,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         </select>
                     </div>
 
-                    <div className="min-w-[130px] flex-shrink-0">
+                    <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateStart', 'Data Inicio')}</label>
                         <input
                             type="date"
@@ -978,7 +977,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         />
                     </div>
 
-                    <div className="min-w-[130px] flex-shrink-0">
+                    <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateEnd', 'Data Fim')}</label>
                         <input
                             type="date"
@@ -990,15 +989,15 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
                     <div className="flex items-center gap-1 flex-shrink-0 self-end h-[34px]">
                         <button
-                            onClick={() => shiftWeekWindow(-1)}
-                            disabled={loading || effectiveAnchor <= 0}
+                            onClick={() => scrollByAmount(-320)}
+                            disabled={loading}
                             title={t('manSchedule.prevWeeks', 'Semanas anteriores')}
                             className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition text-sm font-bold"
                         >
                             ‹
                         </button>
                         <button
-                            onClick={() => setWeekAnchor(null)}
+                            onClick={scrollToCurrentWeek}
                             disabled={loading}
                             title={t('manSchedule.currentWeek', 'Ir para semana atual')}
                             className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition font-semibold text-xs whitespace-nowrap"
@@ -1006,8 +1005,8 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                             {t('manSchedule.today', 'Hoje')}
                         </button>
                         <button
-                            onClick={() => shiftWeekWindow(1)}
-                            disabled={loading || effectiveAnchor >= maxAnchor}
+                            onClick={() => scrollByAmount(320)}
+                            disabled={loading}
                             title={t('manSchedule.nextWeeks', 'Próximas semanas')}
                             className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition text-sm font-bold"
                         >
@@ -1018,7 +1017,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                     <button
                         onClick={exportToExcel}
                         disabled={loading || allSchedules.length === 0}
-                        className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none transition font-semibold text-xs flex-shrink-0 self-end h-[34px]"
+                        className="flex items-center gap-2 bg-emerald-600 text-white px-3.5 py-1.5 rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none transition font-semibold text-xs flex-shrink-0 self-end h-[34px] ml-auto"
                     >
                         <FiDownload />
                         {t('manSchedule.exportXLSX', 'Exportar XLSX')}
@@ -1026,19 +1025,19 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                 </div>
             </div>
 
-            <div ref={tableContainerRef} className="flex-1 overflow-auto min-h-0 relative">
-                <table id="man-schedule-table" className="w-max border-collapse font-sans text-xs bg-white">
+            <div ref={tableContainerRef} className="flex-1 overflow-auto min-h-0 relative w-full">
+                <table id="man-schedule-table" className="w-max min-w-full border-collapse font-sans text-xs bg-white">
                     <thead className="sticky top-0 z-40 bg-white">
                         <tr>
                             <th
                                 colSpan={3}
-                                className="bg-[#002060] text-white text-left px-3 py-3 font-bold border-r border-b border-black align-middle sticky left-0 z-30"
-                                style={{ fontSize: '12px', minWidth: '300px' }}
+                                className="bg-[#002060] text-white text-left px-3 py-2.5 font-bold border-r border-b border-black align-middle sticky left-0 z-30 min-w-[500px] w-[500px]"
+                                style={{ fontSize: '12px' }}
                             >
                                 {vesselDisplayName}
                             </th>
                             <th
-                                colSpan={renderedWeeks.length}
+                                colSpan={filteredWeeks.length}
                                 className="bg-[#e2efda] text-center border-b border-black p-2 font-bold uppercase text-[#002060]"
                                 style={{ fontSize: '10px' }}
                             >
@@ -1047,20 +1046,20 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         </tr>
 
                         <tr>
-                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-0 z-30 min-w-[300px] w-[300px] px-2 py-2">
+                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-0 z-30 min-w-[260px] w-[260px] max-w-[260px] px-2 py-2">
                                 {t('manSchedule.tableHeaders.name', 'NOME')}
                             </th>
-                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[300px] z-30 px-2 py-2 w-[80px] min-w-[80px]">
+                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[260px] z-30 px-2 py-2 min-w-[70px] w-[70px] max-w-[70px]">
                                 {t('manSchedule.tableHeaders.reqOnboard', "QTD.\nEMBARC").split('\n').map((line, i, arr) => (
                                     <React.Fragment key={i}>
                                         {line}{i !== arr.length - 1 && <br />}
                                     </React.Fragment>
                                 ))}
                             </th>
-                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[380px] z-30 px-4 py-2 min-w-[150px] w-[150px]">
+                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[330px] z-30 px-3 py-2 min-w-[170px] w-[170px] max-w-[170px]">
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
-                            {renderedWeeks.map((week, idx) => {
+                            {filteredWeeks.map((week, idx) => {
                                 const isCurrentWeek =
                                     currentWeekKey !== null &&
                                     new Date(week.date).toDateString() === currentWeekKey;
@@ -1072,7 +1071,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                                 ? 'bg-yellow-100 text-yellow-850 font-bold border-yellow-500 border-2'
                                                 : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
                                         }`}
-                                        style={{ height: '90px' }}
+                                        style={{ height: '90px', width: '32px', minWidth: '32px', maxWidth: '32px' }}
                                     >
                                         <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', letterSpacing: '0.5px', fontSize: '10px' }}>
                                             {formatHeaderDate(week.date, locale)}
@@ -1084,9 +1083,9 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
                         <tr>
                             <th className="bg-slate-50 border-r border-b border-black sticky left-0 z-30"></th>
-                            <th className="bg-slate-50 border-r border-b border-black sticky left-[300px] z-30"></th>
-                            <th className="bg-slate-50 border-r border-b border-black sticky left-[380px] z-30"></th>
-                            {renderedWeeks.map((week, idx) => {
+                            <th className="bg-slate-50 border-r border-b border-black sticky left-[260px] z-30"></th>
+                            <th className="bg-slate-50 border-r border-b border-black sticky left-[330px] z-30"></th>
+                            {filteredWeeks.map((week, idx) => {
                                 const isCurrentWeek =
                                     currentWeekKey !== null &&
                                     new Date(week.date).toDateString() === currentWeekKey;
@@ -1098,7 +1097,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                                 ? 'bg-yellow-100 text-yellow-800 font-bold border-yellow-500 border-2'
                                                 : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
                                         }`}
-                                        style={{ fontSize: '10px' }}
+                                        style={{ fontSize: '10px', width: '32px', minWidth: '32px', maxWidth: '32px' }}
                                     >
                                         {getDayAbbr(week.date, locale)}
                                     </th>
@@ -1118,7 +1117,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                             </tr>
                         ) : positionGroups.length === 0 ? (
                             <tr>
-                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-405 bg-white">
+                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-400 bg-white">
                                     {t('manSchedule.empty', 'Nenhum tripulante encontrado para os filtros selecionados.')}
                                 </td>
                             </tr>
@@ -1128,68 +1127,21 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                 return (
                                     <React.Fragment key={`group-${gIdx}`}>
                                         {group.members.map((member, mIdx) => (
-                                            <tr key={`row-${gIdx}-${mIdx}`} className="hover:bg-slate-50/50">
-                                                <td
-                                                    onClick={() => handleNameClick(member.cpf, member.name)}
-                                                    className={`bg-white text-blue-600 hover:text-blue-800 hover:underline font-bold px-3 py-1.5 border-r border-b border-black whitespace-nowrap overflow-hidden sticky left-0 z-20 uppercase cursor-pointer transition-colors ${
-                                                        openingColab === member.cpf ? 'opacity-50 animate-pulse' : ''
-                                                    }`}
-                                                >
-                                                    {member.name || '\u00A0'}
-                                                </td>
-                                                <td className={`${bg} text-black font-bold text-center border-r border-b border-black sticky left-[300px] z-20`}>
-                                                    {mIdx === 0 ? group.count : ''}
-                                                </td>
-                                                <td className={`${bg} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[380px] z-20`}>
-                                                    {group.position}
-                                                </td>
-                                                {filteredWeeks.map((week, wIdx) => {
-                                                    const metaCell = getWeekRotationMeta(week.date, member.rotations);
-                                                    const status = metaCell.status;
-                                                    const hasComment = !!(metaCell.observacoes && metaCell.observacoes.trim());
-                                                    const isCurrentWeek = wIdx === currentWeekIndex;
-                                                    const style = status ? getCellStyle(metaCell.type || status) : null;
-
-                                                    const tooltipParts = [
-                                                        `Clique para gerenciar escala de ${member.name} na semana de ${formatHeaderDate(week.date)}`,
-                                                    ];
-                                                    if (hasComment) {
-                                                        tooltipParts.push(`Observações: ${metaCell.observacoes}`);
-                                                    }
-
-                                                    return (
-                                                        <td
-                                                            key={`cell-${gIdx}-${mIdx}-${wIdx}`}
-                                                            onClick={() => handleCellClick(member.cpf, member.name, week.date, status, member.rotations)}
-                                                            className={`border-r border-b text-center cursor-pointer hover:brightness-95 hover:ring-1 hover:ring-blue-400 transition-all relative ${
-                                                                isCurrentWeek ? '!border-yellow-500 !border-2' : 'border-black'
-                                                            }`}
-                                                            style={{
-                                                                width: '26px',
-                                                                minWidth: '26px',
-                                                                fontSize: '9px',
-                                                                backgroundColor: isCurrentWeek
-                                                                    ? '#fef9c3'
-                                                                    : style?.bg || '#ffffff',
-                                                                color: style?.text || '#9ca3af',
-                                                                fontWeight: status ? 700 : 400,
-                                                            }}
-                                                            title={tooltipParts.join('\n\n')}
-                                                        >
-                                                            <span className="inline-flex items-center justify-center gap-0.5">
-                                                                {status || '-'}
-                                                                {hasComment && (
-                                                                    <FiMessageSquare
-                                                                        className="inline-block opacity-80"
-                                                                        style={{ width: 8, height: 8 }}
-                                                                        aria-label="Possui observação"
-                                                                    />
-                                                                )}
-                                                            </span>
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
+                                            <ScheduleRow
+                                                key={`row-${gIdx}-${mIdx}-${member.cpf}`}
+                                                member={member}
+                                                position={group.position}
+                                                groupCount={mIdx === 0 ? group.count : ''}
+                                                groupBg={bg}
+                                                weeks={filteredWeeks}
+                                                currentWeekKey={currentWeekKey}
+                                                isOpening={openingColab === member.cpf}
+                                                locale={locale}
+                                                onNameClick={handleNameClick}
+                                                onCellClick={handleCellClick}
+                                                getWeekRotationMeta={getWeekRotationMeta}
+                                                getCellStyle={getCellStyle}
+                                            />
                                         ))}
 
                                         {gIdx < positionGroups.length - 1 && (
@@ -1205,12 +1157,12 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                 </table>
             </div>
 
-            <div className="flex items-center gap-4 text-xs px-4 py-2 border-t border-gray-200 shrink-0 bg-slate-50 overflow-x-auto">
+            <div className="flex items-center gap-3 text-xs px-3 py-1.5 border-t border-gray-200 shrink-0 bg-slate-50 overflow-x-auto">
                 {legendItems.map((item) => (
                     <div key={item.code} className="flex items-center gap-1.5 flex-shrink-0">
                         <span
                             className="inline-block text-center font-bold px-1.5 py-0.5 border border-black text-[10px]"
-                            style={{ backgroundColor: item.color, color: item.textColor, minWidth: '40px' }}
+                            style={{ backgroundColor: item.color, color: item.textColor, minWidth: '38px' }}
                         >
                             {item.code}
                         </span>
