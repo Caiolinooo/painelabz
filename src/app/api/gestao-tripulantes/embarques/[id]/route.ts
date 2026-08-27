@@ -36,14 +36,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Evento de escala não encontrado' }, { status: 404 });
     }
 
-    if (existing.origem !== 'local') {
-      return NextResponse.json(
-        { error: 'Apenas eventos de origem local podem ser editados.' },
-        { status: 403 }
-      );
-    }
-
-    const updates: Record<string, unknown> = {};
+    const updates: Record<string, unknown> = {
+      origem: 'local',
+      updated_at: new Date().toISOString(),
+    };
 
     if (body.tipo !== undefined) {
       updates.tipo = mapCodigoToDbTipo(String(body.tipo));
@@ -103,24 +99,20 @@ export async function DELETE(
 
     const { data: existing, error: findErr } = await supabaseAdmin
       .from('gt_historico_embarques')
-      .select('id, origem')
+      .select('id, origem, deleted_at')
       .eq('id', id)
       .maybeSingle();
 
-    if (findErr || !existing) {
+    if (findErr || !existing || existing.deleted_at) {
       return NextResponse.json({ error: 'Evento de escala não encontrado' }, { status: 404 });
-    }
-
-    if (existing.origem !== 'local') {
-      return NextResponse.json(
-        { error: 'Apenas eventos de origem local podem ser excluídos.' },
-        { status: 403 }
-      );
     }
 
     const { error } = await supabaseAdmin
       .from('gt_historico_embarques')
-      .update({ deleted_at: new Date().toISOString() })
+      .update({
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id);
 
     if (error) {

@@ -1,5 +1,4 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { mioClient } from '@/lib/mio/client';
 import {
   canAccessModule,
   getAccessibleUserIdsForGlobal,
@@ -545,7 +544,7 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'buscar_escala_mio',
-      description: 'Busca a escala (man schedule) de um funcionário específico no sistema MIO',
+      description: 'Busca a escala/embarques de um funcionário no banco local (gt_historico_embarques). Não consulta a API MIO.',
       parameters: {
         type: 'object',
         properties: {
@@ -563,7 +562,7 @@ export const IA_TOOLS_DEFINITION = [
     type: 'function',
     function: {
       name: 'buscar_treinamentos_mio',
-      description: 'Busca os treinamentos e vencimentos de um funcionário no sistema MIO',
+      description: 'Busca treinamentos e vencimentos de um funcionário no banco local (gt_documentos). Não consulta a API MIO.',
       parameters: {
         type: 'object',
         properties: {
@@ -3699,26 +3698,55 @@ return JSON.stringify(data);
       
       case 'buscar_escala_mio': {
         const { cpf } = args;
-        const cleanCpf = cpf.replace(/\D/g, '');
-        const embarques = await mioClient.getEmbarques(cleanCpf);
-        
-        if (!embarques || embarques.length === 0) {
-          return `Nenhuma escala ou embarque encontrado no MIO para o CPF fornecido.`;
+        const cleanCpf = String(cpf || '').replace(/\D/g, '');
+        const { data: cols } = await supabaseAdmin
+          .from('gt_colaboradores')
+          .select('id, cpf')
+          .is('deleted_at', null);
+        const ids = (cols || [])
+          .filter((c) => String(c.cpf || '').replace(/\D/g, '') === cleanCpf)
+          .map((c) => c.id);
+        if (ids.length === 0) {
+          return JSON.stringify({ success: true, embarques: [], _summary: 'buscar_escala_mio: colaborador não encontrado no banco local' });
         }
-        
-        return JSON.stringify(embarques.slice(0, 5)); // Retorna os 5 registros mais relevantes
+        const { data: embarques } = await supabaseAdmin
+          .from('gt_historico_embarques')
+          .select('id, data_embarque, data_desembarque, data_prevista_desembarque, local_embarque, local_desembarque, tipo, origem')
+          .in('colaborador_id', ids)
+          .is('deleted_at', null)
+          .order('data_embarque', { ascending: false })
+          .limit(10);
+        if (!embarques || embarques.length === 0) {
+          return `Nenhuma escala ou embarque encontrado no banco local para o CPF fornecido.`;
+        }
+        return JSON.stringify({ success: true, embarques, _summary: `buscar_escala_mio: ${embarques.length} embarque(s) locais` });
       }
 
       case 'buscar_treinamentos_mio': {
         const { cpf } = args;
-        const cleanCpf = cpf.replace(/\D/g, '');
-        const treinamentos = await mioClient.getTreinamentos(cleanCpf);
-        
-        if (!treinamentos || treinamentos.length === 0) {
-          return `Nenhum treinamento encontrado no MIO para o CPF fornecido.`;
+        const cleanCpf = String(cpf || '').replace(/\D/g, '');
+        const { data: cols } = await supabaseAdmin
+          .from('gt_colaboradores')
+          .select('id, cpf')
+          .is('deleted_at', null);
+        const ids = (cols || [])
+          .filter((c) => String(c.cpf || '').replace(/\D/g, '') === cleanCpf)
+          .map((c) => c.id);
+        if (ids.length === 0) {
+          return JSON.stringify({ success: true, treinamentos: [], _summary: 'buscar_treinamentos_mio: colaborador não encontrado no banco local' });
         }
-        
-        return JSON.stringify(treinamentos.slice(0, 10)); // Retorna até 10 treinamentos
+        const { data: treinamentos } = await supabaseAdmin
+          .from('gt_documentos')
+          .select('id, titulo, subtipo, numero_documento, data_emissao, data_validade, status_validacao, origem')
+          .in('colaborador_id', ids)
+          .eq('tipo_documento', 'treinamento')
+          .is('deleted_at', null)
+          .order('data_validade', { ascending: false, nullsFirst: false })
+          .limit(20);
+        if (!treinamentos || treinamentos.length === 0) {
+          return `Nenhum treinamento encontrado no banco local para o CPF fornecido.`;
+        }
+        return JSON.stringify({ success: true, treinamentos, _summary: `buscar_treinamentos_mio: ${treinamentos.length} treinamento(s) locais` });
       }
 
       case 'ler_email_funcionario': {
@@ -4996,11 +5024,11 @@ case 'coletar_dados_holisticos': {
         if (findErr || !existing || existing.deleted_at) {
           return 'Evento de escala não encontrado.';
         }
-        if (existing.origem !== 'local') {
-          return 'Apenas eventos de origem local podem ser editados (origem MIO é somente leitura).';
-        }
 
-        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        const updates: Record<string, unknown> = {
+          origem: 'local',
+          updated_at: new Date().toISOString(),
+        };
         if (tipo !== undefined) updates.tipo = mapCodigoToDbTipo(String(tipo));
         if (data_embarque !== undefined) updates.data_embarque = data_embarque;
         if (data_desembarque !== undefined) updates.data_desembarque = data_desembarque;

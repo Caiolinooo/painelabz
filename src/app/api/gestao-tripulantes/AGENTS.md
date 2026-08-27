@@ -8,14 +8,39 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 - Routes under `src/app/api/gestao-tripulantes/`
 - Related libs: `src/lib/gestao-tripulantes/*`, OCR in `src/lib/ocr/*` + `src/lib/gestao-tripulantes/ocr-processor.ts`
-- Man Schedule realtime: `src/app/api/man-schedule/realtime/route.ts` (reads MIO cache + **local-only** GT overrides)
-- UI consumers: `ASOTab`, `ImportarASOModal`, Collaborator modal, `GTManScheduleTab`, admin `/admin/gestao-tripulantes`
+- Canonical contract: `src/lib/gestao-tripulantes/gt-canonical.ts`
+- Man Schedule realtime: `src/app/api/man-schedule/realtime/route.ts` (reads **gt_historico_embarques + gt_colaboradores + gt_tipos_evento_escala** — never live MIO, never mio_cache blobs on the request path)
+- UI consumers: `AsoReviewPanel`, `ASOTab`, `ImportarASOModal`, Collaborator modal, `GTManScheduleTab`, admin `/admin/gestao-tripulantes`
 
 ## Local Contracts
 
-### ASO identity gate
+### Canonical read contract (future modules)
+
+- Feature modules read **only** `gt_*` via `src/lib/gestao-tripulantes/gt-canonical.ts`. Never import `mioClient` or `poliweb-scraper` on page-load paths.
+- Join by `colaborador_id` or CPF digits (`normalizeCpf`). Origem values: `mio | poliweb | upload | manual | ocr | local | importado`.
+- ASO: query `gt_documentos_aso` (parent `gt_documentos.origem`). PoliWeb scrape is ingest only (`POST /poliweb` / cron).
+- Man Schedule: `gt_historico_embarques` + `gt_colaboradores` + `gt_tipos_evento_escala`. Do not read `mio_cache` blobs on the request path.
+- Missing file bytes: `gt_documentos.arquivo_ausente` + retry queue `gt_mio_anexo_misses`.
+- Leftover MIO entities (férias, benefício, dependente, sispat, timesheet, turmas): `gt_mio_entidades`.
+
+### Poliweb ASO pendentes (fail-soft)
+
+- `GET /api/gestao-tripulantes/poliweb/asos-pendentes` lists `gt_documentos` with `origem=poliweb` + `status_revisao=pendente_revisao`. Does **not** scrape on page load.
+- `?sync=1` (refresh) may scrape Poliweb with **2.5s abort**; config/timeout/upstream failure → **HTTP 200** `{ ok:false, data:[], warning }` (never 503). Overlay is caused by `fetchWithToken` `console.error` on non-OK.
+- UI: `AsoReviewPanel` must not throw/`console.error` on this degradation.
+- Live scrape for import remains `POST /poliweb` (`buscar_pendentes`) and cron `poliweb-scraper`.
+
+### ASO identity gate & Motor de OCR com Módulo 11 e Auto-Reparo
 
 - CPF normalize: digits-only via `@/lib/utils/identity` → `@/lib/gestao-tripulantes/cpf` (client-safe) + `cpf-lookup.ts` (server).
+- **Validação Matemática por Módulo 11 (Receita Federal)**:
+  - Todo CPF e CNPJ extraído pelo OCR é validado matematicamente pelo algoritmo oficial de 2 dígitos verificadores (`D1` e `D2`).
+  - CPFs inválidos passam por auto-reparo guiado pela matriz de confusão óptica (`CONFUSAO_OPTICA`, `8`↔`9`, `3`↔`8`, `0`↔`O`, `1`↔`I/l/7`, `B`↔`8`, etc.) e reconciliação contextual com o CPF do perfil do colaborador (distância de edição $\le 2$).
+- **Detecção de Resultado Apto vs Inapto**:
+  - Reconhece caixas de seleção preenchidas `(X) APTO`, `[X] APTO`, `(✓) APTO`, `(•) APTO` evitando falsos positivos de `inapto` gerados por templates pré-impressos `( ) APTO ( ) INAPTO`.
+- **Sanitização de Datas e Documentos**:
+  - Correção automática de séculos históricos de OCR (`18xx` $\rightarrow$ `19xx` para trabalhadores ativos).
+  - Isolamento estrito de RG sem sobreposição de substrings com o CPF.
 - OCR path (`extrairDadosASODoTexto`): **CPF-only** reassociation. Never silent name/`ilike` moves.
 - If OCR CPF ≠ profile CPF: reassign to `gt_colaboradores` by CPF **or** quarantine (`gt_documentos.colaborador_id` + ASO `colaborador_id` = null, `esocial_status = quarentena`, `identity_match = quarantine`). When OCR cannot extract CPF, quarantine is set immediately to avoid wrong profile assignment.
 - After `esocial_status` in `pendente|enviado|processado`: freeze identity (`identity_match = frozen`); do not reset status to `nao_enviado`.
@@ -42,20 +67,28 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `GET /api/gestao-tripulantes/aso?cpf=` → only `enviado|processado`.
 - `algoritmo-back` prefers those ASOs for validity scoring; falls back to any dated `gt_documentos` per candidate without a global ASO.
 
+### GET colaborador performance
+
+- `GET /colaboradores/[id]` reads `gt_colaboradores` (not `gt_vw_colaboradores_completo`), excludes `mio_data`/`ocr_texto`/`xml_gerado`, two parallel DB waves. Optional `?include=` (default `profile,documentos,embarques,substituicoes,esocial_asos`).
+- List GET uses base tables; `?cpf=` + `?lite=1` for Man Schedule name-click (do not search the heavy view).
+- Client modal dedupes in-flight GETs (React Strict Mode + `_t` cache-bust). Man Schedule tab is lazy-mounted; `/api/man-schedule/realtime?janela=90d` is cached 60s on the client.
+
 ### Man Schedule — tipos / cores / observações
 
 - Table `gt_tipos_evento_escala`: `codigo`, `display_code`, `label`, `bg_color`, `text_color`, `ordem`, `ativo`, `is_system`, `maps_to_db_tipo`.
 - Seed system codes: `normal`→ON, `fi`→FI, `dba`→DBA, `stb`→STB, `offc`→OFF-C.
 - CRUD: `GET|POST /api/gestao-tripulantes/tipos-evento`, `PUT|DELETE /api/gestao-tripulantes/tipos-evento/[id]` (ADMIN/MANAGER for writes).
-- Embarques locais: `POST /embarques`, `PUT|DELETE /embarques/[id]` — only `origem='local'`; soft-delete via `deleted_at`.
+- Embarques locais: `POST /embarques`, `PUT|DELETE /embarques/[id]` — soft-delete via `deleted_at`; PUT updates `origem='local'` so manual adjustments are preserved against MIO sync pulls without ever calling or writing back to MIO.
 - Storage mapping (`escala-tipos.ts`): UI `offc` persists as `offc` (**never** collapse to `folga_indenizada` / `fi`). Legacy `folga_indenizada|dobra|standby` normalize on read to `fi|dba|stb`.
-- `GET /api/man-schedule/realtime`: merge **only** `gt_historico_embarques.origem = 'local'`; return explicit `observacoes` + `tipo_codigo` / `rotation_type` (do not put obs into `embarque_status`); CPF joins via digits-only normalize.
+- `GET /api/man-schedule/realtime`: merge **gt_historico_embarques** (origem mio + local) with colaboradores; extras FI/DBA/STB/OFF-C are materialized at pull time. Return explicit `observacoes` + `tipo_codigo` / `rotation_type`; CPF joins via digits-only normalize.
 
 ### Schema notes
 
 - Migration `20260723_000001_aso_identity_gate.sql`: `cpf_documento`, `identity_match`, expanded `esocial_status` CHECK.
 - Migration `20260723_000002_gt_tipos_evento_escala.sql`: tipos table + relax `gt_historico_embarques.tipo` CHECK (allows `fi|dba|stb|offc` + custom).
 - Optional SQL backfill of `gt_colaboradores.cpf` to digits-only (documented in root `tasks.md`); app lookups try digits + masked forms.
+- `gt_afastamentos` + `gt_acidentes` applied remotely (repo files `20260724_000003` / `000004` were missing on Painel_ABZGroup). Pull writes afastamentos with `origem=mio`.
+- Canonical extras: `gt_documentos.arquivo_ausente*`, `gt_mio_anexo_misses`, `gt_mio_entidades`, `gt_colaboradores.ativo`, `gt_historico_embarques.updated_at`.
 
 ### Document integrity gate (ALL document types)
 
@@ -64,29 +97,61 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
   - OCR path: `ocr-processor.ts::extrairNumeroDocumentoDoTexto(texto, tipo)` extracts it (ASO nº / "Nº do exame|laudo", Passport No / "Nº do passaporte", Certificado/NR nº; CRM/RQE/CNPJ/CPF are never the doc number); `persistirNumeroProprioRastreio` saves it — overwrites ONLY a `GT-...` fallback or null, never an intrinsic/manual value, and checks uniqueness first. Wired into both `extrairDadosASODoTexto` (ASO) and `aplicarGateIdentidadeDocumento` (all types).
   - Fallback interno (`documento-integrity.ts::garantirNumeroRastreioUnico`, format `GT-<TIPO>-<cpf4>-<YYYY>-<suffix>`) is acceptable ONLY for documents that genuinely have no intrinsic numbering (e.g. metadata-only MIO rows).
   - Manual fix: auditoria POST action `corrigir_rastreio` (ADMIN-only; `{documento_id, numero_rastreio}`, uniqueness-checked) + inline "Editar rastreio" in `AuditoriaDocumentosTab`; fallback values render flagged as "(fallback)".
-- **Hard validation on save** (upload route, `POST /colaboradores/[id]/documentos`, `PUT /documentos/[id]`, `documento-service`): `data_emissao` + `data_validade` required (422 otherwise). Quarantine (`quarentena=true` / `identity_match='quarantine'`) is the only exemption.
-- **Anti-duplication** (`buscarDuplicado`): before insert, match by `arquivo_hash` → `arquivo_path` → `(colaborador, tipo, titulo, numero_documento)`. Duplicate ⇒ UPDATE existing row (returns `merged: true`), never a new row.
-- **Identity gate for all types** (`aplicarGateIdentidadeDocumento` in `ocr-processor.ts`, wired into `/documentos/[id]/ocr`): OCR CPF of ANY document type (passaporte, CNH, treinamento…) must match profile CPF; mismatch with no owning colaborador or no extractable CPF ⇒ quarantine (`colaborador_id=null`, `identity_match='quarantine'`). ASO path also mirrors its `gt_documentos_aso.identity_match` onto the doc row. Frozen identities never move.
+- **Hard validation on save**: file **upload** may omit `data_emissao`/`data_validade` (status `pendente`; OCR or manual edit fills later). PUT still rejects validade < emissão. ASO upload also allowed without dates so OCR can populate them. Quarantine remains exempt.
+- **Anti-duplication & Historical ASO Integrity** (`buscarDuplicado`): before insert, match by `arquivo_hash` → `arquivo_path` → for ASO: `(colaborador_id, 'aso', data_emissao/data_realizacao, data_validade)` → `(colaborador, tipo, titulo, numero_documento)` **only when the number matches** (or both are empty drafts without a file). Never collapse a new file onto the first same-title row.
+  - Duplicate ⇒ UPDATE existing row (returns `merged: true`), never a new row.
+  - **Preservação de Histórico de ASOs**: exames ocupacionais legítimos de datas distintas (ex: Admissional 2023, Periódico 2024, Periódico 2026) são preservados integralmente em ordem cronológica decrescente. Apenas cópias redundantes do mesmo laudo/exame são colapsadas no registro mais autoritativo (com recibo e-Social > com OCR > mais recente).
+- **Identity gate for all types** (`aplicarGateIdentidadeDocumento` in `ocr-processor.ts`, wired into `/documentos/[id]/ocr`): OCR CPF of ANY document type (passaporte, CNH, treinamento…) must match profile CPF when a CPF is extracted; mismatch with no owning colaborador ⇒ quarantine. **No extractable CPF on non-ASO** (passaporte, visto, certificado) ⇒ `identity_match='unknown'`, stay on the current colaborador (user can edit fields). ASO path still quarantines when CPF cannot be extracted. Frozen identities never move.
+- **OCR on every upload**: after `POST /documentos/upload` the UI triggers `enviarOcrDocumento` (client text extract → `POST /documentos/[id]/ocr`). Server path for scanned PDF/image: convert PNG **once** → Tesseract/local OCR → regex (`extrairDadosTexto`, passaporte included). Vision LLM only if local OCR is weak **and** `visaoLlmCompativel` (provider matches model: `gemini`+Gemini, `openai`+gpt-4o, `llamacpp`+llava — never `llamacpp`+`gemini`). Structured LLM is a tools-free `/chat/completions` call; skipped on empty text or when passport regex already filled `numero_passaporte`. Extracted `numero_documento` / `orgao_emissor` / dates persist when the row is still empty (`persistirCamposOcrDocumento`). Failure leaves the file saved for manual edit (`identity_match=unknown`). pdf.js uses `CanvasFactory` class (not deprecated `canvasFactory` instance).
+- **Upload MIME**: `resolverMimeArquivo` accepts empty/`octet-stream`/`image/jpg` via extension and magic bytes (PDF/JPEG/PNG/WebP). UI tipos `visto`/`ctm`/`habilitacao`/`declaracao` map to CHECK-valid tipos (`documento_pessoal`/`cnh`/`outro`).
 - **Auditoria panel**: tab "Auditoria Documentos" in `/admin/gestao-tripulantes` + API `GET|POST /api/gestao-tripulantes/auditoria`. GET returns buckets: sem_emissao, sem_validade, sem_rastreio, duplicados (groups), quarentena, vencidos, vencendo. POST fix actions (ADMIN-only): `gerar_rastreio`, `corrigir_datas`, `resolver_quarentena` (blocks if OCR CPF ≠ target CPF), `mesclar_duplicados`.
+
+### Treinamentos — Numeração, Validade, Download e Anexos
+- **Separação de Código e Numeração**: `subtipo` armazena a sigla/código do curso (ex: `CIR`, `TBS-I`, `CESS`, `GMDSS`, `STCW OF.NÁUTICA`), enquanto `numero_documento` armazena o número real do certificado/registro da Marinha/Instituição.
+- **Controle de Validade e Cursos Permanentes**: Para cursos que não possuem vencimento (`data_validade IS NULL`), o status é `valido` com indicação `Permanente (Sem data de expiração)`. Para cursos com vencimento, exibe data de realização, data de validade e contagem regressiva em dias (`Válido`, `Vencendo em X dias`, `Vencido há X dias`).
+- **Download Flexível**:
+  - Com arquivo anexado (`arquivo_url`): download direto do PDF/imagem original.
+  - Sem arquivo físico: gera instantaneamente a **Ficha Oficial de Registro e Conformidade de Treinamento** (`GET /api/gestao-tripulantes/documentos/[id]/pdf`) com layout ABZ Group, dados do tripulante, dados do curso, QR Code e carimbo de validação digital.
+- **Anexo com 1 Clique & Edição**: Cada card possui botão para anexar o arquivo físico ao curso (`documento_id` no `/api/gestao-tripulantes/documentos/upload`) e botão de edição para atualizar número, datas, órgão e carga horária.
+- **Exportação XLSX**: `GET /api/gestao-tripulantes/colaboradores/[id]/treinamentos/export` gera planilha profissional estilizada com toda a matriz de treinamentos do colaborador. Client download uses `getToken()` (never `fetchWithToken`, which clones the body) and must not call `onRefresh` or clear modal state.
+
+### Collaborator modal — Dados Pessoais edit
+
+- Edit mode (`DadosPessoaisTab`) renders inputs/selects for identity (nome, CPF, RG, matrícula, nascimento, nacionalidade, naturalidade, filiação, estado civil, email, telefone) and professional fields (cargo/empresa/embarcação/centro de custo via FK selects, admissão, próximo embarque, status, standby) plus address.
+- CPF: client + PUT validate with `isValidCpf` (Módulo 11); persist digits-only via `normalizeCpf`. Invalid/empty CPF → 400, never silently dropped.
+- `PUT /api/gestao-tripulantes/colaboradores/[id]` whitelists every editable `gt_colaboradores` column (not PK/system/`mio_*`/e-Social tracking). View aliases (`cargo_nome`…) resolve to FKs instead of being ignored.
+- Modal fetch: keep previous `data` on error; ignore abort; do not replace loaded content with skeleton; tab error boundary isolates Treinamentos crashes.
 
 ## Work Guidance
 
 - Filename/title is storage label only — never treat as identity.
 - Profile ASO tab: separate disponíveis vs rascunhos; drafts badge “não enviado / rascunho”.
 - Escala colors/labels: load from `tipos-evento` API — do not hardcode ON/FI/DBA/STB/OFF-C in the grade.
-- Local scale edits must PUT when UUID exists; never create-always.
-- Minimal impact on MIO read-only rows — never edit/delete `origem='mio'`.
+- Local scale edits must PUT when UUID exists; never create-always. Operates strictly on local gt_historico_embarques without writing to MIO.
+- **MIO is pull-only**: `mioClient` throws outside `runMioPull()`. Feature modules read **canonical `gt_*` only** (`gt-canonical.ts`). PoliWeb scrape is ingest (`POST /poliweb` / cron), not a runtime dependency — imported ASOs live in `gt_documentos`/`gt_documentos_aso` with `origem=poliweb`. Admin pull: `POST /api/gestao-tripulantes/mio/sync` or cron `/api/gestao-tripulantes/cron/sync-mio`. Files: download bytes from MIO → bucket `gestao-tripulantes-documentos` → `arquivo_url` local. Missing bytes set `arquivo_ausente=true` and enqueue `gt_mio_anexo_misses` (never silent metadata-only). Never upload over MIO. Inactive/desligado colaboradores are persisted (`ativo=false`); trainings/ASOs/embarques use `findColaboradorByCpf` (no `ativo` filter).
+- Official MIO ASO list: insomnia documents **POST `/sms-aso` as inclusão (write) — never called**. Pull probes GET `/sms-aso-get`, `/sms-aso-registro-get`, `/sms-aso`, exames, etc. Hits persist to `gt_documentos_aso`; misses stored as evidence in `gt_mio_entidades` tipo `aso_probe_evidence`. ASO-like training rows still classified into ASO.
 - No secrets in code; use env / `app_secrets` patterns from root DOX.
 
 ## Verification
 
+- `GET /colaboradores/[id]` should log `[GT GET /colaboradores/<id>] <N>ms` with two waves; opening the modal must not fire two GETs 1ms apart.
+- Man Schedule grid must not fetch `/api/man-schedule/realtime` until the tab is selected; switching away keeps the mounted cache.
 - Upload ASO with matching CPF → OCR `identity_match=match` → send e-Social allowed.
+- Upload passport/CNH/other without dates → 201, status `pendente`; OCR runs (Tesseract → regex; vision only if compatible); fields editable if OCR empty.
+- Scanned PDF + `provider=llamacpp` + Gemini model → skip vision (no `llamacpp_image_url` fetch); empty OCR text never hits tools chat.
 - Upload wrong-person PDF on profile → reassign or quarantine; never stays on wrong profile.
 - Send S-2220 → `gt_documentos_aso.esocial_status=enviado`; consult PROCESSADO → `processado`.
 - `GET /api/gestao-tripulantes/aso?cpf=` excludes `nao_enviado`/`pendente`.
 - Create OFF-C local event → reload grade still shows OFF-C (not FI); observações appear on hover + icon.
 - Admin tab Marcadores Escala: change color → grade/legend/export reflect new colors.
 - PUT `/embarques/[id]` updates dates/tipo/obs without duplicating rows.
+- CollaboratorModal locks `body` scroll and is vertically centered; top header has frosted backdrop (`bg-gray-50/90 backdrop-blur-md`) preventing content bleed on scroll.
+- `GET /api/man-schedule/realtime` does not call `mioClient`; source is `gt_historico_embarques` (`meta.source`).
+- `npm run mio:assert-local-first` exits 0 (`ASSERT_MIO_LOCAL_FIRST_OK`).
+- Full pull: `npm run mio:pull` (admin credentials in `.env.local`). Dry-run: `npm run mio:pull:dry`.
+- Dados Pessoais edit mode: all identity + professional fields are inputs (not plain text); Save persists via PUT whitelist including CPF (validated) and FK professional columns.
+- After Treinamentos “Exportar Excel”, modal still shows collaborator data (reopen included); GET 200 is not wiped by export.
+- `GET /api/gestao-tripulantes/poliweb/asos-pendentes` returns 200 with array `data` (empty + `warning` if Poliweb down); GT page does not show Next.js overlay.
 
 ## Child DOX Index
 
