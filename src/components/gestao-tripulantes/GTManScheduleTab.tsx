@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { FiDownload, FiSearch, FiMessageSquare } from 'react-icons/fi';
+import { FiDownload, FiSearch, FiMessageSquare, FiMove } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
@@ -26,6 +26,7 @@ interface CrewSchedule {
     observacoes?: string | null;
     tipo_codigo?: string;
     origem?: 'mio' | 'local';
+    ativo?: boolean;
 }
 
 interface RotationCell {
@@ -121,10 +122,22 @@ const getDayAbbr = (d: Date, locale: string) => {
 // weeks) change instead of re-scanning every rotation on every parent render.
 // ---------------------------------------------------------------------------
 
+interface HoveredCommentData {
+    x: number;
+    y: number;
+    name: string;
+    status: string;
+    style: { bg: string; text: string } | null;
+    observacoes: string;
+    startFormatted: string;
+    vessel: string;
+    weekDate: string;
+}
+
 interface ScheduleRowProps {
     member: { name: string; cpf: string; rotations: RotationCell[] };
     position: string;
-    groupCount: number;
+    groupCount: number | string;
     groupBg: string;
     weeks: { date: Date }[];
     currentWeekKey: string | null;
@@ -132,10 +145,19 @@ interface ScheduleRowProps {
     locale: string;
     onNameClick: (cpf: string, name: string) => void;
     onCellClick: (cpf: string, name: string, date: Date, status: string, rotations: RotationCell[]) => void;
+    onHoverComment: (data: HoveredCommentData) => void;
+    onLeaveComment: () => void;
     getWeekRotationMeta: (
         weekDate: Date,
         rotations: RotationCell[]
-    ) => { status: string; observacoes: string | null; type?: string };
+    ) => {
+        status: string;
+        observacoes: string | null;
+        type?: string;
+        startDay: number | null;
+        startFormatted: string;
+        vessel: string;
+    };
     getCellStyle: (rotationType: string) => { bg: string; text: string };
 }
 
@@ -150,6 +172,8 @@ const ScheduleRow = React.memo(function ScheduleRow({
     locale,
     onNameClick,
     onCellClick,
+    onHoverComment,
+    onLeaveComment,
     getWeekRotationMeta,
     getCellStyle,
 }: ScheduleRowProps) {
@@ -166,11 +190,24 @@ const ScheduleRow = React.memo(function ScheduleRow({
                 const tooltipParts = [
                     `Clique para gerenciar escala de ${member.name} na semana de ${formatHeaderDate(week.date, locale)}`,
                 ];
+                if (meta.startFormatted) {
+                    tooltipParts.push(`Início do evento: ${meta.startFormatted}`);
+                }
                 if (hasComment) {
                     tooltipParts.push(`Observações: ${meta.observacoes}`);
                 }
 
-                return { status, hasComment, isCurrentWeek, style, tooltip: tooltipParts.join('\n\n') };
+                return {
+                    status,
+                    startDay: meta.startDay,
+                    startFormatted: meta.startFormatted,
+                    vessel: meta.vessel,
+                    observacoes: meta.observacoes,
+                    hasComment,
+                    isCurrentWeek,
+                    style,
+                    tooltip: tooltipParts.join('\n\n'),
+                };
             }),
         [weeks, member.rotations, member.name, getWeekRotationMeta, getCellStyle, currentWeekKey, locale]
     );
@@ -196,30 +233,65 @@ const ScheduleRow = React.memo(function ScheduleRow({
                 <td
                     key={`cell-${wIdx}`}
                     onClick={() => onCellClick(member.cpf, member.name, weeks[wIdx].date, cell.status, member.rotations)}
-                    className={`border-r border-b text-center cursor-pointer hover:brightness-95 hover:ring-1 hover:ring-blue-400 transition-all relative ${
+                    onMouseEnter={(e) => {
+                        if (cell.hasComment) {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            onHoverComment({
+                                x: rect.left + rect.width / 2,
+                                y: rect.top,
+                                name: member.name,
+                                status: cell.status || 'EVENTO',
+                                style: cell.style,
+                                observacoes: cell.observacoes || '',
+                                startFormatted: cell.startFormatted,
+                                vessel: cell.vessel,
+                                weekDate: formatHeaderDate(weeks[wIdx].date, locale),
+                            });
+                        }
+                    }}
+                    onMouseLeave={() => {
+                        if (cell.hasComment) {
+                            onLeaveComment();
+                        }
+                    }}
+                    className={`border-r border-b text-center cursor-pointer hover:brightness-95 hover:ring-2 hover:ring-blue-400 transition-all relative select-none ${
                         cell.isCurrentWeek ? '!border-yellow-500 !border-2' : 'border-black'
                     }`}
                     style={{
-                        width: '32px',
-                        minWidth: '32px',
-                        maxWidth: '32px',
-                        fontSize: '9px',
+                        width: '36px',
+                        minWidth: '36px',
+                        maxWidth: '36px',
+                        height: '38px',
                         backgroundColor: cell.isCurrentWeek ? '#fef9c3' : cell.style?.bg || '#ffffff',
                         color: cell.style?.text || '#9ca3af',
-                        fontWeight: cell.status ? 700 : 400,
                     }}
-                    title={cell.tooltip}
+                    title={cell.hasComment ? undefined : cell.tooltip}
                 >
-                    <span className="inline-flex items-center justify-center gap-0.5">
-                        {cell.status || '-'}
-                        {cell.hasComment && (
-                            <FiMessageSquare
-                                className="inline-block opacity-80"
-                                style={{ width: 8, height: 8 }}
-                                aria-label="Possui observação"
-                            />
-                        )}
-                    </span>
+                    {cell.status ? (
+                        <div className="flex flex-col items-center justify-center h-full w-full py-0.5 leading-tight">
+                            <span className="font-bold text-[9px] tracking-tight truncate max-w-full px-0.5">
+                                {cell.status}
+                            </span>
+                            {cell.startDay !== null && (
+                                <span
+                                    className="text-[7.5px] font-bold px-1 rounded-xs bg-black/15 text-current leading-none tracking-tighter mt-0.5 shadow-2xs"
+                                    title={`Início em: ${cell.startFormatted || cell.startDay}`}
+                                >
+                                    d.{cell.startDay}
+                                </span>
+                            )}
+                            {cell.hasComment && (
+                                <div className="absolute top-0.5 right-0.5 flex items-center justify-center pointer-events-none">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600"></span>
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <span className="text-gray-300 text-[9px]">-</span>
+                    )}
                 </td>
             ))}
         </tr>
@@ -251,6 +323,27 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     const [formObs, setFormObs] = useState('');
     const [submittingEvent, setSubmittingEvent] = useState(false);
 
+    const [filterStatusAtivo, setFilterStatusAtivo] = useState<'ativos' | 'inativos' | 'todos'>('ativos');
+
+    const [hoveredComment, setHoveredComment] = useState<HoveredCommentData | null>(null);
+
+    const handleHoverComment = useCallback((data: HoveredCommentData) => {
+        setHoveredComment(data);
+    }, []);
+
+    const handleLeaveComment = useCallback(() => {
+        setHoveredComment(null);
+    }, []);
+
+    const [modalPos, setModalPos] = useState<{ x: number; y: number } | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragRef = useRef<{ startX: number; startY: number; posX: number; posY: number }>({
+        startX: 0,
+        startY: 0,
+        posX: 0,
+        posY: 0,
+    });
+
     const [searchName, setSearchName] = useState('');
     const [filterVessel, setFilterVessel] = useState('');
     const [filterCompany, setFilterCompany] = useState('');
@@ -259,6 +352,76 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     const [filterDateEnd, setFilterDateEnd] = useState('');
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleDragStart = (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button, input, select, textarea, a')) {
+            return;
+        }
+        e.preventDefault();
+        setIsDragging(true);
+        const currentX = modalPos?.x ?? (typeof window !== 'undefined' ? Math.max(20, window.innerWidth - 440) : 40);
+        const currentY = modalPos?.y ?? 110;
+        dragRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            posX: currentX,
+            posY: currentY,
+        };
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if ((e.target as HTMLElement).closest('button, input, select, textarea, a')) return;
+        const touch = e.touches[0];
+        setIsDragging(true);
+        const currentX = modalPos?.x ?? (typeof window !== 'undefined' ? Math.max(20, window.innerWidth - 440) : 40);
+        const currentY = modalPos?.y ?? 110;
+        dragRef.current = {
+            startX: touch.clientX,
+            startY: touch.clientY,
+            posX: currentX,
+            posY: currentY,
+        };
+    };
+
+    useEffect(() => {
+        if (!isDragging) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const dx = e.clientX - dragRef.current.startX;
+            const dy = e.clientY - dragRef.current.startY;
+            const maxX = Math.max(10, window.innerWidth - 420);
+            const maxY = Math.max(10, window.innerHeight - 200);
+            const newX = Math.max(10, Math.min(maxX, dragRef.current.posX + dx));
+            const newY = Math.max(10, Math.min(maxY, dragRef.current.posY + dy));
+            setModalPos({ x: newX, y: newY });
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            const dx = touch.clientX - dragRef.current.startX;
+            const dy = touch.clientY - dragRef.current.startY;
+            const maxX = Math.max(10, window.innerWidth - 420);
+            const maxY = Math.max(10, window.innerHeight - 200);
+            const newX = Math.max(10, Math.min(maxX, dragRef.current.posX + dx));
+            const newY = Math.max(10, Math.min(maxY, dragRef.current.posY + dy));
+            setModalPos({ x: newX, y: newY });
+        };
+
+        const handleDragEnd = () => {
+            setIsDragging(false);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleDragEnd);
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleDragEnd);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleDragEnd);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleDragEnd);
+        };
+    }, [isDragging]);
 
     const tipoByCodigo = useMemo(() => {
         const map = new Map<string, GTTipoEventoEscala>();
@@ -365,6 +528,13 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         const formattedEnd = defaultEnd.toISOString().split('T')[0];
 
         setSelectedCell({ cpf, name, date, status, rotationId: rotId, vessel: currentVessel });
+
+        if (!modalPos && typeof window !== 'undefined') {
+            setModalPos({
+                x: Math.max(20, window.innerWidth - 440),
+                y: 110,
+            });
+        }
 
         const mappedTipo = matchingRotation?.type || (status ? resolveTipo(status)?.codigo : null) || 'normal';
         setFormTipo(mappedTipo);
@@ -488,9 +658,15 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             const matchVessel = !fVes || (s.vessel || '').trim().toLowerCase() === fVes;
             const matchCompany = !fComp || (s.company || '').trim().toLowerCase() === fComp;
             const matchPosition = !fPos || (s.position || '').trim().toLowerCase() === fPos;
-            return matchName && matchVessel && matchCompany && matchPosition;
+            const matchAtivo =
+                filterStatusAtivo === 'todos'
+                    ? true
+                    : filterStatusAtivo === 'inativos'
+                    ? s.ativo === false
+                    : s.ativo !== false;
+            return matchName && matchVessel && matchCompany && matchPosition && matchAtivo;
         });
-    }, [allSchedules, searchName, filterVessel, filterCompany, filterPosition]);
+    }, [allSchedules, searchName, filterVessel, filterCompany, filterPosition, filterStatusAtivo]);
 
     const availableCompanies = useMemo(() => {
         const fVes = filterVessel.trim().toLowerCase();
@@ -499,12 +675,17 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             .filter(
                 (s) =>
                     (!fVes || (s.vessel || '').trim().toLowerCase() === fVes) &&
-                    (!fPos || (s.position || '').trim().toLowerCase() === fPos)
+                    (!fPos || (s.position || '').trim().toLowerCase() === fPos) &&
+                    (filterStatusAtivo === 'todos'
+                        ? true
+                        : filterStatusAtivo === 'inativos'
+                        ? s.ativo === false
+                        : s.ativo !== false)
             )
             .map((s) => (s.company || '').trim())
             .filter(Boolean);
         return Array.from(new Set(valid)).sort();
-    }, [allSchedules, filterVessel, filterPosition]);
+    }, [allSchedules, filterVessel, filterPosition, filterStatusAtivo]);
 
     const availableVessels = useMemo(() => {
         const fComp = filterCompany.trim().toLowerCase();
@@ -513,12 +694,17 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             .filter(
                 (s) =>
                     (!fComp || (s.company || '').trim().toLowerCase() === fComp) &&
-                    (!fPos || (s.position || '').trim().toLowerCase() === fPos)
+                    (!fPos || (s.position || '').trim().toLowerCase() === fPos) &&
+                    (filterStatusAtivo === 'todos'
+                        ? true
+                        : filterStatusAtivo === 'inativos'
+                        ? s.ativo === false
+                        : s.ativo !== false)
             )
             .map((s) => (s.vessel || '').trim())
             .filter(Boolean);
         return Array.from(new Set(valid)).sort();
-    }, [allSchedules, filterCompany, filterPosition]);
+    }, [allSchedules, filterCompany, filterPosition, filterStatusAtivo]);
 
     const availablePositions = useMemo(() => {
         const fComp = filterCompany.trim().toLowerCase();
@@ -527,12 +713,17 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             .filter(
                 (s) =>
                     (!fComp || (s.company || '').trim().toLowerCase() === fComp) &&
-                    (!fVes || (s.vessel || '').trim().toLowerCase() === fVes)
+                    (!fVes || (s.vessel || '').trim().toLowerCase() === fVes) &&
+                    (filterStatusAtivo === 'todos'
+                        ? true
+                        : filterStatusAtivo === 'inativos'
+                        ? s.ativo === false
+                        : s.ativo !== false)
             )
             .map((s) => (s.position || '').trim())
             .filter(Boolean);
         return Array.from(new Set(valid)).sort();
-    }, [allSchedules, filterCompany, filterVessel]);
+    }, [allSchedules, filterCompany, filterVessel, filterStatusAtivo]);
 
     const positionGroups = useMemo(() => {
         const byPosition: Record<string, { name: string; cpf: string; rotations: RotationCell[] }[]> = {};
@@ -689,8 +880,8 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
     const scrollToCurrentWeek = useCallback(() => {
         if (!tableContainerRef.current || currentWeekIndex < 0) return;
-        // Fixed columns take ~500px, 32px per week column
-        const targetScrollLeft = Math.max(0, currentWeekIndex * 32 - 120);
+        // Fixed columns take ~500px, 36px per week column
+        const targetScrollLeft = Math.max(0, currentWeekIndex * 36 - 120);
         tableContainerRef.current.scrollTo({
             left: targetScrollLeft,
             behavior: 'smooth'
@@ -730,11 +921,35 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     const getWeekRotationMeta = useCallback(
         (weekDate: Date, rotations: RotationCell[]) => {
             const rot = getWeekRotation(weekDate, rotations);
-            if (!rot) return { status: '', observacoes: null as string | null };
+            if (!rot) {
+                return {
+                    status: '',
+                    observacoes: null as string | null,
+                    type: undefined,
+                    startDay: null,
+                    startFormatted: '',
+                    vessel: '',
+                };
+            }
+
+            let startDay: number | null = null;
+            let startFormatted = '';
+            if (rot.start) {
+                const cleanStart = rot.start.slice(0, 10);
+                const parts = cleanStart.split('-');
+                if (parts.length === 3) {
+                    startDay = parseInt(parts[2], 10);
+                    startFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+            }
+
             return {
                 status: getDisplayCode(rot.type || 'normal'),
                 observacoes: rot.observacoes || null,
                 type: rot.type,
+                startDay,
+                startFormatted,
+                vessel: rot.vessel || '',
             };
         },
         [getWeekRotation, getDisplayCode]
@@ -967,6 +1182,19 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         </select>
                     </div>
 
+                    <div className="min-w-[130px] flex-shrink-0">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+                        <select
+                            className="w-full px-2 py-1.5 border border-blue-200 bg-blue-50/50 text-blue-900 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 truncate transition-all"
+                            value={filterStatusAtivo}
+                            onChange={(e) => setFilterStatusAtivo(e.target.value as 'ativos' | 'inativos' | 'todos')}
+                        >
+                            <option value="ativos">Apenas Ativos</option>
+                            <option value="inativos">Apenas Inativos</option>
+                            <option value="todos">Todos (Ativos + Inativos)</option>
+                        </select>
+                    </div>
+
                     <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateStart', 'Data Inicio')}</label>
                         <input
@@ -1071,7 +1299,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                                 ? 'bg-yellow-100 text-yellow-850 font-bold border-yellow-500 border-2'
                                                 : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
                                         }`}
-                                        style={{ height: '90px', width: '32px', minWidth: '32px', maxWidth: '32px' }}
+                                        style={{ height: '90px', width: '36px', minWidth: '36px', maxWidth: '36px' }}
                                     >
                                         <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', letterSpacing: '0.5px', fontSize: '10px' }}>
                                             {formatHeaderDate(week.date, locale)}
@@ -1097,7 +1325,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                                 ? 'bg-yellow-100 text-yellow-800 font-bold border-yellow-500 border-2'
                                                 : 'bg-[#e2efda] text-[#00b050] font-bold border-black'
                                         }`}
-                                        style={{ fontSize: '10px', width: '32px', minWidth: '32px', maxWidth: '32px' }}
+                                        style={{ fontSize: '10px', width: '36px', minWidth: '36px', maxWidth: '36px' }}
                                     >
                                         {getDayAbbr(week.date, locale)}
                                     </th>
@@ -1139,6 +1367,8 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                                 locale={locale}
                                                 onNameClick={handleNameClick}
                                                 onCellClick={handleCellClick}
+                                                onHoverComment={handleHoverComment}
+                                                onLeaveComment={handleLeaveComment}
                                                 getWeekRotationMeta={getWeekRotationMeta}
                                                 getCellStyle={getCellStyle}
                                             />
@@ -1169,141 +1399,262 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                         <span className="text-slate-600 font-semibold text-xs whitespace-nowrap">{item.label}</span>
                     </div>
                 ))}
-                <div className="flex items-center gap-1.5 flex-shrink-0 text-slate-500 ml-auto">
-                    <FiMessageSquare className="w-3 h-3" />
-                    <span className="text-[10px] font-medium">= observação salva</span>
+                <div className="flex items-center gap-1.5 flex-shrink-0 bg-slate-200/80 text-slate-700 font-semibold text-[10px] px-2 py-0.5 rounded-md ml-1">
+                    <span>d.X</span>
+                    <span className="font-normal text-slate-600">= Dia inicial do evento</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0 text-slate-600 ml-auto">
+                    <span className="relative flex h-2 w-2 mr-0.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600"></span>
+                    </span>
+                    <FiMessageSquare className="w-3 h-3 text-blue-600" />
+                    <span className="text-[10px] font-medium text-slate-700">= observação (passe o mouse)</span>
                 </div>
             </div>
 
+            {/* Animated Floating Speech Bubble for Observações / Comments */}
+            {hoveredComment && (
+                <div
+                    className="fixed z-50 pointer-events-none transition-all duration-200 ease-out transform -translate-x-1/2 -translate-y-full mb-2"
+                    style={{
+                        left: `${hoveredComment.x}px`,
+                        top: `${Math.max(65, hoveredComment.y - 6)}px`,
+                        width: '280px',
+                    }}
+                >
+                    <div className="bg-slate-900/95 text-white rounded-2xl p-3 shadow-2xl ring-1 ring-white/20 backdrop-blur-md border border-slate-700/80 animate-in fade-in zoom-in-95 duration-150 relative drop-shadow-2xl">
+                        {/* Header */}
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 border border-black/40 shadow-xs"
+                                    style={{
+                                        backgroundColor: hoveredComment.style?.bg || '#3b82f6',
+                                        color: hoveredComment.style?.text || '#ffffff',
+                                    }}
+                                >
+                                    {hoveredComment.status}
+                                </span>
+                                <span className="text-[11px] font-bold text-slate-100 uppercase truncate">
+                                    {hoveredComment.name}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Event info tags */}
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-2 flex-wrap">
+                            {hoveredComment.startFormatted && (
+                                <span className="bg-slate-800 px-2 py-0.5 rounded-md font-mono text-emerald-300 font-semibold border border-slate-700/60">
+                                    📅 Início: {hoveredComment.startFormatted}
+                                </span>
+                            )}
+                            {hoveredComment.vessel && (
+                                <span className="bg-slate-800 px-2 py-0.5 rounded-md text-sky-300 font-medium border border-slate-700/60 truncate max-w-[130px]">
+                                    🚢 {hoveredComment.vessel}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Comment Body */}
+                        <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/60 flex items-start gap-2">
+                            <FiMessageSquare className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                            <p className="text-xs text-slate-100 font-normal leading-relaxed break-words whitespace-pre-wrap">
+                                {hoveredComment.observacoes}
+                            </p>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-2 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[9px] text-slate-400">
+                            <span className="text-blue-300 font-semibold">Semana {hoveredComment.weekDate}</span>
+                            <span className="text-slate-400">Clique na célula para editar</span>
+                        </div>
+
+                        {/* Speech Bubble Arrow */}
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900/95 border-b border-r border-slate-700/80 transform rotate-45" />
+                    </div>
+                </div>
+            )}
+
             {selectedCell && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 mx-4 border border-gray-100 flex flex-col gap-4">
-                        <div className="flex items-center justify-between border-b border-gray-150 pb-3">
-                            <h3 className="text-base font-bold text-gray-800">
-                                {editingLocal ? 'Editar/Excluir Evento de Escala' : 'Adicionar Evento de Escala'}
-                            </h3>
+                <div
+                    className="fixed z-50 pointer-events-auto"
+                    style={{
+                        left: `${modalPos?.x ?? (typeof window !== 'undefined' ? Math.max(20, window.innerWidth - 440) : 40)}px`,
+                        top: `${modalPos?.y ?? 110}px`,
+                        width: '420px',
+                        maxWidth: 'calc(100vw - 32px)',
+                    }}
+                >
+                    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col transition-shadow duration-200 ring-1 ring-black/10">
+                        {/* Draggable Header */}
+                        <div
+                            onMouseDown={handleDragStart}
+                            onTouchStart={handleTouchStart}
+                            className="bg-slate-100/90 px-4 py-3 border-b border-slate-200 flex items-center justify-between cursor-move select-none group"
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className="p-1 rounded bg-slate-200 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                    <FiMove className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
+                                        {editingLocal ? 'Editar Evento de Escala' : 'Novo Evento de Escala'}
+                                        {editingLocal && (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-100 text-amber-800 font-bold uppercase">
+                                                Local
+                                            </span>
+                                        )}
+                                    </h3>
+                                    <p className="text-[10px] text-slate-500 font-normal">Arraste para mover o painel</p>
+                                </div>
+                            </div>
                             <button
                                 onClick={() => setSelectedCell(null)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors text-lg font-bold"
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors font-bold text-base"
+                                title="Fechar"
                             >
                                 &times;
                             </button>
                         </div>
 
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium">Nome do Tripulante</p>
-                            <p className="text-sm font-semibold text-gray-900 uppercase">{selectedCell.name}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Tipo de Evento</label>
-                                <select
-                                    value={formTipo}
-                                    onChange={(e) => setFormTipo(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                                >
-                                    {activeTiposForSelect.map((tipo) => (
-                                        <option key={tipo.id} value={tipo.codigo}>
-                                            {tipo.label} ({tipo.display_code})
-                                        </option>
-                                    ))}
-                                </select>
-                                {resolveTipo(formTipo) && (
-                                    <span
-                                        className="inline-block mt-1.5 min-w-[40px] text-center font-bold px-1.5 py-0.5 border border-black text-[10px]"
-                                        style={{
-                                            backgroundColor: resolveTipo(formTipo)!.bg_color,
-                                            color: resolveTipo(formTipo)!.text_color,
-                                        }}
-                                    >
-                                        {resolveTipo(formTipo)!.display_code}
-                                    </span>
-                                )}
+                        {/* Modal Content */}
+                        <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+                            {/* Tripulante Details Card */}
+                            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex items-center justify-between">
+                                <div className="truncate mr-2">
+                                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Tripulante</span>
+                                    <p className="text-xs font-bold text-slate-900 uppercase truncate">{selectedCell.name}</p>
+                                </div>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-mono font-medium shrink-0">
+                                    {selectedCell.cpf}
+                                </span>
                             </div>
 
+                            {/* Event Type & Vessel */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Tipo de Evento</label>
+                                    <select
+                                        value={formTipo}
+                                        onChange={(e) => setFormTipo(e.target.value)}
+                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                    >
+                                        {activeTiposForSelect.map((tipo) => (
+                                            <option key={tipo.id} value={tipo.codigo}>
+                                                {tipo.label} ({tipo.display_code})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {resolveTipo(formTipo) && (
+                                        <div className="mt-1.5 flex items-center gap-1.5">
+                                            <span
+                                                className="inline-block min-w-[36px] text-center font-bold px-1.5 py-0.5 border border-black/80 rounded-sm text-[10px]"
+                                                style={{
+                                                    backgroundColor: resolveTipo(formTipo)!.bg_color,
+                                                    color: resolveTipo(formTipo)!.text_color,
+                                                }}
+                                            >
+                                                {resolveTipo(formTipo)!.display_code}
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 truncate">{resolveTipo(formTipo)!.label}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Embarcação / Destino</label>
+                                    <input
+                                        type="text"
+                                        value={formVessel}
+                                        onChange={(e) => setFormVessel(e.target.value)}
+                                        placeholder="Ex: NORMAND..."
+                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Dates */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Data Início</label>
+                                    <input
+                                        type="date"
+                                        value={formStart}
+                                        onChange={(e) => setFormStart(e.target.value)}
+                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Data Fim</label>
+                                    <input
+                                        type="date"
+                                        value={formEnd}
+                                        onChange={(e) => setFormEnd(e.target.value)}
+                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Origin / Local Embarque */}
                             <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Embarcação/Destino</label>
+                                <label className="block text-[11px] font-bold text-slate-700 mb-1">Local de Embarque (Origem)</label>
                                 <input
                                     type="text"
-                                    value={formVessel}
-                                    onChange={(e) => setFormVessel(e.target.value)}
-                                    placeholder="Ex: NORMAND..."
-                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                    value={formLocalEmb}
+                                    onChange={(e) => setFormLocalEmb(e.target.value)}
+                                    placeholder="Cidade, Aeroporto ou Base"
+                                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                                 />
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                            {/* Observations */}
                             <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Data Início</label>
-                                <input
-                                    type="date"
-                                    value={formStart}
-                                    onChange={(e) => setFormStart(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                                <label className="block text-[11px] font-bold text-slate-700 mb-1">Observações / Comentários</label>
+                                <textarea
+                                    value={formObs}
+                                    onChange={(e) => setFormObs(e.target.value)}
+                                    placeholder="Informações adicionais..."
+                                    rows={2}
+                                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white resize-none"
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Data Fim</label>
-                                <input
-                                    type="date"
-                                    value={formEnd}
-                                    onChange={(e) => setFormEnd(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Local de Embarque (Origem)</label>
-                            <input
-                                type="text"
-                                value={formLocalEmb}
-                                onChange={(e) => setFormLocalEmb(e.target.value)}
-                                placeholder="Cidade, Aeroporto ou Base"
-                                className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Observações / Comentários</label>
-                            <textarea
-                                value={formObs}
-                                onChange={(e) => setFormObs(e.target.value)}
-                                placeholder="Informações adicionais..."
-                                rows={2}
-                                className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white resize-none"
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-150">
-                            {editingLocal ? (
-                                <button
-                                    onClick={handleDeleteEvent}
-                                    disabled={submittingEvent}
-                                    className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 disabled:opacity-50 transition-colors shadow-sm"
-                                >
-                                    Excluir Evento
-                                </button>
-                            ) : (
-                                <div />
-                            )}
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setSelectedCell(null)}
-                                    className="px-4 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleSaveEvent}
-                                    disabled={submittingEvent}
-                                    className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
-                                >
-                                    {submittingEvent ? 'Salvando...' : 'Salvar'}
-                                </button>
+                            {/* Actions Footer */}
+                            <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200 mt-1">
+                                {editingLocal ? (
+                                    <button
+                                        onClick={handleDeleteEvent}
+                                        disabled={submittingEvent}
+                                        className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 disabled:opacity-50 transition-colors shadow-sm"
+                                    >
+                                        Excluir Evento
+                                    </button>
+                                ) : (
+                                    <div />
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setSelectedCell(null)}
+                                        className="px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleSaveEvent}
+                                        disabled={submittingEvent}
+                                        className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm flex items-center gap-1.5"
+                                    >
+                                        {submittingEvent ? (
+                                            <>
+                                                <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                Salvando...
+                                            </>
+                                        ) : (
+                                            'Salvar'
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

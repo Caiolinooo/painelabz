@@ -57,6 +57,7 @@ interface FiltersState {
   cargo: string;
   centro_custo: string;
   status: string;
+  ativo: string;
   apenasStandby: boolean;
   docsVencidos: boolean;
 }
@@ -73,7 +74,7 @@ export default function GestaoTripulantesPage() {
   const [showModal, setShowModal] = useState(false);
   const [filters, setFilters] = useState<FiltersState>({
     search: '', empresa: '', embarcacao: '', cargo: '', centro_custo: '', status: '',
-    apenasStandby: false, docsVencidos: false
+    ativo: 'ativos', apenasStandby: false, docsVencidos: false
   });
 
   const fetchDashboard = useCallback(async () => {
@@ -97,6 +98,7 @@ export default function GestaoTripulantesPage() {
       if (filters.cargo) params.set('cargo', filters.cargo);
       if (filters.centro_custo) params.set('centro_custo', filters.centro_custo);
       if (filters.status) params.set('status', filters.status);
+      if (filters.ativo) params.set('ativo', filters.ativo);
       if (filters.apenasStandby) params.set('standby', 'true');
       if (filters.docsVencidos) params.set('onlyVencidos', 'true');
       params.set('limit', '100');

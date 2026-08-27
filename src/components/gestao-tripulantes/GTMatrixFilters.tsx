@@ -20,6 +20,7 @@ interface FiltersState {
   cargo: string;
   centro_custo: string;
   status: string;
+  ativo: string;
   apenasStandby: boolean;
   docsVencidos: boolean;
 }
@@ -115,6 +116,16 @@ export default function GTMatrixFilters({ filters, onChange, colaboradores = [] 
           {STATUS_OPTIONS.map(s => (
             <option key={s.value} value={s.value}>{t(s.labelKey)}</option>
           ))}
+        </select>
+
+        <select
+          className="px-3 py-2 border border-blue-200 bg-blue-50/50 text-blue-900 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={filters.ativo || 'ativos'}
+          onChange={e => onChange({ ativo: e.target.value })}
+        >
+          <option value="ativos">Apenas Ativos</option>
+          <option value="inativos">Apenas Inativos</option>
+          <option value="todos">Todos (Ativos + Inativos)</option>
         </select>
       </div>
 

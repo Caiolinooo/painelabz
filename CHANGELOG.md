@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.65.0] - 2026-08-27
+
+### 🚢 Gestão de Tripulantes: Filtro Ativos/Inativos, Modal Draggable de Escala, Bubbles Animados de Comentários & Indicador de Dia Inicial
+
+Esta versão adiciona suporte completo a filtros de colaboradores ativos e inativos na Matriz e no Man Schedule, transforma o modal de escala em uma janela flutuante arrastável (não obstrutiva), implementa balões animados (*speech bubbles*) ao passar o mouse sobre observações e exibe o dia inicial do evento diretamente na planilha de escalas.
+
+### Added
+- **Filtro de Colaboradores Ativos / Inativos / Todos**:
+  - Novo seletor de status na Matriz de Conformidade (`GTMatrixFilters.tsx`) e na barra de ferramentas superior do Man Schedule (`GTManScheduleTab.tsx`).
+  - Suporte nas rotas de API `/api/gestao-tripulantes/colaboradores` e `/api/man-schedule/realtime`.
+- **Modal de Escala Móvel e Flutuante (*Draggable Window*)**:
+  - Modal de escala transformado em janela flutuante arrastável por mouse e touch, eliminando o backdrop escuro bloqueante e mantendo a planilha sempre visível.
+  - Alça visual de movimentação (`FiMove`), acabamento em `backdrop-blur`, sombra em relevo e preservação integral de todas as opções de criação e edição de eventos.
+- **Bubbles Animados de Comentários ao Passar o Mouse**:
+  - Marcador animado pulsante (`animate-ping`) nas células da escala que possuem observações cadastradas.
+  - Balão flutuante em *dark glassmorphism* (`fade-in zoom-in-95`) com dados do tripulante, data inicial, embarcação, texto integral da observação e seta indicadora.
+- **Dia Inicial do Evento na Planilha (`d.X`)**:
+  - Indicadores na grade de escalas exibem o código do evento e o dia inicial da rotação/embarque no mês (ex: `d.15`, `d.01`).
+  - Colunas ajustadas para 36px de largura e legenda informativa atualizada.
+
 ## [5.64.0] - 2026-08-27
 
 ### 🔄 Persistência de Assets de Inicialização (Splash & Áudio), Sincronização em Tempo Real do Admin & PWA

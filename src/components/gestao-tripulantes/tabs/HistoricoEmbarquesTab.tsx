@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FiAnchor, FiCalendar, FiMapPin, FiClock, FiArrowRight } from 'react-icons/fi';
+import { FiAnchor, FiCalendar, FiMapPin, FiClock, FiArrowRight, FiMessageSquare } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 
 interface Embarkation {
@@ -154,7 +154,13 @@ export default function HistoricoEmbarquesTab({ embarques }: Props) {
                     )}
 
                     {emb.observacoes && (
-                      <p className="text-xs text-gray-400 mt-1.5 italic">{emb.observacoes}</p>
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-2 text-xs text-slate-700 shadow-2xs">
+                        <FiMessageSquare className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Observação</span>
+                          <p className="text-xs text-slate-700 italic leading-relaxed">{emb.observacoes}</p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

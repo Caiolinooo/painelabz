@@ -22,6 +22,7 @@ interface ScheduleEntry {
     observacoes: string | null;
     tipo_codigo: string;
     origem?: 'mio' | 'local';
+    ativo?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -256,11 +257,12 @@ export async function GET(request: NextRequest) {
                 observacoes: (entry.observacoes || '').trim() || null,
                 tipo_codigo: rotType,
                 origem,
+                ativo: colab.ativo !== false,
             });
         }
 
         for (const colab of colaboradores) {
-            if (!colab.ativo || seenColabInWindow.has(colab.id)) continue;
+            if (seenColabInWindow.has(colab.id)) continue;
             const cpfNorm = normalizeCpf(colab.cpf || '');
             schedules.push({
                 id: colab.id,
@@ -277,6 +279,7 @@ export async function GET(request: NextRequest) {
                 observacoes: null,
                 tipo_codigo: 'normal',
                 origem: 'mio',
+                ativo: colab.ativo !== false,
             });
         }
         timings.build = Date.now() - buildStart;

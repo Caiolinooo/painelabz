@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
     const centroCusto = searchParams.get('centro_custo');
     const status = searchParams.get('status');
     const standby = searchParams.get('standby');
+    const ativo = searchParams.get('ativo');
     const onlyVencidos = searchParams.get('onlyVencidos');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -113,6 +114,8 @@ export async function GET(request: NextRequest) {
     if (status) query = query.eq('status_embarque', status);
     if (standby === 'true') query = query.eq('standby', true);
     if (standby === 'false') query = query.eq('standby', false);
+    if (ativo === 'true' || ativo === 'ativos' || ativo === 'ativo') query = query.eq('ativo', true);
+    if (ativo === 'false' || ativo === 'inativos' || ativo === 'inativo') query = query.eq('ativo', false);
     if (vencidoIds) query = query.in('id', vencidoIds);
 
     const { data: rows, error, count } = await query
