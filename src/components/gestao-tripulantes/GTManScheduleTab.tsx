@@ -946,6 +946,8 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
             let startDay: number | null = null;
             let startFormatted = '';
+            let isStartWeek = false;
+
             if (rot.start) {
                 const parsed = parseLocalDate(rot.start);
                 if (parsed) {
@@ -954,6 +956,14 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     const mStr = String(parsed.getMonth() + 1).padStart(2, '0');
                     const yStr = parsed.getFullYear();
                     startFormatted = `${dStr}/${mStr}/${yStr}`;
+
+                    const wStart = new Date(weekDate);
+                    wStart.setHours(0, 0, 0, 0);
+                    const wEnd = new Date(wStart);
+                    wEnd.setDate(wEnd.getDate() + 6);
+                    wEnd.setHours(23, 59, 59, 999);
+
+                    isStartWeek = parsed >= wStart && parsed <= wEnd;
                 }
             }
 
@@ -964,7 +974,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                 startDay,
                 startFormatted,
                 vessel: rot.vessel || '',
-                exibir_dia_inicio: Boolean(rot.exibir_dia_inicio),
+                exibir_dia_inicio: Boolean(rot.exibir_dia_inicio && isStartWeek),
             };
         },
         [getWeekRotation, getDisplayCode]

@@ -9,7 +9,7 @@ Esta versão corrige o cálculo e enquadramento de datas da escala na troca de t
 ### Added
 - **Controle de Indicação do Dia de Início na Célula (`d.X`)**:
   - Adicionado toggle no modal flutuante de escala (`GTManScheduleTab`) permitindo habilitar ou desabilitar a exibição do dia de início na célula da planilha.
-  - Quando ativado, a célula exibe o marcador com o dia inicial (ex: `d.29`); quando desativado, exibe somente a sigla limpa do evento (ex: `ON`).
+  - Quando ativado, o marcador com o dia inicial (ex: `d.29`) é exibido estritamente na célula da semana em que o evento se inicia, enquanto as semanas subsequentes da mesma rotação mantêm a sigla limpa do evento (ex: `ON`).
   - Persistência na coluna `exibir_dia_inicio` na tabela `gt_historico_embarques` com suporte integral em `GET /api/man-schedule/realtime`, `POST /api/gestao-tripulantes/embarques` e `PUT /api/gestao-tripulantes/embarques/[id]`.
   - Indicador `d.X = Dia inicial do evento` sincronizado na legenda inferior.
 

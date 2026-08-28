@@ -326,7 +326,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             let dayLabel: string | undefined = undefined;
             if (r.exibir_dia_inicio && r.start) {
                 const parsed = parseLocalDate(r.start);
-                if (parsed) {
+                if (parsed && parsed >= wStart && parsed <= wEnd) {
                     dayLabel = `d.${parsed.getDate()}`;
                 }
             }
