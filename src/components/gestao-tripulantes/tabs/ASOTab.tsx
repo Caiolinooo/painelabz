@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FiUpload, FiDownload, FiSend, FiHeart, FiAlertCircle, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiSend, FiHeart, FiAlertCircle, FiCheckCircle, FiClock, FiEye, FiFileText } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { cpfsMatch, formatCpf, isEsocialGlobalVisible, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
+import AsoOcrDetailsModal from '@/components/gestao-tripulantes/AsoOcrDetailsModal';
 
 interface Document {
   id: string;
@@ -182,9 +183,64 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
   const [sending, setSending] = useState<string | null>(null);
   const [runningOcr, setRunningOcr] = useState<string | null>(null);
   const [ocrProgress, setOcrProgress] = useState('');
+  const [selectedAsoForDetails, setSelectedAsoForDetails] = useState<any | null>(null);
 
-  const asos = documentos.filter(d => d.tipo_documento === 'aso');
+  const rawAsos = documentos.filter(d => d.tipo_documento === 'aso');
   const profileCpf = normalizeCpf(colaboradorCpf || '');
+
+  // Deduplicação e Agrupamento dos ASOs por documento/data de realização
+  const dedupedMap = new Map<string, Document>();
+  rawAsos.forEach((doc) => {
+    const dRealiz = (doc.aso_data?.data_realizacao || doc.data_emissao || '').trim();
+    const dValid = (doc.data_validade || '').trim();
+    const normTitle = (doc.titulo || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/(\.pdf|\.jpg|\.png|_rotated|\(1\)|\(2\))/gi, '')
+      .trim();
+    const cleanUrl = (doc.arquivo_url || '').split('?')[0];
+
+    const key = cleanUrl ? `url_${cleanUrl}` : `${normTitle}_${dRealiz || 'SEM_DATA'}_${dValid || 'SEM_VALID'}`;
+
+    const existing = dedupedMap.get(key);
+    if (!existing) {
+      dedupedMap.set(key, doc);
+    } else {
+      const existingScore =
+        (existing.aso_data?.esocial_evento_ref?.numero_recibo || existing.aso_data?.esocial_status === 'processado' ? 1000 : 0) +
+        (existing.aso_data?.esocial_status === 'enviado' ? 500 : 0) +
+        (existing.ocr_status === 'concluido' ? 50 : 0) +
+        (existing.ocr_dados_extraidos ? 20 : 0);
+
+      const currentScore =
+        (doc.aso_data?.esocial_evento_ref?.numero_recibo || doc.aso_data?.esocial_status === 'processado' ? 1000 : 0) +
+        (doc.aso_data?.esocial_status === 'enviado' ? 500 : 0) +
+        (doc.ocr_status === 'concluido' ? 50 : 0) +
+        (doc.ocr_dados_extraidos ? 20 : 0);
+
+      const winner = currentScore > existingScore ? doc : existing;
+      const loser = currentScore > existingScore ? existing : doc;
+
+      const merged = {
+        ...winner,
+        aso_data: {
+          ...(loser.aso_data || {}),
+          ...(winner.aso_data || {}),
+          esocial_evento_ref: winner.aso_data?.esocial_evento_ref || loser.aso_data?.esocial_evento_ref || null,
+        },
+        ocr_dados_extraidos: winner.ocr_dados_extraidos || loser.ocr_dados_extraidos || null,
+        data_validade: winner.data_validade || loser.data_validade || null,
+      };
+      dedupedMap.set(key, merged);
+    }
+  });
+
+  // Ordenação cronológica (do mais recente para o mais antigo)
+  const asos = Array.from(dedupedMap.values()).sort((a, b) => {
+    const dateA = a.aso_data?.data_realizacao || a.data_emissao || '';
+    const dateB = b.aso_data?.data_realizacao || b.data_emissao || '';
+    return dateB.localeCompare(dateA);
+  });
 
   const getOcrIdentity = (doc: Document) => {
     const cpfDoc = normalizeCpf(doc.aso_data?.cpf_documento || doc.ocr_dados_extraidos?.cpf || '');
@@ -487,10 +543,22 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
             <StatusBadge status={doc.status_validacao} />
 
+            <button
+              onClick={() => setSelectedAsoForDetails(doc)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 transition shadow-sm"
+            >
+              <FiEye className="w-3.5 h-3.5 text-blue-600" />
+              Visualizar OCR & Dados
+            </button>
+
             {doc.arquivo_url && (
-              <a href={doc.arquivo_url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600">
-                <FiDownload className="w-3 h-3" /> PDF
+              <a
+                href={doc.arquivo_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition"
+              >
+                <FiDownload className="w-3 h-3 text-blue-600" /> Baixar PDF
               </a>
             )}
 
@@ -511,7 +579,7 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
                   onClick={() => handleSendESocial(doc)}
                   disabled={sending === doc.id || identityBlocked}
                   title={identityBlocked ? motivoBloqueio : undefined}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
                 >
                   <FiSend className="w-3 h-3" />
                   {sending === doc.id ? 'Enviando...' : t('gestaoTripulantes.aso.sendESocial')}
@@ -672,12 +740,51 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
 
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <StatusBadge status={statusValidadeStr} />
+
+                    <button
+                      onClick={() => setSelectedAsoForDetails({
+                        id: evt.id,
+                        titulo: `ASO e-Social (S-2220) — ${formatDate(dataRealizacao)}`,
+                        tipo_documento: 'aso',
+                        data_emissao: dataRealizacao,
+                        data_validade: dataValidade,
+                        ocr_status: 'concluido',
+                        ocr_dados_extraidos: evt.dados_evento,
+                        aso_data: {
+                          tipo_exame: tipo,
+                          resultado: res,
+                          data_realizacao: dataRealizacao,
+                          medico_nome: medicoNome,
+                          medico_crm: medicoCrm,
+                          medico_uf: medicoUf,
+                          nome_clinica: clinica,
+                          esocial_status: isGlobal ? 'processado' : eventStatus,
+                          esocial_numero_recibo: evt.numero_recibo,
+                          esocial_protocolo: evt.protocolo_envio,
+                          esocial_data_envio: evt.data_envio,
+                          esocial_evento_ref: evt,
+                        }
+                      })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 transition shadow-sm"
+                    >
+                      <FiEye className="w-3.5 h-3.5 text-blue-600" />
+                      Visualizar Dados
+                    </button>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {selectedAsoForDetails && (
+        <AsoOcrDetailsModal
+          isOpen={!!selectedAsoForDetails}
+          onClose={() => setSelectedAsoForDetails(null)}
+          documento={selectedAsoForDetails}
+          colaboradorCpf={colaboradorCpf}
+        />
       )}
     </div>
   );

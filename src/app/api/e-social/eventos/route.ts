@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
     // Status filtering (support groups and single status)
     if (status) {
       if (status === 'enviados' || status === 'transmitidos') {
-        query = query.in('status', ['enviado', 'processado']);
+        query = query.or('status.in.(enviado,processado,sucesso,transmitido),numero_recibo.not.is.null,protocolo_envio.not.is.null');
       } else if (status === 'pendencias' || status === 'fila') {
-        query = query.in('status', ['rascunho', 'pendente_revisao', 'revisao_aprovado', 'fila_envio']);
+        query = query.in('status', ['rascunho', 'pendente_revisao', 'revisao_aprovado', 'fila_envio']).is('numero_recibo', null);
       } else if (status === 'revisao') {
-        query = query.eq('status', 'pendente_revisao');
+        query = query.eq('status', 'pendente_revisao').is('numero_recibo', null);
       } else if (status === 'erro') {
-        query = query.in('status', ['erro', 'devolvido', 'revisao_rejeitado']);
+        query = query.in('status', ['erro', 'devolvido', 'revisao_rejeitado']).is('numero_recibo', null);
       } else {
         query = query.eq('status', status);
       }
@@ -140,8 +140,13 @@ export async function GET(request: NextRequest) {
         || item.dados_evento?.cargo
         || null;
 
+      const resolvedStatus = item.numero_recibo 
+        ? 'processado' 
+        : (item.protocolo_envio && (item.status === 'erro' || item.status === 'rascunho') ? 'enviado' : item.status);
+
       return {
         ...item,
+        status: resolvedStatus,
         evento_nome: item.esocial_eventos_catalogo?.nome || null,
         colaborador_nome: colab?.nome_completo || nomeEspecifico || null,
         colaborador_cargo: colab?.gt_cargos?.nome || colab?.mio_data?.cargo || colab?.mio_data?.cargo_funcao || cargoEspecifico || null,

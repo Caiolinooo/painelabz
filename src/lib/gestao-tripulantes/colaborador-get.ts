@@ -203,9 +203,19 @@ function enrichAndDedupDocumentos(
 
   documentos.forEach((d) => {
     if (d.tipo_documento === 'aso') {
-      const dRealiz = d.aso_data?.data_realizacao || d.data_emissao || 'SEM_DATA';
-      const dValid = d.data_validade || 'SEM_VALIDADE';
-      const key = `${dRealiz}_${dValid}`;
+      const dRealiz = (d.aso_data?.data_realizacao || d.data_emissao || '').trim();
+      const dValid = (d.data_validade || '').trim();
+      const normTitle = (d.titulo || '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/(\.pdf|\.jpg|\.png|_rotated|\(1\)|\(2\))/gi, '')
+        .trim();
+      const cleanUrl = (d.arquivo_url || '').split('?')[0];
+
+      // Smart Dedup Key: Combina data de realização/emissão + título limpo ou URL
+      const key = cleanUrl
+        ? `url_${cleanUrl}`
+        : `${normTitle}_${dRealiz || 'SEM_DATA'}_${dValid || 'SEM_VALID'}`;
 
       const existing = asoMap.get(key);
       if (!existing) {
@@ -214,14 +224,38 @@ function enrichAndDedupDocumentos(
         const existingScore =
           (existing.aso_data?.esocial_evento_ref?.numero_recibo || existing.aso_data?.esocial_status === 'processado' ? 1000 : 0) +
           (existing.aso_data?.esocial_status === 'enviado' ? 500 : 0) +
-          (existing.ocr_status === 'concluido' ? 50 : 0);
+          (existing.ocr_status === 'concluido' ? 50 : 0) +
+          (existing.ocr_dados_extraidos ? 20 : 0) +
+          (existing.data_validade ? 10 : 0);
+
         const currentScore =
           (d.aso_data?.esocial_evento_ref?.numero_recibo || d.aso_data?.esocial_status === 'processado' ? 1000 : 0) +
           (d.aso_data?.esocial_status === 'enviado' ? 500 : 0) +
-          (d.ocr_status === 'concluido' ? 50 : 0);
-        if (currentScore > existingScore) {
-          asoMap.set(key, d);
-        }
+          (d.ocr_status === 'concluido' ? 50 : 0) +
+          (d.ocr_dados_extraidos ? 20 : 0) +
+          (d.data_validade ? 10 : 0);
+
+        const winner = currentScore > existingScore ? d : existing;
+        const loser = currentScore > existingScore ? existing : d;
+
+        // Merge dados do perdedor no vencedor se faltar no vencedor
+        const mergedAsoData = {
+          ...(loser.aso_data || {}),
+          ...(winner.aso_data || {}),
+          esocial_evento_ref: winner.aso_data?.esocial_evento_ref || loser.aso_data?.esocial_evento_ref || null,
+        };
+
+        const mergedOcrData = {
+          ...(loser.ocr_dados_extraidos || {}),
+          ...(winner.ocr_dados_extraidos || {}),
+        };
+
+        asoMap.set(key, {
+          ...winner,
+          aso_data: mergedAsoData,
+          ocr_dados_extraidos: Object.keys(mergedOcrData).length > 0 ? mergedOcrData : winner.ocr_dados_extraidos,
+          data_validade: winner.data_validade || loser.data_validade || null,
+        });
       }
     } else {
       nonAsoDocs.push(d);
@@ -229,8 +263,8 @@ function enrichAndDedupDocumentos(
   });
 
   const uniqueAsos = Array.from(asoMap.values()).sort((a, b) => {
-    const dateA = a.aso_data?.data_realizacao || a.data_emissao || '';
-    const dateB = b.aso_data?.data_realizacao || b.data_emissao || '';
+    const dateA = a.aso_data?.data_realizacao || a.data_emissao || a.created_at || '';
+    const dateB = b.aso_data?.data_realizacao || b.data_emissao || b.created_at || '';
     return dateB.localeCompare(dateA);
   });
 
@@ -297,7 +331,7 @@ export async function loadColaboradorDetail(
     return { notFound: true, timingsMs: timings };
   }
 
-  const colaborador = flattenColaboradorRow(profileRes.data as Record<string, unknown>);
+  const colaborador = flattenColaboradorRow(profileRes.data as unknown as Record<string, unknown>) as Record<string, any>;
   let documentos = (docsRes.data || []) as any[];
   const embarques = ((embRes.data || []) as Record<string, unknown>[]).map(flattenEmbarque);
   const substituicoes = subRes.data || [];
