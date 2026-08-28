@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.66.0] - 2026-08-28
+
+### 🗓️ Gestão de Tripulantes (Man Schedule) — Alinhamento de Troca de Turma & Controle de Indicação de Início (d.X)
+
+Esta versão corrige o cálculo e enquadramento de datas da escala na troca de turma aos sábados, elimina o recuo indevido gerado por fuso horário UTC em datas ISO e introduz o botão/toggle de controle para exibição opcional do dia de início do evento na célula (`d.X`) diretamente no modal flutuante de escala.
+
+### Added
+- **Controle de Indicação do Dia de Início na Célula (`d.X`)**:
+  - Adicionado toggle no modal flutuante de escala (`GTManScheduleTab`) permitindo habilitar ou desabilitar a exibição do dia de início na célula da planilha.
+  - Quando ativado, a célula exibe o marcador com o dia inicial (ex: `d.29`); quando desativado, exibe somente a sigla limpa do evento (ex: `ON`).
+  - Persistência na coluna `exibir_dia_inicio` na tabela `gt_historico_embarques` com suporte integral em `GET /api/man-schedule/realtime`, `POST /api/gestao-tripulantes/embarques` e `PUT /api/gestao-tripulantes/embarques/[id]`.
+  - Indicador `d.X = Dia inicial do evento` sincronizado na legenda inferior.
+
+### Fixed
+- **Alinhamento de Semanas e Troca de Turma aos Sábados**:
+  - Implementado parser local de datas (`parseLocalDate`) que evita o deslocamento de 3 horas para trás (para sexta-feira 21:00 UTC-3) ao instanciar strings `YYYY-MM-DD`.
+  - Embarques que iniciam no sábado da troca de turma (ex: 29 de agosto) agora são contabilizados rigorosamente a partir da respectiva semana de início (`29-Ago-26`), sem sobrepor incorretamente a semana anterior (`22-Ago-26`).
+
 ## [5.65.0] - 2026-08-27
 
 ### 🚢 Gestão de Tripulantes: Filtro Ativos/Inativos, Modal Draggable de Escala, Bubbles Animados de Comentários & Indicador de Dia Inicial

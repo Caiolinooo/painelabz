@@ -139,7 +139,7 @@ export default function ManSchedulePage() {
 
     // ─── Build dynamic rows grouped by position ───
     const positionGroups = useMemo(() => {
-        const byPosition: Record<string, { name: string; cpf: string; rotations: { start: string | null; end: string | null; type: string }[] }[]> = {};
+        const byPosition: Record<string, { name: string; cpf: string; rotations: { start: string | null; end: string | null; type: string; exibir_dia_inicio?: boolean }[] }[]> = {};
 
         for (const s of filteredSchedules) {
             const pos = normalizePosition(s.position) || 'SEM CARGO';
@@ -148,14 +148,14 @@ export default function ManSchedulePage() {
             const existing = byPosition[pos].find(c => c.cpf === s.cpf);
             if (existing) {
                 if (s.rotation_start || s.rotation_end) {
-                    existing.rotations.push({ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal' });
+                    existing.rotations.push({ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal', exibir_dia_inicio: (s as any).exibir_dia_inicio });
                 }
             } else {
                 byPosition[pos].push({
                     name: s.full_name,
                     cpf: s.cpf,
                     rotations: (s.rotation_start || s.rotation_end)
-                        ? [{ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal' }]
+                        ? [{ start: s.rotation_start, end: s.rotation_end, type: s.rotation_type || 'normal', exibir_dia_inicio: (s as any).exibir_dia_inicio }]
                         : []
                 });
             }
@@ -165,6 +165,21 @@ export default function ManSchedulePage() {
             .sort(([a], [b]) => getPositionSortKey(a) - getPositionSortKey(b) || a.localeCompare(b))
             .map(([position, members]) => ({ position, members, count: members.length }));
     }, [filteredSchedules]);
+
+function parseLocalDate(str: string | null | undefined): Date | null {
+    if (!str || typeof str !== 'string' || str.trim() === '') return null;
+    const clean = str.trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const parsed = new Date(y, m, d, 0, 0, 0, 0);
+        if (!isNaN(parsed.getTime())) return parsed;
+    }
+    const fallback = new Date(str);
+    return isNaN(fallback.getTime()) ? null : fallback;
+}
 
     // ─── Dynamic timeline calculation ───
     const { weeks, timelineStart } = useMemo(() => {
@@ -176,12 +191,12 @@ export default function ManSchedulePage() {
             for (const m of group.members) {
                 for (const r of m.rotations) {
                     if (r.start) {
-                        const d = new Date(r.start);
-                        if (!earliest || d < earliest) earliest = d;
+                        const d = parseLocalDate(r.start);
+                        if (d && (!earliest || d < earliest)) earliest = d;
                     }
                     if (r.end) {
-                        const d = new Date(r.end);
-                        if (!latest || d > latest) latest = d;
+                        const d = parseLocalDate(r.end);
+                        if (d && (!latest || d > latest)) latest = d;
                     }
                 }
             }
@@ -221,13 +236,15 @@ export default function ManSchedulePage() {
     // ─── Filtered weeks based on date range selector ───
     const filteredWeeks = useMemo(() => {
         if (!filterDateStart && !filterDateEnd) return weeks;
-        const startDate = filterDateStart ? new Date(filterDateStart) : null;
-        const endDate = filterDateEnd ? new Date(filterDateEnd) : null;
+        const startDate = filterDateStart ? parseLocalDate(filterDateStart) : null;
+        const endDate = filterDateEnd ? parseLocalDate(filterDateEnd) : null;
 
         return weeks.filter(w => {
             const weekDate = new Date(w.date);
+            weekDate.setHours(0, 0, 0, 0);
             const weekEnd = new Date(weekDate);
             weekEnd.setDate(weekEnd.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
             if (startDate && endDate) {
                 return weekEnd >= startDate && weekDate <= endDate;
             }
@@ -287,7 +304,7 @@ export default function ManSchedulePage() {
     };
 
     // ─── Check exact rotation status for the week ───
-    const getWeekStatus = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string }[]): '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' => {
+    const getWeekRotationMeta = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string; exibir_dia_inicio?: boolean }[]): { status: '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB'; dayLabel?: string } => {
         const wStart = new Date(weekDate);
         wStart.setHours(0, 0, 0, 0);
         const wEnd = new Date(wStart);
@@ -296,22 +313,37 @@ export default function ManSchedulePage() {
 
         for (const r of rotations) {
             if (!r.start) continue;
-            const rStart = new Date(r.start);
-            rStart.setHours(0, 0, 0, 0);
+            const rStart = parseLocalDate(r.start);
+            if (!rStart) continue;
 
-            const rEnd = r.end ? new Date(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+            const rEnd = r.end ? parseLocalDate(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+            if (!rEnd) continue;
             rEnd.setHours(23, 59, 59, 999);
 
             const overlaps = wStart <= rEnd && wEnd >= rStart;
             if (!overlaps) continue;
 
-            if (r.type === 'fi') return 'FI';
-            if (r.type === 'dba') return 'DBA';
-            if (r.type === 'stb') return 'STB';
-            if (r.type === 'offc') return 'OFF-C';
-            return 'ON';
+            let dayLabel: string | undefined = undefined;
+            if (r.exibir_dia_inicio && r.start) {
+                const parsed = parseLocalDate(r.start);
+                if (parsed) {
+                    dayLabel = `d.${parsed.getDate()}`;
+                }
+            }
+
+            let status: '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' = 'ON';
+            if (r.type === 'fi') status = 'FI';
+            else if (r.type === 'dba') status = 'DBA';
+            else if (r.type === 'stb') status = 'STB';
+            else if (r.type === 'offc') status = 'OFF-C';
+
+            return { status, dayLabel };
         }
-        return '';
+        return { status: '' };
+    };
+
+    const getWeekStatus = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string; exibir_dia_inicio?: boolean }[]) => {
+        return getWeekRotationMeta(weekDate, rotations).status;
     };
 
     // ─── Vessel display name ───
@@ -685,7 +717,9 @@ export default function ManSchedulePage() {
                                                 </td>
                                                 {/* Timeline cells */}
                                                  {filteredWeeks.map((week, wIdx) => {
-                                                    const status = getWeekStatus(week.date, member.rotations);
+                                                    const meta = getWeekRotationMeta(week.date, member.rotations);
+                                                    const status = meta.status;
+                                                    const dayLabel = meta.dayLabel;
                                                     const isCurrentWeek = wIdx === currentWeekIndex;
                                                     let cellClass = 'bg-white border-[#d1d5db]';
                                                     if (status === 'ON' || status === 'FI' || status === 'DBA') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';
@@ -701,7 +735,12 @@ export default function ManSchedulePage() {
                                                             className={`${cellClass} border-r border-b text-center`}
                                                             style={{ width: '24px', minWidth: '24px', fontSize: '9px' }}
                                                         >
-                                                             {status === 'FI' ? 'FI' : status === 'DBA' ? 'DBA' : status === 'STB' ? 'STB' : status === 'OFF-C' ? 'OFF-C' : status || '-'}
+                                                            <div className="flex flex-col items-center justify-center leading-none py-0.5">
+                                                                <span>{status === 'FI' ? 'FI' : status === 'DBA' ? 'DBA' : status === 'STB' ? 'STB' : status === 'OFF-C' ? 'OFF-C' : status || '-'}</span>
+                                                                {dayLabel && (
+                                                                    <span className="text-[7.5px] opacity-75 font-normal tracking-tighter mt-0.5">{dayLabel}</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     );
                                                 })}
@@ -735,6 +774,10 @@ export default function ManSchedulePage() {
                         <span className="text-gray-700 font-semibold whitespace-nowrap">{item.label}</span>
                     </div>
                 ))}
+                <div className="flex items-center gap-1.5 flex-shrink-0 text-slate-600 font-semibold text-xs whitespace-nowrap ml-2">
+                    <span className="font-mono text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded border border-slate-300 font-bold">d.X</span>
+                    <span className="text-[11px] text-slate-600">= Dia inicial do evento</span>
+                </div>
             </div>
         </div>
     );

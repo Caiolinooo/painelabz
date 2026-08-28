@@ -23,6 +23,7 @@ interface ScheduleEntry {
     tipo_codigo: string;
     origem?: 'mio' | 'local';
     ativo?: boolean;
+    exibir_dia_inicio?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,16 +67,29 @@ function colabEmbarcacaoNome(colab: {
 
 function parseDate(str: string | null): Date | null {
     if (!str || str.trim() === '') return null;
-    const d = new Date(str + 'T00:00:00');
-    return isNaN(d.getTime()) ? null : d;
+    const clean = str.trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const parsed = new Date(y, m, d, 0, 0, 0, 0);
+        if (!isNaN(parsed.getTime())) return parsed;
+    }
+    const fallback = new Date(str);
+    return isNaN(fallback.getTime()) ? null : fallback;
 }
 
 /** Tolerant date parse for MIO values that may already include time/ISO info. */
 function parseFlexibleDate(value: unknown): Date | null {
     if (!value || typeof value !== 'string' || value.trim() === '') return null;
-    const direct = new Date(value);
+    const str = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        return parseDate(str.slice(0, 10));
+    }
+    const direct = new Date(str);
     if (!isNaN(direct.getTime())) return direct;
-    return parseDate(value.slice(0, 10));
+    return parseDate(str.slice(0, 10));
 }
 
 /** True when [start,end] overlaps the processing window (end fallback: start+90d). */
@@ -197,7 +211,7 @@ export async function GET(request: NextRequest) {
                 .select(`
                     id, colaborador_id, tipo, data_embarque, data_desembarque,
                     data_prevista_desembarque, local_embarque, local_desembarque,
-                    observacoes, origem, mio_embarque_id
+                    observacoes, origem, mio_embarque_id, exibir_dia_inicio
                 `)
                 .is('deleted_at', null)
                 .gte('data_embarque', lookback)
@@ -258,6 +272,7 @@ export async function GET(request: NextRequest) {
                 tipo_codigo: rotType,
                 origem,
                 ativo: colab.ativo !== false,
+                exibir_dia_inicio: Boolean((entry as { exibir_dia_inicio?: boolean }).exibir_dia_inicio),
             });
         }
 

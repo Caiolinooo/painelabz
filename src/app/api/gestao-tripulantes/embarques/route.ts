@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       local_embarque,
       local_desembarque,
       observacoes,
+      exibir_dia_inicio,
     } = body;
 
     if (!colaborador_cpf || !tipo || !data_embarque || !data_desembarque) {
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
         local_embarque: local_embarque || '',
         local_desembarque: local_desembarque || '',
         observacoes: observacoes || '',
+        exibir_dia_inicio: Boolean(exibir_dia_inicio),
         origem: 'local',
         created_at: new Date().toISOString(),
       })

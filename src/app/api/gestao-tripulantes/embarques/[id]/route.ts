@@ -59,6 +59,9 @@ export async function PUT(
     if (body.observacoes !== undefined) {
       updates.observacoes = body.observacoes || '';
     }
+    if (body.exibir_dia_inicio !== undefined) {
+      updates.exibir_dia_inicio = Boolean(body.exibir_dia_inicio);
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });

@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.65.0-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.66.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
@@ -24,14 +24,15 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ---
 
-## Novidades da Versão [v5.65.0]
+## Novidades da Versão [v5.66.0]
 
 | | Capacidade | Destaque |
 |---|---|---|
-| 👥 | **Filtro de Colaboradores Ativos/Inativos** | Filtragem dinâmica por `Ativos`, `Inativos` ou `Todos` na Matriz de Conformidade e no Man Schedule em tempo real. |
+| 🗓️ | **Alinhamento Troca de Turma aos Sábados** | Parser local de datas (`parseLocalDate`) eliminando recuo de fuso horário UTC e alinhando embarques aos sábados estritamente na semana correta. |
+| 🏷️ | **Controle de Indicação na Célula (`d.X`)** | Toggle no modal flutuante de escala para ligar ou desligar a indicação do dia de início do evento na célula da planilha, persistido no Supabase. |
 | 🪟 | **Modal de Escala Flutuante & Draggable** | Edição de eventos em janela móvel e não obstrutiva arrastável por mouse e touch, mantendo toda a planilha visível ao fundo. |
+| 👥 | **Filtro de Colaboradores Ativos/Inativos** | Filtragem dinâmica por `Ativos`, `Inativos` ou `Todos` na Matriz de Conformidade e no Man Schedule em tempo real. |
 | 💬 | **Bubbles Animados de Comentários** | Balões estilizados em *dark glassmorphism* (`fade-in zoom-in-95`) ao passar o mouse sobre células com observações da escala. |
-| 📅 | **Indicador de Dia Inicial (`d.X`)** | Exibição direta do dia de início do evento nos marcadores da grade da planilha com colunas ajustadas para 36px. |
 
 ---
 

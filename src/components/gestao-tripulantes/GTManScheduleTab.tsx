@@ -27,6 +27,7 @@ interface CrewSchedule {
     tipo_codigo?: string;
     origem?: 'mio' | 'local';
     ativo?: boolean;
+    exibir_dia_inicio?: boolean;
 }
 
 interface RotationCell {
@@ -37,6 +38,7 @@ interface RotationCell {
     vessel: string;
     observacoes?: string | null;
     local_embarque?: string;
+    exibir_dia_inicio?: boolean;
 }
 
 interface Props {
@@ -157,6 +159,7 @@ interface ScheduleRowProps {
         startDay: number | null;
         startFormatted: string;
         vessel: string;
+        exibir_dia_inicio?: boolean;
     };
     getCellStyle: (rotationType: string) => { bg: string; text: string };
 }
@@ -203,6 +206,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
                     startFormatted: meta.startFormatted,
                     vessel: meta.vessel,
                     observacoes: meta.observacoes,
+                    exibir_dia_inicio: meta.exibir_dia_inicio,
                     hasComment,
                     isCurrentWeek,
                     style,
@@ -272,7 +276,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
                             <span className="font-bold text-[9px] tracking-tight truncate max-w-full px-0.5">
                                 {cell.status}
                             </span>
-                            {cell.startDay !== null && (
+                            {cell.exibir_dia_inicio && cell.startDay !== null && (
                                 <span
                                     className="text-[7.5px] font-bold px-1 rounded-xs bg-black/15 text-current leading-none tracking-tighter mt-0.5 shadow-2xs"
                                     title={`Início em: ${cell.startFormatted || cell.startDay}`}
@@ -321,6 +325,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     const [formVessel, setFormVessel] = useState('');
     const [formLocalEmb, setFormLocalEmb] = useState('');
     const [formObs, setFormObs] = useState('');
+    const [formExibirDia, setFormExibirDia] = useState(false);
     const [submittingEvent, setSubmittingEvent] = useState(false);
 
     const [filterStatusAtivo, setFilterStatusAtivo] = useState<'ativos' | 'inativos' | 'todos'>('ativos');
@@ -496,6 +501,21 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         fetchSchedules();
     }, [fetchTipos, fetchSchedules]);
 
+function parseLocalDate(str: string | null | undefined): Date | null {
+    if (!str || typeof str !== 'string' || str.trim() === '') return null;
+    const clean = str.trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const parsed = new Date(y, m, d, 0, 0, 0, 0);
+        if (!isNaN(parsed.getTime())) return parsed;
+    }
+    const fallback = new Date(str);
+    return isNaN(fallback.getTime()) ? null : fallback;
+}
+
     const getWeekRotation = useCallback((weekDate: Date, rotations: RotationCell[]) => {
         const wStart = new Date(weekDate);
         wStart.setHours(0, 0, 0, 0);
@@ -505,10 +525,11 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
         for (const r of rotations) {
             if (!r.start) continue;
-            const rStart = new Date(r.start);
-            rStart.setHours(0, 0, 0, 0);
+            const rStart = parseLocalDate(r.start);
+            if (!rStart) continue;
 
-            const rEnd = r.end ? new Date(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+            const rEnd = r.end ? parseLocalDate(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+            if (!rEnd) continue;
             rEnd.setHours(23, 59, 59, 999);
 
             const overlaps = wStart <= rEnd && wEnd >= rStart;
@@ -538,6 +559,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
         const mappedTipo = matchingRotation?.type || (status ? resolveTipo(status)?.codigo : null) || 'normal';
         setFormTipo(mappedTipo);
+        setFormExibirDia(Boolean(matchingRotation?.exibir_dia_inicio));
 
         if (matchingRotation?.start && matchingRotation?.end && isUuid(rotId)) {
             setFormStart(matchingRotation.start.slice(0, 10));
@@ -565,6 +587,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                 local_embarque: formLocalEmb,
                 local_desembarque: formVessel,
                 observacoes: formObs,
+                exibir_dia_inicio: formExibirDia,
             };
 
             const editingId = selectedCell.rotationId && isUuid(selectedCell.rotationId)
@@ -741,6 +764,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                 vessel: s.vessel,
                 observacoes: s.observacoes || null,
                 local_embarque: s.local_embarque || '',
+                exibir_dia_inicio: Boolean(s.exibir_dia_inicio),
             };
 
             const existing = byPosition[pos].find((c) => c.cpf === s.cpf);
@@ -770,12 +794,12 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
             for (const m of group.members) {
                 for (const r of m.rotations) {
                     if (r.start) {
-                        const d = new Date(r.start);
-                        if (!earliest || d < earliest) earliest = d;
+                        const d = parseLocalDate(r.start);
+                        if (d && (!earliest || d < earliest)) earliest = d;
                     }
                     if (r.end) {
-                        const d = new Date(r.end);
-                        if (!latest || d > latest) latest = d;
+                        const d = parseLocalDate(r.end);
+                        if (d && (!latest || d > latest)) latest = d;
                     }
                 }
             }
@@ -814,13 +838,15 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
 
     const filteredWeeks = useMemo(() => {
         if (!filterDateStart && !filterDateEnd) return weeks;
-        const startDate = filterDateStart ? new Date(filterDateStart) : null;
-        const endDate = filterDateEnd ? new Date(filterDateEnd) : null;
+        const startDate = filterDateStart ? parseLocalDate(filterDateStart) : null;
+        const endDate = filterDateEnd ? parseLocalDate(filterDateEnd) : null;
 
         return weeks.filter((w) => {
             const weekDate = new Date(w.date);
+            weekDate.setHours(0, 0, 0, 0);
             const weekEnd = new Date(weekDate);
             weekEnd.setDate(weekEnd.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
             if (startDate && endDate) {
                 return weekEnd >= startDate && weekDate <= endDate;
             }
@@ -895,28 +921,13 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         }
     }, [loading, filteredWeeks.length, scrollToCurrentWeek]);
 
-    const getWeekStatus = useCallback((weekDate: Date, rotations: RotationCell[]): string => {
-        const wStart = new Date(weekDate);
-        wStart.setHours(0, 0, 0, 0);
-        const wEnd = new Date(wStart);
-        wEnd.setDate(wEnd.getDate() + 6);
-        wEnd.setHours(23, 59, 59, 999);
-
-        for (const r of rotations) {
-            if (!r.start) continue;
-            const rStart = new Date(r.start);
-            rStart.setHours(0, 0, 0, 0);
-
-            const rEnd = r.end ? new Date(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
-            rEnd.setHours(23, 59, 59, 999);
-
-            const overlaps = wStart <= rEnd && wEnd >= rStart;
-            if (!overlaps) continue;
-
-            return getDisplayCode(r.type || 'normal');
-        }
-        return '';
-    }, [getDisplayCode]);
+    const getWeekStatus = useCallback(
+        (weekDate: Date, rotations: RotationCell[]): string => {
+            const rot = getWeekRotation(weekDate, rotations);
+            return rot ? getDisplayCode(rot.type || 'normal') : '';
+        },
+        [getWeekRotation, getDisplayCode]
+    );
 
     const getWeekRotationMeta = useCallback(
         (weekDate: Date, rotations: RotationCell[]) => {
@@ -929,17 +940,20 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                     startDay: null,
                     startFormatted: '',
                     vessel: '',
+                    exibir_dia_inicio: false,
                 };
             }
 
             let startDay: number | null = null;
             let startFormatted = '';
             if (rot.start) {
-                const cleanStart = rot.start.slice(0, 10);
-                const parts = cleanStart.split('-');
-                if (parts.length === 3) {
-                    startDay = parseInt(parts[2], 10);
-                    startFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                const parsed = parseLocalDate(rot.start);
+                if (parsed) {
+                    startDay = parsed.getDate();
+                    const dStr = String(parsed.getDate()).padStart(2, '0');
+                    const mStr = String(parsed.getMonth() + 1).padStart(2, '0');
+                    const yStr = parsed.getFullYear();
+                    startFormatted = `${dStr}/${mStr}/${yStr}`;
                 }
             }
 
@@ -950,6 +964,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                 startDay,
                 startFormatted,
                 vessel: rot.vessel || '',
+                exibir_dia_inicio: Boolean(rot.exibir_dia_inicio),
             };
         },
         [getWeekRotation, getDisplayCode]
@@ -1400,7 +1415,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                     </div>
                 ))}
                 <div className="flex items-center gap-1.5 flex-shrink-0 bg-slate-200/80 text-slate-700 font-semibold text-[10px] px-2 py-0.5 rounded-md ml-1">
-                    <span>d.X</span>
+                    <span className="font-mono font-bold">d.X</span>
                     <span className="font-normal text-slate-600">= Dia inicial do evento</span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0 text-slate-600 ml-auto">
@@ -1594,6 +1609,28 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
                                         className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                                     />
                                 </div>
+                            </div>
+
+                            {/* Toggle Indicação do Dia de Início */}
+                            <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors">
+                                <div className="pr-3">
+                                    <label htmlFor="exibir-dia-toggle" className="text-xs font-semibold text-slate-800 cursor-pointer block">
+                                        Indicar dia de início na célula (d.X)
+                                    </label>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                        Exibe o dia de início ({formStart ? `d.${parseInt(formStart.split('-')[2] || '0', 10)}` : 'd.X'}) na célula da escala
+                                    </p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                    <input
+                                        id="exibir-dia-toggle"
+                                        type="checkbox"
+                                        checked={formExibirDia}
+                                        onChange={(e) => setFormExibirDia(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
                             </div>
 
                             {/* Origin / Local Embarque */}
