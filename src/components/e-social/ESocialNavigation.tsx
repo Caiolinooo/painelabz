@@ -21,7 +21,7 @@ export default function ESocialNavigation() {
     {
       id: 'eventos',
       href: '/department/e-social/eventos',
-      label: t('eSocial.tabs.eventos', 'Eventos Enviados'),
+      label: t('eSocial.tabs.eventos', 'Eventos & Envios'),
       icon: FiList,
     },
     {

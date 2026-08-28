@@ -24,22 +24,76 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const codigo = searchParams.get('codigo');
     const modulo_origem = searchParams.get('modulo_origem');
-    const cpf_trabalhador = searchParams.get('cpf_trabalhador') || searchParams.get('funcionario_id');
+    const cpfParam = searchParams.get('cpf') || searchParams.get('cpf_trabalhador') || searchParams.get('funcionario_id');
+    const searchParam = searchParams.get('search') || searchParams.get('busca') || searchParams.get('q');
     const cnpj_empregador = searchParams.get('cnpj_empregador');
     const competencia = searchParams.get('competencia');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.max(1, parseInt(searchParams.get('limit') || '50'));
+    const offsetParam = searchParams.get('offset');
+    const offset = offsetParam !== null ? Math.max(0, parseInt(offsetParam)) : (page - 1) * limit;
 
     let query = supabaseAdmin
       .from('esocial_eventos')
       .select('*, esocial_eventos_catalogo!evento_codigo(nome)', { count: 'exact' });
 
-    if (status) query = query.eq('status', status);
-    if (codigo) query = query.eq('evento_codigo', codigo);
+    // Status filtering (support groups and single status)
+    if (status) {
+      if (status === 'enviados' || status === 'transmitidos') {
+        query = query.in('status', ['enviado', 'processado']);
+      } else if (status === 'pendencias' || status === 'fila') {
+        query = query.in('status', ['rascunho', 'pendente_revisao', 'revisao_aprovado', 'fila_envio']);
+      } else if (status === 'revisao') {
+        query = query.eq('status', 'pendente_revisao');
+      } else if (status === 'erro') {
+        query = query.in('status', ['erro', 'devolvido', 'revisao_rejeitado']);
+      } else {
+        query = query.eq('status', status);
+      }
+    }
+
+    // Code filtering (e.g., '2220' or 'S-2220')
+    if (codigo) {
+      const formattedCode = codigo.toUpperCase().startsWith('S-') ? codigo.toUpperCase() : `S-${codigo.toUpperCase()}`;
+      query = query.or(`evento_codigo.eq.${formattedCode},evento_codigo.ilike.%${codigo}%`);
+    }
+
     if (modulo_origem) query = query.eq('modulo_origem', modulo_origem);
-    if (cpf_trabalhador) query = query.eq('cpf_trabalhador', cpf_trabalhador);
-    if (cnpj_empregador) query = query.eq('cnpj_empregador', cnpj_empregador);
+    if (cnpj_empregador) query = query.eq('cnpj_empregador', cnpj_empregador.replace(/\D/g, ''));
     if (competencia) query = query.eq('dados_evento->>competencia', competencia);
+
+    // Filter by specific CPF or general search term (worker name, CPF with/without mask)
+    const effectiveSearch = (cpfParam || searchParam || '').trim();
+    if (effectiveSearch) {
+      const cleanSearchDigits = effectiveSearch.replace(/\D/g, '');
+      const searchConditions: string[] = [];
+
+      if (cleanSearchDigits.length >= 3) {
+        searchConditions.push(`cpf_trabalhador.ilike.%${cleanSearchDigits}%`);
+      }
+      searchConditions.push(`matricula.ilike.%${effectiveSearch}%`);
+
+      // If search has alphabetic characters, search worker names in gt_colaboradores first
+      if (/[a-zA-Z]/.test(effectiveSearch)) {
+        const { data: matchedColabs } = await supabaseAdmin
+          .from('gt_colaboradores')
+          .select('cpf')
+          .ilike('nome_completo', `%${effectiveSearch}%`)
+          .limit(50);
+
+        if (matchedColabs && matchedColabs.length > 0) {
+          const matchedCpfs = matchedColabs
+            .map(c => String(c.cpf || '').replace(/\D/g, ''))
+            .filter(Boolean);
+
+          matchedCpfs.forEach(c => searchConditions.push(`cpf_trabalhador.eq.${c}`));
+        }
+      }
+
+      if (searchConditions.length > 0) {
+        query = query.or(searchConditions.join(','));
+      }
+    }
 
     query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
@@ -102,12 +156,17 @@ export async function GET(request: NextRequest) {
       .select('*')
       .maybeSingle();
 
+    const totalCount = count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
     return NextResponse.json({
       success: true,
       eventos,
-      total: count || 0,
+      total: totalCount,
+      page,
       limit,
       offset,
+      totalPages,
       resumo: dashboardData || null,
     });
   } catch (error) {

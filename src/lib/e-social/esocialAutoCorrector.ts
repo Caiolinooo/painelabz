@@ -51,16 +51,32 @@ const TIPO_EXAME_MAP: Record<string, number> = {
   'periodico': 1,
   'periódico': 1,
   'retorno': 2,
+  'retorno ao trabalho': 2,
   'mudanca': 3,
   'mudança': 3,
-  'demissional': 4
+  'mudanca de funcao': 3,
+  'mudança de função': 3,
+  'mudanca de risco': 3,
+  'mudança de risco': 3,
+  'pontual': 4,
+  'monitoracao pontual': 4,
+  'monitoração pontual': 4,
+  'demissional': 9,
+  '0': 0,
+  '1': 1,
+  '2': 2,
+  '3': 3,
+  '4': 4,
+  '9': 9
 };
 
 const RESULTADO_ASO_MAP: Record<string, number> = {
   'apto': 1,
-  'apto com restricao': 2,
-  'apto com restrição': 2,
-  'inapto': 3
+  'apto com restricao': 1,
+  'apto com restrição': 1,
+  'inapto': 2,
+  '1': 1,
+  '2': 2
 };
 
 const UFS_VALIDAS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
@@ -85,8 +101,9 @@ export function autoCorrigirDadosEvento(codigoEvento: string, dadosEvento: any, 
   };
 
   const aplicarDuplo = (campo: string, novoValor: any, descricao: string) => {
-    if (dados[campo] !== undefined) aplicarCorrecao(dados, campo, novoValor, descricao);
-    if (dados.dadosEspecificos[campo] !== undefined) aplicarCorrecao(dados.dadosEspecificos, campo, novoValor, descricao);
+    aplicarCorrecao(dados, campo, novoValor, descricao);
+    if (!dados.dadosEspecificos) dados.dadosEspecificos = {};
+    aplicarCorrecao(dados.dadosEspecificos, campo, novoValor, descricao);
   };
 
   // 1. Correção de CPF

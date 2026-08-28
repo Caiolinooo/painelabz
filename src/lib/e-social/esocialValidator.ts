@@ -1,5 +1,3 @@
-import { ESocialEvento } from '@/types/e-social';
-
 export interface ErroValidacao {
   campo: string;
   mensagem: string;
@@ -336,7 +334,7 @@ export function validarXMLGerado(xml: string, codigoEvento: string): ResultadoVa
     if (!/<nmMed>/.test(xml)) erros.push({ campo: 'nmMed', mensagem: 'Falta tag <nmMed> no XML', tipo: 'estrutura', autocorrigivel: false });
     
     // Bug histórico do S-2220
-    if (/<aso>\\s*<resAso>/.test(xml)) {
+    if (/<aso>\s*<resAso>/.test(xml)) {
       erros.push({ campo: 'aso', mensagem: '<dtAso> deve vir antes de <resAso> em <aso>', tipo: 'estrutura', autocorrigivel: true });
     }
   } else if (codigoEvento === 'S-2240') {
