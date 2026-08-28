@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         local_embarque: local_embarque || '',
         local_desembarque: local_desembarque || '',
         observacoes: observacoes || '',
-        exibir_dia_inicio: Boolean(exibir_dia_inicio),
+        exibir_dia_inicio: exibir_dia_inicio !== undefined ? Boolean(exibir_dia_inicio) : true,
         origem: 'local',
         created_at: new Date().toISOString(),
       })

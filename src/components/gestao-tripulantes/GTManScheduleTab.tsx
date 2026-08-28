@@ -559,7 +559,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
         const mappedTipo = matchingRotation?.type || (status ? resolveTipo(status)?.codigo : null) || 'normal';
         setFormTipo(mappedTipo);
-        setFormExibirDia(Boolean(matchingRotation?.exibir_dia_inicio));
+        setFormExibirDia(matchingRotation?.exibir_dia_inicio !== undefined ? Boolean(matchingRotation.exibir_dia_inicio) : true);
 
         if (matchingRotation?.start && matchingRotation?.end && isUuid(rotId)) {
             setFormStart(matchingRotation.start.slice(0, 10));
@@ -1085,12 +1085,16 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     cellStyle.font = { bold: true, color: { rgb: '000000' }, sz: 10 };
                     cellStyle.border = defaultBorder;
                 } else {
-                    const code = typeof cell.v === 'string' ? cell.v.replace(/\s*💬\s*$/, '').trim() : '';
-                    if (code && colorByCode[code]) {
-                        cellStyle.fill = { fgColor: { rgb: colorByCode[code].bg } };
-                        cellStyle.font = { color: { rgb: colorByCode[code].text }, bold: true, sz: 10 };
+                    const rawVal = typeof cell.v === 'string' ? cell.v.replace(/\s*💬\s*$/, '').trim() : '';
+                    const match = rawVal.match(/^([A-Za-z0-9\-_]+)(?:\s+(d\.\d+))?$/i);
+                    const baseCode = match ? match[1].toUpperCase() : rawVal;
+                    const daySuffix = match && match[2] ? match[2] : '';
+
+                    if (baseCode && colorByCode[baseCode]) {
+                        cellStyle.fill = { fgColor: { rgb: colorByCode[baseCode].bg } };
+                        cellStyle.font = { color: { rgb: colorByCode[baseCode].text }, bold: true, sz: 10 };
                         cellStyle.border = defaultBorder;
-                        cell.v = code;
+                        cell.v = daySuffix ? `${baseCode}\n${daySuffix}` : baseCode;
                     } else if (cell.v) {
                         cellStyle.font = { color: { rgb: C === 0 ? '002060' : '000000' }, bold: C < 3, sz: 10 };
                         if (C === 1 || C === 2) cellStyle.fill = { fgColor: { rgb: 'E7E6E6' } };

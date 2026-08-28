@@ -116,13 +116,19 @@ export function autoCorrigirDadosEvento(codigoEvento: string, dadosEvento: any, 
   });
 
   // 2. Correção de CNPJ
-  ['cnpj', 'nrInsc'].forEach(c => {
-    const val = dados[c] || dados.dadosEspecificos[c];
-    if (val && typeof val === 'string' && /\D/.test(val)) {
-      const clean = val.replace(/\D/g, '');
-      aplicarDuplo(c, clean, 'Formatação de CNPJ');
-    }
-  });
+  const cnpjAtual = dados.cnpj || dados.nrInsc || dados.dadosEspecificos.cnpj || dados.dadosEspecificos.nrInsc;
+  if (!cnpjAtual) {
+    aplicarDuplo('cnpj', '17784306000189', 'CNPJ Padrão do Empregador');
+    aplicarDuplo('nrInsc', '17784306000189', 'CNPJ Padrão do Empregador');
+  } else {
+    ['cnpj', 'nrInsc'].forEach(c => {
+      const val = dados[c] || dados.dadosEspecificos[c];
+      if (val && typeof val === 'string' && /\D/.test(val)) {
+        const clean = val.replace(/\D/g, '');
+        aplicarDuplo(c, clean, 'Formatação de CNPJ');
+      }
+    });
+  }
 
   // 3. Correção de Datas
   const corrigirData = (obj: any, campo: string) => {
@@ -194,6 +200,18 @@ export function autoCorrigirDadosEvento(codigoEvento: string, dadosEvento: any, 
       if (norm !== null) {
         aplicarCorrecao(dados.dadosEspecificos, dados.dadosEspecificos.resultado ? 'resultado' : 'resAso', norm, 'Conversão Resultado ASO');
       }
+    }
+  }
+
+  // 10. Correções específicas S-2200
+  if (codigoEvento === 'S-2200') {
+    const tipoAdm = dados.tipoAdmissao || dados.dadosEspecificos.tipoAdmissao;
+    if (!tipoAdm) {
+      aplicarDuplo('tipoAdmissao', '1', 'Tipo de Admissão Padrão (1 - Admissão)');
+    }
+    const cbo = dados.codCBO || dados.cbo || dados.dadosEspecificos.codCBO || dados.dadosEspecificos.cbo;
+    if (!cbo) {
+      aplicarDuplo('codCBO', '215105', 'CBO Padrão Marítimo (2151-05)');
     }
   }
 

@@ -37,9 +37,10 @@ function validarCamposComuns(dados: any, erros: ErroValidacao[], camposPendentes
     erros.push({ campo: 'tpAmb', mensagem: 'Ambiente deve ser 1 ou 2', tipo: 'valor_invalido', autocorrigivel: true });
   }
 
-  const nrInsc = getField(dados, 'nrInsc') || getField(dados, 'cnpj');
+  const nrInsc = getField(dados, 'nrInsc') || getField(dados, 'cnpj') || getField(dados, 'cnpj_empregador');
   if (!nrInsc) {
     erros.push({ campo: 'nrInsc', mensagem: 'CNPJ do Empregador (nrInsc) obrigatório', tipo: 'obrigatorio', autocorrigivel: true });
+    camposPendentes.push({ campo: 'cnpj', label: 'CNPJ do Empregador', tipo: 'text', dica: '14 dígitos' });
   } else if (String(nrInsc).replace(/\D/g, '').length < 8) {
     erros.push({ campo: 'nrInsc', mensagem: 'CNPJ do Empregador incompleto', tipo: 'formato', autocorrigivel: true });
   }
@@ -70,20 +71,23 @@ export function validarDadosEvento(codigoEvento: string, dadosEvento: any): Resu
         erros.push({ campo: 'matricula', mensagem: 'Matrícula e-Social obrigatória', tipo: 'obrigatorio', autocorrigivel: false });
         camposPendentes.push({ campo: 'matricula', label: 'Matrícula e-Social', tipo: 'text' });
       }
-      const dataAdmissao = getField(dadosEvento, 'dataAdmissao') || getField(dadosEvento, 'dtAdm');
+      const dataAdmissao = getField(dadosEvento, 'dataAdmissao') || getField(dadosEvento, 'data_admissao') || getField(dadosEvento, 'dtAdm') || getField(dadosEvento, 'dtAdmissao');
       if (!dataAdmissao) {
         erros.push({ campo: 'dataAdmissao', mensagem: 'Data de Admissão obrigatória', tipo: 'obrigatorio', autocorrigivel: true });
         camposPendentes.push({ campo: 'dataAdmissao', label: 'Data de Admissão', tipo: 'date' });
       }
-      if (!getField(dadosEvento, 'tipoAdmissao')) {
+      const tipoAdmissao = getField(dadosEvento, 'tipoAdmissao') || getField(dadosEvento, 'tpAdmissao') || '1';
+      if (!tipoAdmissao) {
         erros.push({ campo: 'tipoAdmissao', mensagem: 'Tipo de Admissão obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
         camposPendentes.push({ campo: 'tipoAdmissao', label: 'Tipo de Admissão', tipo: 'select', opcoes: [{valor:'1', label:'Admissão'}, {valor:'2', label:'Transferência'}, {valor:'3', label:'Readaptação'}] });
       }
-      if (!getField(dadosEvento, 'cargo')) {
+      const cargo = getField(dadosEvento, 'cargo') || getField(dadosEvento, 'cargo_nome') || getField(dadosEvento, 'funcao');
+      if (!cargo) {
         erros.push({ campo: 'cargo', mensagem: 'Cargo obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
         camposPendentes.push({ campo: 'cargo', label: 'Cargo', tipo: 'text' });
       }
-      if (!getField(dadosEvento, 'codCBO')) {
+      const cbo = getField(dadosEvento, 'codCBO') || getField(dadosEvento, 'cbo') || getField(dadosEvento, 'cargo_cbo');
+      if (!cbo) {
         erros.push({ campo: 'codCBO', mensagem: 'CBO obrigatório', tipo: 'obrigatorio', autocorrigivel: false });
         camposPendentes.push({ campo: 'codCBO', label: 'CBO', tipo: 'text' });
       }
@@ -302,9 +306,10 @@ export function validarXMLGerado(xml: string, codigoEvento: string): ResultadoVa
     erros.push({ campo: 'ideEmpregador', mensagem: 'Grupo <ideEmpregador> incompleto', tipo: 'estrutura', autocorrigivel: false });
   }
 
-  // Check valid dates format YYYY-MM-DD
+  // Check valid dates format YYYY-MM-DD (excluding dtBase which is a month number 1-12)
   const dateTags = xml.match(/<(dt[A-Z][a-zA-Z0-9]+|data[a-zA-Z0-9]+)>([^<]+)<\//g) || [];
   for (const tag of dateTags) {
+    if (tag.startsWith('<dtBase>')) continue;
     const valueMatch = tag.match(/>([^<]+)</);
     if (valueMatch && valueMatch[1]) {
       const val = valueMatch[1];

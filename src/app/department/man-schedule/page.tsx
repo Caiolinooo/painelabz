@@ -402,14 +402,21 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     cellStyle.font = { bold: true, color: { rgb: "000000" }, sz: 10 };
                     cellStyle.border = defaultBorder;
                 } else {
-                    if (cell.v === 'ON' || cell.v === 'FI' || cell.v === 'DBA') {
+                    const rawVal = typeof cell.v === 'string' ? cell.v.trim() : '';
+                    const match = rawVal.match(/^([A-Za-z0-9\-_]+)(?:\s+(d\.\d+))?$/i);
+                    const baseCode = match ? match[1].toUpperCase() : rawVal;
+                    const daySuffix = match && match[2] ? match[2] : '';
+
+                    if (baseCode === 'ON' || baseCode === 'FI' || baseCode === 'DBA') {
                         cellStyle.fill = { fgColor: { rgb: "E2EFDA" } };
                         cellStyle.font = { color: { rgb: "00B050" }, bold: true, sz: 10 };
                         cellStyle.border = defaultBorder;
-                    } else if (cell.v === 'OFF-C' || cell.v === 'STB') {
+                        cell.v = daySuffix ? `${baseCode}\n${daySuffix}` : baseCode;
+                    } else if (baseCode === 'OFF-C' || baseCode === 'STB') {
                         cellStyle.fill = { fgColor: { rgb: "F4CCCC" } };
                         cellStyle.font = { color: { rgb: "CC0000" }, bold: true, sz: 10 };
                         cellStyle.border = defaultBorder;
+                        cell.v = daySuffix ? `${baseCode}\n${daySuffix}` : baseCode;
                     } else if (cell.v) {
                         cellStyle.font = { color: { rgb: C === 0 ? "002060" : "000000" }, bold: C < 3, sz: 10 };
                         if (C === 1 || C === 2) cellStyle.fill = { fgColor: { rgb: "E7E6E6" } };

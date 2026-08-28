@@ -128,8 +128,10 @@ export default function EventoRevisao({ evento, open, onClose, onApprove, onReje
       const data = await response.json();
       setValidationResult(data);
       if (data.pronto) {
-        toast.success('Evento validado com sucesso!');
-        setTimeout(() => window.location.reload(), 1500);
+        if (data.xml) evento.xml_gerado = data.xml;
+        if (data.evento) Object.assign(evento, data.evento);
+        toast.success('Evento validado com sucesso! XML Homologado.');
+        setTimeout(() => window.location.reload(), 1200);
       } else {
         toast.error('O evento possui pendências a serem corrigidas.');
       }

@@ -72,6 +72,9 @@ export async function POST(
 
       // Atualiza o objeto para retorno
       Object.assign(evento, updateData);
+    } else if (result.dadosCorrigidos) {
+      await updateEvento(id, { dados_evento: result.dadosCorrigidos });
+      Object.assign(evento, { dados_evento: result.dadosCorrigidos });
     }
 
     return NextResponse.json({ ...result, evento });
