@@ -311,6 +311,9 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         wEnd.setDate(wEnd.getDate() + 6);
         wEnd.setHours(23, 59, 59, 999);
 
+        let bestRot: any = null;
+        let bestScore = -1;
+
         for (const r of rotations) {
             if (!r.start) continue;
             const rStart = parseLocalDate(r.start);
@@ -321,25 +324,46 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             rEnd.setHours(23, 59, 59, 999);
 
             const overlaps = wStart <= rEnd && wEnd >= rStart;
-            if (!overlaps) continue;
-
-            let dayLabel: string | undefined = undefined;
-            if (r.exibir_dia_inicio && r.start) {
-                const parsed = parseLocalDate(r.start);
-                if (parsed && parsed >= wStart && parsed <= wEnd) {
-                    dayLabel = `d.${parsed.getDate()}`;
+            if (overlaps) {
+                const startsInWeek = rStart >= wStart && rStart <= wEnd;
+                const isSpecific = r.type && r.type !== 'normal';
+                const score = (startsInWeek ? 1000 : 10) + (isSpecific ? 50 : 0);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestRot = r;
                 }
             }
-
-            let status: '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' = 'ON';
-            if (r.type === 'fi') status = 'FI';
-            else if (r.type === 'dba') status = 'DBA';
-            else if (r.type === 'stb') status = 'STB';
-            else if (r.type === 'offc') status = 'OFF-C';
-
-            return { status, dayLabel };
         }
-        return { status: '' };
+
+        if (!bestRot) return { status: '' };
+
+        let dayLabel: string | undefined = undefined;
+        if (bestRot.exibir_dia_inicio && bestRot.start) {
+            const parsed = parseLocalDate(bestRot.start);
+            if (parsed) {
+                const directlyInWeek = parsed >= wStart && parsed <= wEnd;
+                if (directlyInWeek) {
+                    dayLabel = `d.${parsed.getDate()}`;
+                } else {
+                    // Se começou antes mas é a primeira semana visível
+                    const prevWeek = new Date(wStart);
+                    prevWeek.setDate(prevWeek.getDate() - 7);
+                    const prevMeta = getWeekRotationMeta(prevWeek, rotations);
+                    const isFirstWeek = !prevMeta.status || prevMeta.status !== bestRot.type?.toUpperCase();
+                    if (isFirstWeek) {
+                        dayLabel = `d.${parsed.getDate()}`;
+                    }
+                }
+            }
+        }
+
+        let status: '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' = 'ON';
+        if (bestRot.type === 'fi') status = 'FI';
+        else if (bestRot.type === 'dba') status = 'DBA';
+        else if (bestRot.type === 'stb') status = 'STB';
+        else if (bestRot.type === 'offc') status = 'OFF-C';
+
+        return { status, dayLabel };
     };
 
     const getWeekStatus = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string; exibir_dia_inicio?: boolean }[]) => {

@@ -483,16 +483,16 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
         }
     }, []);
 
-    const fetchSchedules = useCallback(async (force = false) => {
+    const fetchSchedules = useCallback(async (force = false, silent = false) => {
         try {
-            if (!scheduleCache) setLoading(true);
+            if (!silent && !scheduleCache) setLoading(true);
             const data = await loadScheduleRows(force);
             setAllSchedules(data);
         } catch (error: unknown) {
             console.error('Error fetching schedules:', error);
-            toast.error(error instanceof Error ? error.message : 'Erro ao carregar escala do MIO.');
+            if (!silent) toast.error(error instanceof Error ? error.message : 'Erro ao carregar escala do MIO.');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, []);
 
@@ -523,6 +523,9 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         wEnd.setDate(wEnd.getDate() + 6);
         wEnd.setHours(23, 59, 59, 999);
 
+        let bestRot: RotationCell | null = null;
+        let bestScore = -1;
+
         for (const r of rotations) {
             if (!r.start) continue;
             const rStart = parseLocalDate(r.start);
@@ -533,9 +536,20 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             rEnd.setHours(23, 59, 59, 999);
 
             const overlaps = wStart <= rEnd && wEnd >= rStart;
-            if (overlaps) return r;
+            if (overlaps) {
+                // Prioridade 1: Evento cujo início ocorre dentro desta semana (ex: STB começando dia 5 na semana do dia 1)
+                const startsInWeek = rStart >= wStart && rStart <= wEnd;
+                // Prioridade 2: Eventos específicos cadastrados (standby, folga, dobra, etc.)
+                const isSpecific = r.type && r.type !== 'normal';
+                // Prioridade 3: Registro com ID persistido localmente
+                const score = (startsInWeek ? 1000 : 10) + (isSpecific ? 50 : 0) + (r.id ? 5 : 0);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestRot = r;
+                }
+            }
         }
-        return null;
+        return bestRot;
     }, []);
 
     const handleCellClick = (cpf: string, name: string, date: Date, status: string, rotations: RotationCell[]) => {
@@ -577,6 +591,38 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
     const handleSaveEvent = async () => {
         if (!selectedCell) return;
+        const editingId = selectedCell.rotationId && isUuid(selectedCell.rotationId)
+            ? selectedCell.rotationId
+            : null;
+
+        const optimisticId = editingId || `temp-${Date.now()}`;
+        const updatedRot: RotationCell = {
+            id: optimisticId,
+            start: formStart,
+            end: formEnd,
+            type: formTipo,
+            vessel: formVessel,
+            local_embarque: formLocalEmb,
+            observacoes: formObs,
+            exibir_dia_inicio: formExibirDia,
+        };
+
+        // 1. Atualização Otimista Imediata em Tempo Real (0ms de atraso, sem piscar nem recarregar)
+        setAllSchedules((prev) =>
+            prev.map((crew) => {
+                if (crew.cpf !== selectedCell.cpf) return crew;
+                let nextRotations = [...(crew.rotations || [])];
+                if (editingId) {
+                    nextRotations = nextRotations.map((r) => (r.id === editingId ? { ...r, ...updatedRot } : r));
+                } else {
+                    nextRotations.push(updatedRot);
+                }
+                return { ...crew, rotations: nextRotations };
+            })
+        );
+
+        setSelectedCell(null);
+
         try {
             setSubmittingEvent(true);
             const payload = {
@@ -589,10 +635,6 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                 observacoes: formObs,
                 exibir_dia_inicio: formExibirDia,
             };
-
-            const editingId = selectedCell.rotationId && isUuid(selectedCell.rotationId)
-                ? selectedCell.rotationId
-                : null;
 
             const res = editingId
                 ? await fetchWithToken(`/api/gestao-tripulantes/embarques/${editingId}`, {
@@ -612,10 +654,11 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             }
 
             toast.success(editingId ? 'Evento de escala atualizado!' : 'Evento de escala inserido com sucesso!');
-            setSelectedCell(null);
-            fetchSchedules(true);
+            // Sincronização silenciosa em background
+            fetchSchedules(true, true);
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Falha ao salvar evento.');
+            fetchSchedules(true, true);
         } finally {
             setSubmittingEvent(false);
         }
@@ -623,9 +666,24 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
     const handleDeleteEvent = async () => {
         if (!selectedCell?.rotationId) return;
+        const rotIdToDelete = selectedCell.rotationId;
+
+        // 1. Atualização Otimista Imediata em Tempo Real (0ms de atraso, sem piscar nem recarregar)
+        setAllSchedules((prev) =>
+            prev.map((crew) => {
+                if (crew.cpf !== selectedCell.cpf) return crew;
+                return {
+                    ...crew,
+                    rotations: (crew.rotations || []).filter((r) => r.id !== rotIdToDelete),
+                };
+            })
+        );
+
+        setSelectedCell(null);
+
         try {
             setSubmittingEvent(true);
-            const res = await fetchWithToken(`/api/gestao-tripulantes/embarques/${selectedCell.rotationId}`, {
+            const res = await fetchWithToken(`/api/gestao-tripulantes/embarques/${rotIdToDelete}`, {
                 method: 'DELETE',
             });
 
@@ -635,10 +693,11 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             }
 
             toast.success('Evento de escala removido com sucesso!');
-            setSelectedCell(null);
-            fetchSchedules(true);
+            // Sincronização silenciosa em background
+            fetchSchedules(true, true);
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Falha ao remover evento.');
+            fetchSchedules(true, true);
         } finally {
             setSubmittingEvent(false);
         }
@@ -963,7 +1022,16 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     wEnd.setDate(wEnd.getDate() + 6);
                     wEnd.setHours(23, 59, 59, 999);
 
-                    isStartWeek = parsed >= wStart && parsed <= wEnd;
+                    // 1. Data de início cai dentro desta semana (sábado a sexta)
+                    const directlyInWeek = parsed >= wStart && parsed <= wEnd;
+
+                    // 2. Se a semana anterior não exibia este evento, esta é a primeira semana visível dele
+                    const prevWeek = new Date(wStart);
+                    prevWeek.setDate(prevWeek.getDate() - 7);
+                    const prevRot = getWeekRotation(prevWeek, rotations);
+                    const isFirstDisplayedWeek = !prevRot || (prevRot.id ? prevRot.id !== rot.id : prevRot.type !== rot.type);
+
+                    isStartWeek = directlyInWeek || isFirstDisplayedWeek;
                 }
             }
 
