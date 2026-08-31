@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { FiDownload, FiSearch, FiMessageSquare, FiMove } from 'react-icons/fi';
+import { FiDownload, FiSearch, FiMessageSquare, FiMove, FiCheckSquare } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
 import {
     DEFAULT_TIPOS_EVENTO_ESCALA,
     hexToRgbNoHash,
@@ -213,8 +214,17 @@ const ScheduleRow = React.memo(function ScheduleRow({
                     tooltip: tooltipParts.join('\n\n'),
                 };
             }),
-        [weeks, member.rotations, member.name, getWeekRotationMeta, getCellStyle, currentWeekKey, locale]
-    );
+    const counts = useMemo(() => {
+        let on = 0, dba = 0, fi = 0, tre = 0;
+        for (const c of cellMetas) {
+            const st = (c.status || '').toUpperCase();
+            if (st === 'ON') on++;
+            else if (st === 'DBA') dba++;
+            else if (st === 'FI') fi++;
+            else if (st === 'TRE') tre++;
+        }
+        return { on, dba, fi, tre };
+    }, [cellMetas]);
 
     return (
         <tr className="hover:bg-slate-50/50">
@@ -232,6 +242,18 @@ const ScheduleRow = React.memo(function ScheduleRow({
             </td>
             <td className={`${groupBg} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[330px] z-20 min-w-[170px] w-[170px] max-w-[170px] text-ellipsis overflow-hidden whitespace-nowrap`} title={position}>
                 {position}
+            </td>
+            <td className="bg-emerald-50/50 text-emerald-800 font-bold text-center border-r border-b border-black px-1 min-w-[36px] w-[36px] text-[11px]" title="Total ON">
+                {counts.on || '-'}
+            </td>
+            <td className="bg-amber-50/50 text-amber-800 font-bold text-center border-r border-b border-black px-1 min-w-[36px] w-[36px] text-[11px]" title="Total DBA">
+                {counts.dba || '-'}
+            </td>
+            <td className="bg-blue-50/50 text-blue-800 font-bold text-center border-r border-b border-black px-1 min-w-[36px] w-[36px] text-[11px]" title="Total FI">
+                {counts.fi || '-'}
+            </td>
+            <td className="bg-purple-50/50 text-purple-800 font-bold text-center border-r border-b border-black px-1 min-w-[36px] w-[36px] text-[11px]" title="Total TRE">
+                {counts.tre || '-'}
             </td>
             {cellMetas.map((cell, wIdx) => (
                 <td
@@ -329,6 +351,7 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     const [submittingEvent, setSubmittingEvent] = useState(false);
 
     const [filterStatusAtivo, setFilterStatusAtivo] = useState<'ativos' | 'inativos' | 'todos'>('ativos');
+    const [isFechamentoOpen, setIsFechamentoOpen] = useState(false);
 
     const [hoveredComment, setHoveredComment] = useState<HoveredCommentData | null>(null);
 
@@ -1109,6 +1132,10 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             { wch: 35 },
             { wch: 8 },
             { wch: 25 },
+            { wch: 8 }, // ON
+            { wch: 8 }, // DBA
+            { wch: 8 }, // FI
+            { wch: 8 }, // TRE
             ...filteredWeeks.map(() => ({ wch: 12 })),
         ];
         ws['!cols'] = colWidths;
@@ -1146,28 +1173,43 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                 }
 
                 if (R === 0) {
-                    cellStyle.font = { bold: true, color: { rgb: C < 3 ? 'FFFFFF' : '002060' }, sz: 12 };
-                    cellStyle.fill = { fgColor: { rgb: C < 3 ? '002060' : 'E2EFDA' } };
+                    cellStyle.font = { bold: true, color: { rgb: C < 7 ? 'FFFFFF' : '002060' }, sz: 12 };
+                    cellStyle.fill = { fgColor: { rgb: C < 7 ? '002060' : 'E2EFDA' } };
                     cellStyle.border = defaultBorder;
                 } else if (R === 1 || R === 2) {
                     cellStyle.font = { bold: true, color: { rgb: '000000' }, sz: 10 };
+                    if (C >= 3 && C <= 6) {
+                        if (C === 3) { cellStyle.fill = { fgColor: { rgb: 'E2EFDA' } }; cellStyle.font.color = { rgb: '00B050' }; }
+                        else if (C === 4) { cellStyle.fill = { fgColor: { rgb: 'FCE4D6' } }; cellStyle.font.color = { rgb: 'C65911' }; }
+                        else if (C === 5) { cellStyle.fill = { fgColor: { rgb: 'D9E1F2' } }; cellStyle.font.color = { rgb: '203764' }; }
+                        else if (C === 6) { cellStyle.fill = { fgColor: { rgb: 'EDEDED' } }; cellStyle.font.color = { rgb: '3B3838' }; }
+                    }
                     cellStyle.border = defaultBorder;
                 } else {
-                    const rawVal = typeof cell.v === 'string' ? cell.v.replace(/\s*💬\s*$/, '').trim() : '';
-                    const match = rawVal.match(/^([A-Za-z0-9\-_]+)(?:\s+(d\.\d+))?$/i);
-                    const baseCode = match ? match[1].toUpperCase() : rawVal;
-                    const daySuffix = match && match[2] ? match[2] : '';
+                    if (C >= 3 && C <= 6) {
+                        cellStyle.font = { bold: true, sz: 10 };
+                        if (C === 3) { cellStyle.fill = { fgColor: { rgb: 'E2EFDA' } }; cellStyle.font.color = { rgb: '00B050' }; }
+                        else if (C === 4) { cellStyle.fill = { fgColor: { rgb: 'FCE4D6' } }; cellStyle.font.color = { rgb: 'C65911' }; }
+                        else if (C === 5) { cellStyle.fill = { fgColor: { rgb: 'D9E1F2' } }; cellStyle.font.color = { rgb: '203764' }; }
+                        else if (C === 6) { cellStyle.fill = { fgColor: { rgb: 'EDEDED' } }; cellStyle.font.color = { rgb: '3B3838' }; }
+                        cellStyle.border = defaultBorder;
+                    } else {
+                        const rawVal = typeof cell.v === 'string' ? cell.v.replace(/\s*💬\s*$/, '').trim() : '';
+                        const match = rawVal.match(/^([A-Za-z0-9\-_]+)(?:\s+(d\.\d+))?$/i);
+                        const baseCode = match ? match[1].toUpperCase() : rawVal;
+                        const daySuffix = match && match[2] ? match[2] : '';
 
-                    if (baseCode && colorByCode[baseCode]) {
-                        cellStyle.fill = { fgColor: { rgb: colorByCode[baseCode].bg } };
-                        cellStyle.font = { color: { rgb: colorByCode[baseCode].text }, bold: true, sz: 10 };
-                        cellStyle.border = defaultBorder;
-                        cell.v = daySuffix ? `${baseCode}\n${daySuffix}` : baseCode;
-                    } else if (cell.v) {
-                        cellStyle.font = { color: { rgb: C === 0 ? '002060' : '000000' }, bold: C < 3, sz: 10 };
-                        if (C === 1 || C === 2) cellStyle.fill = { fgColor: { rgb: 'E7E6E6' } };
-                        cellStyle.alignment.horizontal = C === 0 ? 'left' : 'center';
-                        cellStyle.border = defaultBorder;
+                        if (baseCode && colorByCode[baseCode]) {
+                            cellStyle.fill = { fgColor: { rgb: colorByCode[baseCode].bg } };
+                            cellStyle.font = { color: { rgb: colorByCode[baseCode].text }, bold: true, sz: 10 };
+                            cellStyle.border = defaultBorder;
+                            cell.v = daySuffix ? `${baseCode}\n${daySuffix}` : baseCode;
+                        } else if (cell.v) {
+                            cellStyle.font = { color: { rgb: C === 0 ? '002060' : '000000' }, bold: C < 3, sz: 10 };
+                            if (C === 1 || C === 2) cellStyle.fill = { fgColor: { rgb: 'E7E6E6' } };
+                            cellStyle.alignment.horizontal = C === 0 ? 'left' : 'center';
+                            cellStyle.border = defaultBorder;
+                        }
                     }
                 }
 
@@ -1339,14 +1381,26 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         </button>
                     </div>
 
-                    <button
-                        onClick={exportToExcel}
-                        disabled={loading || allSchedules.length === 0}
-                        className="flex items-center gap-2 bg-emerald-600 text-white px-3.5 py-1.5 rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none transition font-semibold text-xs flex-shrink-0 self-end h-[34px] ml-auto"
-                    >
-                        <FiDownload />
-                        {t('manSchedule.exportXLSX', 'Exportar XLSX')}
-                    </button>
+                    <div className="flex items-center gap-2 ml-auto self-end">
+                        <button
+                            onClick={() => setIsFechamentoOpen(true)}
+                            disabled={loading || allSchedules.length === 0}
+                            className="flex items-center gap-2 bg-abz-blue text-white px-3.5 py-1.5 rounded-lg shadow-sm hover:bg-blue-800 disabled:opacity-50 disabled:pointer-events-none transition font-semibold text-xs flex-shrink-0 h-[34px]"
+                            title="Revisão, aprovação e despacho oficial para o Departamento Pessoal"
+                        >
+                            <FiCheckSquare className="w-3.5 h-3.5" />
+                            Fechamento DP
+                        </button>
+
+                        <button
+                            onClick={exportToExcel}
+                            disabled={loading || allSchedules.length === 0}
+                            className="flex items-center gap-2 bg-emerald-600 text-white px-3.5 py-1.5 rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none transition font-semibold text-xs flex-shrink-0 h-[34px]"
+                        >
+                            <FiDownload />
+                            {t('manSchedule.exportXLSX', 'Exportar XLSX')}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1355,7 +1409,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     <thead className="sticky top-0 z-40 bg-white">
                         <tr>
                             <th
-                                colSpan={3}
+                                colSpan={7}
                                 className="bg-[#002060] text-white text-left px-3 py-2.5 font-bold border-r border-b border-black align-middle sticky left-0 z-30 min-w-[500px] w-[500px]"
                                 style={{ fontSize: '12px' }}
                             >
@@ -1384,6 +1438,18 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                             <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[330px] z-30 px-3 py-2 min-w-[170px] w-[170px] max-w-[170px]">
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
+                            <th className="bg-[#e2efda] text-[#00b050] font-bold text-center border-r border-b border-black px-1 py-1 min-w-[36px] w-[36px] text-[10px]" title="Total ON (A bordo)">
+                                ON
+                            </th>
+                            <th className="bg-[#fce4d6] text-[#c65911] font-bold text-center border-r border-b border-black px-1 py-1 min-w-[36px] w-[36px] text-[10px]" title="Total DBA (Dobra)">
+                                DBA
+                            </th>
+                            <th className="bg-[#d9e1f2] text-[#203764] font-bold text-center border-r border-b border-black px-1 py-1 min-w-[36px] w-[36px] text-[10px]" title="Total FI (Folga Indenizada)">
+                                FI
+                            </th>
+                            <th className="bg-[#ededed] text-[#3b3838] font-bold text-center border-r border-b border-black px-1 py-1 min-w-[36px] w-[36px] text-[10px]" title="Total TRE (Treinamento)">
+                                TRE
+                            </th>
                             {filteredWeeks.map((week, idx) => {
                                 const isCurrentWeek =
                                     currentWeekKey !== null &&
@@ -1410,6 +1476,10 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                             <th className="bg-slate-50 border-r border-b border-black sticky left-0 z-30"></th>
                             <th className="bg-slate-50 border-r border-b border-black sticky left-[260px] z-30"></th>
                             <th className="bg-slate-50 border-r border-b border-black sticky left-[330px] z-30"></th>
+                            <th className="bg-[#e2efda] border-r border-b border-black"></th>
+                            <th className="bg-[#fce4d6] border-r border-b border-black"></th>
+                            <th className="bg-[#d9e1f2] border-r border-b border-black"></th>
+                            <th className="bg-[#ededed] border-r border-b border-black"></th>
                             {filteredWeeks.map((week, idx) => {
                                 const isCurrentWeek =
                                     currentWeekKey !== null &&
@@ -1433,7 +1503,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-500 bg-white">
+                                <td colSpan={7 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-500 bg-white">
                                     <div className="flex items-center justify-center gap-2">
                                         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                                         <span>{t('manSchedule.loading', 'Carregando dados do MIO...')}</span>
@@ -1442,7 +1512,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                             </tr>
                         ) : positionGroups.length === 0 ? (
                             <tr>
-                                <td colSpan={3 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-400 bg-white">
+                                <td colSpan={7 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-400 bg-white">
                                     {t('manSchedule.empty', 'Nenhum tripulante encontrado para os filtros selecionados.')}
                                 </td>
                             </tr>
@@ -1473,7 +1543,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
                                         {gIdx < positionGroups.length - 1 && (
                                             <tr key={`div-${gIdx}`}>
-                                                <td colSpan={3 + filteredWeeks.length} className="bg-white h-2 border-b border-black"></td>
+                                                <td colSpan={7 + filteredWeeks.length} className="bg-white h-2 border-b border-black"></td>
                                             </tr>
                                         )}
                                     </React.Fragment>
@@ -1779,6 +1849,12 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     </div>
                 </div>
             )}
+
+            {/* Modal de Fechamento Mensal DP & Aprovação Digital */}
+            <ModalAprovacaoFechamento
+                isOpen={isFechamentoOpen}
+                onClose={() => setIsFechamentoOpen(false)}
+            />
         </div>
     );
 }

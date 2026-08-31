@@ -191,9 +191,23 @@ export async function GET(request: NextRequest) {
             `[ManSchedule] Cache miss (janela=${janelaParam}, signature=${cachedEntry ? 'stale' : 'empty'}) — rebuilding from gt_*`
         );
 
-        const fromDate = new Date(windowStart).toISOString().slice(0, 10);
-        const toDate = new Date(windowEnd).toISOString().slice(0, 10);
-        const lookback = new Date(windowStart - 180 * dayMs).toISOString().slice(0, 10);
+        const isAllJanela = !Number.isFinite(preset.pastDays) || janelaParam === 'all' || janelaParam === 'full';
+        const fromDate = isAllJanela ? '1990-01-01' : new Date(windowStart).toISOString().slice(0, 10);
+        const toDate = isAllJanela ? '2099-12-31' : new Date(windowEnd).toISOString().slice(0, 10);
+        const lookback = isAllJanela ? '1990-01-01' : new Date(windowStart - 180 * dayMs).toISOString().slice(0, 10);
+
+        let embQuery = supabaseAdmin
+            .from('gt_historico_embarques')
+            .select(`
+                id, colaborador_id, tipo, data_embarque, data_desembarque,
+                data_prevista_desembarque, local_embarque, local_desembarque,
+                observacoes, origem, mio_embarque_id, exibir_dia_inicio
+            `)
+            .is('deleted_at', null);
+
+        if (!isAllJanela) {
+            embQuery = embQuery.gte('data_embarque', lookback).lte('data_embarque', toDate);
+        }
 
         const blobStart = Date.now();
         const [{ data: colabs, error: colErr }, { data: embarques, error: embErr }] = await Promise.all([
@@ -206,16 +220,7 @@ export async function GET(request: NextRequest) {
                     embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome)
                 `)
                 .is('deleted_at', null),
-            supabaseAdmin
-                .from('gt_historico_embarques')
-                .select(`
-                    id, colaborador_id, tipo, data_embarque, data_desembarque,
-                    data_prevista_desembarque, local_embarque, local_desembarque,
-                    observacoes, origem, mio_embarque_id, exibir_dia_inicio
-                `)
-                .is('deleted_at', null)
-                .gte('data_embarque', lookback)
-                .lte('data_embarque', toDate),
+            embQuery,
         ]);
         timings.blobRead = Date.now() - blobStart;
 

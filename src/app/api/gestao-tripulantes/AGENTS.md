@@ -136,6 +136,32 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Official MIO ASO list: insomnia documents **POST `/sms-aso` as inclusão (write) — never called**. Pull probes GET `/sms-aso-get`, `/sms-aso-registro-get`, `/sms-aso`, exames, etc. Hits persist to `gt_documentos_aso`; misses stored as evidence in `gt_mio_entidades` tipo `aso_probe_evidence`. ASO-like training rows still classified into ASO.
 - No secrets in code; use env / `app_secrets` patterns from root DOX.
 
+### Fechamento Mensal de Escalas & Despacho ao Departamento Pessoal (DP)
+
+- **Workflow de Fechamento e Auditoria (`gt_relatorios_aprovacoes`)**:
+  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM`: Retorna preview consolidado com métricas por tripulante e totais gerais (`totalColaboradores`, `totalON`, `totalDBA`, `totalFI`, `totalTRE`), além de histórico de aprovação.
+  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM&download=true`: Gera e faz download direto da planilha oficial XLSX pré-formatada.
+  - `POST /api/gestao-tripulantes/relatorio-mensal/aprovar`: Valida permissão RBAC (`ADMIN` ou `MANAGER`), gera carimbo e hash SHA-256 de autenticidade (`GT_FECHAMENTO:mesAno:nome:cpf:data:ip`), grava assinatura digital e despacha por e-mail com anexo XLSX para as contas configuradas do DP (`emails_destinatarios_dp`).
+  - `GET /api/gestao-tripulantes/cron/relatorio-mensal`: Acionado periodicamente para checar se a data de corte do mês foi atingida e notificar pendências.
+  - `GET|PUT /api/gestao-tripulantes/relatorio-mensal/config`: Configura o dia de corte mensal (1-31), listas de e-mails principais e CC, envio automático e templates de mensagem.
+
+### Exportação da Planilha com Cômputo Individual (ON, DBA, FI, TRE)
+
+- O relatório gerado (`relatorio-escala-generator.ts` e exportação no cliente `GTManScheduleTab.tsx`) mantém formato unificado em aba única (`Schedule`), incluindo colunas dedicadas para os totais de cada colaborador no período:
+  - `ON`: Dias/Semanas a bordo
+  - `DBA`: Dias/Semanas de dobra
+  - `FI`: Dias/Semanas de folga indenizada
+  - `TRE`: Dias/Semanas de treinamento indenizado
+- Inclui linha final com somatório consolidado e bloco de chancela digital com hash de validação criptográfica.
+
+### Centros de Custo Globais
+
+- **Tabela `gt_centros_custo`**: `id`, `codigo` (ex: `CC-OP-001`), `nome`, `ativo`, `created_at`, `updated_at`.
+- **Endpoints Compartilhados**:
+  - `GET|POST /api/centros-custo` (global) e `GET|POST /api/gestao-tripulantes/centros-custo` (módulo).
+  - `PUT|DELETE /api/gestao-tripulantes/centros-custo/[id]`.
+- **Admin UI**: Aba `Centros de Custo` em `/admin/gestao-tripulantes` permitindo busca, cadastro, edição e ativação/desativação rápida.
+
 ## Verification
 
 - `GET /colaboradores/[id]` should log `[GT GET /colaboradores/<id>] <N>ms` with two waves; opening the modal must not fire two GETs 1ms apart.

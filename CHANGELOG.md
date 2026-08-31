@@ -1,5 +1,28 @@
 # Changelog
 
+## [5.67.0] - 2026-08-31
+
+### ⚓ Gestão de Tripulantes: Fechamento Mensal DP, Totais de Escala (ON/DBA/FI/TRE), Centros de Custo Globais & Histórico Completo
+
+Esta versão implementa o workflow completo de fechamento mensal de escalas para o Departamento Pessoal com aprovação auditável e assinatura digital, adiciona o cômputo e colunas individuais e totais de ON (A bordo), DBA (Dobra), FI (Folga Indenizada) e TRE (Treinamento Indenizado) na planilha de escalas em formato unificado de folha única, disponibiliza a gestão global de Centros de Custo compartilhados entre os 4 departamentos e garante a exibição do histórico completo de escalas sem truncamento.
+
+### Added
+- **Workflow de Fechamento Mensal & Envio ao Departamento Pessoal (DP)**:
+  - Tabela `gt_relatorios_aprovacoes` e configuração `gt_fechamento_mensal_config` no Supabase.
+  - Endpoints `/api/gestao-tripulantes/relatorio-mensal`, `/aprovar`, `/config` e cron `/cron/relatorio-mensal`.
+  - Modal `ModalAprovacaoFechamento` para visualização dos KPIs do mês, detalhamento dos tripulantes, assinatura digital com carimbo criptográfico (hash SHA-256) e disparo de e-mail corporativo com anexo XLSX oficial para o DP.
+  - Nova aba `Fechamento DP` (`WorkflowFechamentoTab`) no `/admin/gestao-tripulantes` para configurar data de corte (ex: dia 25), e-mails de destino e auditoria de fechamentos anteriores.
+- **Cômputo e Exportação de ON, DBA, FI e TRE por Colaborador**:
+  - Motor oficial de geração de planilhas `relatorio-escala-generator.ts` em aba única (`Schedule`) com cálculo individual de dias/semanas para ON, DBA, FI e TRE.
+  - Colunas dedicadas e estilizadas integradas visualmente na tabela de escalas (`GTManScheduleTab`) e no fluxo de `Exportar XLSX`.
+- **Gestão Global de Centros de Custo**:
+  - Tabela `gt_centros_custo` e rotas API `/api/centros-custo` e `/api/gestao-tripulantes/centros-custo`.
+  - Nova aba `Centros de Custo` (`CentrosCustoAdminTab`) no `/admin/gestao-tripulantes` permitindo cadastro, edição, busca e ativação/desativação rápida para uso conjunto em Gestão de Tripulantes, Folha/DP, Finanças e Logística.
+
+### Fixed
+- **Histórico Completo de Colaboradores e Escala (MIO + Local)**:
+  - Corrigido o tratamento de `janela=all` em `src/app/api/man-schedule/realtime/route.ts` para evitar `Invalid Date` decorrente de `Infinity`, retornando todo o histórico passado de embarques e eventos sem limitação de datas.
+
 ## [5.66.0] - 2026-08-28
 
 ### 🗓️ Gestão de Tripulantes (Man Schedule) — Alinhamento de Troca de Turma & Controle de Indicação de Início (d.X)
