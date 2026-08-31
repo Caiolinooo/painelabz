@@ -5,6 +5,7 @@
  */
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
+import { classificarValidadeCivil, dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
 
 export const DEFAULT_INCLUDE = [
   'profile',
@@ -115,14 +116,16 @@ function flattenEmbarque(row: Record<string, unknown>) {
   };
 }
 
-function countDocsByStatus(documentos: { status_validacao?: string }[]) {
+function countDocsByStatus(documentos: { status_validacao?: string; data_validade?: string | null }[]) {
   let vencidos = 0;
   let vencendo = 0;
   let validos = 0;
+  const hoje = dataLocalISO();
   for (const d of documentos) {
-    if (d.status_validacao === 'vencido') vencidos += 1;
-    else if (d.status_validacao === 'vencendo') vencendo += 1;
-    else if (d.status_validacao === 'valido') validos += 1;
+    const alerta = classificarValidadeCivil(d.data_validade, hoje);
+    if (alerta === 'vencido') vencidos += 1;
+    else if (alerta === 'vencendo') vencendo += 1;
+    else if (alerta === 'valido' || (!d.data_validade && d.status_validacao === 'valido')) validos += 1;
   }
   return { qtd_docs_vencidos: vencidos, qtd_docs_vencendo: vencendo, qtd_docs_validos: validos };
 }

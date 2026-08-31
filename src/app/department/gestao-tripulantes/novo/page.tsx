@@ -4,6 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import toast from 'react-hot-toast';
+import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
+import {
+  createGtLookupOption,
+  toLookupOptions,
+  type GtLookupKind,
+} from '@/components/gestao-tripulantes/createGtLookupOption';
 
 type TabId = 'dados-pessoais' | 'documentos' | 'endereco' | 'contato' | 'dados-bancarios' | 'vinculo' | 'esocial';
 
@@ -54,6 +60,39 @@ export default function NovoColaboradorPage() {
   }, []);
 
   const set = (field: string, value: any) => setForm(p => ({ ...p, [field]: value }));
+
+  const handleCreateLookup = async (
+    kind: GtLookupKind,
+    label: string,
+    setter: React.Dispatch<React.SetStateAction<Option[]>>,
+  ) => {
+    try {
+      const created = await createGtLookupOption(kind, label);
+      setter(prev => (prev.some(o => o.id === created.id) ? prev : [...prev, { id: created.id, nome: created.nome, codigo: created.codigo }]));
+      toast.success(`«${created.label}» adicionado`);
+      return created;
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao adicionar');
+      throw err;
+    }
+  };
+
+  const lookupSelect = (
+    field: string,
+    options: Option[],
+    kind: GtLookupKind,
+    setter: React.Dispatch<React.SetStateAction<Option[]>>,
+  ) => (
+    <SearchableCreatableSelect
+      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+      options={toLookupOptions(options, kind, form[field] ? { id: form[field], label: form[field] } : undefined)}
+      value={form[field] || ''}
+      onChange={id => set(field, id)}
+      allowCreate
+      onCreate={label => handleCreateLookup(kind, label, setter)}
+      placeholder="Buscar ou adicionar..."
+    />
+  );
 
   const handleOcrDocument = async (tipo: string) => {
     const input = document.createElement('input');
@@ -315,11 +354,11 @@ export default function NovoColaboradorPage() {
           <div>
             <h2 className="text-lg font-bold text-gray-800 mb-4">Vínculo Empregatício</h2>
             {section('Empresa e Cargo', <>
-              <div>{label('Empresa')}{select('empresa_id', empresas)}</div>
-              <div>{label('Cargo/Função')}{select('cargo_id', cargos)}</div>
+              <div>{label('Empresa')}{lookupSelect('empresa_id', empresas, 'empresas', setEmpresas)}</div>
+              <div>{label('Cargo/Função')}{lookupSelect('cargo_id', cargos, 'cargos', setCargos)}</div>
               <div>{label('CBO')}{input('cbo', { placeholder: 'Código Brasileiro de Ocupações' })}</div>
-              <div>{label('Centro de Custo')}{select('centro_custo_id', centrosCusto)}</div>
-              <div>{label('Embarcação Atual')}{select('embarcacao_atual_id', embarcacoes)}</div>
+              <div>{label('Centro de Custo')}{lookupSelect('centro_custo_id', centrosCusto, 'centros-custo', setCentrosCusto)}</div>
+              <div>{label('Embarcação Atual')}{lookupSelect('embarcacao_atual_id', embarcacoes, 'embarcacoes', setEmbarcacoes)}</div>
               <div>{label('Departamento')}{input('departamento')}</div>
             </>)}
             {section('Datas', <>

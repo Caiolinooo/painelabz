@@ -57,6 +57,23 @@ export function adicionarDiasLocalISO(dias: number, base = new Date()): string {
   return dataLocalISO(d);
 }
 
+export type ClassificacaoValidadeCivil = 'vencido' | 'vencendo' | 'valido' | 'sem_validade';
+
+/** Civil YYYY-MM-DD compare — never `new Date(iso)` UTC. Janela vencendo: hoje…hoje+30 inclusive. */
+export function classificarValidadeCivil(
+  dataValidade: string | null | undefined,
+  hoje = dataLocalISO(),
+  limite?: string,
+): ClassificacaoValidadeCivil {
+  const validade = String(dataValidade || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(validade)) return 'sem_validade';
+  const [y, m, d] = hoje.split('-').map(Number);
+  const limiteCivil = limite ?? dataLocalISO(new Date(y, (m || 1) - 1, (d || 1) + 30));
+  if (validade < hoje) return 'vencido';
+  if (validade <= limiteCivil) return 'vencendo';
+  return 'valido';
+}
+
 function normalizarColaborador(raw: unknown): AsoVencimentoColaborador | null {
   const colab = asRel(raw as Record<string, unknown> | null);
   if (!colab || typeof colab.id !== 'string') return null;
@@ -117,7 +134,8 @@ export async function buscarAsosComAlerta(diasJanela = 30): Promise<AsosComAlert
     const colaborador = normalizarColaborador(row.colaborador);
     if (!colaborador) continue;
 
-    const alerta: AsoAlertaStatus = validade < hoje ? 'vencido' : 'vencendo';
+    const alerta: AsoAlertaStatus =
+      classificarValidadeCivil(validade, hoje, limite) === 'vencido' ? 'vencido' : 'vencendo';
     const item: AsoVencimentoItem = {
       id: row.id,
       titulo: row.titulo,

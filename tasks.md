@@ -1,3 +1,18 @@
+## GT — lookup criável, KPIs ativos, docs vencidos, viewport dia/semana (2026-08-31)
+
+### Objetivo
+1. Cargo / Empresa / Embarcação / Centro de Custo: busca + criar novo (todas as ocorrências da feature).
+2. KPIs da Matriz (total / embarcados / back): só colaboradores `ativo=true` e centros de custo ativos.
+3. Conferir e corrigir contagem de documentos vencidos (data real + ativos).
+4. Man Schedule: checkbox — ligado = grade por dia; desligado = por semana (atual).
+
+### Passos
+- [x] Componente lookup compartilhado + APIs POST + trocar selects
+- [x] Dashboard GT filtra ativo + CC ativo; docs vencidos por `data_validade`
+- [x] Checkbox viewport dia/semana no `GTManScheduleTab`
+
+---
+
 ## DP — menu lateral + dados da tabela/ASO (2026-08-31)
 
 ### Problemas

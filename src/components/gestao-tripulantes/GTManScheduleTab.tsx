@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
+import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
 import {
     DEFAULT_TIPOS_EVENTO_ESCALA,
     hexToRgbNoHash,
@@ -73,6 +74,95 @@ function getPositionSortKey(pos: string): number {
 
 function isUuid(id: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+type ScheduleViewport = 'day' | 'week';
+
+const VIEWPORT_STORAGE_KEY = 'gt-man-schedule-viewport-day';
+const DAY_VIEWPORT_DEFAULT_WINDOW_DAYS = 90;
+
+function viewportColumnSpanDays(viewport: ScheduleViewport): number {
+    switch (viewport) {
+        case 'day':
+            return 1;
+        case 'week':
+            return 7;
+        default: {
+            const _never: never = viewport;
+            return _never;
+        }
+    }
+}
+
+function columnPeriod(columnDate: Date, viewport: ScheduleViewport): { start: Date; end: Date } {
+    const start = new Date(columnDate);
+    start.setHours(0, 0, 0, 0);
+    const span = viewportColumnSpanDays(viewport);
+    const end = new Date(start);
+    end.setDate(end.getDate() + span - 1);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
+
+function generateDayColumns(rangeStart: Date, rangeEnd: Date): { date: Date }[] {
+    const days: { date: Date }[] = [];
+    const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate(), 0, 0, 0, 0);
+    const last = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 0, 0, 0, 0);
+    if (last < cursor) {
+        return [{ date: new Date(cursor) }];
+    }
+    while (cursor <= last) {
+        days.push({ date: new Date(cursor) });
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return days;
+}
+
+function dayViewportDefaultWindow(): { start: Date; end: Date } {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(start.getDate() - 30);
+    const end = new Date(start);
+    end.setDate(end.getDate() + DAY_VIEWPORT_DEFAULT_WINDOW_DAYS - 1);
+    return { start, end };
+}
+
+function readViewportDayPreference(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+        return window.localStorage.getItem(VIEWPORT_STORAGE_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function persistViewportDayPreference(checked: boolean): void {
+    try {
+        window.localStorage.setItem(VIEWPORT_STORAGE_KEY, checked ? '1' : '0');
+    } catch {
+        // private mode / quota
+    }
+}
+
+function formatLocalYmd(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function cellPeriodTooltip(viewport: ScheduleViewport, formattedDate: string): string {
+    switch (viewport) {
+        case 'day':
+            return `no dia ${formattedDate}`;
+        case 'week':
+            return `na semana de ${formattedDate}`;
+        default: {
+            const _never: never = viewport;
+            return _never;
+        }
+    }
 }
 
 const SCHEDULE_CACHE_TTL_MS = 60_000;
@@ -145,6 +235,7 @@ interface ScheduleRowProps {
     groupCount: number | string;
     groupBg: string;
     weeks: { date: Date }[];
+    viewport: ScheduleViewport;
     currentWeekKey: string | null;
     isOpening: boolean;
     locale: string;
@@ -173,6 +264,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
     groupCount,
     groupBg,
     weeks,
+    viewport,
     currentWeekKey,
     isOpening,
     locale,
@@ -192,9 +284,10 @@ const ScheduleRow = React.memo(function ScheduleRow({
                 const isCurrentWeek =
                     currentWeekKey !== null && new Date(week.date).toDateString() === currentWeekKey;
                 const style = status ? getCellStyle(meta.type || status) : null;
+                const headerDate = formatHeaderDate(week.date, locale);
 
                 const tooltipParts = [
-                    `Clique para gerenciar escala de ${member.name} na semana de ${formatHeaderDate(week.date, locale)}`,
+                    `Clique para gerenciar escala de ${member.name} ${cellPeriodTooltip(viewport, headerDate)}`,
                 ];
                 if (meta.startFormatted) {
                     tooltipParts.push(`Início do evento: ${meta.startFormatted}`);
@@ -216,7 +309,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
                     tooltip: tooltipParts.join('\n\n'),
                 };
             }),
-        [weeks, member.rotations, member.name, getWeekRotationMeta, getCellStyle, currentWeekKey, locale]
+        [weeks, viewport, member.rotations, member.name, getWeekRotationMeta, getCellStyle, currentWeekKey, locale]
     );
 
     const counts = useMemo(() => {
@@ -383,8 +476,20 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     const [filterPosition, setFilterPosition] = useState('');
     const [filterDateStart, setFilterDateStart] = useState('');
     const [filterDateEnd, setFilterDateEnd] = useState('');
+    const [viewportDay, setViewportDay] = useState(false);
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setViewportDay(readViewportDayPreference());
+    }, []);
+
+    const viewport: ScheduleViewport = viewportDay ? 'day' : 'week';
+
+    const handleViewportDayChange = (checked: boolean) => {
+        setViewportDay(checked);
+        persistViewportDayPreference(checked);
+    };
 
     const handleDragStart = (e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('button, input, select, textarea, a')) {
@@ -545,11 +650,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 }
 
     const getWeekRotation = useCallback((weekDate: Date, rotations: RotationCell[]) => {
-        const wStart = new Date(weekDate);
-        wStart.setHours(0, 0, 0, 0);
-        const wEnd = new Date(wStart);
-        wEnd.setDate(wEnd.getDate() + 6);
-        wEnd.setHours(23, 59, 59, 999);
+        const { start: wStart, end: wEnd } = columnPeriod(weekDate, viewport);
 
         let bestRot: RotationCell | null = null;
         let bestScore = -1;
@@ -565,7 +666,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
             const overlaps = wStart <= rEnd && wEnd >= rStart;
             if (overlaps) {
-                // Prioridade 1: Evento cujo início ocorre dentro desta semana (ex: STB começando dia 5 na semana do dia 1)
+                // Prioridade 1: Evento cujo início ocorre dentro desta coluna (semana sáb–sex ou dia único)
                 const startsInWeek = rStart >= wStart && rStart <= wEnd;
                 // Prioridade 2: Eventos específicos cadastrados (standby, folga, dobra, etc.)
                 const isSpecific = r.type && r.type !== 'normal';
@@ -578,17 +679,17 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             }
         }
         return bestRot;
-    }, []);
+    }, [viewport]);
 
     const handleCellClick = (cpf: string, name: string, date: Date, status: string, rotations: RotationCell[]) => {
         const matchingRotation = getWeekRotation(date, rotations);
         const rotId = matchingRotation?.id || '';
         const currentVessel = matchingRotation?.vessel || '';
-        const formattedDate = date.toISOString().split('T')[0];
+        const formattedDate = formatLocalYmd(date);
 
         const defaultEnd = new Date(date);
         defaultEnd.setDate(defaultEnd.getDate() + 14);
-        const formattedEnd = defaultEnd.toISOString().split('T')[0];
+        const formattedEnd = formatLocalYmd(defaultEnd);
 
         setSelectedCell({ cpf, name, date, status, rotationId: rotId, vessel: currentVessel });
 
@@ -915,6 +1016,16 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             return d;
         };
 
+        if (viewport === 'day') {
+            const fallback = dayViewportDefaultWindow();
+            const startBound = parseLocalDate(filterDateStart) || (!filterDateStart && !filterDateEnd ? fallback.start : earliest);
+            const endBound = parseLocalDate(filterDateEnd) || (!filterDateStart && !filterDateEnd ? fallback.end : latest);
+            return {
+                weeks: generateDayColumns(startBound, endBound),
+                timelineStart: startBound,
+            };
+        }
+
         const start = snapToSaturday(new Date(earliest));
         start.setDate(start.getDate() - 14);
 
@@ -934,7 +1045,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         }
 
         return { weeks: generatedWeeks, timelineStart: start };
-    }, [positionGroups, filterDateStart, filterDateEnd]);
+    }, [positionGroups, filterDateStart, filterDateEnd, viewport]);
 
     const filteredWeeks = useMemo(() => {
         if (!filterDateStart && !filterDateEnd) return weeks;
@@ -942,23 +1053,19 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         const endDate = filterDateEnd ? parseLocalDate(filterDateEnd) : null;
 
         return weeks.filter((w) => {
-            const weekDate = new Date(w.date);
-            weekDate.setHours(0, 0, 0, 0);
-            const weekEnd = new Date(weekDate);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            weekEnd.setHours(23, 59, 59, 999);
+            const { start: colStart, end: colEnd } = columnPeriod(w.date, viewport);
             if (startDate && endDate) {
-                return weekEnd >= startDate && weekDate <= endDate;
+                return colEnd >= startDate && colStart <= endDate;
             }
             if (startDate) {
-                return weekEnd >= startDate;
+                return colEnd >= startDate;
             }
             if (endDate) {
-                return weekDate <= endDate;
+                return colStart <= endDate;
             }
             return true;
         });
-    }, [weeks, filterDateStart, filterDateEnd]);
+    }, [weeks, filterDateStart, filterDateEnd, viewport]);
 
     const currentWeekIndex = useMemo(() => {
         const today = new Date();
@@ -966,12 +1073,8 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
         let idx = -1;
         for (let i = 0; i < filteredWeeks.length; i++) {
-            const weekStart = new Date(filteredWeeks[i].date);
-            weekStart.setHours(0, 0, 0, 0);
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-
-            if (today >= weekStart && today <= weekEnd) {
+            const { start: colStart, end: colEnd } = columnPeriod(filteredWeeks[i].date, viewport);
+            if (today >= colStart && today <= colEnd) {
                 idx = i;
                 break;
             }
@@ -989,7 +1092,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         }
 
         return idx >= 0 ? idx : 0;
-    }, [filteredWeeks]);
+    }, [filteredWeeks, viewport]);
 
     const currentWeekKey = useMemo(
         () =>
@@ -1297,46 +1400,43 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         </div>
                     </div>
 
-                    <div className="min-w-[110px] flex-shrink-0">
+                    <div className="min-w-[140px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.companyLabel', 'Empresa')}</label>
-                        <select
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
+                        <SearchableCreatableSelect
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                            options={availableCompanies.map((comp) => ({ id: comp, label: comp }))}
                             value={filterCompany}
-                            onChange={(e) => setFilterCompany(e.target.value)}
-                        >
-                            <option value="">{t('manSchedule.allCompanies', 'Todas')}</option>
-                            {availableCompanies.map((comp, idx) => (
-                                <option key={idx} value={comp}>{comp}</option>
-                            ))}
-                        </select>
+                            onChange={setFilterCompany}
+                            placeholder={t('manSchedule.allCompanies', 'Todas')}
+                            emptyLabel={t('manSchedule.allCompanies', 'Todas')}
+                            allowCreate={false}
+                        />
                     </div>
 
-                    <div className="min-w-[110px] flex-shrink-0">
+                    <div className="min-w-[140px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.vesselLabel', 'Embarcação')}</label>
-                        <select
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
+                        <SearchableCreatableSelect
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                            options={availableVessels.map((v) => ({ id: v, label: v }))}
                             value={filterVessel}
-                            onChange={(e) => setFilterVessel(e.target.value)}
-                        >
-                            <option value="">{t('manSchedule.allVessels', 'Todas')}</option>
-                            {availableVessels.map((v, idx) => (
-                                <option key={idx} value={v}>{v}</option>
-                            ))}
-                        </select>
+                            onChange={setFilterVessel}
+                            placeholder={t('manSchedule.allVessels', 'Todas')}
+                            emptyLabel={t('manSchedule.allVessels', 'Todas')}
+                            allowCreate={false}
+                        />
                     </div>
 
-                    <div className="min-w-[110px] flex-shrink-0">
+                    <div className="min-w-[140px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.positionLabel', 'Cargo')}</label>
-                        <select
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white truncate transition-all"
+                        <SearchableCreatableSelect
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                            options={availablePositions.map((p) => ({ id: p, label: p }))}
                             value={filterPosition}
-                            onChange={(e) => setFilterPosition(e.target.value)}
-                        >
-                            <option value="">{t('manSchedule.allPositions', 'Todos')}</option>
-                            {availablePositions.map((p, idx) => (
-                                <option key={idx} value={p}>{p}</option>
-                            ))}
-                        </select>
+                            onChange={setFilterPosition}
+                            placeholder={t('manSchedule.allPositions', 'Todos')}
+                            emptyLabel={t('manSchedule.allPositions', 'Todos')}
+                            allowCreate={false}
+                        />
                     </div>
 
                     <div className="min-w-[130px] flex-shrink-0">
@@ -1371,6 +1471,18 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
                         />
                     </div>
+
+                    <label className="flex items-center gap-1.5 self-end h-[34px] px-2 border border-blue-200 bg-blue-50/60 rounded-lg cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            checked={viewportDay}
+                            onChange={(e) => handleViewportDayChange(e.target.checked)}
+                        />
+                        <span className="text-xs font-semibold text-blue-900 whitespace-nowrap">
+                            {t('manSchedule.viewByDay', 'Visualizar por dia')}
+                        </span>
+                    </label>
 
                     <div className="flex items-center gap-1 flex-shrink-0 self-end h-[34px]">
                         <button
@@ -1547,6 +1659,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                                                 groupCount={mIdx === 0 ? group.count : ''}
                                                 groupBg={bg}
                                                 weeks={filteredWeeks}
+                                                viewport={viewport}
                                                 currentWeekKey={currentWeekKey}
                                                 isOpening={openingColab === member.cpf}
                                                 locale={locale}

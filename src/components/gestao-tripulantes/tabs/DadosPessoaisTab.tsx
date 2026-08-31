@@ -6,6 +6,12 @@ import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { formatCpf, isValidCpf, formatBirthDate } from '@/lib/utils/identity';
+import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
+import {
+  createGtLookupOption,
+  toLookupOptions,
+  type GtLookupKind,
+} from '@/components/gestao-tripulantes/createGtLookupOption';
 
 interface CollaboratorDetail {
   id: string;
@@ -50,6 +56,7 @@ interface CollaboratorDetail {
 interface LookupOption {
   id: string;
   nome: string;
+  codigo?: string | null;
 }
 
 const ESTADO_CIVIL_OPTIONS = [
@@ -193,6 +200,22 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
 
   const setField = <K extends keyof ReturnType<typeof buildForm>>(key: K, value: ReturnType<typeof buildForm>[K]) => {
     setForm(f => ({ ...f, [key]: value }));
+  };
+
+  const handleCreateLookup = async (
+    kind: GtLookupKind,
+    label: string,
+    setter: React.Dispatch<React.SetStateAction<LookupOption[]>>,
+  ) => {
+    try {
+      const created = await createGtLookupOption(kind, label);
+      setter(prev => (prev.some(o => o.id === created.id) ? prev : [...prev, { id: created.id, nome: created.nome, codigo: created.codigo }]));
+      toast.success(`«${created.label}» adicionado`);
+      return created;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao adicionar');
+      throw err;
+    }
   };
 
   const handleSave = async () => {
@@ -370,40 +393,48 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
           {editing ? (
             <>
               <EditField label={t('gestaoTripulantes.personalData.position')}>
-                <select className={inputClass} value={form.cargo_id} onChange={e => setField('cargo_id', e.target.value)}>
-                  <option value="">—</option>
-                  {form.cargo_id && !cargos.some(o => o.id === form.cargo_id) && (
-                    <option value={form.cargo_id}>{data.cargo_nome || form.cargo_id}</option>
-                  )}
-                  {cargos.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
-                </select>
+                <SearchableCreatableSelect
+                  className={inputClass}
+                  options={toLookupOptions(cargos, 'cargos', { id: form.cargo_id, label: data.cargo_nome || form.cargo_id })}
+                  value={form.cargo_id}
+                  onChange={id => setField('cargo_id', id)}
+                  allowCreate
+                  onCreate={label => handleCreateLookup('cargos', label, setCargos)}
+                  placeholder="Buscar ou adicionar cargo..."
+                />
               </EditField>
               <EditField label={t('gestaoTripulantes.personalData.company')}>
-                <select className={inputClass} value={form.empresa_id} onChange={e => setField('empresa_id', e.target.value)}>
-                  <option value="">—</option>
-                  {form.empresa_id && !empresas.some(o => o.id === form.empresa_id) && (
-                    <option value={form.empresa_id}>{data.empresa_nome || form.empresa_id}</option>
-                  )}
-                  {empresas.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
-                </select>
+                <SearchableCreatableSelect
+                  className={inputClass}
+                  options={toLookupOptions(empresas, 'empresas', { id: form.empresa_id, label: data.empresa_nome || form.empresa_id })}
+                  value={form.empresa_id}
+                  onChange={id => setField('empresa_id', id)}
+                  allowCreate
+                  onCreate={label => handleCreateLookup('empresas', label, setEmpresas)}
+                  placeholder="Buscar ou adicionar empresa..."
+                />
               </EditField>
               <EditField label={t('gestaoTripulantes.personalData.vessel', 'Embarcação')}>
-                <select className={inputClass} value={form.embarcacao_atual_id} onChange={e => setField('embarcacao_atual_id', e.target.value)}>
-                  <option value="">—</option>
-                  {form.embarcacao_atual_id && !embarcacoes.some(o => o.id === form.embarcacao_atual_id) && (
-                    <option value={form.embarcacao_atual_id}>{data.embarcacao_nome || form.embarcacao_atual_id}</option>
-                  )}
-                  {embarcacoes.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
-                </select>
+                <SearchableCreatableSelect
+                  className={inputClass}
+                  options={toLookupOptions(embarcacoes, 'embarcacoes', { id: form.embarcacao_atual_id, label: data.embarcacao_nome || form.embarcacao_atual_id })}
+                  value={form.embarcacao_atual_id}
+                  onChange={id => setField('embarcacao_atual_id', id)}
+                  allowCreate
+                  onCreate={label => handleCreateLookup('embarcacoes', label, setEmbarcacoes)}
+                  placeholder="Buscar ou adicionar embarcação..."
+                />
               </EditField>
               <EditField label={t('gestaoTripulantes.personalData.costCenter')}>
-                <select className={inputClass} value={form.centro_custo_id} onChange={e => setField('centro_custo_id', e.target.value)}>
-                  <option value="">—</option>
-                  {form.centro_custo_id && !centrosCusto.some(o => o.id === form.centro_custo_id) && (
-                    <option value={form.centro_custo_id}>{data.centro_custo_nome || form.centro_custo_id}</option>
-                  )}
-                  {centrosCusto.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
-                </select>
+                <SearchableCreatableSelect
+                  className={inputClass}
+                  options={toLookupOptions(centrosCusto, 'centros-custo', { id: form.centro_custo_id, label: data.centro_custo_nome || form.centro_custo_id })}
+                  value={form.centro_custo_id}
+                  onChange={id => setField('centro_custo_id', id)}
+                  allowCreate
+                  onCreate={label => handleCreateLookup('centros-custo', label, setCentrosCusto)}
+                  placeholder="Buscar ou adicionar centro de custo..."
+                />
               </EditField>
               <EditField label="Regime de Trabalho (Escala)">
                 <select

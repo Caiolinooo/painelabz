@@ -98,5 +98,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/components/IA/AGENTS.md` — Companion FAB UI / mascote Fase 0 + Rive/Rive-like
 - `src/app/ferias/AGENTS.md` — histórico, export XLSX/CSV, PDF preenchido + assinaturas + soft prompt de cadastro
 - `src/app/department/dp/AGENTS.md` — DP: MainLayout, campos achatados da lista, ASO via GET vencimentos
+- `src/components/gestao-tripulantes/AGENTS.md` — lookups criáveis, KPIs ativos, viewport dia/semana
 ## Index of Modules
 

@@ -68,6 +68,17 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `algoritmo-back` prefers those ASOs for validity scoring; falls back to any dated `gt_documentos` per candidate without a global ASO.
 - **ASO vencimentos (DP)**: `GET /api/gestao-tripulantes/aso/notificar-vencimentos` lists `tipo_documento=aso` with join colaborador (flattened `cargo_nome` / `embarcacao_nome`). `POST` dispara e-mail/in-app. Classificação vencido/vencendo em `src/lib/gestao-tripulantes/aso-vencimentos.ts` por data civil local (`YYYY-MM-DD`), janela 30d. Cron `/cron/notificar-vencimentos` usa o mesmo helper. Não usar `/auditoria` como fonte da aba DP.
 
+### Dashboard KPIs (`GET /dashboard`)
+
+- Cards da Matriz de Conformidade contam **somente colaboradores ativos** em centros de custo ativos.
+- Elegível: `gt_colaboradores.ativo = true` AND `deleted_at IS NULL`. Se `centro_custo_id` está preenchido, exclui quando `gt_centros_custo.ativo = false`. `centro_custo_id` nulo **entra**.
+- `total_colaboradores`: conjunto elegível.
+- `total_embarcados`: elegível AND `status_embarque = 'embarcado'`.
+- `total_disponiveis`: elegível AND `standby = true`.
+- `total_docs_vencidos` / `total_docs_vencendo`: `gt_documentos` desses colaboradores, `deleted_at IS NULL`, com `data_validade` preenchida. Classificação **civil local** `YYYY-MM-DD` (`classificarValidadeCivil` em `aso-vencimentos.ts`): vencido = `data_validade < hoje`; vencendo = `hoje ≤ data_validade ≤ hoje+30`. Não usar só `status_validacao` (pode estar stale). Sem validade (curso permanente) não entra nesses totais.
+- `asos_pendentes_revisao`: fila operacional (`status_revisao = pendente_revisao`), sem filtro de ativo.
+- Implementação: `src/lib/gestao-tripulantes/dashboard-service.ts`. Badges da lista (`qtd_docs_*`) usam a mesma regra de data.
+
 ### GET colaborador performance
 
 - `GET /colaboradores/[id]` reads `gt_colaboradores` (not `gt_vw_colaboradores_completo`), excludes `mio_data`/`ocr_texto`/`xml_gerado`, two parallel DB waves. Optional `?include=` (default `profile,documentos,embarques,substituicoes,esocial_asos`).
@@ -83,6 +94,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Embarques locais: `POST /embarques`, `PUT|DELETE /embarques/[id]` — soft-delete via `deleted_at`; PUT updates `origem='local'` so manual adjustments are preserved against MIO sync pulls without ever calling or writing back to MIO.
 - Storage mapping (`escala-tipos.ts`): UI `offc` persists as `offc` (**never** collapse to `folga_indenizada` / `fi`). Legacy `folga_indenizada|dobra|standby` normalize on read to `fi|dba|stb`.
 - `GET /api/man-schedule/realtime`: merge **gt_historico_embarques** (origem mio + local) with colaboradores; extras FI/DBA/STB/OFF-C are materialized at pull time. Return explicit `observacoes` + `tipo_codigo` / `rotation_type`; CPF joins via digits-only normalize.
+- **Viewport dia/semana**: checkbox `Visualizar por dia` em `GTManScheduleTab` (`localStorage` `gt-man-schedule-viewport-day`). Desligado = colunas sábado–sexta (atual). Ligado = um dia por coluna (janela padrão 90d se sem filtro de data). Clique na célula passa a `Date` da coluna. Semanas continuam começando sábado.
 
 ### Schema notes
 
@@ -119,7 +131,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 ### Collaborator modal — Dados Pessoais edit
 
-- Edit mode (`DadosPessoaisTab`) renders inputs/selects for identity (nome, CPF, RG, matrícula, nascimento, nacionalidade, naturalidade, filiação, estado civil, email, telefone) and professional fields (cargo/empresa/embarcação/centro de custo via FK selects, admissão, próximo embarque, status, standby) plus address.
+- Edit mode (`DadosPessoaisTab`) renders inputs/selects for identity (nome, CPF, RG, matrícula, nascimento, nacionalidade, naturalidade, filiação, estado civil, email, telefone) and professional fields (cargo/empresa/embarcação/centro de custo via `SearchableCreatableSelect` + POST create, admissão, próximo embarque, status, standby) plus address.
 - CPF: client + PUT validate with `isValidCpf` (Módulo 11); persist digits-only via `normalizeCpf`. Invalid/empty CPF → 400, never silently dropped.
 - `PUT /api/gestao-tripulantes/colaboradores/[id]` whitelists every editable `gt_colaboradores` column (not PK/system/`mio_*`/e-Social tracking). View aliases (`cargo_nome`…) resolve to FKs instead of being ignored.
 - Modal fetch: keep previous `data` on error; ignore abort; do not replace loaded content with skeleton; tab error boundary isolates Treinamentos crashes.
@@ -134,7 +146,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Inactive/desligado colaboradores are persisted (`ativo=false`); trainings/ASOs/embarques use `findColaboradorByCpf` (no `ativo` filter).
 - **Filtro de Colaboradores Ativos/Inativos**: Tanto a Matriz de Conformidade quanto o Man Schedule suportam filtragem por `ativos`, `inativos` e `todos` (default `ativos`). `GET /api/gestao-tripulantes/colaboradores` e `GET /api/man-schedule/realtime` expõem o status `ativo` para controle da visualização.
 - **Modal de Escala Não Intrusivo & Draggable**: O modal de criação/edição de eventos de escala (`GTManScheduleTab`) opera como janela flutuante arrastável (draggable por mouse e touch) sem backdrop escuro bloqueante, permitindo consultar e comparar a planilha ao fundo enquanto interage com o formulário.
-- **Alinhamento de Escala e Indicação de Início (`d.X`)**: Semanas da escala iniciam aos sábados (00:00:00 a sexta 23:59:59). Datas `YYYY-MM-DD` utilizam `parseLocalDate` para evitar retrocessos por fuso horário UTC-3. O campo `gt_historico_embarques.exibir_dia_inicio` (toggle no modal) controla se a célula da planilha exibe o número do dia de início (`d.X`) ou apenas a sigla limpa do evento.
+- **Alinhamento de Escala e Indicação de Início (`d.X`)**: Semanas da escala iniciam aos sábados (00:00:00 a sexta 23:59:59). Datas `YYYY-MM-DD` utilizam `parseLocalDate` para evitar retrocessos por fuso horário UTC-3. O campo `gt_historico_embarques.exibir_dia_inicio` (toggle no modal) controla se a célula da planilha exibe o número do dia de início (`d.X`) ou apenas a sigla limpa do evento. Checkbox **Visualizar por dia** troca a grade para colunas diárias sem alterar persistência dos eventos.
 - Official MIO ASO list: insomnia documents **POST `/sms-aso` as inclusão (write) — never called**. Pull probes GET `/sms-aso-get`, `/sms-aso-registro-get`, `/sms-aso`, exames, etc. Hits persist to `gt_documentos_aso`; misses stored as evidence in `gt_mio_entidades` tipo `aso_probe_evidence`. ASO-like training rows still classified into ASO.
 - No secrets in code; use env / `app_secrets` patterns from root DOX.
 
@@ -188,6 +200,9 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - After Treinamentos “Exportar Excel”, modal still shows collaborator data (reopen included); GET 200 is not wiped by export.
 - `GET /api/gestao-tripulantes/poliweb/asos-pendentes` returns 200 with array `data` (empty + `warning` if Poliweb down); GT page does not show Next.js overlay.
 - `GET /api/gestao-tripulantes/aso/notificar-vencimentos` returns `{ vencidos, vencendo }` with `colaborador.nome_completo` (not nested `gt_colaboradores`); `/department/dp` wraps `MainLayout`.
+- `GET /dashboard` totals exclude `ativo=false` and inactive cost centers; docs vencidos use `data_validade < hoje` civil.
+- Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks.
+- `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; docs vencidos usam `data_validade < hoje` civil, não só `status_validacao`.
 
 ## Child DOX Index
 

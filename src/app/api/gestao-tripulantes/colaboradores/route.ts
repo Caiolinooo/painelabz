@@ -5,6 +5,7 @@ import { autoGenerateESocialEvents } from '@/services/eSocialAutoService';
 import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
 import { flattenColaboradorRow, LIST_SELECT } from '@/lib/gestao-tripulantes/colaborador-get';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
+import { classificarValidadeCivil, dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,12 +84,31 @@ export async function GET(request: NextRequest) {
 
     let vencidoIds: string[] | null = null;
     if (onlyVencidos === 'true') {
-      const { data: vencidos } = await supabaseAdmin
-        .from('gt_documentos')
-        .select('colaborador_id')
-        .eq('status_validacao', 'vencido')
-        .is('deleted_at', null);
-      vencidoIds = Array.from(new Set((vencidos || []).map((d) => d.colaborador_id).filter(Boolean)));
+      const hoje = dataLocalISO();
+      const vencidoSet = new Set<string>();
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data: vencidos, error: vencidosErr } = await supabaseAdmin
+          .from('gt_documentos')
+          .select('colaborador_id')
+          .is('deleted_at', null)
+          .not('data_validade', 'is', null)
+          .lt('data_validade', hoje)
+          .not('colaborador_id', 'is', null)
+          .range(from, from + pageSize - 1);
+        if (vencidosErr) {
+          console.error('Erro ao filtrar documentos vencidos:', vencidosErr);
+          return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
+        }
+        const rows = vencidos || [];
+        for (const d of rows) {
+          if (d.colaborador_id) vencidoSet.add(d.colaborador_id as string);
+        }
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      vencidoIds = Array.from(vencidoSet);
       if (vencidoIds.length === 0) {
         return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
       }
@@ -132,20 +152,34 @@ export async function GET(request: NextRequest) {
 
     const countsById: Record<string, { qtd_docs_vencidos: number; qtd_docs_vencendo: number; qtd_docs_validos: number }> = {};
     if (ids.length > 0) {
-      const { data: docRows } = await supabaseAdmin
-        .from('gt_documentos')
-        .select('colaborador_id, status_validacao')
-        .in('colaborador_id', ids)
-        .is('deleted_at', null);
+      const docRows: { colaborador_id: string; data_validade: string | null; status_validacao: string | null }[] = [];
+      const docPageSize = 1000;
+      let docFrom = 0;
+      while (true) {
+        const { data: pageDocs } = await supabaseAdmin
+          .from('gt_documentos')
+          .select('colaborador_id, data_validade, status_validacao')
+          .in('colaborador_id', ids)
+          .is('deleted_at', null)
+          .range(docFrom, docFrom + docPageSize - 1);
+        const page = pageDocs || [];
+        docRows.push(...(page as typeof docRows));
+        if (page.length < docPageSize) break;
+        docFrom += docPageSize;
+      }
+      const hoje = dataLocalISO();
       for (const id of ids) {
         countsById[id] = { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 };
       }
       for (const d of docRows || []) {
         const bucket = countsById[d.colaborador_id];
         if (!bucket) continue;
-        if (d.status_validacao === 'vencido') bucket.qtd_docs_vencidos += 1;
-        else if (d.status_validacao === 'vencendo') bucket.qtd_docs_vencendo += 1;
-        else if (d.status_validacao === 'valido') bucket.qtd_docs_validos += 1;
+        const alerta = classificarValidadeCivil(d.data_validade, hoje);
+        if (alerta === 'vencido') bucket.qtd_docs_vencidos += 1;
+        else if (alerta === 'vencendo') bucket.qtd_docs_vencendo += 1;
+        else if (alerta === 'valido' || (!d.data_validade && d.status_validacao === 'valido')) {
+          bucket.qtd_docs_validos += 1;
+        }
       }
     }
 

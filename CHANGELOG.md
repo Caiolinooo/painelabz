@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.69.2] - 2026-08-31
+
+### 🛠️ GT: lookup criável, KPIs só ativos e viewport diário no Man Schedule
+
+1. **Cargo / Empresa / Embarcação / Centro de Custo**: busca com opção de cadastrar novo (`SearchableCreatableSelect`) no modal, cadastro e filtros.
+2. **Cards da Matriz**: total, embarcados e back consideram só colaboradores `ativo=true` e centros de custo ativos.
+3. **Documentos vencidos**: contagem por `data_validade` civil (não só `status_validacao`) nos ativos.
+4. **Man Schedule**: checkbox **Visualizar por dia** (ligado = coluna por dia; desligado = semana sáb–sex).
+
 ## [5.69.1] - 2026-08-31
 
 ### 🛠️ Departamento Pessoal: menu lateral, cadastro e vencimentos de ASO

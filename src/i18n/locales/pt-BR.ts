@@ -3894,6 +3894,7 @@ export default {
     exportedSuccess: 'Planilha exportada com sucesso!',
     dateStart: 'Data Inicio',
     dateEnd: 'Data Fim',
+    viewByDay: 'Visualizar por dia',
     legendOn: 'Embarcado',
     legendOffC: 'Troca de Turma',
     legendFi: 'Folga Indenizada',
@@ -4454,7 +4455,7 @@ export default {
       sendError: 'Erro ao enviar notificação', history: 'Histórico de Notificações'
     },
     dashboard: {
-      totalCollaborators: 'Total de Tripulantes', onboardNow: 'Embarcados Agora',
+      totalCollaborators: 'Total de Tripulantes (ativos)', onboardNow: 'Embarcados Agora',
       availableBackup: 'Disponíveis p/ Back', expiredDocs: 'Documentos Vencidos'
     },
     upload: {

@@ -7,6 +7,7 @@ import { fetchWithToken } from '@/lib/tokenStorage';
 import { formatCpf } from '@/lib/utils/identity';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
+import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
 import { toast } from 'react-hot-toast';
 import {
   FiUsers, FiCalendar, FiAlertTriangle, FiSearch, FiEdit2, FiRefreshCw, FiSend,
@@ -407,32 +408,38 @@ export default function DepartamentoPessoalPage() {
                   <option value="todos">Status: Todos</option>
                 </select>
 
-                <select
-                  value={filterEmpresa}
-                  onChange={(e) => setFilterEmpresa(e.target.value)}
-                  className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700"
-                >
-                  <option value="">Todas Empresas</option>
-                  {empresasOptions.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                </select>
+                <div className="w-40">
+                  <SearchableCreatableSelect
+                    className="w-full text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-abz-blue"
+                    options={empresasOptions.map(emp => ({ id: emp, label: emp }))}
+                    value={filterEmpresa}
+                    onChange={setFilterEmpresa}
+                    emptyLabel="Todas Empresas"
+                    placeholder="Todas Empresas"
+                  />
+                </div>
 
-                <select
-                  value={filterEmbarcacao}
-                  onChange={(e) => setFilterEmbarcacao(e.target.value)}
-                  className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700"
-                >
-                  <option value="">Todas Embarcações</option>
-                  {embarcacoesOptions.map(emb => <option key={emb} value={emb}>{emb}</option>)}
-                </select>
+                <div className="w-40">
+                  <SearchableCreatableSelect
+                    className="w-full text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-abz-blue"
+                    options={embarcacoesOptions.map(emb => ({ id: emb, label: emb }))}
+                    value={filterEmbarcacao}
+                    onChange={setFilterEmbarcacao}
+                    emptyLabel="Todas Embarcações"
+                    placeholder="Todas Embarcações"
+                  />
+                </div>
 
-                <select
-                  value={filterCargo}
-                  onChange={(e) => setFilterCargo(e.target.value)}
-                  className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700"
-                >
-                  <option value="">Todos Cargos</option>
-                  {cargosOptions.map(cg => <option key={cg} value={cg}>{cg}</option>)}
-                </select>
+                <div className="w-40">
+                  <SearchableCreatableSelect
+                    className="w-full text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-abz-blue"
+                    options={cargosOptions.map(cg => ({ id: cg, label: cg }))}
+                    value={filterCargo}
+                    onChange={setFilterCargo}
+                    emptyLabel="Todos Cargos"
+                    placeholder="Todos Cargos"
+                  />
+                </div>
 
                 <select
                   value={filterEscala}

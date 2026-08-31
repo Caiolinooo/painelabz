@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
+import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
 
 interface Collaborator {
   id: string;
@@ -71,41 +72,49 @@ export default function GTMatrixFilters({ filters, onChange, colaboradores = [] 
           />
         </div>
 
-        <select
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          value={filters.empresa}
-          onChange={e => onChange({ empresa: e.target.value })}
-        >
-          <option value="">{t('gestaoTripulantes.filters.allCompanies')}</option>
-          {distinctOptions.empresas.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
+        <div className="w-full md:w-44">
+          <SearchableCreatableSelect
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            options={distinctOptions.empresas.map(v => ({ id: v, label: v }))}
+            value={filters.empresa}
+            onChange={id => onChange({ empresa: id })}
+            emptyLabel={t('gestaoTripulantes.filters.allCompanies')}
+            placeholder={t('gestaoTripulantes.filters.allCompanies')}
+          />
+        </div>
 
-        <select
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          value={filters.embarcacao}
-          onChange={e => onChange({ embarcacao: e.target.value })}
-        >
-          <option value="">{t('gestaoTripulantes.filters.allVessels')}</option>
-          {distinctOptions.embarcacoes.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
+        <div className="w-full md:w-44">
+          <SearchableCreatableSelect
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            options={distinctOptions.embarcacoes.map(v => ({ id: v, label: v }))}
+            value={filters.embarcacao}
+            onChange={id => onChange({ embarcacao: id })}
+            emptyLabel={t('gestaoTripulantes.filters.allVessels')}
+            placeholder={t('gestaoTripulantes.filters.allVessels')}
+          />
+        </div>
 
-        <select
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          value={filters.cargo}
-          onChange={e => onChange({ cargo: e.target.value })}
-        >
-          <option value="">{t('gestaoTripulantes.filters.allPositions')}</option>
-          {distinctOptions.cargos.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
+        <div className="w-full md:w-44">
+          <SearchableCreatableSelect
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            options={distinctOptions.cargos.map(v => ({ id: v, label: v }))}
+            value={filters.cargo}
+            onChange={id => onChange({ cargo: id })}
+            emptyLabel={t('gestaoTripulantes.filters.allPositions')}
+            placeholder={t('gestaoTripulantes.filters.allPositions')}
+          />
+        </div>
 
-        <select
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          value={filters.centro_custo}
-          onChange={e => onChange({ centro_custo: e.target.value })}
-        >
-          <option value="">{t('gestaoTripulantes.filters.allCostCenters')}</option>
-          {distinctOptions.centrosCusto.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
+        <div className="w-full md:w-44">
+          <SearchableCreatableSelect
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            options={distinctOptions.centrosCusto.map(v => ({ id: v, label: v }))}
+            value={filters.centro_custo}
+            onChange={id => onChange({ centro_custo: id })}
+            emptyLabel={t('gestaoTripulantes.filters.allCostCenters')}
+            placeholder={t('gestaoTripulantes.filters.allCostCenters')}
+          />
+        </div>
 
         <select
           className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
