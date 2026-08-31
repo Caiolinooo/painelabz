@@ -129,8 +129,8 @@ export async function gerarRelatorioEscalaMensal(
     curWeek.setDate(curWeek.getDate() + 7);
   }
 
-  // 2. Buscar Dados no Banco
-  const [{ data: colabs }, { data: embarques }, { data: treinamentosDocs }] = await Promise.all([
+  // 2. Buscar Dados no Banco (Colaboradores e Histórico de Eventos de Escala)
+  const [{ data: colabs }, { data: embarques }] = await Promise.all([
     supabaseAdmin
       .from('gt_colaboradores')
       .select(`
@@ -150,16 +150,10 @@ export async function gerarRelatorioEscalaMensal(
         observacoes, origem
       `)
       .is('deleted_at', null),
-    supabaseAdmin
-      .from('gt_documentos')
-      .select('id, colaborador_id, tipo_documento, titulo, data_emissao, data_validade')
-      .eq('tipo_documento', 'treinamento')
-      .is('deleted_at', null)
   ]);
 
   let colaboradores = colabs || [];
   const hist = embarques || [];
-  const treDocs = treinamentosDocs || [];
 
   // Aplicar filtros especificados
   if (options.empresa) {
@@ -195,13 +189,6 @@ export async function gerarRelatorioEscalaMensal(
     histPorColab.set(h.colaborador_id, arr);
   }
 
-  const trePorColab = new Map<string, any[]>();
-  for (const t of treDocs) {
-    const arr = trePorColab.get(t.colaborador_id) || [];
-    arr.push(t);
-    trePorColab.set(t.colaborador_id, arr);
-  }
-
   let totalConsolDiasON = 0;
   let totalConsolDiasDBA = 0;
   let totalConsolDiasFI = 0;
@@ -215,7 +202,6 @@ export async function gerarRelatorioEscalaMensal(
   for (const c of colaboradores) {
     const cpfNorm = normalizeCpf(c.cpf || '');
     const cHist = histPorColab.get(c.id) || [];
-    const cTre = trePorColab.get(c.id) || [];
 
     // Limite regular da escala de embarque do colaborador (ex: 14, 28, 15, 30)
     let maxDiasRegulares = parseInt((c as any).escala_embarque, 10);
@@ -258,11 +244,11 @@ export async function gerarRelatorioEscalaMensal(
             statusDoDia = 'DBA';
           } else if (cod === 'FI') {
             statusDoDia = 'FI';
-          } else if (cod === 'TRE') {
+          } else if (cod === 'TRE' || cod === 'TF') {
             statusDoDia = 'TRE';
           } else if (cod === 'STB') {
             statusDoDia = 'STB';
-          } else if (cod === 'OFFC') {
+          } else if (cod === 'OFFC' || cod === 'OFF-C') {
             statusDoDia = 'OFF-C';
           } else {
             // Rotação regular: se ultrapassar a escala máxima contínua, contabiliza como DBA (Dobra)
@@ -273,23 +259,6 @@ export async function gerarRelatorioEscalaMensal(
             }
           }
           break;
-        }
-      }
-
-      // Se não estiver embarcado, verificar certificados de treinamento
-      if (!statusDoDia) {
-        for (const t of cTre) {
-          if (!t.data_emissao) continue;
-          const tStart = parseLocalDate(t.data_emissao);
-          if (!tStart) continue;
-          const tEnd = t.data_validade ? parseLocalDate(t.data_validade) : tStart;
-          if (!tEnd) continue;
-          tEnd.setHours(23, 59, 59, 999);
-
-          if (currentDayTime >= tStart.getTime() && currentDayTime <= tEnd.getTime()) {
-            statusDoDia = 'TRE';
-            break;
-          }
         }
       }
 
@@ -326,27 +295,11 @@ export async function gerarRelatorioEscalaMensal(
           const cod = mapDbTipoToCodigo(h.tipo).toUpperCase();
           if (cod === 'DBA') weekStatus = 'DBA';
           else if (cod === 'FI') weekStatus = 'FI';
-          else if (cod === 'TRE') weekStatus = 'TRE';
+          else if (cod === 'TRE' || cod === 'TF') weekStatus = 'TRE';
           else if (cod === 'STB') weekStatus = 'STB';
-          else if (cod === 'OFFC') weekStatus = 'OFF-C';
+          else if (cod === 'OFFC' || cod === 'OFF-C') weekStatus = 'OFF-C';
           else weekStatus = 'ON';
           break;
-        }
-      }
-
-      if (!weekStatus) {
-        for (const t of cTre) {
-          if (!t.data_emissao) continue;
-          const tStart = parseLocalDate(t.data_emissao);
-          if (!tStart) continue;
-          const tEnd = t.data_validade ? parseLocalDate(t.data_validade) : tStart;
-          if (!tEnd) continue;
-          tEnd.setHours(23, 59, 59, 999);
-
-          if (wStart <= tEnd && wEnd >= tStart) {
-            weekStatus = 'TRE';
-            break;
-          }
         }
       }
 

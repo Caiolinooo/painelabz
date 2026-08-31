@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.68.3] - 2026-08-31
+
+### 🎓 Gestão de Tripulantes: Correção no Cálculo de Treinamentos (TRE) do Fechamento
+
+Esta versão corrige a contagem indevida de dias de treinamento no fechamento mensal:
+1. **Origem Estrita de Eventos de Treinamento**: A coluna e cômputo de **Dias TRE** agora considera estritamente **eventos de treinamento lançados na escala** (`gt_historico_embarques.tipo = 'tre' | 'tf'`) que ocorreram no mês de fechamento.
+2. **Desacoplamento de Certificados Plurianuais**: Eliminada a verificação equivocada na tabela de certificados arquivísticos (`gt_documentos`), cuja validade plurianual (ex: cursos com validade de 2 a 5 anos) gerava falsa contagem de 30/31 dias de treinamento todos os meses.
+
 ## [5.68.2] - 2026-08-31
 
 ### 🛡️ Gestão de Tripulantes: Correção de Defensiva em Auditoria, Centros de Custo e Painel Admin

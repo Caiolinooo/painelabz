@@ -26,6 +26,7 @@ export const DEFAULT_TIPOS_EVENTO_ESCALA: Omit<GTTipoEventoEscala, 'id' | 'creat
   { codigo: 'dba', display_code: 'DBA', label: 'Dobra', bg_color: '#e2efda', text_color: '#00b050', ordem: 30, ativo: true, is_system: true, maps_to_db_tipo: 'dobra' },
   { codigo: 'stb', display_code: 'STB', label: 'StandBy', bg_color: '#f4cccc', text_color: '#cc0000', ordem: 40, ativo: true, is_system: true, maps_to_db_tipo: 'standby' },
   { codigo: 'offc', display_code: 'OFF-C', label: 'Troca de Turma', bg_color: '#f4cccc', text_color: '#cc0000', ordem: 50, ativo: true, is_system: true, maps_to_db_tipo: 'offc' },
+  { codigo: 'tre', display_code: 'TRE', label: 'Treinamento', bg_color: '#efefef', text_color: '#434343', ordem: 60, ativo: true, is_system: true, maps_to_db_tipo: 'treinamento' },
 ];
 
 const LEGACY_TO_CODIGO: Record<string, string> = {
@@ -39,7 +40,9 @@ const LEGACY_TO_CODIGO: Record<string, string> = {
   offc: 'offc',
   troca_turma: 'offc',
   substituicao: 'normal',
-  treinamento: 'normal',
+  treinamento: 'tre',
+  tre: 'tre',
+  tf: 'tre',
 };
 
 export { normalizeCpf } from '@/lib/utils/identity';
