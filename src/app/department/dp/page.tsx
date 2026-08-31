@@ -566,6 +566,13 @@ export default function DepartamentoPessoalPage() {
       {isFechamentoModalOpen && (
         <ModalAprovacaoFechamento
           isOpen={isFechamentoModalOpen}
+          filters={{
+            empresa: filterEmpresa || undefined,
+            embarcacao: filterEmbarcacao || undefined,
+            cargo: filterCargo || undefined,
+            statusAtivo: (filterStatus as any) || 'ativos',
+            busca: searchTerm || undefined,
+          }}
           onClose={() => setIsFechamentoModalOpen(false)}
         />
       )}

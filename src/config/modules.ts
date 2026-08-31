@@ -191,6 +191,13 @@ export const SYSTEM_MODULES: ModuleDefinition[] = [
         description: 'Envio de eventos trabalhistas ao sistema E-Social do governo',
         defaultRoles: ['ADMIN', 'MANAGER', 'USER'],
         category: 'department'
+    },
+    {
+        key: 'dp',
+        name: 'Departamento Pessoal',
+        description: 'Gestão completa de colaboradores, escalas, fechamento de folha e DP',
+        defaultRoles: ['ADMIN', 'MANAGER'],
+        category: 'department'
     }
 ];
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.69.0] - 2026-08-31
+
+### 🚀 Integração Global do Departamento Pessoal (DP), Permissões de Setores, Motor de Dobras e Cruzamento de Dados
+
+Esta grande versão integra o Departamento Pessoal (DP) em todo o ecossistema do Portal ABZ:
+1. **Permissões de Setores & Módulos do Sistema**: Módulo `dp` (Departamento Pessoal) registrado no catálogo oficial (`SYSTEM_MODULES`), ícones, cartões e gerenciador de permissões de setores (`/admin/sectors`), permitindo controle granular por setor (TI, DP, RH, Operações, etc.).
+2. **Motor Estrito de Dobras por Escala Individual**: O fechamento de escalas e a planilha oficial calculam dobras considerando a escala específica cadastrada de cada colaborador (`14x14`, `28x28`, `15x15`, `30x30`, `60x60`), convertendo dias contínuos excedentes à escala regular em `DBA` (Dobra).
+3. **Cruzamento Global de Dados sem Retrabalho**:
+   - **Férias & Afastamentos**: Ao aprovar férias em `/ferias`, registros são sincronizados automaticamente com `gt_afastamentos` (código e-Social 15), Man Schedule e Fechamento DP.
+   - **e-Social**: Alterações em colaboradores refletem em tempo real nos eventos S-2200, S-2220 e S-2240.
+   - **Alertas de ASO**: Disparo automático de e-mails detalhados para o DP e notificações in-app para tripulantes e gestores.
+
 ## [5.68.4] - 2026-08-31
 
 ### 🏢 Módulo do Departamento Pessoal (DP), Alertas de Vencimento de ASO & Correção Defensiva Final no Admin

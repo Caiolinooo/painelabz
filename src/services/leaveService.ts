@@ -341,5 +341,87 @@ export async function updateLeaveRequestStatus(
         return false;
     }
 
+    // Se aprovado, sincronizar com gt_afastamentos para refletir no Fechamento DP, Man Schedule e e-Social
+    if (status === 'APPROVED') {
+        try {
+            const { data: req } = await supabaseAdmin
+                .from('leave_requests')
+                .select('*, user:users_unified(id, name, email, cpf)')
+                .eq('id', requestId)
+                .single();
+
+            if (req && req.user) {
+                const userCpf = req.user.cpf ? req.user.cpf.replace(/\D/g, '') : null;
+                const userEmail = req.user.email ? req.user.email.toLowerCase().trim() : null;
+
+                let colabId: string | null = null;
+                if (userCpf && userCpf.length === 11) {
+                    const { data: cByCpf } = await supabaseAdmin
+                        .from('gt_colaboradores')
+                        .select('id, cpf')
+                        .or(`cpf.eq.${userCpf},cpf.eq.${userCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}`)
+                        .is('deleted_at', null)
+                        .maybeSingle();
+                    if (cByCpf) colabId = cByCpf.id;
+                }
+                if (!colabId && userEmail) {
+                    const { data: cByEmail } = await supabaseAdmin
+                        .from('gt_colaboradores')
+                        .select('id')
+                        .ilike('email', userEmail)
+                        .is('deleted_at', null)
+                        .maybeSingle();
+                    if (cByEmail) colabId = cByEmail.id;
+                }
+
+                if (colabId) {
+                    const periods: Array<{ start_date: string; end_date: string }> =
+                        Array.isArray(req.periods) && req.periods.length > 0
+                            ? req.periods
+                            : [{ start_date: req.start_date, end_date: req.end_date }];
+
+                    for (const p of periods) {
+                        if (!p.start_date || !p.end_date) continue;
+
+                        const { data: existingAf } = await supabaseAdmin
+                            .from('gt_afastamentos')
+                            .select('id')
+                            .eq('colaborador_id', colabId)
+                            .eq('data_inicio', p.start_date)
+                            .is('deleted_at', null)
+                            .maybeSingle();
+
+                        if (!existingAf) {
+                            await supabaseAdmin
+                                .from('gt_afastamentos')
+                                .insert({
+                                    colaborador_id: colabId,
+                                    tipo_afastamento: 'ferias',
+                                    cod_mot_afast: '15',
+                                    motivo: req.justification || 'Férias aprovadas no portal',
+                                    data_inicio: p.start_date,
+                                    data_fim: p.end_date,
+                                    data_prevista_retorno: p.end_date,
+                                    observacoes: `Solicitação de férias aprovada (ID: ${requestId})`,
+                                    esocial_status: 'nao_enviado',
+                                });
+                        }
+                    }
+
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const isTodayInVacation = periods.some(p => p.start_date <= todayStr && p.end_date >= todayStr);
+                    if (isTodayInVacation) {
+                        await supabaseAdmin
+                            .from('gt_colaboradores')
+                            .update({ status_embarque: 'ferias', updated_at: new Date().toISOString() })
+                            .eq('id', colabId);
+                    }
+                }
+            }
+        } catch (syncErr) {
+            console.error('[LeaveService] Error syncing approved leave to gt_afastamentos:', syncErr);
+        }
+    }
+
     return true;
 }

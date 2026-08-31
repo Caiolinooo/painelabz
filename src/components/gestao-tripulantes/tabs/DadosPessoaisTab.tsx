@@ -212,8 +212,12 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
         empresa_id: form.empresa_id || null,
         embarcacao_atual_id: form.embarcacao_atual_id || null,
         centro_custo_id: form.centro_custo_id || null,
+        escala_embarque: form.escala_embarque ? Number(form.escala_embarque) : null,
+        escala_folga: form.escala_folga ? Number(form.escala_folga) : null,
         data_nascimento: form.data_nascimento || null,
         data_admissao: form.data_admissao || null,
+        data_ultimo_embarque: form.data_ultimo_embarque || null,
+        data_ultimo_desembarque: form.data_ultimo_desembarque || null,
         data_proximo_embarque: form.data_proximo_embarque || null,
         status_embarque: form.status_embarque || null,
       };

@@ -278,7 +278,7 @@ export default function ModalAprovacaoFechamento({
 
           {/* Cards de KPIs Consolidados (Cálculo Diário) */}
           {previewData?.totaisConsolidados && (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
               <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase block">Tripulantes</span>
                 <span className="text-xl font-black text-slate-900">
@@ -313,6 +313,13 @@ export default function ModalAprovacaoFechamento({
                   {previewData.totaisConsolidados.totalTRE} <span className="text-xs font-normal">dias</span>
                 </span>
                 <span className="text-[10px] text-purple-600/70 block mt-0.5">Capacitação</span>
+              </div>
+              <div className="bg-violet-50 border border-violet-200 p-3 rounded-xl">
+                <span className="text-[11px] font-semibold text-violet-700 uppercase block">Dias FER (Férias)</span>
+                <span className="text-xl font-black text-violet-800">
+                  {previewData.totaisConsolidados.totalFER ?? 0} <span className="text-xs font-normal">dias</span>
+                </span>
+                <span className="text-[10px] text-violet-600/70 block mt-0.5">Descanso anual</span>
               </div>
             </div>
           )}
@@ -408,23 +415,25 @@ export default function ModalAprovacaoFechamento({
                     <th className="px-3 py-2">Cargo</th>
                     <th className="px-3 py-2">Centro de Custo</th>
                     <th className="px-3 py-2">Embarcação</th>
+                    <th className="px-3 py-2 text-center">Escala</th>
                     <th className="px-3 py-2 text-center bg-emerald-100/50">Dias ON</th>
                     <th className="px-3 py-2 text-center bg-amber-100/50">Dias DBA</th>
                     <th className="px-3 py-2 text-center bg-blue-100/50">Dias FI</th>
                     <th className="px-3 py-2 text-center bg-purple-100/50">Dias TRE</th>
+                    <th className="px-3 py-2 text-center bg-violet-100/50">Dias FER</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-8 text-center text-gray-500">
                         <FiRefreshCw className="animate-spin inline w-4 h-4 mr-1 text-abz-blue" />
                         Calculando totais diários da escala...
                       </td>
                     </tr>
                   ) : filteredColabs.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
                         Nenhum registro encontrado para este filtro.
                       </td>
                     </tr>
@@ -437,6 +446,7 @@ export default function ModalAprovacaoFechamento({
                         <td className="px-3 py-2 text-gray-600">{c.cargo}</td>
                         <td className="px-3 py-2 text-gray-600 text-[11px] font-semibold">{c.centro_custo || 'N/A'}</td>
                         <td className="px-3 py-2 text-gray-600">{c.embarcacao}</td>
+                        <td className="px-3 py-2 text-center font-mono font-semibold text-gray-700">{c.regime_escala || '14x14'}</td>
                         <td className="px-3 py-2 text-center font-bold text-emerald-700 bg-emerald-50/30">
                           {c.total_dias_on ?? c.total_on ?? 0}
                         </td>
@@ -448,6 +458,9 @@ export default function ModalAprovacaoFechamento({
                         </td>
                         <td className="px-3 py-2 text-center font-bold text-purple-700 bg-purple-50/30">
                           {c.total_dias_tre ?? c.total_tre ?? 0}
+                        </td>
+                        <td className="px-3 py-2 text-center font-bold text-violet-700 bg-violet-50/30">
+                          {c.total_dias_fer ?? c.total_fer ?? 0}
                         </td>
                       </tr>
                     ))

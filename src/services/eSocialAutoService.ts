@@ -223,6 +223,27 @@ export async function generateS2200(colab: any, cnpjEmpregador: string, cleanCpf
   const finalStatus = isValid ? STATUS_EVENTO.PENDENTE_REVISAO : STATUS_EVENTO.RASCUNHO;
 
   try {
+    const { data: existingS2200 } = await supabaseAdmin
+      .from('esocial_eventos')
+      .select('id, status')
+      .eq('cpf_trabalhador', cleanCpf)
+      .eq('evento_codigo', 'S-2200')
+      .maybeSingle();
+
+    if (existingS2200) {
+      if (existingS2200.status === STATUS_EVENTO.RASCUNHO || existingS2200.status === STATUS_EVENTO.PENDENTE_REVISAO || existingS2200.status === 'pendente') {
+        await updateEvento(existingS2200.id, {
+          matricula: colab.matricula_esocial || colab.matricula || undefined,
+          dados_evento: payload,
+          xml_gerado: xml || undefined,
+          status: finalStatus,
+          updated_at: new Date().toISOString(),
+        });
+        console.log(`[eSocialAuto] S-2200 event updated for CPF ${cleanCpf}. Status: ${finalStatus}`);
+        return;
+      }
+    }
+
     const createdEvent = await createEvento({
       evento_codigo: 'S-2200',
       cpf_trabalhador: cleanCpf,
@@ -294,6 +315,27 @@ export async function generateS2240(colab: any, cnpjEmpregador: string, cleanCpf
   const finalStatus = isValid ? STATUS_EVENTO.PENDENTE_REVISAO : STATUS_EVENTO.RASCUNHO;
 
   try {
+    const { data: existingS2240 } = await supabaseAdmin
+      .from('esocial_eventos')
+      .select('id, status')
+      .eq('cpf_trabalhador', cleanCpf)
+      .eq('evento_codigo', 'S-2240')
+      .maybeSingle();
+
+    if (existingS2240) {
+      if (existingS2240.status === STATUS_EVENTO.RASCUNHO || existingS2240.status === STATUS_EVENTO.PENDENTE_REVISAO || existingS2240.status === 'pendente') {
+        await updateEvento(existingS2240.id, {
+          matricula: colab.matricula_esocial || colab.matricula || undefined,
+          dados_evento: payload,
+          xml_gerado: xml || undefined,
+          status: finalStatus,
+          updated_at: new Date().toISOString(),
+        });
+        console.log(`[eSocialAuto] S-2240 event updated for CPF ${cleanCpf}. Status: ${finalStatus}`);
+        return;
+      }
+    }
+
     const createdEvent = await createEvento({
       evento_codigo: 'S-2240',
       cpf_trabalhador: cleanCpf,
@@ -358,6 +400,27 @@ export async function generateS2299(colab: any, cnpjEmpregador: string, cleanCpf
   const finalStatus = isValid ? STATUS_EVENTO.PENDENTE_REVISAO : STATUS_EVENTO.RASCUNHO;
 
   try {
+    const { data: existingS2299 } = await supabaseAdmin
+      .from('esocial_eventos')
+      .select('id, status')
+      .eq('cpf_trabalhador', cleanCpf)
+      .eq('evento_codigo', 'S-2299')
+      .maybeSingle();
+
+    if (existingS2299) {
+      if (existingS2299.status === STATUS_EVENTO.RASCUNHO || existingS2299.status === STATUS_EVENTO.PENDENTE_REVISAO || existingS2299.status === 'pendente') {
+        await updateEvento(existingS2299.id, {
+          matricula: colab.matricula_esocial || colab.matricula || undefined,
+          dados_evento: payload,
+          xml_gerado: xml || undefined,
+          status: finalStatus,
+          updated_at: new Date().toISOString(),
+        });
+        console.log(`[eSocialAuto] S-2299 event updated for CPF ${cleanCpf}. Status: ${finalStatus}`);
+        return;
+      }
+    }
+
     const createdEvent = await createEvento({
       evento_codigo: 'S-2299',
       cpf_trabalhador: cleanCpf,

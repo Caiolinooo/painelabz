@@ -673,6 +673,8 @@ export default {
     gestaoTripulantes: 'Gestão de Tripulantes'
   },
   cards: {
+    dp: 'Departamento Pessoal',
+    dpDesc: 'Gestão completa de colaboradores, escalas, fechamento de folha e DP',
     contratos: 'Contratos',
     contratosDesc: 'Gerenciamento de documentos e assinaturas eletrônicas',
     wkradar: 'WK Radar',

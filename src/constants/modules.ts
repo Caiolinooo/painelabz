@@ -61,6 +61,9 @@ export const SYSTEM_MODULES: SystemModule[] = [
 
     // E-Social
     { id: 'e-social', label: 'E-Social', description: 'Envio de eventos trabalhistas ao E-Social', category: 'department', href: '/department/e-social', visible: true },
+
+    // Departamento Pessoal (DP)
+    { id: 'dp', label: 'Departamento Pessoal', description: 'Gestão completa de colaboradores, escalas, fechamento de folha e DP', category: 'department', href: '/department/dp', visible: true },
 ];
 
 export const MODULE_CATEGORIES = {

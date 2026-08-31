@@ -139,20 +139,23 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 ### Fechamento Mensal de Escalas & Despacho ao Departamento Pessoal (DP)
 
 - **Workflow de Fechamento e Auditoria (`gt_relatorios_aprovacoes`)**:
-  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM`: Retorna preview consolidado com métricas por tripulante e totais gerais (`totalColaboradores`, `totalON`, `totalDBA`, `totalFI`, `totalTRE`), além de histórico de aprovação.
-  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM&download=true`: Gera e faz download direto da planilha oficial XLSX pré-formatada.
+  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM`: Retorna preview consolidado com métricas por tripulante e totais gerais (`totalColaboradores`, `totalON`, `totalDBA`, `totalFI`, `totalTRE`, `totalFER`), além de histórico de aprovação.
+  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM&download=true`: Gera e faz download direto da planilha oficial XLSX pré-formatada com colunas dedicadas de Matrícula, Cargo, Centro de Custo, Regime/Escala, ON, DBA, FI, TRE e FER.
   - `POST /api/gestao-tripulantes/relatorio-mensal/aprovar`: Valida permissão RBAC (`ADMIN` ou `MANAGER`), gera carimbo e hash SHA-256 de autenticidade (`GT_FECHAMENTO:mesAno:nome:cpf:data:ip`), grava assinatura digital e despacha por e-mail com anexo XLSX para as contas configuradas do DP (`emails_destinatarios_dp`).
   - `GET /api/gestao-tripulantes/cron/relatorio-mensal`: Acionado periodicamente para checar se a data de corte do mês foi atingida e notificar pendências.
   - `GET|PUT /api/gestao-tripulantes/relatorio-mensal/config`: Configura o dia de corte mensal (1-31), listas de e-mails principais e CC, envio automático e templates de mensagem.
 
-### Exportação da Planilha com Cômputo Individual (ON, DBA, FI, TRE)
+### Regras Contábeis de Cômputo de Dobra (DBA) e Escalas
+- A escala do colaborador é extraída via `extractEscalaDias` lendo `escala_embarque`, `escala_folga` ou `regime_trabalho` (ex: `14x14`, `28x28`, `15x15`, `30x30`, `60x60`):
+  - Se escala de 28 dias e ficar 30 dias embarcado: 28 dias são `ON` e 2 dias são `DBA`.
+  - Se escala de 14 dias e ficar 21 dias embarcado: 14 dias são `ON` e 7 dias são `DBA`.
+  - Se o tipo do evento for explicitamente `dba` ou `dobra`: todos os dias são contabilizados como `DBA`.
+  - Eventos de Folga Indenizada (`fi`), Treinamento (`tre`/`tf`), Standby (`stb`) e Troca de Turma (`offc`) mantêm suas respectivas classificações diárias e semanais.
+  - Períodos de afastamentos e férias (`gt_afastamentos` / `/ferias`) são integrados com código `FER` e não se sobrepõem indevidamente ao cômputo de dias ON/DBA.
 
-- O relatório gerado (`relatorio-escala-generator.ts` e exportação no cliente `GTManScheduleTab.tsx`) mantém formato unificado em aba única (`Schedule`), incluindo colunas dedicadas para os totais de cada colaborador no período:
-  - `ON`: Dias/Semanas a bordo
-  - `DBA`: Dias/Semanas de dobra
-  - `FI`: Dias/Semanas de folga indenizada
-  - `TRE`: Dias/Semanas de treinamento indenizado
-- Inclui linha final com somatório consolidado e bloco de chancela digital com hash de validação criptográfica.
+### Cruzamento de Dados e Sincronização Automática
+- **Edição de Colaborador** (`CollaboratorModal`, `DadosPessoaisTab`): Ao atualizar matrícula, centro de custo, cargo, empresa, embarcação, regime de trabalho, escalas e datas de embarque/desembarque em `gt_colaboradores`, o motor sincroniza automaticamente os eventos e-Social (S-2200, S-2240, S-2299) e os fechamentos DP.
+- **Férias & Man Schedule**: Férias aprovadas no módulo `/ferias` sincronizam automaticamente com `gt_afastamentos` (S-2230) e refletem diretamente na escala visual do Man Schedule e no fechamento DP.
 
 ### Centros de Custo Globais
 

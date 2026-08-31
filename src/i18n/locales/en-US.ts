@@ -587,6 +587,8 @@ export default {
     gestaoTripulantes: 'Crew Management'
   },
   cards: {
+    dp: 'Personnel Department (DP)',
+    dpDesc: 'Full employee records, schedules, payroll closing and DP management',
     contratos: 'Contracts',
     contratosDesc: 'Document management and electronic signatures',
     wkradar: 'WK Radar',

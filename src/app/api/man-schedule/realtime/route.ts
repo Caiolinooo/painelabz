@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
         }
 
         const blobStart = Date.now();
-        const [{ data: colabs, error: colErr }, { data: embarques, error: embErr }] = await Promise.all([
+        const [{ data: colabs, error: colErr }, { data: embarques, error: embErr }, { data: afastamentosRows, error: afastErr }] = await Promise.all([
             supabaseAdmin
                 .from('gt_colaboradores')
                 .select(`
@@ -224,15 +224,21 @@ export async function GET(request: NextRequest) {
                 `)
                 .is('deleted_at', null),
             embQuery,
+            supabaseAdmin
+                .from('gt_afastamentos')
+                .select('id, colaborador_id, tipo_afastamento, data_inicio, data_fim, data_prevista_retorno, motivo, observacoes')
+                .is('deleted_at', null),
         ]);
         timings.blobRead = Date.now() - blobStart;
 
         if (colErr) console.error('[ManSchedule] colaboradores:', colErr.message);
         if (embErr) console.error('[ManSchedule] embarques:', embErr.message);
+        if (afastErr) console.error('[ManSchedule] afastamentos:', afastErr.message);
 
         const colaboradores = colabs || [];
         const hist = embarques || [];
-        if (colaboradores.length === 0 && hist.length === 0) {
+        const afastamentos = afastamentosRows || [];
+        if (colaboradores.length === 0 && hist.length === 0 && afastamentos.length === 0) {
             return NextResponse.json(
                 {
                     success: false,
@@ -285,6 +291,43 @@ export async function GET(request: NextRequest) {
                 origem,
                 ativo: colab.ativo !== false,
                 exibir_dia_inicio: Boolean((entry as { exibir_dia_inicio?: boolean }).exibir_dia_inicio),
+            });
+        }
+
+        // Integrar afastamentos e férias no cronograma
+        for (const af of afastamentos) {
+            const start = af.data_inicio;
+            const end = af.data_fim || af.data_prevista_retorno;
+            if (!isAllJanela && !rotationOverlapsWindow(start, end, windowStart, windowEnd)) {
+                continue;
+            }
+            const colab = colabById.get(af.colaborador_id);
+            if (!colab) continue;
+            seenColabInWindow.add(colab.id);
+            const isFerias = String(af.tipo_afastamento || '').toLowerCase().includes('ferias') || String(af.tipo_afastamento || '').toLowerCase().includes('férias');
+            const rotType = isFerias ? 'ferias' : 'afastamento';
+            const cpfNorm = normalizeCpf(colab.cpf || '');
+            const ccObj = (colab as any).centro_custo;
+            const ccNome = ccObj ? `${ccObj.codigo ? `${ccObj.codigo} - ` : ''}${ccObj.nome || ''}` : '';
+            schedules.push({
+                id: af.id,
+                cpf: cpfNorm,
+                matricula: (colab as any).matricula || '',
+                centro_custo: ccNome,
+                full_name: (colab.nome_completo || '').toUpperCase().trim(),
+                position: ((colab as { cargo?: { nome?: string } }).cargo?.nome || '').toUpperCase().trim(),
+                vessel: colabEmbarcacaoNome(colab),
+                company: ((colab as { empresa?: { nome?: string } }).empresa?.nome || '').trim(),
+                rotation_start: start,
+                rotation_end: end,
+                embarque_status: isFerias ? 'Férias' : 'Afastado',
+                local_embarque: '',
+                rotation_type: rotType,
+                observacoes: (af.motivo || af.observacoes || '').trim() || null,
+                tipo_codigo: rotType,
+                origem: 'local',
+                ativo: colab.ativo !== false,
+                exibir_dia_inicio: false,
             });
         }
 
