@@ -20,6 +20,7 @@ interface Collaborator {
   qtd_docs_vencidos: number;
   qtd_docs_vencendo: number;
   qtd_docs_validos: number;
+  docs_vencidos_resumo?: { titulo: string; tipo_documento: string; data_validade: string; aba: string }[];
 }
 
 interface GTMatrixProps {
@@ -80,12 +81,32 @@ export default function GTMatrix({ colaboradores, loading, onRowClick }: GTMatri
     );
   };
 
-  const getDocIndicator = (vencidos: number, vencendo: number) => {
-    if (vencidos > 0) {
-      return <span className="text-red-600 font-semibold text-xs">{vencidos} {t('gestaoTripulantes.documentStatus.expired', { days: vencidos })}</span>;
+  const formatCivil = (iso?: string) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.slice(0, 10).split('-');
+    if (!y || !m || !d) return iso;
+    return `${d}/${m}/${y}`;
+  };
+
+  const getDocIndicator = (col: Collaborator) => {
+    if (col.qtd_docs_vencidos > 0) {
+      const first = col.docs_vencidos_resumo?.[0];
+      return (
+        <div className="text-red-600 text-xs">
+          <span className="font-semibold">
+            {col.qtd_docs_vencidos} {t('gestaoTripulantes.documentStatus.expired', { days: col.qtd_docs_vencidos })}
+          </span>
+          {first && (
+            <p className="text-[11px] font-medium text-red-700/80 mt-0.5 max-w-[14rem] truncate" title={`${first.titulo} · ${first.tipo_documento}`}>
+              {first.titulo} · {first.tipo_documento}
+              {first.data_validade ? ` · ${formatCivil(first.data_validade)}` : ''}
+            </p>
+          )}
+        </div>
+      );
     }
-    if (vencendo > 0) {
-      return <span className="text-orange-500 font-semibold text-xs">{vencendo} {t('gestaoTripulantes.documentStatus.expiring', { days: vencendo })}</span>;
+    if (col.qtd_docs_vencendo > 0) {
+      return <span className="text-orange-500 font-semibold text-xs">{col.qtd_docs_vencendo} {t('gestaoTripulantes.documentStatus.expiring', { days: col.qtd_docs_vencendo })}</span>;
     }
     return <span className="text-green-600 text-xs">{t('gestaoTripulantes.documentStatus.valid')}</span>;
   };
@@ -146,7 +167,7 @@ export default function GTMatrix({ colaboradores, loading, onRowClick }: GTMatri
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{col.empresa_nome || '-'}</td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{col.embarcacao_nome || '-'}</td>
                   <td className="px-4 py-3">{getStatusBadge(col.status_embarque, col.standby)}</td>
-                  <td className="px-4 py-3">{getDocIndicator(col.qtd_docs_vencidos, col.qtd_docs_vencendo)}</td>
+                  <td className="px-4 py-3">{getDocIndicator(col)}</td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(col.data_proximo_embarque)}</td>
                 </tr>
               ))

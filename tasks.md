@@ -1,3 +1,18 @@
+## GT — achar o documento vencido + ficha unificada (2026-08-31)
+
+### Problema
+KPI **Documentos Vencidos = 1** (ex.: ANDERSON GONÇALVES PINTO / matr. 670) mas o perfil não mostrava qual arquivo. Causa: o card só tinha a contagem; ASOs/cursos antigos e tipos `certificado`/`laudo`/`cnh` não caíam na aba que o usuário abria; `status_validacao` podia estar `valido` com data já passada.
+
+### Passos
+- [x] KPI = só documento **vigente** por slot; histórico separado em `/api/gestao-tripulantes/documentos/alertas`
+- [x] Coluna da matriz + painel listam título/tipo/validade/aba
+- [x] Filtro Docs Vencidos e clique no card abrem o painel; linha com vencido abre **Ficha unificada** (Employee Hub)
+- [x] Abas alinhadas a `documentoPertenceAba`; highlight do id
+- [x] Hub agrega `gt_*` + `users_unified` + férias + reembolsos
+- [x] Tool IA `buscar_documentos_vencidos`
+
+---
+
 ## Calendário — só compartilhado + revamp visual (2026-08-31)
 
 ### Objetivo

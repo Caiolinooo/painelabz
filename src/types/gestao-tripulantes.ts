@@ -278,6 +278,7 @@ export interface GTDashboardResumo {
     total_disponiveis: number;
     total_docs_vencidos: number;
     total_docs_vencendo: number;
+    total_docs_vencidos_historico?: number;
     asos_pendentes_revisao: number;
 }
 

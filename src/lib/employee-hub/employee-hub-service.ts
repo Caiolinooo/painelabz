@@ -6,13 +6,18 @@
 
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
+import { listarDocumentosAlertas } from '@/lib/gestao-tripulantes/documentos-alertas';
+import { classificarValidadeCivil, marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
 
 // ────────────────────────────────────────────────────────────────
 // Types
 // ────────────────────────────────────────────────────────────────
 export interface EmployeeFullRecord {
   colaborador: any;
+  portalUser: any | null;
   documentsSummary: DocumentsSummary;
+  documentos: any[];
+  documentosAlertas: any[];
   latestAso: any | null;
   esocialTimeline: EsocialTimelineEntry[];
   esocialSummary: EsocialSummary;
@@ -20,6 +25,8 @@ export interface EmployeeFullRecord {
   afastamentos: any[];
   acidentes: any[];
   treinamentos: any[];
+  ferias: any[];
+  reembolsos: any[];
 }
 
 export interface DocumentsSummary {
@@ -79,22 +86,28 @@ export async function getEmployeeFullRecord(colaboradorId: string): Promise<Empl
   const cpf = normalizeCpf(colab.cpf || '');
 
   // Parallel queries
-  const [docsSummary, latestAso, timeline, embarques, afastamentos, acidentes, treinamentos] =
+  const [docsPack, latestAso, timeline, embarques, afastamentos, acidentes, treinamentos, portalUser, ferias, reembolsos] =
     await Promise.all([
-      getDocumentsSummary(colaboradorId),
+      getDocumentsPack(colaboradorId),
       getLatestAso(colaboradorId),
       getEsocialTimeline(cpf),
       getEmbarques(colaboradorId),
       getAfastamentos(colaboradorId),
       getAcidentes(colaboradorId),
       getTreinamentos(colaboradorId),
+      getPortalUser(colab.user_id, cpf),
+      getFerias(colab.user_id, cpf),
+      getReembolsos(colab.user_id, cpf),
     ]);
 
   const esocialSummary = buildEsocialSummary(timeline);
 
   return {
     colaborador: colab,
-    documentsSummary: docsSummary,
+    portalUser,
+    documentsSummary: docsPack.summary,
+    documentos: docsPack.documentos,
+    documentosAlertas: docsPack.alertas,
     latestAso,
     esocialTimeline: timeline,
     esocialSummary,
@@ -102,21 +115,94 @@ export async function getEmployeeFullRecord(colaboradorId: string): Promise<Empl
     afastamentos,
     acidentes,
     treinamentos,
+    ferias,
+    reembolsos,
   };
+}
+
+async function safeSelect<T = any>(run: () => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> {
+  try {
+    const { data, error } = await run();
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+const PORTAL_USER_SELECT = 'id, first_name, last_name, email, phone, phone_number, role, department, active, cpf, created_at';
+
+async function getPortalUser(userId: string | null | undefined, cpf: string): Promise<any | null> {
+  try {
+    if (userId) {
+      const { data } = await supabaseAdmin
+        .from('users_unified')
+        .select(PORTAL_USER_SELECT)
+        .eq('id', userId)
+        .maybeSingle();
+      if (data) return data;
+    }
+    if (cpf.length === 11) {
+      const { data } = await supabaseAdmin
+        .from('users_unified')
+        .select(PORTAL_USER_SELECT)
+        .or(`cpf.eq.${cpf},cpf.eq.${cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}`)
+        .limit(1)
+        .maybeSingle();
+      return data || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function getFerias(userId: string | null | undefined, _cpf: string): Promise<any[]> {
+  if (!userId) return [];
+  return safeSelect(() =>
+    supabaseAdmin
+      .from('leave_requests')
+      .select('id, user_id, start_date, end_date, status, justification, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  );
+}
+
+async function getReembolsos(userId: string | null | undefined, cpf: string): Promise<any[]> {
+  if (userId) {
+    const byUser = await safeSelect(() =>
+      supabaseAdmin
+        .from('reembolsos')
+        .select('id, user_id, status, valor_total, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    );
+    if (byUser.length) return byUser;
+  }
+  void cpf;
+  return [];
 }
 
 // ────────────────────────────────────────────────────────────────
 // Documents summary
 // ────────────────────────────────────────────────────────────────
-async function getDocumentsSummary(colaboradorId: string): Promise<DocumentsSummary> {
+async function getDocumentsPack(colaboradorId: string): Promise<{
+  summary: DocumentsSummary;
+  documentos: any[];
+  alertas: any[];
+}> {
   const { data: docs } = await supabaseAdmin
     .from('gt_documentos')
-    .select('id, tipo_documento, status_validacao')
+    .select('id, colaborador_id, tipo_documento, subtipo, titulo, numero_documento, data_emissao, data_validade, status_validacao, origem, created_at')
     .eq('colaborador_id', colaboradorId)
     .is('deleted_at', null);
 
+  const raw = docs || [];
+  const marked = marcarPapeisConformidade(raw);
   const result: DocumentsSummary = {
-    total: 0,
+    total: raw.length,
     validos: 0,
     vencidos: 0,
     vencendo: 0,
@@ -124,21 +210,23 @@ async function getDocumentsSummary(colaboradorId: string): Promise<DocumentsSumm
     byType: {},
   };
 
-  if (!docs) return result;
-  result.total = docs.length;
-
-  for (const doc of docs) {
+  for (const doc of marked) {
     const tipo = doc.tipo_documento || 'outro';
     result.byType[tipo] = (result.byType[tipo] || 0) + 1;
-    switch (doc.status_validacao) {
-      case 'valido': result.validos++; break;
-      case 'vencido': result.vencidos++; break;
-      case 'vencendo': result.vencendo++; break;
-      case 'pendente': result.pendentes++; break;
-    }
+    if (doc.papel === 'historico') continue;
+    const alerta = classificarValidadeCivil(doc.data_validade);
+    if (alerta === 'vencido') result.vencidos++;
+    else if (alerta === 'vencendo') result.vencendo++;
+    else if (alerta === 'valido') result.validos++;
+    else result.pendentes++;
   }
 
-  return result;
+  const alertasRes = await listarDocumentosAlertas({ colaboradorIds: [colaboradorId] });
+  return {
+    summary: result,
+    documentos: marked.map((d) => ({ ...d, papel_conformidade: d.papel })),
+    alertas: [...alertasRes.vencidos_vigentes, ...alertasRes.vencendo_vigentes, ...alertasRes.vencidos_historico],
+  };
 }
 
 // ────────────────────────────────────────────────────────────────

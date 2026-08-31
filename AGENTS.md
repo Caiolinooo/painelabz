@@ -102,5 +102,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/components/gestao-tripulantes/AGENTS.md` — lookups criáveis, KPIs ativos, viewport dia/semana
 - `src/app/calendario/AGENTS.md` — só feriados + ICS compartilhado; sem MIO/embarque/curso
 - `src/app/api/calendar/AGENTS.md` — ICS `from`/`to` vs `rangeDays` (futuros)
+- `src/lib/employee-hub/AGENTS.md` — ficha unificada do colaborador (`gt_*` + portal + férias + reembolso)
 ## Index of Modules
 

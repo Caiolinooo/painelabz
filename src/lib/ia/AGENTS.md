@@ -89,6 +89,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 
 - Não hardcodar `$top=5` em Graph
 - Escala/treinamentos MIO: tools `buscar_escala_mio` / `buscar_treinamentos_mio` leem `gt_historico_embarques` / `gt_documentos` (nunca a API MIO no request path)
+- Docs vencidos da Matriz: `buscar_documentos_vencidos` (vigentes; `incluir_historico` para cópias antigas)
 - Companion: global (`CompanionSessionProvider`); STM localStorage limpa no logout; LTM `ia_user_memory` + skills `ia_user_skills`; boards `ia_kpi_boards` + índice no prompt
 - FAB = mascote livro azul via `AnimatedABZLogo` → `CompanionMascotRive` (Rive se `.riv`; senão Rive-like); body-only por default (`MASCOT_USE_FACE_OVERLAY=false`); API wait = `executing` (não `speaking`); float Framer off quando Rive drive; `useReducedMotion` → estático; `fixed` sem `relative`
 - Tweak timing: `MASCOT_STATUS_CYCLES` / `MASCOT_LIP_SYNC_FPS` / `MASCOT_STATUS_BLEND_MS` em `companion-mascot-frames.ts`

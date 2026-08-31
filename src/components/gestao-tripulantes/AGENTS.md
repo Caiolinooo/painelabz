@@ -13,7 +13,8 @@ Componentes da Matriz, modal do colaborador e Man Schedule. Lookups profissionai
 ## Local Contracts
 
 - Cargo / Empresa / Embarcação / Centro de Custo: `SearchableCreatableSelect` (busca + Adicionar). Create via POST `/api/gestao-tripulantes/{cargos|empresas|embarcacoes|centros-custo}` (`createGtLookupOption`). Filtros da matriz/Man Schedule: busca sem create (valores de nome, não UUID).
-- Cards da Matriz: só `ativo=true` e CC ativo; docs vencidos por `data_validade` civil.
+- Cards da Matriz: só `ativo=true` e CC ativo; docs vencidos = vigente por slot + `data_validade` civil. Coluna Documentos mostra título/tipo do vigente vencido. Filtro **Docs Vencidos** abre `DocsAlertasPanel`.
+- Abas do modal filtram com `documentoPertenceAba` (`certificado`→treinamentos, `laudo`→aso). Highlight `gt-doc-<id>`.
 - Man Schedule: checkbox `Visualizar por dia` (`gt-man-schedule-viewport-day`). Off = semana sáb–sex; on = um dia por coluna.
 
 ## Work Guidance
@@ -25,6 +26,7 @@ Componentes da Matriz, modal do colaborador e Man Schedule. Lookups profissionai
 
 - Editar Dados Pessoais: digitar cargo inexistente → Adicionar → POST 201 → campo fica com o novo id.
 - Cards da Matriz < total de linhas se existirem inativos.
+- KPI 1 vencido: card/filtro lista o documento; linha abre ficha; aba correta mostra o card (incl. certificado/CNH/laudo).
 - Man Schedule: checkbox liga colunas diárias; desliga volta semana.
 
 ## Child DOX Index

@@ -75,7 +75,8 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `total_colaboradores`: conjunto elegível.
 - `total_embarcados`: elegível AND `status_embarque = 'embarcado'`.
 - `total_disponiveis`: elegível AND `standby = true`.
-- `total_docs_vencidos` / `total_docs_vencendo`: `gt_documentos` desses colaboradores, `deleted_at IS NULL`, com `data_validade` preenchida. Classificação **civil local** `YYYY-MM-DD` (`classificarValidadeCivil` em `aso-vencimentos.ts`): vencido = `data_validade < hoje`; vencendo = `hoje ≤ data_validade ≤ hoje+30`. Não usar só `status_validacao` (pode estar stale). Sem validade (curso permanente) não entra nesses totais.
+- `total_docs_vencidos` / `total_docs_vencendo`: só o documento **vigente** de cada slot (último ASO, último passaporte, último curso por `subtipo`/`titulo`, demais por tipo+número). Classificação **civil local** `YYYY-MM-DD` (`validade-civil.ts`). Cópias históricas vencidas **não** entram no KPI; aparecem em `GET /documentos/alertas` e na ficha. Não usar só `status_validacao` (pode estar stale). Sem validade (curso permanente) não entra nesses totais.
+- Painel: clique no card / filtro **Docs Vencidos** abre a lista com título, tipo, validade e aba. Clique na linha do colaborador com vencidos abre a aba **Ficha unificada**. Tool IA `buscar_documentos_vencidos`.
 - `asos_pendentes_revisao`: fila operacional (`status_revisao = pendente_revisao`), sem filtro de ativo.
 - Implementação: `src/lib/gestao-tripulantes/dashboard-service.ts`. Badges da lista (`qtd_docs_*`) usam a mesma regra de data.
 
@@ -202,7 +203,8 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `GET /api/gestao-tripulantes/aso/notificar-vencimentos` returns `{ vencidos, vencendo }` with `colaborador.nome_completo` (not nested `gt_colaboradores`); `/department/dp` wraps `MainLayout`.
 - `GET /dashboard` totals exclude `ativo=false` and inactive cost centers; docs vencidos use `data_validade < hoje` civil.
 - Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks.
-- `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; docs vencidos usam `data_validade < hoje` civil, não só `status_validacao`.
+- `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; docs vencidos = vigente por slot + `data_validade < hoje` civil, não só `status_validacao`.
+- `GET /documentos/alertas` lista título/tipo/aba; `npx tsx scripts/verify-docs-alertas.ts` → `DOCS_ALERTAS_VERIFY_OK`.
 
 ## Child DOX Index
 

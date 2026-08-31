@@ -49,6 +49,7 @@ const MANAGER_DATA_TOOLS = [
   'analisar_kpis_negocio',
   'buscar_sinais_kpi_comunicacao',
   'buscar_tripulantes',
+  'buscar_documentos_vencidos',
   'buscar_escalas',
 ] as const satisfies readonly KpiDataSourceTool[];
 

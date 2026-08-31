@@ -5,7 +5,8 @@ import { autoGenerateESocialEvents } from '@/services/eSocialAutoService';
 import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
 import { flattenColaboradorRow, LIST_SELECT } from '@/lib/gestao-tripulantes/colaborador-get';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
-import { classificarValidadeCivil, dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
+import { contarDocsPorColaborador, listarDocumentosAlertas, montarItensAlerta, resumoVencidosVigentes } from '@/lib/gestao-tripulantes/documentos-alertas';
+import { listarColaboradoresDashboardAtivos } from '@/lib/gestao-tripulantes/dashboard-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,30 +85,9 @@ export async function GET(request: NextRequest) {
 
     let vencidoIds: string[] | null = null;
     if (onlyVencidos === 'true') {
-      const hoje = dataLocalISO();
-      const vencidoSet = new Set<string>();
-      const pageSize = 1000;
-      let from = 0;
-      while (true) {
-        const { data: vencidos, error: vencidosErr } = await supabaseAdmin
-          .from('gt_documentos')
-          .select('colaborador_id')
-          .is('deleted_at', null)
-          .not('data_validade', 'is', null)
-          .lt('data_validade', hoje)
-          .not('colaborador_id', 'is', null)
-          .range(from, from + pageSize - 1);
-        if (vencidosErr) {
-          console.error('Erro ao filtrar documentos vencidos:', vencidosErr);
-          return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
-        }
-        const rows = vencidos || [];
-        for (const d of rows) {
-          if (d.colaborador_id) vencidoSet.add(d.colaborador_id as string);
-        }
-        if (rows.length < pageSize) break;
-        from += pageSize;
-      }
+      const ativosDash = await listarColaboradoresDashboardAtivos();
+      const alertas = await listarDocumentosAlertas({ colaboradorIds: ativosDash.ids });
+      const vencidoSet = new Set(alertas.vencidos_vigentes.map((i) => i.colaborador_id));
       vencidoIds = Array.from(vencidoSet);
       if (vencidoIds.length === 0) {
         return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
@@ -150,15 +130,28 @@ export async function GET(request: NextRequest) {
     const flattened = (rows || []).map((row) => flattenColaboradorRow(row as Record<string, unknown>));
     const ids = flattened.map((c) => c.id as string).filter(Boolean);
 
-    const countsById: Record<string, { qtd_docs_vencidos: number; qtd_docs_vencendo: number; qtd_docs_validos: number }> = {};
+    let countsById: Record<string, { qtd_docs_vencidos: number; qtd_docs_vencendo: number; qtd_docs_validos: number }> = {};
+    const docRows: {
+      id: string;
+      colaborador_id: string;
+      tipo_documento: string | null;
+      subtipo: string | null;
+      titulo: string | null;
+      numero_documento: string | null;
+      data_emissao: string | null;
+      data_validade: string | null;
+      created_at: string | null;
+      status_validacao: string | null;
+      origem?: string | null;
+      numero_rastreio?: string | null;
+    }[] = [];
     if (ids.length > 0) {
-      const docRows: { colaborador_id: string; data_validade: string | null; status_validacao: string | null }[] = [];
       const docPageSize = 1000;
       let docFrom = 0;
       while (true) {
         const { data: pageDocs } = await supabaseAdmin
           .from('gt_documentos')
-          .select('colaborador_id, data_validade, status_validacao')
+          .select('id, colaborador_id, tipo_documento, subtipo, titulo, numero_documento, numero_rastreio, data_emissao, data_validade, created_at, status_validacao, origem')
           .in('colaborador_id', ids)
           .is('deleted_at', null)
           .range(docFrom, docFrom + docPageSize - 1);
@@ -167,25 +160,23 @@ export async function GET(request: NextRequest) {
         if (page.length < docPageSize) break;
         docFrom += docPageSize;
       }
-      const hoje = dataLocalISO();
-      for (const id of ids) {
-        countsById[id] = { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 };
-      }
-      for (const d of docRows || []) {
-        const bucket = countsById[d.colaborador_id];
-        if (!bucket) continue;
-        const alerta = classificarValidadeCivil(d.data_validade, hoje);
-        if (alerta === 'vencido') bucket.qtd_docs_vencidos += 1;
-        else if (alerta === 'vencendo') bucket.qtd_docs_vencendo += 1;
-        else if (alerta === 'valido' || (!d.data_validade && d.status_validacao === 'valido')) {
-          bucket.qtd_docs_validos += 1;
-        }
-      }
+      countsById = contarDocsPorColaborador(docRows, ids);
     }
+
+    const nomes: Record<string, { nome: string | null; matricula: string | null; cpf: string | null }> = {};
+    for (const c of flattened) {
+      nomes[c.id as string] = {
+        nome: (c.nome_completo as string) || null,
+        matricula: (c.matricula as string) || null,
+        cpf: (c.cpf as string) || null,
+      };
+    }
+    const resumoVencidos = resumoVencidosVigentes(montarItensAlerta(docRows, nomes));
 
     const colaboradores = flattened.map((c) => ({
       ...c,
       ...(countsById[c.id as string] || { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 }),
+      docs_vencidos_resumo: resumoVencidos[c.id as string] || [],
     }));
 
     console.log(`[GT GET /colaboradores list] ${Date.now() - t0}ms n=${colaboradores.length}`);

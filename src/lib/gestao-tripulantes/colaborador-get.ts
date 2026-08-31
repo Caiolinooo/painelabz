@@ -5,7 +5,8 @@
  */
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
-import { classificarValidadeCivil, dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
+import { contarAlertasVigentes, marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
+import { montarItensAlerta } from '@/lib/gestao-tripulantes/documentos-alertas';
 
 export const DEFAULT_INCLUDE = [
   'profile',
@@ -116,18 +117,25 @@ function flattenEmbarque(row: Record<string, unknown>) {
   };
 }
 
-function countDocsByStatus(documentos: { status_validacao?: string; data_validade?: string | null }[]) {
-  let vencidos = 0;
-  let vencendo = 0;
-  let validos = 0;
-  const hoje = dataLocalISO();
-  for (const d of documentos) {
-    const alerta = classificarValidadeCivil(d.data_validade, hoje);
-    if (alerta === 'vencido') vencidos += 1;
-    else if (alerta === 'vencendo') vencendo += 1;
-    else if (alerta === 'valido' || (!d.data_validade && d.status_validacao === 'valido')) validos += 1;
-  }
-  return { qtd_docs_vencidos: vencidos, qtd_docs_vencendo: vencendo, qtd_docs_validos: validos };
+function countDocsByStatus(documentos: {
+  id: string;
+  colaborador_id?: string | null;
+  tipo_documento?: string | null;
+  subtipo?: string | null;
+  titulo?: string | null;
+  numero_documento?: string | null;
+  data_emissao?: string | null;
+  data_validade?: string | null;
+  created_at?: string | null;
+  status_validacao?: string | null;
+}[]) {
+  const marked = marcarPapeisConformidade(documentos);
+  const counts = contarAlertasVigentes(marked);
+  return {
+    qtd_docs_vencidos: counts.vencidos,
+    qtd_docs_vencendo: counts.vencendo,
+    qtd_docs_validos: counts.validos,
+  };
 }
 
 function enrichAndDedupDocumentos(
@@ -190,16 +198,6 @@ function enrichAndDedupDocumentos(
       return doc;
     });
   }
-
-  const seenTitles = new Set<string>();
-  documentos = documentos.filter((d) => {
-    if (d.tipo_documento !== 'treinamento') return true;
-    if (!d.titulo) return true;
-    const key = d.titulo.toLowerCase().trim();
-    if (seenTitles.has(key)) return false;
-    seenTitles.add(key);
-    return true;
-  });
 
   const asoMap = new Map<string, any>();
   const nonAsoDocs: any[] = [];
@@ -368,6 +366,26 @@ export async function loadColaboradorDetail(
   ]);
   timings.wave2 = Date.now() - wave2Start;
 
+  const rawDocs = documentos;
+  const counts = countDocsByStatus(rawDocs);
+  const alertas = montarItensAlerta(
+    rawDocs.map((d) => ({
+      id: d.id,
+      colaborador_id: id,
+      tipo_documento: d.tipo_documento,
+      subtipo: d.subtipo ?? null,
+      titulo: d.titulo,
+      numero_documento: d.numero_documento ?? null,
+      numero_rastreio: d.numero_rastreio ?? null,
+      data_emissao: d.data_emissao ?? null,
+      data_validade: d.data_validade ?? null,
+      status_validacao: d.status_validacao ?? null,
+      origem: d.origem ?? null,
+      created_at: d.created_at ?? null,
+    })),
+    { [id]: { nome: colaborador.nome_completo || null, matricula: colaborador.matricula || null, cpf: colaborador.cpf || null } },
+  );
+
   if (wantDocs) {
     documentos = enrichAndDedupDocumentos(
       documentos,
@@ -375,9 +393,9 @@ export async function loadColaboradorDetail(
       treRes.data || [],
       eventosRes.data || []
     );
+    const marked = new Map(marcarPapeisConformidade(rawDocs).map((d) => [d.id, d.papel]));
+    documentos = documentos.map((d) => ({ ...d, papel_conformidade: marked.get(d.id) || 'vigente' }));
   }
-
-  const counts = countDocsByStatus(documentos);
   timings.total = Date.now() - t0;
 
   return {
@@ -385,6 +403,7 @@ export async function loadColaboradorDetail(
       ...colaborador,
       ...counts,
       documentos,
+      documentos_alertas: alertas,
       embarques,
       substituicoes,
       esocial_asos: esocialRes.data || [],

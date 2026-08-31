@@ -11,6 +11,8 @@ import GTMatrix from '@/components/gestao-tripulantes/GTMatrix';
 import GTMatrixLegend from '@/components/gestao-tripulantes/GTMatrixLegend';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import AsoReviewPanel from '@/components/gestao-tripulantes/AsoReviewPanel';
+import DocsAlertasPanel, { type DocumentoAlertaUI } from '@/components/gestao-tripulantes/DocsAlertasPanel';
+import type { TabKey } from '@/components/gestao-tripulantes/CollaboratorModal';
 
 const GTManScheduleTab = dynamic(
   () => import('@/components/gestao-tripulantes/GTManScheduleTab'),
@@ -28,6 +30,7 @@ interface DashboardData {
   total_disponiveis: number;
   total_docs_vencidos: number;
   total_docs_vencendo: number;
+  total_docs_vencidos_historico?: number;
   asos_pendentes_revisao: number;
 }
 
@@ -48,6 +51,7 @@ interface Collaborator {
   qtd_docs_vencidos: number;
   qtd_docs_vencendo: number;
   qtd_docs_validos: number;
+  docs_vencidos_resumo?: { titulo: string; tipo_documento: string; data_validade: string; aba: string }[];
 }
 
 interface FiltersState {
@@ -72,10 +76,17 @@ export default function GestaoTripulantesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedColaborador, setSelectedColaborador] = useState<Collaborator | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showAlertas, setShowAlertas] = useState(false);
+  const [modalTab, setModalTab] = useState<TabKey | undefined>(undefined);
+  const [highlightDocId, setHighlightDocId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FiltersState>({
     search: '', empresa: '', embarcacao: '', cargo: '', centro_custo: '', status: '',
     ativo: 'ativos', apenasStandby: false, docsVencidos: false
   });
+
+  useEffect(() => {
+    if (filters.docsVencidos) setShowAlertas(true);
+  }, [filters.docsVencidos]);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -135,6 +146,32 @@ export default function GestaoTripulantesPage() {
 
   const handleRowClick = useCallback((colaborador: Collaborator) => {
     setSelectedColaborador(colaborador);
+    setHighlightDocId(null);
+    setModalTab((colaborador.qtd_docs_vencidos || 0) > 0 ? 'ficha' : undefined);
+    setShowModal(true);
+  }, []);
+
+  const handleOpenAlerta = useCallback((item: DocumentoAlertaUI) => {
+    setSelectedColaborador({
+      id: item.colaborador_id,
+      nome_completo: item.colaborador_nome || '',
+      cpf: '',
+      email: '',
+      matricula: item.colaborador_matricula || '',
+      foto_url: '',
+      cargo_nome: '',
+      empresa_nome: '',
+      embarcacao_nome: '',
+      centro_custo_nome: '',
+      status_embarque: '',
+      standby: false,
+      data_proximo_embarque: '',
+      qtd_docs_vencidos: 0,
+      qtd_docs_vencendo: 0,
+      qtd_docs_validos: 0,
+    });
+    setModalTab(item.aba);
+    setHighlightDocId(item.id);
     setShowModal(true);
   }, []);
 
@@ -185,7 +222,14 @@ export default function GestaoTripulantesPage() {
       {activeTab === 'matrix' && (
         <div className="space-y-6">
           <AsoReviewPanel compact />
-          <DashboardCards data={dashboard} />
+          <DashboardCards data={dashboard} onExpiredClick={() => setShowAlertas((v) => !v)} />
+          {showAlertas && (
+            <DocsAlertasPanel
+              open={showAlertas}
+              onClose={() => setShowAlertas(false)}
+              onOpenDocumento={handleOpenAlerta}
+            />
+          )}
           <GTMatrixFilters filters={filters} onChange={handleFilterChange} colaboradores={colaboradores} />
           <GTMatrix
             colaboradores={colaboradores}
@@ -205,7 +249,9 @@ export default function GestaoTripulantesPage() {
       {showModal && selectedColaborador && (
         <CollaboratorModal
           colaboradorId={selectedColaborador.id}
-          onClose={() => { setShowModal(false); setSelectedColaborador(null); }}
+          initialTab={modalTab}
+          highlightDocId={highlightDocId}
+          onClose={() => { setShowModal(false); setSelectedColaborador(null); setHighlightDocId(null); }}
         />
       )}
     </div>
