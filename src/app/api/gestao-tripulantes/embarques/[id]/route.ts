@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { mapCodigoToDbTipo } from '@/lib/gestao-tripulantes/escala-tipos';
+import { invalidateManScheduleCache } from '@/lib/gestao-tripulantes/man-schedule-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +83,7 @@ export async function PUT(
       );
     }
 
+    invalidateManScheduleCache();
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erro interno do servidor';
@@ -123,6 +125,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Erro ao excluir evento de escala' }, { status: 500 });
     }
 
+    invalidateManScheduleCache();
     return NextResponse.json({ success: true, message: 'Evento de escala removido com sucesso.' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erro interno do servidor';

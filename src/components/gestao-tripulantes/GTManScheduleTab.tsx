@@ -10,8 +10,10 @@ import SearchableCreatableSelect from '@/components/gestao-tripulantes/Searchabl
 import {
     DEFAULT_TIPOS_EVENTO_ESCALA,
     hexToRgbNoHash,
+    normalizeCpf,
     type GTTipoEventoEscala,
 } from '@/lib/gestao-tripulantes/escala-tipos';
+import { pickOverlappingRotation } from '@/lib/gestao-tripulantes/escala-contagem';
 
 interface CrewSchedule {
     id: string;
@@ -74,6 +76,86 @@ function getPositionSortKey(pos: string): number {
 
 function isUuid(id: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+function sameCpf(a?: string | null, b?: string | null): boolean {
+    const left = normalizeCpf(a || '');
+    const right = normalizeCpf(b || '');
+    return left.length === 11 && left === right;
+}
+
+/** allSchedules is a flat list of rotations — never write `row.rotations`. */
+function applyRotationRow(
+    prev: CrewSchedule[],
+    cpf: string,
+    rot: RotationCell,
+    mode: 'upsert' | 'delete',
+    replaceId?: string | null,
+): CrewSchedule[] {
+    const digits = normalizeCpf(cpf);
+
+    if (mode === 'delete' && replaceId) {
+        const next = prev.filter((row) => row.id !== replaceId);
+        if (next.some((row) => sameCpf(row.cpf, digits))) return next;
+        const template = prev.find((row) => sameCpf(row.cpf, digits));
+        if (!template) return next;
+        return [
+            ...next,
+            {
+                ...template,
+                id: template.id || digits,
+                rotation_start: null,
+                rotation_end: null,
+                embarque_status: null,
+                observacoes: null,
+            },
+        ];
+    }
+
+    const template = prev.find((row) => sameCpf(row.cpf, digits));
+    const payload = (base?: CrewSchedule): CrewSchedule => ({
+        id: rot.id,
+        cpf: digits || base?.cpf || '',
+        matricula: base?.matricula,
+        centro_custo: base?.centro_custo,
+        full_name: base?.full_name || '',
+        position: base?.position || '',
+        vessel: rot.vessel || base?.vessel || '',
+        company: base?.company || '',
+        rotation_start: rot.start,
+        rotation_end: rot.end,
+        embarque_status: 'Manual',
+        local_embarque: rot.local_embarque || '',
+        rotation_type: rot.type,
+        observacoes: rot.observacoes || null,
+        tipo_codigo: rot.type,
+        origem: 'local',
+        ativo: base?.ativo !== false,
+        exibir_dia_inicio: rot.exibir_dia_inicio,
+    });
+
+    if (replaceId) {
+        let found = false;
+        const mapped = prev.map((row) => {
+            if (row.id !== replaceId) return row;
+            found = true;
+            return payload(row);
+        });
+        if (found) return mapped;
+    }
+
+    if (prev.some((row) => row.id === rot.id)) {
+        return prev.map((row) => (row.id === rot.id ? payload(row) : row));
+    }
+
+    const stubIdx = prev.findIndex(
+        (row) => sameCpf(row.cpf, digits) && !row.rotation_start && !row.rotation_end
+    );
+    if (stubIdx >= 0) {
+        return prev.map((row, i) => (i === stubIdx ? payload(row) : row));
+    }
+
+    return [...prev, payload(template)];
 }
 
 type ScheduleViewport = 'day' | 'week';
@@ -651,34 +733,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
     const getWeekRotation = useCallback((weekDate: Date, rotations: RotationCell[]) => {
         const { start: wStart, end: wEnd } = columnPeriod(weekDate, viewport);
-
-        let bestRot: RotationCell | null = null;
-        let bestScore = -1;
-
-        for (const r of rotations) {
-            if (!r.start) continue;
-            const rStart = parseLocalDate(r.start);
-            if (!rStart) continue;
-
-            const rEnd = r.end ? parseLocalDate(r.end) : new Date(rStart.getTime() + 90 * 24 * 60 * 60 * 1000);
-            if (!rEnd) continue;
-            rEnd.setHours(23, 59, 59, 999);
-
-            const overlaps = wStart <= rEnd && wEnd >= rStart;
-            if (overlaps) {
-                // Prioridade 1: Evento cujo início ocorre dentro desta coluna (semana sáb–sex ou dia único)
-                const startsInWeek = rStart >= wStart && rStart <= wEnd;
-                // Prioridade 2: Eventos específicos cadastrados (standby, folga, dobra, etc.)
-                const isSpecific = r.type && r.type !== 'normal';
-                // Prioridade 3: Registro com ID persistido localmente
-                const score = (startsInWeek ? 1000 : 10) + (isSpecific ? 50 : 0) + (r.id ? 5 : 0);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestRot = r;
-                }
-            }
-        }
-        return bestRot;
+        return pickOverlappingRotation(rotations, wStart, wEnd) as RotationCell | null;
     }, [viewport]);
 
     const handleCellClick = (cpf: string, name: string, date: Date, status: string, rotations: RotationCell[]) => {
@@ -725,6 +780,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             : null;
 
         const optimisticId = editingId || `temp-${Date.now()}`;
+        const cellCpf = selectedCell.cpf;
         const updatedRot: RotationCell = {
             id: optimisticId,
             start: formStart,
@@ -736,26 +792,13 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             exibir_dia_inicio: formExibirDia,
         };
 
-        // 1. Atualização Otimista Imediata em Tempo Real (0ms de atraso, sem piscar nem recarregar)
-        setAllSchedules((prev) =>
-            prev.map((crew) => {
-                if (crew.cpf !== selectedCell.cpf) return crew;
-                let nextRotations = [...(crew.rotations || [])];
-                if (editingId) {
-                    nextRotations = nextRotations.map((r) => (r.id === editingId ? { ...r, ...updatedRot } : r));
-                } else {
-                    nextRotations.push(updatedRot);
-                }
-                return { ...crew, rotations: nextRotations };
-            })
-        );
-
+        setAllSchedules((prev) => applyRotationRow(prev, cellCpf, updatedRot, 'upsert', editingId));
         setSelectedCell(null);
 
         try {
             setSubmittingEvent(true);
             const payload = {
-                colaborador_cpf: selectedCell.cpf,
+                colaborador_cpf: cellCpf,
                 tipo: formTipo,
                 data_embarque: formStart,
                 data_desembarque: formEnd,
@@ -777,13 +820,19 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     body: JSON.stringify(payload),
                 });
 
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                const data = await res.json();
                 throw new Error(data.error || 'Erro ao salvar escala.');
             }
 
+            const savedId = data?.data?.id as string | undefined;
+            if (savedId && savedId !== optimisticId) {
+                setAllSchedules((prev) =>
+                    applyRotationRow(prev, cellCpf, { ...updatedRot, id: savedId }, 'upsert', optimisticId)
+                );
+            }
+
             toast.success(editingId ? 'Evento de escala atualizado!' : 'Evento de escala inserido com sucesso!');
-            // Sincronização silenciosa em background
             fetchSchedules(true, true);
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Falha ao salvar evento.');
@@ -796,16 +845,16 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     const handleDeleteEvent = async () => {
         if (!selectedCell?.rotationId) return;
         const rotIdToDelete = selectedCell.rotationId;
+        const cellCpf = selectedCell.cpf;
 
-        // 1. Atualização Otimista Imediata em Tempo Real (0ms de atraso, sem piscar nem recarregar)
         setAllSchedules((prev) =>
-            prev.map((crew) => {
-                if (crew.cpf !== selectedCell.cpf) return crew;
-                return {
-                    ...crew,
-                    rotations: (crew.rotations || []).filter((r) => r.id !== rotIdToDelete),
-                };
-            })
+            applyRotationRow(
+                prev,
+                cellCpf,
+                { id: rotIdToDelete, start: null, end: null, type: 'normal', vessel: '' },
+                'delete',
+                rotIdToDelete,
+            )
         );
 
         setSelectedCell(null);
@@ -1558,7 +1607,10 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                             <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-0 z-30 min-w-[260px] w-[260px] max-w-[260px] px-2 py-2">
                                 {t('manSchedule.tableHeaders.name', 'NOME')}
                             </th>
-                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[260px] z-30 px-2 py-2 min-w-[70px] w-[70px] max-w-[70px]">
+                            <th
+                                className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[260px] z-30 px-2 py-2 min-w-[70px] w-[70px] max-w-[70px]"
+                                title="Tripulantes neste cargo (não é quantidade de embarques)"
+                            >
                                 {t('manSchedule.tableHeaders.reqOnboard', "QTD.\nEMBARC").split('\n').map((line, i, arr) => (
                                     <React.Fragment key={i}>
                                         {line}{i !== arr.length - 1 && <br />}

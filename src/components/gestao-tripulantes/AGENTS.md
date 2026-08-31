@@ -15,6 +15,7 @@ Componentes da Matriz, modal do colaborador e Man Schedule. Lookups profissionai
 - Cargo / Empresa / Embarcação / Centro de Custo: `SearchableCreatableSelect` (busca + Adicionar). Create via POST `/api/gestao-tripulantes/{cargos|empresas|embarcacoes|centros-custo}` (`createGtLookupOption`). Filtros da matriz/Man Schedule: busca sem create (valores de nome, não UUID).
 - Cards da Matriz: só `ativo=true` e CC ativo; docs vencidos por `data_validade` civil.
 - Man Schedule: checkbox `Visualizar por dia` (`gt-man-schedule-viewport-day`). Off = semana sáb–sex; on = um dia por coluna.
+- Save de evento escreve linha em `allSchedules` (`rotation_start`/`end`). Novo lançamento prevalece sobre STB/ON antigo no mesmo período. `QTD. EMBARC` = pessoas no cargo (não é quantidade de embarques).
 
 ## Work Guidance
 
@@ -26,6 +27,7 @@ Componentes da Matriz, modal do colaborador e Man Schedule. Lookups profissionai
 - Editar Dados Pessoais: digitar cargo inexistente → Adicionar → POST 201 → campo fica com o novo id.
 - Cards da Matriz < total de linhas se existirem inativos.
 - Man Schedule: checkbox liga colunas diárias; desliga volta semana.
+- Após Salvar ON, as células do período e a coluna ON atualizam sem recarregar a página.
 
 ## Child DOX Index
 

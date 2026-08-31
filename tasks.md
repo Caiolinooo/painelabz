@@ -1,3 +1,15 @@
+## Man Schedule — novos lançamentos não contabilizam (2026-08-31)
+
+### Problema
+Salvar “Novo Evento de Escala” (ex. ON 22/11–06/12 do Renan) não mudava a coluna ON. O otimista gravava `row.rotations` numa lista plana; a grade só lê `rotation_start`/`end`. STB longo ganhava do ON novo. Cache do realtime ignorava `created_at` de insert local.
+
+### Passos
+- [x] Optimistic = upsert de linha plana + id real do POST
+- [x] `pickOverlappingRotation` (início recente vence STB)
+- [x] Cache: stamp `created_at` + `invalidateManScheduleCache` + `updated_at` no insert
+
+---
+
 ## Calendário — só compartilhado + revamp visual (2026-08-31)
 
 ### Objetivo
