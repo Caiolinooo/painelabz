@@ -1,6 +1,6 @@
 {
   "name": "painel-abz",
-  "version": "5.68.3",
+  "version": "5.68.4",
   "private": true,
   "engines": {
     "node": ">=20.9.0"

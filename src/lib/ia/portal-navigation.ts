@@ -105,6 +105,24 @@ export const PORTAL_ROUTES: PortalRoute[] = [
     ],
   },
   {
+    id: 'dp',
+    path: '/department/dp',
+    label: 'Departamento Pessoal (DP)',
+    keywords: [
+      'dp', 'departamento pessoal', 'pessoal', 'folha', 'fechamento folha',
+      'colaboradores dp', 'quadro de pessoal', 'rh', 'recursos humanos',
+    ],
+    contexts: [
+      'abrir dp',
+      'departamento pessoal',
+      'cadastros de funcionarios',
+      'fechamento de escala',
+      'fechamento dp',
+      'quadro de colaboradores',
+      'ver funcionarios',
+    ],
+  },
+  {
     id: 'esocial',
     path: '/department/e-social',
     label: 'e-Social',

@@ -118,13 +118,14 @@ export default function AuditoriaDocumentosTab() {
   const listaAtual = (): DocRow[] => {
     if (!data) return [];
     switch (bucket) {
-      case 'sem_emissao': return data.sem_emissao;
-      case 'sem_validade': return data.sem_validade;
-      case 'sem_rastreio': return data.sem_rastreio;
-      case 'duplicados': return data.duplicados.flatMap(g => g.grupo);
-      case 'quarentena': return data.quarentena;
-      case 'vencidos': return data.vencidos;
-      case 'vencendo': return data.vencendo;
+      case 'sem_emissao': return data.sem_emissao || [];
+      case 'sem_validade': return data.sem_validade || [];
+      case 'sem_rastreio': return data.sem_rastreio || [];
+      case 'duplicados': return (data.duplicados || []).flatMap(g => g?.grupo || []);
+      case 'quarentena': return data.quarentena || [];
+      case 'vencidos': return data.vencidos || [];
+      case 'vencendo': return data.vencendo || [];
+      default: return [];
     }
   };
 
@@ -348,12 +349,12 @@ export default function AuditoriaDocumentosTab() {
         </div>
       ) : (
         <div className="space-y-2">
-          {listaAtual().length === 0 && !loading && (
+          {(listaAtual()?.length ?? 0) === 0 && !loading && (
             <div className="flex items-center gap-2 p-3 bg-green-50 text-green-800 rounded-lg text-sm">
               <FiCheckCircle /> Nada pendente nesta categoria.
             </div>
           )}
-          {listaAtual().map(d => renderDocCard(d))}
+          {listaAtual()?.map(d => renderDocCard(d))}
         </div>
       )}
 

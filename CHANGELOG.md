@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.68.4] - 2026-08-31
+
+### 🏢 Módulo do Departamento Pessoal (DP), Alertas de Vencimento de ASO & Correção Defensiva Final no Admin
+
+Esta versão entrega a central do Departamento Pessoal e os alertas automáticos de conformidade ocupacional:
+1. **Novo Módulo DP (`/department/dp`)**: Central unificada com consulta, busca em tempo real e edição de todos os colaboradores, controle de regimes de escala (`14x14`, `28x28`), integração com Fechamento Mensal DP e e-Social.
+2. **Alertas Automáticos de Vencimento de ASO (E-mail & Portal)**: Endpoints dedicados (`/api/gestao-tripulantes/aso/notificar-vencimentos` e cron) para envio de e-mails detalhados com a lista de ASOs vencidos/vencendo e criação de notificações in-app para colaboradores e gestores.
+3. **Proteção Total contra Erros no Painel Administrativo**: Garantia de tratamento defensivo em todas as categorias de auditoria de documentos e sincronizações no painel administrativo (`/admin/gestao-tripulantes`).
+
 ## [5.68.3] - 2026-08-31
 
 ### 🎓 Gestão de Tripulantes: Correção no Cálculo de Treinamentos (TRE) do Fechamento
