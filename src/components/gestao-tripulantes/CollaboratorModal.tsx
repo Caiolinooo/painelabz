@@ -88,7 +88,12 @@ interface CollaboratorDetail {
   centro_custo_nome: string;
   status_embarque: string;
   standby: boolean;
+  regime_trabalho?: string | null;
+  escala_embarque?: number | string | null;
+  escala_folga?: number | string | null;
   data_admissao: string;
+  data_ultimo_embarque?: string | null;
+  data_ultimo_desembarque?: string | null;
   data_proximo_embarque: string;
   foto_url: string;
   qtd_docs_vencidos: number;

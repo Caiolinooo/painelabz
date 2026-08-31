@@ -276,7 +276,7 @@ export default function ModalAprovacaoFechamento({
             </div>
           )}
 
-          {/* Cards de KPIs Consolidados */}
+          {/* Cards de KPIs Consolidados (Cálculo Diário) */}
           {previewData?.totaisConsolidados && (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl">
@@ -284,30 +284,35 @@ export default function ModalAprovacaoFechamento({
                 <span className="text-xl font-black text-slate-900">
                   {previewData.totaisConsolidados.totalColaboradores}
                 </span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Total filtrado</span>
               </div>
               <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
-                <span className="text-[11px] font-semibold text-emerald-700 uppercase block">ON (A Bordo)</span>
+                <span className="text-[11px] font-semibold text-emerald-700 uppercase block">Dias ON (A Bordo)</span>
                 <span className="text-xl font-black text-emerald-800">
-                  {previewData.totaisConsolidados.totalON}
+                  {previewData.totaisConsolidados.totalON} <span className="text-xs font-normal">dias</span>
                 </span>
+                <span className="text-[10px] text-emerald-600/70 block mt-0.5">Embarque regular</span>
               </div>
               <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl">
-                <span className="text-[11px] font-semibold text-amber-700 uppercase block">DBA (Dobra)</span>
+                <span className="text-[11px] font-semibold text-amber-700 uppercase block">Dias DBA (Dobra)</span>
                 <span className="text-xl font-black text-amber-800">
-                  {previewData.totaisConsolidados.totalDBA}
+                  {previewData.totaisConsolidados.totalDBA} <span className="text-xs font-normal">dias</span>
                 </span>
+                <span className="text-[10px] text-amber-600/70 block mt-0.5">Extensão de escala</span>
               </div>
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl">
-                <span className="text-[11px] font-semibold text-blue-700 uppercase block">FI (Folga Ind)</span>
+                <span className="text-[11px] font-semibold text-blue-700 uppercase block">Dias FI (Folga Ind.)</span>
                 <span className="text-xl font-black text-blue-800">
-                  {previewData.totaisConsolidados.totalFI}
+                  {previewData.totaisConsolidados.totalFI} <span className="text-xs font-normal">dias</span>
                 </span>
+                <span className="text-[10px] text-blue-600/70 block mt-0.5">Indenização folga</span>
               </div>
               <div className="bg-purple-50 border border-purple-200 p-3 rounded-xl">
-                <span className="text-[11px] font-semibold text-purple-700 uppercase block">TRE (Treinamento)</span>
+                <span className="text-[11px] font-semibold text-purple-700 uppercase block">Dias TRE (Treinamento)</span>
                 <span className="text-xl font-black text-purple-800">
-                  {previewData.totaisConsolidados.totalTRE}
+                  {previewData.totaisConsolidados.totalTRE} <span className="text-xs font-normal">dias</span>
                 </span>
+                <span className="text-[10px] text-purple-600/70 block mt-0.5">Capacitação</span>
               </div>
             </div>
           )}
@@ -403,10 +408,10 @@ export default function ModalAprovacaoFechamento({
                     <th className="px-3 py-2">Cargo</th>
                     <th className="px-3 py-2">Centro de Custo</th>
                     <th className="px-3 py-2">Embarcação</th>
-                    <th className="px-3 py-2 text-center bg-emerald-100/50">ON</th>
-                    <th className="px-3 py-2 text-center bg-amber-100/50">DBA</th>
-                    <th className="px-3 py-2 text-center bg-blue-100/50">FI</th>
-                    <th className="px-3 py-2 text-center bg-purple-100/50">TRE</th>
+                    <th className="px-3 py-2 text-center bg-emerald-100/50">Dias ON</th>
+                    <th className="px-3 py-2 text-center bg-amber-100/50">Dias DBA</th>
+                    <th className="px-3 py-2 text-center bg-blue-100/50">Dias FI</th>
+                    <th className="px-3 py-2 text-center bg-purple-100/50">Dias TRE</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -414,7 +419,7 @@ export default function ModalAprovacaoFechamento({
                     <tr>
                       <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                         <FiRefreshCw className="animate-spin inline w-4 h-4 mr-1 text-abz-blue" />
-                        Calculando totais da escala...
+                        Calculando totais diários da escala...
                       </td>
                     </tr>
                   ) : filteredColabs.length === 0 ? (
@@ -428,21 +433,21 @@ export default function ModalAprovacaoFechamento({
                       <tr key={c.cpf || idx} className="hover:bg-gray-50">
                         <td className="px-3 py-2 font-mono font-bold text-gray-800">{c.matricula || '-'}</td>
                         <td className="px-3 py-2 font-medium text-gray-900">{c.nome}</td>
-                        <td className="px-3 py-2 font-mono text-gray-500">{c.cpf}</td>
+                        <td className="px-3 py-2 font-mono text-gray-500">{c.cpf_formatado || c.cpf}</td>
                         <td className="px-3 py-2 text-gray-600">{c.cargo}</td>
                         <td className="px-3 py-2 text-gray-600 text-[11px] font-semibold">{c.centro_custo || 'N/A'}</td>
                         <td className="px-3 py-2 text-gray-600">{c.embarcacao}</td>
                         <td className="px-3 py-2 text-center font-bold text-emerald-700 bg-emerald-50/30">
-                          {c.total_on}
+                          {c.total_dias_on ?? c.total_on ?? 0}
                         </td>
                         <td className="px-3 py-2 text-center font-bold text-amber-700 bg-amber-50/30">
-                          {c.total_dba}
+                          {c.total_dias_dba ?? c.total_dba ?? 0}
                         </td>
                         <td className="px-3 py-2 text-center font-bold text-blue-700 bg-blue-50/30">
-                          {c.total_fi}
+                          {c.total_dias_fi ?? c.total_fi ?? 0}
                         </td>
                         <td className="px-3 py-2 text-center font-bold text-purple-700 bg-purple-50/30">
-                          {c.total_tre}
+                          {c.total_dias_tre ?? c.total_tre ?? 0}
                         </td>
                       </tr>
                     ))

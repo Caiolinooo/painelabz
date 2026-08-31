@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.68.1] - 2026-08-31
+
+### 📊 Gestão de Tripulantes: Cálculo Diário Estrito de Embarques/Dobras, Layout com Células Mescladas e Edição de Escala no Cadastro
+
+Esta versão aperfeiçoa a precisão contábil e a apresentação visual do Fechamento Mensal DP e amplia o cadastro de tripulantes:
+1. **Motor de Cálculo Diário Estrito**: Os totais de **Dias ON**, **Dias DBA (Dobra)**, **Dias FI (Folga Indenizada)** e **Dias TRE (Treinamento)** agora são calculados dia a dia dentro do período do fechamento mensal.
+2. **Cálculo Inteligente de Dobras por Escala**: Considera o regime cadastrado no colaborador (ex: `14x14`, `28x28`, `15x15`, `30x30`) — qualquer permanência a bordo que ultrapassar a escala máxima contínua é automaticamente categorizada como **DBA (Dobra)**.
+3. **Melhoria Visual e Alinhamento no XLSX**: Aplicação de mesclagens de células (`!merges`) para o cabeçalho principal, subtítulo de filtros, total consolidado e chancelas de assinaturas digitais, eliminando compressão de texto e bordas desalinhadas.
+4. **Campos de Escala e Datas no Cadastro do Colaborador**: Aba de dados pessoais atualizada com suporte à edição de **Regime de Trabalho / Escala de Embarque e Folga**, **Último Embarque/Desembarque**, **Próximo Embarque** e **Centro de Custo**.
+
 ## [5.68.0] - 2026-08-31
 
 ### ⚓ Gestão de Tripulantes: Filtros Dinâmicos na Planilha DP, Multi-Assinaturas Obrigatórias, Histórico Completo & Vínculo de Matrícula/Centro de Custo

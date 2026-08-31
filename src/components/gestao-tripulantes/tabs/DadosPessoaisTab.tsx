@@ -38,7 +38,12 @@ interface CollaboratorDetail {
   centro_custo_nome: string;
   status_embarque: string;
   standby: boolean;
+  regime_trabalho?: string | null;
+  escala_embarque?: number | string | null;
+  escala_folga?: number | string | null;
   data_admissao: string;
+  data_ultimo_embarque?: string | null;
+  data_ultimo_desembarque?: string | null;
   data_proximo_embarque: string;
 }
 
@@ -57,6 +62,14 @@ const ESTADO_CIVIL_OPTIONS = [
 
 const STATUS_EMBARQUE_OPTIONS = [
   'embarcado', 'standby', 'folga', 'desembarcado', 'afastado', 'ferias', 'treinamento',
+] as const;
+
+const REGIME_ESCALA_OPTIONS = [
+  { value: '14x14', label: '14 x 14 (14 dias a bordo / 14 dias folga)' },
+  { value: '28x28', label: '28 x 28 (28 dias a bordo / 28 dias folga)' },
+  { value: '15x15', label: '15 x 15 (15 dias a bordo / 15 dias folga)' },
+  { value: '30x30', label: '30 x 30 (30 dias a bordo / 30 dias folga)' },
+  { value: '60x60', label: '60 x 60 (60 dias a bordo / 60 dias folga)' },
 ] as const;
 
 function toDateInput(d?: string | null): string {
@@ -90,7 +103,12 @@ function buildForm(data: CollaboratorDetail) {
     empresa_id: data.empresa_id || '',
     embarcacao_atual_id: data.embarcacao_atual_id || '',
     centro_custo_id: data.centro_custo_id || '',
+    regime_trabalho: data.regime_trabalho || '14x14',
+    escala_embarque: String(data.escala_embarque || 14),
+    escala_folga: String(data.escala_folga || 14),
     data_admissao: toDateInput(data.data_admissao),
+    data_ultimo_embarque: toDateInput(data.data_ultimo_embarque),
+    data_ultimo_desembarque: toDateInput(data.data_ultimo_desembarque),
     data_proximo_embarque: toDateInput(data.data_proximo_embarque),
     status_embarque: data.status_embarque || '',
     standby: Boolean(data.standby),
@@ -383,8 +401,59 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
                   {centrosCusto.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
                 </select>
               </EditField>
+              <EditField label="Regime de Trabalho (Escala)">
+                <select
+                  className={inputClass}
+                  value={form.regime_trabalho}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setField('regime_trabalho', val);
+                    const match = val.match(/^(\d+)x(\d+)/i);
+                    if (match) {
+                      setField('escala_embarque', match[1]);
+                      setField('escala_folga', match[2]);
+                    }
+                  }}
+                >
+                  <option value="">—</option>
+                  {REGIME_ESCALA_OPTIONS.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                  {form.regime_trabalho && !REGIME_ESCALA_OPTIONS.some(r => r.value === form.regime_trabalho) && (
+                    <option value={form.regime_trabalho}>{form.regime_trabalho}</option>
+                  )}
+                </select>
+              </EditField>
+              <EditField label="Dias A Bordo (Escala Regular)">
+                <input
+                  type="number"
+                  min="1"
+                  max="180"
+                  className={inputClass}
+                  value={form.escala_embarque}
+                  onChange={e => setField('escala_embarque', e.target.value)}
+                  placeholder="Ex: 14"
+                />
+              </EditField>
+              <EditField label="Dias de Folga (Escala Regular)">
+                <input
+                  type="number"
+                  min="1"
+                  max="180"
+                  className={inputClass}
+                  value={form.escala_folga}
+                  onChange={e => setField('escala_folga', e.target.value)}
+                  placeholder="Ex: 14"
+                />
+              </EditField>
               <EditField label={t('gestaoTripulantes.personalData.admissionDate')}>
                 <input type="date" className={inputClass} value={form.data_admissao} onChange={e => setField('data_admissao', e.target.value)} />
+              </EditField>
+              <EditField label="Último Embarque">
+                <input type="date" className={inputClass} value={form.data_ultimo_embarque} onChange={e => setField('data_ultimo_embarque', e.target.value)} />
+              </EditField>
+              <EditField label="Último Desembarque">
+                <input type="date" className={inputClass} value={form.data_ultimo_desembarque} onChange={e => setField('data_ultimo_desembarque', e.target.value)} />
               </EditField>
               <EditField label="Próximo Embarque">
                 <input type="date" className={inputClass} value={form.data_proximo_embarque} onChange={e => setField('data_proximo_embarque', e.target.value)} />
@@ -415,7 +484,10 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
               <InfoField label={t('gestaoTripulantes.personalData.company')} value={data.empresa_nome} />
               <InfoField label={t('gestaoTripulantes.personalData.vessel', 'Embarcação')} value={data.embarcacao_nome} />
               <InfoField label={t('gestaoTripulantes.personalData.costCenter')} value={data.centro_custo_nome} />
+              <InfoField label="Regime / Escala de Trabalho" value={data.regime_trabalho ? `${data.regime_trabalho} (${data.escala_embarque || 14}d a bordo / ${data.escala_folga || 14}d folga)` : '14x14 (14d a bordo / 14d folga)'} />
               <InfoField label={t('gestaoTripulantes.personalData.admissionDate')} value={displayDate(data.data_admissao)} />
+              <InfoField label="Último Embarque" value={displayDate(data.data_ultimo_embarque)} />
+              <InfoField label="Último Desembarque" value={displayDate(data.data_ultimo_desembarque)} />
               <InfoField label="Próximo Embarque" value={displayDate(data.data_proximo_embarque)} />
             </>
           )}

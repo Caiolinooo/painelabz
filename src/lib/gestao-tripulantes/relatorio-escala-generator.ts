@@ -28,15 +28,16 @@ export interface RelatorioEscalaOptions {
 export interface ColaboradorTotaisEscala {
   matricula: string;
   cpf: string;
+  cpf_formatado: string;
   nome: string;
   cargo: string;
   centro_custo: string;
   empresa: string;
   embarcacao: string;
-  total_on: number;
-  total_dba: number;
-  total_fi: number;
-  total_tre: number;
+  total_dias_on: number;
+  total_dias_dba: number;
+  total_dias_fi: number;
+  total_dias_tre: number;
   semanas: Record<string, string>;
 }
 
@@ -44,10 +45,10 @@ export interface RelatorioEscalaResult {
   buffer: Buffer;
   totaisConsolidados: {
     totalColaboradores: number;
-    totalON: number;
-    totalDBA: number;
-    totalFI: number;
-    totalTRE: number;
+    totalON: number; // total de dias ON
+    totalDBA: number; // total de dias DBA
+    totalFI: number; // total de dias FI
+    totalTRE: number; // total de dias TRE
   };
   colaboradoresTotais: ColaboradorTotaisEscala[];
   semanas: string[];
@@ -66,6 +67,14 @@ function parseLocalDate(str: string | null | undefined): Date | null {
   }
   const fallback = new Date(str);
   return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function formatCpfDisplay(cpf: string): string {
+  const digits = cpf.replace(/\D/g, '');
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  }
+  return cpf;
 }
 
 export async function gerarRelatorioEscalaMensal(
@@ -90,6 +99,10 @@ export async function gerarRelatorioEscalaMensal(
     dtFim = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   }
 
+  dtInicio.setHours(0, 0, 0, 0);
+  dtFim.setHours(23, 59, 59, 999);
+
+  // 1. Geração de Semanas de Cronograma
   const snapToSaturday = (d: Date) => {
     const res = new Date(d);
     const day = res.getDay();
@@ -101,26 +114,27 @@ export async function gerarRelatorioEscalaMensal(
 
   const timelineStart = snapToSaturday(new Date(dtInicio));
   const weeks: { dateStr: string; label: string; date: Date }[] = [];
-  let cur = new Date(timelineStart);
+  let curWeek = new Date(timelineStart);
 
-  while (cur <= dtFim || weeks.length < 4) {
-    const dStr = cur.toISOString().slice(0, 10);
-    const dayStr = String(cur.getDate()).padStart(2, '0');
-    const monthStr = cur.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
-    const yrStr = String(cur.getFullYear()).slice(2);
+  while (curWeek <= dtFim || weeks.length < 4) {
+    const dStr = curWeek.toISOString().slice(0, 10);
+    const dayStr = String(curWeek.getDate()).padStart(2, '0');
+    const monthStr = curWeek.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
+    const yrStr = String(curWeek.getFullYear()).slice(2);
     weeks.push({
       dateStr: dStr,
       label: `${dayStr}-${monthStr}-${yrStr}`,
-      date: new Date(cur),
+      date: new Date(curWeek),
     });
-    cur.setDate(cur.getDate() + 7);
+    curWeek.setDate(curWeek.getDate() + 7);
   }
 
+  // 2. Buscar Dados no Banco
   const [{ data: colabs }, { data: embarques }, { data: treinamentosDocs }] = await Promise.all([
     supabaseAdmin
       .from('gt_colaboradores')
       .select(`
-        id, cpf, nome_completo, matricula, ativo,
+        id, cpf, nome_completo, matricula, ativo, escala_embarque, escala_folga, regime_trabalho,
         cargo:gt_cargos(nome),
         empresa:gt_empresas(nome),
         embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome),
@@ -188,25 +202,107 @@ export async function gerarRelatorioEscalaMensal(
     trePorColab.set(t.colaborador_id, arr);
   }
 
-  let totalConsolON = 0;
-  let totalConsolDBA = 0;
-  let totalConsolFI = 0;
-  let totalConsolTRE = 0;
+  let totalConsolDiasON = 0;
+  let totalConsolDiasDBA = 0;
+  let totalConsolDiasFI = 0;
+  let totalConsolDiasTRE = 0;
 
   const colabTotais: ColaboradorTotaisEscala[] = [];
 
+  // ----------------------------------------------------
+  // MOTOR DE CÁLCULO DIÁRIO DE DIAS EMBARCADOS, DOBRAS, FI E TRE
+  // ----------------------------------------------------
   for (const c of colaboradores) {
     const cpfNorm = normalizeCpf(c.cpf || '');
     const cHist = histPorColab.get(c.id) || [];
     const cTre = trePorColab.get(c.id) || [];
 
-    let countON = 0;
-    let countDBA = 0;
-    let countFI = 0;
-    let countTRE = 0;
+    // Limite regular da escala de embarque do colaborador (ex: 14, 28, 15, 30)
+    let maxDiasRegulares = parseInt((c as any).escala_embarque, 10);
+    if (isNaN(maxDiasRegulares) || maxDiasRegulares <= 0) {
+      if ((c as any).regime_trabalho && typeof (c as any).regime_trabalho === 'string') {
+        const match = (c as any).regime_trabalho.match(/^(\d+)x/i);
+        if (match) maxDiasRegulares = parseInt(match[1], 10);
+      }
+    }
+    if (isNaN(maxDiasRegulares) || maxDiasRegulares <= 0) {
+      maxDiasRegulares = 14; // padrão offshore ABZ
+    }
 
+    let diasON = 0;
+    let diasDBA = 0;
+    let diasFI = 0;
+    let diasTRE = 0;
+
+    // Iteração diária estrita dentro do período do fechamento
+    const dayIter = new Date(dtInicio);
+    while (dayIter <= dtFim) {
+      const currentDayTime = dayIter.getTime();
+      let statusDoDia = '';
+
+      for (const h of cHist) {
+        if (!h.data_embarque) continue;
+        const hStart = parseLocalDate(h.data_embarque);
+        if (!hStart) continue;
+        const hEnd = h.data_desembarque
+          ? parseLocalDate(h.data_desembarque)
+          : (h.data_prevista_desembarque ? parseLocalDate(h.data_prevista_desembarque) : new Date(hStart.getTime() + maxDiasRegulares * 86400000));
+        if (!hEnd) continue;
+        hEnd.setHours(23, 59, 59, 999);
+
+        if (currentDayTime >= hStart.getTime() && currentDayTime <= hEnd.getTime()) {
+          const cod = mapDbTipoToCodigo(h.tipo).toUpperCase();
+          const diasCorridosEmbarque = Math.floor((currentDayTime - hStart.getTime()) / 86400000) + 1;
+
+          if (cod === 'DBA') {
+            statusDoDia = 'DBA';
+          } else if (cod === 'FI') {
+            statusDoDia = 'FI';
+          } else if (cod === 'TRE') {
+            statusDoDia = 'TRE';
+          } else if (cod === 'STB') {
+            statusDoDia = 'STB';
+          } else if (cod === 'OFFC') {
+            statusDoDia = 'OFF-C';
+          } else {
+            // Rotação regular: se ultrapassar a escala máxima contínua, contabiliza como DBA (Dobra)
+            if (diasCorridosEmbarque > maxDiasRegulares) {
+              statusDoDia = 'DBA';
+            } else {
+              statusDoDia = 'ON';
+            }
+          }
+          break;
+        }
+      }
+
+      // Se não estiver embarcado, verificar certificados de treinamento
+      if (!statusDoDia) {
+        for (const t of cTre) {
+          if (!t.data_emissao) continue;
+          const tStart = parseLocalDate(t.data_emissao);
+          if (!tStart) continue;
+          const tEnd = t.data_validade ? parseLocalDate(t.data_validade) : tStart;
+          if (!tEnd) continue;
+          tEnd.setHours(23, 59, 59, 999);
+
+          if (currentDayTime >= tStart.getTime() && currentDayTime <= tEnd.getTime()) {
+            statusDoDia = 'TRE';
+            break;
+          }
+        }
+      }
+
+      if (statusDoDia === 'ON') diasON++;
+      else if (statusDoDia === 'DBA') diasDBA++;
+      else if (statusDoDia === 'FI') diasFI++;
+      else if (statusDoDia === 'TRE') diasTRE++;
+
+      dayIter.setDate(dayIter.getDate() + 1);
+    }
+
+    // Mapa Semanal para visualização da grade no Excel
     const semanasMap: Record<string, string> = {};
-
     for (const w of weeks) {
       const wStart = new Date(w.date);
       wStart.setHours(0, 0, 0, 0);
@@ -222,7 +318,7 @@ export async function gerarRelatorioEscalaMensal(
         if (!hStart) continue;
         const hEnd = h.data_desembarque
           ? parseLocalDate(h.data_desembarque)
-          : (h.data_prevista_desembarque ? parseLocalDate(h.data_prevista_desembarque) : new Date(hStart.getTime() + 14 * 86400000));
+          : (h.data_prevista_desembarque ? parseLocalDate(h.data_prevista_desembarque) : new Date(hStart.getTime() + maxDiasRegulares * 86400000));
         if (!hEnd) continue;
         hEnd.setHours(23, 59, 59, 999);
 
@@ -255,17 +351,12 @@ export async function gerarRelatorioEscalaMensal(
       }
 
       semanasMap[w.dateStr] = weekStatus;
-
-      if (weekStatus === 'ON') countON++;
-      else if (weekStatus === 'DBA') countDBA++;
-      else if (weekStatus === 'FI') countFI++;
-      else if (weekStatus === 'TRE') countTRE++;
     }
 
-    totalConsolON += countON;
-    totalConsolDBA += countDBA;
-    totalConsolFI += countFI;
-    totalConsolTRE += countTRE;
+    totalConsolDiasON += diasON;
+    totalConsolDiasDBA += diasDBA;
+    totalConsolDiasFI += diasFI;
+    totalConsolDiasTRE += diasTRE;
 
     const ccObj = c.centro_custo as any;
     const ccLabel = ccObj ? `${ccObj.codigo ? `${ccObj.codigo} - ` : ''}${ccObj.nome || ''}` : 'NÃO DEFINIDO';
@@ -273,32 +364,33 @@ export async function gerarRelatorioEscalaMensal(
     colabTotais.push({
       matricula: c.matricula || '-',
       cpf: cpfNorm,
+      cpf_formatado: formatCpfDisplay(cpfNorm),
       nome: (c.nome_completo || '').toUpperCase(),
       cargo: ((c.cargo as any)?.nome || 'SEM CARGO').toUpperCase(),
       centro_custo: ccLabel.toUpperCase(),
       empresa: ((c.empresa as any)?.nome || 'ABZ').toUpperCase(),
       embarcacao: ((c.embarcacao_atual as any)?.nome || options.embarcacao || 'TODAS').toUpperCase(),
-      total_on: countON,
-      total_dba: countDBA,
-      total_fi: countFI,
-      total_tre: countTRE,
+      total_dias_on: diasON,
+      total_dias_dba: diasDBA,
+      total_dias_fi: diasFI,
+      total_dias_tre: diasTRE,
       semanas: semanasMap,
     });
   }
 
   // ----------------------------------------------------
-  // CONSTRUÇÃO DO WORKBOOK XLSX EM FOLHA ÚNICA
+  // CONSTRUÇÃO E FORMATAÇÃO VISUAL DO WORKBOOK XLSX
   // ----------------------------------------------------
   const wb = XLSX.utils.book_new();
-
   const totalCols = weeks.length + 11;
+
   const headerTitle = [
     `RELATÓRIO OFICIAL DE FECHAMENTO DE ESCALAS — DEPARTAMENTO PESSOAL & FOLHA`,
     ...Array(totalCols - 1).fill(''),
   ];
 
   const filtroSub = [
-    `Período: ${options.mesAno || `${options.dataInicio || ''} a ${options.dataFim || ''}`} | Embarcação: ${options.embarcacao || 'Todas'} | Empresa: ${options.empresa || 'Todas'} | Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+    `Período de Fechamento: ${options.mesAno || `${options.dataInicio || ''} a ${options.dataFim || ''}`}  |  Embarcação: ${options.embarcacao || 'Todas'}  |  Empresa: ${options.empresa || 'Todas'}  |  Emissão: ${new Date().toLocaleString('pt-BR')}`,
     ...Array(totalCols - 1).fill(''),
   ];
 
@@ -310,102 +402,133 @@ export async function gerarRelatorioEscalaMensal(
     'CENTRO DE CUSTO',
     'EMPRESA',
     'EMBARCAÇÃO',
-    'TOTAL ON',
-    'TOTAL DBA',
-    'TOTAL FI',
-    'TOTAL TRE',
+    'DIAS ON',
+    'DIAS DBA',
+    'DIAS FI',
+    'DIAS TRE',
     ...weeks.map(w => w.label),
   ];
 
   const wsData: any[][] = [
     headerTitle,
     filtroSub,
-    [], // linha em branco
-    colHeaders,
+    [], // Linha 3: em branco
+    colHeaders, // Linha 4: cabeçalhos
   ];
 
   for (const c of colabTotais) {
     const row = [
       c.matricula,
       c.nome,
-      c.cpf,
+      c.cpf_formatado,
       c.cargo,
       c.centro_custo,
       c.empresa,
       c.embarcacao,
-      c.total_on || '-',
-      c.total_dba || '-',
-      c.total_fi || '-',
-      c.total_tre || '-',
+      c.total_dias_on,
+      c.total_dias_dba,
+      c.total_dias_fi,
+      c.total_dias_tre,
       ...weeks.map(w => c.semanas[w.dateStr] || '-'),
     ];
     wsData.push(row);
   }
 
-  // Linha de Totais Consolidados
+  // Linha de Totais Consolidados (soma diária total)
   const totalRow = [
-    'TOTAL CONSOLIDADO',
+    'TOTAL GERAL CONSOLIDADO (DIAS)',
     `${colabTotais.length} Colaboradores`,
     '',
     '',
     '',
     '',
     '',
-    totalConsolON,
-    totalConsolDBA,
-    totalConsolFI,
-    totalConsolTRE,
+    totalConsolDiasON,
+    totalConsolDiasDBA,
+    totalConsolDiasFI,
+    totalConsolDiasTRE,
     ...weeks.map(() => ''),
   ];
   wsData.push(totalRow);
 
-  // Lista de aprovadores para chancela
+  // Lista de aprovadores para chancela e auditoria digital
   const listaAprovadores: AprovadorRegistro[] = options.aprovadores && options.aprovadores.length > 0
     ? options.aprovadores
     : (options.aprovador ? [options.aprovador] : []);
 
+  const signatureStartRow = wsData.length + 1;
   if (listaAprovadores.length > 0) {
     wsData.push([]);
-    wsData.push(['AUTENTICAÇÃO & ASSINATURAS DIGITAIS DE FECHAMENTO', ...Array(totalCols - 1).fill('')]);
+    wsData.push(['AUTENTICAÇÃO & ASSINATURAS DIGITAIS DE FECHAMENTO — AUDITORIA CRIPTOGRÁFICA', ...Array(totalCols - 1).fill('')]);
     
     for (const apr of listaAprovadores) {
       wsData.push([
-        `✓ Aprovado e Assinado Digitalmente por: ${apr.nome} ${apr.cargo ? `(${apr.cargo})` : ''} | CPF: ${apr.cpf || 'N/A'} | Data: ${apr.dataHora} | IP: ${apr.ip || '127.0.0.1'} | Hash: ${apr.assinaturaHash || 'N/A'}`,
+        `✓ Assinado Digitalmente por: ${apr.nome} ${apr.cargo ? `(${apr.cargo})` : ''} | CPF: ${apr.cpf || 'N/A'} | Data/Hora: ${apr.dataHora} | IP: ${apr.ip || '127.0.0.1'} | Hash: ${apr.assinaturaHash || 'N/A'}`,
         ...Array(totalCols - 1).fill('')
       ]);
     }
   }
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Definir larguras de colunas ideais
   ws['!cols'] = [
     { wch: 14 }, // Matrícula
     { wch: 34 }, // Nome
-    { wch: 16 }, // CPF
-    { wch: 24 }, // Cargo
-    { wch: 26 }, // Centro de Custo
+    { wch: 18 }, // CPF
+    { wch: 28 }, // Cargo
+    { wch: 28 }, // Centro de Custo
     { wch: 18 }, // Empresa
     { wch: 18 }, // Embarcação
-    { wch: 12 }, // ON
-    { wch: 12 }, // DBA
-    { wch: 12 }, // FI
-    { wch: 14 }, // TRE
+    { wch: 12 }, // DIAS ON
+    { wch: 12 }, // DIAS DBA
+    { wch: 12 }, // DIAS FI
+    { wch: 12 }, // DIAS TRE
     ...weeks.map(() => ({ wch: 12 })),
   ];
 
+  // Definir alturas das linhas
+  const rowHeights = [
+    { hpt: 32 }, // Título
+    { hpt: 20 }, // Subtítulo
+    { hpt: 8 },  // Linha em branco
+    { hpt: 26 }, // Cabeçalhos de coluna
+  ];
+  for (let i = 0; i < colabTotais.length; i++) {
+    rowHeights.push({ hpt: 20 });
+  }
+  rowHeights.push({ hpt: 24 }); // Linha de total
+  ws['!rows'] = rowHeights;
+
+  // Mesclagens de células para títulos e rodapé
+  const merges: any[] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Título principal mesclado
+    { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, // Subtítulo mesclado
+  ];
+
+  if (listaAprovadores.length > 0) {
+    merges.push({ s: { r: signatureStartRow, c: 0 }, e: { r: signatureStartRow, c: totalCols - 1 } });
+    for (let idx = 0; idx < listaAprovadores.length; idx++) {
+      merges.push({ s: { r: signatureStartRow + 1 + idx, c: 0 }, e: { r: signatureStartRow + 1 + idx, c: totalCols - 1 } });
+    }
+  }
+  ws['!merges'] = merges;
+
+  // Bordas e estilos de cores
   const defaultBorder = {
-    top: { style: 'thin', color: { rgb: '000000' } },
-    bottom: { style: 'thin', color: { rgb: '000000' } },
-    left: { style: 'thin', color: { rgb: '000000' } },
-    right: { style: 'thin', color: { rgb: '000000' } },
+    top: { style: 'thin', color: { rgb: 'D0D7DE' } },
+    bottom: { style: 'thin', color: { rgb: 'D0D7DE' } },
+    left: { style: 'thin', color: { rgb: 'D0D7DE' } },
+    right: { style: 'thin', color: { rgb: 'D0D7DE' } },
   };
 
   const colorMap: Record<string, { bg: string; text: string }> = {
-    ON: { bg: 'E2EFDA', text: '00B050' },
-    DBA: { bg: 'FCE4D6', text: 'C65911' },
-    FI: { bg: 'D9E1F2', text: '203764' },
-    TRE: { bg: 'EDEDED', text: '3B3838' },
+    ON: { bg: 'D9EAD3', text: '274E13' },
+    DBA: { bg: 'FCE5CD', text: '783F04' },
+    FI: { bg: 'CFE2F3', text: '0B5394' },
+    TRE: { bg: 'EFEFEF', text: '434343' },
     STB: { bg: 'FFF2CC', text: '7F6000' },
-    'OFF-C': { bg: 'F8CBAD', text: 'C00000' },
+    'OFF-C': { bg: 'F4CCCC', text: '990000' },
   };
 
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:Z100');
@@ -420,44 +543,67 @@ export async function gerarRelatorioEscalaMensal(
       };
 
       if (R === 0) {
-        cellStyle.font = { bold: true, color: { rgb: 'FFFFFF' }, sz: 13 };
+        // Título Principal
+        cellStyle.font = { bold: true, color: { rgb: 'FFFFFF' }, sz: 12, name: 'Segoe UI' };
         cellStyle.fill = { fgColor: { rgb: '002060' } };
-        cellStyle.border = defaultBorder;
+        cellStyle.alignment = { vertical: 'center', horizontal: 'center' };
+      } else if (R === 1) {
+        // Subtítulo
+        cellStyle.font = { italic: true, color: { rgb: '334155' }, sz: 9, name: 'Segoe UI' };
+        cellStyle.fill = { fgColor: { rgb: 'F1F5F9' } };
+        cellStyle.alignment = { vertical: 'center', horizontal: 'center' };
       } else if (R === 3) {
-        cellStyle.font = { bold: true, color: { rgb: C < 7 ? 'FFFFFF' : (C < 11 ? '002060' : '000000') }, sz: 10 };
+        // Cabeçalhos de colunas
+        cellStyle.font = { bold: true, color: { rgb: C < 7 ? 'FFFFFF' : (C < 11 ? '002060' : '000000') }, sz: 9, name: 'Segoe UI' };
         cellStyle.fill = { fgColor: { rgb: C < 7 ? '002060' : (C < 11 ? 'BDD7EE' : 'E2EFDA') } };
         cellStyle.border = defaultBorder;
       } else if (R === 4 + colabTotais.length) {
-        cellStyle.font = { bold: true, color: { rgb: '002060' }, sz: 11 };
+        // Linha de Totais Gerais
+        cellStyle.font = { bold: true, color: { rgb: '002060' }, sz: 10, name: 'Segoe UI' };
         cellStyle.fill = { fgColor: { rgb: 'D9E1F2' } };
         cellStyle.border = defaultBorder;
       } else if (R > 3 && R < 4 + colabTotais.length) {
-        cellStyle.font = { sz: 9 };
+        // Linhas de dados de colaboradores
+        cellStyle.font = { sz: 9, name: 'Segoe UI' };
         cellStyle.border = defaultBorder;
-        if (C === 7) cellStyle.fill = { fgColor: { rgb: 'E2EFDA' } };
-        else if (C === 8) cellStyle.fill = { fgColor: { rgb: 'FCE4D6' } };
-        else if (C === 9) cellStyle.fill = { fgColor: { rgb: 'D9E1F2' } };
-        else if (C === 10) cellStyle.fill = { fgColor: { rgb: 'EDEDED' } };
-        else if (C >= 11 && typeof cell.v === 'string' && colorMap[cell.v]) {
+        if (C === 7) {
+          cellStyle.fill = { fgColor: { rgb: 'E2EFDA' } };
+          cellStyle.font = { bold: true, color: { rgb: '274E13' } };
+        } else if (C === 8) {
+          cellStyle.fill = { fgColor: { rgb: 'FCE5CD' } };
+          cellStyle.font = { bold: true, color: { rgb: '783F04' } };
+        } else if (C === 9) {
+          cellStyle.fill = { fgColor: { rgb: 'CFE2F3' } };
+          cellStyle.font = { bold: true, color: { rgb: '0B5394' } };
+        } else if (C === 10) {
+          cellStyle.fill = { fgColor: { rgb: 'EFEFEF' } };
+          cellStyle.font = { bold: true, color: { rgb: '434343' } };
+        } else if (C >= 11 && typeof cell.v === 'string' && colorMap[cell.v]) {
           cellStyle.fill = { fgColor: { rgb: colorMap[cell.v].bg } };
           cellStyle.font = { color: { rgb: colorMap[cell.v].text }, bold: true, sz: 9 };
         }
+      } else if (R >= signatureStartRow) {
+        // Linhas de Chancelas Digitais
+        cellStyle.font = { sz: 8, color: { rgb: '0F5132' }, name: 'Segoe UI' };
+        cellStyle.fill = { fgColor: { rgb: 'D1E7DD' } };
+        cellStyle.alignment = { vertical: 'center', horizontal: 'left' };
       }
+
       cell.s = cellStyle;
     }
   }
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Schedule');
+  XLSX.utils.book_append_sheet(wb, ws, 'Fechamento DP');
   const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
   return {
     buffer: Buffer.from(buffer),
     totaisConsolidados: {
       totalColaboradores: colabTotais.length,
-      totalON: totalConsolON,
-      totalDBA: totalConsolDBA,
-      totalFI: totalConsolFI,
-      totalTRE: totalConsolTRE,
+      totalON: totalConsolDiasON,
+      totalDBA: totalConsolDiasDBA,
+      totalFI: totalConsolDiasFI,
+      totalTRE: totalConsolDiasTRE,
     },
     colaboradoresTotais: colabTotais,
     semanas: weeks.map(w => w.dateStr),
