@@ -12,7 +12,7 @@ import {
   FiRefreshCw,
   FiAlertCircle,
 } from 'react-icons/fi';
-import { fetchWithToken } from '@/lib/fetchWithToken';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 interface CentroCusto {
   id: string;

@@ -14,7 +14,7 @@ import {
   FiFileText,
   FiEdit3,
 } from 'react-icons/fi';
-import { fetchWithToken } from '@/lib/fetchWithToken';
+import { fetchWithToken } from '@/lib/tokenStorage';
 import { useSignature } from '@/contexts/SignatureContext';
 
 interface ModalAprovacaoFechamentoProps {

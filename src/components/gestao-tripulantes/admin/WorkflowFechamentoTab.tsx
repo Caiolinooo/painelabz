@@ -14,7 +14,7 @@ import {
   FiUserCheck,
   FiClock,
 } from 'react-icons/fi';
-import { fetchWithToken } from '@/lib/fetchWithToken';
+import { fetchWithToken } from '@/lib/tokenStorage';
 
 interface FechamentoConfig {
   dia_fechamento_mes: number;

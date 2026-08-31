@@ -214,6 +214,9 @@ const ScheduleRow = React.memo(function ScheduleRow({
                     tooltip: tooltipParts.join('\n\n'),
                 };
             }),
+        [weeks, member.rotations, member.name, getWeekRotationMeta, getCellStyle, currentWeekKey, locale]
+    );
+
     const counts = useMemo(() => {
         let on = 0, dba = 0, fi = 0, tre = 0;
         for (const c of cellMetas) {

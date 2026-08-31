@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.67.1] - 2026-08-31
+
+### 🛠️ Gestão de Tripulantes: Correção de Importações de Token e Ajuste de Sintaxe no Man Schedule
+
+Esta versão corrige a resolução de módulos do helper `fetchWithToken` (redirecionado para `@/lib/tokenStorage`) nos componentes de Centros de Custo, Fechamento DP e Modal de Aprovação, e restaura o fechamento de dependências do hook `useMemo` na linha de escalas do Man Schedule.
+
+### Fixed
+- **Resolução de Imports `fetchWithToken`**:
+  - Atualizados `CentrosCustoAdminTab.tsx`, `WorkflowFechamentoTab.tsx` e `ModalAprovacaoFechamento.tsx` para importar `fetchWithToken` a partir de `@/lib/tokenStorage`.
+- **Sintaxe de Hooks em `GTManScheduleTab.tsx`**:
+  - Fechamento estrito do hook `useMemo` com a lista completa de dependências na renderização de linhas de tripulantes (`ScheduleRow`).
+
 ## [5.67.0] - 2026-08-31
 
 ### ⚓ Gestão de Tripulantes: Fechamento Mensal DP, Totais de Escala (ON/DBA/FI/TRE), Centros de Custo Globais & Histórico Completo
