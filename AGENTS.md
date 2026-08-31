@@ -88,6 +88,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - **MIO canonical local**: future modules read only `gt_*` (`src/lib/gestao-tripulantes/gt-canonical.ts`). Runtime never calls MIO/PoliWeb. Pull admin/cron `POST /api/gestao-tripulantes/mio/sync` copies integrantes (incl. inativos), treinamentos, ASO (every READ path), embarques/LGP extras, afastamentos, anexos, leftover entidades. Man Schedule serves `gt_historico_embarques`. Nunca PUT/PATCH/DELETE/upload de volta ao MIO. Ver `src/app/api/gestao-tripulantes/AGENTS.md`.
 - **Deploy / hosting**: produção e previews no **Vercel** apenas. Não usar Netlify (legado); ao falar de deploy, env vars, cron ou build, referir Vercel.
 - **Startup Experience (Splash & Áudio)**: gerenciado em `/admin/users` via `UserEditor` e `users_unified` (`startup_splash_enabled`, `startup_splash_url`, `startup_sound_enabled`, `startup_sound_url`). Assets em bucket `user-startup-assets`. Visualizado na tabela com badges e executado 1x por sessão via `StartupExperience`.
+- **Calendário (`/calendario`)**: só feriados oficiais + eventos do ICS compartilhado. Sem embarques, cursos, ASO ou outros eventos operacionais MIO/`gt_*`. Ver `src/app/calendario/AGENTS.md`.
 
 ## Child DOX Index
 
@@ -99,5 +100,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/app/ferias/AGENTS.md` — histórico, export XLSX/CSV, PDF preenchido + assinaturas + soft prompt de cadastro
 - `src/app/department/dp/AGENTS.md` — DP: MainLayout, campos achatados da lista, ASO via GET vencimentos
 - `src/components/gestao-tripulantes/AGENTS.md` — lookups criáveis, KPIs ativos, viewport dia/semana
+- `src/app/calendario/AGENTS.md` — só feriados + ICS compartilhado; sem MIO/embarque/curso
+- `src/app/api/calendar/AGENTS.md` — ICS `from`/`to` vs `rangeDays` (futuros)
 ## Index of Modules
 

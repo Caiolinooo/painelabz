@@ -1,3 +1,14 @@
+## Calendário — só compartilhado + revamp visual (2026-08-31)
+
+### Objetivo
+`/calendario` não deve mostrar embarques, cursos nem outros eventos operacionais (MIO/`gt_*`). Só feriados oficiais + eventos do calendário compartilhado da empresa. Visual alinhado ao portal (cards rounded-2xl, header DP-like).
+
+### Passos
+- [x] Remover fetch `/api/mio/calendar` da página
+- [x] Revamp UI + atualizar i18n/DOX; ICS do ano via `from`/`to`
+
+---
+
 ## GT — lookup criável, KPIs ativos, docs vencidos, viewport dia/semana (2026-08-31)
 
 ### Objetivo
