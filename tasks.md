@@ -1,3 +1,18 @@
+## DP — menu lateral + dados da tabela/ASO (2026-08-31)
+
+### Problemas
+- `/department/dp` sem `layout.tsx`/`MainLayout` → tela full-bleed sem menu lateral
+- Colunas Cargo/CC/Empresa liam `cargo.nome` mas a API flatten devolve `cargo_nome`
+- Aba ASO lia `/auditoria` (todos os docs, join `gt_colaboradores`) e esperava `colaborador` → N/A em massa; status via `new Date(iso)` UTC
+
+### Passos
+- [x] `src/app/department/dp/layout.tsx` com `MainLayout`
+- [x] `LIST_SELECT`: `ativo`, regime/escala, `centro_custo(codigo)`
+- [x] `GET /aso/notificar-vencimentos` + helper `aso-vencimentos.ts` (data local)
+- [x] Página DP usa campos achatados; aba ASO com nome/CPF/cargo; fechamento com totais do mês
+
+---
+
 ## MIO 100% histórico local (2026-08-26) — HIGHEST PRIORITY
 
 ### Objetivo

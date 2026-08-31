@@ -2,82 +2,95 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { sendEmail } from '@/lib/email-service';
+import { buscarAsosComAlerta, type AsoVencimentoItem } from '@/lib/gestao-tripulantes/aso-vencimentos';
 
 export const dynamic = 'force-dynamic';
 
+function requireAuth(request: NextRequest) {
+  const authHeader = request.headers.get('authorization') || undefined;
+  const token = extractTokenFromHeader(authHeader);
+  if (!token) {
+    return { error: NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 }) };
+  }
+  const payload = verifyToken(token);
+  if (!payload) {
+    return { error: NextResponse.json({ error: 'Token inválido' }, { status: 401 }) };
+  }
+  return { payload };
+}
+
+function rowHtml(a: AsoVencimentoItem): string {
+  const c = a.colaborador;
+  const isV = a.alerta === 'vencido';
+  return `
+    <tr style="border-bottom: 1px solid #f1f5f9; ${isV ? 'background: #fff5f5;' : ''}">
+      <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0f172a;">${c?.nome_completo || 'N/A'}</td>
+      <td style="padding: 8px; border: 1px solid #e2e8f0; font-family: monospace;">${c?.cpf || '—'} <br/><span style="color: #64748b; font-size: 10px;">Matrícula: ${c?.matricula || '—'}</span></td>
+      <td style="padding: 8px; border: 1px solid #e2e8f0;">${c?.cargo_nome || '—'}<br/><span style="color: #002060; font-weight: 600; font-size: 10px;">${c?.embarcacao_nome || '—'}</span></td>
+      <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: ${isV ? '#dc2626' : '#d97706'}; font-family: monospace;">${a.data_validade}</td>
+      <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">
+        <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold; background: ${isV ? '#fee2e2; color: #991b1b;' : '#fef3c7; color: #92400e;'}">
+          ${isV ? 'VENCIDO' : 'VENCENDO'}
+        </span>
+      </td>
+    </tr>
+  `;
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = requireAuth(request);
+    if (auth.error) return auth.error;
+
+    const { vencidos, vencendo } = await buscarAsosComAlerta(30);
+    return NextResponse.json({
+      success: true,
+      data: {
+        vencidos,
+        vencendo,
+        total: vencidos.length + vencendo.length,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao listar vencimentos de ASO:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erro interno ao listar ASOs' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization') || undefined;
-    const token = extractTokenFromHeader(authHeader);
-    if (!token) {
-      return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
-    }
+    const auth = requireAuth(request);
+    if (auth.error) return auth.error;
 
-    const payload = verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
-    }
+    const { vencidos, vencendo } = await buscarAsosComAlerta(30);
+    const listaAsos = [...vencidos, ...vencendo];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const in30Days = new Date(today);
-    in30Days.setDate(in30Days.getDate() + 30);
-    in30Days.setHours(23, 59, 59, 999);
-
-    const todayStr = today.toISOString().slice(0, 10);
-    const in30DaysStr = in30Days.toISOString().slice(0, 10);
-
-    // Buscar ASOs vencidos ou vencendo nos próximos 30 dias
-    const { data: asos, error: asoErr } = await supabaseAdmin
-      .from('gt_documentos')
-      .select(`
-        id, titulo, numero_documento, numero_rastreio, data_emissao, data_validade, status_validacao,
-        colaborador:gt_colaboradores(id, user_id, nome_completo, cpf, email, matricula,
-          cargo:gt_cargos(nome),
-          empresa:gt_empresas(nome),
-          embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome)
-        )
-      `)
-      .eq('tipo_documento', 'aso')
-      .is('deleted_at', null)
-      .lte('data_validade', in30DaysStr)
-      .order('data_validade', { ascending: true });
-
-    if (asoErr) {
-      console.error('Erro ao buscar ASOs para notificação:', asoErr);
-      return NextResponse.json({ error: 'Falha ao buscar registros de ASO' }, { status: 500 });
-    }
-
-    const listaAsos = (asos || []).filter(a => a.colaborador && a.data_validade);
     if (listaAsos.length === 0) {
       return NextResponse.json({
         success: true,
         message: 'Nenhum ASO vencido ou vencendo nos próximos 30 dias.',
         totalNotificados: 0,
+        data: { vencidos: [], vencendo: [], total: 0 },
       });
     }
 
-    // Separar em Vencidos e A Vencer
-    const vencidos: any[] = [];
-    const vencendo: any[] = [];
+    const notificacoesInApp: Array<{
+      user_id: string;
+      type: string;
+      title: string;
+      message: string;
+      priority: string;
+      action_url: string;
+      created_at: string;
+    }> = [];
 
     for (const a of listaAsos) {
-      const vDate = a.data_validade ? new Date(a.data_validade) : null;
-      if (vDate && vDate < today) {
-        vencidos.push(a);
-      } else {
-        vencendo.push(a);
-      }
-    }
-
-    // 1. Criar Notificações no Portal para os Colaboradores e Admins
-    const notificacoesInApp: any[] = [];
-
-    // Notificar cada colaborador individualmente (se tiver user_id)
-    for (const a of listaAsos) {
-      const colab = a.colaborador as any;
+      const colab = a.colaborador;
       if (colab?.user_id) {
-        const isVencido = new Date(a.data_validade) < today;
+        const isVencido = a.alerta === 'vencido';
         notificacoesInApp.push({
           user_id: colab.user_id,
           type: 'compliance_alert',
@@ -90,7 +103,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Notificar gestores/admins com resumo
     const { data: adminUsers } = await supabaseAdmin
       .from('users_unified')
       .select('id, email, full_name, role')
@@ -113,14 +125,16 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.from('notifications').insert(notificacoesInApp);
     }
 
-    // 2. Disparar E-mail Consolidado para o DP
     const { data: configWorkflow } = await supabaseAdmin
       .from('gt_configuracoes')
       .select('valor')
       .eq('chave', 'workflow_fechamento_config')
       .maybeSingle();
 
-    const cfg = configWorkflow?.valor || {};
+    const cfg = (configWorkflow?.valor || {}) as {
+      email_departamento_pessoal?: string;
+      aprovadores_obrigatorios?: Array<{ email?: string }>;
+    };
     const dpEmails: string[] = [];
     if (cfg.email_departamento_pessoal) {
       dpEmails.push(cfg.email_departamento_pessoal);
@@ -169,23 +183,7 @@ export async function POST(request: NextRequest) {
               </tr>
             </thead>
             <tbody>
-              ${listaAsos.map(a => {
-                const c = a.colaborador as any;
-                const isV = new Date(a.data_validade) < today;
-                return `
-                  <tr style="border-bottom: 1px solid #f1f5f9; ${isV ? 'background: #fff5f5;' : ''}">
-                    <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0f172a;">${c?.nome_completo || 'N/A'}</td>
-                    <td style="padding: 8px; border: 1px solid #e2e8f0; font-family: monospace;">${c?.cpf || '—'} <br/><span style="color: #64748b; font-size: 10px;">Matrícula: ${c?.matricula || '—'}</span></td>
-                    <td style="padding: 8px; border: 1px solid #e2e8f0;">${c?.cargo?.nome || '—'}<br/><span style="color: #002060; font-weight: 600; font-size: 10px;">${c?.embarcacao_atual?.nome || '—'}</span></td>
-                    <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: ${isV ? '#dc2626' : '#d97706'}; font-family: monospace;">${a.data_validade}</td>
-                    <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                      <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold; background: ${isV ? '#fee2e2; color: #991b1b;' : '#fef3c7; color: #92400e;'}">
-                        ${isV ? 'VENCIDO' : 'VENCENDO'}
-                      </span>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
+              ${listaAsos.map(rowHtml).join('')}
             </tbody>
           </table>
 
@@ -215,7 +213,7 @@ export async function POST(request: NextRequest) {
         totalVencendo: vencendo.length,
         destinatariosEmail: dpEmails,
         totalNotificacoesInApp: notificacoesInApp.length,
-      }
+      },
     });
   } catch (error) {
     console.error('Erro na rota de notificação de ASO:', error);

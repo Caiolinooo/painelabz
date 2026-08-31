@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendEmail } from '@/lib/email-service';
+import { buscarAsosComAlerta } from '@/lib/gestao-tripulantes/aso-vencimentos';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,45 +20,23 @@ async function processarAlertas(request: NextRequest) {
       // allow internal cron or continue
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const in30Days = new Date(today);
-    in30Days.setDate(in30Days.getDate() + 30);
-    in30Days.setHours(23, 59, 59, 999);
+    const { vencidos, vencendo } = await buscarAsosComAlerta(30);
+    const listaAsos = [...vencidos, ...vencendo];
 
-    const in30DaysStr = in30Days.toISOString().slice(0, 10);
-
-    const { data: asos } = await supabaseAdmin
-      .from('gt_documentos')
-      .select(`
-        id, titulo, numero_documento, numero_rastreio, data_emissao, data_validade, status_validacao,
-        colaborador:gt_colaboradores(id, user_id, nome_completo, cpf, email, matricula,
-          cargo:gt_cargos(nome),
-          empresa:gt_empresas(nome),
-          embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome)
-        )
-      `)
-      .eq('tipo_documento', 'aso')
-      .is('deleted_at', null)
-      .lte('data_validade', in30DaysStr)
-      .order('data_validade', { ascending: true });
-
-    const listaAsos = (asos || []).filter(a => a.colaborador && a.data_validade);
-    const vencidos: any[] = [];
-    const vencendo: any[] = [];
+    const notificacoesInApp: Array<{
+      user_id: string;
+      type: string;
+      title: string;
+      message: string;
+      priority: string;
+      action_url: string;
+      created_at: string;
+    }> = [];
 
     for (const a of listaAsos) {
-      const vDate = a.data_validade ? new Date(a.data_validade) : null;
-      if (vDate && vDate < today) vencidos.push(a);
-      else vencendo.push(a);
-    }
-
-    // Criar notificações in-app
-    const notificacoesInApp: any[] = [];
-    for (const a of listaAsos) {
-      const colab = a.colaborador as any;
+      const colab = a.colaborador;
       if (colab?.user_id) {
-        const isVencido = new Date(a.data_validade) < today;
+        const isVencido = a.alerta === 'vencido';
         notificacoesInApp.push({
           user_id: colab.user_id,
           type: 'compliance_alert',
@@ -97,7 +75,7 @@ async function processarAlertas(request: NextRequest) {
       success: true,
       totalVencidos: vencidos.length,
       totalVencendo: vencendo.length,
-      notificacoesCriadas: notificacoesInApp.length
+      notificacoesCriadas: notificacoesInApp.length,
     });
   } catch (error) {
     console.error('Erro no cron de notificação de ASO:', error);

@@ -66,11 +66,13 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 - `GET /api/gestao-tripulantes/aso?cpf=` → only `enviado|processado`.
 - `algoritmo-back` prefers those ASOs for validity scoring; falls back to any dated `gt_documentos` per candidate without a global ASO.
+- **ASO vencimentos (DP)**: `GET /api/gestao-tripulantes/aso/notificar-vencimentos` lists `tipo_documento=aso` with join colaborador (flattened `cargo_nome` / `embarcacao_nome`). `POST` dispara e-mail/in-app. Classificação vencido/vencendo em `src/lib/gestao-tripulantes/aso-vencimentos.ts` por data civil local (`YYYY-MM-DD`), janela 30d. Cron `/cron/notificar-vencimentos` usa o mesmo helper. Não usar `/auditoria` como fonte da aba DP.
 
 ### GET colaborador performance
 
 - `GET /colaboradores/[id]` reads `gt_colaboradores` (not `gt_vw_colaboradores_completo`), excludes `mio_data`/`ocr_texto`/`xml_gerado`, two parallel DB waves. Optional `?include=` (default `profile,documentos,embarques,substituicoes,esocial_asos`).
 - List GET uses base tables; `?cpf=` + `?lite=1` for Man Schedule name-click (do not search the heavy view).
+- `LIST_SELECT` includes `ativo`, `regime_trabalho`, `escala_embarque`, `escala_folga` and `centro_custo(nome, codigo)`. Flatten returns `cargo_nome` / `empresa_nome` / `embarcacao_nome` / `centro_custo_*` — consumers must not expect nested `cargo.nome`.
 - Client modal dedupes in-flight GETs (React Strict Mode + `_t` cache-bust). Man Schedule tab is lazy-mounted; `/api/man-schedule/realtime?janela=90d` is cached 60s on the client.
 
 ### Man Schedule — tipos / cores / observações
@@ -185,6 +187,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Dados Pessoais edit mode: all identity + professional fields are inputs (not plain text); Save persists via PUT whitelist including CPF (validated) and FK professional columns.
 - After Treinamentos “Exportar Excel”, modal still shows collaborator data (reopen included); GET 200 is not wiped by export.
 - `GET /api/gestao-tripulantes/poliweb/asos-pendentes` returns 200 with array `data` (empty + `warning` if Poliweb down); GT page does not show Next.js overlay.
+- `GET /api/gestao-tripulantes/aso/notificar-vencimentos` returns `{ vencidos, vencendo }` with `colaborador.nome_completo` (not nested `gt_colaboradores`); `/department/dp` wraps `MainLayout`.
 
 ## Child DOX Index
 

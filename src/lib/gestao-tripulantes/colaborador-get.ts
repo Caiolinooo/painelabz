@@ -393,8 +393,9 @@ export async function loadColaboradorDetail(
 export const LIST_SELECT = `
   id, nome_completo, cpf, email, matricula, foto_url,
   status_embarque, standby, data_proximo_embarque,
+  ativo, regime_trabalho, escala_embarque, escala_folga,
   cargo:gt_cargos(nome),
   empresa:gt_empresas(nome, cnpj),
   embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome),
-  centro_custo:gt_centros_custo(nome)
+  centro_custo:gt_centros_custo(nome, codigo)
 `.replace(/\s+/g, ' ').trim();

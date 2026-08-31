@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.69.1] - 2026-08-31
+
+### 🛠️ Departamento Pessoal: menu lateral, cadastro e vencimentos de ASO
+
+Correção da tela `/department/dp`:
+1. **Menu lateral**: `layout.tsx` com `MainLayout`, no mesmo padrão de GT / e-Social / Man Schedule.
+2. **Cadastro**: tabela usa campos achatados da API (`cargo_nome`, `empresa_nome`, `centro_custo_*`, `ativo`, regime/escala) em vez de nested `cargo.nome`.
+3. **ASO**: lista só `tipo_documento=aso` via `GET /aso/notificar-vencimentos` (helper `aso-vencimentos.ts`, data civil local). A aba não mistura mais treinamentos da auditoria nem mostra colaborador como N/A.
+4. **Fechamento**: preview de totais ON/DBA/FI/TRE do mês na própria aba.
+
 ## [5.69.0] - 2026-08-31
 
 ### 🚀 Integração Global do Departamento Pessoal (DP), Permissões de Setores, Motor de Dobras e Cruzamento de Dados

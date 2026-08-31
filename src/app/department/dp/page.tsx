@@ -3,15 +3,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import { formatCpf } from '@/lib/utils/identity';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
 import { toast } from 'react-hot-toast';
 import {
-  FiUsers, FiCalendar, FiAlertTriangle, FiCheckCircle, FiFileText,
-  FiSearch, FiFilter, FiDownload, FiEdit2, FiRefreshCw, FiSend,
-  FiPlus, FiChevronRight, FiBriefcase, FiAnchor, FiLayers, FiShield
+  FiUsers, FiCalendar, FiAlertTriangle, FiSearch, FiEdit2, FiRefreshCw, FiSend,
+  FiBriefcase, FiShield,
 } from 'react-icons/fi';
 
 interface ColaboradorItem {
@@ -24,34 +23,69 @@ interface ColaboradorItem {
   regime_trabalho: string | null;
   escala_embarque: number | null;
   escala_folga: number | null;
-  cargo?: { nome: string } | null;
-  empresa?: { nome: string } | null;
-  embarcacao_atual?: { nome: string } | null;
-  centro_custo?: { codigo: string; nome: string } | null;
-  qtd_docs_vencidos?: number;
-  qtd_docs_vencendo?: number;
+  cargo_nome?: string | null;
+  empresa_nome?: string | null;
+  embarcacao_nome?: string | null;
+  centro_custo_nome?: string | null;
+  centro_custo_codigo?: string | null;
 }
 
 interface AsoVencimentoItem {
   id: string;
   titulo: string;
   data_validade: string;
+  alerta: 'vencido' | 'vencendo';
   colaborador?: {
     id: string;
     nome_completo: string;
     cpf: string;
-    matricula: string;
-    cargo?: { nome: string };
-    embarcacao_atual?: { nome: string };
-  };
+    matricula: string | null;
+    cargo_nome?: string | null;
+    embarcacao_nome?: string | null;
+  } | null;
+}
+
+interface FechamentoTotais {
+  totalColaboradores: number;
+  totalON: number;
+  totalDBA: number;
+  totalFI: number;
+  totalTRE: number;
+  totalFER?: number;
+}
+
+function formatDateBR(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
+function formatRegime(c: ColaboradorItem): string {
+  if (c.escala_embarque && c.escala_folga) {
+    return `${c.escala_embarque}x${c.escala_folga}`;
+  }
+  return c.regime_trabalho || '—';
+}
+
+function formatCentroCusto(c: ColaboradorItem): string {
+  if (c.centro_custo_codigo && c.centro_custo_nome) {
+    return `${c.centro_custo_codigo} - ${c.centro_custo_nome}`;
+  }
+  return c.centro_custo_nome || c.centro_custo_codigo || '—';
+}
+
+function formatCpfDisplay(cpf: string | null | undefined): string {
+  if (!cpf) return '—';
+  const formatted = formatCpf(cpf);
+  return formatted || cpf;
 }
 
 export default function DepartamentoPessoalPage() {
   const { user, isLoading: authLoading } = useSupabaseAuth();
-  const { t } = useI18n();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'colaboradores' | 'fechamento' | 'asos' | 'esocial'>('colaboradores');
+  const [activeTab, setActiveTab] = useState<'colaboradores' | 'fechamento' | 'asos'>('colaboradores');
   const [colaboradores, setColaboradores] = useState<ColaboradorItem[]>([]);
   const [asosPendentes, setAsosPendentes] = useState<AsoVencimentoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,38 +94,63 @@ export default function DepartamentoPessoalPage() {
   const [isNotifyingAsos, setIsNotifyingAsos] = useState(false);
   const [isConsolidatingEsocial, setIsConsolidatingEsocial] = useState(false);
 
-  // Filtros da Tabela
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEmpresa, setFilterEmpresa] = useState('');
   const [filterEmbarcacao, setFilterEmbarcacao] = useState('');
-  const [filterCentroCusto, setFilterCentroCusto] = useState('');
   const [filterCargo, setFilterCargo] = useState('');
   const [filterEscala, setFilterEscala] = useState('');
   const [filterStatus, setFilterStatus] = useState('ativos');
+
+  const [mesFechamento, setMesFechamento] = useState(() => new Date().toISOString().slice(0, 7));
+  const [fechamentoTotais, setFechamentoTotais] = useState<FechamentoTotais | null>(null);
+  const [fechamentoLoading, setFechamentoLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [resColabs, resAsos] = await Promise.all([
         fetchWithToken('/api/gestao-tripulantes/colaboradores?limit=1000'),
-        fetchWithToken('/api/gestao-tripulantes/auditoria'),
+        fetchWithToken('/api/gestao-tripulantes/aso/notificar-vencimentos'),
       ]);
 
       if (resColabs.ok) {
         const json = await resColabs.json();
         setColaboradores(json.data || json.colaboradores || []);
+      } else {
+        toast.error('Erro ao carregar colaboradores');
       }
 
       if (resAsos.ok) {
         const json = await resAsos.json();
-        const docs = json.data?.vencidos || [];
-        const docsVencendo = json.data?.vencendo || [];
-        setAsosPendentes([...docs, ...docsVencendo]);
+        const vencidos = json.data?.vencidos || [];
+        const vencendo = json.data?.vencendo || [];
+        setAsosPendentes([...vencidos, ...vencendo]);
+      } else {
+        toast.error('Erro ao carregar vencimentos de ASO');
       }
     } catch {
       toast.error('Erro ao carregar dados do Departamento Pessoal');
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const loadFechamento = useCallback(async (mesAno: string) => {
+    try {
+      setFechamentoLoading(true);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/relatorio-mensal?mesAno=${encodeURIComponent(mesAno)}`);
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setFechamentoTotais(json.totaisConsolidados || null);
+      } else {
+        setFechamentoTotais(null);
+        toast.error(json.error || 'Erro ao carregar fechamento do mês');
+      }
+    } catch {
+      setFechamentoTotais(null);
+      toast.error('Erro ao carregar fechamento do mês');
+    } finally {
+      setFechamentoLoading(false);
     }
   }, []);
 
@@ -105,7 +164,12 @@ export default function DepartamentoPessoalPage() {
     if (user) loadData();
   }, [user, loadData]);
 
-  // Disparar Alertas de ASO
+  useEffect(() => {
+    if (user && activeTab === 'fechamento') {
+      loadFechamento(mesFechamento);
+    }
+  }, [user, activeTab, mesFechamento, loadFechamento]);
+
   const handleDispararAlertasAso = async () => {
     try {
       setIsNotifyingAsos(true);
@@ -123,7 +187,6 @@ export default function DepartamentoPessoalPage() {
     }
   };
 
-  // Consolidar e-Social
   const handleConsolidarEsocial = async () => {
     try {
       setIsConsolidatingEsocial(true);
@@ -141,22 +204,15 @@ export default function DepartamentoPessoalPage() {
     }
   };
 
-  // Filtros aplicados em memória
   const filteredColabs = useMemo(() => {
     return colaboradores.filter((c) => {
       if (filterStatus === 'ativos' && c.ativo === false) return false;
       if (filterStatus === 'inativos' && c.ativo !== false) return false;
 
-      if (filterEmpresa && ((c.empresa as any)?.nome || '') !== filterEmpresa) return false;
-      if (filterEmbarcacao && ((c.embarcacao_atual as any)?.nome || '') !== filterEmbarcacao) return false;
-      if (filterCargo && ((c.cargo as any)?.nome || '') !== filterCargo) return false;
-      if (filterEscala && (c.regime_trabalho || '') !== filterEscala) return false;
-
-      if (filterCentroCusto) {
-        const cc = (c.centro_custo as any)?.nome || '';
-        const ccCod = (c.centro_custo as any)?.codigo || '';
-        if (!cc.includes(filterCentroCusto) && !ccCod.includes(filterCentroCusto)) return false;
-      }
+      if (filterEmpresa && (c.empresa_nome || '') !== filterEmpresa) return false;
+      if (filterEmbarcacao && (c.embarcacao_nome || '') !== filterEmbarcacao) return false;
+      if (filterCargo && (c.cargo_nome || '') !== filterCargo) return false;
+      if (filterEscala && formatRegime(c) !== filterEscala && (c.regime_trabalho || '') !== filterEscala) return false;
 
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase().trim();
@@ -168,38 +224,44 @@ export default function DepartamentoPessoalPage() {
 
       return true;
     });
-  }, [colaboradores, filterStatus, filterEmpresa, filterEmbarcacao, filterCargo, filterEscala, filterCentroCusto, searchTerm]);
+  }, [colaboradores, filterStatus, filterEmpresa, filterEmbarcacao, filterCargo, filterEscala, searchTerm]);
 
-  // Opções para filtros
   const empresasOptions = useMemo(() => {
     const set = new Set<string>();
-    colaboradores.forEach((c) => { if ((c.empresa as any)?.nome) set.add((c.empresa as any).nome); });
+    colaboradores.forEach((c) => { if (c.empresa_nome) set.add(c.empresa_nome); });
     return Array.from(set).sort();
   }, [colaboradores]);
 
   const embarcacoesOptions = useMemo(() => {
     const set = new Set<string>();
-    colaboradores.forEach((c) => { if ((c.embarcacao_atual as any)?.nome) set.add((c.embarcacao_atual as any).nome); });
+    colaboradores.forEach((c) => { if (c.embarcacao_nome) set.add(c.embarcacao_nome); });
     return Array.from(set).sort();
   }, [colaboradores]);
 
   const cargosOptions = useMemo(() => {
     const set = new Set<string>();
-    colaboradores.forEach((c) => { if ((c.cargo as any)?.nome) set.add((c.cargo as any).nome); });
+    colaboradores.forEach((c) => { if (c.cargo_nome) set.add(c.cargo_nome); });
     return Array.from(set).sort();
   }, [colaboradores]);
 
   const escalasOptions = useMemo(() => {
     const set = new Set<string>();
-    colaboradores.forEach((c) => { if (c.regime_trabalho) set.add(c.regime_trabalho); });
+    colaboradores.forEach((c) => {
+      const regime = formatRegime(c);
+      if (regime !== '—') set.add(regime);
+    });
     return Array.from(set).sort();
   }, [colaboradores]);
+
+  const asosVencidosCount = useMemo(
+    () => asosPendentes.filter((a) => a.alerta === 'vencido').length,
+    [asosPendentes]
+  );
 
   if (authLoading || !user) return null;
 
   return (
-    <div className="flex-1 p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header do Módulo DP */}
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
@@ -244,7 +306,6 @@ export default function DepartamentoPessoalPage() {
         </div>
       </div>
 
-      {/* Cards de Resumo & KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
           <span className="text-xs font-bold text-gray-500 uppercase block">Total de Colaboradores</span>
@@ -257,7 +318,9 @@ export default function DepartamentoPessoalPage() {
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
           <span className="text-xs font-bold text-amber-700 uppercase block">ASOs com Alerta</span>
           <span className="text-2xl font-black text-amber-800 mt-1 block">{asosPendentes.length}</span>
-          <span className="text-[11px] text-amber-600 font-semibold">Vencidos ou a vencer em 30d</span>
+          <span className="text-[11px] text-amber-600 font-semibold">
+            {asosVencidosCount} vencidos · {asosPendentes.length - asosVencidosCount} a vencer em 30d
+          </span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
@@ -273,12 +336,11 @@ export default function DepartamentoPessoalPage() {
         </div>
       </div>
 
-      {/* Seletor de Abas */}
       <div className="border-b border-gray-200">
-        <nav className="flex space-x-6 -mb-px">
+        <nav className="flex space-x-6 -mb-px overflow-x-auto">
           <button
             onClick={() => setActiveTab('colaboradores')}
-            className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'colaboradores'
                 ? 'border-abz-blue text-abz-blue'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -289,7 +351,7 @@ export default function DepartamentoPessoalPage() {
           </button>
           <button
             onClick={() => setActiveTab('fechamento')}
-            className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'fechamento'
                 ? 'border-abz-blue text-abz-blue'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -300,7 +362,7 @@ export default function DepartamentoPessoalPage() {
           </button>
           <button
             onClick={() => setActiveTab('asos')}
-            className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'asos'
                 ? 'border-abz-blue text-abz-blue'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -311,7 +373,7 @@ export default function DepartamentoPessoalPage() {
           </button>
           <button
             onClick={() => router.push('/department/e-social')}
-            className="pb-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 flex items-center gap-2 transition-all"
+            className="pb-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 flex items-center gap-2 transition-all whitespace-nowrap"
           >
             <FiShield className="w-4 h-4 text-indigo-500" />
             Painel e-Social ↗
@@ -319,10 +381,8 @@ export default function DepartamentoPessoalPage() {
         </nav>
       </div>
 
-      {/* TAB 1: Colaboradores & Cadastros DP */}
       {activeTab === 'colaboradores' && (
         <div className="space-y-4">
-          {/* Filtros em Barra */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-3">
             <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
               <div className="relative flex-1 w-full">
@@ -366,6 +426,15 @@ export default function DepartamentoPessoalPage() {
                 </select>
 
                 <select
+                  value={filterCargo}
+                  onChange={(e) => setFilterCargo(e.target.value)}
+                  className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700"
+                >
+                  <option value="">Todos Cargos</option>
+                  {cargosOptions.map(cg => <option key={cg} value={cg}>{cg}</option>)}
+                </select>
+
+                <select
                   value={filterEscala}
                   onChange={(e) => setFilterEscala(e.target.value)}
                   className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700"
@@ -377,7 +446,6 @@ export default function DepartamentoPessoalPage() {
             </div>
           </div>
 
-          {/* Tabela de Colaboradores */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
@@ -417,19 +485,17 @@ export default function DepartamentoPessoalPage() {
                         <td className="px-4 py-3 font-mono font-bold text-gray-900">{c.matricula || '—'}</td>
                         <td className="px-4 py-3">
                           <div className="font-bold text-gray-900">{c.nome_completo}</div>
-                          <div className="text-[11px] font-mono text-gray-500">{c.cpf}</div>
+                          <div className="text-[11px] font-mono text-gray-500">{formatCpfDisplay(c.cpf)}</div>
                         </td>
-                        <td className="px-4 py-3 text-gray-700 font-medium">{c.cargo?.nome || '—'}</td>
+                        <td className="px-4 py-3 text-gray-700 font-medium">{c.cargo_nome || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatCentroCusto(c)}</td>
                         <td className="px-4 py-3 text-gray-600">
-                          {c.centro_custo ? `${c.centro_custo.codigo ? `${c.centro_custo.codigo} - ` : ''}${c.centro_custo.nome}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          <div>{c.empresa?.nome || 'ABZ'}</div>
-                          <div className="text-[11px] font-semibold text-abz-blue">{c.embarcacao_atual?.nome || '—'}</div>
+                          <div>{c.empresa_nome || '—'}</div>
+                          <div className="text-[11px] font-semibold text-abz-blue">{c.embarcacao_nome || '—'}</div>
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex px-2 py-0.5 rounded font-mono font-semibold bg-gray-100 text-gray-800 text-[11px]">
-                            {c.regime_trabalho || '14x14'}
+                            {formatRegime(c)}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -460,34 +526,81 @@ export default function DepartamentoPessoalPage() {
         </div>
       )}
 
-      {/* TAB 2: Fechamento de Escala & Folha */}
       {activeTab === 'fechamento' && (
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Fechamento Mensal de Escalas — DP & Folha</h2>
               <p className="text-xs text-gray-500">Cômputo diário exato de Dias ON, DBA (Dobra), FI (Folga Indenizada) e TRE (Treinamento) com aprovação digital</p>
             </div>
-            <button
-              onClick={() => setIsFechamentoModalOpen(true)}
-              className="px-4 py-2 text-xs font-bold text-white bg-abz-blue hover:bg-blue-700 rounded-xl transition shadow-xs"
-            >
-              Abrir Painel de Fechamento & Assinaturas
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="month"
+                value={mesFechamento}
+                onChange={(e) => setMesFechamento(e.target.value)}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg font-bold text-gray-900"
+              />
+              <button
+                onClick={() => loadFechamento(mesFechamento)}
+                disabled={fechamentoLoading}
+                className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg bg-white hover:bg-gray-50"
+                title="Recarregar fechamento"
+              >
+                <FiRefreshCw className={`w-4 h-4 ${fechamentoLoading ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => setIsFechamentoModalOpen(true)}
+                className="px-4 py-2 text-xs font-bold text-white bg-abz-blue hover:bg-blue-700 rounded-xl transition shadow-xs"
+              >
+                Abrir Painel de Fechamento & Assinaturas
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="p-3 rounded-xl border border-gray-200 bg-slate-50">
+              <span className="text-[10px] font-bold text-gray-500 uppercase block">Colaboradores</span>
+              <span className="text-xl font-black text-gray-900">
+                {fechamentoLoading ? '…' : (fechamentoTotais?.totalColaboradores ?? '—')}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl border border-blue-100 bg-blue-50">
+              <span className="text-[10px] font-bold text-blue-700 uppercase block">Dias ON</span>
+              <span className="text-xl font-black text-blue-900">
+                {fechamentoLoading ? '…' : (fechamentoTotais?.totalON ?? '—')}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl border border-amber-100 bg-amber-50">
+              <span className="text-[10px] font-bold text-amber-700 uppercase block">Dias DBA</span>
+              <span className="text-xl font-black text-amber-900">
+                {fechamentoLoading ? '…' : (fechamentoTotais?.totalDBA ?? '—')}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl border border-emerald-100 bg-emerald-50">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase block">Dias FI</span>
+              <span className="text-xl font-black text-emerald-900">
+                {fechamentoLoading ? '…' : (fechamentoTotais?.totalFI ?? '—')}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl border border-indigo-100 bg-indigo-50">
+              <span className="text-[10px] font-bold text-indigo-700 uppercase block">TRE / FER</span>
+              <span className="text-xl font-black text-indigo-900">
+                {fechamentoLoading ? '…' : `${fechamentoTotais?.totalTRE ?? 0} / ${fechamentoTotais?.totalFER ?? 0}`}
+              </span>
+            </div>
           </div>
 
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2 text-slate-700">
-            <p className="font-bold text-slate-900">⚙️ Regras Contábeis do Fechamento DP:</p>
+            <p className="font-bold text-slate-900">Regras Contábeis do Fechamento DP:</p>
             <ul className="list-disc list-inside space-y-1">
               <li><strong>Cômputo Diário</strong>: Cada dia no período selecionado é verificado individualmente.</li>
-              <li><strong>Dobras Automáticas</strong>: Calculadas com base no regime de escala do colaborador (ex: `14x14`, `28x28`). Qualquer embarque contínuo que ultrapassar a escala regular é computado como <strong>DBA</strong>.</li>
+              <li><strong>Dobras Automáticas</strong>: Calculadas com base no regime de escala do colaborador (ex: 14x14, 28x28). Qualquer embarque contínuo que ultrapassar a escala regular é computado como <strong>DBA</strong>.</li>
               <li><strong>Multi-Assinaturas Obrigatórias</strong>: O e-mail oficial para o DP só é despachado quando todos os integrantes configurados realizarem a assinatura digital com hash criptográfico.</li>
             </ul>
           </div>
         </div>
       )}
 
-      {/* TAB 3: Vencimentos de ASO */}
       {activeTab === 'asos' && (
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
@@ -518,7 +631,14 @@ export default function DepartamentoPessoalPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {asosPendentes.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
+                      <FiRefreshCw className="animate-spin inline w-5 h-5 mr-2 text-abz-blue" />
+                      Carregando vencimentos de ASO...
+                    </td>
+                  </tr>
+                ) : asosPendentes.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-emerald-700 font-medium">
                       ✓ Todos os ASOs estão em dia e conformes!
@@ -526,14 +646,20 @@ export default function DepartamentoPessoalPage() {
                   </tr>
                 ) : (
                   asosPendentes.map((a, idx) => {
-                    const isV = a.data_validade ? new Date(a.data_validade) < new Date() : false;
+                    const isV = a.alerta === 'vencido';
                     return (
-                      <tr key={a.id || idx} className="hover:bg-gray-50">
+                      <tr
+                        key={a.id || idx}
+                        className={`hover:bg-gray-50 ${a.colaborador?.id ? 'cursor-pointer' : ''}`}
+                        onClick={() => {
+                          if (a.colaborador?.id) setSelectedColaboradorId(a.colaborador.id);
+                        }}
+                      >
                         <td className="px-4 py-3 font-bold text-gray-900">{a.colaborador?.nome_completo || 'N/A'}</td>
-                        <td className="px-4 py-3 font-mono text-gray-600">{a.colaborador?.cpf || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">{a.colaborador?.cargo?.nome || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">{a.colaborador?.embarcacao_atual?.nome || '—'}</td>
-                        <td className="px-4 py-3 text-center font-bold font-mono text-gray-900">{a.data_validade || '—'}</td>
+                        <td className="px-4 py-3 font-mono text-gray-600">{formatCpfDisplay(a.colaborador?.cpf)}</td>
+                        <td className="px-4 py-3 text-gray-600">{a.colaborador?.cargo_nome || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{a.colaborador?.embarcacao_nome || '—'}</td>
+                        <td className="px-4 py-3 text-center font-bold font-mono text-gray-900">{formatDateBR(a.data_validade)}</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-flex px-2 py-0.5 rounded-full font-bold text-[10px] ${
                             isV ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
@@ -551,7 +677,6 @@ export default function DepartamentoPessoalPage() {
         </div>
       )}
 
-      {/* Modal de Detalhes / Edição Completa de Colaborador */}
       {selectedColaboradorId && (
         <CollaboratorModal
           colaboradorId={selectedColaboradorId}
@@ -562,15 +687,15 @@ export default function DepartamentoPessoalPage() {
         />
       )}
 
-      {/* Modal de Fechamento Mensal DP */}
       {isFechamentoModalOpen && (
         <ModalAprovacaoFechamento
           isOpen={isFechamentoModalOpen}
+          initialMesAno={mesFechamento}
           filters={{
             empresa: filterEmpresa || undefined,
             embarcacao: filterEmbarcacao || undefined,
             cargo: filterCargo || undefined,
-            statusAtivo: (filterStatus as any) || 'ativos',
+            statusAtivo: (filterStatus as 'ativos' | 'inativos' | 'todos') || 'ativos',
             busca: searchTerm || undefined,
           }}
           onClose={() => setIsFechamentoModalOpen(false)}
