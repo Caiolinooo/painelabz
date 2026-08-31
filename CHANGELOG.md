@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.69.3] - 2026-08-31
+
+### 🛠️ GT: documento vencido visível + lançamentos de escala na coluna ON
+
+1. **Matriz de Conformidade**: o KPI de documentos vencidos lista título, tipo, validade e aba; só o vigente de cada slot entra no número. Ficha unificada (Employee Hub) junta `gt_*`, portal, férias e reembolso.
+2. **Man Schedule**: novo evento de escala (ON/FI/DBA…) aparece na grade e soma na coluna ON na hora. Insert local invalida o cache; lançamento recente prevalece sobre STB longo.
+
 ## [5.69.2] - 2026-08-31
 
 ### 🛠️ GT: lookup criável, KPIs só ativos e viewport diário no Man Schedule
