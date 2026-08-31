@@ -1,24 +1,36 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf, mapDbTipoToCodigo } from '@/lib/gestao-tripulantes/escala-tipos';
 
+export interface AprovadorRegistro {
+  nome: string;
+  cpf?: string;
+  email?: string;
+  cargo?: string;
+  dataHora: string;
+  ip?: string;
+  assinaturaUrl?: string;
+  assinaturaHash?: string;
+}
+
 export interface RelatorioEscalaOptions {
   mesAno?: string;
   dataInicio?: string;
   dataFim?: string;
-  aprovador?: {
-    nome: string;
-    cpf?: string;
-    dataHora: string;
-    ip?: string;
-    assinaturaUrl?: string;
-    assinaturaHash?: string;
-  };
+  empresa?: string;
+  embarcacao?: string;
+  cargo?: string;
+  statusAtivo?: 'ativos' | 'inativos' | 'todos';
+  busca?: string;
+  aprovador?: AprovadorRegistro;
+  aprovadores?: AprovadorRegistro[];
 }
 
 export interface ColaboradorTotaisEscala {
+  matricula: string;
   cpf: string;
   nome: string;
   cargo: string;
+  centro_custo: string;
   empresa: string;
   embarcacao: string;
   total_on: number;
@@ -108,10 +120,11 @@ export async function gerarRelatorioEscalaMensal(
     supabaseAdmin
       .from('gt_colaboradores')
       .select(`
-        id, cpf, nome_completo, matricula,
+        id, cpf, nome_completo, matricula, ativo,
         cargo:gt_cargos(nome),
         empresa:gt_empresas(nome),
-        embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome)
+        embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome),
+        centro_custo:gt_centros_custo(codigo, nome)
       `)
       .is('deleted_at', null)
       .order('nome_completo'),
@@ -130,9 +143,36 @@ export async function gerarRelatorioEscalaMensal(
       .is('deleted_at', null)
   ]);
 
-  const colaboradores = colabs || [];
+  let colaboradores = colabs || [];
   const hist = embarques || [];
   const treDocs = treinamentosDocs || [];
+
+  // Aplicar filtros especificados
+  if (options.empresa) {
+    const emp = options.empresa.toLowerCase().trim();
+    colaboradores = colaboradores.filter(c => ((c.empresa as any)?.nome || '').toLowerCase().trim() === emp);
+  }
+  if (options.embarcacao) {
+    const emb = options.embarcacao.toLowerCase().trim();
+    colaboradores = colaboradores.filter(c => ((c.embarcacao_atual as any)?.nome || '').toLowerCase().trim() === emb);
+  }
+  if (options.cargo) {
+    const car = options.cargo.toLowerCase().trim();
+    colaboradores = colaboradores.filter(c => ((c.cargo as any)?.nome || '').toLowerCase().trim() === car);
+  }
+  if (options.statusAtivo === 'ativos') {
+    colaboradores = colaboradores.filter(c => c.ativo !== false);
+  } else if (options.statusAtivo === 'inativos') {
+    colaboradores = colaboradores.filter(c => c.ativo === false);
+  }
+  if (options.busca) {
+    const q = options.busca.toLowerCase().trim();
+    colaboradores = colaboradores.filter(c => 
+      (c.nome_completo || '').toLowerCase().includes(q) ||
+      (c.cpf || '').includes(q) ||
+      (c.matricula || '').toLowerCase().includes(q)
+    );
+  }
 
   const histPorColab = new Map<string, any[]>();
   for (const h of hist) {
@@ -198,14 +238,18 @@ export async function gerarRelatorioEscalaMensal(
         }
       }
 
-      if (!weekStatus && cTre.length > 0) {
+      if (!weekStatus) {
         for (const t of cTre) {
-          if (t.data_emissao) {
-            const tDate = parseLocalDate(t.data_emissao);
-            if (tDate && tDate >= wStart && tDate <= wEnd) {
-              weekStatus = 'TRE';
-              break;
-            }
+          if (!t.data_emissao) continue;
+          const tStart = parseLocalDate(t.data_emissao);
+          if (!tStart) continue;
+          const tEnd = t.data_validade ? parseLocalDate(t.data_validade) : tStart;
+          if (!tEnd) continue;
+          tEnd.setHours(23, 59, 59, 999);
+
+          if (wStart <= tEnd && wEnd >= tStart) {
+            weekStatus = 'TRE';
+            break;
           }
         }
       }
@@ -223,12 +267,17 @@ export async function gerarRelatorioEscalaMensal(
     totalConsolFI += countFI;
     totalConsolTRE += countTRE;
 
+    const ccObj = c.centro_custo as any;
+    const ccLabel = ccObj ? `${ccObj.codigo ? `${ccObj.codigo} - ` : ''}${ccObj.nome || ''}` : 'NÃO DEFINIDO';
+
     colabTotais.push({
+      matricula: c.matricula || '-',
       cpf: cpfNorm,
-      nome: (c.nome_completo || '').toUpperCase().trim(),
-      cargo: (((c as any).cargo?.nome) || 'SEM CARGO').toUpperCase().trim(),
-      empresa: (((c as any).empresa?.nome) || 'ABZ GROUP').trim(),
-      embarcacao: (((c as any).embarcacao_atual?.nome) || 'TODAS').trim(),
+      nome: (c.nome_completo || '').toUpperCase(),
+      cargo: ((c.cargo as any)?.nome || 'SEM CARGO').toUpperCase(),
+      centro_custo: ccLabel.toUpperCase(),
+      empresa: ((c.empresa as any)?.nome || 'ABZ').toUpperCase(),
+      embarcacao: ((c.embarcacao_atual as any)?.nome || options.embarcacao || 'TODAS').toUpperCase(),
       total_on: countON,
       total_dba: countDBA,
       total_fi: countFI,
@@ -237,48 +286,67 @@ export async function gerarRelatorioEscalaMensal(
     });
   }
 
+  // ----------------------------------------------------
+  // CONSTRUÇÃO DO WORKBOOK XLSX EM FOLHA ÚNICA
+  // ----------------------------------------------------
   const wb = XLSX.utils.book_new();
-  const baseHeaders = [
-    'NOME DO TRIPULANTE',
+
+  const totalCols = weeks.length + 11;
+  const headerTitle = [
+    `RELATÓRIO OFICIAL DE FECHAMENTO DE ESCALAS — DEPARTAMENTO PESSOAL & FOLHA`,
+    ...Array(totalCols - 1).fill(''),
+  ];
+
+  const filtroSub = [
+    `Período: ${options.mesAno || `${options.dataInicio || ''} a ${options.dataFim || ''}`} | Embarcação: ${options.embarcacao || 'Todas'} | Empresa: ${options.empresa || 'Todas'} | Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+    ...Array(totalCols - 1).fill(''),
+  ];
+
+  const colHeaders = [
+    'MATRÍCULA',
+    'NOME DO COLABORADOR',
     'CPF',
-    'CARGO / FUNÇÃO',
+    'CARGO',
+    'CENTRO DE CUSTO',
     'EMPRESA',
     'EMBARCAÇÃO',
-    'ON (A BORDO)',
-    'DBA (DOBRA)',
-    'FI (FOLGA IND)',
-    'TRE (TREINAMENTO)',
+    'TOTAL ON',
+    'TOTAL DBA',
+    'TOTAL FI',
+    'TOTAL TRE',
     ...weeks.map(w => w.label),
   ];
 
-  const wsData: any[][] = [];
-  const mesAnoLabel = options.mesAno
-    ? `MÊS: ${options.mesAno}`
-    : `PERÍODO: ${dtInicio.toISOString().slice(0, 10)} a ${dtFim.toISOString().slice(0, 10)}`;
-
-  wsData.push(['RELATÓRIO OFICIAL DE FECHAMENTO DE ESCALAS — DEPARTAMENTO PESSOAL']);
-  wsData.push([mesAnoLabel, '', '', '', '', '', '', '', '', `GERADO EM: ${new Date().toLocaleString('pt-BR')}`]);
-  wsData.push([]);
-  wsData.push(baseHeaders);
+  const wsData: any[][] = [
+    headerTitle,
+    filtroSub,
+    [], // linha em branco
+    colHeaders,
+  ];
 
   for (const c of colabTotais) {
     const row = [
+      c.matricula,
       c.nome,
       c.cpf,
       c.cargo,
+      c.centro_custo,
       c.empresa,
       c.embarcacao,
-      c.total_on,
-      c.total_dba,
-      c.total_fi,
-      c.total_tre,
+      c.total_on || '-',
+      c.total_dba || '-',
+      c.total_fi || '-',
+      c.total_tre || '-',
       ...weeks.map(w => c.semanas[w.dateStr] || '-'),
     ];
     wsData.push(row);
   }
 
-  wsData.push([
-    'TOTAL GERAL CONSOLIDADO',
+  // Linha de Totais Consolidados
+  const totalRow = [
+    'TOTAL CONSOLIDADO',
+    `${colabTotais.length} Colaboradores`,
+    '',
     '',
     '',
     '',
@@ -288,28 +356,39 @@ export async function gerarRelatorioEscalaMensal(
     totalConsolFI,
     totalConsolTRE,
     ...weeks.map(() => ''),
-  ]);
+  ];
+  wsData.push(totalRow);
 
-  if (options.aprovador) {
+  // Lista de aprovadores para chancela
+  const listaAprovadores: AprovadorRegistro[] = options.aprovadores && options.aprovadores.length > 0
+    ? options.aprovadores
+    : (options.aprovador ? [options.aprovador] : []);
+
+  if (listaAprovadores.length > 0) {
     wsData.push([]);
-    wsData.push(['', 'AUTENTICAÇÃO & APROVAÇÃO DIGITAL DO DOCUMENTO']);
-    wsData.push(['', `APROVADO POR: ${options.aprovador.nome}`, '', `CPF: ${options.aprovador.cpf || 'N/A'}`]);
-    wsData.push(['', `DATA/HORA DA APROVAÇÃO: ${options.aprovador.dataHora}`, '', `IP DE ORIGEM: ${options.aprovador.ip || '127.0.0.1'}`]);
-    wsData.push(['', `HASH DE INTEGRIDADE: ${options.aprovador.assinaturaHash || ('GT-SIG-' + Date.now())}`]);
-    wsData.push(['', 'STATUS: APROVADO E ASSINADO DIGITALMENTE — VÁLIDO PARA PROCESSAMENTO DP/FOLHA']);
+    wsData.push(['AUTENTICAÇÃO & ASSINATURAS DIGITAIS DE FECHAMENTO', ...Array(totalCols - 1).fill('')]);
+    
+    for (const apr of listaAprovadores) {
+      wsData.push([
+        `✓ Aprovado e Assinado Digitalmente por: ${apr.nome} ${apr.cargo ? `(${apr.cargo})` : ''} | CPF: ${apr.cpf || 'N/A'} | Data: ${apr.dataHora} | IP: ${apr.ip || '127.0.0.1'} | Hash: ${apr.assinaturaHash || 'N/A'}`,
+        ...Array(totalCols - 1).fill('')
+      ]);
+    }
   }
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols'] = [
-    { wch: 32 },
-    { wch: 15 },
-    { wch: 22 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 16 },
+    { wch: 14 }, // Matrícula
+    { wch: 34 }, // Nome
+    { wch: 16 }, // CPF
+    { wch: 24 }, // Cargo
+    { wch: 26 }, // Centro de Custo
+    { wch: 18 }, // Empresa
+    { wch: 18 }, // Embarcação
+    { wch: 12 }, // ON
+    { wch: 12 }, // DBA
+    { wch: 12 }, // FI
+    { wch: 14 }, // TRE
     ...weeks.map(() => ({ wch: 12 })),
   ];
 
@@ -337,7 +416,7 @@ export async function gerarRelatorioEscalaMensal(
       if (!cell) continue;
 
       const cellStyle: any = {
-        alignment: { vertical: 'center', horizontal: C === 0 ? 'left' : 'center', wrapText: true },
+        alignment: { vertical: 'center', horizontal: C === 1 ? 'left' : 'center', wrapText: true },
       };
 
       if (R === 0) {
@@ -345,8 +424,8 @@ export async function gerarRelatorioEscalaMensal(
         cellStyle.fill = { fgColor: { rgb: '002060' } };
         cellStyle.border = defaultBorder;
       } else if (R === 3) {
-        cellStyle.font = { bold: true, color: { rgb: C < 5 ? 'FFFFFF' : (C < 9 ? '002060' : '000000') }, sz: 10 };
-        cellStyle.fill = { fgColor: { rgb: C < 5 ? '002060' : (C < 9 ? 'BDD7EE' : 'E2EFDA') } };
+        cellStyle.font = { bold: true, color: { rgb: C < 7 ? 'FFFFFF' : (C < 11 ? '002060' : '000000') }, sz: 10 };
+        cellStyle.fill = { fgColor: { rgb: C < 7 ? '002060' : (C < 11 ? 'BDD7EE' : 'E2EFDA') } };
         cellStyle.border = defaultBorder;
       } else if (R === 4 + colabTotais.length) {
         cellStyle.font = { bold: true, color: { rgb: '002060' }, sz: 11 };
@@ -355,11 +434,11 @@ export async function gerarRelatorioEscalaMensal(
       } else if (R > 3 && R < 4 + colabTotais.length) {
         cellStyle.font = { sz: 9 };
         cellStyle.border = defaultBorder;
-        if (C === 5) cellStyle.fill = { fgColor: { rgb: 'E2EFDA' } };
-        else if (C === 6) cellStyle.fill = { fgColor: { rgb: 'FCE4D6' } };
-        else if (C === 7) cellStyle.fill = { fgColor: { rgb: 'D9E1F2' } };
-        else if (C === 8) cellStyle.fill = { fgColor: { rgb: 'EDEDED' } };
-        else if (C >= 9 && typeof cell.v === 'string' && colorMap[cell.v]) {
+        if (C === 7) cellStyle.fill = { fgColor: { rgb: 'E2EFDA' } };
+        else if (C === 8) cellStyle.fill = { fgColor: { rgb: 'FCE4D6' } };
+        else if (C === 9) cellStyle.fill = { fgColor: { rgb: 'D9E1F2' } };
+        else if (C === 10) cellStyle.fill = { fgColor: { rgb: 'EDEDED' } };
+        else if (C >= 11 && typeof cell.v === 'string' && colorMap[cell.v]) {
           cellStyle.fill = { fgColor: { rgb: colorMap[cell.v].bg } };
           cellStyle.font = { color: { rgb: colorMap[cell.v].text }, bold: true, sz: 9 };
         }
@@ -368,7 +447,7 @@ export async function gerarRelatorioEscalaMensal(
     }
   }
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Fechamento DP');
+  XLSX.utils.book_append_sheet(wb, ws, 'Schedule');
   const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
   return {

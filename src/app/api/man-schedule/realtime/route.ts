@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic';
 interface ScheduleEntry {
     id: string;
     cpf: string;
+    matricula?: string;
+    centro_custo?: string;
     full_name: string;
     position: string;
     vessel: string;
@@ -214,10 +216,11 @@ export async function GET(request: NextRequest) {
             supabaseAdmin
                 .from('gt_colaboradores')
                 .select(`
-                    id, cpf, nome_completo, ativo,
+                    id, cpf, nome_completo, ativo, matricula,
                     cargo:gt_cargos(nome),
                     empresa:gt_empresas(nome),
-                    embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome)
+                    embarcacao_atual:gt_embarcacoes!embarcacao_atual_id(nome),
+                    centro_custo:gt_centros_custo(codigo, nome)
                 `)
                 .is('deleted_at', null),
             embQuery,
@@ -251,7 +254,7 @@ export async function GET(request: NextRequest) {
         for (const entry of hist) {
             const start = entry.data_embarque;
             const end = entry.data_desembarque || entry.data_prevista_desembarque;
-            if (!rotationOverlapsWindow(start, end, windowStart, windowEnd)) {
+            if (!isAllJanela && !rotationOverlapsWindow(start, end, windowStart, windowEnd)) {
                 lgpSkippedByWindow++;
                 continue;
             }
@@ -261,9 +264,13 @@ export async function GET(request: NextRequest) {
             const rotType = mapDbTipoToCodigo(entry.tipo);
             const cpfNorm = normalizeCpf(colab.cpf || '');
             const origem: 'mio' | 'local' = entry.origem === 'local' ? 'local' : 'mio';
+            const ccObj = (colab as any).centro_custo;
+            const ccNome = ccObj ? `${ccObj.codigo ? `${ccObj.codigo} - ` : ''}${ccObj.nome || ''}` : '';
             schedules.push({
                 id: entry.id,
                 cpf: cpfNorm,
+                matricula: (colab as any).matricula || '',
+                centro_custo: ccNome,
                 full_name: (colab.nome_completo || '').toUpperCase().trim(),
                 position: ((colab as { cargo?: { nome?: string } }).cargo?.nome || '').toUpperCase().trim(),
                 vessel: (entry.local_desembarque || colabEmbarcacaoNome(colab)).trim(),
@@ -284,9 +291,13 @@ export async function GET(request: NextRequest) {
         for (const colab of colaboradores) {
             if (seenColabInWindow.has(colab.id)) continue;
             const cpfNorm = normalizeCpf(colab.cpf || '');
+            const ccObj = (colab as any).centro_custo;
+            const ccNome = ccObj ? `${ccObj.codigo ? `${ccObj.codigo} - ` : ''}${ccObj.nome || ''}` : '';
             schedules.push({
                 id: colab.id,
                 cpf: cpfNorm,
+                matricula: (colab as any).matricula || '',
+                centro_custo: ccNome,
                 full_name: (colab.nome_completo || '').toUpperCase().trim(),
                 position: ((colab as { cargo?: { nome?: string } }).cargo?.nome || '').toUpperCase().trim(),
                 vessel: colabEmbarcacaoNome(colab),
@@ -300,6 +311,7 @@ export async function GET(request: NextRequest) {
                 tipo_codigo: 'normal',
                 origem: 'mio',
                 ativo: colab.ativo !== false,
+                exibir_dia_inicio: false,
             });
         }
         timings.build = Date.now() - buildStart;

@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.68.0] - 2026-08-31
+
+### ⚓ Gestão de Tripulantes: Filtros Dinâmicos na Planilha DP, Multi-Assinaturas Obrigatórias, Histórico Completo & Vínculo de Matrícula/Centro de Custo
+
+Esta versão aprimora todo o ciclo de visualização histórica e fechamento mensal da Gestão de Tripulantes:
+1. **Histórico Completo de Escala**: Carregamento irrestrito de todo o histórico passado e futuro (`janela=all`), com recálculo dinâmico das colunas de semanas e datas do cronograma baseado nos filtros de data inicial e final.
+2. **Exportação & Fechamento com Filtros Ativos**: O gerador de XLSX e a prévia do Fechamento DP respeitam rigorosamente todas as seleções ativas (Embarcação, Empresa, Cargo, Status Ativo/Inativo, Intervalos de Datas e Busca).
+3. **Conferência de Integrantes e Múltiplas Assinaturas Obrigatórias**: Painel administrativo para cadastrar os gestores que são obrigados a assinar digitalmente o fechamento. O envio oficial por e-mail com anexo para o DP só é liberado quando **100% dos integrantes obrigatórios** concluírem suas assinaturas.
+4. **Vínculo de Matrícula & Centro de Custo**: Inclusão de colunas em destaque de Matrícula e Centro de Custo vinculados a cada colaborador tanto na visualização do modal quanto na planilha oficial XLSX enviada ao DP.
+
+### Added
+- Colunas de Matrícula e Centro de Custo nos relatórios consolidados e prévias da folha/DP.
+- Painel de Aprovadores Obrigatórios com checagem de pendências e badges de conferência individual.
+- Tabela `gt_relatorios_aprovacoes` criada com suporte a arrays de assinaturas digitais com carimbo criptográfico.
+
+### Fixed
+- Visualização de datas passadas no Man Schedule com suporte a seleção de intervalos retroativos.
+- Filtros dinâmicos respeitados na geração de relatórios XLSX e rotas de fechamento mensal.
+
 ## [5.67.1] - 2026-08-31
 
 ### 🛠️ Gestão de Tripulantes: Correção de Importações de Token e Ajuste de Sintaxe no Man Schedule

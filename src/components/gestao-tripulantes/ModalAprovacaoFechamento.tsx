@@ -12,15 +12,28 @@ import {
   FiAlertTriangle,
   FiCalendar,
   FiFileText,
-  FiEdit3,
+  FiUsers,
+  FiCheck,
+  FiClock,
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { useSignature } from '@/contexts/SignatureContext';
+
+export interface ModalFilters {
+  empresa?: string;
+  embarcacao?: string;
+  cargo?: string;
+  statusAtivo?: 'ativos' | 'inativos' | 'todos';
+  busca?: string;
+  dataInicio?: string;
+  dataFim?: string;
+}
 
 interface ModalAprovacaoFechamentoProps {
   isOpen: boolean;
   onClose: () => void;
   initialMesAno?: string;
+  filters?: ModalFilters;
   onSuccess?: () => void;
 }
 
@@ -28,6 +41,7 @@ export default function ModalAprovacaoFechamento({
   isOpen,
   onClose,
   initialMesAno,
+  filters = {},
   onSuccess,
 }: ModalAprovacaoFechamentoProps) {
   const currentMonthStr = new Date().toISOString().slice(0, 7);
@@ -35,20 +49,34 @@ export default function ModalAprovacaoFechamento({
   const [isLoading, setIsLoading] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [previewData, setPreviewData] = useState<any | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(filters.busca || '');
   const [observacoes, setObservacoes] = useState('');
   const [enviarEmail, setEnviarEmail] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [resultMsg, setResultMsg] = useState<{ success: boolean; text: string; hash?: string } | null>(null);
+  const [resultMsg, setResultMsg] = useState<{ success: boolean; text: string; hash?: string; pendentes?: any[] } | null>(null);
 
   const { requestSignature, hasSignature } = useSignature();
+
+  const buildQueryString = (targetMes: string) => {
+    const params = new URLSearchParams();
+    params.set('mesAno', targetMes);
+    if (filters.empresa) params.set('empresa', filters.empresa);
+    if (filters.embarcacao) params.set('embarcacao', filters.embarcacao);
+    if (filters.cargo) params.set('cargo', filters.cargo);
+    if (filters.statusAtivo) params.set('statusAtivo', filters.statusAtivo);
+    if (filters.dataInicio) params.set('dataInicio', filters.dataInicio);
+    if (filters.dataFim) params.set('dataFim', filters.dataFim);
+    if (searchTerm) params.set('busca', searchTerm);
+    return params.toString();
+  };
 
   const loadPreview = async (targetMes: string) => {
     setIsLoading(true);
     setErrorMsg(null);
     setResultMsg(null);
     try {
-      const res = await fetchWithToken(`/api/gestao-tripulantes/relatorio-mensal?mesAno=${targetMes}`);
+      const q = buildQueryString(targetMes);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/relatorio-mensal?${q}`);
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Erro ao carregar dados do mês.');
@@ -66,10 +94,11 @@ export default function ModalAprovacaoFechamento({
     if (isOpen) {
       loadPreview(mesAno);
     }
-  }, [isOpen, mesAno]);
+  }, [isOpen, mesAno, filters.embarcacao, filters.empresa, filters.cargo, filters.statusAtivo]);
 
   const handleDownloadXlsx = () => {
-    window.open(`/api/gestao-tripulantes/relatorio-mensal?mesAno=${mesAno}&download=true`, '_blank');
+    const q = buildQueryString(mesAno) + '&download=true';
+    window.open(`/api/gestao-tripulantes/relatorio-mensal?${q}`, '_blank');
   };
 
   const handleApprove = async () => {
@@ -102,6 +131,15 @@ export default function ModalAprovacaoFechamento({
           mesAno,
           observacoes,
           enviarEmail,
+          filtros: {
+            empresa: filters.empresa,
+            embarcacao: filters.embarcacao,
+            cargo: filters.cargo,
+            statusAtivo: filters.statusAtivo,
+            busca: searchTerm,
+            dataInicio: filters.dataInicio,
+            dataFim: filters.dataFim,
+          }
         }),
       });
       const data = await res.json();
@@ -111,12 +149,13 @@ export default function ModalAprovacaoFechamento({
 
       setResultMsg({
         success: true,
-        text: data.message || 'Fechamento aprovado e registrado com sucesso!',
+        text: data.message || 'Assinatura registrada com sucesso!',
         hash: data.signatureHash,
+        pendentes: data.pendentes,
       });
 
       if (onSuccess) onSuccess();
-      // Recarregar preview com status atualizado
+      // Recarregar preview com status e assinaturas atualizadas
       await loadPreview(mesAno);
     } catch (err: any) {
       console.error('Erro na aprovação do fechamento:', err);
@@ -135,7 +174,12 @@ export default function ModalAprovacaoFechamento({
     (c.cargo || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const isAlreadyApproved = previewData?.registro?.status === 'aprovado' || previewData?.registro?.status === 'enviado';
+  const obrigatorios = previewData?.aprovadoresObrigatorios || [];
+  const assinaturas = previewData?.assinaturasColetadas || [];
+  const totalObrigatorios = obrigatorios.length || 1;
+  const assinadosCount = assinaturas.length;
+  const isFullyApproved = previewData?.registro?.status === 'aprovado' || previewData?.registro?.status === 'enviado';
+  const isPartiallyApproved = previewData?.registro?.status === 'em_aprovacao';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
@@ -151,7 +195,7 @@ export default function ModalAprovacaoFechamento({
                 Fechamento Mensal de Escalas — DP & Folha
               </h2>
               <p className="text-xs text-gray-500">
-                Cômputo individual de ON, DBA, FI e TRE com aprovação e assinatura digital auditável
+                Cômputo individual de ON, DBA, FI e TRE com conferência de integrantes e aprovação digital obrigatória
               </p>
             </div>
           </div>
@@ -164,10 +208,10 @@ export default function ModalAprovacaoFechamento({
         </div>
 
         {/* Corpo com Scroll */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1 text-sm">
-          {/* Seletor de Mês e Ações Topo */}
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-sm">
+          {/* Seletor de Mês e Filtros Ativos */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <label className="text-xs font-bold text-gray-700 uppercase flex items-center gap-1">
                 <FiCalendar className="text-abz-blue" />
                 Mês de Referência:
@@ -195,10 +239,21 @@ export default function ModalAprovacaoFechamento({
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition shadow-sm"
               >
                 <FiDownload className="w-4 h-4" />
-                Baixar Planilha (.xlsx)
+                Baixar Planilha Filtrada (.xlsx)
               </button>
             </div>
           </div>
+
+          {/* Tags de Filtros Ativos */}
+          {(filters.embarcacao || filters.empresa || filters.cargo || filters.statusAtivo) && (
+            <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-100/80 px-3 py-1.5 rounded-lg border border-slate-200 flex-wrap">
+              <span className="font-bold text-slate-800">Filtros Ativos Aplicados:</span>
+              {filters.embarcacao && <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-semibold">Embarcação: {filters.embarcacao}</span>}
+              {filters.empresa && <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-semibold">Empresa: {filters.empresa}</span>}
+              {filters.cargo && <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-semibold">Cargo: {filters.cargo}</span>}
+              {filters.statusAtivo && <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-semibold">Status: {filters.statusAtivo}</span>}
+            </div>
+          )}
 
           {errorMsg && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
@@ -215,7 +270,7 @@ export default function ModalAprovacaoFechamento({
               </div>
               {resultMsg.hash && (
                 <div className="text-xs font-mono bg-green-100/70 p-2 rounded text-green-900 break-all">
-                  Hash de Autenticidade: <strong>{resultMsg.hash}</strong>
+                  Hash de Autenticidade da sua Assinatura: <strong>{resultMsg.hash}</strong>
                 </div>
               )}
             </div>
@@ -257,6 +312,69 @@ export default function ModalAprovacaoFechamento({
             </div>
           )}
 
+          {/* Painel de Aprovadores Obrigatórios & Progresso de Assinaturas */}
+          <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-gray-900 text-xs uppercase flex items-center gap-1.5">
+                <FiUsers className="text-abz-blue" />
+                Conferência de Integrantes & Assinaturas Obrigatórias
+              </h4>
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                isFullyApproved
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : (isPartiallyApproved ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')
+              }`}>
+                {isFullyApproved
+                  ? '✓ 100% Assinado & Aprovado'
+                  : (isPartiallyApproved ? `Em Aprovação (${assinadosCount}/${totalObrigatorios})` : 'Pendente de Assinatura')}
+              </span>
+            </div>
+
+            {obrigatorios.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {obrigatorios.map((obr: any, idx: number) => {
+                  const signature = assinaturas.find((s: any) =>
+                    (s.email && s.email.toLowerCase() === obr.email.toLowerCase()) ||
+                    (obr.id && s.userId === obr.id)
+                  );
+                  return (
+                    <div
+                      key={obr.email || idx}
+                      className={`p-2.5 rounded-lg border flex items-center justify-between text-xs ${
+                        signature
+                          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                          : 'bg-white border-amber-200 text-amber-950'
+                      }`}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-bold flex items-center gap-1">
+                          {signature ? <FiCheck className="text-emerald-600 font-bold" /> : <FiClock className="text-amber-600" />}
+                          <span className="truncate">{obr.nome}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 truncate">
+                          {obr.email} {obr.cargo && `• ${obr.cargo}`}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                        signature ? 'bg-emerald-200/80 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {signature ? 'Assinado' : 'Pendente'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-600">
+                Nenhum aprovador específico fixado nas configurações. Qualquer gestor ou administrador poderá assinar e aprovar.
+              </div>
+            )}
+
+            <p className="text-[11px] text-gray-500 pt-1">
+              ⚠️ O despacho oficial por e-mail com anexo para o Departamento Pessoal só é enviado automaticamente quando <strong>todos os integrantes obrigatórios</strong> concluírem suas assinaturas.
+            </p>
+          </div>
+
           {/* Tabela de Preview dos Colaboradores */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-4">
@@ -275,13 +393,16 @@ export default function ModalAprovacaoFechamento({
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+            <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
                 <thead className="bg-gray-100 text-gray-700 font-semibold sticky top-0">
                   <tr>
+                    <th className="px-3 py-2">Matrícula</th>
                     <th className="px-3 py-2">Tripulante</th>
                     <th className="px-3 py-2">CPF</th>
                     <th className="px-3 py-2">Cargo</th>
+                    <th className="px-3 py-2">Centro de Custo</th>
+                    <th className="px-3 py-2">Embarcação</th>
                     <th className="px-3 py-2 text-center bg-emerald-100/50">ON</th>
                     <th className="px-3 py-2 text-center bg-amber-100/50">DBA</th>
                     <th className="px-3 py-2 text-center bg-blue-100/50">FI</th>
@@ -291,23 +412,26 @@ export default function ModalAprovacaoFechamento({
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                         <FiRefreshCw className="animate-spin inline w-4 h-4 mr-1 text-abz-blue" />
                         Calculando totais da escala...
                       </td>
                     </tr>
                   ) : filteredColabs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
                         Nenhum registro encontrado para este filtro.
                       </td>
                     </tr>
                   ) : (
                     filteredColabs.map((c: any, idx: number) => (
                       <tr key={c.cpf || idx} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 font-mono font-bold text-gray-800">{c.matricula || '-'}</td>
                         <td className="px-3 py-2 font-medium text-gray-900">{c.nome}</td>
                         <td className="px-3 py-2 font-mono text-gray-500">{c.cpf}</td>
                         <td className="px-3 py-2 text-gray-600">{c.cargo}</td>
+                        <td className="px-3 py-2 text-gray-600 text-[11px] font-semibold">{c.centro_custo || 'N/A'}</td>
+                        <td className="px-3 py-2 text-gray-600">{c.embarcacao}</td>
                         <td className="px-3 py-2 text-center font-bold text-emerald-700 bg-emerald-50/30">
                           {c.total_on}
                         </td>
@@ -328,20 +452,8 @@ export default function ModalAprovacaoFechamento({
             </div>
           </div>
 
-          {/* Auditoria / Assinatura Digital & Opções de Envio */}
-          <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-gray-900 text-xs uppercase flex items-center gap-1.5">
-                <FiShield className="text-abz-blue" />
-                Autenticação & Assinatura Digital
-              </h4>
-              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                hasSignature ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-              }`}>
-                {hasSignature ? '✓ Assinatura Digital Cadastrada' : 'Assinatura Pendente'}
-              </span>
-            </div>
-
+          {/* Observações & Envio */}
+          <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -365,27 +477,14 @@ export default function ModalAprovacaoFechamento({
                     className="h-4 w-4 text-abz-blue rounded border-gray-300 focus:ring-abz-blue"
                   />
                   <span className="text-xs font-semibold text-gray-800">
-                    Enviar planilha anexada por e-mail ao Departamento Pessoal (DP)
+                    Disparar e-mail ao Departamento Pessoal quando todas as assinaturas forem concluídas
                   </span>
                 </label>
                 <p className="text-[11px] text-gray-500 pl-6">
-                  Dispara o e-mail oficial com o anexo XLSX assinado e o resumo consolidado.
+                  Anexa a planilha XLSX oficial assinada por todos os aprovadores.
                 </p>
               </div>
             </div>
-
-            {isAlreadyApproved && previewData?.registro && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 space-y-1">
-                <div>
-                  <strong>Status Atual:</strong> Fechamento {previewData.registro.status.toUpperCase()} por{' '}
-                  <strong>{previewData.registro.aprovado_por_nome}</strong> em{' '}
-                  {new Date(previewData.registro.aprovado_em).toLocaleString('pt-BR')} (IP: {previewData.registro.aprovado_ip})
-                </div>
-                <div className="font-mono text-[10px] text-emerald-700">
-                  Hash: {previewData.registro.assinatura_hash}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -405,7 +504,7 @@ export default function ModalAprovacaoFechamento({
               className="inline-flex items-center gap-1.5 px-4 py-2 border border-emerald-600 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition"
             >
               <FiFileText className="w-4 h-4" />
-              Baixar .xlsx
+              Baixar .xlsx Filtrado
             </button>
 
             <button
@@ -418,7 +517,7 @@ export default function ModalAprovacaoFechamento({
               ) : (
                 <FiSend className="w-4 h-4" />
               )}
-              {isAlreadyApproved ? 'Reaprovar & Reenviar' : 'Aprovar, Assinar & Enviar'}
+              {isFullyApproved ? 'Reassinar / Reenviar' : 'Assinar & Salvar Aprovação'}
             </button>
           </div>
         </div>

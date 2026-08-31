@@ -12,14 +12,25 @@ import {
   FiDownload,
   FiShield,
   FiUserCheck,
+  FiUserPlus,
+  FiTrash2,
+  FiUsers,
   FiClock,
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
+
+interface AprovadorItem {
+  id?: string;
+  nome: string;
+  email: string;
+  cargo?: string;
+}
 
 interface FechamentoConfig {
   dia_fechamento_mes: number;
   emails_destinatarios_dp: string[];
   emails_cc: string[];
+  aprovadores_obrigatorios: AprovadorItem[];
   envio_automatico: boolean;
   assunto_email_template: string;
   corpo_email_template: string;
@@ -36,6 +47,8 @@ interface RelatorioRegistro {
   total_dba: number;
   total_fi: number;
   total_tre: number;
+  aprovadores_obrigatorios?: AprovadorItem[];
+  assinaturas?: any[];
   aprovado_por_nome?: string;
   aprovado_por_cpf?: string;
   aprovado_em?: string;
@@ -51,14 +64,22 @@ export default function WorkflowFechamentoTab() {
     dia_fechamento_mes: 25,
     emails_destinatarios_dp: ['dp@groupabz.com'],
     emails_cc: [],
+    aprovadores_obrigatorios: [],
     envio_automatico: false,
     assunto_email_template: 'Fechamento de Escala Gestão de Tripulantes - {Mes_Ano}',
     corpo_email_template: 'Prezados,\n\nSegue em anexo o relatório oficial consolidado de escalas da Gestão de Tripulantes para o período de {Mes_Ano}.\n\nAtenciosamente,\nGestão de Tripulantes - ABZ Group'
   });
 
+  const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [destinatariosInput, setDestinatariosInput] = useState('dp@groupabz.com');
   const [ccInput, setCcInput] = useState('');
   const [historico, setHistorico] = useState<RelatorioRegistro[]>([]);
+
+  // Formulário para adicionar aprovador obrigatório
+  const [selectedManagerId, setSelectedManagerId] = useState('');
+  const [customNome, setCustomNome] = useState('');
+  const [customEmail, setCustomEmail] = useState('');
+  const [customCargo, setCustomCargo] = useState('');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,6 +104,9 @@ export default function WorkflowFechamentoTab() {
             ? dataConfig.config.emails_cc.join(', ')
             : dataConfig.config.emails_cc || ''
         );
+        if (dataConfig.availableManagers) {
+          setAvailableManagers(dataConfig.availableManagers);
+        }
       }
 
       // Carregar preview e histórico
@@ -103,6 +127,63 @@ export default function WorkflowFechamentoTab() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleAddAprovador = () => {
+    if (selectedManagerId) {
+      const mgr = availableManagers.find(m => m.id === selectedManagerId);
+      if (mgr) {
+        const jaExiste = config.aprovadores_obrigatorios.some(a => a.email.toLowerCase() === mgr.email.toLowerCase());
+        if (jaExiste) {
+          setErrorMsg('Este aprovador já está na lista.');
+          return;
+        }
+        setConfig(prev => ({
+          ...prev,
+          aprovadores_obrigatorios: [
+            ...prev.aprovadores_obrigatorios,
+            {
+              id: mgr.id,
+              nome: mgr.full_name || mgr.name || mgr.email,
+              email: mgr.email,
+              cargo: mgr.role?.toUpperCase() || 'Gestor',
+            }
+          ]
+        }));
+        setSelectedManagerId('');
+        setErrorMsg(null);
+      }
+    } else if (customNome.trim() && customEmail.trim()) {
+      const jaExiste = config.aprovadores_obrigatorios.some(a => a.email.toLowerCase() === customEmail.trim().toLowerCase());
+      if (jaExiste) {
+        setErrorMsg('Este e-mail já está na lista de aprovadores.');
+        return;
+      }
+      setConfig(prev => ({
+        ...prev,
+        aprovadores_obrigatorios: [
+          ...prev.aprovadores_obrigatorios,
+          {
+            nome: customNome.trim(),
+            email: customEmail.trim().toLowerCase(),
+            cargo: customCargo.trim() || 'Gestor Responsável',
+          }
+        ]
+      }));
+      setCustomNome('');
+      setCustomEmail('');
+      setCustomCargo('');
+      setErrorMsg(null);
+    } else {
+      setErrorMsg('Selecione um gestor ou preencha o nome e e-mail do aprovador.');
+    }
+  };
+
+  const handleRemoveAprovador = (email: string) => {
+    setConfig(prev => ({
+      ...prev,
+      aprovadores_obrigatorios: prev.aprovadores_obrigatorios.filter(a => a.email.toLowerCase() !== email.toLowerCase())
+    }));
+  };
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,7 +247,7 @@ export default function WorkflowFechamentoTab() {
               Workflow de Fechamento de Escalas & Envio DP
             </h2>
             <p className="text-xs text-gray-500 mt-1">
-              Configure a data de corte mensal, destinatários do Departamento Pessoal e templates para envio automático da planilha de escalas.
+              Configure a lista de aprovadores obrigatórios (múltiplas assinaturas), data de corte e envio por e-mail ao DP.
             </p>
           </div>
           <button
@@ -193,7 +274,93 @@ export default function WorkflowFechamentoTab() {
           </div>
         )}
 
-        <form onSubmit={handleSaveConfig} className="space-y-5">
+        <form onSubmit={handleSaveConfig} className="space-y-6">
+          {/* Seção 1: Aprovadores Obrigatórios (Múltiplas Assinaturas) */}
+          <div className="bg-blue-50/40 border border-blue-100 p-4 rounded-xl space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <FiUsers className="text-abz-blue" />
+                Integrantes / Aprovadores Obrigatórios para o Fechamento
+              </h3>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Todos os integrantes cadastrados abaixo precisam assinar digitalmente a planilha de fechamento. O e-mail para o Departamento Pessoal <strong>só é enviado quando 100% das assinaturas forem concluídas</strong>.
+              </p>
+            </div>
+
+            {/* Lista Atual de Aprovadores */}
+            <div className="space-y-2">
+              {config.aprovadores_obrigatorios.length === 0 ? (
+                <div className="p-3 bg-white border border-dashed border-gray-300 rounded-lg text-xs text-gray-500 text-center">
+                  Nenhum aprovador específico cadastrado. (Qualquer gestor ou administrador poderá aprovar individualmente).
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {config.aprovadores_obrigatorios.map((apr, idx) => (
+                    <div
+                      key={apr.email || idx}
+                      className="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-lg shadow-xs"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-semibold text-xs text-gray-900 truncate">
+                          {apr.nome}
+                        </div>
+                        <div className="text-[11px] text-gray-500 truncate">
+                          {apr.email} {apr.cargo && `• ${apr.cargo}`}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAprovador(apr.email)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                        title="Remover aprovador obrigatório"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Adicionar Aprovador */}
+            <div className="pt-2 border-t border-blue-200/60">
+              <span className="block text-xs font-bold text-gray-700 mb-2">Adicionar Integrante à Lista de Aprovadores:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <select
+                  value={selectedManagerId}
+                  onChange={(e) => {
+                    setSelectedManagerId(e.target.value);
+                    if (e.target.value) {
+                      setCustomNome('');
+                      setCustomEmail('');
+                      setCustomCargo('');
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-abz-blue sm:col-span-2"
+                >
+                  <option value="">-- Selecionar Gestor / Usuário do Sistema --</option>
+                  {availableManagers.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.full_name || m.name} ({m.email}) - {m.role}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="sm:col-span-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddAprovador}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 bg-blue-900 text-white rounded-lg text-xs font-semibold hover:bg-blue-800 transition w-full shadow-xs"
+                  >
+                    <FiUserPlus className="w-3.5 h-3.5" />
+                    Adicionar Aprovador
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 2: Parâmetros Gerais */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
@@ -232,11 +399,12 @@ export default function WorkflowFechamentoTab() {
             </div>
           </div>
 
+          {/* Seção 3: E-mails Destinatários */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
                 <FiMail className="text-abz-blue" />
-                E-mails do Departamento Pessoal (Destinatários Principais) *
+                E-mails do Departamento Pessoal (Destinatários do Relatório Final) *
               </label>
               <input
                 type="text"
@@ -265,6 +433,7 @@ export default function WorkflowFechamentoTab() {
             </div>
           </div>
 
+          {/* Seção 4: Templates */}
           <div className="space-y-4 pt-2">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -276,7 +445,7 @@ export default function WorkflowFechamentoTab() {
                 onChange={(e) => setConfig(prev => ({ ...prev, assunto_email_template: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-abz-blue font-mono"
               />
-              <span className="text-[11px] text-gray-500">Variáveis disponíveis: <code>&#123;Mes_Ano&#125;</code></span>
+              <span className="text-[11px] text-gray-500">Variáveis: <code>&#123;Mes_Ano&#125;</code></span>
             </div>
 
             <div>
@@ -284,7 +453,7 @@ export default function WorkflowFechamentoTab() {
                 Mensagem Padrão do E-mail (Corpo)
               </label>
               <textarea
-                rows={4}
+                rows={3}
                 value={config.corpo_email_template}
                 onChange={(e) => setConfig(prev => ({ ...prev, corpo_email_template: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-abz-blue font-mono"
@@ -322,64 +491,74 @@ export default function WorkflowFechamentoTab() {
                 <th className="px-4 py-3">Mês/Ano</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Totais (ON / DBA / FI / TRE)</th>
-                <th className="px-4 py-3">Aprovado Por & IP</th>
-                <th className="px-4 py-3">Hash de Integridade</th>
+                <th className="px-4 py-3">Assinaturas Coletadas</th>
                 <th className="px-4 py-3 text-right">Planilha</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
               {historico.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-sm">
                     Nenhum fechamento registrado até o momento.
                   </td>
                 </tr>
               ) : (
-                historico.map((h) => (
-                  <tr key={h.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 font-bold text-gray-900 font-mono">
-                      {h.mes_referencia}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        h.status === 'enviado' || h.status === 'aprovado'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {h.status === 'enviado' ? 'Enviado ao DP' : (h.status === 'aprovado' ? 'Aprovado' : 'Pendente')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-gray-700">
-                      ON: <span className="text-emerald-700 font-bold">{h.total_on}</span> | 
-                      DBA: <span className="text-amber-700 font-bold ml-1">{h.total_dba}</span> | 
-                      FI: <span className="text-blue-700 font-bold ml-1">{h.total_fi}</span> | 
-                      TRE: <span className="text-gray-900 font-bold ml-1">{h.total_tre}</span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">
-                      <div className="font-semibold text-gray-900 flex items-center gap-1">
-                        <FiUserCheck className="text-emerald-600" />
-                        {h.aprovado_por_nome || 'N/A'}
-                      </div>
-                      <div className="text-[11px] text-gray-400">
-                        {h.aprovado_em ? new Date(h.aprovado_em).toLocaleString('pt-BR') : ''} • IP: {h.aprovado_ip || 'N/A'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs font-mono text-gray-500">
-                      <span title={h.assinatura_hash} className="bg-gray-100 px-2 py-0.5 rounded text-[11px]">
-                        {h.assinatura_hash ? `${h.assinatura_hash.slice(0, 12)}...` : 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDownloadPlanilha(h.mes_referencia)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded text-xs font-semibold transition"
-                      >
-                        <FiDownload className="w-3.5 h-3.5" />
-                        Baixar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                historico.map((h) => {
+                  const assinaturas = Array.isArray(h.assinaturas) ? h.assinaturas : [];
+                  const obrigatorios = Array.isArray(h.aprovadores_obrigatorios) ? h.aprovadores_obrigatorios : [];
+                  return (
+                    <tr key={h.id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-3 font-bold text-gray-900 font-mono">
+                        {h.mes_referencia}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          h.status === 'enviado' || h.status === 'aprovado'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : (h.status === 'em_aprovacao' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')
+                        }`}>
+                          {h.status === 'enviado'
+                            ? 'Enviado ao DP'
+                            : (h.status === 'aprovado'
+                              ? 'Aprovado (100%)'
+                              : (h.status === 'em_aprovacao'
+                                ? `Em Aprovação (${assinaturas.length}/${obrigatorios.length || 1})`
+                                : 'Pendente'))}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-gray-700">
+                        ON: <span className="text-emerald-700 font-bold">{h.total_on}</span> | 
+                        DBA: <span className="text-amber-700 font-bold ml-1">{h.total_dba}</span> | 
+                        FI: <span className="text-blue-700 font-bold ml-1">{h.total_fi}</span> | 
+                        TRE: <span className="text-gray-900 font-bold ml-1">{h.total_tre}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-600">
+                        {assinaturas.length > 0 ? (
+                          <div className="space-y-1">
+                            {assinaturas.map((s, sIdx) => (
+                              <div key={sIdx} className="flex items-center gap-1 font-medium text-gray-900">
+                                <FiUserCheck className="text-emerald-600 flex-shrink-0" />
+                                <span>{s.nome}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">({s.dataHora || s.assinado_em?.slice(0, 10)})</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">Nenhuma assinatura registrada</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleDownloadPlanilha(h.mes_referencia)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded text-xs font-semibold transition"
+                        >
+                          <FiDownload className="w-3.5 h-3.5" />
+                          Baixar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

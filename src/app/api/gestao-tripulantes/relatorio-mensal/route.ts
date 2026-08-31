@@ -19,31 +19,56 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const mesAno = searchParams.get('mesAno') || new Date().toISOString().slice(0, 7);
+    const dataInicio = searchParams.get('dataInicio') || undefined;
+    const dataFim = searchParams.get('dataFim') || undefined;
+    const empresa = searchParams.get('empresa') || undefined;
+    const embarcacao = searchParams.get('embarcacao') || undefined;
+    const cargo = searchParams.get('cargo') || undefined;
+    const statusAtivo = (searchParams.get('statusAtivo') as any) || 'ativos';
+    const busca = searchParams.get('busca') || undefined;
     const download = searchParams.get('download') === 'true';
 
-    // Verificar se já existe registro de fechamento para o mês
+    // 1. Buscar configuração de aprovadores obrigatórios
+    const { data: configData } = await supabaseAdmin
+      .from('gt_configuracoes')
+      .select('valor')
+      .eq('chave', 'gt_fechamento_mensal_config')
+      .maybeSingle();
+
+    const config = configData?.valor ? (typeof configData.valor === 'string' ? JSON.parse(configData.valor) : configData.valor) : {};
+    const aprovadoresObrigatorios = config.aprovadores_obrigatorios || [];
+
+    // 2. Buscar registro existente de fechamento
     const { data: registroExistente } = await supabaseAdmin
       .from('gt_relatorios_aprovacoes')
       .select('*')
       .eq('mes_referencia', mesAno)
-      .order('created_at', { ascending: false })
-      .limit(1)
       .maybeSingle();
+
+    const assinaturasColetadas = Array.isArray(registroExistente?.assinaturas) ? registroExistente.assinaturas : [];
 
     const reportResult = await gerarRelatorioEscalaMensal({
       mesAno,
-      aprovador: registroExistente?.status === 'aprovado' || registroExistente?.status === 'enviado' ? {
-        nome: registroExistente.aprovado_por_nome || 'Gestor Responsável',
+      dataInicio,
+      dataFim,
+      empresa,
+      embarcacao,
+      cargo,
+      statusAtivo,
+      busca,
+      aprovadores: assinaturasColetadas.length > 0 ? assinaturasColetadas : (registroExistente?.aprovado_por_nome ? [{
+        nome: registroExistente.aprovado_por_nome,
         cpf: registroExistente.aprovado_por_cpf,
         dataHora: registroExistente.aprovado_em ? new Date(registroExistente.aprovado_em).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR'),
         ip: registroExistente.aprovado_ip,
         assinaturaUrl: registroExistente.assinatura_url,
         assinaturaHash: registroExistente.assinatura_hash,
-      } : undefined
+      }] : undefined)
     });
 
     if (download) {
-      const filename = `relatorio_escala_${mesAno}.xlsx`;
+      const safeEmb = (embarcacao || 'Todas').replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_');
+      const filename = `relatorio_fechamento_${mesAno}_${safeEmb}.xlsx`;
       return new NextResponse(reportResult.buffer, {
         status: 200,
         headers: {
@@ -57,6 +82,8 @@ export async function GET(request: NextRequest) {
       success: true,
       mesAno,
       registro: registroExistente || null,
+      aprovadoresObrigatorios,
+      assinaturasColetadas,
       totaisConsolidados: reportResult.totaisConsolidados,
       colaboradoresTotais: reportResult.colaboradoresTotais,
       semanas: reportResult.semanas,

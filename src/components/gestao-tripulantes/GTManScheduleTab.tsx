@@ -15,6 +15,8 @@ import {
 interface CrewSchedule {
     id: string;
     cpf: string;
+    matricula?: string;
+    centro_custo?: string;
     full_name: string;
     position: string;
     vessel: string;
@@ -86,7 +88,7 @@ async function loadScheduleRows(force = false): Promise<CrewSchedule[]> {
     }
     if (scheduleInflight) return scheduleInflight;
     scheduleInflight = (async () => {
-        const res = await fetchWithToken('/api/man-schedule/realtime?janela=90d');
+        const res = await fetchWithToken('/api/man-schedule/realtime?janela=all');
         if (!res.ok) {
             if (res.status === 503) {
                 throw new Error('Cache MIO indisponível. Por favor, atualize o cache no painel administrativo.');
@@ -762,7 +764,11 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         const fPos = filterPosition.trim().toLowerCase();
 
         return allSchedules.filter((s) => {
-            const matchName = !sName || s.full_name?.toLowerCase().includes(sName);
+            const matchName =
+                !sName ||
+                s.full_name?.toLowerCase().includes(sName) ||
+                s.cpf?.includes(sName) ||
+                (s.matricula && s.matricula.toLowerCase().includes(sName));
             const matchVessel = !fVes || (s.vessel || '').trim().toLowerCase() === fVes;
             const matchCompany = !fComp || (s.company || '').trim().toLowerCase() === fComp;
             const matchPosition = !fPos || (s.position || '').trim().toLowerCase() === fPos;
@@ -890,6 +896,15 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             }
         }
 
+        if (filterDateStart) {
+            const fStart = parseLocalDate(filterDateStart);
+            if (fStart && (!earliest || fStart < earliest)) earliest = fStart;
+        }
+        if (filterDateEnd) {
+            const fEnd = parseLocalDate(filterDateEnd);
+            if (fEnd && (!latest || fEnd > latest)) latest = fEnd;
+        }
+
         if (!earliest) earliest = new Date(new Date().getFullYear(), 0, 1);
         if (!latest) latest = new Date(new Date().getFullYear(), 11, 31);
 
@@ -919,7 +934,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         }
 
         return { weeks: generatedWeeks, timelineStart: start };
-    }, [positionGroups]);
+    }, [positionGroups, filterDateStart, filterDateEnd]);
 
     const filteredWeeks = useMemo(() => {
         if (!filterDateStart && !filterDateEnd) return weeks;
@@ -1857,6 +1872,15 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             <ModalAprovacaoFechamento
                 isOpen={isFechamentoOpen}
                 onClose={() => setIsFechamentoOpen(false)}
+                filters={{
+                    empresa: filterCompany,
+                    embarcacao: filterVessel,
+                    cargo: filterPosition,
+                    statusAtivo: filterStatusAtivo,
+                    busca: searchName,
+                    dataInicio: filterDateStart,
+                    dataFim: filterDateEnd,
+                }}
             />
         </div>
     );

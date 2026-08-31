@@ -31,14 +31,23 @@ export async function GET(request: NextRequest) {
       dia_fechamento_mes: 25,
       emails_destinatarios_dp: ['dp@groupabz.com'],
       emails_cc: [],
+      aprovadores_obrigatorios: [],
       envio_automatico: false,
       assunto_email_template: 'Fechamento de Escala Gestão de Tripulantes - {Mes_Ano}',
       corpo_email_template: 'Prezados,\n\nSegue em anexo o relatório oficial consolidado de escalas da Gestão de Tripulantes para o período de {Mes_Ano}.\n\nO documento inclui o cômputo individual e total de dias/semanas para:\n- ON (A bordo)\n- DBA (Dobra)\n- FI (Folga Indenizada)\n- TRE (Treinamento Indenizado)\n\nRelatório aprovado digitalmente pelo responsável da operação.\n\nAtenciosamente,\nGestão de Tripulantes - ABZ Group'
     };
 
+    // Buscar lista de usuários com permissão de gestão/admin para seleção
+    const { data: managers } = await supabaseAdmin
+      .from('users_unified')
+      .select('id, name, full_name, email, role, cpf')
+      .in('role', ['admin', 'ADMIN', 'administrador', 'ADMINISTRADOR', 'superadmin', 'SUPERADMIN', 'manager', 'MANAGER'])
+      .order('name');
+
     return NextResponse.json({
       success: true,
       config: data ? (typeof data.valor === 'string' ? JSON.parse(data.valor) : data.valor) : defaultConfig,
+      availableManagers: managers || [],
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Erro ao buscar configuração' }, { status: 500 });
@@ -67,6 +76,7 @@ export async function PUT(request: NextRequest) {
       dia_fechamento_mes,
       emails_destinatarios_dp,
       emails_cc,
+      aprovadores_obrigatorios,
       envio_automatico,
       assunto_email_template,
       corpo_email_template
@@ -76,6 +86,7 @@ export async function PUT(request: NextRequest) {
       dia_fechamento_mes: Math.min(31, Math.max(1, parseInt(dia_fechamento_mes, 10) || 25)),
       emails_destinatarios_dp: Array.isArray(emails_destinatarios_dp) ? emails_destinatarios_dp : [emails_destinatarios_dp].filter(Boolean),
       emails_cc: Array.isArray(emails_cc) ? emails_cc : [],
+      aprovadores_obrigatorios: Array.isArray(aprovadores_obrigatorios) ? aprovadores_obrigatorios : [],
       envio_automatico: Boolean(envio_automatico),
       assunto_email_template: assunto_email_template || 'Fechamento de Escala Gestão de Tripulantes - {Mes_Ano}',
       corpo_email_template: corpo_email_template || 'Prezados,\n\nSegue em anexo o relatório oficial consolidado de escalas.',
@@ -101,7 +112,7 @@ export async function PUT(request: NextRequest) {
         .insert({
           chave: 'gt_fechamento_mensal_config',
           valor: valorConfig,
-          descricao: 'Configuração do workflow de fechamento mensal, data de corte, destinatários de e-mail e envio para o DP',
+          descricao: 'Configuração do workflow de fechamento mensal, aprovadores obrigatórios e envio para o DP',
           updated_at: new Date().toISOString()
         });
     }
