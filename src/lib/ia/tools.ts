@@ -1573,6 +1573,23 @@ export const IA_TOOLS_DEFINITION = [
   {
     type: 'function',
     function: {
+      name: 'buscar_documentos_vencidos',
+      description:
+        'Lista documentos vigentes vencidos ou vencendo da Matriz de Conformidade (gt_documentos). Use quando o KPI mostrar N vencidos e for preciso saber QUAL documento, de quem, validade e em qual aba abrir.',
+      parameters: {
+        type: 'object',
+        properties: {
+          colaborador_id: { type: 'string', description: 'UUID do colaborador (opcional)' },
+          incluir_historico: { type: 'boolean', description: 'Incluir cópias antigas que não entram no KPI' },
+        },
+        required: [],
+      },
+    },
+    requireModule: 'gestao-tripulantes',
+  },
+  {
+    type: 'function',
+    function: {
       name: 'buscar_afastamentos',
       description: 'Lista afastamentos de tripulantes (ativos ou histórico). Informe colaborador_id ou busca por nome/CPF.',
       parameters: {
@@ -4899,6 +4916,26 @@ case 'coletar_dados_holisticos': {
         const { data, error } = await query;
         if (error) return `Erro ao buscar tripulantes: ${error.message}`;
         return JSON.stringify({ total: data?.length || 0, tripulantes: data || [] });
+      }
+
+      case 'buscar_documentos_vencidos': {
+        const { colaborador_id, incluir_historico } = args as {
+          colaborador_id?: string;
+          incluir_historico?: boolean;
+        };
+        const { listarColaboradoresDashboardAtivos } = await import('@/lib/gestao-tripulantes/dashboard-service');
+        const { listarDocumentosAlertas } = await import('@/lib/gestao-tripulantes/documentos-alertas');
+        const ids = colaborador_id
+          ? [colaborador_id]
+          : (await listarColaboradoresDashboardAtivos()).ids;
+        const alertas = await listarDocumentosAlertas({ colaboradorIds: ids });
+        return JSON.stringify({
+          hoje: alertas.hoje,
+          totais: alertas.totais,
+          vencidos_vigentes: alertas.vencidos_vigentes,
+          vencendo_vigentes: alertas.vencendo_vigentes,
+          vencidos_historico: incluir_historico ? alertas.vencidos_historico : undefined,
+        });
       }
 
       case 'buscar_afastamentos': {

@@ -1,9 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import type { GTDashboardResumo } from '@/types/gestao-tripulantes';
-import { adicionarDiasLocalISO, dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
+import { listarDocumentosAlertas } from '@/lib/gestao-tripulantes/documentos-alertas';
 
 const PAGE_SIZE = 1000;
-const DOC_IN_CHUNK = 120;
 
 interface ColabAtivoRow {
   id: string;
@@ -56,55 +55,12 @@ export async function listarColaboradoresDashboardAtivos(): Promise<{
   };
 }
 
-async function countDocsPorValidadeCivil(
-  colaboradorIds: string[],
-  hoje: string,
-  limite: string,
-): Promise<{ vencidos: number; vencendo: number; error?: string }> {
-  if (colaboradorIds.length === 0) return { vencidos: 0, vencendo: 0 };
-
-  let vencidos = 0;
-  let vencendo = 0;
-
-  for (let i = 0; i < colaboradorIds.length; i += DOC_IN_CHUNK) {
-    const part = colaboradorIds.slice(i, i + DOC_IN_CHUNK);
-    const [vencidosRes, vencendoRes] = await Promise.all([
-      supabaseAdmin
-        .from('gt_documentos')
-        .select('id', { count: 'exact', head: true })
-        .in('colaborador_id', part)
-        .is('deleted_at', null)
-        .not('data_validade', 'is', null)
-        .lt('data_validade', hoje),
-      supabaseAdmin
-        .from('gt_documentos')
-        .select('id', { count: 'exact', head: true })
-        .in('colaborador_id', part)
-        .is('deleted_at', null)
-        .not('data_validade', 'is', null)
-        .gte('data_validade', hoje)
-        .lte('data_validade', limite),
-    ]);
-
-    if (vencidosRes.error) return { vencidos, vencendo, error: vencidosRes.error.message };
-    if (vencendoRes.error) return { vencidos, vencendo, error: vencendoRes.error.message };
-
-    vencidos += vencidosRes.count || 0;
-    vencendo += vencendoRes.count || 0;
-  }
-
-  return { vencidos, vencendo };
-}
-
 export async function getDashboardData(): Promise<{
   success: boolean;
   data?: GTDashboardResumo;
   error?: string;
 }> {
   try {
-    const hoje = dataLocalISO();
-    const limite = adicionarDiasLocalISO(30);
-
     const ativos = await listarColaboradoresDashboardAtivos();
     if (ativos.error) {
       console.error('Erro ao buscar colaboradores do dashboard:', ativos.error);
@@ -112,7 +68,7 @@ export async function getDashboardData(): Promise<{
     }
 
     const [docs, asosPendentes] = await Promise.all([
-      countDocsPorValidadeCivil(ativos.ids, hoje, limite),
+      listarDocumentosAlertas({ colaboradorIds: ativos.ids }),
       supabaseAdmin
         .from('gt_documentos')
         .select('id', { count: 'exact', head: true })
@@ -120,10 +76,6 @@ export async function getDashboardData(): Promise<{
         .eq('status_revisao', 'pendente_revisao'),
     ]);
 
-    if (docs.error) {
-      console.error('Erro ao contar documentos do dashboard:', docs.error);
-      return { success: false, error: docs.error };
-    }
     if (asosPendentes.error) {
       console.error('Erro ao contar ASOs pendentes:', asosPendentes.error);
       return { success: false, error: asosPendentes.error.message };
@@ -135,8 +87,9 @@ export async function getDashboardData(): Promise<{
         total_colaboradores: ativos.total,
         total_embarcados: ativos.embarcados,
         total_disponiveis: ativos.disponiveis,
-        total_docs_vencidos: docs.vencidos,
-        total_docs_vencendo: docs.vencendo,
+        total_docs_vencidos: docs.totais.vencidos_vigentes,
+        total_docs_vencendo: docs.totais.vencendo_vigentes,
+        total_docs_vencidos_historico: docs.totais.vencidos_historico,
         asos_pendentes_revisao: asosPendentes.count || 0,
       },
     };

@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import { cpfsMatch, formatCpf, isEsocialGlobalVisible, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 import AsoOcrDetailsModal from '@/components/gestao-tripulantes/AsoOcrDetailsModal';
+import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
 
 interface Document {
   id: string;
@@ -57,6 +58,7 @@ interface Props {
   documentos: Document[];
   esocialAsos?: any[];
   onRefresh?: () => void;
+  highlightDocId?: string | null;
 }
 
 const TIPO_EXAME_COLORS: Record<string, string> = {
@@ -177,7 +179,7 @@ function isDraftStatus(status: string): boolean {
   return !isEsocialGlobalVisible(status);
 }
 
-export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esocialAsos = [], onRefresh }: Props) {
+export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esocialAsos = [], onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
@@ -185,7 +187,7 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
   const [ocrProgress, setOcrProgress] = useState('');
   const [selectedAsoForDetails, setSelectedAsoForDetails] = useState<any | null>(null);
 
-  const rawAsos = documentos.filter(d => d.tipo_documento === 'aso');
+  const rawAsos = documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'aso'));
   const profileCpf = normalizeCpf(colaboradorCpf || '');
 
   // Deduplicação e Agrupamento dos ASOs por documento/data de realização
@@ -443,7 +445,7 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
       : (doc.titulo?.startsWith('ASO -') ? 'ASO' : doc.titulo);
 
     return (
-      <div key={doc.id} className="p-5 hover:bg-gray-50 transition-colors">
+      <div id={`gt-doc-${doc.id}`} key={doc.id} className={`p-5 hover:bg-gray-50 transition-colors ${highlightDocId === doc.id ? 'ring-2 ring-red-400 bg-red-50/40' : ''}`}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -541,7 +543,7 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
           </div>
 
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            <StatusBadge status={doc.status_validacao} />
+            <StatusBadge status={classificarValidadeCivil(doc.data_validade) === 'sem_validade' ? (doc.status_validacao || 'pendente') : classificarValidadeCivil(doc.data_validade)} />
 
             <button
               onClick={() => setSelectedAsoForDetails(doc)}

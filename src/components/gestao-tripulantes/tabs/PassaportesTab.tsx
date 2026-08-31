@@ -6,6 +6,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
+import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
 
 interface Document {
   id: string;
@@ -24,6 +25,7 @@ interface Props {
   colaboradorId: string;
   documentos: Document[];
   onRefresh?: () => void;
+  highlightDocId?: string | null;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -48,7 +50,7 @@ function DaysToExpiry({ dateStr }: { dateStr: string | null }) {
   return <span className="text-xs text-gray-400">{new Date(dateStr).toLocaleDateString('pt-BR')}</span>;
 }
 
-export default function PassaportesTab({ colaboradorId, documentos, onRefresh }: Props) {
+export default function PassaportesTab({ colaboradorId, documentos, onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
   const [saving, setSaving] = useState(false);
   const [ocrRunning, setOcrRunning] = useState<string | null>(null);
 
-  const passaportes = documentos.filter(d => d.tipo_documento === 'passaporte');
+  const passaportes = documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'passaportes'));
 
   const formatDate = (d: string | null | undefined) => {
     if (!d) return '—';
@@ -187,7 +189,7 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
         </div>
       ) : (
         passaportes.map(doc => (
-          <div key={doc.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
+          <div id={`gt-doc-${doc.id}`} key={doc.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors ${highlightDocId === doc.id ? 'ring-2 ring-red-400 bg-red-50/40' : ''}`}>
             {/* Passport icon area */}
             <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
               <FiGlobe className="w-5 h-5 text-indigo-600" />
@@ -268,7 +270,7 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh }:
 
             <div className="flex items-center gap-3 flex-shrink-0">
               <DaysToExpiry dateStr={doc.data_validade} />
-              <StatusBadge status={doc.status_validacao} />
+              <StatusBadge status={classificarValidadeCivil(doc.data_validade) === 'sem_validade' ? (doc.status_validacao || 'pendente') : classificarValidadeCivil(doc.data_validade)} />
               {(doc.ocr_status === 'pendente' || doc.ocr_status === 'erro' || ocrRunning === doc.id) && (
                 <button
                   onClick={() => handleRunOcr(doc.id, doc.arquivo_url)}

@@ -1,4 +1,16 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import {
+  adicionarDiasLocalISO,
+  classificarValidadeCivil,
+  dataLocalISO,
+} from '@/lib/gestao-tripulantes/validade-civil';
+
+export {
+  adicionarDiasLocalISO,
+  classificarValidadeCivil,
+  dataLocalISO,
+} from '@/lib/gestao-tripulantes/validade-civil';
+export type { ClassificacaoValidadeCivil } from '@/lib/gestao-tripulantes/validade-civil';
 
 const ASO_ALERTA_SELECT = `
   id, titulo, numero_documento, numero_rastreio, data_emissao, data_validade, status_validacao,
@@ -43,35 +55,6 @@ export interface AsosComAlerta {
 function asRel<T>(value: T | T[] | null | undefined): T | null {
   if (value == null) return null;
   return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
-export function dataLocalISO(d = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-export function adicionarDiasLocalISO(dias: number, base = new Date()): string {
-  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias);
-  return dataLocalISO(d);
-}
-
-export type ClassificacaoValidadeCivil = 'vencido' | 'vencendo' | 'valido' | 'sem_validade';
-
-/** Civil YYYY-MM-DD compare — never `new Date(iso)` UTC. Janela vencendo: hoje…hoje+30 inclusive. */
-export function classificarValidadeCivil(
-  dataValidade: string | null | undefined,
-  hoje = dataLocalISO(),
-  limite?: string,
-): ClassificacaoValidadeCivil {
-  const validade = String(dataValidade || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(validade)) return 'sem_validade';
-  const [y, m, d] = hoje.split('-').map(Number);
-  const limiteCivil = limite ?? dataLocalISO(new Date(y, (m || 1) - 1, (d || 1) + 30));
-  if (validade < hoje) return 'vencido';
-  if (validade <= limiteCivil) return 'vencendo';
-  return 'valido';
 }
 
 function normalizarColaborador(raw: unknown): AsoVencimentoColaborador | null {

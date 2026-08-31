@@ -6,6 +6,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
+import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
 
 interface Document {
   id: string;
@@ -24,6 +25,7 @@ interface Props {
   colaboradorId: string;
   documentos: Document[];
   onRefresh?: () => void;
+  highlightDocId?: string | null;
 }
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
@@ -47,7 +49,7 @@ const TIPO_COLORS: Record<string, string> = {
   certificado: 'bg-yellow-50 border-yellow-200',
 };
 
-export default function DocumentosTab({ colaboradorId, documentos, onRefresh }: Props) {
+export default function DocumentosTab({ colaboradorId, documentos, onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh }: 
   const [newTitulo, setNewTitulo] = useState('');
 
   // All docs except ASO, passaporte, treinamento
-  const outros = documentos.filter(d => !['aso', 'passaporte', 'treinamento'].includes(d.tipo_documento));
+  const outros = documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'documentos'));
 
   const formatDate = (d: string | null | undefined) => {
     if (!d) return '—';
@@ -170,15 +172,20 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh }: 
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
           {outros.map(doc => {
-            const StatusIcon = STATUS_ICONS[doc.status_validacao] || FiFile;
+            const alerta = classificarValidadeCivil(doc.data_validade);
+            const statusKey = alerta === 'sem_validade' ? (doc.status_validacao || 'pendente') : alerta;
+            const StatusIcon = STATUS_ICONS[statusKey] || FiFile;
             return (
               <div
+                id={`gt-doc-${doc.id}`}
                 key={doc.id}
-                className={`border rounded-xl p-4 hover:shadow-md transition-shadow ${TIPO_COLORS[doc.tipo_documento] || 'bg-gray-50 border-gray-200'}`}
+                className={`border rounded-xl p-4 hover:shadow-md transition-shadow ${TIPO_COLORS[doc.tipo_documento] || 'bg-gray-50 border-gray-200'} ${
+                  highlightDocId === doc.id ? 'ring-2 ring-red-400' : ''
+                }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{doc.tipo_documento}</span>
-                  <StatusIcon className={`w-4 h-4 ${STATUS_COLORS[doc.status_validacao] || 'text-gray-400'}`} />
+                  <StatusIcon className={`w-4 h-4 ${STATUS_COLORS[statusKey] || 'text-gray-400'}`} />
                 </div>
                 <p className="font-semibold text-gray-800 text-sm mb-1 line-clamp-2">{doc.titulo}</p>
                 {doc.numero_documento && (

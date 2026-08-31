@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiX, FiUser, FiBookOpen, FiHeart, FiFileText, FiAnchor, FiRepeat, FiUpload, FiBell, FiRefreshCw
+  FiX, FiUser, FiBookOpen, FiHeart, FiFileText, FiAnchor, FiRepeat, FiUpload, FiBell, FiRefreshCw, FiLayers
 } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
@@ -17,6 +17,8 @@ import PassaportesTab from './tabs/PassaportesTab';
 import DocumentosTab from './tabs/DocumentosTab';
 import HistoricoEmbarquesTab from './tabs/HistoricoEmbarquesTab';
 import SubstituicoesTab from './tabs/SubstituicoesTab';
+import FichaUnificadaTab from './tabs/FichaUnificadaTab';
+import type { DocumentoAlertaUI } from './DocsAlertasPanel';
 
 interface Document {
   id: string;
@@ -99,25 +101,29 @@ interface CollaboratorDetail {
   qtd_docs_vencidos: number;
   qtd_docs_vencendo: number;
   documentos: Document[];
+  documentos_alertas?: DocumentoAlertaUI[];
   embarques: Embarkation[];
   substituicoes: Substitution[];
 }
 
+export type TabKey = 'dados' | 'ficha' | 'treinamentos' | 'aso' | 'passaportes' | 'documentos' | 'embarques' | 'substituicoes';
+
 interface CollaboratorModalProps {
   colaboradorId: string;
   onClose: () => void;
+  initialTab?: TabKey;
+  highlightDocId?: string | null;
 }
 
-type TabKey = 'dados' | 'treinamentos' | 'aso' | 'passaportes' | 'documentos' | 'embarques' | 'substituicoes';
-
-const TABS: { key: TabKey; labelKey: string; icon: React.ElementType }[] = [
-  { key: 'dados', labelKey: 'gestaoTripulantes.profile.personalData', icon: FiUser },
-  { key: 'treinamentos', labelKey: 'gestaoTripulantes.profile.trainings', icon: FiBookOpen },
-  { key: 'aso', labelKey: 'gestaoTripulantes.profile.aso', icon: FiHeart },
-  { key: 'passaportes', labelKey: 'gestaoTripulantes.profile.passports', icon: FiFileText },
-  { key: 'documentos', labelKey: 'gestaoTripulantes.profile.documents', icon: FiFileText },
-  { key: 'embarques', labelKey: 'gestaoTripulantes.profile.embarkations', icon: FiAnchor },
-  { key: 'substituicoes', labelKey: 'gestaoTripulantes.profile.substitutions', icon: FiRepeat },
+const TABS: { key: TabKey; label: string; labelKey?: string; icon: React.ElementType }[] = [
+  { key: 'dados', labelKey: 'gestaoTripulantes.profile.personalData', label: 'Dados', icon: FiUser },
+  { key: 'ficha', label: 'Ficha unificada', icon: FiLayers },
+  { key: 'treinamentos', labelKey: 'gestaoTripulantes.profile.trainings', label: 'Treinamentos', icon: FiBookOpen },
+  { key: 'aso', labelKey: 'gestaoTripulantes.profile.aso', label: 'ASO', icon: FiHeart },
+  { key: 'passaportes', labelKey: 'gestaoTripulantes.profile.passports', label: 'Passaportes', icon: FiFileText },
+  { key: 'documentos', labelKey: 'gestaoTripulantes.profile.documents', label: 'Documentos', icon: FiFileText },
+  { key: 'embarques', labelKey: 'gestaoTripulantes.profile.embarkations', label: 'Embarques', icon: FiAnchor },
+  { key: 'substituicoes', labelKey: 'gestaoTripulantes.profile.substitutions', label: 'Substituições', icon: FiRepeat },
 ];
 
 function SkeletonBlock() {
@@ -192,9 +198,10 @@ function fetchColaboradorDetail(colaboradorId: string, opts?: { force?: boolean 
   return pending;
 }
 
-export default function CollaboratorModal({ colaboradorId, onClose }: CollaboratorModalProps) {
+export default function CollaboratorModal({ colaboradorId, onClose, initialTab, highlightDocId }: CollaboratorModalProps) {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<TabKey>('dados');
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab || 'dados');
+  const [focusDocId, setFocusDocId] = useState<string | null>(highlightDocId || null);
   const [data, setData] = useState<CollaboratorDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBackModal, setShowBackModal] = useState(false);
@@ -217,6 +224,17 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
   const silentRefresh = useCallback(() => fetchData({ silent: true }), [fetchData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+    if (highlightDocId) setFocusDocId(highlightDocId);
+  }, [initialTab, highlightDocId]);
+
+  useEffect(() => {
+    if (!focusDocId || loading) return;
+    const el = document.getElementById(`gt-doc-${focusDocId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusDocId, activeTab, loading, data]);
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -264,14 +282,45 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
     switch (activeTab) {
       case 'dados':
         return (
-          <DadosPessoaisTab
-            data={data}
-            onUpdate={(updated) => setData(prev => prev ? { ...prev, ...updated } : prev)}
-            onRefresh={silentRefresh}
+          <>
+            {(data.documentos_alertas || []).length > 0 && (
+              <div className="mx-6 mt-4 rounded-xl border border-red-100 bg-red-50/70 p-3 space-y-2">
+                <p className="text-xs font-bold text-red-800">Documentos com validade vencida ou a vencer</p>
+                {data.documentos_alertas!.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(a.aba);
+                      setFocusDocId(a.id);
+                    }}
+                    className="block w-full text-left text-xs text-red-900 hover:underline"
+                  >
+                    {a.titulo} · {a.tipo_documento} · {a.data_validade} · {a.papel} · abrir {a.aba}
+                    {a.status_stale ? ' (status no banco desatualizado)' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+            <DadosPessoaisTab
+              data={data}
+              onUpdate={(updated) => setData(prev => prev ? { ...prev, ...updated } : prev)}
+              onRefresh={silentRefresh}
+            />
+          </>
+        );
+      case 'ficha':
+        return (
+          <FichaUnificadaTab
+            colaboradorId={data.id}
+            onOpenTab={(tab, docId) => {
+              setActiveTab(tab as TabKey);
+              if (docId) setFocusDocId(docId);
+            }}
           />
         );
       case 'treinamentos':
-        return <TreinamentosTab colaboradorId={data.id} colaborador={data} documentos={data.documentos || []} onRefresh={silentRefresh} />;
+        return <TreinamentosTab colaboradorId={data.id} colaborador={data} documentos={data.documentos || []} onRefresh={silentRefresh} highlightDocId={focusDocId} />;
       case 'aso':
         return (
           <ASOTab
@@ -280,12 +329,13 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
             documentos={data.documentos || []}
             esocialAsos={(data as any).esocial_asos || []}
             onRefresh={silentRefresh}
+            highlightDocId={focusDocId}
           />
         );
       case 'passaportes':
-        return <PassaportesTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} />;
+        return <PassaportesTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} highlightDocId={focusDocId} />;
       case 'documentos':
-        return <DocumentosTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} />;
+        return <DocumentosTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} highlightDocId={focusDocId} />;
       case 'embarques':
         return <HistoricoEmbarquesTab embarques={data.embarques || []} />;
       case 'substituicoes':
@@ -345,9 +395,13 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
                   {/* Doc warning badges */}
                   <div className="flex gap-2 mt-1">
                     {(data?.qtd_docs_vencidos || 0) > 0 && (
-                      <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-medium">
-                        {data!.qtd_docs_vencidos} doc(s) vencido(s)
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('ficha')}
+                        className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-medium hover:bg-red-600"
+                      >
+                        {data!.qtd_docs_vencidos} doc(s) vencido(s) — ver ficha
+                      </button>
                     )}
                     {(data?.qtd_docs_vencendo || 0) > 0 && (
                       <span className="px-2 py-0.5 bg-orange-400 text-white text-xs rounded-full font-medium">
@@ -409,7 +463,7 @@ export default function CollaboratorModal({ colaboradorId, onClose }: Collaborat
                     }`}
                   >
                     <Icon className="w-4 h-4" />
-                    {t(tab.labelKey)}
+                    {tab.labelKey ? t(tab.labelKey) : tab.label}
                   </button>
                 );
               })}

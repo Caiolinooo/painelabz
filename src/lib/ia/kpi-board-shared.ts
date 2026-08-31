@@ -18,6 +18,7 @@ export const KPI_DATASOURCE_ALLOWLIST = [
   'buscar_ferias',
   'buscar_epis',
   'buscar_tripulantes',
+  'buscar_documentos_vencidos',
   'buscar_escalas',
   'buscar_cursos_disponiveis',
   'buscar_progresso_academy',

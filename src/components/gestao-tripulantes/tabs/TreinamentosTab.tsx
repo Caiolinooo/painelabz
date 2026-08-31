@@ -20,6 +20,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken, getToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
+import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
 
 export interface Document {
   id: string;
@@ -37,6 +38,7 @@ export interface Document {
   numero_rastreio?: string | null;
   descricao?: string | null;
   origem?: string | null;
+  papel_conformidade?: 'vigente' | 'historico';
   treinamento_data?: {
     nome_curso?: string | null;
     instituicao?: string | null;
@@ -50,6 +52,7 @@ interface Props {
   colaborador?: any;
   documentos: Document[];
   onRefresh?: () => void;
+  highlightDocId?: string | null;
 }
 
 function formatDate(dateStr?: string | null): string {
@@ -96,7 +99,7 @@ function DaysToExpiry({ dateStr }: { dateStr?: string | null }) {
   return <span className="text-xs text-emerald-700 font-medium">{diff} dias restantes</span>;
 }
 
-export default function TreinamentosTab({ colaboradorId, colaborador, documentos, onRefresh }: Props) {
+export default function TreinamentosTab({ colaboradorId, colaborador, documentos, onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
@@ -156,13 +159,13 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const treinamentos = Array.isArray(documentos)
-    ? documentos.filter(d => d.tipo_documento === 'treinamento')
+    ? documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'treinamentos'))
     : [];
 
-  // Stats
-  const totalValidos = treinamentos.filter(d => (d.status_validacao === 'valido' || !d.data_validade) && d.status_validacao !== 'vencido').length;
-  const totalVencidos = treinamentos.filter(d => d.status_validacao === 'vencido').length;
-  const totalVencendo = treinamentos.filter(d => d.status_validacao === 'vencendo').length;
+  const validadeCivil = (d: Document) => classificarValidadeCivil(d.data_validade);
+  const totalValidos = treinamentos.filter(d => validadeCivil(d) === 'valido').length;
+  const totalVencidos = treinamentos.filter(d => validadeCivil(d) === 'vencido').length;
+  const totalVencendo = treinamentos.filter(d => validadeCivil(d) === 'vencendo').length;
   const totalPermanentes = treinamentos.filter(d => !d.data_validade).length;
 
   // --------------------------------------------------------------------------
@@ -540,7 +543,10 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
             return (
               <div
                 key={doc.id}
-                className="p-4 sm:px-6 hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                id={`gt-doc-${doc.id}`}
+                className={`p-4 sm:px-6 hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                  highlightDocId === doc.id ? 'ring-2 ring-red-400 bg-red-50/60' : ''
+                }`}
               >
                 {/* Left: Identification & Course info */}
                 <div className="space-y-1.5 flex-1 min-w-0">
@@ -624,7 +630,12 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
 
                 {/* Right: Status & Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0 self-start md:self-center">
-                  <StatusBadge status={doc.status_validacao} hasValidade={!!doc.data_validade} />
+                  <StatusBadge status={validadeCivil(doc) === 'sem_validade' ? 'pendente' : validadeCivil(doc)} hasValidade={!!doc.data_validade} />
+                  {doc.papel_conformidade === 'historico' && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                      Histórico
+                    </span>
+                  )}
 
                   {/* Hidden file input for 1-click attach */}
                   <input
