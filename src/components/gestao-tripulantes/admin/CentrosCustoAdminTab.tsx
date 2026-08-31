@@ -206,9 +206,9 @@ export default function CentrosCustoAdminTab() {
           />
         </div>
         <div className="flex items-center gap-4 text-xs font-semibold text-gray-500">
-          <span>Total: <strong className="text-gray-900">{centros.length}</strong></span>
-          <span>Ativos: <strong className="text-emerald-700">{centros.filter(c => c.ativo).length}</strong></span>
-          <span>Inativos: <strong className="text-amber-700">{centros.filter(c => !c.ativo).length}</strong></span>
+          <span>Total: <strong className="text-gray-900">{centros?.length ?? 0}</strong></span>
+          <span>Ativos: <strong className="text-emerald-700">{(centros || []).filter(c => c.ativo).length}</strong></span>
+          <span>Inativos: <strong className="text-amber-700">{(centros || []).filter(c => !c.ativo).length}</strong></span>
         </div>
       </div>
 
@@ -231,7 +231,7 @@ export default function CentrosCustoAdminTab() {
                   Carregando centros de custo...
                 </td>
               </tr>
-            ) : filtered.length === 0 ? (
+            ) : (!filtered || filtered.length === 0) ? (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                   Nenhum centro de custo encontrado.

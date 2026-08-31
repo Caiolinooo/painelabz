@@ -428,7 +428,7 @@ export default function GestaoTripulantesAdminPage() {
                   {/* Histórico de Execuções MIO */}
                   <div className="border-t pt-6">
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Histórico de Sincronizações</h3>
-                    {cronLogs.filter((l: any) => l.tipo === 'sync_mio').length === 0 ? (
+                    {(!cronLogs || cronLogs.filter((l: any) => l.tipo === 'sync_mio').length === 0) ? (
                       <p className="text-sm text-gray-500 italic">Nenhuma sincronização executada ainda.</p>
                     ) : (
                       <div className="overflow-x-auto">
@@ -574,14 +574,14 @@ export default function GestaoTripulantesAdminPage() {
                               <p>ASOs encontrados na clínica: <strong>{scrapeResult.total_encontrados}</strong></p>
                               <p>Importados com sucesso: <strong className="text-green-700">{scrapeResult.total_importados}</strong></p>
                               <p>Ignorados (já importados) ou com erros: <strong>{scrapeResult.total_encontrados - scrapeResult.total_importados}</strong></p>
-                              {scrapeResult.erros && scrapeResult.erros.length > 0 && (
+                              {scrapeResult.erros && (scrapeResult.erros?.length ?? 0) > 0 && (
                                 <details className="mt-2 text-red-700">
                                   <summary className="cursor-pointer font-medium">Visualizar Erros ({scrapeResult.total_erros})</summary>
                                   <ul className="list-disc list-inside mt-1 space-y-1 pl-1">
-                                    {scrapeResult.erros.slice(0, 5).map((e: string, i: number) => (
+                                    {(scrapeResult.erros || []).slice(0, 5).map((e: string, i: number) => (
                                       <li key={i}>{e}</li>
                                     ))}
-                                    {scrapeResult.erros.length > 5 && <li>E mais {scrapeResult.erros.length - 5}...</li>}
+                                    {(scrapeResult.erros?.length ?? 0) > 5 && <li>E mais {(scrapeResult.erros?.length ?? 0) - 5}...</li>}
                                   </ul>
                                 </details>
                               )}
@@ -595,7 +595,7 @@ export default function GestaoTripulantesAdminPage() {
                   {/* Histórico de Execuções */}
                   <div className="border-t pt-6">
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Histórico de Execuções (Scraping)</h3>
-                    {cronLogs.length === 0 ? (
+                    {(!cronLogs || cronLogs.length === 0) ? (
                       <p className="text-sm text-gray-500 italic">Nenhum log de execução encontrado.</p>
                     ) : (
                       <div className="overflow-x-auto">

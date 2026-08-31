@@ -129,10 +129,11 @@ export default function WorkflowFechamentoTab() {
   }, []);
 
   const handleAddAprovador = () => {
+    const list = config.aprovadores_obrigatorios || [];
     if (selectedManagerId) {
       const mgr = availableManagers.find(m => m.id === selectedManagerId);
       if (mgr) {
-        const jaExiste = config.aprovadores_obrigatorios.some(a => a.email.toLowerCase() === mgr.email.toLowerCase());
+        const jaExiste = list.some(a => a.email && a.email.toLowerCase() === mgr.email.toLowerCase());
         if (jaExiste) {
           setErrorMsg('Este aprovador já está na lista.');
           return;
@@ -140,7 +141,7 @@ export default function WorkflowFechamentoTab() {
         setConfig(prev => ({
           ...prev,
           aprovadores_obrigatorios: [
-            ...prev.aprovadores_obrigatorios,
+            ...(prev.aprovadores_obrigatorios || []),
             {
               id: mgr.id,
               nome: mgr.full_name || mgr.name || mgr.email,
@@ -153,7 +154,7 @@ export default function WorkflowFechamentoTab() {
         setErrorMsg(null);
       }
     } else if (customNome.trim() && customEmail.trim()) {
-      const jaExiste = config.aprovadores_obrigatorios.some(a => a.email.toLowerCase() === customEmail.trim().toLowerCase());
+      const jaExiste = list.some(a => a.email && a.email.toLowerCase() === customEmail.trim().toLowerCase());
       if (jaExiste) {
         setErrorMsg('Este e-mail já está na lista de aprovadores.');
         return;
@@ -161,7 +162,7 @@ export default function WorkflowFechamentoTab() {
       setConfig(prev => ({
         ...prev,
         aprovadores_obrigatorios: [
-          ...prev.aprovadores_obrigatorios,
+          ...(prev.aprovadores_obrigatorios || []),
           {
             nome: customNome.trim(),
             email: customEmail.trim().toLowerCase(),
@@ -181,7 +182,7 @@ export default function WorkflowFechamentoTab() {
   const handleRemoveAprovador = (email: string) => {
     setConfig(prev => ({
       ...prev,
-      aprovadores_obrigatorios: prev.aprovadores_obrigatorios.filter(a => a.email.toLowerCase() !== email.toLowerCase())
+      aprovadores_obrigatorios: (prev.aprovadores_obrigatorios || []).filter(a => a.email && a.email.toLowerCase() !== email.toLowerCase())
     }));
   };
 
@@ -289,13 +290,13 @@ export default function WorkflowFechamentoTab() {
 
             {/* Lista Atual de Aprovadores */}
             <div className="space-y-2">
-              {config.aprovadores_obrigatorios.length === 0 ? (
+              {(!config.aprovadores_obrigatorios || config.aprovadores_obrigatorios.length === 0) ? (
                 <div className="p-3 bg-white border border-dashed border-gray-300 rounded-lg text-xs text-gray-500 text-center">
                   Nenhum aprovador específico cadastrado. (Qualquer gestor ou administrador poderá aprovar individualmente).
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {config.aprovadores_obrigatorios.map((apr, idx) => (
+                  {(config.aprovadores_obrigatorios || []).map((apr, idx) => (
                     <div
                       key={apr.email || idx}
                       className="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-lg shadow-xs"

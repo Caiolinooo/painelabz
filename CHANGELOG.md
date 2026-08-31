@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.68.2] - 2026-08-31
+
+### 🛡️ Gestão de Tripulantes: Correção de Defensiva em Auditoria, Centros de Custo e Painel Admin
+
+Esta versão corrige a exceção `Cannot read properties of undefined (reading 'length')` que ocorria ao acessar o painel de configurações administrativas (`/admin/gestao-tripulantes`):
+1. **Auditoria de Documentos**: Proteção com optional chaining e fallback seguro para `data?.duplicados` e `data?.resumo`.
+2. **Centros de Custo e Fechamento DP**: Blindagem contra arrays indefinidos em contagens e listas de aprovadores obrigatórios.
+3. **Logs de Integrações MIO e PoliWeb**: Tratamento seguro para `cronLogs` e `scrapeResult.erros`.
+
 ## [5.68.1] - 2026-08-31
 
 ### 📊 Gestão de Tripulantes: Cálculo Diário Estrito de Embarques/Dobras, Layout com Células Mescladas e Edição de Escala no Cadastro
