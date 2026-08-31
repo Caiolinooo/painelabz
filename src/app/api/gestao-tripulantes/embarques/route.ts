@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { mapCodigoToDbTipo } from '@/lib/gestao-tripulantes/escala-tipos';
 import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
+import { invalidateManScheduleCache } from '@/lib/gestao-tripulantes/man-schedule-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,23 +46,35 @@ export async function POST(request: NextRequest) {
 
     // offc → 'offc' (não colapsa para folga_indenizada/fi)
     const dbTipo = mapCodigoToDbTipo(String(tipo));
+    const now = new Date().toISOString();
+    const row: Record<string, unknown> = {
+      colaborador_id: colab.id,
+      tipo: dbTipo,
+      data_embarque,
+      data_desembarque,
+      local_embarque: local_embarque || '',
+      local_desembarque: local_desembarque || '',
+      observacoes: observacoes || '',
+      exibir_dia_inicio: exibir_dia_inicio !== undefined ? Boolean(exibir_dia_inicio) : true,
+      origem: 'local',
+      created_at: now,
+      updated_at: now,
+    };
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('gt_historico_embarques')
-      .insert({
-        colaborador_id: colab.id,
-        tipo: dbTipo,
-        data_embarque,
-        data_desembarque,
-        local_embarque: local_embarque || '',
-        local_desembarque: local_desembarque || '',
-        observacoes: observacoes || '',
-        exibir_dia_inicio: exibir_dia_inicio !== undefined ? Boolean(exibir_dia_inicio) : true,
-        origem: 'local',
-        created_at: new Date().toISOString(),
-      })
+      .insert(row)
       .select('*')
       .single();
+
+    if (error && /exibir_dia_inicio|updated_at/i.test(error.message || '')) {
+      const retry = { ...row };
+      if (/exibir_dia_inicio/i.test(error.message || '')) delete retry.exibir_dia_inicio;
+      if (/updated_at/i.test(error.message || '')) delete retry.updated_at;
+      const second = await supabaseAdmin.from('gt_historico_embarques').insert(retry).select('*').single();
+      data = second.data;
+      error = second.error;
+    }
 
     if (error) {
       console.error('Erro ao inserir evento de embarque:', error);
@@ -71,6 +84,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    invalidateManScheduleCache();
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erro interno do servidor';

@@ -94,6 +94,8 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Embarques locais: `POST /embarques`, `PUT|DELETE /embarques/[id]` — soft-delete via `deleted_at`; PUT updates `origem='local'` so manual adjustments are preserved against MIO sync pulls without ever calling or writing back to MIO.
 - Storage mapping (`escala-tipos.ts`): UI `offc` persists as `offc` (**never** collapse to `folga_indenizada` / `fi`). Legacy `folga_indenizada|dobra|standby` normalize on read to `fi|dba|stb`.
 - `GET /api/man-schedule/realtime`: merge **gt_historico_embarques** (origem mio + local) with colaboradores; extras FI/DBA/STB/OFF-C are materialized at pull time. Return explicit `observacoes` + `tipo_codigo` / `rotation_type`; CPF joins via digits-only normalize.
+- Cache in-memory: assinatura inclui `count` + último `updated_at` **e** último `created_at` (insert local sem `updated_at` não pode reusar payload velho). POST/PUT/DELETE embarques chama `invalidateManScheduleCache()` e grava `updated_at`.
+- Grade: `allSchedules` é lista plana (`rotation_start`/`rotation_end`). Save otimista **insere/atualiza uma linha**, nunca `row.rotations`. Coluna ON/DBA/FI/TRE conta colunas visíveis; evento novo ganha de STB sobreposto (`pickOverlappingRotation`: início na coluna, depois data de início mais recente).
 - **Viewport dia/semana**: checkbox `Visualizar por dia` em `GTManScheduleTab` (`localStorage` `gt-man-schedule-viewport-day`). Desligado = colunas sábado–sexta (atual). Ligado = um dia por coluna (janela padrão 90d se sem filtro de data). Clique na célula passa a `Date` da coluna. Semanas continuam começando sábado.
 
 ### Schema notes
@@ -194,6 +196,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - PUT `/embarques/[id]` updates dates/tipo/obs without duplicating rows.
 - CollaboratorModal locks `body` scroll and is vertically centered; top header has frosted backdrop (`bg-gray-50/90 backdrop-blur-md`) preventing content bleed on scroll.
 - `GET /api/man-schedule/realtime` does not call `mioClient`; source is `gt_historico_embarques` (`meta.source`).
+- Novo ON sobre STB longo aparece nas semanas do período e incrementa a coluna ON. `npx tsx scripts/verify-escala-contagem.ts` → `ESCALA_CONTAGEM_VERIFY_OK`.
 - `npm run mio:assert-local-first` exits 0 (`ASSERT_MIO_LOCAL_FIRST_OK`).
 - Full pull: `npm run mio:pull` (admin credentials in `.env.local`). Dry-run: `npm run mio:pull:dry`.
 - Dados Pessoais edit mode: all identity + professional fields are inputs (not plain text); Save persists via PUT whitelist including CPF (validated) and FK professional columns.
