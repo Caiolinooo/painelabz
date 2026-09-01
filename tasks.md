@@ -1,3 +1,15 @@
+## Portal auth audit — leftovers (2026-09-01)
+
+Fechamento (lista nominada + save isolado), colunas `users_unified` (`first_name`/`last_name`/`tax_id`) e ASO logística por setor foram neste ship. **Não fazer agora** (PR seguinte):
+
+- [ ] Middleware rewrite (page/module gates no edge)
+- [ ] Page `moduleName` gates alinhados ao RBAC real
+- [ ] Rotas de reembolso sem auth
+- [ ] Academy GET público
+- [ ] Vazamento de dados em avaliação (`avaliacao`)
+
+---
+
 ## Status de embarque vivo nas listas (2026-09-01)
 
 Pílulas Status (Matriz, DP, ficha, filtros) seguem a célula de **hoje** em `gt_historico_embarques` (+ afastamentos), não `gt_colaboradores.status_embarque` stale. POB continua só ON exato. Teste: `npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts`.

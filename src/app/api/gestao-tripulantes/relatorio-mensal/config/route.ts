@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { isFechamentoRole, normalizeAprovadoresObrigatorios } from '@/lib/gestao-tripulantes/fechamento-assinatura';
-import { listarUsuariosPortalAtivos } from '@/lib/gestao-tripulantes/fechamento-gestores';
+import { listarCandidatosAprovadores } from '@/lib/gestao-tripulantes/fechamento-gestores';
+import { updateConfig } from '@/lib/gestao-tripulantes/config-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       aprovadores_obrigatorios: normalizeAprovadoresObrigatorios(stored.aprovadores_obrigatorios),
     };
 
-    const availableUsers = await listarUsuariosPortalAtivos();
+    const availableUsers = await listarCandidatosAprovadores();
 
     return NextResponse.json({
       success: true,
@@ -113,29 +114,12 @@ export async function PUT(request: NextRequest) {
       corpo_email_template: corpo_email_template || DEFAULT_CONFIG.corpo_email_template,
     };
 
-    const { data: existing } = await supabaseAdmin
-      .from('gt_configuracoes')
-      .select('id')
-      .eq('chave', 'gt_fechamento_mensal_config')
-      .maybeSingle();
-
-    if (existing) {
-      await supabaseAdmin
-        .from('gt_configuracoes')
-        .update({
-          valor: valorConfig,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id);
-    } else {
-      await supabaseAdmin
-        .from('gt_configuracoes')
-        .insert({
-          chave: 'gt_fechamento_mensal_config',
-          valor: valorConfig,
-          descricao: 'Configuração do workflow de fechamento mensal, aprovadores obrigatórios e envio para o DP',
-          updated_at: new Date().toISOString(),
-        });
+    const saved = await updateConfig('gt_fechamento_mensal_config', valorConfig);
+    if (!saved.success) {
+      return NextResponse.json(
+        { error: saved.error || 'Não foi possível gravar as configurações de fechamento.' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true, config: valorConfig });

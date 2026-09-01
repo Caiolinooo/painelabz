@@ -63,8 +63,21 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    const GERAL_KEYS = new Set([
+      'modulo_ativo', 'nome_personalizado', 'mio_habilitado', 'mio_escrita_habilitada',
+      'mio_auto_sync', 'mio_intervalo_minutos', 'poliweb_username', 'poliweb_password',
+      'poliweb_habilitado', 'notif_aso_dias_aviso', 'notif_treinamento_dias_aviso',
+      'notif_canal_inapp', 'notif_canal_email', 'notif_canal_push', 'ocr_qualidade',
+      'ocr_auto_upload', 'ocr_fallback_api_url', 'ocr_fallback_api_key',
+      'algoritmo_peso_centro_custo', 'algoritmo_peso_empresa', 'algoritmo_peso_embarcacao',
+      'algoritmo_peso_cargo', 'algoritmo_peso_standby', 'algoritmo_peso_substituiu_antes',
+      'algoritmo_peso_docs_validos', 'algoritmo_peso_senioridade', 'algoritmo_limite_resultados',
+      'auto_notificar_vencimentos', 'auto_sugerir_back', 'auto_poliweb_scrape', 'auto_ocr',
+      'dashboard_colunas_visiveis', 'dashboard_intervalo_refresh',
+    ]);
 
     for (const [chave, valor] of Object.entries(body)) {
+      if (!GERAL_KEYS.has(chave)) continue;
       const { error: upsertError } = await supabaseAdmin
         .from('gt_configuracoes')
         .upsert(

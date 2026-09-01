@@ -6,7 +6,8 @@ import {
 } from '@/lib/gestao-tripulantes/aso-agendamento-service';
 import {
   clientIpFromRequest,
-  isLogisticaRole,
+  mensagemErroAsoLogisticaNegada,
+  podeAprovarAsoLogistica,
   requireAsoAgendamentoAuth,
   resolveAuthUserId,
 } from '@/lib/gestao-tripulantes/aso-agendamento-auth';
@@ -27,9 +28,9 @@ export async function POST(
       return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 });
     }
     const isOwner = String((atual as { solicitado_por_id?: string }).solicitado_por_id || '') === userId;
-    if (!isOwner && !isLogisticaRole(auth.payload?.role)) {
+    if (!isOwner && !(await podeAprovarAsoLogistica(userId, auth.payload?.role))) {
       return NextResponse.json(
-        { error: 'Apenas o DP solicitante ou a logística podem cancelar.' },
+        { error: mensagemErroAsoLogisticaNegada('cancelar') },
         { status: 403 },
       );
     }

@@ -27,7 +27,16 @@ export interface LeaveRequest {
     created_at: string;
     updated_at: string;
     // Joins
-    user?: { id: string; name: string; email: string; sector_id: string; sector?: { name: string } };
+    user?: {
+        id: string;
+        name?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        email: string;
+        sector_id: string;
+        tax_id?: string | null;
+        sector?: { name: string };
+    };
 }
 
 // ==========================================
@@ -346,12 +355,12 @@ export async function updateLeaveRequestStatus(
         try {
             const { data: req } = await supabaseAdmin
                 .from('leave_requests')
-                .select('*, user:users_unified(id, name, email, cpf)')
+                .select('*, user:users_unified(id, first_name, last_name, email, tax_id)')
                 .eq('id', requestId)
                 .single();
 
             if (req && req.user) {
-                const userCpf = req.user.cpf ? req.user.cpf.replace(/\D/g, '') : null;
+                const userCpf = req.user.tax_id ? req.user.tax_id.replace(/\D/g, '') : null;
                 const userEmail = req.user.email ? req.user.email.toLowerCase().trim() : null;
 
                 let colabId: string | null = null;

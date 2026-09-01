@@ -5,7 +5,8 @@ import {
 } from '@/lib/gestao-tripulantes/aso-agendamento-service';
 import {
   clientIpFromRequest,
-  isLogisticaRole,
+  mensagemErroAsoLogisticaNegada,
+  podeAprovarAsoLogistica,
   requireAsoAgendamentoAuth,
   resolveAuthUserId,
 } from '@/lib/gestao-tripulantes/aso-agendamento-auth';
@@ -19,13 +20,13 @@ export async function POST(
   try {
     const auth = requireAsoAgendamentoAuth(request);
     if (auth.error) return auth.error;
-    if (!isLogisticaRole(auth.payload?.role)) {
+    const userId = resolveAuthUserId(auth.payload!);
+    if (!(await podeAprovarAsoLogistica(userId, auth.payload?.role))) {
       return NextResponse.json(
-        { error: 'Apenas logística (ADMIN/MANAGER) pode reprovar agendamento de ASO.' },
+        { error: mensagemErroAsoLogisticaNegada('reprovar') },
         { status: 403 },
       );
     }
-    const userId = resolveAuthUserId(auth.payload!);
     const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
     const motivo = String(body.motivo || body.motivo_reprovacao || '').trim();

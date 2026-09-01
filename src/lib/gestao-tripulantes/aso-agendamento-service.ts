@@ -14,6 +14,7 @@ import type {
   AsoSugestaoData,
 } from '@/lib/gestao-tripulantes/aso-agendamento-status';
 import { ASO_AGENDAMENTO_STATUS_ABERTOS } from '@/lib/gestao-tripulantes/aso-agendamento-status';
+import { displayNameFromUser } from '@/lib/gestao-tripulantes/fechamento-assinatura';
 
 const COLAB_SELECT = `
   id, user_id, nome_completo, cpf, email, matricula,
@@ -685,15 +686,24 @@ export async function cancelarAgendamento(opts: {
 export async function loadAtorFromUserId(userId: string): Promise<AsoAgendamentoAtor> {
   const { data } = await supabaseAdmin
     .from('users_unified')
-    .select('id, name, full_name, email, cpf, signature_url, role')
+    .select('id, first_name, last_name, name, email, tax_id, signature_url, role')
     .eq('id', userId)
     .maybeSingle();
+  const row = (data || {}) as {
+    first_name?: string | null;
+    last_name?: string | null;
+    name?: string | null;
+    email?: string | null;
+    tax_id?: string | null;
+    signature_url?: string | null;
+    role?: string | null;
+  };
   return {
     id: userId,
-    nome: data?.full_name || data?.name || data?.email || 'Usuário',
-    email: (data?.email || '').toLowerCase(),
-    cpf: data?.cpf || '',
-    cargo: data?.role || '',
-    signatureUrl: data?.signature_url || '',
+    nome: displayNameFromUser(row),
+    email: (row.email || '').toLowerCase(),
+    cpf: row.tax_id || '',
+    cargo: row.role || '',
+    signatureUrl: row.signature_url || '',
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import {
   FiCheckSquare,
   FiMail,
@@ -17,6 +17,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
 import {
   displayNameFromUser,
   isFechamentoStatus,
@@ -74,7 +75,12 @@ interface RelatorioRegistro {
   created_at: string;
 }
 
-export default function WorkflowFechamentoTab() {
+export type WorkflowFechamentoHandle = {
+  save: () => Promise<{ ok: boolean; message: string }>;
+  reload: () => Promise<void>;
+};
+
+const WorkflowFechamentoTab = forwardRef<WorkflowFechamentoHandle>(function WorkflowFechamentoTab(_, ref) {
   const [config, setConfig] = useState<FechamentoConfig>({
     dia_fechamento_mes: 25,
     emails_destinatarios_dp: ['dp@groupabz.com'],
@@ -147,14 +153,63 @@ export default function WorkflowFechamentoTab() {
     loadData();
   }, []);
 
-  const handleAddAprovador = () => {
+  const persistConfig = async (
+    override?: Partial<FechamentoConfig>,
+  ): Promise<{ ok: boolean; message: string }> => {
+    const emailsDp = destinatariosInput
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+    const emailsCc = ccInput
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+    const payload: FechamentoConfig = {
+      ...config,
+      ...override,
+      emails_destinatarios_dp: emailsDp,
+      emails_cc: emailsCc,
+    };
+    setIsSaving(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetchWithToken('/api/gestao-tripulantes/relatorio-mensal/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        const message = data.error || 'Erro ao salvar configurações de fechamento.';
+        setErrorMsg(message);
+        return { ok: false, message };
+      }
+      setConfig(payload);
+      setSuccessMsg('Configurações de fechamento mensal salvas com sucesso!');
+      return { ok: true, message: 'Configurações de fechamento mensal salvas com sucesso!' };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao salvar.';
+      setErrorMsg(message);
+      return { ok: false, message };
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    save: () => persistConfig(),
+    reload: loadData,
+  }));
+
+  const handleAddAprovador = async () => {
     const list = config.aprovadores_obrigatorios || [];
     if (selectedManagerId) {
       const mgr = availableManagers.find((m) => m.id === selectedManagerId);
       if (mgr) {
         const email = String(mgr.email || '').trim();
         if (!email) {
-          setErrorMsg('Este usuário não tem e-mail cadastrado.');
+          setErrorMsg('Este colaborador não tem e-mail cadastrado.');
           return;
         }
         const jaExiste = list.some((a) =>
@@ -165,101 +220,67 @@ export default function WorkflowFechamentoTab() {
           setErrorMsg('Este aprovador já está na lista.');
           return;
         }
-        setConfig((prev) => ({
-          ...prev,
-          aprovadores_obrigatorios: [
-            ...(prev.aprovadores_obrigatorios || []),
-            {
-              id: mgr.id,
-              nome: mgr.nome || displayNameFromUser(mgr) || email,
-              email,
-              cargo: mgr.cargo || mgr.role || undefined,
-            },
-          ],
-        }));
+        const nextList = [
+          ...list,
+          {
+            id: mgr.id,
+            nome: mgr.nome || displayNameFromUser(mgr) || email,
+            email,
+            cargo: mgr.cargo || mgr.role || undefined,
+          },
+        ];
+        setConfig((prev) => ({ ...prev, aprovadores_obrigatorios: nextList }));
         setSelectedManagerId('');
-        setErrorMsg(null);
-      } else {
-        setErrorMsg('Selecione um integrante válido na lista.');
+        await persistConfig({ aprovadores_obrigatorios: nextList });
+        return;
       }
-    } else if (customNome.trim() && customEmail.trim()) {
-      const jaExiste = list.some(a => a.email && a.email.toLowerCase() === customEmail.trim().toLowerCase());
+      setErrorMsg('Selecione um colaborador válido na busca.');
+      return;
+    }
+    if (customNome.trim() && customEmail.trim()) {
+      const jaExiste = list.some((a) => a.email && a.email.toLowerCase() === customEmail.trim().toLowerCase());
       if (jaExiste) {
         setErrorMsg('Este e-mail já está na lista de aprovadores.');
         return;
       }
-      setConfig(prev => ({
-        ...prev,
-        aprovadores_obrigatorios: [
-          ...(prev.aprovadores_obrigatorios || []),
-          {
-            nome: customNome.trim(),
-            email: customEmail.trim().toLowerCase(),
-            cargo: customCargo.trim() || 'Gestor Responsável',
-          }
-        ]
-      }));
+      const nextList = [
+        ...list,
+        {
+          nome: customNome.trim(),
+          email: customEmail.trim().toLowerCase(),
+          cargo: customCargo.trim() || undefined,
+        },
+      ];
+      setConfig((prev) => ({ ...prev, aprovadores_obrigatorios: nextList }));
       setCustomNome('');
       setCustomEmail('');
       setCustomCargo('');
-      setErrorMsg(null);
-    } else {
-      setErrorMsg('Selecione um usuário na lista para adicionar.');
+      await persistConfig({ aprovadores_obrigatorios: nextList });
+      return;
     }
+    setErrorMsg('Busque e selecione um colaborador para adicionar.');
   };
 
-  const handleRemoveAprovador = (apr: AprovadorItem) => {
-    setConfig((prev) => ({
-      ...prev,
-      aprovadores_obrigatorios: (prev.aprovadores_obrigatorios || []).filter((a) => {
-        if (apr.id && a.id) return a.id !== apr.id;
-        return (a.email || '').toLowerCase() !== (apr.email || '').toLowerCase();
-      }),
-    }));
+  const handleRemoveAprovador = async (apr: AprovadorItem) => {
+    const nextList = (config.aprovadores_obrigatorios || []).filter((a) => {
+      if (apr.id && a.id) return a.id !== apr.id;
+      return (a.email || '').toLowerCase() !== (apr.email || '').toLowerCase();
+    });
+    setConfig((prev) => ({ ...prev, aprovadores_obrigatorios: nextList }));
+    await persistConfig({ aprovadores_obrigatorios: nextList });
   };
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    const emailsDp = destinatariosInput
-      .split(',')
-      .map(e => e.trim())
-      .filter(Boolean);
-
-    const emailsCc = ccInput
-      .split(',')
-      .map(e => e.trim())
-      .filter(Boolean);
-
-    try {
-      const payload = {
-        ...config,
-        emails_destinatarios_dp: emailsDp,
-        emails_cc: emailsCc,
-      };
-
-      const res = await fetchWithToken('/api/gestao-tripulantes/relatorio-mensal/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao salvar configurações.');
-      }
-
-      setSuccessMsg('Configurações de fechamento mensal salvas com sucesso!');
-      setConfig(payload);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Erro ao salvar.');
-    } finally {
-      setIsSaving(false);
-    }
+    await persistConfig();
   };
+
+  const colaboradorOptions = availableManagers
+    .filter((m) => m.id && m.email)
+    .map((m) => ({
+      id: m.id,
+      label: `${m.nome || displayNameFromUser(m)} — ${m.email}${m.role || m.cargo ? ` (${m.role || m.cargo})` : ''}`,
+    }));
 
   const handleDownloadPlanilha = async (mesAno: string) => {
     try {
@@ -359,31 +380,28 @@ export default function WorkflowFechamentoTab() {
             <div className="pt-2 border-t border-blue-200/60">
               <span className="block text-xs font-bold text-gray-700 mb-2">Adicionar Integrante à Lista de Aprovadores:</span>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                <select
-                  value={selectedManagerId}
-                  onChange={(e) => {
-                    setSelectedManagerId(e.target.value);
-                    if (e.target.value) {
-                      setCustomNome('');
-                      setCustomEmail('');
-                      setCustomCargo('');
-                    }
-                  }}
-                  className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-abz-blue sm:col-span-2"
-                >
-                  <option value="">
-                    {availableManagers.length === 0
-                      ? '-- Nenhum usuário com e-mail encontrado --'
-                      : '-- Selecionar integrante / aprovador --'}
-                  </option>
-                  {availableManagers
-                    .filter((m) => m.id && m.email)
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nome || displayNameFromUser(m)} ({m.email}) — {m.role || m.cargo || 'Usuário'}
-                      </option>
-                    ))}
-                </select>
+                <div className="sm:col-span-2">
+                  <SearchableCreatableSelect
+                    options={colaboradorOptions}
+                    value={selectedManagerId}
+                    onChange={(id) => {
+                      setSelectedManagerId(id);
+                      if (id) {
+                        setCustomNome('');
+                        setCustomEmail('');
+                        setCustomCargo('');
+                      }
+                    }}
+                    placeholder="Digite nome, e-mail ou cargo para buscar colaborador..."
+                    allowCreate={false}
+                    allowClear
+                    emptyLabel="Nenhum colaborador encontrado"
+                    className="text-xs"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    {availableManagers.length} colaboradores/usuários com e-mail. Digite para filtrar.
+                  </p>
+                </div>
 
                 <div className="sm:col-span-2 flex gap-2">
                   <button
@@ -604,4 +622,6 @@ export default function WorkflowFechamentoTab() {
       </div>
     </div>
   );
-}
+});
+
+export default WorkflowFechamentoTab;

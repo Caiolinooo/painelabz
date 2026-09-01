@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { TokenPayload } from '@/lib/auth';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
+import {
+  isLogisticaRole,
+  setorPermiteAsoLogistica,
+  type SetorAsoLogistica,
+} from './aso-agendamento-logistica';
+
+export {
+  isLogisticaRole,
+  mensagemErroAsoLogisticaNegada,
+  setorEhLogistica,
+  setorPermiteAsoLogistica,
+  setorTemModuloGestaoTripulantes,
+  type AsoLogisticaAcao,
+  type SetorAsoLogistica,
+} from './aso-agendamento-logistica';
 
 export function tokenFromRequest(request: NextRequest): string | null {
   const authHeader = request.headers.get('authorization') || undefined;
@@ -31,9 +47,29 @@ export function resolveAuthUserId(payload: TokenPayload): string {
   return payload.userId || payload.user_id || payload.id || payload.sub || '';
 }
 
-export function isLogisticaRole(role: string | undefined): boolean {
-  const r = (role || '').toUpperCase();
-  return r === 'ADMIN' || r === 'ADMINISTRADOR' || r === 'SUPERADMIN' || r === 'MANAGER';
+export async function podeAprovarAsoLogistica(
+  userId: string,
+  role: string | undefined,
+): Promise<boolean> {
+  if (isLogisticaRole(role)) return true;
+  if (!userId) return false;
+
+  const { data: user, error: userError } = await supabaseAdmin
+    .from('users_unified')
+    .select('sector_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (userError || !user?.sector_id) return false;
+
+  const { data: sector, error: sectorError } = await supabaseAdmin
+    .from('sectors')
+    .select('name, allowed_modules')
+    .eq('id', user.sector_id)
+    .maybeSingle();
+
+  if (sectorError || !sector) return false;
+  return setorPermiteAsoLogistica(sector as SetorAsoLogistica);
 }
 
 export function clientIpFromRequest(request: NextRequest): string {

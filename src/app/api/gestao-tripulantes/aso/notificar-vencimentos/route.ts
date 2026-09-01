@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     const { data: adminUsers } = await supabaseAdmin
       .from('users_unified')
-      .select('id, email, full_name, role')
+      .select('id, first_name, last_name, email, role')
       .in('role', ['admin', 'manager', 'dp', 'gestor'])
       .limit(20);
 

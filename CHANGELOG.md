@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.71.3] - 2026-09-01
+
+### 🔧 Fechamento isolado, colunas reais de `users_unified` e ASO logística por setor
+
+1. **Salvar fechamento**: a aba admin grava só `PUT /relatorio-mensal/config`. O PUT geral `/configuracoes` não toca mais em `gt_fechamento_mensal_config`. Adicionar/remover aprovador persiste na hora; o seletor busca nome/e-mail (`SearchableCreatableSelect`).
+2. **Colunas reais**: ASO ator, alerta de vencimentos, token de voz e sync de férias → `gt_afastamentos` leem `first_name`/`last_name`/`tax_id` (nunca `full_name`/`cpf` em `users_unified`).
+3. **ASO logística**: USER do setor Logística com módulo `gestao-tripulantes` pode aprovar/reprovar/cancelar. ADMIN/MANAGER segue liberado. USER de TI/QHSE com o mesmo módulo continua 403. Fechamento nominado não muda.
+
 ## [5.71.2] - 2026-09-01
 
 ### ✍️ Fechamento: espera exatamente quem está na lista, independente do cargo

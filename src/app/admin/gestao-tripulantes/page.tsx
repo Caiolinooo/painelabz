@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FiSave, FiRefreshCw, FiToggleLeft, FiSliders, FiDatabase,
   FiBell, FiCamera, FiCpu, FiSettings, FiLayout, FiChevronDown, FiChevronRight,
@@ -12,7 +12,9 @@ import TiposEventoEscalaAdmin from '@/components/gestao-tripulantes/admin/TiposE
 import AuditoriaDocumentosTab from '@/components/gestao-tripulantes/admin/AuditoriaDocumentosTab';
 import ExportarTab from '@/components/gestao-tripulantes/admin/ExportarTab';
 import CentrosCustoAdminTab from '@/components/gestao-tripulantes/admin/CentrosCustoAdminTab';
-import WorkflowFechamentoTab from '@/components/gestao-tripulantes/admin/WorkflowFechamentoTab';
+import WorkflowFechamentoTab, {
+  type WorkflowFechamentoHandle,
+} from '@/components/gestao-tripulantes/admin/WorkflowFechamentoTab';
 import AsoAgendamentoConfigTab from '@/components/gestao-tripulantes/admin/AsoAgendamentoConfigTab';
 
 function MioSyncButton() {
@@ -116,6 +118,8 @@ export default function GestaoTripulantesAdminPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('geral');
+  const fechamentoRef = useRef<WorkflowFechamentoHandle>(null);
+  const TABS_COM_SALVAR_PROPRIO = new Set(['fechamento', 'aso_agendamento', 'auditoria', 'exportar', 'centros_custo', 'escala']);
   const [isTestingConexao, setIsTestingConexao] = useState(false);
   const [isScraping, setIsScraping] = useState(false);
   const [cronLogs, setCronLogs] = useState<any[]>([]);
@@ -209,7 +213,11 @@ export default function GestaoTripulantesAdminPage() {
       const res = await fetchWithToken('/api/gestao-tripulantes/configuracoes');
       const data = await res.json();
       if (data.success && data.data) {
-        setConfig(prev => ({ ...prev, ...data.data }));
+        const next: ConfigValues = { ...defaultConfig };
+        for (const key of Object.keys(defaultConfig)) {
+          if (data.data[key] !== undefined) next[key] = data.data[key];
+        }
+        setConfig(next);
       }
     } catch (err) {
       console.error('Erro ao carregar configurações:', err);
@@ -220,6 +228,19 @@ export default function GestaoTripulantesAdminPage() {
   };
 
   const handleSave = async () => {
+    if (activeTab === 'fechamento') {
+      const result = await fechamentoRef.current?.save();
+      if (result) {
+        if (result.ok) {
+          setSuccess(result.message);
+          setError(null);
+          setTimeout(() => setSuccess(null), 3000);
+        } else {
+          setError(result.message);
+        }
+      }
+      return;
+    }
     setIsSaving(true);
     setSuccess(null);
     setError(null);
@@ -281,11 +302,18 @@ export default function GestaoTripulantesAdminPage() {
         </div>
         <div className="flex gap-2 mt-4 md:mt-0">
           <button
-            onClick={fetchConfig}
+            onClick={() => {
+              if (activeTab === 'fechamento') {
+                void fechamentoRef.current?.reload();
+                return;
+              }
+              void fetchConfig();
+            }}
             className="flex items-center px-3 py-2 text-sm border rounded-md text-gray-600 hover:bg-gray-50"
           >
             <FiRefreshCw className="mr-2" /> Recarregar
           </button>
+          {!TABS_COM_SALVAR_PROPRIO.has(activeTab) || activeTab === 'fechamento' ? (
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -298,6 +326,7 @@ export default function GestaoTripulantesAdminPage() {
             )}
             Salvar
           </button>
+          ) : null}
         </div>
       </div>
 
@@ -335,7 +364,7 @@ export default function GestaoTripulantesAdminPage() {
           {activeTab === 'auditoria' && <AuditoriaDocumentosTab />}
           {activeTab === 'exportar' && <ExportarTab />}
           {activeTab === 'centros_custo' && <CentrosCustoAdminTab />}
-          {activeTab === 'fechamento' && <WorkflowFechamentoTab />}
+          {activeTab === 'fechamento' && <WorkflowFechamentoTab ref={fechamentoRef} />}
           {activeTab === 'aso_agendamento' && <AsoAgendamentoConfigTab />}
 
           {activeTab === 'escala' && <TiposEventoEscalaAdmin />}
