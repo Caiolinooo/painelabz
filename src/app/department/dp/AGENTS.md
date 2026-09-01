@@ -19,7 +19,7 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 - Janela vencendo = antecedência admin (padrão 60 dias), não hardcoded 30.
 - DP escolhe data sugerida (escala STB preferida) e assina (`useSignature`); cria `solicitado` para a logística. Status `marcado` / `reprovado` (com motivo) aparecem na mesma aba.
 - Status VENCIDO/VENCENDO vem de `alerta` calculado por data civil local (`YYYY-MM-DD`), não de `new Date(iso)` UTC.
-- Fechamento: preview de totais via `relatorio-mensal`; aprovação em `ModalAprovacaoFechamento` com `useSignature().requestSignature` (modal global). Sem aprovadores nominados, um ADMIN/MANAGER assina e conclui; com N nomes, e-mail ao DP só em 100%.
+- Fechamento: preview de totais via `relatorio-mensal`; aprovação em `ModalAprovacaoFechamento` com `useSignature().requestSignature` (modal global). Lista nominada = exatamente essas pessoas, qualquer role; sem nomes, um ADMIN/MANAGER assina e conclui.
 
 ## Work Guidance
 

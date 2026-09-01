@@ -107,7 +107,9 @@ export default function WorkflowFechamentoTab() {
     try {
       const resConfig = await fetchWithToken('/api/gestao-tripulantes/relatorio-mensal/config');
       const dataConfig = await resConfig.json().catch(() => ({}));
-      if (Array.isArray(dataConfig.availableManagers)) {
+      if (Array.isArray(dataConfig.availableUsers) && dataConfig.availableUsers.length > 0) {
+        setAvailableManagers(dataConfig.availableUsers);
+      } else if (Array.isArray(dataConfig.availableManagers)) {
         setAvailableManagers(dataConfig.availableManagers);
       }
       if (dataConfig.success && dataConfig.config) {
@@ -155,7 +157,10 @@ export default function WorkflowFechamentoTab() {
           setErrorMsg('Este usuário não tem e-mail cadastrado.');
           return;
         }
-        const jaExiste = list.some((a) => a.email && a.email.toLowerCase() === email.toLowerCase());
+        const jaExiste = list.some((a) =>
+          (mgr.id && a.id && a.id === mgr.id)
+          || (a.email && a.email.toLowerCase() === email.toLowerCase()),
+        );
         if (jaExiste) {
           setErrorMsg('Este aprovador já está na lista.');
           return;
@@ -168,14 +173,14 @@ export default function WorkflowFechamentoTab() {
               id: mgr.id,
               nome: mgr.nome || displayNameFromUser(mgr) || email,
               email,
-              cargo: mgr.cargo || mgr.role || 'Gestor',
+              cargo: mgr.cargo || mgr.role || undefined,
             },
           ],
         }));
         setSelectedManagerId('');
         setErrorMsg(null);
       } else {
-        setErrorMsg('Selecione um gestor válido na lista.');
+        setErrorMsg('Selecione um integrante válido na lista.');
       }
     } else if (customNome.trim() && customEmail.trim()) {
       const jaExiste = list.some(a => a.email && a.email.toLowerCase() === customEmail.trim().toLowerCase());
@@ -199,14 +204,17 @@ export default function WorkflowFechamentoTab() {
       setCustomCargo('');
       setErrorMsg(null);
     } else {
-      setErrorMsg('Selecione um gestor na lista para adicionar.');
+      setErrorMsg('Selecione um usuário na lista para adicionar.');
     }
   };
 
-  const handleRemoveAprovador = (email: string) => {
-    setConfig(prev => ({
+  const handleRemoveAprovador = (apr: AprovadorItem) => {
+    setConfig((prev) => ({
       ...prev,
-      aprovadores_obrigatorios: (prev.aprovadores_obrigatorios || []).filter(a => a.email && a.email.toLowerCase() !== email.toLowerCase())
+      aprovadores_obrigatorios: (prev.aprovadores_obrigatorios || []).filter((a) => {
+        if (apr.id && a.id) return a.id !== apr.id;
+        return (a.email || '').toLowerCase() !== (apr.email || '').toLowerCase();
+      }),
     }));
   };
 
@@ -308,7 +316,7 @@ export default function WorkflowFechamentoTab() {
                 Integrantes / Aprovadores Obrigatórios para o Fechamento
               </h3>
               <p className="text-xs text-gray-600 mt-0.5">
-                Todos os integrantes cadastrados abaixo precisam assinar digitalmente a planilha de fechamento. O e-mail para o Departamento Pessoal <strong>só é enviado quando 100% das assinaturas forem concluídas</strong>.
+                Quem estiver nesta lista precisa assinar — <strong>o perfil no portal (USER, MANAGER, ADMIN) não importa</strong>. Extra-assinaturas de quem não está na lista não fecham o fluxo. O e-mail ao DP <strong>só sai quando essas pessoas exatas tiverem assinado</strong>.
               </p>
             </div>
 
@@ -322,7 +330,7 @@ export default function WorkflowFechamentoTab() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(config.aprovadores_obrigatorios || []).map((apr, idx) => (
                     <div
-                      key={apr.email || idx}
+                      key={apr.id || apr.email || idx}
                       className="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-lg shadow-xs"
                     >
                       <div className="min-w-0 pr-2">
@@ -335,7 +343,7 @@ export default function WorkflowFechamentoTab() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleRemoveAprovador(apr.email)}
+                        onClick={() => handleRemoveAprovador(apr)}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
                         title="Remover aprovador obrigatório"
                       >
@@ -365,14 +373,14 @@ export default function WorkflowFechamentoTab() {
                 >
                   <option value="">
                     {availableManagers.length === 0
-                      ? '-- Nenhum gestor encontrado --'
-                      : '-- Selecionar Gestor / Usuário do Sistema --'}
+                      ? '-- Nenhum usuário com e-mail encontrado --'
+                      : '-- Selecionar integrante / aprovador --'}
                   </option>
                   {availableManagers
                     .filter((m) => m.id && m.email)
                     .map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.nome || displayNameFromUser(m)} ({m.email}) — {m.role || m.cargo || 'Gestor'}
+                        {m.nome || displayNameFromUser(m)} ({m.email}) — {m.role || m.cargo || 'Usuário'}
                       </option>
                     ))}
                 </select>

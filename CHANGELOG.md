@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.71.2] - 2026-09-01
+
+### ✍️ Fechamento: espera exatamente quem está na lista, independente do cargo
+
+1. **Lista nominada**: o e-mail ao DP só sai quando **as pessoas cadastradas** tiverem assinado. USER na lista pode assinar; ADMIN fora da lista recebe 403. O cargo no portal não substitui a lista.
+2. **Dropdown**: passa a listar usuários ativos com e-mail (`listarUsuariosPortalAtivos`), não só ADMIN/MANAGER.
+3. **Lista vazia**: fallback inalterado — um gestor/administrador assina uma vez e conclui.
+
 ## [5.71.1] - 2026-09-01
 
 ### 🔧 Fechamento de escalas: assinatura digital, dropdown de gestores e lista vazia

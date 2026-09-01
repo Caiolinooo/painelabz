@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.71.1-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.71.2-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
@@ -24,13 +24,11 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ---
 
-## Novidades da Versão [v5.71.1]
+## Novidades da Versão [v5.71.2]
 
 | | Capacidade | Destaque |
 |---|---|---|
-| ✍️ | **Assinatura do fechamento** | O modal aguarda `requestSignature()`; cadastro POSTa `/aprovar`; quem já assinou envia `signature_url`. |
-| 👥 | **Lista de gestores** | Dropdown usa `first_name` / `last_name` / `tax_id` — gestores voltam a aparecer (antes `full_name`/`cpf` quebrava o PostgREST). |
-| ✅ | **Lista vazia** | Sem aprovadores nominados, uma assinatura de ADMIN/MANAGER conclui e dispara o e-mail ao DP. Com N nomes, todos os N ainda precisam assinar. |
+| ✍️ | **Fechamento = quem está na lista** | USER na lista assina; ADMIN fora não fecha o ciclo. Dropdown com todos os usuários ativos. Lista vazia continua com um gestor/admin. |
 
 ---
 

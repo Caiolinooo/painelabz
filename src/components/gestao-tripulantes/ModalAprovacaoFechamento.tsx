@@ -17,12 +17,15 @@ import {
   FiClock,
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSignature } from '@/contexts/SignatureContext';
 import {
   assinaturaCobreAprovador,
   isFechamentoStatus,
   labelFechamentoStatus,
   mensagemErroAssinaturaAusente,
+  mensagemErroAssinaturaNegada,
+  podeAssinarFechamento,
   type AprovadorObrigatorio,
   type AssinaturaFechamento,
 } from '@/lib/gestao-tripulantes/fechamento-assinatura';
@@ -64,6 +67,7 @@ export default function ModalAprovacaoFechamento({
   const [resultMsg, setResultMsg] = useState<{ success: boolean; text: string; hash?: string; pendentes?: any[] } | null>(null);
 
   const { requestSignature, hasSignature } = useSignature();
+  const { user } = useAuth();
 
   const buildQueryString = (targetMes: string) => {
     const params = new URLSearchParams();
@@ -189,6 +193,15 @@ export default function ModalAprovacaoFechamento({
   const registroStatus = String(previewData?.registro?.status || '');
   const isFullyApproved = registroStatus === 'aprovado' || registroStatus === 'enviado';
   const isPartiallyApproved = registroStatus === 'em_aprovacao';
+  const gateAssinatura = podeAssinarFechamento(obrigatorios, {
+    userId: user?.id,
+    email: user?.email || '',
+    role: user?.role,
+  });
+  const podeAssinarAgora = Boolean(previewData) && gateAssinatura.permitido;
+  const motivoNaoAssinar = !gateAssinatura.permitido
+    ? mensagemErroAssinaturaNegada(gateAssinatura.motivo)
+    : null;
   const statusBadgeLabel = isFechamentoStatus(registroStatus)
     ? labelFechamentoStatus(registroStatus, { assinados: assinadosCount, obrigatorios: obrigatorios.length })
     : (isFullyApproved
@@ -393,8 +406,8 @@ export default function ModalAprovacaoFechamento({
 
             <p className="text-[11px] text-gray-500 pt-1">
               {obrigatorios.length > 0
-                ? 'O e-mail com a planilha para o Departamento Pessoal só é enviado quando 100% dos aprovadores obrigatórios tiverem assinado.'
-                : 'Sem lista nominada, a primeira assinatura de um gestor ou administrador conclui o fechamento e dispara o e-mail ao DP (se marcado).'}
+                ? 'O e-mail ao DP só sai quando todas as pessoas desta lista tiverem assinado. Perfil USER/MANAGER/ADMIN não substitui a lista e assinaturas extras não fecham o fluxo.'
+                : 'Sem lista nominada, a primeira assinatura de um gestor ou administrador conclui o fechamento e dispara o e-mail ao DP (se marcado). Usuários USER não concluem neste modo.'}
             </p>
           </div>
 
@@ -536,9 +549,13 @@ export default function ModalAprovacaoFechamento({
               Baixar .xlsx Filtrado
             </button>
 
+          <div className="flex flex-col items-end gap-2">
+            {previewData && motivoNaoAssinar && (
+              <p className="text-xs text-amber-800 max-w-sm text-right">{motivoNaoAssinar}</p>
+            )}
             <button
               onClick={handleApprove}
-              disabled={isApproving || isLoading}
+              disabled={isApproving || isLoading || !podeAssinarAgora}
               className="inline-flex items-center gap-2 px-5 py-2 bg-abz-blue text-white rounded-lg text-sm font-bold hover:bg-blue-800 transition shadow-md disabled:opacity-50"
             >
               {isApproving ? (
@@ -548,6 +565,7 @@ export default function ModalAprovacaoFechamento({
               )}
               {isFullyApproved ? 'Reassinar / Reenviar' : 'Assinar & Salvar Aprovação'}
             </button>
+          </div>
           </div>
         </div>
       </div>

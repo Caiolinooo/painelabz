@@ -15,6 +15,8 @@ export interface PortalGestorOption extends AprovadorObrigatorio {
   signature_url?: string | null;
 }
 
+export type PortalUsuarioOption = PortalGestorOption;
+
 interface PortalUserRow {
   id: string;
   first_name?: string | null;
@@ -40,14 +42,14 @@ function mapPortalUser(row: PortalUserRow): PortalGestorOption {
   };
 }
 
-export async function listarGestoresPortal(): Promise<PortalGestorOption[]> {
+async function listarPortalAtivos(opts: { somenteGestores: boolean }): Promise<PortalGestorOption[]> {
   const { data, error } = await supabaseAdmin
     .from('users_unified')
     .select(PORTAL_USER_SELECT)
     .order('first_name');
 
   if (error) {
-    console.error('[listarGestoresPortal]', error);
+    console.error(opts.somenteGestores ? '[listarGestoresPortal]' : '[listarUsuariosPortalAtivos]', error);
     return [];
   }
 
@@ -55,11 +57,23 @@ export async function listarGestoresPortal(): Promise<PortalGestorOption[]> {
     .filter((row) =>
       Boolean(row.id)
       && row.active !== false
-      && isFechamentoRole(row.role)
-      && String(row.email || '').trim(),
+      && String(row.email || '').trim()
+      && (!opts.somenteGestores || isFechamentoRole(row.role)),
     )
     .map(mapPortalUser);
 }
+
+/** ADMIN/MANAGER ativos — ASO logística e atalhos que ainda filtram gestores. */
+export function listarGestoresPortal(): Promise<PortalGestorOption[]> {
+  return listarPortalAtivos({ somenteGestores: true });
+}
+
+/** Qualquer usuário ativo com e-mail — dropdown de aprovadores do fechamento (role irrelevante). */
+export function listarUsuariosPortalAtivos(): Promise<PortalUsuarioOption[]> {
+  return listarPortalAtivos({ somenteGestores: false });
+}
+
+export const listarUsuariosPortal = listarUsuariosPortalAtivos;
 
 export async function loadFechamentoAtor(userId: string): Promise<{
   id: string;
@@ -67,6 +81,7 @@ export async function loadFechamentoAtor(userId: string): Promise<{
   email: string;
   cpf: string;
   cargo: string;
+  role: string;
   signatureUrl: string;
 } | null> {
   if (!userId) return null;
@@ -82,12 +97,14 @@ export async function loadFechamentoAtor(userId: string): Promise<{
   }
   if (!data) return null;
   const row = data as PortalUserRow;
+  const role = String(row.role || '');
   return {
     id: row.id,
     nome: displayNameFromUser(row),
     email: String(row.email || '').trim().toLowerCase(),
     cpf: row.tax_id || '',
-    cargo: String(row.role || 'Gestor'),
+    cargo: role || 'Aprovador',
+    role,
     signatureUrl: row.signature_url || '',
   };
 }

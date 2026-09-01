@@ -10,8 +10,9 @@ import {
 } from '@/lib/gestao-tripulantes/aso-agendamento-auth';
 import {
   avaliarAssinaturasFechamento,
-  isFechamentoRole,
+  autorizacaoAssinarFechamento,
   mensagemErroAssinaturaAusente,
+  mesclarAssinaturaFechamento,
   montarHashFechamento,
   normalizeAprovadoresObrigatorios,
   type AssinaturaFechamento,
@@ -46,10 +47,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    if (!isFechamentoRole(payload.role)) {
-      return NextResponse.json({ error: 'Apenas gestores ou administradores podem aprovar o fechamento mensal da Gestão de Tripulantes.' }, { status: 403 });
-    }
-
     const body = await request.json().catch(() => ({}));
     const { mesAno, observacoes, enviarEmail = true, filtros = {} } = body as {
       mesAno?: string;
@@ -68,10 +65,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não foi possível identificar o usuário autenticado.' }, { status: 401 });
     }
 
+    const { data: configData } = await supabaseAdmin
+      .from('gt_configuracoes')
+      .select('valor')
+      .eq('chave', 'gt_fechamento_mensal_config')
+      .maybeSingle();
+
+    const config = parseConfigValor(configData?.valor);
+    const aprovadoresObrigatorios = normalizeAprovadoresObrigatorios(config.aprovadores_obrigatorios);
+
     const ator = await loadFechamentoAtor(userId);
-    const approverName = ator?.nome || payload.email || 'Gestor Autorizado';
+    const gate = autorizacaoAssinarFechamento({
+      obrigatorios: aprovadoresObrigatorios,
+      userId,
+      email: ator?.email || payload.email || '',
+      role: ator?.role || payload.role,
+    });
+    if (!gate.permitido) {
+      return NextResponse.json({ error: gate.motivo }, { status: 403 });
+    }
+    const approverName = ator?.nome || payload.email || 'Aprovador';
     const approverEmail = (ator?.email || payload.email || '').toLowerCase().trim();
     const approverCpf = ator?.cpf || '';
+    const approverRole = ator?.role || payload.role || '';
     const signatureFromBody = String(body.signature_url || body.assinatura_url || '').trim();
     const approverSignatureUrl = signatureFromBody || ator?.signatureUrl || '';
 
@@ -98,7 +114,8 @@ export async function POST(request: NextRequest) {
       email: approverEmail,
       nome: approverName,
       cpf: approverCpf,
-      cargo: ator?.cargo || payload.role || 'Gestor',
+      cargo: ator?.cargo || approverRole || 'Aprovador',
+      role: approverRole,
       assinado_em: nowIso,
       dataHora: new Date().toLocaleString('pt-BR'),
       ip: clientIp,
@@ -106,30 +123,16 @@ export async function POST(request: NextRequest) {
       assinaturaHash: signatureHash,
     };
 
-    const { data: configData } = await supabaseAdmin
-      .from('gt_configuracoes')
-      .select('valor')
-      .eq('chave', 'gt_fechamento_mensal_config')
-      .maybeSingle();
-
-    const config = parseConfigValor(configData?.valor);
-    const aprovadoresObrigatorios = normalizeAprovadoresObrigatorios(config.aprovadores_obrigatorios);
-
     const { data: registroExistente } = await supabaseAdmin
       .from('gt_relatorios_aprovacoes')
       .select('*')
       .eq('mes_referencia', mesAno)
       .maybeSingle();
 
-    const assinaturasMap = new Map<string, AssinaturaFechamento>();
-    if (Array.isArray(registroExistente?.assinaturas)) {
-      for (const sig of registroExistente.assinaturas as AssinaturaFechamento[]) {
-        const key = (sig.email || '').toLowerCase() || String(sig.userId || '');
-        if (key) assinaturasMap.set(key, sig);
-      }
-    }
-    assinaturasMap.set(approverEmail, currentSignature);
-    const assinaturasArray = Array.from(assinaturasMap.values());
+    const existentes = Array.isArray(registroExistente?.assinaturas)
+      ? (registroExistente.assinaturas as AssinaturaFechamento[])
+      : [];
+    const assinaturasArray = mesclarAssinaturaFechamento(existentes, currentSignature);
 
     const { todosAssinaram, pendentes } = avaliarAssinaturasFechamento(
       aprovadoresObrigatorios,

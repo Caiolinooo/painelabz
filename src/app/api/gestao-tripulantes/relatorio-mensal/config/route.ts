@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { isFechamentoRole, normalizeAprovadoresObrigatorios } from '@/lib/gestao-tripulantes/fechamento-assinatura';
-import { listarGestoresPortal } from '@/lib/gestao-tripulantes/fechamento-gestores';
+import { listarUsuariosPortalAtivos } from '@/lib/gestao-tripulantes/fechamento-gestores';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,12 +60,13 @@ export async function GET(request: NextRequest) {
       aprovadores_obrigatorios: normalizeAprovadoresObrigatorios(stored.aprovadores_obrigatorios),
     };
 
-    const availableManagers = await listarGestoresPortal();
+    const availableUsers = await listarUsuariosPortalAtivos();
 
     return NextResponse.json({
       success: true,
       config,
-      availableManagers,
+      availableUsers,
+      availableManagers: availableUsers,
     });
   } catch (error) {
     return NextResponse.json(
