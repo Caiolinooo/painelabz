@@ -3609,6 +3609,12 @@ export default {
     legendDba: 'Double Rotation',
     todayPob: 'Today: {count}P onboard',
     todayPobHint: 'People with exact ON today (no asterisk)',
+    today: 'Today',
+    currentWeek: 'Jump to today',
+    prevDay: 'Previous day',
+    nextDay: 'Next day',
+    prevWeeks: 'Previous week',
+    nextWeeks: 'Next week',
     legendStb: 'StandBy'
   },
   contrato: {

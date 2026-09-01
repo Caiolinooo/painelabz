@@ -306,7 +306,7 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
       <div className="flex items-center gap-3">
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[data.status_embarque] || 'bg-gray-100 text-gray-600'}`}>
           {t(`gestaoTripulantes.status.${data.status_embarque}`, data.status_embarque)}
-          {data.standby && ' • StandBy'}
+          {data.standby && data.status_embarque !== 'standby' && data.status_embarque !== 'embarcado' ? ' • StandBy' : ''}
         </span>
       </div>
 

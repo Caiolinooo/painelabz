@@ -3922,6 +3922,12 @@ export default {
     legendDba: 'Dobra',
     todayPob: 'Hoje: {count}P a bordo',
     todayPobHint: 'Pessoas com ON hoje (sem asterisco)',
+    today: 'Hoje',
+    currentWeek: 'Ir para hoje',
+    prevDay: 'Dia anterior',
+    nextDay: 'Próximo dia',
+    prevWeeks: 'Semana anterior',
+    nextWeeks: 'Próxima semana',
     legendStb: 'StandBy'
   },
   contrato: {

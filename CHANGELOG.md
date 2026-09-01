@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.71.0] - 2026-09-01
+
+### ⚓ GT/DP: status real da escala, Man Schedule usável e agendamento de ASO
+
+1. **Status = célula de hoje**: a pílula da Matriz/DP/ficha deixa de usar `status_embarque` velho (Anderson ON hoje aparecia Folga). ON exato hoje = Embarcado; STB = StandBy. O KPI Embarcados Agora e o filtro usam o mesmo mapa.
+2. **Man Schedule**: scroll interno da grade com nomes/QTD/cargo sticky (`border-separate`); Hoje, setas e `Hoje: NP a bordo` interpolam o POB (ON civil de hoje) e saltam por coluna (dia ou semana sáb–sex). i18n aceita `{count}` e `{{count}}`.
+3. **Workflow ASO DP ↔ logística**: antecedência configurável no admin (padrão 60 dias). O sistema sugere datas pela escala (preferência STB, bloqueio de ON). DP escolhe a data; logística aprova/reprova com assinatura digital, log, e-mail e notificação no portal. Aprovado vira **Marcado** nos dois painéis (`gt_aso_agendamentos`).
+4. **RLS**: `gt_afastamentos`, `gt_acidentes`, `gt_relatorios_aprovacoes` com RLS ligado e sem policy anon (só `service_role` / APIs).
+
 ## [5.70.0] - 2026-09-01
 
 ### ⚓ GT, QHSE/EPI e Calendário: POB só ON, histórico de docs, catálogo e dedupe

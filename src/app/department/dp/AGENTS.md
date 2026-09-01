@@ -7,14 +7,17 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 ## Ownership
 
 - Page/layout: `src/app/department/dp/`
-- APIs: `GET /api/gestao-tripulantes/colaboradores`, `GET|POST /api/gestao-tripulantes/aso/notificar-vencimentos`, `GET /api/gestao-tripulantes/relatorio-mensal`, `POST /api/e-social/consolidar`
-- Lib: `src/lib/gestao-tripulantes/aso-vencimentos.ts`, `LIST_SELECT` em `colaborador-get.ts`
+- APIs: `GET /api/gestao-tripulantes/colaboradores`, `GET|POST /api/gestao-tripulantes/aso/notificar-vencimentos`, `GET|POST /api/gestao-tripulantes/aso/agendamentos`, `GET|POST /api/gestao-tripulantes/aso/agendamentos/sugestoes`, `GET /api/gestao-tripulantes/relatorio-mensal`, `POST /api/e-social/consolidar`
+- Lib: `src/lib/gestao-tripulantes/aso-vencimentos.ts`, `aso-agendamento-*.ts`, `LIST_SELECT` em `colaborador-get.ts`
 
 ## Local Contracts
 
 - Sempre wrap com `MainLayout` (`layout.tsx`) — o menu lateral vem daí, como GT / e-Social / Man Schedule.
-- Lista de colaboradores usa campos achatados da API: `cargo_nome`, `empresa_nome`, `embarcacao_nome`, `centro_custo_nome`, `centro_custo_codigo`, `ativo`, `regime_trabalho`, `escala_embarque`, `escala_folga`. Nunca `cargo.nome` / `empresa.nome` (o flatten remove os nested).
-- Aba ASO lê `GET /api/gestao-tripulantes/aso/notificar-vencimentos` (`tipo_documento=aso` + join colaborador). Não usar o bucket genérico de `/auditoria` (mistura passaporte/treino e expõe `gt_colaboradores` sem alias `colaborador`).
+- Lista de colaboradores usa campos achatados da API: `cargo_nome`, `empresa_nome`, `embarcacao_nome`, `centro_custo_nome`, `centro_custo_codigo`, `ativo`, `regime_trabalho`, `escala_embarque`, `escala_folga`, `status_embarque` (célula de hoje, não a coluna stale). Nunca `cargo.nome` / `empresa.nome` (o flatten remove os nested).
+- Coluna Status: Ativo/Inativo **e** pílula de embarque viva (Embarcado/StandBy/Folga/Afastado) da mesma API.
+- Aba ASO lê `GET /api/gestao-tripulantes/aso/notificar-vencimentos` (`tipo_documento=aso` + join colaborador) e `GET /aso/agendamentos`. Não usar o bucket genérico de `/auditoria`.
+- Janela vencendo = antecedência admin (padrão 60 dias), não hardcoded 30.
+- DP escolhe data sugerida (escala STB preferida) e assina (`useSignature`); cria `solicitado` para a logística. Status `marcado` / `reprovado` (com motivo) aparecem na mesma aba.
 - Status VENCIDO/VENCENDO vem de `alerta` calculado por data civil local (`YYYY-MM-DD`), não de `new Date(iso)` UTC.
 - Fechamento: preview de totais via `relatorio-mensal`; aprovação continua em `ModalAprovacaoFechamento`.
 
@@ -27,7 +30,8 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 
 - `/department/dp` mostra sidebar do portal (não tela full-bleed).
 - Colunas Cargo, Centro de Custo, Empresa e Escala preenchidas quando o cadastro tem FK.
-- Aba ASO lista nome/CPF/cargo (não `N/A` em massa); validade em `dd/mm/aaaa`; vencido só se a data local já passou.
+- Coluna Status mostra Ativo/Inativo **e** a pílula de embarque da célula de hoje (ON → Embarcado).
+- Aba ASO lista nome/CPF/cargo (não `N/A` em massa); validade em `dd/mm/aaaa`; vencido só se a data local já passou; permite Agendar → logística; marcado após aprovação.
 - Aba Fechamento mostra totais ON/DBA/FI/TRE do mês selecionado.
 
 ## Child DOX Index

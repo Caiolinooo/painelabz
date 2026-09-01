@@ -11,6 +11,10 @@
     {
       "path": "/api/gestao-tripulantes/cron/sync-mio",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/gestao-tripulantes/cron/aso-agendamentos",
+      "schedule": "0 10 * * *"
     }
   ]
 }

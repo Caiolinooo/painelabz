@@ -66,7 +66,17 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 - `GET /api/gestao-tripulantes/aso?cpf=` → only `enviado|processado`.
 - `algoritmo-back` prefers those ASOs for validity scoring; falls back to any dated `gt_documentos` per candidate without a global ASO.
-- **ASO vencimentos (DP)**: `GET /api/gestao-tripulantes/aso/notificar-vencimentos` lists `tipo_documento=aso` with join colaborador (flattened `cargo_nome` / `embarcacao_nome`). `POST` dispara e-mail/in-app. Classificação vencido/vencendo em `src/lib/gestao-tripulantes/aso-vencimentos.ts` por data civil local (`YYYY-MM-DD`), janela 30d. Cron `/cron/notificar-vencimentos` usa o mesmo helper. Não usar `/auditoria` como fonte da aba DP.
+- **ASO vencimentos (DP)**: `GET /api/gestao-tripulantes/aso/notificar-vencimentos` lists `tipo_documento=aso` with join colaborador (flattened `cargo_nome` / `embarcacao_nome`). `POST` dispara e-mail/in-app. Classificação vencido/vencendo em `src/lib/gestao-tripulantes/aso-vencimentos.ts` por data civil local (`YYYY-MM-DD`), janela = `gt_aso_agendamento_config.antecedencia_dias` (padrão **60**, admin). Cron `/cron/notificar-vencimentos` usa o mesmo helper. Não usar `/auditoria` como fonte da aba DP.
+
+### Agendamento de ASO (DP → logística)
+
+- Config: `GET|PUT /api/gestao-tripulantes/aso/agendamento/config` + aba admin **Agendamento ASO**. Persistido em `gt_configuracoes.chave = gt_aso_agendamento_config` (`antecedencia_dias` default 60, `min_lead_dias`, `max_sugestoes`, `emails_logistica`, `emails_cc`, `gerar_sugestoes_automatico`). Sync com `notif_aso_dias_aviso`.
+- Tabelas: `gt_aso_agendamentos` + `gt_aso_agendamentos_log`. RLS ligado, **sem** policy anon (`service_role` / `supabaseAdmin`). Status: `sugerido|solicitado|aprovado|reprovado|cancelado|marcado`. Aprovação da logística grava `marcado`.
+- Heurística (`aso-agendamento-sugestoes.ts`): lê `gt_historico_embarques` + `embarque-status.ts` (nunca MIO). Prefere STB (e meio de bloco STB ≥5d); folga/sem marcação; FI/OFF-C/TRE; **bloqueia** ON exato, ON*, DBA, FER/AFAST. Lead mínimo evita os próximos N dias. Cron `GET|POST /cron/aso-agendamentos` (Vercel 10:00).
+- APIs: `GET|POST /aso/agendamentos` (lista / DP solicita com assinatura), `GET|POST /aso/agendamentos/sugestoes`, `GET /aso/agendamentos/[id]`, `POST .../aprovar` (ADMIN/MANAGER), `POST .../reprovar` (motivo obrigatório), `POST .../cancelar`.
+- Carimbo: SHA-256 `GT_ASO_AGENDAMENTO:id:data:nome:cpf:iso:ip:acao` (mesmo padrão `GT_FECHAMENTO`). UI usa `useSignature().requestSignature` (não montar segundo SignatureModal).
+- Notifica logística por e-mail (`sendEmail`) **e** `notifications` in-app. Reprovação visível no DP (`motivo_reprovacao`).
+- UI: DP `/department/dp` aba ASO (`AsoAgendamentoDpPanel`); GT `/department/gestao-tripulantes` aba **ASO Logística** (`AsoAgendamentoInbox`, `?tab=aso-logistica`).
 
 ### Dashboard KPIs (`GET /dashboard`)
 
@@ -83,7 +93,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 ### GET colaborador performance
 
 - `GET /colaboradores/[id]` reads `gt_colaboradores` (not `gt_vw_colaboradores_completo`), excludes `mio_data`/`ocr_texto`/`xml_gerado`, two parallel DB waves. Optional `?include=` (default `profile,documentos,embarques,substituicoes,esocial_asos`).
-- List GET uses base tables; `?cpf=` + `?lite=1` for Man Schedule name-click (do not search the heavy view). `?kpi=embarcados` filtra pelos mesmos IDs de `listarIdsEmbarcadosHoje` (não `status_embarque`).
+- `GET /colaboradores` list overlays `status_embarque` / `standby` / `escala_codigo_hoje` from today's scale cell (`overlayStatusEscalaHoje`). `?status=` and `?standby=` / `kpi=disponiveis` filter that live map (not the stale column). `?kpi=embarcados` filtra pelos mesmos IDs de `listarIdsEmbarcadosHoje` (não `status_embarque`).
 - `LIST_SELECT` includes `ativo`, `regime_trabalho`, `escala_embarque`, `escala_folga` and `centro_custo(nome, codigo)`. Flatten returns `cargo_nome` / `empresa_nome` / `embarcacao_nome` / `centro_custo_*` — consumers must not expect nested `cargo.nome`.
 - Client modal dedupes in-flight GETs (React Strict Mode + `_t` cache-bust). Man Schedule tab is lazy-mounted; `/api/man-schedule/realtime?janela=90d` is cached 60s on the client.
 
@@ -97,7 +107,8 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `GET /api/man-schedule/realtime`: merge **gt_historico_embarques** (origem mio + local) with colaboradores; extras FI/DBA/STB/OFF-C are materialized at pull time. Return explicit `observacoes` + `tipo_codigo` / `rotation_type`; CPF joins via digits-only normalize.
 - Cache in-memory: assinatura inclui `count` + último `updated_at` **e** último `created_at` (insert local sem `updated_at` não pode reusar payload velho). POST/PUT/DELETE embarques chama `invalidateManScheduleCache()` e grava `updated_at`.
 - Grade: `allSchedules` é lista plana (`rotation_start`/`rotation_end`). Save otimista **insere/atualiza uma linha**, nunca `row.rotations`. Coluna ON/DBA/FI/TRE conta colunas visíveis; evento novo ganha de STB sobreposto (`pickOverlappingRotation`: início na coluna, depois data de início mais recente).
-- **Viewport dia/semana**: checkbox `Visualizar por dia` em `GTManScheduleTab` (`localStorage` `gt-man-schedule-viewport-day`). Desligado = colunas sábado–sexta (atual). Ligado = um dia por coluna (janela padrão 90d se sem filtro de data). Clique na célula passa a `Date` da coluna. Semanas continuam começando sábado.
+- **Viewport dia/semana**: checkbox `Visualizar por dia` em `GTManScheduleTab` (`localStorage` `gt-man-schedule-viewport-day`). Desligado = colunas sábado–sexta (atual). Ligado = um dia por coluna (janela padrão 90d se sem filtro de data). Clique na célula passa a `Date` da coluna. Semanas continuam começando sábado. Toolbar **Hoje / setas / pill POB** vive em `ManScheduleTimelineNav` (também em `/department/man-schedule`): pill = `countPobOnCivilDay` (ON exato hoje); setas = uma coluna; Hoje = coluna de hoje visível.
+- **Scroll da grade**: UI em `src/components/gestao-tripulantes/AGENTS.md` — overflow no wrapper, sticky na coluna NOME, `border-separate`. Aplica à aba GT e a `/department/man-schedule`.
 - **Filtro de data da escala**: UI só aplica `YYYY-MM-DD` completo (ano 1990–2100) via `parseCompleteFilterDate` / `ScheduleDateFilterInput`. Valores parciais do Chrome ao digitar o ano não expandem a timeline. Viewport dia recorta em 400 colunas; semana tem teto de segurança 2000.
 
 ### Schema notes
@@ -106,6 +117,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Migration `20260723_000002_gt_tipos_evento_escala.sql`: tipos table + relax `gt_historico_embarques.tipo` CHECK (allows `fi|dba|stb|offc` + custom).
 - Optional SQL backfill of `gt_colaboradores.cpf` to digits-only (documented in root `tasks.md`); app lookups try digits + masked forms.
 - `gt_afastamentos` + `gt_acidentes` applied remotely (repo files `20260724_000003` / `000004` were missing on Painel_ABZGroup). Pull writes afastamentos with `origem=mio`.
+- **RLS (2026-09-01):** `gt_afastamentos`, `gt_acidentes`, `gt_relatorios_aprovacoes`, `gt_aso_agendamentos`, `gt_aso_agendamentos_log` have RLS enabled and **no** anon/authenticated policies (same as `gt_cargos` / `gt_historico_embarques`). REST with the publishable/anon key returns zero rows. Runtime reads/writes only via `supabaseAdmin` (`service_role`). Migrations `20260901_000001_gt_sensitive_tables_enable_rls.sql` and `20260901_000002_gt_aso_agendamentos.sql`. Do not add `USING (true)` policies to silence `rls_enabled_no_policy`.
 - Canonical extras: `gt_documentos.arquivo_ausente*`, `gt_mio_anexo_misses`, `gt_mio_entidades`, `gt_colaboradores.ativo`, `gt_historico_embarques.updated_at`.
 
 ### Document integrity gate (ALL document types)
@@ -206,13 +218,16 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - After Treinamentos “Exportar Excel”, modal still shows collaborator data (reopen included); GET 200 is not wiped by export.
 - Valid CBSP + expired/declaração CBSP do mesmo colaborador: UI mostra 1 linha primária válida, histórico colapsado “Obsoleto”, `qtd_docs_vencidos` da ficha **não** inclui o CBSP antigo. `npx tsx --test src/lib/gestao-tripulantes/documento-historico.test.ts`.
 - `GET /api/gestao-tripulantes/poliweb/asos-pendentes` returns 200 with array `data` (empty + `warning` if Poliweb down); GT page does not show Next.js overlay.
-- `GET /api/gestao-tripulantes/aso/notificar-vencimentos` returns `{ vencidos, vencendo }` with `colaborador.nome_completo` (not nested `gt_colaboradores`); `/department/dp` wraps `MainLayout`.
+- `GET /api/gestao-tripulantes/aso/notificar-vencimentos` returns `{ vencidos, vencendo, antecedencia_dias }` with `colaborador.nome_completo` (not nested `gt_colaboradores`); `/department/dp` wraps `MainLayout`. Janela default 60d via config.
+- `npx tsx --test src/lib/gestao-tripulantes/aso-agendamento-sugestoes.test.ts` → STB before ON; janela 60d + min lead.
+- DP escolhe data sugerida (STB) → POST agendamentos → logística vê em ASO Logística → assina aprovar → status `marcado` nos dois painéis. Reprovar exige motivo visível no DP.
 - `GET /dashboard` totals exclude `ativo=false` and inactive cost centers; docs vencidos/vencendo count **primary per group** only (`somarDocsPorStatusPrimario`).
-- Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks.
+- Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks. Toolbar Hoje/arrows move one column; pill interpolates `{count}` as civil-today POB (`countPobOnCivilDay`).
 - `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; `total_embarcados` = ON exato hoje (`embarque-status.ts`); `total_docs_vencidos` conta só o primário por grupo.
 - `GET /documentos/alertas` lista título/tipo/aba; `npx tsx scripts/verify-docs-alertas.ts` → `DOCS_ALERTAS_VERIFY_OK`.
 - Typing year digits in Man Schedule Data Início does not rebuild the grid until a complete 1990–2100 date.
-- Clique no card Embarcados filtra `GET /colaboradores?kpi=embarcados` ao mesmo conjunto. `npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts`.
+- Clique no card Embarcados filtra `GET /colaboradores?kpi=embarcados` ao mesmo conjunto. Linhas ON hoje devolvem `status_embarque=embarcado` (não Folga stale). `npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts`.
+- Advisor `rls_disabled_in_public` is empty for `gt_afastamentos`, `gt_acidentes`, `gt_relatorios_aprovacoes`, `gt_aso_agendamentos`. Anon REST `GET /rest/v1/<table>?select=id&limit=1` → `[]`. Service-role / API routes still return rows.
 
 ## Child DOX Index
 

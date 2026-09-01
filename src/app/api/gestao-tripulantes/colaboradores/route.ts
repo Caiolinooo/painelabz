@@ -6,9 +6,17 @@ import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
 import { flattenColaboradorRow, LIST_SELECT } from '@/lib/gestao-tripulantes/colaborador-get';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 import { montarItensAlerta, resumoVencidosVigentes } from '@/lib/gestao-tripulantes/documentos-alertas';
-import { listarIdsEmbarcadosHoje } from '@/lib/gestao-tripulantes/dashboard-service';
+import {
+  listarIdsComStatusEscalaHoje,
+  listarIdsEmbarcadosHoje,
+  listarIdsStandbyHoje,
+  overlayStatusEscalaHoje,
+} from '@/lib/gestao-tripulantes/dashboard-service';
 import { dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
-import { parseGtDashboardKpi } from '@/lib/gestao-tripulantes/embarque-status';
+import {
+  coerceStatusEmbarqueLive,
+  parseGtDashboardKpi,
+} from '@/lib/gestao-tripulantes/embarque-status';
 import {
   contarDocsPorStatusPrimario,
   idsComPrimarioVencido,
@@ -174,9 +182,6 @@ export async function GET(request: NextRequest) {
     if (embarcacaoId) query = query.eq('embarcacao_atual_id', embarcacaoId);
     if (cargoId) query = query.eq('cargo_id', cargoId);
     if (centroId) query = query.eq('centro_custo_id', centroId);
-    if (status && kpi !== 'embarcados') query = query.eq('status_embarque', status);
-    if (kpi === 'disponiveis' || standby === 'true') query = query.eq('standby', true);
-    else if (standby === 'false') query = query.eq('standby', false);
     if (ativo === 'true' || ativo === 'ativos' || ativo === 'ativo') query = query.eq('ativo', true);
     if (ativo === 'false' || ativo === 'inativos' || ativo === 'inativo') query = query.eq('ativo', false);
 
@@ -195,6 +200,63 @@ export async function GET(request: NextRequest) {
         idFilter = pob.ids.filter((id) => allowed.has(id));
       } else {
         idFilter = pob.ids;
+      }
+      if (idFilter.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+    }
+    if (kpi === 'disponiveis' || standby === 'true') {
+      const stb = await listarIdsStandbyHoje();
+      if (stb.error) {
+        console.error('Erro ao filtrar standby de hoje:', stb.error);
+        return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
+      }
+      if (stb.ids.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+      if (idFilter) {
+        const allowed = new Set(idFilter);
+        idFilter = stb.ids.filter((id) => allowed.has(id));
+      } else {
+        idFilter = stb.ids;
+      }
+      if (idFilter.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+    } else if (standby === 'false') {
+      const stb = await listarIdsStandbyHoje();
+      if (stb.error) {
+        console.error('Erro ao filtrar standby de hoje:', stb.error);
+        return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
+      }
+      const stbSet = new Set(stb.ids);
+      if (idFilter) {
+        idFilter = idFilter.filter((id) => !stbSet.has(id));
+        if (idFilter.length === 0) {
+          return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+        }
+      } else if (stb.ids.length > 0) {
+        query = query.not('id', 'in', `(${stb.ids.join(',')})`);
+      }
+    }
+    if (status && kpi !== 'embarcados' && kpi !== 'disponiveis') {
+      const wanted = coerceStatusEmbarqueLive(status);
+      if (wanted !== status.trim().toLowerCase()) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+      const liveStatus = await listarIdsComStatusEscalaHoje(wanted);
+      if (liveStatus.error) {
+        console.error('Erro ao filtrar status de escala de hoje:', liveStatus.error);
+        return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
+      }
+      if (liveStatus.ids.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+      if (idFilter) {
+        const allowed = new Set(idFilter);
+        idFilter = liveStatus.ids.filter((id) => allowed.has(id));
+      } else {
+        idFilter = liveStatus.ids;
       }
       if (idFilter.length === 0) {
         return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
@@ -263,15 +325,22 @@ export async function GET(request: NextRequest) {
 
     const colaboradores = flattened.map((c) => ({
       ...c,
+      id: c.id as string,
       ...(countsById[c.id as string] || { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 }),
       docs_vencidos_resumo: resumoVencidos[c.id as string] || [],
     }));
 
-    console.log(`[GT GET /colaboradores list] ${Date.now() - t0}ms n=${colaboradores.length}`);
+    const overlay = await overlayStatusEscalaHoje(colaboradores);
+    if (overlay.error) {
+      console.error('Erro ao resolver status de escala de hoje:', overlay.error);
+      return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
+    }
+
+    console.log(`[GT GET /colaboradores list] ${Date.now() - t0}ms n=${overlay.rows.length}`);
 
     return NextResponse.json({
       success: true,
-      data: colaboradores,
+      data: overlay.rows,
       pagination: {
         page,
         limit,

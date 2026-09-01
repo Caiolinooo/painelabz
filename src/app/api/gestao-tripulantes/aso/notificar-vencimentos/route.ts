@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { sendEmail } from '@/lib/email-service';
 import { buscarAsosComAlerta, type AsoVencimentoItem } from '@/lib/gestao-tripulantes/aso-vencimentos';
+import { getAsoAntecedenciaDias } from '@/lib/gestao-tripulantes/aso-agendamento-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,13 +43,15 @@ export async function GET(request: NextRequest) {
     const auth = requireAuth(request);
     if (auth.error) return auth.error;
 
-    const { vencidos, vencendo } = await buscarAsosComAlerta(30);
+    const antecedenciaDias = await getAsoAntecedenciaDias();
+    const { vencidos, vencendo } = await buscarAsosComAlerta(antecedenciaDias);
     return NextResponse.json({
       success: true,
       data: {
         vencidos,
         vencendo,
         total: vencidos.length + vencendo.length,
+        antecedencia_dias: antecedenciaDias,
       },
     });
   } catch (error) {
@@ -65,15 +68,16 @@ export async function POST(request: NextRequest) {
     const auth = requireAuth(request);
     if (auth.error) return auth.error;
 
-    const { vencidos, vencendo } = await buscarAsosComAlerta(30);
+    const antecedenciaDias = await getAsoAntecedenciaDias();
+    const { vencidos, vencendo } = await buscarAsosComAlerta(antecedenciaDias);
     const listaAsos = [...vencidos, ...vencendo];
 
     if (listaAsos.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'Nenhum ASO vencido ou vencendo nos próximos 30 dias.',
+        message: `Nenhum ASO vencido ou vencendo nos próximos ${antecedenciaDias} dias.`,
         totalNotificados: 0,
-        data: { vencidos: [], vencendo: [], total: 0 },
+        data: { vencidos: [], vencendo: [], total: 0, antecedencia_dias: antecedenciaDias },
       });
     }
 
@@ -114,7 +118,7 @@ export async function POST(request: NextRequest) {
         user_id: adm.id,
         type: 'compliance_alert',
         title: `🚨 Alerta DP: ${vencidos.length} ASOs Vencidos e ${vencendo.length} Vencendo`,
-        message: `Existem ${vencidos.length} ASO(s) vencido(s) e ${vencendo.length} vencendo nos próximos 30 dias na frota.`,
+        message: `Existem ${vencidos.length} ASO(s) vencido(s) e ${vencendo.length} vencendo nos próximos ${antecedenciaDias} dias na frota.`,
         priority: vencidos.length > 0 ? 'high' : 'normal',
         action_url: '/department/dp',
         created_at: new Date().toISOString(),
@@ -163,7 +167,7 @@ export async function POST(request: NextRequest) {
               <div style="font-size: 22px; font-weight: 900; color: #7f1d1d;">${vencidos.length}</div>
             </div>
             <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 12px 16px; border-radius: 8px; flex: 1;">
-              <span style="font-size: 11px; color: #92400e; font-weight: bold; text-transform: uppercase;">Vencendo em até 30 dias</span>
+              <span style="font-size: 11px; color: #92400e; font-weight: bold; text-transform: uppercase;">Vencendo em até ${antecedenciaDias} dias</span>
               <div style="font-size: 22px; font-weight: 900; color: #78350f;">${vencendo.length}</div>
             </div>
           </div>
@@ -197,8 +201,8 @@ export async function POST(request: NextRequest) {
     try {
       await sendEmail(
         dpEmails,
-        `⚠️ [Alerta DP] ${vencidos.length} ASOs Vencidos / ${vencendo.length} Vencendo nos próximos 30 dias`,
-        `Alerta de Vencimento de ASO: ${vencidos.length} vencidos e ${vencendo.length} vencendo nos próximos 30 dias. Acesse o portal para verificar.`,
+        `⚠️ [Alerta DP] ${vencidos.length} ASOs Vencidos / ${vencendo.length} Vencendo nos próximos ${antecedenciaDias} dias`,
+        `Alerta de Vencimento de ASO: ${vencidos.length} vencidos e ${vencendo.length} vencendo nos próximos ${antecedenciaDias} dias. Acesse o portal para verificar.`,
         emailHtml
       );
     } catch (e) {
@@ -211,6 +215,7 @@ export async function POST(request: NextRequest) {
       data: {
         totalVencidos: vencidos.length,
         totalVencendo: vencendo.length,
+        antecedencia_dias: antecedenciaDias,
         destinatariosEmail: dpEmails,
         totalNotificacoesInApp: notificacoesInApp.length,
       },

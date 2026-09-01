@@ -63,7 +63,7 @@ export default function FichaUnificadaTab({ colaboradorId, onOpenTab }: Props) {
           <div><dt className="text-gray-400 text-xs">Nome</dt><dd className="font-medium">{colab.nome_completo || '—'}</dd></div>
           <div><dt className="text-gray-400 text-xs">CPF</dt><dd className="font-mono">{colab.cpf || '—'}</dd></div>
           <div><dt className="text-gray-400 text-xs">Matrícula</dt><dd>{colab.matricula || '—'}</dd></div>
-          <div><dt className="text-gray-400 text-xs">Status</dt><dd>{colab.status_embarque || '—'}</dd></div>
+          <div><dt className="text-gray-400 text-xs">Status</dt><dd>{colab.status_embarque || '—'}{colab.escala_codigo_hoje ? ` (${colab.escala_codigo_hoje})` : ''}</dd></div>
         </dl>
       </section>
 

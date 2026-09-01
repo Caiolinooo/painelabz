@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS gt_relatorios_aprovacoes (
 CREATE INDEX IF NOT EXISTS idx_gt_relatorios_mes_referencia ON gt_relatorios_aprovacoes(mes_referencia);
 CREATE INDEX IF NOT EXISTS idx_gt_relatorios_status ON gt_relatorios_aprovacoes(status);
 
+ALTER TABLE gt_relatorios_aprovacoes ENABLE ROW LEVEL SECURITY;
+
 DROP TRIGGER IF EXISTS trg_gt_relatorios_aprovacoes_updated_at ON gt_relatorios_aprovacoes;
 CREATE TRIGGER trg_gt_relatorios_aprovacoes_updated_at
     BEFORE UPDATE ON gt_relatorios_aprovacoes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

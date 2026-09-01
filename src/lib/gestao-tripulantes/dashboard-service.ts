@@ -3,9 +3,14 @@ import type { GTDashboardResumo } from '@/types/gestao-tripulantes';
 import { adicionarDiasLocalISO, dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
 import { listarDocumentosAlertas } from '@/lib/gestao-tripulantes/documentos-alertas';
 import {
-  dayCodeForCivilDay,
+  afastamentoToEscalaEvento,
+  aplicarStatusEscalaHoje,
+  classifyScheduleDayCode,
   isEmbarcadoPobDayCode,
+  resolverStatusEscalaHoje,
   type EscalaEventoDia,
+  type StatusEmbarqueLive,
+  type StatusEscalaHoje,
 } from '@/lib/gestao-tripulantes/embarque-status';
 import {
   somarDocsPorStatusPrimario,
@@ -14,20 +19,17 @@ import {
 
 const PAGE_SIZE = 1000;
 const DOC_IN_CHUNK = 120;
+const COLAB_ID_IN_LIMIT = 120;
 
 interface ColabAtivoRow {
   id: string;
   centro_custo_id: string | null;
-  status_embarque: string | null;
-  standby: boolean | null;
 }
 
 /** Ativo + não deletado; CC inativo exclui; CC nulo entra. */
 export async function listarColaboradoresDashboardAtivos(): Promise<{
   ids: string[];
   total: number;
-  embarcados: number;
-  disponiveis: number;
   error?: string;
 }> {
   const colabs: ColabAtivoRow[] = [];
@@ -35,12 +37,12 @@ export async function listarColaboradoresDashboardAtivos(): Promise<{
   while (true) {
     const { data, error } = await supabaseAdmin
       .from('gt_colaboradores')
-      .select('id, centro_custo_id, status_embarque, standby')
+      .select('id, centro_custo_id')
       .is('deleted_at', null)
       .eq('ativo', true)
       .range(from, from + PAGE_SIZE - 1);
     if (error) {
-      return { ids: [], total: 0, embarcados: 0, disponiveis: 0, error: error.message };
+      return { ids: [], total: 0, error: error.message };
     }
     const page = (data || []) as ColabAtivoRow[];
     colabs.push(...page);
@@ -50,7 +52,7 @@ export async function listarColaboradoresDashboardAtivos(): Promise<{
 
   const inactiveCc = await supabaseAdmin.from('gt_centros_custo').select('id').eq('ativo', false);
   if (inactiveCc.error) {
-    return { ids: [], total: 0, embarcados: 0, disponiveis: 0, error: inactiveCc.error.message };
+    return { ids: [], total: 0, error: inactiveCc.error.message };
   }
 
   const inactiveCcIds = new Set((inactiveCc.data || []).map((r) => r.id as string));
@@ -61,8 +63,6 @@ export async function listarColaboradoresDashboardAtivos(): Promise<{
   return {
     ids: ativos.map((c) => c.id),
     total: ativos.length,
-    embarcados: ativos.filter((c) => c.status_embarque === 'embarcado').length,
-    disponiveis: ativos.filter((c) => c.standby === true).length,
   };
 }
 
@@ -82,25 +82,33 @@ async function paginarSelect<T>(
   return { rows };
 }
 
+export interface ListarStatusEscalaHojeOptions {
+  colaboradorIds?: string[];
+  fallbackById?: Map<string, string | null>;
+}
+
+function shouldFilterEventsByColabId(ids: string[] | undefined): ids is string[] {
+  return Boolean(ids && ids.length > 0 && ids.length <= COLAB_ID_IN_LIMIT);
+}
+
 /**
- * Eligible collaborators whose Man Schedule cell for today is exact `ON`
- * (never `ON*` / `*` / STB / DBA / UTR / DHC).
+ * Today's Man Schedule cell (+ afastamentos overlay) per collaborator.
+ * When `colaboradorIds` is omitted, only people with a non-empty cell are returned
+ * (so stored `status_embarque` can still apply to everyone else).
  */
-export async function listarIdsEmbarcadosHoje(
+export async function listarStatusEscalaHoje(
   hoje = dataLocalISO(),
-  eligibleIds?: string[],
+  options: ListarStatusEscalaHojeOptions = {},
 ): Promise<{
-  ids: string[];
+  byId: Map<string, StatusEscalaHoje>;
   error?: string;
 }> {
-  let eligibleList = eligibleIds;
-  if (!eligibleList) {
-    const ativos = await listarColaboradoresDashboardAtivos();
-    if (ativos.error) return { ids: [], error: ativos.error };
-    eligibleList = ativos.ids;
-  }
-  const eligible = new Set(eligibleList);
-  if (eligible.size === 0) return { ids: [] };
+  const scopedIds = options.colaboradorIds;
+  const eligible = scopedIds ? new Set(scopedIds) : null;
+  if (eligible && eligible.size === 0) return { byId: new Map() };
+
+  const filterById = shouldFilterEventsByColabId(scopedIds);
+  const idList = filterById ? scopedIds : undefined;
 
   const [embRes, afRes] = await Promise.all([
     paginarSelect<{
@@ -111,15 +119,15 @@ export async function listarIdsEmbarcadosHoje(
       data_desembarque: string | null;
       data_prevista_desembarque: string | null;
       observacoes: string | null;
-    }>((from, to) =>
-      supabaseAdmin
+    }>((from, to) => {
+      let q = supabaseAdmin
         .from('gt_historico_embarques')
         .select('id, colaborador_id, tipo, data_embarque, data_desembarque, data_prevista_desembarque, observacoes')
         .is('deleted_at', null)
-        .lte('data_embarque', hoje)
-        .range(from, to)
-        .then((r) => ({ data: r.data as typeof r.data, error: r.error })),
-    ),
+        .lte('data_embarque', hoje);
+      if (idList) q = q.in('colaborador_id', idList);
+      return q.range(from, to).then((r) => ({ data: r.data as typeof r.data, error: r.error }));
+    }),
     paginarSelect<{
       id: string;
       colaborador_id: string;
@@ -128,22 +136,22 @@ export async function listarIdsEmbarcadosHoje(
       data_fim: string | null;
       data_prevista_retorno: string | null;
       motivo: string | null;
-    }>((from, to) =>
-      supabaseAdmin
+    }>((from, to) => {
+      let q = supabaseAdmin
         .from('gt_afastamentos')
         .select('id, colaborador_id, tipo_afastamento, data_inicio, data_fim, data_prevista_retorno, motivo')
-        .is('deleted_at', null)
-        .range(from, to)
-        .then((r) => ({ data: r.data as typeof r.data, error: r.error })),
-    ),
+        .is('deleted_at', null);
+      if (idList) q = q.in('colaborador_id', idList);
+      return q.range(from, to).then((r) => ({ data: r.data as typeof r.data, error: r.error }));
+    }),
   ]);
 
-  if (embRes.error) return { ids: [], error: embRes.error };
-  if (afRes.error) return { ids: [], error: afRes.error };
+  if (embRes.error) return { byId: new Map(), error: embRes.error };
+  if (afRes.error) return { byId: new Map(), error: afRes.error };
 
   const byColab = new Map<string, EscalaEventoDia[]>();
   const push = (colabId: string, ev: EscalaEventoDia) => {
-    if (!eligible.has(colabId)) return;
+    if (eligible && !eligible.has(colabId)) return;
     const arr = byColab.get(colabId) || [];
     arr.push(ev);
     byColab.set(colabId, arr);
@@ -161,24 +169,124 @@ export async function listarIdsEmbarcadosHoje(
   }
 
   for (const af of afRes.rows) {
-    const isFerias =
-      String(af.tipo_afastamento || '').toLowerCase().includes('ferias') ||
-      String(af.tipo_afastamento || '').toLowerCase().includes('férias');
-    push(af.colaborador_id, {
-      id: af.id,
-      tipo: isFerias ? 'ferias' : 'afastamento',
-      data_embarque: af.data_inicio,
-      data_desembarque: af.data_fim || af.data_prevista_retorno,
-      observacoes: af.motivo,
-    });
+    push(af.colaborador_id, afastamentoToEscalaEvento(af));
   }
 
-  const ids: string[] = [];
-  for (const [colabId, events] of byColab) {
-    const code = dayCodeForCivilDay(events, hoje);
-    if (isEmbarcadoPobDayCode(code)) ids.push(colabId);
+  const byId = new Map<string, StatusEscalaHoje>();
+  const considerIds = eligible ? [...eligible] : [...byColab.keys()];
+  for (const colabId of considerIds) {
+    const events = byColab.get(colabId) || [];
+    const resolved = resolverStatusEscalaHoje(events, hoje, options.fallbackById?.get(colabId) ?? null);
+    if (!eligible && !options.fallbackById?.has(colabId)) {
+      const kind = classifyScheduleDayCode(resolved.dayCode);
+      if (kind === 'vazio' || kind === 'previsto' || kind === 'outro') continue;
+    }
+    byId.set(colabId, resolved);
   }
+  return { byId };
+}
+
+/**
+ * Eligible collaborators whose Man Schedule cell for today is exact `ON`
+ * (never `ON*` / `*` / STB / DBA / UTR / DHC).
+ */
+export async function listarIdsEmbarcadosHoje(
+  hoje = dataLocalISO(),
+  eligibleIds?: string[],
+): Promise<{
+  ids: string[];
+  error?: string;
+}> {
+  let eligibleList = eligibleIds;
+  if (!eligibleList) {
+    const ativos = await listarColaboradoresDashboardAtivos();
+    if (ativos.error) return { ids: [], error: ativos.error };
+    eligibleList = ativos.ids;
+  }
+  if (eligibleList.length === 0) return { ids: [] };
+
+  const live = await listarStatusEscalaHoje(hoje, { colaboradorIds: eligibleList });
+  if (live.error) return { ids: [], error: live.error };
+  const ids = [...live.byId.entries()]
+    .filter(([, v]) => isEmbarcadoPobDayCode(v.dayCode))
+    .map(([id]) => id);
   return { ids };
+}
+
+export async function listarIdsStandbyHoje(
+  hoje = dataLocalISO(),
+  eligibleIds?: string[],
+): Promise<{ ids: string[]; error?: string }> {
+  let eligibleList = eligibleIds;
+  if (!eligibleList) {
+    const ativos = await listarColaboradoresDashboardAtivos();
+    if (ativos.error) return { ids: [], error: ativos.error };
+    eligibleList = ativos.ids;
+  }
+  if (eligibleList.length === 0) return { ids: [] };
+
+  const live = await listarStatusEscalaHoje(hoje, { colaboradorIds: eligibleList });
+  if (live.error) return { ids: [], error: live.error };
+  const ids = [...live.byId.entries()]
+    .filter(([, v]) => v.status === 'standby')
+    .map(([id]) => id);
+  return { ids };
+}
+
+export async function listarIdsComStatusEscalaHoje(
+  status: StatusEmbarqueLive,
+  hoje = dataLocalISO(),
+): Promise<{ ids: string[]; error?: string }> {
+  const live = await listarStatusEscalaHoje(hoje);
+  if (live.error) return { ids: [], error: live.error };
+
+  const liveMatch: string[] = [];
+  const classified = new Set<string>();
+  for (const [id, v] of live.byId) {
+    classified.add(id);
+    if (v.status === status) liveMatch.push(id);
+  }
+
+  const stored: string[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('gt_colaboradores')
+      .select('id')
+      .is('deleted_at', null)
+      .eq('status_embarque', status)
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) return { ids: [], error: error.message };
+    const page = data || [];
+    for (const row of page) {
+      if (!classified.has(row.id as string)) stored.push(row.id as string);
+    }
+    if (page.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return { ids: [...liveMatch, ...stored] };
+}
+
+export async function overlayStatusEscalaHoje<T extends { id: string }>(
+  rows: T[],
+  hoje = dataLocalISO(),
+): Promise<{
+  rows: Array<T & { status_embarque: StatusEmbarqueLive; standby: boolean; escala_codigo_hoje: string }>;
+  error?: string;
+}> {
+  if (rows.length === 0) return { rows: [] };
+  const fallbackById = new Map<string, string | null>();
+  for (const row of rows) {
+    const stored = (row as { status_embarque?: string | null }).status_embarque;
+    fallbackById.set(row.id, stored ?? null);
+  }
+  const live = await listarStatusEscalaHoje(hoje, {
+    colaboradorIds: rows.map((r) => r.id),
+    fallbackById,
+  });
+  if (live.error) return { rows: aplicarStatusEscalaHoje(rows, new Map()), error: live.error };
+  return { rows: aplicarStatusEscalaHoje(rows, live.byId) };
 }
 
 const DOC_GROUP_SELECT =
@@ -230,14 +338,14 @@ export async function getDashboardData(): Promise<{
 
     const hoje = dataLocalISO();
     const limite = adicionarDiasLocalISO(30);
-    const [docs, asosPendentes, pob, alertas] = await Promise.all([
+    const [docs, asosPendentes, live, alertas] = await Promise.all([
       countDocsPorValidadeCivil(ativos.ids, hoje, limite),
       supabaseAdmin
         .from('gt_documentos')
         .select('id', { count: 'exact', head: true })
         .is('deleted_at', null)
         .eq('status_revisao', 'pendente_revisao'),
-      listarIdsEmbarcadosHoje(hoje, ativos.ids),
+      listarStatusEscalaHoje(hoje, { colaboradorIds: ativos.ids }),
       listarDocumentosAlertas({ colaboradorIds: ativos.ids }),
     ]);
 
@@ -249,17 +357,24 @@ export async function getDashboardData(): Promise<{
       console.error('Erro ao contar ASOs pendentes:', asosPendentes.error);
       return { success: false, error: asosPendentes.error.message };
     }
-    if (pob.error) {
-      console.error('Erro ao contar embarcados (POB) do dashboard:', pob.error);
-      return { success: false, error: pob.error };
+    if (live.error) {
+      console.error('Erro ao contar embarcados (POB) do dashboard:', live.error);
+      return { success: false, error: live.error };
+    }
+
+    let totalEmbarcados = 0;
+    let totalDisponiveis = 0;
+    for (const v of live.byId.values()) {
+      if (isEmbarcadoPobDayCode(v.dayCode)) totalEmbarcados += 1;
+      if (v.status === 'standby') totalDisponiveis += 1;
     }
 
     return {
       success: true,
       data: {
         total_colaboradores: ativos.total,
-        total_embarcados: pob.ids.length,
-        total_disponiveis: ativos.disponiveis,
+        total_embarcados: totalEmbarcados,
+        total_disponiveis: totalDisponiveis,
         total_docs_vencidos: docs.vencidos,
         total_docs_vencendo: docs.vencendo,
         total_docs_vencidos_historico: alertas.totais.vencidos_historico,

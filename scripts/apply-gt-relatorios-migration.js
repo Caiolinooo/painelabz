@@ -98,6 +98,8 @@ async function main() {
 
     CREATE INDEX IF NOT EXISTS idx_gt_relatorios_mes_referencia ON gt_relatorios_aprovacoes(mes_referencia);
     CREATE INDEX IF NOT EXISTS idx_gt_relatorios_status ON gt_relatorios_aprovacoes(status);
+
+    ALTER TABLE public.gt_relatorios_aprovacoes ENABLE ROW LEVEL SECURITY;
   `;
 
   console.log('Running migration...');

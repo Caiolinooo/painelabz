@@ -74,9 +74,10 @@ export default function GTMatrix({ colaboradores, loading, onRowClick }: GTMatri
   const getStatusBadge = (status: string, standby: boolean) => {
     const color = STATUS_COLORS[status] || 'bg-gray-100 text-gray-600 border-gray-300';
     const label = t(STATUS_LABEL_KEYS[status] || status);
+    const showStandby = standby && status !== 'standby' && status !== 'embarcado';
     return (
       <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${color}`}>
-        {standby ? `${label} (SB)` : label}
+        {showStandby ? `${label} (SB)` : label}
       </span>
     );
   };

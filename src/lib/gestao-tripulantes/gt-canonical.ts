@@ -68,6 +68,19 @@ export const GT_CANONICAL_TABLES = {
     origem: ['mio'] as const,
     join: 'cpf / colaborador_id / tipo',
   },
+  aso_agendamentos: {
+    table: 'gt_aso_agendamentos',
+    contains:
+      'DP→logística ASO scheduling (sugerido/solicitado/marcado). Dates from gt_historico_embarques via embarque-status (STB preferred, ON avoided). Never MIO.',
+    origem: ['local'] as const,
+    join: 'colaborador_id + documento_aso_id',
+  },
+  aso_agendamentos_log: {
+    table: 'gt_aso_agendamentos_log',
+    contains: 'Audit trail of ASO scheduling lifecycle (request, approve, reject, cancel).',
+    origem: ['local'] as const,
+    join: 'agendamento_id',
+  },
   anexo_misses: {
     table: 'gt_mio_anexo_misses',
     contains: 'Retry queue: MIO id + reason when bytes could not be copied. resolved_at set after a successful re-pull.',

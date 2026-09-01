@@ -8,6 +8,14 @@ import { fetchWithToken } from '@/lib/tokenStorage';
 import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
 import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
 import ScheduleDateFilterInput from '@/components/gestao-tripulantes/ScheduleDateFilterInput';
+import ManScheduleTimelineNav from '@/components/gestao-tripulantes/ManScheduleTimelineNav';
+import {
+    MAN_SCHEDULE_SCROLL_CLASS,
+    MAN_SCHEDULE_STICKY_EDGE_CLASS,
+    MAN_SCHEDULE_STICKY_NAME_CLASS,
+    MAN_SCHEDULE_TABLE_CLASS,
+    MAN_SCHEDULE_THEAD_CLASS,
+} from '@/components/gestao-tripulantes/man-schedule-grid-classes';
 import {
     DEFAULT_TIPOS_EVENTO_ESCALA,
     hexToRgbNoHash,
@@ -16,11 +24,18 @@ import {
 } from '@/lib/gestao-tripulantes/escala-tipos';
 import { pickOverlappingRotation } from '@/lib/gestao-tripulantes/escala-contagem';
 import {
+    civilTodayYmd,
+    countPobOnCivilDay,
     isEmbarcadoPobDayCode,
     isRotacaoPrevista,
     scheduleDisplayCode,
     type GtDashboardKpi,
 } from '@/lib/gestao-tripulantes/embarque-status';
+import {
+    adjacentColumnIndex,
+    readVisibleColumnIndex,
+    scrollScheduleColumnIntoView,
+} from '@/lib/gestao-tripulantes/man-schedule-nav';
 import {
     MAX_SCHEDULE_DAY_COLUMNS,
     MAX_SCHEDULE_WEEK_COLUMNS,
@@ -421,7 +436,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
         <tr className="hover:bg-slate-50/50">
             <td
                 onClick={() => onNameClick(member.cpf, member.name)}
-                className={`bg-white text-blue-600 hover:text-blue-800 hover:underline font-bold px-3 py-1.5 border-r border-b border-black whitespace-nowrap overflow-hidden text-ellipsis sticky left-0 z-20 uppercase cursor-pointer transition-colors min-w-[260px] w-[260px] max-w-[260px] ${
+                className={`${MAN_SCHEDULE_STICKY_NAME_CLASS} bg-white text-blue-600 hover:text-blue-800 hover:underline font-bold px-3 py-1.5 border-r border-b border-black whitespace-nowrap overflow-hidden text-ellipsis sticky left-0 z-20 uppercase cursor-pointer transition-colors min-w-[260px] w-[260px] max-w-[260px] ${
                     isOpening ? 'opacity-50 animate-pulse' : ''
                 }`}
                 title={member.name}
@@ -431,7 +446,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
             <td className={`${groupBg} text-black font-bold text-center border-r border-b border-black sticky left-[260px] z-20 min-w-[70px] w-[70px] max-w-[70px]`}>
                 {groupCount}
             </td>
-            <td className={`${groupBg} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[330px] z-20 min-w-[170px] w-[170px] max-w-[170px] text-ellipsis overflow-hidden whitespace-nowrap`} title={position}>
+            <td className={`${groupBg} ${MAN_SCHEDULE_STICKY_EDGE_CLASS} text-black font-bold px-2 py-1.5 border-r border-b border-black uppercase sticky left-[330px] z-20 min-w-[170px] w-[170px] max-w-[170px] text-ellipsis overflow-hidden whitespace-nowrap`} title={position}>
                 {position}
             </td>
             <td className="bg-emerald-50/50 text-emerald-800 font-bold text-center border-r border-b border-black px-1 min-w-[36px] w-[36px] text-[11px]" title="Total ON">
@@ -1170,20 +1185,23 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         [filteredWeeks, currentWeekIndex]
     );
 
-    const scrollByAmount = useCallback((amount: number) => {
-        if (!tableContainerRef.current) return;
-        tableContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
-    }, []);
+    const scrollToColumn = useCallback((index: number) => {
+        const root = tableContainerRef.current;
+        if (!root) return;
+        const clamped = adjacentColumnIndex(index, 0, filteredWeeks.length);
+        scrollScheduleColumnIntoView(root, clamped);
+    }, [filteredWeeks.length]);
+
+    const scrollByColumns = useCallback((delta: number) => {
+        const root = tableContainerRef.current;
+        if (!root) return;
+        const visible = readVisibleColumnIndex(root);
+        scrollToColumn(adjacentColumnIndex(visible, delta, filteredWeeks.length));
+    }, [filteredWeeks.length, scrollToColumn]);
 
     const scrollToCurrentWeek = useCallback(() => {
-        if (!tableContainerRef.current || currentWeekIndex < 0) return;
-        // Fixed columns take ~500px, 36px per week column
-        const targetScrollLeft = Math.max(0, currentWeekIndex * 36 - 120);
-        tableContainerRef.current.scrollTo({
-            left: targetScrollLeft,
-            behavior: 'smooth'
-        });
-    }, [currentWeekIndex]);
+        scrollToColumn(currentWeekIndex);
+    }, [currentWeekIndex, scrollToColumn]);
 
     useEffect(() => {
         if (!loading && filteredWeeks.length > 0) {
@@ -1285,15 +1303,12 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     const todayColumnDate = filteredWeeks[currentWeekIndex]?.date ?? null;
 
     const todayPobCount = useMemo(() => {
-        if (!todayColumnDate) return 0;
-        let n = 0;
-        for (const group of positionGroups) {
-            for (const member of group.members) {
-                if (isEmbarcadoPobDayCode(getWeekStatus(todayColumnDate, member.rotations))) n += 1;
-            }
-        }
-        return n;
-    }, [positionGroups, todayColumnDate, getWeekStatus]);
+        const ymd = civilTodayYmd();
+        return countPobOnCivilDay(
+            positionGroups.flatMap((group) => group.members),
+            ymd,
+        );
+    }, [positionGroups]);
 
     const visibleGroups = useMemo(() => {
         if (kpiFilter !== 'embarcados' && kpiFilter !== 'disponiveis') return positionGroups;
@@ -1480,7 +1495,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     const editingLocal = !!(selectedCell?.rotationId && isUuid(selectedCell.rotationId));
 
     return (
-        <div className="flex flex-col h-full w-full border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+        <div className="flex flex-col h-full min-h-0 w-full border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
             <div className="bg-gray-50/90 px-3 py-2 border-b border-gray-200 shrink-0">
                 <div className="flex items-end gap-2.5 w-full flex-wrap">
                     <div className="min-w-[160px] flex-shrink-0 flex-1 md:flex-initial">
@@ -1581,38 +1596,14 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         </span>
                     </label>
 
-                    <div className="flex items-center gap-1 flex-shrink-0 self-end h-[34px]">
-                        <button
-                            onClick={() => scrollByAmount(-320)}
-                            disabled={loading}
-                            title={t('manSchedule.prevWeeks', 'Semanas anteriores')}
-                            className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition text-sm font-bold"
-                        >
-                            ‹
-                        </button>
-                        <button
-                            onClick={scrollToCurrentWeek}
-                            disabled={loading}
-                            title={t('manSchedule.currentWeek', 'Ir para semana atual')}
-                            className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition font-semibold text-xs whitespace-nowrap"
-                        >
-                            {t('manSchedule.today', 'Hoje')}
-                        </button>
-                        <span
-                            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold whitespace-nowrap h-[34px] flex items-center"
-                            title={t('manSchedule.todayPobHint', 'Pessoas com ON hoje (sem asterisco)')}
-                        >
-                            {t('manSchedule.todayPob', { count: todayPobCount }, `Hoje: ${todayPobCount}P a bordo`)}
-                        </span>
-                        <button
-                            onClick={() => scrollByAmount(320)}
-                            disabled={loading}
-                            title={t('manSchedule.nextWeeks', 'Próximas semanas')}
-                            className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition text-sm font-bold"
-                        >
-                            ›
-                        </button>
-                    </div>
+                    <ManScheduleTimelineNav
+                        loading={loading}
+                        pobCount={todayPobCount}
+                        viewport={viewport}
+                        onPrev={() => scrollByColumns(-1)}
+                        onNext={() => scrollByColumns(1)}
+                        onToday={scrollToCurrentWeek}
+                    />
 
                     <div className="flex items-center gap-2 ml-auto self-end">
                         <button
@@ -1637,9 +1628,13 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                 </div>
             </div>
 
-            <div ref={tableContainerRef} className="flex-1 overflow-auto min-h-0 relative w-full">
-                <table id="man-schedule-table" className="w-max min-w-full border-collapse font-sans text-xs bg-white">
-                    <thead className="sticky top-0 z-40 bg-white">
+            <div
+                ref={tableContainerRef}
+                data-testid="man-schedule-scroll"
+                className={MAN_SCHEDULE_SCROLL_CLASS}
+            >
+                <table id="man-schedule-table" className={MAN_SCHEDULE_TABLE_CLASS}>
+                    <thead className={MAN_SCHEDULE_THEAD_CLASS}>
                         <tr>
                             <th
                                 colSpan={7}
@@ -1658,7 +1653,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         </tr>
 
                         <tr>
-                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-0 z-30 min-w-[260px] w-[260px] max-w-[260px] px-2 py-2">
+                            <th className={`${MAN_SCHEDULE_STICKY_NAME_CLASS} bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-0 z-30 min-w-[260px] w-[260px] max-w-[260px] px-2 py-2`}>
                                 {t('manSchedule.tableHeaders.name', 'NOME')}
                             </th>
                             <th
@@ -1671,7 +1666,10 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                                     </React.Fragment>
                                 ))}
                             </th>
-                            <th className="bg-slate-50 text-slate-700 font-bold text-center border-r border-b border-black sticky left-[330px] z-30 px-3 py-2 min-w-[170px] w-[170px] max-w-[170px]">
+                            <th
+                                className={`bg-slate-50 ${MAN_SCHEDULE_STICKY_EDGE_CLASS} text-slate-700 font-bold text-center border-r border-b border-black sticky left-[330px] z-30 px-3 py-2 min-w-[170px] w-[170px] max-w-[170px]`}
+                                data-man-schedule-sticky-end=""
+                            >
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
                             <th className="bg-[#e2efda] text-[#00b050] font-bold text-center border-r border-b border-black px-1 py-1 min-w-[36px] w-[36px] text-[10px]" title="Total ON (A bordo)">
@@ -1693,6 +1691,8 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                                 return (
                                     <th
                                         key={`date-${idx}`}
+                                        data-man-schedule-col={idx}
+                                        data-man-schedule-today={isCurrentWeek ? '1' : undefined}
                                         className={`text-center border-r border-b align-bottom pt-2 pb-1 ${
                                             isCurrentWeek
                                                 ? 'bg-yellow-100 text-yellow-850 font-bold border-yellow-500 border-2'
@@ -1709,9 +1709,9 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         </tr>
 
                         <tr>
-                            <th className="bg-slate-50 border-r border-b border-black sticky left-0 z-30"></th>
+                            <th className={`${MAN_SCHEDULE_STICKY_NAME_CLASS} bg-slate-50 border-r border-b border-black sticky left-0 z-30`}></th>
                             <th className="bg-slate-50 border-r border-b border-black sticky left-[260px] z-30"></th>
-                            <th className="bg-slate-50 border-r border-b border-black sticky left-[330px] z-30"></th>
+                            <th className={`bg-slate-50 ${MAN_SCHEDULE_STICKY_EDGE_CLASS} border-r border-b border-black sticky left-[330px] z-30`}></th>
                             <th className="bg-[#e2efda] border-r border-b border-black"></th>
                             <th className="bg-[#fce4d6] border-r border-b border-black"></th>
                             <th className="bg-[#d9e1f2] border-r border-b border-black"></th>

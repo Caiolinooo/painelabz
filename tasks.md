@@ -1,6 +1,74 @@
+## Status de embarque vivo nas listas (2026-09-01)
+
+Pílulas Status (Matriz, DP, ficha, filtros) seguem a célula de **hoje** em `gt_historico_embarques` (+ afastamentos), não `gt_colaboradores.status_embarque` stale. POB continua só ON exato. Teste: `npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts`.
+
+---
+
+## ASO agendamento DP → logística (2026-09-01)
+
+Antecedência configurável (padrão 60 dias). DP sugere data pela escala (STB preferido, ON evitado) e pede aprovação da logística com assinatura digital, e-mail e notificação no portal.
+
+### Passos
+- [x] Migration `gt_aso_agendamentos` + `gt_aso_agendamentos_log` (RLS, sem policy anon) + config `gt_aso_agendamento_config`
+- [x] Janela de vencimento ASO lê `antecedencia_dias` (admin `/admin/gestao-tripulantes` aba Agendamento ASO + Notificações)
+- [x] Heurística de datas em `aso-agendamento-sugestoes.ts` (`gt_historico_embarques` + `embarque-status.ts`)
+- [x] APIs: config, list/solicitar, sugestões, aprovar/reprovar/cancelar, cron
+- [x] DP UI: aba ASO com sugestões + envio assinado à logística
+- [x] GT UI: aba ASO Logística para aprovar/reprovar com `useSignature`
+- [x] E-mail + notificação in-app; carimbo `GT_ASO_AGENDAMENTO:...`; audit log
+- [x] Aplicar SQL no projeto remoto Painel_ABZGroup
+- [x] Testes `npx tsx --test src/lib/gestao-tripulantes/aso-agendamento-sugestoes.test.ts`
+- [x] DOX (root, API GT, UI GT, DP) + cron Vercel 10:00
+
+---
+
+
+
+### Problema
+Alerta `rls_disabled_in_public` no projeto Painel_ABZGroup (`arzvingdtnttiejcvucs`): tabelas no schema `public` sem Row-Level Security. Com a anon/publishable key (exposta no frontend), qualquer um podia ler/editar/apagar.
+
+### Tabelas
+- `gt_afastamentos` (S-2230 / férias / Man Schedule)
+- `gt_acidentes` (CAT / S-2210)
+- `gt_relatorios_aprovacoes` (fechamento mensal DP)
+
+### Por que não quebra o portal
+Todas as rotas e libs usam `supabaseAdmin` (`service_role`), que ignora RLS. Irmãs GT (`gt_cargos`, `gt_historico_embarques`, `gt_mio_entidades`) já estavam assim: RLS ligado, **sem** policy para `anon`.
+
+### Passos
+- [x] Confirmar advisor + grants `anon` ALL
+- [x] `ALTER TABLE … ENABLE ROW LEVEL SECURITY` nas 3 (sem `USING (true)`)
+- [x] Migration `supabase/migrations/20260901_000001_gt_sensitive_tables_enable_rls.sql` aplicada no projeto remoto
+- [x] DOX em `src/app/api/gestao-tripulantes/AGENTS.md`
+
+### Não fazer
+- Não criar policy `USING (true)` só para calar o INFO `rls_enabled_no_policy` — isso reabre o buraco.
+
+---
+
 ## Release v5.70.0 (2026-09-01)
 
 Publicado no branch portal: catálogo QHSE/EPI, POB só ON, histórico colapsável de docs/treinamentos, filtro de data do Man Schedule e dedupe do calendário.
+
+---
+
+## Pesquisa OCR — stack atual vs GLM em vm.groupabz.com:9980 (2026-09-01)
+
+### Conclusão
+**Híbrido, sem troca do motor.** Manter Tesseract + pdf-parse + `ocr-repair` (Módulo 11 / `CONFUSAO_OPTICA` / APTO) como caminho principal. GLM-OCR na VM só como visão de fallback em scan, depois de HTTPS + auth + prompt `OCR`. Não apontar produção Vercel para `http://vm.groupabz.com:9980`.
+
+### O que está no :9980 (sonda)
+- llama.cpp `b10281` + `llama-ui`; modelo `ggml-org/GLM-OCR-GGUF` Q8_0 (~0,89B).
+- `/health` ok; `/v1/models` e `/v1/chat/completions` **sem API key**; 4 slots; HTTPS :9980 timeout.
+- Prompt GGUF oficial: `OCR` (UI web degrada). Não é o pipeline Zhipu com PP-DocLayout-V3.
+- PNG sintético sem PII: 200 em ~320 ms. DharmaOCR-Benchmark PT-BR: GLM 0,710 e 11,7% degeneração.
+
+### Não fazer agora
+- Não ligar `fallback_api_url` / `ia_config` nesse host (schema e `visaoLlmCompativel` incompatíveis).
+- Não mandar ASO/CPF reais para a VM até haver TLS + auth.
+
+### Próximo passo
+Banco interno 10–20 scans GT anonimizados (Tesseract vs GLM) → se ganhar, adapter `OCR` + allowlist; worker na rede ABZ, não fetch Vercel.
 
 ---
 

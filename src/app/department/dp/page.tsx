@@ -7,6 +7,7 @@ import { fetchWithToken } from '@/lib/tokenStorage';
 import { formatCpf } from '@/lib/utils/identity';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
+import AsoAgendamentoDpPanel from '@/components/gestao-tripulantes/AsoAgendamentoDpPanel';
 import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
 import { toast } from 'react-hot-toast';
 import {
@@ -55,13 +56,6 @@ interface FechamentoTotais {
   totalFER?: number;
 }
 
-function formatDateBR(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const [y, m, d] = iso.slice(0, 10).split('-');
-  if (!y || !m || !d) return iso;
-  return `${d}/${m}/${y}`;
-}
-
 function formatRegime(c: ColaboradorItem): string {
   if (c.escala_embarque && c.escala_folga) {
     return `${c.escala_embarque}x${c.escala_folga}`;
@@ -76,6 +70,26 @@ function formatCentroCusto(c: ColaboradorItem): string {
   return c.centro_custo_nome || c.centro_custo_codigo || '—';
 }
 
+const EMBARQUE_STATUS_LABEL: Record<string, string> = {
+  embarcado: 'Embarcado',
+  standby: 'StandBy',
+  folga: 'Folga',
+  desembarcado: 'Desembarcado',
+  afastado: 'Afastado',
+  ferias: 'Afastado',
+  treinamento: 'Treinamento',
+};
+
+const EMBARQUE_STATUS_CLASS: Record<string, string> = {
+  embarcado: 'bg-green-100 text-green-800',
+  standby: 'bg-orange-100 text-orange-800',
+  folga: 'bg-blue-100 text-blue-800',
+  desembarcado: 'bg-gray-100 text-gray-700',
+  afastado: 'bg-red-100 text-red-800',
+  ferias: 'bg-red-100 text-red-800',
+  treinamento: 'bg-yellow-100 text-yellow-800',
+};
+
 function formatCpfDisplay(cpf: string | null | undefined): string {
   if (!cpf) return '—';
   const formatted = formatCpf(cpf);
@@ -89,6 +103,7 @@ export default function DepartamentoPessoalPage() {
   const [activeTab, setActiveTab] = useState<'colaboradores' | 'fechamento' | 'asos'>('colaboradores');
   const [colaboradores, setColaboradores] = useState<ColaboradorItem[]>([]);
   const [asosPendentes, setAsosPendentes] = useState<AsoVencimentoItem[]>([]);
+  const [asoAntecedenciaDias, setAsoAntecedenciaDias] = useState(60);
   const [loading, setLoading] = useState(true);
   const [selectedColaboradorId, setSelectedColaboradorId] = useState<string | null>(null);
   const [isFechamentoModalOpen, setIsFechamentoModalOpen] = useState(false);
@@ -126,6 +141,9 @@ export default function DepartamentoPessoalPage() {
         const vencidos = json.data?.vencidos || [];
         const vencendo = json.data?.vencendo || [];
         setAsosPendentes([...vencidos, ...vencendo]);
+        if (json.data?.antecedencia_dias) {
+          setAsoAntecedenciaDias(Number(json.data.antecedencia_dias) || 60);
+        }
       } else {
         toast.error('Erro ao carregar vencimentos de ASO');
       }
@@ -320,7 +338,7 @@ export default function DepartamentoPessoalPage() {
           <span className="text-xs font-bold text-amber-700 uppercase block">ASOs com Alerta</span>
           <span className="text-2xl font-black text-amber-800 mt-1 block">{asosPendentes.length}</span>
           <span className="text-[11px] text-amber-600 font-semibold">
-            {asosVencidosCount} vencidos · {asosPendentes.length - asosVencidosCount} a vencer em 30d
+            {asosVencidosCount} vencidos · {asosPendentes.length - asosVencidosCount} a vencer em {asoAntecedenciaDias}d
           </span>
         </div>
 
@@ -506,11 +524,18 @@ export default function DepartamentoPessoalPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                            c.ativo !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {c.ativo !== false ? 'Ativo' : 'Inativo'}
-                          </span>
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                              c.ativo !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {c.ativo !== false ? 'Ativo' : 'Inativo'}
+                            </span>
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                              EMBARQUE_STATUS_CLASS[c.status_embarque] || 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {EMBARQUE_STATUS_LABEL[c.status_embarque] || c.status_embarque || '—'}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
@@ -609,79 +634,13 @@ export default function DepartamentoPessoalPage() {
       )}
 
       {activeTab === 'asos' && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">Controle de Vencimentos de ASO</h2>
-              <p className="text-xs text-gray-500">Atestados de Saúde Ocupacional vencidos ou com vencimento nos próximos 30 dias</p>
-            </div>
-            <button
-              onClick={handleDispararAlertasAso}
-              disabled={isNotifyingAsos}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-xl transition shadow-xs disabled:opacity-50"
-            >
-              <FiSend className={`w-3.5 h-3.5 ${isNotifyingAsos ? 'animate-spin' : ''}`} />
-              Disparar Alertas Imediatos
-            </button>
-          </div>
-
-          <div className="overflow-x-auto border border-gray-200 rounded-xl">
-            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
-              <thead className="bg-gray-50 text-gray-700 font-bold uppercase">
-                <tr>
-                  <th className="px-4 py-3">Colaborador</th>
-                  <th className="px-4 py-3">CPF</th>
-                  <th className="px-4 py-3">Cargo</th>
-                  <th className="px-4 py-3">Embarcação</th>
-                  <th className="px-4 py-3 text-center">Data Validade</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
-                      <FiRefreshCw className="animate-spin inline w-5 h-5 mr-2 text-abz-blue" />
-                      Carregando vencimentos de ASO...
-                    </td>
-                  </tr>
-                ) : asosPendentes.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-emerald-700 font-medium">
-                      ✓ Todos os ASOs estão em dia e conformes!
-                    </td>
-                  </tr>
-                ) : (
-                  asosPendentes.map((a, idx) => {
-                    const isV = a.alerta === 'vencido';
-                    return (
-                      <tr
-                        key={a.id || idx}
-                        className={`hover:bg-gray-50 ${a.colaborador?.id ? 'cursor-pointer' : ''}`}
-                        onClick={() => {
-                          if (a.colaborador?.id) setSelectedColaboradorId(a.colaborador.id);
-                        }}
-                      >
-                        <td className="px-4 py-3 font-bold text-gray-900">{a.colaborador?.nome_completo || 'N/A'}</td>
-                        <td className="px-4 py-3 font-mono text-gray-600">{formatCpfDisplay(a.colaborador?.cpf)}</td>
-                        <td className="px-4 py-3 text-gray-600">{a.colaborador?.cargo_nome || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">{a.colaborador?.embarcacao_nome || '—'}</td>
-                        <td className="px-4 py-3 text-center font-bold font-mono text-gray-900">{formatDateBR(a.data_validade)}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                            isV ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {isV ? 'VENCIDO' : 'VENCENDO'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AsoAgendamentoDpPanel
+          asosPendentes={asosPendentes}
+          loading={loading}
+          antecedenciaDias={asoAntecedenciaDias}
+          onOpenColaborador={(id) => setSelectedColaboradorId(id)}
+          onRefreshVencimentos={loadData}
+        />
       )}
 
       {selectedColaboradorId && (

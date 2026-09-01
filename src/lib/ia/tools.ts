@@ -36,7 +36,9 @@ import {
 import { collectHolisticForUser } from './holistic-aggregator';
 import { createEPIRegistration, updateEPIRegistration } from '@/services/epiService';
 import { getStockLevels, getLowStockAlerts } from '@/services/epiStockService';
+import { overlayStatusEscalaHoje, listarColaboradoresDashboardAtivos } from '@/lib/gestao-tripulantes/dashboard-service';
 import { mapCodigoToDbTipo } from '@/lib/gestao-tripulantes/escala-tipos';
+import { listarDocumentosAlertas } from '@/lib/gestao-tripulantes/documentos-alertas';
 import {
   aliasToPath,
   buildNavCommand,
@@ -1561,7 +1563,7 @@ export const IA_TOOLS_DEFINITION = [
           empresa: { type: 'string' },
           embarcacao: { type: 'string' },
           cargo: { type: 'string' },
-          status: { type: 'string', description: 'status_embarque' },
+          status: { type: 'string', description: 'Status de embarque vivo (célula de hoje): embarcado|standby|folga|desembarcado|afastado|ferias|treinamento' },
           apenas_docs_vencidos: { type: 'boolean' },
           limite: { type: 'number', description: 'Padrão 50, máx 200' },
         },
@@ -4910,12 +4912,17 @@ case 'coletar_dados_holisticos': {
         if (empresa) query = query.eq('empresa_nome', empresa);
         if (embarcacao) query = query.eq('embarcacao_nome', embarcacao);
         if (cargo) query = query.eq('cargo_nome', cargo);
-        if (status) query = query.eq('status_embarque', status);
         if (apenas_docs_vencidos) query = query.gt('qtd_docs_vencidos', 0);
 
         const { data, error } = await query;
         if (error) return `Erro ao buscar tripulantes: ${error.message}`;
-        return JSON.stringify({ total: data?.length || 0, tripulantes: data || [] });
+        const rows = ((data || []) as Array<{ id: string }>).map((row) => ({ ...row, id: row.id }));
+        const overlay = await overlayStatusEscalaHoje(rows);
+        const tripulantes = overlay.error ? rows : overlay.rows;
+        const filtered = status
+          ? tripulantes.filter((c) => String((c as { status_embarque?: string }).status_embarque || '') === String(status))
+          : tripulantes;
+        return JSON.stringify({ total: filtered.length, tripulantes: filtered });
       }
 
       case 'buscar_documentos_vencidos': {
@@ -4923,8 +4930,6 @@ case 'coletar_dados_holisticos': {
           colaborador_id?: string;
           incluir_historico?: boolean;
         };
-        const { listarColaboradoresDashboardAtivos } = await import('@/lib/gestao-tripulantes/dashboard-service');
-        const { listarDocumentosAlertas } = await import('@/lib/gestao-tripulantes/documentos-alertas');
         const ids = colaborador_id
           ? [colaborador_id]
           : (await listarColaboradoresDashboardAtivos()).ids;

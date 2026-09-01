@@ -84,6 +84,18 @@ function ymdOf(d: Date): string {
   return `${y}-${mo}-${day}`;
 }
 
+export function civilTodayYmd(now: Date = new Date()): string {
+  return ymdOf(now);
+}
+
+export interface PobRotationLike {
+  id?: string;
+  type?: string | null;
+  start?: string | null;
+  end?: string | null;
+  observacoes?: string | null;
+}
+
 function eventCoversCivilDay(ev: EscalaEventoDia, ymd: string): boolean {
   const start = parseYmdLocal(ev.data_embarque);
   if (!start) return false;
@@ -131,8 +143,209 @@ export function dayCodeForCivilDay(events: EscalaEventoDia[], ymd: string): stri
   return scheduleDisplayCode(picked.tipo, picked.observacoes);
 }
 
+/** Unique people whose civil-day cell is exact `ON` (same rule as Matriz / `isEmbarcadoPobDayCode`). */
+export function countPobOnCivilDay(
+  members: Array<{ rotations: PobRotationLike[] }>,
+  ymd: string,
+): number {
+  let n = 0;
+  for (const member of members) {
+    const events: EscalaEventoDia[] = member.rotations.map((r) => ({
+      id: r.id,
+      tipo: r.type ?? null,
+      data_embarque: r.start ?? null,
+      data_desembarque: r.end ?? null,
+      observacoes: r.observacoes ?? null,
+    }));
+    if (isEmbarcadoPobDayCode(dayCodeForCivilDay(events, ymd))) n += 1;
+  }
+  return n;
+}
+
 export function composeLgpObservacoes(realizado: boolean, rtpeStatus?: string | null): string {
   const marker = realizado ? GT_EMBARQUE_MARKER_REAL : GT_EMBARQUE_MARKER_PREVISTO;
   const rtpe = rtpeStatus ? `RTPE: ${rtpeStatus}` : '';
   return [marker, rtpe].filter(Boolean).join(' | ');
+}
+
+export const STATUS_EMBARQUE_LIVE = [
+  'embarcado',
+  'standby',
+  'folga',
+  'desembarcado',
+  'afastado',
+  'ferias',
+  'treinamento',
+] as const;
+export type StatusEmbarqueLive = (typeof STATUS_EMBARQUE_LIVE)[number];
+
+export const SCHEDULE_DAY_KINDS = [
+  'embarcado',
+  'standby',
+  'folga',
+  'afastado',
+  'treinamento',
+  'previsto',
+  'vazio',
+  'outro',
+] as const;
+export type ScheduleDayKind = (typeof SCHEDULE_DAY_KINDS)[number];
+
+export interface StatusEscalaHoje {
+  dayCode: string;
+  status: StatusEmbarqueLive;
+}
+
+export interface AfastamentoEscalaInput {
+  id?: string;
+  tipo_afastamento?: string | null;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  data_prevista_retorno?: string | null;
+  motivo?: string | null;
+}
+
+function foldScheduleToken(code: string): string {
+  return code.normalize('NFD').replace(/\p{M}/gu, '');
+}
+
+export function coerceStatusEmbarqueLive(
+  raw: string | null | undefined,
+): StatusEmbarqueLive {
+  const key = String(raw || '').trim().toLowerCase();
+  switch (key) {
+    case 'embarcado':
+      return 'embarcado';
+    case 'standby':
+      return 'standby';
+    case 'folga':
+      return 'folga';
+    case 'desembarcado':
+      return 'desembarcado';
+    case 'afastado':
+      return 'afastado';
+    case 'ferias':
+    case 'férias':
+      return 'ferias';
+    case 'treinamento':
+      return 'treinamento';
+    case '':
+      return 'desembarcado';
+    default:
+      return 'desembarcado';
+  }
+}
+
+/** Classify today's Man Schedule display code into a list/badge kind. */
+export function classifyScheduleDayCode(code: string | null | undefined): ScheduleDayKind {
+  if (isEmbarcadoPobDayCode(code)) return 'embarcado';
+  const n = foldScheduleToken(normalizeScheduleDayCode(code));
+  if (!n) return 'vazio';
+  if (hasAsteriskScheduleCode(n) || n === '*') return 'previsto';
+  if (n === 'DBA') return 'embarcado';
+  if (n === 'STB' || n === 'STANDBY') return 'standby';
+  if (n === 'TRE' || n === 'TF' || n === 'TREINAMENTO' || n === 'UTR') return 'treinamento';
+  if (
+    n === 'FER' ||
+    n === 'FERIAS' ||
+    n === 'AFAST' ||
+    n === 'AFASTADO' ||
+    n === 'AFASTAMENTO'
+  ) {
+    return 'afastado';
+  }
+  if (
+    n === 'FI' ||
+    n === 'OFF' ||
+    n === 'OFF-C' ||
+    n === 'OFFC' ||
+    n === 'FOLGA' ||
+    n === '-' ||
+    n === 'DHC'
+  ) {
+    return 'folga';
+  }
+  return 'outro';
+}
+
+/**
+ * Map today's scale cell → `status_embarque` shown in lists/badges.
+ * ON (and DBA, onboard but not POB) → embarcado; STB → standby;
+ * Folga/OFF/OFF-C/FI → folga; FER/AFAST → afastado; TRE → treinamento.
+ * Empty / ON* / unknown keep `fallbackStored` (never invent Embarcado).
+ */
+export function statusEmbarqueFromDayCode(
+  code: string | null | undefined,
+  fallbackStored?: string | null,
+): StatusEmbarqueLive {
+  const kind = classifyScheduleDayCode(code);
+  switch (kind) {
+    case 'embarcado':
+      return 'embarcado';
+    case 'standby':
+      return 'standby';
+    case 'folga':
+      return 'folga';
+    case 'afastado':
+      return 'afastado';
+    case 'treinamento':
+      return 'treinamento';
+    case 'previsto':
+    case 'vazio':
+    case 'outro':
+      return coerceStatusEmbarqueLive(fallbackStored);
+    default: {
+      const _never: never = kind;
+      return _never;
+    }
+  }
+}
+
+export function afastamentoToEscalaEvento(af: AfastamentoEscalaInput): EscalaEventoDia {
+  const tipoRaw = foldScheduleToken(String(af.tipo_afastamento || '').toLowerCase());
+  const isFerias = tipoRaw.includes('ferias');
+  return {
+    id: af.id,
+    tipo: isFerias ? 'ferias' : 'afastamento',
+    data_embarque: af.data_inicio ?? null,
+    data_desembarque: af.data_fim || af.data_prevista_retorno || null,
+    observacoes: af.motivo ?? null,
+  };
+}
+
+export function resolverStatusEscalaHoje(
+  events: EscalaEventoDia[],
+  ymd: string,
+  fallbackStored?: string | null,
+): StatusEscalaHoje {
+  const dayCode = dayCodeForCivilDay(events, ymd);
+  return {
+    dayCode,
+    status: statusEmbarqueFromDayCode(dayCode, fallbackStored),
+  };
+}
+
+export function aplicarStatusEscalaHoje<T extends { id: string }>(
+  rows: T[],
+  byId: Map<string, StatusEscalaHoje>,
+): Array<T & { status_embarque: StatusEmbarqueLive; standby: boolean; escala_codigo_hoje: string }> {
+  return rows.map((row) => {
+    const live = byId.get(row.id);
+    const stored = (row as { status_embarque?: unknown }).status_embarque;
+    if (!live) {
+      const status = coerceStatusEmbarqueLive(stored == null ? '' : String(stored));
+      return {
+        ...row,
+        status_embarque: status,
+        standby: Boolean((row as { standby?: unknown }).standby) || status === 'standby',
+        escala_codigo_hoje: '',
+      };
+    }
+    return {
+      ...row,
+      status_embarque: live.status,
+      standby: live.status === 'standby',
+      escala_codigo_hoje: live.dayCode,
+    };
+  });
 }

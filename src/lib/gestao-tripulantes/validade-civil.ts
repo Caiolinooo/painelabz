@@ -17,7 +17,7 @@ export function adicionarDiasLocalISO(dias: number, base = new Date()): string {
   return dataLocalISO(d);
 }
 
-/** Janela vencendo: hoje…hoje+30 inclusive. */
+/** Janela vencendo: hoje…limite inclusive (default histórico hoje+30 se limite omitido). */
 export function classificarValidadeCivil(
   dataValidade: string | null | undefined,
   hoje = dataLocalISO(),

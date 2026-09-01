@@ -12,6 +12,7 @@ import {
   agruparDocumentosPorTipo,
   contarDocsPorStatusPrimario,
 } from '@/lib/gestao-tripulantes/documento-historico';
+import { overlayStatusEscalaHoje } from '@/lib/gestao-tripulantes/dashboard-service';
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -90,7 +91,7 @@ export async function getEmployeeFullRecord(colaboradorId: string): Promise<Empl
   const cpf = normalizeCpf(colab.cpf || '');
 
   // Parallel queries
-  const [docsPack, latestAso, timeline, embarques, afastamentos, acidentes, treinamentos, portalUser, ferias, reembolsos] =
+  const [docsPack, latestAso, timeline, embarques, afastamentos, acidentes, treinamentos, portalUser, ferias, reembolsos, live] =
     await Promise.all([
       getDocumentsPack(colaboradorId),
       getLatestAso(colaboradorId),
@@ -102,7 +103,20 @@ export async function getEmployeeFullRecord(colaboradorId: string): Promise<Empl
       getPortalUser(colab.user_id, cpf),
       getFerias(colab.user_id, cpf),
       getReembolsos(colab.user_id, cpf),
+      overlayStatusEscalaHoje([
+        {
+          id: colab.id as string,
+          status_embarque: colab.status_embarque as string | null,
+          standby: colab.standby as boolean | null,
+        },
+      ]),
     ]);
+
+  if (!live.error && live.rows[0]) {
+    colab.status_embarque = live.rows[0].status_embarque;
+    colab.standby = live.rows[0].standby;
+    colab.escala_codigo_hoje = live.rows[0].escala_codigo_hoje;
+  }
 
   const esocialSummary = buildEsocialSummary(timeline);
 
@@ -412,5 +426,7 @@ export async function searchEmployees(params: {
   }
 
   const { data } = await query.limit(params.limit || 20);
-  return data || [];
+  const rows = (data || []) as Array<{ id: string; status_embarque?: string | null; standby?: boolean | null }>;
+  const overlay = await overlayStatusEscalaHoje(rows);
+  return overlay.error ? rows : overlay.rows;
 }

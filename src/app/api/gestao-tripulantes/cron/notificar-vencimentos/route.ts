@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buscarAsosComAlerta } from '@/lib/gestao-tripulantes/aso-vencimentos';
+import { getAsoAntecedenciaDias } from '@/lib/gestao-tripulantes/aso-agendamento-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,8 @@ async function processarAlertas(request: NextRequest) {
       // allow internal cron or continue
     }
 
-    const { vencidos, vencendo } = await buscarAsosComAlerta(30);
+    const antecedenciaDias = await getAsoAntecedenciaDias();
+    const { vencidos, vencendo } = await buscarAsosComAlerta(antecedenciaDias);
     const listaAsos = [...vencidos, ...vencendo];
 
     const notificacoesInApp: Array<{
@@ -60,7 +62,7 @@ async function processarAlertas(request: NextRequest) {
         user_id: adm.id,
         type: 'compliance_alert',
         title: `🚨 Alerta DP: ${vencidos.length} ASOs Vencidos e ${vencendo.length} Vencendo`,
-        message: `Existem ${vencidos.length} ASO(s) vencido(s) e ${vencendo.length} vencendo nos próximos 30 dias.`,
+        message: `Existem ${vencidos.length} ASO(s) vencido(s) e ${vencendo.length} vencendo nos próximos ${antecedenciaDias} dias.`,
         priority: vencidos.length > 0 ? 'high' : 'normal',
         action_url: '/department/dp',
         created_at: new Date().toISOString(),
@@ -75,6 +77,7 @@ async function processarAlertas(request: NextRequest) {
       success: true,
       totalVencidos: vencidos.length,
       totalVencendo: vencendo.length,
+      antecedencia_dias: antecedenciaDias,
       notificacoesCriadas: notificacoesInApp.length,
     });
   } catch (error) {

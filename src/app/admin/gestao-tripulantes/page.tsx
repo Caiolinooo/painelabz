@@ -5,7 +5,7 @@ import {
   FiSave, FiRefreshCw, FiToggleLeft, FiSliders, FiDatabase,
   FiBell, FiCamera, FiCpu, FiSettings, FiLayout, FiChevronDown, FiChevronRight,
   FiAnchor, FiGlobe, FiBriefcase, FiPlay, FiCheckCircle, FiAlertTriangle, FiClock,
-  FiCalendar, FiDownload, FiFolder, FiCheckSquare
+  FiCalendar, FiDownload, FiFolder, FiCheckSquare, FiActivity
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import TiposEventoEscalaAdmin from '@/components/gestao-tripulantes/admin/TiposEventoEscalaAdmin';
@@ -13,6 +13,7 @@ import AuditoriaDocumentosTab from '@/components/gestao-tripulantes/admin/Audito
 import ExportarTab from '@/components/gestao-tripulantes/admin/ExportarTab';
 import CentrosCustoAdminTab from '@/components/gestao-tripulantes/admin/CentrosCustoAdminTab';
 import WorkflowFechamentoTab from '@/components/gestao-tripulantes/admin/WorkflowFechamentoTab';
+import AsoAgendamentoConfigTab from '@/components/gestao-tripulantes/admin/AsoAgendamentoConfigTab';
 
 function MioSyncButton() {
   const [syncing, setSyncing] = useState(false);
@@ -82,7 +83,7 @@ const defaultConfig: ConfigValues = {
   poliweb_username: '',
   poliweb_password: '',
   poliweb_habilitado: false,
-  notif_aso_dias_aviso: 30,
+  notif_aso_dias_aviso: 60,
   notif_treinamento_dias_aviso: 15,
   notif_canal_inapp: true,
   notif_canal_email: false,
@@ -251,6 +252,7 @@ export default function GestaoTripulantesAdminPage() {
     { id: 'exportar', label: 'Exportar', icon: FiDownload },
     { id: 'centros_custo', label: 'Centros de Custo', icon: FiFolder },
     { id: 'fechamento', label: 'Fechamento DP', icon: FiCheckSquare },
+    { id: 'aso_agendamento', label: 'Agendamento ASO', icon: FiActivity },
     { id: 'geral', label: 'Configuração Geral', icon: FiSettings },
     { id: 'escala', label: 'Marcadores Escala', icon: FiCalendar },
     { id: 'mio', label: 'Integração MIO', icon: FiDatabase },
@@ -334,6 +336,7 @@ export default function GestaoTripulantesAdminPage() {
           {activeTab === 'exportar' && <ExportarTab />}
           {activeTab === 'centros_custo' && <CentrosCustoAdminTab />}
           {activeTab === 'fechamento' && <WorkflowFechamentoTab />}
+          {activeTab === 'aso_agendamento' && <AsoAgendamentoConfigTab />}
 
           {activeTab === 'escala' && <TiposEventoEscalaAdmin />}
 
@@ -655,11 +658,12 @@ export default function GestaoTripulantesAdminPage() {
           {activeTab === 'notificacoes' && (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dias de Aviso - ASO</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dias de antecedência — ASO (alerta e sugestão de data)</label>
+                <p className="text-xs text-gray-500 mb-1">Padrão 60. Também editável na aba Agendamento ASO (fonte: gt_aso_agendamento_config).</p>
                 <input
                   type="number"
                   value={config.notif_aso_dias_aviso}
-                  onChange={e => updateField('notif_aso_dias_aviso', parseInt(e.target.value) || 30)}
+                  onChange={e => updateField('notif_aso_dias_aviso', parseInt(e.target.value) || 60)}
                   min={1}
                   max={365}
                   className="w-32 px-3 py-2 border rounded-md text-sm focus:ring-abz-blue focus:border-abz-blue"

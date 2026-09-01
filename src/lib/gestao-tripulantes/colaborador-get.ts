@@ -8,6 +8,7 @@ import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 import { marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
 import { montarItensAlerta } from '@/lib/gestao-tripulantes/documentos-alertas';
 import { contarDocsPorStatusPrimario } from '@/lib/gestao-tripulantes/documento-historico';
+import { overlayStatusEscalaHoje } from '@/lib/gestao-tripulantes/dashboard-service';
 
 export const DEFAULT_INCLUDE = [
   'profile',
@@ -345,7 +346,7 @@ export async function loadColaboradorDetail(
   const cpfClean = normalizeCpf(String(colaborador.cpf || ''));
 
   const wave2Start = Date.now();
-  const [asoRes, treRes, eventosRes, esocialRes] = await Promise.all([
+  const [asoRes, treRes, eventosRes, esocialRes, overlay] = await Promise.all([
     asoDocIds.length > 0
       ? supabaseAdmin.from('gt_documentos_aso').select('*').in('documento_id', asoDocIds)
       : Promise.resolve({ data: [] as any[] }),
@@ -366,8 +367,21 @@ export async function loadColaboradorDetail(
           .eq('evento_codigo', 'S-2220')
           .eq('cpf_trabalhador', cpfClean)
       : Promise.resolve({ data: [] as any[] }),
+    overlayStatusEscalaHoje([
+      {
+        id: String(colaborador.id),
+        status_embarque: colaborador.status_embarque as string | null,
+        standby: colaborador.standby as boolean | null,
+      },
+    ]),
   ]);
   timings.wave2 = Date.now() - wave2Start;
+
+  if (!overlay.error && overlay.rows[0]) {
+    colaborador.status_embarque = overlay.rows[0].status_embarque;
+    colaborador.standby = overlay.rows[0].standby;
+    colaborador.escala_codigo_hoje = overlay.rows[0].escala_codigo_hoje;
+  }
 
   const rawDocs = documentos;
   const counts = countDocsByStatus(rawDocs);

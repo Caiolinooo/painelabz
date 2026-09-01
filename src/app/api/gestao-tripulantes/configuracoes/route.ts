@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { saveAsoAgendamentoConfig } from '@/lib/gestao-tripulantes/aso-agendamento-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,11 @@ export async function GET(request: NextRequest) {
       for (const row of data) {
         configMap[row.chave] = row.valor;
       }
+    }
+
+    const asoCfg = configMap.gt_aso_agendamento_config;
+    if (asoCfg && typeof asoCfg === 'object' && asoCfg.antecedencia_dias != null) {
+      configMap.notif_aso_dias_aviso = asoCfg.antecedencia_dias;
     }
 
     return NextResponse.json({
@@ -70,6 +76,12 @@ export async function PUT(request: NextRequest) {
         console.error(`Erro ao salvar configuração ${chave}:`, upsertError);
         return NextResponse.json({ error: `Erro ao salvar configuração ${chave}` }, { status: 500 });
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'notif_aso_dias_aviso')) {
+      await saveAsoAgendamentoConfig({
+        antecedencia_dias: Number((body as Record<string, unknown>).notif_aso_dias_aviso),
+      });
     }
 
     return NextResponse.json({

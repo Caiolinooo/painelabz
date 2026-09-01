@@ -14,7 +14,7 @@ Ponto único de leitura do colaborador no portal: `gt_*` + usuário (`users_unif
 - Join por `gt_colaboradores.id`, `user_id` ou CPF dígitos.
 - Documentos: validade civil + papel vigente/histórico (`validade-civil.ts` / `documentos-alertas.ts`).
 - Módulos externos (`leave_requests`, `reembolsos`) são fail-soft: tabela ausente ou erro → lista vazia.
-- GET `/api/employee-hub/[id]` devolve o record plano (não `{ data }`).
+- GET `/api/employee-hub/[id]` devolve o record plano (não `{ data }`). `colaborador.status_embarque` é o status vivo da célula de hoje (`overlayStatusEscalaHoje` / `embarque-status.ts`), com `escala_codigo_hoje`. Search overlay the same.
 - UI: aba **Ficha unificada** no `CollaboratorModal`.
 
 ## Work Guidance

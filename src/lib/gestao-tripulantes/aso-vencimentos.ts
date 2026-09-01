@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { getAsoAntecedenciaDias } from '@/lib/gestao-tripulantes/aso-agendamento-config';
 import {
   adicionarDiasLocalISO,
   classificarValidadeCivil,
@@ -90,10 +91,12 @@ interface AsoAlertaRow {
 /**
  * ASOs vencidos ou com validade até `diasJanela` (inclusive), classificados
  * por data civil local (YYYY-MM-DD) — nunca via `Date` UTC de string ISO.
+ * Default: antecedência configurável (`gt_aso_agendamento_config`, 60 dias).
  */
-export async function buscarAsosComAlerta(diasJanela = 30): Promise<AsosComAlerta> {
+export async function buscarAsosComAlerta(diasJanela?: number): Promise<AsosComAlerta> {
+  const janela = diasJanela ?? (await getAsoAntecedenciaDias());
   const hoje = dataLocalISO();
-  const limite = adicionarDiasLocalISO(diasJanela);
+  const limite = adicionarDiasLocalISO(janela);
 
   const { data, error } = await supabaseAdmin
     .from('gt_documentos')

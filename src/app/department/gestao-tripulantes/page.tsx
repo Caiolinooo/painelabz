@@ -12,6 +12,7 @@ import GTMatrix from '@/components/gestao-tripulantes/GTMatrix';
 import GTMatrixLegend from '@/components/gestao-tripulantes/GTMatrixLegend';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import AsoReviewPanel from '@/components/gestao-tripulantes/AsoReviewPanel';
+import AsoAgendamentoInbox from '@/components/gestao-tripulantes/AsoAgendamentoInbox';
 import DocsAlertasPanel, { type DocumentoAlertaUI } from '@/components/gestao-tripulantes/DocsAlertasPanel';
 import type { TabKey } from '@/components/gestao-tripulantes/CollaboratorModal';
 import {
@@ -98,7 +99,9 @@ function GestaoTripulantesContent() {
   const searchParams = useSearchParams();
   const kpiFilter = parseGtDashboardKpi(searchParams.get('kpi'));
 
-  const [activeTab, setActiveTab] = useState<'matrix' | 'schedule'>('matrix');
+  const [activeTab, setActiveTab] = useState<'matrix' | 'schedule' | 'aso-logistica'>(() =>
+    searchParams.get('tab') === 'aso-logistica' ? 'aso-logistica' : 'matrix',
+  );
   const [scheduleMounted, setScheduleMounted] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [colaboradores, setColaboradores] = useState<Collaborator[]>([]);
@@ -116,6 +119,10 @@ function GestaoTripulantesContent() {
   useEffect(() => {
     if (filters.docsVencidos) setShowAlertas(true);
   }, [filters.docsVencidos]);
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'aso-logistica') setActiveTab('aso-logistica');
+  }, [searchParams]);
 
   const setKpiInUrl = useCallback((kpi: GtDashboardKpi | '') => {
     const params = new URLSearchParams(searchParams.toString());
@@ -241,7 +248,7 @@ function GestaoTripulantesContent() {
   }, [kpiFilter, t]);
 
   return (
-    <div className={activeTab === 'schedule' ? 'flex flex-col h-[calc(100vh-6.5rem)] overflow-hidden gap-3 -my-4 md:-my-6' : 'space-y-6'}>
+    <div className={activeTab === 'schedule' ? 'flex flex-col min-h-0 h-[calc(100vh-6.5rem)] overflow-hidden gap-3 -my-4 md:-my-6' : 'space-y-6'}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
@@ -281,6 +288,16 @@ function GestaoTripulantesContent() {
           >
             Man Schedule (Escala MIO)
           </button>
+          <button
+            onClick={() => setActiveTab('aso-logistica')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'aso-logistica'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            ASO Logística
+          </button>
         </nav>
       </div>
 
@@ -317,8 +334,12 @@ function GestaoTripulantesContent() {
         </div>
       )}
 
+      {activeTab === 'aso-logistica' && (
+        <AsoAgendamentoInbox />
+      )}
+
       {scheduleMounted && (
-        <div className={activeTab === 'schedule' ? 'flex-1 min-h-0 h-full w-full' : 'hidden'}>
+        <div className={activeTab === 'schedule' ? 'flex flex-col flex-1 min-h-0 w-full overflow-hidden' : 'hidden'}>
           <GTManScheduleTab onColabClick={handleRowClick} kpiFilter={kpiFilter} />
         </div>
       )}
