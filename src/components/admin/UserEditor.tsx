@@ -10,6 +10,9 @@ import { useI18n } from '@/contexts/I18nContext';
 import { supabase } from '@/lib/supabase';
 import { Sector } from '@/types/index';
 import { useACLPermissions } from '@/hooks/useACLPermissions';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { QHSE_MODULE_KEY } from '@/lib/document-catalog/permissions';
+import CollaboratorDocumentsCatalog from './CollaboratorDocumentsCatalog';
 
 // Interface para o usuário no editor
 export interface UserEditorData {
@@ -50,6 +53,8 @@ const UserEditor: React.FC<UserEditorProps> = ({
   isModal = true
 }) => {
   const { t } = useI18n();
+  const { hasAccess } = useSupabaseAuth();
+  const showQhseSection = hasAccess(QHSE_MODULE_KEY);
   const defaultUser: UserEditorData = {
     phoneNumber: '',
     firstName: '',
@@ -756,6 +761,18 @@ const UserEditor: React.FC<UserEditorProps> = ({
             </div>
           </div>
         </div>
+
+        {!isNewUser && editedUser._id && showQhseSection && (
+          <div className="mb-6 p-4 border border-amber-200 rounded-lg bg-amber-50/40">
+            <CollaboratorDocumentsCatalog userId={editedUser._id} onlyQhse />
+          </div>
+        )}
+
+        {!isNewUser && editedUser._id && (
+          <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+            <CollaboratorDocumentsCatalog userId={editedUser._id} hideQhse />
+          </div>
+        )}
 
         {/* Permissões de acesso */}
         <div className="mb-6">

@@ -21,6 +21,8 @@ import {
   lgpRotationStart,
   type RawLGPRecord,
 } from '@/lib/gestao-tripulantes/lgp-rotation';
+import { dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
+import { composeLgpObservacoes } from '@/lib/gestao-tripulantes/embarque-status';
 
 interface MIOConfig {
   baseUrl: string;
@@ -730,18 +732,35 @@ export async function syncEmbarquesFromMIO(): Promise<{
           const { type, extraPeriods } = detectRotationType(record, next);
           const nrRtpe = String(record['Nº RTPE'] || '');
           const mioId = `mio_lgp_${cpfLimpo}_${dataEmbarque}_${nrRtpe || i}`;
+          const embarqueReal = Boolean(record['Embarque Real']);
+          const tipoPrincipal = type === 'normal' && !embarqueReal ? 'previsto' : type;
+          const prevEmb = cleanDate(record['Prev. de Emb.']);
+          const realEmb = cleanDate(record['Embarque Real']);
 
           await upsertEmb({
             colaborador_id: colaborador.id,
-            tipo: type,
+            tipo: tipoPrincipal,
             data_embarque: dataEmbarque,
             data_desembarque: dataDesembarque,
             data_prevista_desembarque: dataPrevista,
             local_embarque: record.Origem || undefined,
             local_desembarque: record.Destino || undefined,
-            observacoes: record['RTPE Status'] ? `RTPE: ${record['RTPE Status']}` : undefined,
+            observacoes: composeLgpObservacoes(embarqueReal, record['RTPE Status'] ? String(record['RTPE Status']) : null),
             mio_embarque_id: mioId,
           });
+
+          if (prevEmb && realEmb && prevEmb < realEmb) {
+            await upsertEmb({
+              colaborador_id: colaborador.id,
+              tipo: 'previsto',
+              data_embarque: prevEmb,
+              data_desembarque: realEmb,
+              local_embarque: record.Origem || undefined,
+              local_desembarque: record.Destino || undefined,
+              observacoes: composeLgpObservacoes(false, record['RTPE Status'] ? String(record['RTPE Status']) : null),
+              mio_embarque_id: `${mioId}_previsto_${prevEmb}`,
+            });
+          }
 
           for (const extra of extraPeriods) {
             if (!extra.start) continue;
@@ -756,32 +775,36 @@ export async function syncEmbarquesFromMIO(): Promise<{
               mio_embarque_id: `${mioId}_${extra.type}_${extra.start}`,
             });
           }
-
-          if (record['Desembarque Real'] && !record['Prev. de Emb.']) {
-            await supabase
-              .from('gt_colaboradores')
-              .update({
-                data_ultimo_desembarque: dataDesembarque,
-                status_embarque: 'folga',
-                standby: false,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', colaborador.id);
-          } else if (record['Embarque Real'] && !record['Desembarque Real']) {
-            await supabase
-              .from('gt_colaboradores')
-              .update({
-                data_ultimo_embarque: dataEmbarque,
-                status_embarque: 'embarcado',
-                standby: false,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', colaborador.id);
-          }
         } catch (err) {
           erros.push(`Erro ao processar embarque CPF ${cpfLimpo}: ${err}`);
         }
       }
+
+      const hojeIso = dataLocalISO();
+      let statusAtual: 'embarcado' | 'folga' | 'desembarcado' = 'desembarcado';
+      let ultimoEmb: string | undefined;
+      let ultimoDes: string | undefined;
+      for (const record of sorted) {
+        const realEmb = cleanDate(record['Embarque Real']);
+        const realDes = cleanDate(record['Desembarque Real']);
+        const start = cleanDate(lgpRotationStart(record));
+        if (!start || start > hojeIso) continue;
+        if (realEmb && realEmb <= hojeIso && (!realDes || realDes > hojeIso)) {
+          statusAtual = 'embarcado';
+          ultimoEmb = realEmb;
+        } else if (realDes && realDes <= hojeIso) {
+          statusAtual = 'folga';
+          ultimoDes = realDes;
+        }
+      }
+      const statusPatch: Record<string, unknown> = {
+        status_embarque: statusAtual,
+        standby: false,
+        updated_at: new Date().toISOString(),
+      };
+      if (ultimoEmb) statusPatch.data_ultimo_embarque = ultimoEmb;
+      if (ultimoDes) statusPatch.data_ultimo_desembarque = ultimoDes;
+      await supabase.from('gt_colaboradores').update(statusPatch).eq('id', colaborador.id);
     }
 
     await persistMioCacheRow('lgp_reports', lgpRaw);

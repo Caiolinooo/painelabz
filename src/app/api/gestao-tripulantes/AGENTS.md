@@ -73,24 +73,24 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Cards da Matriz de Conformidade contam **somente colaboradores ativos** em centros de custo ativos.
 - Elegível: `gt_colaboradores.ativo = true` AND `deleted_at IS NULL`. Se `centro_custo_id` está preenchido, exclui quando `gt_centros_custo.ativo = false`. `centro_custo_id` nulo **entra**.
 - `total_colaboradores`: conjunto elegível.
-- `total_embarcados`: elegível AND `status_embarque = 'embarcado'`.
+- `total_embarcados`: elegível AND célula de **hoje** em `gt_historico_embarques` (e afastamentos) é código **exato `ON`**. Nunca `ON*` / `*` / STB / DBA / UTR / DHC. Fonte: `embarque-status.ts` + `listarIdsEmbarcadosHoje`. Não usar `status_embarque` para este card.
 - `total_disponiveis`: elegível AND `standby = true`.
-- `total_docs_vencidos` / `total_docs_vencendo`: só o documento **vigente** de cada slot (último ASO, último passaporte, último curso por `subtipo`/`titulo`, demais por tipo+número). Classificação **civil local** `YYYY-MM-DD` (`validade-civil.ts`). Cópias históricas vencidas **não** entram no KPI; aparecem em `GET /documentos/alertas` e na ficha. Não usar só `status_validacao` (pode estar stale). Sem validade (curso permanente) não entra nesses totais.
-- Painel: clique no card / filtro **Docs Vencidos** abre a lista com título, tipo, validade e aba. Clique na linha do colaborador com vencidos abre a aba **Ficha unificada**. Tool IA `buscar_documentos_vencidos`.
+- `total_docs_vencidos` / `total_docs_vencendo`: **somente o registro primário** de cada grupo (`documento-historico.ts` / `somarDocsPorStatusPrimario`). Classificação civil local `YYYY-MM-DD` no primário: vencido = `data_validade < hoje`; vencendo = `hoje ≤ data_validade ≤ hoje+30`. Declaração/certificado antigo do mesmo curso **não** entra se existir um primário válido. Sem validade (permanente) não entra nesses totais. Linhas obsoletas permanecem no banco. Cópias históricas vencidas aparecem em `GET /documentos/alertas` e na ficha (`total_docs_vencidos_historico`).
+- Painel: clique no card / filtro **Docs Vencidos** abre a lista com título, tipo, validade e aba. Clique na linha do colaborador com vencidos abre a aba **Ficha unificada**. Tool IA `buscar_documentos_vencidos`. Cards de KPI também aceitam `?kpi=embarcados|disponiveis|docs_vencidos|colaboradores`.
 - `asos_pendentes_revisao`: fila operacional (`status_revisao = pendente_revisao`), sem filtro de ativo.
-- Implementação: `src/lib/gestao-tripulantes/dashboard-service.ts`. Badges da lista (`qtd_docs_*`) usam a mesma regra de data.
+- Implementação: `src/lib/gestao-tripulantes/dashboard-service.ts`. Badges da lista (`qtd_docs_*`) usam a mesma regra de data **e o mesmo agrupamento primário**.
 
 ### GET colaborador performance
 
 - `GET /colaboradores/[id]` reads `gt_colaboradores` (not `gt_vw_colaboradores_completo`), excludes `mio_data`/`ocr_texto`/`xml_gerado`, two parallel DB waves. Optional `?include=` (default `profile,documentos,embarques,substituicoes,esocial_asos`).
-- List GET uses base tables; `?cpf=` + `?lite=1` for Man Schedule name-click (do not search the heavy view).
+- List GET uses base tables; `?cpf=` + `?lite=1` for Man Schedule name-click (do not search the heavy view). `?kpi=embarcados` filtra pelos mesmos IDs de `listarIdsEmbarcadosHoje` (não `status_embarque`).
 - `LIST_SELECT` includes `ativo`, `regime_trabalho`, `escala_embarque`, `escala_folga` and `centro_custo(nome, codigo)`. Flatten returns `cargo_nome` / `empresa_nome` / `embarcacao_nome` / `centro_custo_*` — consumers must not expect nested `cargo.nome`.
 - Client modal dedupes in-flight GETs (React Strict Mode + `_t` cache-bust). Man Schedule tab is lazy-mounted; `/api/man-schedule/realtime?janela=90d` is cached 60s on the client.
 
 ### Man Schedule — tipos / cores / observações
 
 - Table `gt_tipos_evento_escala`: `codigo`, `display_code`, `label`, `bg_color`, `text_color`, `ordem`, `ativo`, `is_system`, `maps_to_db_tipo`.
-- Seed system codes: `normal`→ON, `fi`→FI, `dba`→DBA, `stb`→STB, `offc`→OFF-C.
+- Seed system codes: `normal`→ON, `previsto`→ON* (não POB), `fi`→FI, `dba`→DBA, `stb`→STB, `offc`→OFF-C.
 - CRUD: `GET|POST /api/gestao-tripulantes/tipos-evento`, `PUT|DELETE /api/gestao-tripulantes/tipos-evento/[id]` (ADMIN/MANAGER for writes).
 - Embarques locais: `POST /embarques`, `PUT|DELETE /embarques/[id]` — soft-delete via `deleted_at`; PUT updates `origem='local'` so manual adjustments are preserved against MIO sync pulls without ever calling or writing back to MIO.
 - Storage mapping (`escala-tipos.ts`): UI `offc` persists as `offc` (**never** collapse to `folga_indenizada` / `fi`). Legacy `folga_indenizada|dobra|standby` normalize on read to `fi|dba|stb`.
@@ -98,6 +98,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Cache in-memory: assinatura inclui `count` + último `updated_at` **e** último `created_at` (insert local sem `updated_at` não pode reusar payload velho). POST/PUT/DELETE embarques chama `invalidateManScheduleCache()` e grava `updated_at`.
 - Grade: `allSchedules` é lista plana (`rotation_start`/`rotation_end`). Save otimista **insere/atualiza uma linha**, nunca `row.rotations`. Coluna ON/DBA/FI/TRE conta colunas visíveis; evento novo ganha de STB sobreposto (`pickOverlappingRotation`: início na coluna, depois data de início mais recente).
 - **Viewport dia/semana**: checkbox `Visualizar por dia` em `GTManScheduleTab` (`localStorage` `gt-man-schedule-viewport-day`). Desligado = colunas sábado–sexta (atual). Ligado = um dia por coluna (janela padrão 90d se sem filtro de data). Clique na célula passa a `Date` da coluna. Semanas continuam começando sábado.
+- **Filtro de data da escala**: UI só aplica `YYYY-MM-DD` completo (ano 1990–2100) via `parseCompleteFilterDate` / `ScheduleDateFilterInput`. Valores parciais do Chrome ao digitar o ano não expandem a timeline. Viewport dia recorta em 400 colunas; semana tem teto de segurança 2000.
 
 ### Schema notes
 
@@ -131,6 +132,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
   - Sem arquivo físico: gera instantaneamente a **Ficha Oficial de Registro e Conformidade de Treinamento** (`GET /api/gestao-tripulantes/documentos/[id]/pdf`) com layout ABZ Group, dados do tripulante, dados do curso, QR Code e carimbo de validação digital.
 - **Anexo com 1 Clique & Edição**: Cada card possui botão para anexar o arquivo físico ao curso (`documento_id` no `/api/gestao-tripulantes/documentos/upload`) e botão de edição para atualizar número, datas, órgão e carga horária.
 - **Exportação XLSX**: `GET /api/gestao-tripulantes/colaboradores/[id]/treinamentos/export` gera planilha profissional estilizada com toda a matriz de treinamentos do colaborador. Client download uses `getToken()` (never `fetchWithToken`, which clones the body) and must not call `onRefresh` or clear modal state.
+- **Histórico colapsável (primário vs obsoleto)**: `documento-historico.ts` agrupa por `tipo_documento` + código do curso (`subtipo` / sigla no título / alias, ex. CBSP = “curso básico de segurança de plataforma”). **Não** apagar linhas. Primary = validade civil melhor (permanente/válido > vencendo > vencido), certificado vence declaração, depois data de validade/conclusão mais recente. `GET /colaboradores/[id]` devolve **todas** as linhas (sem dedup por título). `qtd_docs_vencidos|vencendo|validos`, filtro `onlyVencidos` e KPIs `total_docs_vencidos|vencendo` usam **somente o primário** de cada grupo.
 
 ### Collaborator modal — Dados Pessoais edit
 
@@ -143,7 +145,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 - Filename/title is storage label only — never treat as identity.
 - Profile ASO tab: separate disponíveis vs rascunhos; drafts badge “não enviado / rascunho”.
-- Escala colors/labels: load from `tipos-evento` API — do not hardcode ON/FI/DBA/STB/OFF-C in the grade.
+- Escala colors/labels: load from `tipos-evento` API — do not hardcode ON/FI/DBA/STB/OFF-C in the grade. `previsto` (ON*) vem de `embarque-status.ts` / seed; LGP sem Embarque Real persiste `tipo=previsto` + `GT_EMBARQUE=previsto`.
 - Local scale edits must PUT when UUID exists; never create-always. Operates strictly on local gt_historico_embarques without writing to MIO.
 - **MIO is pull-only**: `mioClient` throws outside `runMioPull()`. Feature modules read **canonical `gt_*` only** (`gt-canonical.ts`). PoliWeb scrape is ingest (`POST /poliweb` / cron), not a runtime dependency — imported ASOs live in `gt_documentos`/`gt_documentos_aso` with `origem=poliweb`. Admin pull: `POST /api/gestao-tripulantes/mio/sync` or cron `/api/gestao-tripulantes/cron/sync-mio`. Files: download bytes from MIO → bucket `gestao-tripulantes-documentos` → `arquivo_url` local. Missing bytes set `arquivo_ausente=true` and enqueue `gt_mio_anexo_misses` (never silent metadata-only). Never upload over MIO.
 - Inactive/desligado colaboradores are persisted (`ativo=false`); trainings/ASOs/embarques use `findColaboradorByCpf` (no `ativo` filter).
@@ -202,13 +204,16 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Full pull: `npm run mio:pull` (admin credentials in `.env.local`). Dry-run: `npm run mio:pull:dry`.
 - Dados Pessoais edit mode: all identity + professional fields are inputs (not plain text); Save persists via PUT whitelist including CPF (validated) and FK professional columns.
 - After Treinamentos “Exportar Excel”, modal still shows collaborator data (reopen included); GET 200 is not wiped by export.
+- Valid CBSP + expired/declaração CBSP do mesmo colaborador: UI mostra 1 linha primária válida, histórico colapsado “Obsoleto”, `qtd_docs_vencidos` da ficha **não** inclui o CBSP antigo. `npx tsx --test src/lib/gestao-tripulantes/documento-historico.test.ts`.
 - `GET /api/gestao-tripulantes/poliweb/asos-pendentes` returns 200 with array `data` (empty + `warning` if Poliweb down); GT page does not show Next.js overlay.
 - `GET /api/gestao-tripulantes/aso/notificar-vencimentos` returns `{ vencidos, vencendo }` with `colaborador.nome_completo` (not nested `gt_colaboradores`); `/department/dp` wraps `MainLayout`.
-- `GET /dashboard` totals exclude `ativo=false` and inactive cost centers; docs vencidos use `data_validade < hoje` civil.
+- `GET /dashboard` totals exclude `ativo=false` and inactive cost centers; docs vencidos/vencendo count **primary per group** only (`somarDocsPorStatusPrimario`).
 - Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks.
-- `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; docs vencidos = vigente por slot + `data_validade < hoje` civil, não só `status_validacao`.
+- `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; `total_embarcados` = ON exato hoje (`embarque-status.ts`); `total_docs_vencidos` conta só o primário por grupo.
 - `GET /documentos/alertas` lista título/tipo/aba; `npx tsx scripts/verify-docs-alertas.ts` → `DOCS_ALERTAS_VERIFY_OK`.
+- Typing year digits in Man Schedule Data Início does not rebuild the grid until a complete 1990–2100 date.
+- Clique no card Embarcados filtra `GET /colaboradores?kpi=embarcados` ao mesmo conjunto. `npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts`.
 
 ## Child DOX Index
 
-_(none)_
+- `src/lib/document-catalog/AGENTS.md` — catálogo global; aba QHSE / EPI do perfil GT (módulo `epi`)

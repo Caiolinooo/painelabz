@@ -6,6 +6,9 @@ import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx-js-style';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import ScheduleDateFilterInput from '@/components/gestao-tripulantes/ScheduleDateFilterInput';
+import { parseCompleteFilterDate } from '@/lib/gestao-tripulantes/filter-date';
+import { scheduleDisplayCode } from '@/lib/gestao-tripulantes/embarque-status';
 
 interface CrewSchedule {
     id: string;
@@ -18,7 +21,7 @@ interface CrewSchedule {
     rotation_end: string | null;
     embarque_status: string | null;
     local_embarque: string;
-    rotation_type: 'normal' | 'fi' | 'dba' | 'stb' | 'offc';
+    rotation_type: string;
 }
 
 interface ApiMeta {
@@ -235,9 +238,9 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
     // ─── Filtered weeks based on date range selector ───
     const filteredWeeks = useMemo(() => {
-        if (!filterDateStart && !filterDateEnd) return weeks;
-        const startDate = filterDateStart ? parseLocalDate(filterDateStart) : null;
-        const endDate = filterDateEnd ? parseLocalDate(filterDateEnd) : null;
+        const startDate = parseCompleteFilterDate(filterDateStart);
+        const endDate = parseCompleteFilterDate(filterDateEnd);
+        if (!startDate && !endDate) return weeks;
 
         return weeks.filter(w => {
             const weekDate = new Date(w.date);
@@ -304,7 +307,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     };
 
     // ─── Check exact rotation status for the week ───
-    const getWeekRotationMeta = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string; exibir_dia_inicio?: boolean }[]): { status: '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB'; dayLabel?: string } => {
+    const getWeekRotationMeta = (weekDate: Date, rotations: { start: string | null; end: string | null; type?: string; exibir_dia_inicio?: boolean }[]): { status: string; dayLabel?: string } => {
         const wStart = new Date(weekDate);
         wStart.setHours(0, 0, 0, 0);
         const wEnd = new Date(wStart);
@@ -357,12 +360,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             }
         }
 
-        let status: '' | 'ON' | 'OFF-C' | 'FI' | 'DBA' | 'STB' = 'ON';
-        if (bestRot.type === 'fi') status = 'FI';
-        else if (bestRot.type === 'dba') status = 'DBA';
-        else if (bestRot.type === 'stb') status = 'STB';
-        else if (bestRot.type === 'offc') status = 'OFF-C';
-
+        const status = scheduleDisplayCode(bestRot.type || 'normal');
         return { status, dayLabel };
     };
 
@@ -431,7 +429,12 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     const baseCode = match ? match[1].toUpperCase() : rawVal;
                     const daySuffix = match && match[2] ? match[2] : '';
 
-                    if (baseCode === 'ON' || baseCode === 'FI' || baseCode === 'DBA') {
+                    if (baseCode === 'ON*' || baseCode === '*') {
+                        cellStyle.fill = { fgColor: { rgb: "C6D9F0" } };
+                        cellStyle.font = { color: { rgb: "1F4E79" }, bold: true, sz: 10 };
+                        cellStyle.border = defaultBorder;
+                        cell.v = daySuffix ? `${baseCode}\n${daySuffix}` : baseCode;
+                    } else if (baseCode === 'ON' || baseCode === 'FI' || baseCode === 'DBA') {
                         cellStyle.fill = { fgColor: { rgb: "E2EFDA" } };
                         cellStyle.font = { color: { rgb: "00B050" }, bold: true, sz: 10 };
                         cellStyle.border = defaultBorder;
@@ -605,20 +608,20 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
                     <div className="min-w-[140px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateStart', 'Data Inicio')}</label>
-                        <input
-                            type="date"
+                        <ScheduleDateFilterInput
+                            aria-label={t('manSchedule.dateStart', 'Data Inicio')}
                             value={filterDateStart}
-                            onChange={(e) => setFilterDateStart(e.target.value)}
+                            onCommit={setFilterDateStart}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                         />
                     </div>
 
                     <div className="min-w-[140px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateEnd', 'Data Fim')}</label>
-                        <input
-                            type="date"
+                        <ScheduleDateFilterInput
+                            aria-label={t('manSchedule.dateEnd', 'Data Fim')}
                             value={filterDateEnd}
-                            onChange={(e) => setFilterDateEnd(e.target.value)}
+                            onCommit={setFilterDateEnd}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                         />
                     </div>
@@ -753,7 +756,8 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                                                     const dayLabel = meta.dayLabel;
                                                     const isCurrentWeek = wIdx === currentWeekIndex;
                                                     let cellClass = 'bg-white border-[#d1d5db]';
-                                                    if (status === 'ON' || status === 'FI' || status === 'DBA') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';
+                                                    if (status === 'ON*') cellClass = 'bg-[#c6d9f0] text-[#1f4e79] font-bold border-black';
+                                                    else if (status === 'ON' || status === 'FI' || status === 'DBA') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';
                                                     else if (status === 'OFF-C' || status === 'STB') cellClass = 'bg-[#f4cccc] text-[#cc0000] font-bold border-black';
                                                     
                                                     if (isCurrentWeek) {

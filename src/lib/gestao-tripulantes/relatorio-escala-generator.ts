@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf, mapDbTipoToCodigo } from '@/lib/gestao-tripulantes/escala-tipos';
+import { isRotacaoPrevista } from '@/lib/gestao-tripulantes/embarque-status';
 
 export interface AprovadorRegistro {
   nome: string;
@@ -332,6 +333,8 @@ export async function gerarRelatorioEscalaMensal(
               // Rotação regular: se ultrapassar a escala máxima contínua (ex: >28d na 28x28, >14d na 14x14), contabiliza como DBA (Dobra)
               if (diasCorridosEmbarque > maxDiasRegulares) {
                 statusDoDia = 'DBA';
+              } else if (isRotacaoPrevista(h.tipo, h.observacoes)) {
+                statusDoDia = 'ON*';
               } else {
                 statusDoDia = 'ON';
               }
@@ -405,6 +408,8 @@ export async function gerarRelatorioEscalaMensal(
               const diasDesdeInicio = Math.floor((wStart.getTime() - hStart.getTime()) / 86400000) + 1;
               if (diasDesdeInicio > maxDiasRegulares) {
                 weekStatus = 'DBA';
+              } else if (isRotacaoPrevista(h.tipo, h.observacoes)) {
+                weekStatus = 'ON*';
               } else {
                 weekStatus = 'ON';
               }

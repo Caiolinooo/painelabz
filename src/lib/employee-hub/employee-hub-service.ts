@@ -7,7 +7,11 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 import { listarDocumentosAlertas } from '@/lib/gestao-tripulantes/documentos-alertas';
-import { classificarValidadeCivil, marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
+import { marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
+import {
+  agruparDocumentosPorTipo,
+  contarDocsPorStatusPrimario,
+} from '@/lib/gestao-tripulantes/documento-historico';
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -195,7 +199,7 @@ async function getDocumentsPack(colaboradorId: string): Promise<{
 }> {
   const { data: docs } = await supabaseAdmin
     .from('gt_documentos')
-    .select('id, colaborador_id, tipo_documento, subtipo, titulo, numero_documento, data_emissao, data_validade, status_validacao, origem, created_at')
+    .select('id, colaborador_id, tipo_documento, subtipo, titulo, descricao, numero_documento, origem, data_emissao, data_validade, status_validacao, created_at')
     .eq('colaborador_id', colaboradorId)
     .is('deleted_at', null);
 
@@ -213,12 +217,14 @@ async function getDocumentsPack(colaboradorId: string): Promise<{
   for (const doc of marked) {
     const tipo = doc.tipo_documento || 'outro';
     result.byType[tipo] = (result.byType[tipo] || 0) + 1;
-    if (doc.papel === 'historico') continue;
-    const alerta = classificarValidadeCivil(doc.data_validade);
-    if (alerta === 'vencido') result.vencidos++;
-    else if (alerta === 'vencendo') result.vencendo++;
-    else if (alerta === 'valido') result.validos++;
-    else result.pendentes++;
+  }
+
+  const counts = contarDocsPorStatusPrimario(raw);
+  result.validos = counts.qtd_docs_validos;
+  result.vencidos = counts.qtd_docs_vencidos;
+  result.vencendo = counts.qtd_docs_vencendo;
+  for (const g of agruparDocumentosPorTipo(raw)) {
+    if (g.primary.status_validacao === 'pendente') result.pendentes += 1;
   }
 
   const alertasRes = await listarDocumentosAlertas({ colaboradorIds: [colaboradorId] });

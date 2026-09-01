@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.70.0] - 2026-09-01
+
+### ⚓ GT, QHSE/EPI e Calendário: POB só ON, histórico de docs, catálogo e dedupe
+
+1. **Filtro de data (Man Schedule)**: o `input type=date` do Chrome disparava `0002-01-01` enquanto o ano era digitado e a grade montava centenas de milhares de colunas. Agora só entra `YYYY-MM-DD` completo (1990–2100), com teto de colunas (`filter-date.ts`, `ScheduleDateFilterInput.tsx`).
+2. **POB / Embarcados Agora**: conta só o código de escala **exato `ON`** no dia civil — não `ON*`, `*`, STB, DBA, FI, etc. (caso 3P do Aislan: 2 ON + 1 ON*). Cards de KPI clicáveis com `?kpi=embarcados|disponiveis|docs_vencidos|colaboradores` (`embarque-status.ts`).
+3. **Histórico de treinamentos/documentos**: agrupa por tipo de curso (CBSP etc.); a linha primária é o certificado/validade mais recente; versões antigas ficam em Histórico/Obsoleto com download. KPIs e resumos usam só o primário, para declaração vencida não gerar pendência falsa.
+4. **Catálogo global de documentos** + aba nativa **QHSE / EPI** na ficha GT, `/profile` e `/admin/users`. Liberado pelo módulo **EPI** (`epi`) já existente — sem ACL extra de catálogo. Ficha AN-HSE-005, entregas e lista de presença QHSE. A aba Documentos do GT deixa de despejar “outros módulos”.
+5. **Calendário**: deduplica título semelhante + mesmo início + local compatível (só feriados + ICS; sem eventos MIO). Hint para duplicatas ocultas (`calendar-event-dedupe.ts`).
+
 ## [5.69.3] - 2026-08-31
 
 ### 🛠️ GT: documento vencido visível + lançamentos de escala na coluna ON

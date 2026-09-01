@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.69.3-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.70.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
@@ -24,14 +24,15 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ---
 
-## Novidades da Versão [v5.67.0]
+## Novidades da Versão [v5.70.0]
 
 | | Capacidade | Destaque |
 |---|---|---|
-| ⚓ | **Fechamento Mensal DP & Assinatura Digital** | Workflow completo com modal de conferência, assinatura digital auditável com hash SHA-256 e disparo de e-mail ao DP com anexo XLSX oficial. |
-| 📊 | **Totais de ON, DBA, FI e TRE por Colaborador** | Cômputo e colunas individuais na grade de escalas e no motor de exportação XLSX em folha única (`Schedule`). |
-| 🏢 | **Gestão Global de Centros de Custo** | Módulo e endpoints unificados compartilhados entre Gestão de Tripulantes, DP/Folha, Finanças e Logística. |
-| 📜 | **Histórico Completo de Escalas (MIO + Local)** | Suporte a `janela=all` sem truncamento e com visualização de todo o histórico passado de embarques. |
+| 🛡️ | **QHSE / EPI na ficha** | Aba nativa no modal GT, `/profile` e admin, liberada pelo módulo EPI já existente. Catálogo global de documentos do colaborador (ficha AN-HSE-005, entregas, lista de presença). |
+| ⚓ | **POB só ON** | Embarcados Agora conta código exato `ON` (não `ON*` / `*` / STB). Cards de KPI clicáveis (`?kpi=`). |
+| 📜 | **Histórico de cursos/docs** | Primário = certificado/validade mais recente (CBSP etc.); irmãos colapsados em Histórico. KPIs não inflacionam com declaração vencida. |
+| 📅 | **Man Schedule estável** | Filtro de data só aplica `YYYY-MM-DD` completo (1990–2100) — o Chrome não congela mais a grade ao digitar o ano. |
+| 🗓️ | **Calendário sem duplicatas** | ICS + feriados: título semelhante + mesmo horário + local compatível vira um evento. |
 
 ---
 

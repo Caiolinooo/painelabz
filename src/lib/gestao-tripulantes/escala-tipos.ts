@@ -1,6 +1,7 @@
 /**
  * Helpers for Man Schedule event types (marcadores customizáveis).
- * Storage codes: normal | fi | dba | stb | offc | custom
+ * Storage codes: normal | previsto | fi | dba | stb | offc | custom
+ * `previsto` displays as ON* and is never POB.
  * Legacy DB values (folga_indenizada, dobra, standby) are normalized on read.
  */
 
@@ -22,6 +23,7 @@ export interface GTTipoEventoEscala {
 /** Built-in seeds used when table is empty / unavailable. */
 export const DEFAULT_TIPOS_EVENTO_ESCALA: Omit<GTTipoEventoEscala, 'id' | 'created_at' | 'updated_at'>[] = [
   { codigo: 'normal', display_code: 'ON', label: 'Embarcado', bg_color: '#e2efda', text_color: '#00b050', ordem: 10, ativo: true, is_system: true, maps_to_db_tipo: 'normal' },
+  { codigo: 'previsto', display_code: 'ON*', label: 'Embarque previsto (não POB)', bg_color: '#c6d9f0', text_color: '#1f4e79', ordem: 15, ativo: true, is_system: true, maps_to_db_tipo: 'previsto' },
   { codigo: 'fi', display_code: 'FI', label: 'Folga Indenizada', bg_color: '#e2efda', text_color: '#00b050', ordem: 20, ativo: true, is_system: true, maps_to_db_tipo: 'folga_indenizada' },
   { codigo: 'dba', display_code: 'DBA', label: 'Dobra', bg_color: '#fce5cd', text_color: '#783f04', ordem: 30, ativo: true, is_system: true, maps_to_db_tipo: 'dobra' },
   { codigo: 'stb', display_code: 'STB', label: 'StandBy', bg_color: '#fff2cc', text_color: '#7f6000', ordem: 40, ativo: true, is_system: true, maps_to_db_tipo: 'standby' },
@@ -33,6 +35,9 @@ export const DEFAULT_TIPOS_EVENTO_ESCALA: Omit<GTTipoEventoEscala, 'id' | 'creat
 
 const LEGACY_TO_CODIGO: Record<string, string> = {
   normal: 'normal',
+  previsto: 'previsto',
+  on_previsto: 'previsto',
+  'on*': 'previsto',
   folga_indenizada: 'fi',
   fi: 'fi',
   dobra: 'dba',
@@ -74,6 +79,10 @@ export function mapCodigoToDbTipo(codigo: string | null | undefined): string {
     case 'normal':
     case 'on':
       return 'normal';
+    case 'previsto':
+    case 'on_previsto':
+    case 'on*':
+      return 'previsto';
     case 'fi':
     case 'folga_indenizada':
       return 'fi';

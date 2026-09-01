@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
@@ -13,6 +14,10 @@ import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal
 import AsoReviewPanel from '@/components/gestao-tripulantes/AsoReviewPanel';
 import DocsAlertasPanel, { type DocumentoAlertaUI } from '@/components/gestao-tripulantes/DocsAlertasPanel';
 import type { TabKey } from '@/components/gestao-tripulantes/CollaboratorModal';
+import {
+  parseGtDashboardKpi,
+  type GtDashboardKpi,
+} from '@/lib/gestao-tripulantes/embarque-status';
 
 const GTManScheduleTab = dynamic(
   () => import('@/components/gestao-tripulantes/GTManScheduleTab'),
@@ -66,9 +71,33 @@ interface FiltersState {
   docsVencidos: boolean;
 }
 
-export default function GestaoTripulantesPage() {
+function kpiBannerKey(kpi: GtDashboardKpi | ''): string {
+  switch (kpi) {
+    case 'embarcados':
+      return 'gestaoTripulantes.dashboard.kpiBannerEmbarcados';
+    case 'disponiveis':
+      return 'gestaoTripulantes.dashboard.kpiBannerDisponiveis';
+    case 'docs_vencidos':
+      return 'gestaoTripulantes.dashboard.kpiBannerDocs';
+    case 'colaboradores':
+      return 'gestaoTripulantes.dashboard.kpiBannerTotal';
+    case '':
+      return '';
+    default: {
+      const _exhaustive: never = kpi;
+      return _exhaustive;
+    }
+  }
+}
+
+function GestaoTripulantesContent() {
   const { t } = useI18n();
   const { user } = useSupabaseAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const kpiFilter = parseGtDashboardKpi(searchParams.get('kpi'));
+
   const [activeTab, setActiveTab] = useState<'matrix' | 'schedule'>('matrix');
   const [scheduleMounted, setScheduleMounted] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -87,6 +116,30 @@ export default function GestaoTripulantesPage() {
   useEffect(() => {
     if (filters.docsVencidos) setShowAlertas(true);
   }, [filters.docsVencidos]);
+
+  const setKpiInUrl = useCallback((kpi: GtDashboardKpi | '') => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (kpi) params.set('kpi', kpi);
+    else params.delete('kpi');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const handleKpiClick = useCallback((kpi: GtDashboardKpi) => {
+    const next = kpiFilter === kpi ? '' : kpi;
+    if (next === 'embarcados' || next === 'disponiveis' || next === 'docs_vencidos' || next === 'colaboradores') {
+      setActiveTab('matrix');
+    }
+    setShowAlertas(next === 'docs_vencidos');
+    setFilters((prev) => ({
+      ...prev,
+      status: '',
+      apenasStandby: next === 'disponiveis',
+      docsVencidos: next === 'docs_vencidos',
+      ativo: 'ativos',
+    }));
+    setKpiInUrl(next);
+  }, [kpiFilter, setKpiInUrl]);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -108,11 +161,15 @@ export default function GestaoTripulantesPage() {
       if (filters.embarcacao) params.set('embarcacao', filters.embarcacao);
       if (filters.cargo) params.set('cargo', filters.cargo);
       if (filters.centro_custo) params.set('centro_custo', filters.centro_custo);
-      if (filters.status) params.set('status', filters.status);
+      if (kpiFilter === 'embarcados') {
+        params.set('kpi', 'embarcados');
+      } else if (filters.status) {
+        params.set('status', filters.status);
+      }
       if (filters.ativo) params.set('ativo', filters.ativo);
-      if (filters.apenasStandby) params.set('standby', 'true');
-      if (filters.docsVencidos) params.set('onlyVencidos', 'true');
-      params.set('limit', '100');
+      if (kpiFilter === 'disponiveis' || filters.apenasStandby) params.set('standby', 'true');
+      if (kpiFilter === 'docs_vencidos' || filters.docsVencidos) params.set('onlyVencidos', 'true');
+      params.set('limit', kpiFilter ? '500' : '100');
 
       const res = await fetchWithToken(`/api/gestao-tripulantes/colaboradores?${params}`);
       if (!res.ok) throw new Error('Erro ao carregar colaboradores');
@@ -123,7 +180,7 @@ export default function GestaoTripulantesPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, kpiFilter]);
 
   useEffect(() => {
     if (user) {
@@ -138,11 +195,14 @@ export default function GestaoTripulantesPage() {
       fetchColaboradores();
     }, delay);
     return () => clearTimeout(timer);
-  }, [user, filters, fetchColaboradores]);
+  }, [user, filters, kpiFilter, fetchColaboradores]);
 
   const handleFilterChange = useCallback((partial: Partial<FiltersState>) => {
+    if (partial.status !== undefined || partial.apenasStandby !== undefined || partial.docsVencidos !== undefined) {
+      setKpiInUrl('');
+    }
     setFilters(prev => ({ ...prev, ...partial }));
-  }, []);
+  }, [setKpiInUrl]);
 
   const handleRowClick = useCallback((colaborador: Collaborator) => {
     setSelectedColaborador(colaborador);
@@ -174,6 +234,11 @@ export default function GestaoTripulantesPage() {
     setHighlightDocId(item.id);
     setShowModal(true);
   }, []);
+
+  const bannerLabel = useMemo(() => {
+    const key = kpiBannerKey(kpiFilter);
+    return key ? t(key) : '';
+  }, [kpiFilter, t]);
 
   return (
     <div className={activeTab === 'schedule' ? 'flex flex-col h-[calc(100vh-6.5rem)] overflow-hidden gap-3 -my-4 md:-my-6' : 'space-y-6'}>
@@ -222,7 +287,19 @@ export default function GestaoTripulantesPage() {
       {activeTab === 'matrix' && (
         <div className="space-y-6">
           <AsoReviewPanel compact />
-          <DashboardCards data={dashboard} onExpiredClick={() => setShowAlertas((v) => !v)} />
+          <DashboardCards data={dashboard} activeKpi={kpiFilter} onKpiClick={handleKpiClick} />
+          {bannerLabel && (
+            <div className="flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 text-blue-900 text-sm rounded-xl px-4 py-2">
+              <span>{bannerLabel}</span>
+              <button
+                type="button"
+                onClick={() => handleKpiClick(kpiFilter || 'colaboradores')}
+                className="text-xs font-semibold underline underline-offset-2 hover:text-blue-700"
+              >
+                {t('gestaoTripulantes.dashboard.kpiClear', 'Limpar filtro')}
+              </button>
+            </div>
+          )}
           {showAlertas && (
             <DocsAlertasPanel
               open={showAlertas}
@@ -242,7 +319,7 @@ export default function GestaoTripulantesPage() {
 
       {scheduleMounted && (
         <div className={activeTab === 'schedule' ? 'flex-1 min-h-0 h-full w-full' : 'hidden'}>
-          <GTManScheduleTab onColabClick={handleRowClick} />
+          <GTManScheduleTab onColabClick={handleRowClick} kpiFilter={kpiFilter} />
         </div>
       )}
 
@@ -255,5 +332,13 @@ export default function GestaoTripulantesPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function GestaoTripulantesPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse h-64 bg-gray-100 rounded-xl" aria-hidden="true" />}>
+      <GestaoTripulantesContent />
+    </Suspense>
   );
 }

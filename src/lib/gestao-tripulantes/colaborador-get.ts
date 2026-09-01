@@ -5,8 +5,9 @@
  */
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
-import { contarAlertasVigentes, marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
+import { marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
 import { montarItensAlerta } from '@/lib/gestao-tripulantes/documentos-alertas';
+import { contarDocsPorStatusPrimario } from '@/lib/gestao-tripulantes/documento-historico';
 
 export const DEFAULT_INCLUDE = [
   'profile',
@@ -118,23 +119,25 @@ function flattenEmbarque(row: Record<string, unknown>) {
 }
 
 function countDocsByStatus(documentos: {
-  id: string;
+  id?: string;
   colaborador_id?: string | null;
   tipo_documento?: string | null;
   subtipo?: string | null;
   titulo?: string | null;
+  descricao?: string | null;
+  origem?: string | null;
   numero_documento?: string | null;
   data_emissao?: string | null;
   data_validade?: string | null;
   created_at?: string | null;
   status_validacao?: string | null;
+  treinamento_data?: { nome_curso?: string | null; tipo_curso?: string | null } | null;
 }[]) {
-  const marked = marcarPapeisConformidade(documentos);
-  const counts = contarAlertasVigentes(marked);
+  const counts = contarDocsPorStatusPrimario(documentos);
   return {
-    qtd_docs_vencidos: counts.vencidos,
-    qtd_docs_vencendo: counts.vencendo,
-    qtd_docs_validos: counts.validos,
+    qtd_docs_vencidos: counts.qtd_docs_vencidos,
+    qtd_docs_vencendo: counts.qtd_docs_vencendo,
+    qtd_docs_validos: counts.qtd_docs_validos,
   };
 }
 

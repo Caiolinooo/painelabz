@@ -89,6 +89,8 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Deploy / hosting**: produção e previews no **Vercel** apenas. Não usar Netlify (legado); ao falar de deploy, env vars, cron ou build, referir Vercel.
 - **Startup Experience (Splash & Áudio)**: gerenciado em `/admin/users` via `UserEditor` e `users_unified` (`startup_splash_enabled`, `startup_splash_url`, `startup_sound_enabled`, `startup_sound_url`). Assets em bucket `user-startup-assets`. Visualizado na tabela com badges e executado 1x por sessão via `StartupExperience`.
 - **Calendário (`/calendario`)**: só feriados oficiais + eventos do ICS compartilhado. Sem embarques, cursos, ASO ou outros eventos operacionais MIO/`gt_*`. Ver `src/app/calendario/AGENTS.md`.
+- **QHSE/EPI na ficha**: aba **QHSE / EPI** no modal GT e em `/profile` (seção no UserEditor) quando o viewer tem o módulo `epi`. Sem ACL extra de catálogo. Admin libera em `/admin/users` → Módulos do Sistema → EPI. Ver `src/lib/document-catalog/AGENTS.md`.
+- **Documentos globais do colaborador**: catálogo vivo em `src/lib/document-catalog/` (CPF / user id / e-mail). Inclui QHSE/ficha EPI e listas de presença assinadas. Sem copiar blobs. Ver `src/lib/document-catalog/AGENTS.md`.
 
 ## Child DOX Index
 
@@ -103,5 +105,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/app/calendario/AGENTS.md` — só feriados + ICS compartilhado; sem MIO/embarque/curso
 - `src/app/api/calendar/AGENTS.md` — ICS `from`/`to` vs `rangeDays` (futuros)
 - `src/lib/employee-hub/AGENTS.md` — ficha unificada do colaborador (`gt_*` + portal + férias + reembolso)
+- `src/lib/document-catalog/AGENTS.md` — catálogo global de documentos (QHSE/EPI, lista de presença, GT, academy)
 ## Index of Modules
 

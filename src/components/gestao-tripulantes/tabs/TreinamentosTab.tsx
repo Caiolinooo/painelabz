@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
   FiUpload,
   FiDownload,
@@ -14,13 +14,19 @@ import {
   FiCheck,
   FiPaperclip,
   FiCalendar,
-  FiAward
+  FiAward,
+  FiArchive
 } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken, getToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
-import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
+import { documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
+import HistoricoColapsavel from '@/components/gestao-tripulantes/HistoricoColapsavel';
+import {
+  agruparDocumentosPorTipo,
+  contarDocsPorStatusPrimario,
+} from '@/lib/gestao-tripulantes/documento-historico';
 
 export interface Document {
   id: string;
@@ -39,6 +45,7 @@ export interface Document {
   descricao?: string | null;
   origem?: string | null;
   papel_conformidade?: 'vigente' | 'historico';
+  created_at?: string | null;
   treinamento_data?: {
     nome_curso?: string | null;
     instituicao?: string | null;
@@ -65,30 +72,89 @@ function formatDate(dateStr?: string | null): string {
   }
 }
 
-function StatusBadge({ status, hasValidade }: { status?: string | null; hasValidade: boolean }) {
-  if (!hasValidade) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-        <FiCheck className="w-3 h-3 text-indigo-600" /> Permanente
-      </span>
-    );
+type BadgeKind = 'permanente' | 'valido' | 'vencendo' | 'vencido' | 'pendente' | 'obsoleto' | 'outro';
+
+function resolveBadgeKind(status?: string | null, hasValidade?: boolean, obsoleto?: boolean): BadgeKind {
+  if (obsoleto) return 'obsoleto';
+  if (!hasValidade) return 'permanente';
+  switch (status) {
+    case 'valido':
+      return 'valido';
+    case 'vencendo':
+      return 'vencendo';
+    case 'vencido':
+      return 'vencido';
+    case 'pendente':
+    case 'reprovado':
+    case 'cancelado':
+      return 'pendente';
+    case undefined:
+    case null:
+    case '':
+      return 'valido';
+    default:
+      return 'outro';
   }
+}
 
-  const map: Record<string, { cls: string; label: string; icon: React.ElementType }> = {
-    valido: { cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200', label: 'Válido', icon: FiCheckCircle },
-    vencendo: { cls: 'bg-orange-50 text-orange-700 border border-orange-200', label: 'Vencendo', icon: FiClock },
-    vencido: { cls: 'bg-red-50 text-red-700 border border-red-200', label: 'Vencido', icon: FiAlertCircle },
-    pendente: { cls: 'bg-yellow-50 text-yellow-700 border border-yellow-200', label: 'Pendente', icon: FiClock },
-  };
-
-  const cfg = map[status || 'valido'] || { cls: 'bg-gray-100 text-gray-600 border border-gray-200', label: status || '—', icon: FiClock };
-  const Icon = cfg.icon;
-
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.cls}`}>
-      <Icon className="w-3 h-3 shrink-0" /> {cfg.label}
-    </span>
-  );
+function StatusBadge({
+  status,
+  hasValidade,
+  obsoleto,
+}: {
+  status?: string | null;
+  hasValidade: boolean;
+  obsoleto?: boolean;
+}) {
+  const kind = resolveBadgeKind(status, hasValidade, obsoleto);
+  switch (kind) {
+    case 'obsoleto':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+          <FiArchive className="w-3 h-3" /> Obsoleto
+        </span>
+      );
+    case 'permanente':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <FiCheck className="w-3 h-3 text-indigo-600" /> Permanente
+        </span>
+      );
+    case 'valido':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <FiCheckCircle className="w-3 h-3 shrink-0" /> Válido
+        </span>
+      );
+    case 'vencendo':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200">
+          <FiClock className="w-3 h-3 shrink-0" /> Vencendo
+        </span>
+      );
+    case 'vencido':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+          <FiAlertCircle className="w-3 h-3 shrink-0" /> Vencido
+        </span>
+      );
+    case 'pendente':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">
+          <FiClock className="w-3 h-3 shrink-0" /> Pendente
+        </span>
+      );
+    case 'outro':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+          <FiClock className="w-3 h-3 shrink-0" /> {status || '—'}
+        </span>
+      );
+    default: {
+      const _never: never = kind;
+      return _never;
+    }
+  }
 }
 
 function DaysToExpiry({ dateStr }: { dateStr?: string | null }) {
@@ -157,16 +223,18 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
 
   // File input refs for 1-click attach
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [historicoAberto, setHistoricoAberto] = useState<Record<string, boolean>>({});
 
   const treinamentos = Array.isArray(documentos)
     ? documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'treinamentos'))
     : [];
 
-  const validadeCivil = (d: Document) => classificarValidadeCivil(d.data_validade);
-  const totalValidos = treinamentos.filter(d => validadeCivil(d) === 'valido').length;
-  const totalVencidos = treinamentos.filter(d => validadeCivil(d) === 'vencido').length;
-  const totalVencendo = treinamentos.filter(d => validadeCivil(d) === 'vencendo').length;
-  const totalPermanentes = treinamentos.filter(d => !d.data_validade).length;
+  const grupos = useMemo(() => agruparDocumentosPorTipo(treinamentos), [treinamentos]);
+  const stats = useMemo(() => contarDocsPorStatusPrimario(treinamentos), [treinamentos]);
+  const totalValidos = stats.qtd_docs_validos;
+  const totalVencidos = stats.qtd_docs_vencidos;
+  const totalVencendo = stats.qtd_docs_vencendo;
+  const totalPermanentes = stats.permanentes;
 
   // --------------------------------------------------------------------------
   // Download Handler (PDF / Original)
@@ -466,6 +534,146 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
     }
   };
 
+  const toggleHistorico = (key: string) => {
+    setHistoricoAberto((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const renderTreinamentoCard = (doc: Document, idx: number, obsoleto: boolean) => {
+    const treExtra = doc.treinamento_data || {};
+    const numeroDoc = typeof doc.numero_documento === 'string' ? doc.numero_documento : '';
+    const isCodeLike = Boolean(numeroDoc) && /^[A-Z0-9.\-_ /]{1,15}$/.test(numeroDoc) && !/^\d{5,}$/.test(numeroDoc);
+    const codeAcronym = doc.subtipo || (isCodeLike ? numeroDoc : null);
+    const hasExplicitNumber = Boolean(numeroDoc) && numeroDoc !== doc.subtipo && (!isCodeLike || Boolean(doc.subtipo));
+    const isUploadingThis = uploadingDocId === doc.id;
+    const isDownloadingThis = downloadingDocId === doc.id;
+    const hasAttachedFile = !!doc.arquivo_url;
+    const isPrimaryVencido = !obsoleto && doc.status_validacao === 'vencido';
+
+    return (
+      <div
+        key={doc.id}
+        className={`p-4 sm:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+          highlightDocId === doc.id ? 'ring-2 ring-red-400 ' : ''
+        }${
+          obsoleto
+            ? 'bg-slate-50/90 py-3'
+            : isPrimaryVencido
+              ? 'bg-red-50/50 hover:bg-red-50/80 transition-colors'
+              : 'hover:bg-slate-50/70 transition-colors'
+        }`}
+        id={`gt-doc-${doc.id}`}
+      >
+        <div className="space-y-1.5 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!obsoleto && <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>}
+            <h3 className={`tracking-tight ${obsoleto ? 'font-semibold text-gray-700 text-sm' : 'font-bold text-gray-900 text-sm'}`}>
+              {doc.titulo}
+            </h3>
+            {codeAcronym && (
+              <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px] font-bold">
+                {codeAcronym}
+              </span>
+            )}
+            {hasAttachedFile ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <FiPaperclip className="w-3 h-3" /> Anexo PDF
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                Ficha Digital
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-gray-600 flex-wrap">
+            <div className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-mono font-medium">
+              <span className="text-slate-400 font-sans text-[10px] uppercase font-bold">Nº:</span>
+              {hasExplicitNumber ? (
+                <span>{doc.numero_documento}</span>
+              ) : (
+                <button
+                  onClick={() => handleOpenEdit(doc)}
+                  className="text-blue-600 hover:underline inline-flex items-center gap-0.5 font-sans text-xs italic"
+                  title="Clique para cadastrar o número do certificado"
+                >
+                  Informar Nº
+                </button>
+              )}
+            </div>
+            <span className="text-gray-600 font-medium">
+              🏛️ {doc.orgao_emissor || treExtra.instituicao || 'MARINHA DO BRASIL'}
+            </span>
+            {treExtra.carga_horaria && (
+              <span className="text-gray-500">⏱️ {treExtra.carga_horaria}h</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+            {doc.data_emissao && (
+              <span className="flex items-center gap-1">
+                <FiCalendar className="w-3 h-3 text-gray-400" />
+                <span>Realizado em: <strong className="text-gray-700">{formatDate(doc.data_emissao)}</strong></span>
+              </span>
+            )}
+            {doc.data_validade ? (
+              <span className="flex items-center gap-1">
+                <FiClock className="w-3 h-3 text-gray-400" />
+                <span>Válido até: <strong className="text-gray-700">{formatDate(doc.data_validade)}</strong></span>
+                {!obsoleto && (
+                  <span className="ml-1">(<DaysToExpiry dateStr={doc.data_validade} />)</span>
+                )}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-indigo-700 font-medium">
+                <FiCheck className="w-3 h-3 text-indigo-600" />
+                <span>Treinamento Permanente (Sem data de expiração)</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0 self-start md:self-center">
+          <StatusBadge status={doc.status_validacao} hasValidade={!!doc.data_validade} obsoleto={obsoleto} />
+          <input
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg"
+            className="hidden"
+            ref={el => { fileInputRefs.current[doc.id] = el; }}
+            onChange={e => handleDirectAttach(doc.id, e)}
+          />
+          <button
+            onClick={() => handleDownload(doc)}
+            disabled={isDownloadingThis}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+            title={hasAttachedFile ? 'Baixar arquivo original anexado' : 'Gerar e baixar Ficha Oficial de Treinamento em PDF'}
+          >
+            <FiDownload className="w-3.5 h-3.5" />
+            {isDownloadingThis ? 'Baixando...' : (hasAttachedFile ? 'Baixar PDF' : 'Baixar Ficha')}
+          </button>
+          {!obsoleto && (
+            <>
+              <button
+                onClick={() => fileInputRefs.current[doc.id]?.click()}
+                disabled={isUploadingThis}
+                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
+                title={hasAttachedFile ? 'Substituir arquivo anexado' : 'Anexar certificado em PDF ou imagem'}
+              >
+                <FiUpload className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleOpenEdit(doc)}
+                className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
+                title="Editar número, validade e dados do curso"
+              >
+                <FiEdit2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="divide-y divide-gray-100 bg-white">
       {/* Top Header & Actions Bar */}
@@ -474,7 +682,7 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
         <div className="flex items-center gap-2 flex-wrap text-xs text-gray-600">
           <div className="flex items-center gap-1.5 font-bold text-gray-800 text-sm mr-2">
             <FiAward className="w-4 h-4 text-blue-600" />
-            <span>{treinamentos.length} treinamento(s)</span>
+            <span>{stats.total_grupos} treinamento(s)</span>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
             {totalValidos} válido(s)
@@ -529,156 +737,20 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
-          {treinamentos.map((doc, idx) => {
-            const treExtra = doc.treinamento_data || {};
-            // If subtipo is defined, use it; otherwise if numero_documento looks like a code (e.g. CIR, TBS-I, CESS), use it as code
-            const numeroDoc = typeof doc.numero_documento === 'string' ? doc.numero_documento : '';
-            const isCodeLike = Boolean(numeroDoc) && /^[A-Z0-9.\-_ /]{1,15}$/.test(numeroDoc) && !/^\d{5,}$/.test(numeroDoc);
-            const codeAcronym = doc.subtipo || (isCodeLike ? numeroDoc : null);
-            const hasExplicitNumber = Boolean(numeroDoc) && numeroDoc !== doc.subtipo && (!isCodeLike || Boolean(doc.subtipo));
-            const isUploadingThis = uploadingDocId === doc.id;
-            const isDownloadingThis = downloadingDocId === doc.id;
-            const hasAttachedFile = !!doc.arquivo_url;
 
-            return (
-              <div
-                key={doc.id}
-                id={`gt-doc-${doc.id}`}
-                className={`p-4 sm:px-6 hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                  highlightDocId === doc.id ? 'ring-2 ring-red-400 bg-red-50/60' : ''
-                }`}
+          {grupos.map((grupo, idx) => (
+            <div key={grupo.key} className="bg-white">
+              {renderTreinamentoCard(grupo.primary, idx, false)}
+              <HistoricoColapsavel
+                count={grupo.historico.length}
+                expanded={!!historicoAberto[grupo.key]}
+                onToggle={() => toggleHistorico(grupo.key)}
               >
-                {/* Left: Identification & Course info */}
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>
-                    <h3 className="font-bold text-gray-900 text-sm tracking-tight">{doc.titulo}</h3>
+                {grupo.historico.map((hist, histIdx) => renderTreinamentoCard(hist, histIdx, true))}
+              </HistoricoColapsavel>
+            </div>
+          ))}
 
-                    {/* Course Code / Sigla badge */}
-                    {codeAcronym && (
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px] font-bold">
-                        {codeAcronym}
-                      </span>
-                    )}
-
-                    {/* Has Attachment indicator */}
-                    {hasAttachedFile ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        <FiPaperclip className="w-3 h-3" /> Anexo PDF
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                        Ficha Digital
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Numbering and Issuing Body metadata */}
-                  <div className="flex items-center gap-3 text-xs text-gray-600 flex-wrap">
-                    {/* Numeração do Certificado */}
-                    <div className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-mono font-medium">
-                      <span className="text-slate-400 font-sans text-[10px] uppercase font-bold">Nº:</span>
-                      {hasExplicitNumber ? (
-                        <span>{doc.numero_documento}</span>
-                      ) : (
-                        <button
-                          onClick={() => handleOpenEdit(doc)}
-                          className="text-blue-600 hover:underline inline-flex items-center gap-0.5 font-sans text-xs italic"
-                          title="Clique para cadastrar o número do certificado"
-                        >
-                          Informar Nº
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Órgão Emissor / Instituição */}
-                    <span className="text-gray-600 font-medium">
-                      🏛️ {doc.orgao_emissor || treExtra.instituicao || 'MARINHA DO BRASIL'}
-                    </span>
-
-                    {/* Carga Horária */}
-                    {treExtra.carga_horaria && (
-                      <span className="text-gray-500">
-                        ⏱️ {treExtra.carga_horaria}h
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Realização & Validade */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-                    {doc.data_emissao && (
-                      <span className="flex items-center gap-1">
-                        <FiCalendar className="w-3 h-3 text-gray-400" />
-                        <span>Realizado em: <strong className="text-gray-700">{formatDate(doc.data_emissao)}</strong></span>
-                      </span>
-                    )}
-
-                    {doc.data_validade ? (
-                      <span className="flex items-center gap-1">
-                        <FiClock className="w-3 h-3 text-gray-400" />
-                        <span>Válido até: <strong className="text-gray-700">{formatDate(doc.data_validade)}</strong></span>
-                        <span className="ml-1">(<DaysToExpiry dateStr={doc.data_validade} />)</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-indigo-700 font-medium">
-                        <FiCheck className="w-3 h-3 text-indigo-600" />
-                        <span>Treinamento Permanente (Sem data de expiração)</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Status & Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0 self-start md:self-center">
-                  <StatusBadge status={validadeCivil(doc) === 'sem_validade' ? 'pendente' : validadeCivil(doc)} hasValidade={!!doc.data_validade} />
-                  {doc.papel_conformidade === 'historico' && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                      Histórico
-                    </span>
-                  )}
-
-                  {/* Hidden file input for 1-click attach */}
-                  <input
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    className="hidden"
-                    ref={el => { fileInputRefs.current[doc.id] = el; }}
-                    onChange={e => handleDirectAttach(doc.id, e)}
-                  />
-
-                  {/* Action 1: Download Button (Original or Official Generated PDF) */}
-                  <button
-                    onClick={() => handleDownload(doc)}
-                    disabled={isDownloadingThis}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
-                    title={hasAttachedFile ? 'Baixar arquivo original anexado' : 'Gerar e baixar Ficha Oficial de Treinamento em PDF'}
-                  >
-                    <FiDownload className="w-3.5 h-3.5" />
-                    {isDownloadingThis ? 'Baixando...' : (hasAttachedFile ? 'Baixar PDF' : 'Baixar Ficha')}
-                  </button>
-
-                  {/* Action 2: Attach File Button (if no file yet, or replace) */}
-                  <button
-                    onClick={() => fileInputRefs.current[doc.id]?.click()}
-                    disabled={isUploadingThis}
-                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
-                    title={hasAttachedFile ? 'Substituir arquivo anexado' : 'Anexar certificado em PDF ou imagem'}
-                  >
-                    <FiUpload className="w-4 h-4" />
-                  </button>
-
-                  {/* Action 3: Edit Button */}
-                  <button
-                    onClick={() => handleOpenEdit(doc)}
-                    className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
-                    title="Editar número, validade e dados do curso"
-                  >
-                    <FiEdit2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
         </div>
       )}
 

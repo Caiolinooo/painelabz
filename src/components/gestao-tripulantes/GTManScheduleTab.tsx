@@ -7,6 +7,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
 import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
+import ScheduleDateFilterInput from '@/components/gestao-tripulantes/ScheduleDateFilterInput';
 import {
     DEFAULT_TIPOS_EVENTO_ESCALA,
     hexToRgbNoHash,
@@ -14,6 +15,18 @@ import {
     type GTTipoEventoEscala,
 } from '@/lib/gestao-tripulantes/escala-tipos';
 import { pickOverlappingRotation } from '@/lib/gestao-tripulantes/escala-contagem';
+import {
+    isEmbarcadoPobDayCode,
+    isRotacaoPrevista,
+    scheduleDisplayCode,
+    type GtDashboardKpi,
+} from '@/lib/gestao-tripulantes/embarque-status';
+import {
+    MAX_SCHEDULE_DAY_COLUMNS,
+    MAX_SCHEDULE_WEEK_COLUMNS,
+    clampScheduleRange,
+    parseCompleteFilterDate,
+} from '@/lib/gestao-tripulantes/filter-date';
 
 interface CrewSchedule {
     id: string;
@@ -49,6 +62,7 @@ interface RotationCell {
 
 interface Props {
     onColabClick: (colaborador: any) => void;
+    kpiFilter?: GtDashboardKpi | '';
 }
 
 const POSITION_ORDER: string[] = [
@@ -187,17 +201,14 @@ function columnPeriod(columnDate: Date, viewport: ScheduleViewport): { start: Da
 }
 
 function generateDayColumns(rangeStart: Date, rangeEnd: Date): { date: Date }[] {
+    const { start, end } = clampScheduleRange(rangeStart, rangeEnd, MAX_SCHEDULE_DAY_COLUMNS);
     const days: { date: Date }[] = [];
-    const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate(), 0, 0, 0, 0);
-    const last = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 0, 0, 0, 0);
-    if (last < cursor) {
-        return [{ date: new Date(cursor) }];
-    }
-    while (cursor <= last) {
+    const cursor = new Date(start);
+    while (cursor <= end) {
         days.push({ date: new Date(cursor) });
         cursor.setDate(cursor.getDate() + 1);
     }
-    return days;
+    return days.length > 0 ? days : [{ date: new Date(start) }];
 }
 
 function dayViewportDefaultWindow(): { start: Date; end: Date } {
@@ -365,7 +376,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
                 const hasComment = !!(meta.observacoes && String(meta.observacoes).trim());
                 const isCurrentWeek =
                     currentWeekKey !== null && new Date(week.date).toDateString() === currentWeekKey;
-                const style = status ? getCellStyle(meta.type || status) : null;
+                const style = status ? getCellStyle(status === 'ON*' ? 'ON*' : (meta.type || status)) : null;
                 const headerDate = formatHeaderDate(week.date, locale);
 
                 const tooltipParts = [
@@ -504,7 +515,7 @@ const ScheduleRow = React.memo(function ScheduleRow({
     );
 });
 
-export default function GTManScheduleTab({ onColabClick }: Props) {
+export default function GTManScheduleTab({ onColabClick, kpiFilter = '' }: Props) {
     const { t, locale } = useI18n();
     const [allSchedules, setAllSchedules] = useState<CrewSchedule[]>([]);
     const [tipos, setTipos] = useState<GTTipoEventoEscala[]>(
@@ -664,18 +675,22 @@ export default function GTManScheduleTab({ onColabClick }: Props) {
     );
 
     const getDisplayCode = useCallback(
-        (rotationType: string): string => {
+        (rotationType: string, observacoes?: string | null): string => {
+            if (isRotacaoPrevista(rotationType, observacoes)) return 'ON*';
             const tipo = resolveTipo(rotationType);
             if (tipo) return tipo.display_code;
-            if (rotationType === 'normal') return 'ON';
-            if (rotationType === 'offc') return 'OFF-C';
-            return rotationType.toUpperCase();
+            return scheduleDisplayCode(rotationType, observacoes);
         },
         [resolveTipo]
     );
 
     const getCellStyle = useCallback(
         (rotationType: string): { bg: string; text: string } => {
+            if (rotationType === 'ON*' || isRotacaoPrevista(rotationType)) {
+                const previstoTipo = resolveTipo('previsto') || resolveTipo('ON*');
+                if (previstoTipo) return { bg: previstoTipo.bg_color, text: previstoTipo.text_color };
+                return { bg: '#c6d9f0', text: '#1f4e79' };
+            }
             const tipo = resolveTipo(rotationType);
             if (tipo) return { bg: tipo.bg_color, text: tipo.text_color };
             const display = getDisplayCode(rotationType);
@@ -1046,14 +1061,11 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             }
         }
 
-        if (filterDateStart) {
-            const fStart = parseLocalDate(filterDateStart);
-            if (fStart && (!earliest || fStart < earliest)) earliest = fStart;
-        }
-        if (filterDateEnd) {
-            const fEnd = parseLocalDate(filterDateEnd);
-            if (fEnd && (!latest || fEnd > latest)) latest = fEnd;
-        }
+        const appliedStart = parseCompleteFilterDate(filterDateStart);
+        const appliedEnd = parseCompleteFilterDate(filterDateEnd);
+
+        if (appliedStart && (!earliest || appliedStart < earliest)) earliest = appliedStart;
+        if (appliedEnd && (!latest || appliedEnd > latest)) latest = appliedEnd;
 
         if (!earliest) earliest = new Date(new Date().getFullYear(), 0, 1);
         if (!latest) latest = new Date(new Date().getFullYear(), 11, 31);
@@ -1067,11 +1079,12 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
         if (viewport === 'day') {
             const fallback = dayViewportDefaultWindow();
-            const startBound = parseLocalDate(filterDateStart) || (!filterDateStart && !filterDateEnd ? fallback.start : earliest);
-            const endBound = parseLocalDate(filterDateEnd) || (!filterDateStart && !filterDateEnd ? fallback.end : latest);
+            const startBound = appliedStart || (!appliedStart && !appliedEnd ? fallback.start : earliest);
+            const endBound = appliedEnd || (!appliedStart && !appliedEnd ? fallback.end : latest);
+            const columns = generateDayColumns(startBound, endBound);
             return {
-                weeks: generateDayColumns(startBound, endBound),
-                timelineStart: startBound,
+                weeks: columns,
+                timelineStart: columns[0]?.date ?? startBound,
             };
         }
 
@@ -1081,10 +1094,16 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         const endDate = new Date(latest);
         endDate.setDate(endDate.getDate() + 14);
 
-        const totalWeeks = Math.max(
+        let totalWeeks = Math.max(
             Math.ceil((endDate.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)),
             12
         );
+
+        if (totalWeeks > MAX_SCHEDULE_WEEK_COLUMNS) {
+            start.setTime(endDate.getTime() - MAX_SCHEDULE_WEEK_COLUMNS * 7 * 24 * 60 * 60 * 1000);
+            snapToSaturday(start);
+            totalWeeks = MAX_SCHEDULE_WEEK_COLUMNS;
+        }
 
         const generatedWeeks = [];
         for (let i = 0; i < totalWeeks; i++) {
@@ -1097,9 +1116,9 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     }, [positionGroups, filterDateStart, filterDateEnd, viewport]);
 
     const filteredWeeks = useMemo(() => {
-        if (!filterDateStart && !filterDateEnd) return weeks;
-        const startDate = filterDateStart ? parseLocalDate(filterDateStart) : null;
-        const endDate = filterDateEnd ? parseLocalDate(filterDateEnd) : null;
+        const startDate = parseCompleteFilterDate(filterDateStart);
+        const endDate = parseCompleteFilterDate(filterDateEnd);
+        if (!startDate && !endDate) return weeks;
 
         return weeks.filter((w) => {
             const { start: colStart, end: colEnd } = columnPeriod(w.date, viewport);
@@ -1176,7 +1195,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     const getWeekStatus = useCallback(
         (weekDate: Date, rotations: RotationCell[]): string => {
             const rot = getWeekRotation(weekDate, rotations);
-            return rot ? getDisplayCode(rot.type || 'normal') : '';
+            return rot ? getDisplayCode(rot.type || 'normal', rot.observacoes) : '';
         },
         [getWeekRotation, getDisplayCode]
     );
@@ -1229,7 +1248,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             }
 
             return {
-                status: getDisplayCode(rot.type || 'normal'),
+                status: getDisplayCode(rot.type || 'normal', rot.observacoes),
                 observacoes: rot.observacoes || null,
                 type: rot.type,
                 startDay,
@@ -1262,6 +1281,35 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         }
         return statuses;
     }, [positionGroups, filteredWeeks, getWeekStatus]);
+
+    const todayColumnDate = filteredWeeks[currentWeekIndex]?.date ?? null;
+
+    const todayPobCount = useMemo(() => {
+        if (!todayColumnDate) return 0;
+        let n = 0;
+        for (const group of positionGroups) {
+            for (const member of group.members) {
+                if (isEmbarcadoPobDayCode(getWeekStatus(todayColumnDate, member.rotations))) n += 1;
+            }
+        }
+        return n;
+    }, [positionGroups, todayColumnDate, getWeekStatus]);
+
+    const visibleGroups = useMemo(() => {
+        if (kpiFilter !== 'embarcados' && kpiFilter !== 'disponiveis') return positionGroups;
+        const colDate = todayColumnDate;
+        if (!colDate) return positionGroups;
+        return positionGroups
+            .map((group) => {
+                const members = group.members.filter((member) => {
+                    const code = getWeekStatus(colDate, member.rotations);
+                    if (kpiFilter === 'embarcados') return isEmbarcadoPobDayCode(code);
+                    return code.toUpperCase() === 'STB';
+                });
+                return { ...group, members, count: members.length };
+            })
+            .filter((group) => group.members.length > 0);
+    }, [positionGroups, kpiFilter, todayColumnDate, getWeekStatus]);
 
     const legendItems = useMemo(() => {
         const active = tipos.filter((tipo) => tipo.ativo);
@@ -1503,20 +1551,20 @@ function parseLocalDate(str: string | null | undefined): Date | null {
 
                     <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateStart', 'Data Inicio')}</label>
-                        <input
-                            type="date"
+                        <ScheduleDateFilterInput
+                            aria-label={t('manSchedule.dateStart', 'Data Inicio')}
                             value={filterDateStart}
-                            onChange={(e) => setFilterDateStart(e.target.value)}
+                            onCommit={setFilterDateStart}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
                         />
                     </div>
 
                     <div className="min-w-[120px] flex-shrink-0">
                         <label className="block text-xs font-semibold text-gray-600 mb-1">{t('manSchedule.dateEnd', 'Data Fim')}</label>
-                        <input
-                            type="date"
+                        <ScheduleDateFilterInput
+                            aria-label={t('manSchedule.dateEnd', 'Data Fim')}
                             value={filterDateEnd}
-                            onChange={(e) => setFilterDateEnd(e.target.value)}
+                            onCommit={setFilterDateEnd}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
                         />
                     </div>
@@ -1550,6 +1598,12 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         >
                             {t('manSchedule.today', 'Hoje')}
                         </button>
+                        <span
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold whitespace-nowrap h-[34px] flex items-center"
+                            title={t('manSchedule.todayPobHint', 'Pessoas com ON hoje (sem asterisco)')}
+                        >
+                            {t('manSchedule.todayPob', { count: todayPobCount }, `Hoje: ${todayPobCount}P a bordo`)}
+                        </span>
                         <button
                             onClick={() => scrollByAmount(320)}
                             disabled={loading}
@@ -1692,14 +1746,14 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                                     </div>
                                 </td>
                             </tr>
-                        ) : positionGroups.length === 0 ? (
+                        ) : visibleGroups.length === 0 ? (
                             <tr>
                                 <td colSpan={7 + filteredWeeks.length} className="px-4 py-8 text-center text-gray-400 bg-white">
                                     {t('manSchedule.empty', 'Nenhum tripulante encontrado para os filtros selecionados.')}
                                 </td>
                             </tr>
                         ) : (
-                            positionGroups.map((group, gIdx) => {
+                            visibleGroups.map((group, gIdx) => {
                                 const bg = groupColors[gIdx % groupColors.length];
                                 return (
                                     <React.Fragment key={`group-${gIdx}`}>

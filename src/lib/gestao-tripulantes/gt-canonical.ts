@@ -39,13 +39,13 @@ export const GT_CANONICAL_TABLES = {
   embarques: {
     table: 'gt_historico_embarques',
     contains:
-      'Full embark/scale history including FI/DBA/STB/OFF-C extras materialized from LGP. Man Schedule reads this, not mio_cache.',
+      'Full embark/scale history including FI/DBA/STB/OFF-C extras and previsto (ON*, not POB) from LGP. Man Schedule reads this, not mio_cache.',
     origem: ['mio', 'local', 'importado'] as const,
     join: 'colaborador_id; mio_embarque_id for MIO idempotency',
   },
   tipos_escala: {
     table: 'gt_tipos_evento_escala',
-    contains: 'UI labels/colors for rotation codes (normal/fi/dba/stb/offc + custom).',
+    contains: 'UI labels/colors for rotation codes (normal/previsto/fi/dba/stb/offc + custom).',
     origem: 'local config',
     join: 'codigo = gt_historico_embarques.tipo (normalized)',
   },

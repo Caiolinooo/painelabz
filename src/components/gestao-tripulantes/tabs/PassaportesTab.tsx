@@ -1,17 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { FiUpload, FiDownload, FiGlobe, FiEdit2, FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
+import React, { useMemo, useState } from 'react';
+import { FiUpload, FiDownload, FiGlobe, FiEdit2, FiSave, FiX, FiRefreshCw, FiArchive } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
+import HistoricoColapsavel from '@/components/gestao-tripulantes/HistoricoColapsavel';
+import { agruparDocumentosPorTipo } from '@/lib/gestao-tripulantes/documento-historico';
 
 interface Document {
   id: string;
   tipo_documento: string;
+  subtipo?: string | null;
   titulo: string;
+  descricao?: string | null;
   numero_documento: string;
   orgao_emissor: string;
   data_emissao: string;
@@ -19,6 +23,8 @@ interface Document {
   status_validacao: string;
   ocr_status: string;
   arquivo_url: string;
+  origem?: string | null;
+  created_at?: string | null;
 }
 
 interface Props {
@@ -57,8 +63,12 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
   const [editForm, setEditForm] = useState({ numero_documento: '', orgao_emissor: '', data_emissao: '', data_validade: '' });
   const [saving, setSaving] = useState(false);
   const [ocrRunning, setOcrRunning] = useState<string | null>(null);
+  const [historicoAberto, setHistoricoAberto] = useState<Record<string, boolean>>({});
 
-  const passaportes = documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'passaportes'));
+  const grupos = useMemo(
+    () => agruparDocumentosPorTipo(documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'passaportes'))),
+    [documentos],
+  );
 
   const formatDate = (d: string | null | undefined) => {
     if (!d) return '—';
@@ -173,7 +183,7 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
       <div className="p-4 flex items-center justify-between bg-gray-50/70">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <FiGlobe className="text-indigo-500" />
-          <span>{passaportes.length} passaporte(s) cadastrado(s)</span>
+          <span>{grupos.length} passaporte(s) cadastrado(s)</span>
         </div>
         <label className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg cursor-pointer hover:bg-indigo-700 transition ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
           <FiUpload className="w-3.5 h-3.5" />
@@ -182,14 +192,17 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
         </label>
       </div>
 
-      {passaportes.length === 0 ? (
+      {grupos.length === 0 ? (
         <div className="p-12 text-center">
           <FiGlobe className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-400 text-sm">{t('gestaoTripulantes.passports.noPassports')}</p>
         </div>
       ) : (
-        passaportes.map(doc => (
-          <div id={`gt-doc-${doc.id}`} key={doc.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors ${highlightDocId === doc.id ? 'ring-2 ring-red-400 bg-red-50/40' : ''}`}>
+        grupos.map(grupo => {
+          const doc = grupo.primary;
+          return (
+          <div key={grupo.key} id={`gt-doc-${doc.id}`}>
+          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors ${highlightDocId === doc.id ? 'ring-2 ring-red-400 bg-red-50/40' : ''}`}>
             {/* Passport icon area */}
             <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
               <FiGlobe className="w-5 h-5 text-indigo-600" />
@@ -302,7 +315,40 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
               )}
             </div>
           </div>
-        ))
+          <HistoricoColapsavel
+            count={grupo.historico.length}
+            expanded={!!historicoAberto[grupo.key]}
+            onToggle={() => setHistoricoAberto((prev) => ({ ...prev, [grupo.key]: !prev[grupo.key] }))}
+          >
+            {grupo.historico.map((hist) => (
+              <div key={hist.id} className="flex items-center gap-4 px-5 py-2.5 bg-slate-50">
+                <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                  <FiArchive className="w-4 h-4 text-slate-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700">{hist.titulo}</p>
+                  <p className="text-xs text-slate-500">
+                    Nº {hist.numero_documento || '—'} · {formatDate(hist.data_emissao)} → {formatDate(hist.data_validade)}
+                  </p>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">Obsoleto</span>
+                {hist.arquivo_url && (
+                  <a
+                    href={hist.arquivo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 text-gray-400 hover:text-indigo-600 rounded transition"
+                    title="Baixar versão anterior"
+                  >
+                    <FiDownload className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
+            ))}
+          </HistoricoColapsavel>
+          </div>
+          );
+        })
       )}
     </div>
   );

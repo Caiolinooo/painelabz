@@ -16,6 +16,7 @@
 - **Não** chamar `/api/mio/calendar`, `gt_historico_embarques`, treinamentos/ASO ou qualquer evento operacional
 - Fontes permitidas: feriados (BrasilAPI / scrape / estático + municipais Macaé; `en-US` = UK) + ICS da empresa
 - Lista e bolinhas do mês: só essas fontes. Legenda: nacional, municipal, calendário compartilhado
+- Dedupe de exibição (não apaga o ICS): título semelhante + mesmo início (minuto / dia inteiro) + local compatível → um evento; fica o registro mais rico (descrição, participantes, url). Ver `src/lib/calendar-event-dedupe.ts`
 - Datas civis locais (`YYYY-MM-DD`), sem `toISOString().split('T')[0]`
 - Página do ano: `GET /api/calendar/company/events?from={ano}-01-01&to={ano}-12-31` (inclui eventos já ocorridos no ano)
 - Sem `from`/`to`, a API continua filtrando a partir de hoje + `rangeDays` (dashboard / testes admin)
@@ -29,6 +30,7 @@
 
 - `/calendario` não lista EMBARQUE, CURSO nem documentos vencidos
 - Agosto (ou mês corrente) lista feriados + eventos ICS; clique no dia destaca a lista
+- Eventos com nome semelhante no mesmo horário e local aparecem uma vez
 - Dashboard EventsWidget segue mostrando só futuros do ICS
 
 ## Child DOX Index

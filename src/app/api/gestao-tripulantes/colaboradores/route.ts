@@ -5,8 +5,44 @@ import { autoGenerateESocialEvents } from '@/services/eSocialAutoService';
 import { findColaboradorByCpf } from '@/lib/gestao-tripulantes/cpf-lookup';
 import { flattenColaboradorRow, LIST_SELECT } from '@/lib/gestao-tripulantes/colaborador-get';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
-import { contarDocsPorColaborador, listarDocumentosAlertas, montarItensAlerta, resumoVencidosVigentes } from '@/lib/gestao-tripulantes/documentos-alertas';
-import { listarColaboradoresDashboardAtivos } from '@/lib/gestao-tripulantes/dashboard-service';
+import { montarItensAlerta, resumoVencidosVigentes } from '@/lib/gestao-tripulantes/documentos-alertas';
+import { listarIdsEmbarcadosHoje } from '@/lib/gestao-tripulantes/dashboard-service';
+import { dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
+import { parseGtDashboardKpi } from '@/lib/gestao-tripulantes/embarque-status';
+import {
+  contarDocsPorStatusPrimario,
+  idsComPrimarioVencido,
+  type DocumentoAgrupavel,
+} from '@/lib/gestao-tripulantes/documento-historico';
+
+const DOC_PENDENCY_SELECT =
+  'id, colaborador_id, tipo_documento, subtipo, titulo, descricao, origem, numero_documento, numero_rastreio, data_emissao, data_validade, status_validacao, created_at';
+
+type DocPendencyRow = DocumentoAgrupavel & {
+  colaborador_id: string;
+  numero_documento?: string | null;
+  numero_rastreio?: string | null;
+};
+
+async function fetchDocumentosAgrupaveis(colaboradorIds: string[]): Promise<DocPendencyRow[]> {
+  if (colaboradorIds.length === 0) return [];
+  const docRows: DocPendencyRow[] = [];
+  const docPageSize = 1000;
+  let docFrom = 0;
+  while (true) {
+    const { data: pageDocs } = await supabaseAdmin
+      .from('gt_documentos')
+      .select(DOC_PENDENCY_SELECT)
+      .in('colaborador_id', colaboradorIds)
+      .is('deleted_at', null)
+      .range(docFrom, docFrom + docPageSize - 1);
+    const page = (pageDocs || []) as DocPendencyRow[];
+    docRows.push(...page);
+    if (page.length < docPageSize) break;
+    docFrom += docPageSize;
+  }
+  return docRows;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +82,7 @@ export async function GET(request: NextRequest) {
     const standby = searchParams.get('standby');
     const ativo = searchParams.get('ativo');
     const onlyVencidos = searchParams.get('onlyVencidos');
+    const kpi = parseGtDashboardKpi(searchParams.get('kpi'));
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
@@ -85,10 +122,36 @@ export async function GET(request: NextRequest) {
 
     let vencidoIds: string[] | null = null;
     if (onlyVencidos === 'true') {
-      const ativosDash = await listarColaboradoresDashboardAtivos();
-      const alertas = await listarDocumentosAlertas({ colaboradorIds: ativosDash.ids });
-      const vencidoSet = new Set(alertas.vencidos_vigentes.map((i) => i.colaborador_id));
-      vencidoIds = Array.from(vencidoSet);
+      const hoje = dataLocalISO();
+      const candidatoSet = new Set<string>();
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data: vencidos, error: vencidosErr } = await supabaseAdmin
+          .from('gt_documentos')
+          .select('colaborador_id')
+          .is('deleted_at', null)
+          .not('data_validade', 'is', null)
+          .lt('data_validade', hoje)
+          .not('colaborador_id', 'is', null)
+          .range(from, from + pageSize - 1);
+        if (vencidosErr) {
+          console.error('Erro ao filtrar documentos vencidos:', vencidosErr);
+          return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
+        }
+        const rows = vencidos || [];
+        for (const d of rows) {
+          if (d.colaborador_id) candidatoSet.add(d.colaborador_id as string);
+        }
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      const candidatos = Array.from(candidatoSet);
+      if (candidatos.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+      const docsCandidatos = await fetchDocumentosAgrupaveis(candidatos);
+      vencidoIds = Array.from(idsComPrimarioVencido(docsCandidatos, hoje));
       if (vencidoIds.length === 0) {
         return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
       }
@@ -111,12 +174,33 @@ export async function GET(request: NextRequest) {
     if (embarcacaoId) query = query.eq('embarcacao_atual_id', embarcacaoId);
     if (cargoId) query = query.eq('cargo_id', cargoId);
     if (centroId) query = query.eq('centro_custo_id', centroId);
-    if (status) query = query.eq('status_embarque', status);
-    if (standby === 'true') query = query.eq('standby', true);
-    if (standby === 'false') query = query.eq('standby', false);
+    if (status && kpi !== 'embarcados') query = query.eq('status_embarque', status);
+    if (kpi === 'disponiveis' || standby === 'true') query = query.eq('standby', true);
+    else if (standby === 'false') query = query.eq('standby', false);
     if (ativo === 'true' || ativo === 'ativos' || ativo === 'ativo') query = query.eq('ativo', true);
     if (ativo === 'false' || ativo === 'inativos' || ativo === 'inativo') query = query.eq('ativo', false);
-    if (vencidoIds) query = query.in('id', vencidoIds);
+
+    let idFilter = vencidoIds;
+    if (kpi === 'embarcados') {
+      const pob = await listarIdsEmbarcadosHoje();
+      if (pob.error) {
+        console.error('Erro ao filtrar embarcados POB:', pob.error);
+        return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
+      }
+      if (pob.ids.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+      if (idFilter) {
+        const allowed = new Set(idFilter);
+        idFilter = pob.ids.filter((id) => allowed.has(id));
+      } else {
+        idFilter = pob.ids;
+      }
+      if (idFilter.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+      }
+    }
+    if (idFilter) query = query.in('id', idFilter);
 
     const { data: rows, error, count } = await query
       .order('nome_completo', { ascending: true })
@@ -146,21 +230,25 @@ export async function GET(request: NextRequest) {
       numero_rastreio?: string | null;
     }[] = [];
     if (ids.length > 0) {
-      const docPageSize = 1000;
-      let docFrom = 0;
-      while (true) {
-        const { data: pageDocs } = await supabaseAdmin
-          .from('gt_documentos')
-          .select('id, colaborador_id, tipo_documento, subtipo, titulo, numero_documento, numero_rastreio, data_emissao, data_validade, created_at, status_validacao, origem')
-          .in('colaborador_id', ids)
-          .is('deleted_at', null)
-          .range(docFrom, docFrom + docPageSize - 1);
-        const page = pageDocs || [];
-        docRows.push(...(page as typeof docRows));
-        if (page.length < docPageSize) break;
-        docFrom += docPageSize;
+      const fetchedDocs = await fetchDocumentosAgrupaveis(ids);
+      docRows.push(...fetchedDocs);
+      const hoje = dataLocalISO();
+      const byColab = new Map<string, DocPendencyRow[]>();
+      for (const id of ids) {
+        countsById[id] = { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 };
+        byColab.set(id, []);
       }
-      countsById = contarDocsPorColaborador(docRows, ids);
+      for (const d of fetchedDocs) {
+        byColab.get(d.colaborador_id)?.push(d);
+      }
+      for (const [id, list] of byColab) {
+        const counts = contarDocsPorStatusPrimario(list, hoje);
+        countsById[id] = {
+          qtd_docs_vencidos: counts.qtd_docs_vencidos,
+          qtd_docs_vencendo: counts.qtd_docs_vencendo,
+          qtd_docs_validos: counts.qtd_docs_validos,
+        };
+      }
     }
 
     const nomes: Record<string, { nome: string | null; matricula: string | null; cpf: string | null }> = {};

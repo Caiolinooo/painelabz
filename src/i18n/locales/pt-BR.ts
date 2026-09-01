@@ -582,7 +582,24 @@ export default {
     perfilNaoEncontradoFacaLoginNovamente: 'Perfil não encontrado. Faça login novamente.',
     nomeESobrenomeSaoObrigatorios: 'Nome e sobrenome são obrigatórios',
     usuario: 'Usuário',
-    naoInformado: 'Não informado'
+    naoInformado: 'Não informado',
+    documents: 'Documentos',
+    qhse: 'QHSE / EPI',
+    signature: 'Assinatura',
+  },
+  documentCatalog: {
+    title: 'Documentos do colaborador',
+    subtitle: 'GT, QHSE/EPI, listas de presença assinadas e outros módulos — reconhecidos automaticamente por CPF, usuário e e-mail.',
+    qhseTitle: 'QHSE / EPI',
+    qhseSubtitle: 'Ficha de EPI (AN-HSE-005), entregas e listas de presença QHSE reconhecidas automaticamente para este colaborador.',
+    qhseEmpty: 'Nenhum documento QHSE/EPI encontrado para este colaborador.',
+    all: 'Todos',
+    loading: 'Carregando documentos...',
+    empty: 'Nenhum documento encontrado para este colaborador.',
+    error: 'Erro ao carregar documentos',
+    signed: 'Assinado',
+    download: 'Baixar',
+    openModule: 'Abrir módulo',
   },
   validation: {
     suggestions: 'Sugestões',
@@ -841,6 +858,7 @@ export default {
     municipalHoliday: 'Feriado Municipal (Macaé)',
     companyEvents: 'Calendário compartilhado',
     sharedOnlyHint: 'Somente feriados oficiais e eventos do calendário compartilhado.',
+    duplicatesHiddenHint: '{{count}} duplicata(s) semelhante(s) oculta(s)',
     holidaysInMonth: 'Eventos de',
     failedToFetchBrasilApi: 'Falha ao buscar na BrasilAPI',
     tryingAlternative: 'Tentando alternativa...',
@@ -3902,6 +3920,8 @@ export default {
     legendOffC: 'Troca de Turma',
     legendFi: 'Folga Indenizada',
     legendDba: 'Dobra',
+    todayPob: 'Hoje: {count}P a bordo',
+    todayPobHint: 'Pessoas com ON hoje (sem asterisco)',
     legendStb: 'StandBy'
   },
   contrato: {
@@ -4369,7 +4389,9 @@ export default {
       substitutions: 'Substituições', close: 'Fechar', edit: 'Editar',
       save: 'Salvar', cancel: 'Cancelar', suggestBack: 'Sugerir Back',
       uploadDocument: 'Upload Documento', notify: 'Notificar',
-      loading: 'Carregando perfil...', notFound: 'Colaborador não encontrado'
+      loading: 'Carregando perfil...', notFound: 'Colaborador não encontrado',
+      otherModulesDocs: 'Documentos de outros módulos',
+      qhse: 'QHSE / EPI'
     },
     personalData: {
       fullName: 'Nome Completo', cpf: 'CPF', rg: 'RG', birthDate: 'Data de Nascimento',
@@ -4459,7 +4481,17 @@ export default {
     },
     dashboard: {
       totalCollaborators: 'Total de Tripulantes (ativos)', onboardNow: 'Embarcados Agora',
-      availableBackup: 'Disponíveis p/ Back', expiredDocs: 'Documentos Vencidos'
+      availableBackup: 'Disponíveis p/ Back', expiredDocs: 'Documentos Vencidos',
+      kpiClick: 'Clique para filtrar', kpiActive: 'Filtro ativo — clique para limpar',
+      kpiHintTotal: 'Clique para listar todos os tripulantes ativos',
+      kpiHintEmbarcados: 'Clique para listar quem está ON hoje (sem ON* / *)',
+      kpiHintDisponiveis: 'Clique para listar disponíveis para back',
+      kpiHintDocs: 'Clique para listar quem tem documentos vencidos',
+      kpiBannerEmbarcados: 'Lista filtrada: embarcados agora (código ON hoje, sem asterisco)',
+      kpiBannerDisponiveis: 'Lista filtrada: disponíveis para back',
+      kpiBannerDocs: 'Lista filtrada: documentos vencidos',
+      kpiBannerTotal: 'Lista: todos os tripulantes ativos',
+      kpiClear: 'Limpar filtro'
     },
     upload: {
       uploading: 'Enviando...', success: 'Arquivo enviado com sucesso',

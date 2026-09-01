@@ -4,18 +4,21 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import { FiCalendar, FiInfo, FiMapPin, FiRefreshCw } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiInfo, FiMapPin, FiRefreshCw } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import { dedupeSimilarCalendarEvents } from '@/lib/calendar-event-dedupe';
 
 interface CompanyEvent {
   id: string;
   summary: string;
   description?: string;
   location?: string;
+  url?: string;
   start: string;
   end?: string;
   allDay?: boolean;
+  attendees?: Array<{ email?: string; name?: string }>;
 }
 
 interface Holiday {
@@ -28,12 +31,16 @@ interface Holiday {
 interface CalendarListItem {
   key: string;
   date: string;
+  start: string;
+  allDay?: boolean;
   name: string;
   type: string;
   description?: string;
   location?: string;
+  url?: string;
   source: 'holiday' | 'company';
   color: string;
+  attendees?: Array<{ email?: string; name?: string }>;
 }
 
 const MACAE_HOLIDAYS: Omit<Holiday, 'date'>[] = [
@@ -108,6 +115,32 @@ function eventStartYmd(start: string): string {
   return String(start || '').slice(0, 10);
 }
 
+function formatEventClock(start: string, allDay: boolean | undefined, locale: string): string | null {
+  if (allDay) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start)) return null;
+  const d = new Date(start);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+}
+
+function listItemSourceLabel(
+  ev: CalendarListItem,
+  t: (key: string) => string,
+): string {
+  switch (ev.source) {
+    case 'company':
+      return t('calendario.companyEvents');
+    case 'holiday':
+      return ev.type === 'MUNICIPAL'
+        ? t('calendario.municipalHoliday')
+        : t('calendario.nationalHoliday');
+    default: {
+      const _exhaustive: never = ev.source;
+      return _exhaustive;
+    }
+  }
+}
+
 function getMacaeHolidayDate(holidayName: string, year: number): string | null {
   switch (holidayName) {
     case 'São Jorge': return `${year}-04-23`;
@@ -158,6 +191,7 @@ export default function CalendarioPage() {
   const { t, locale } = useI18n();
   const [allHolidays, setAllHolidays] = useState<Holiday[]>([]);
   const [companyEvents, setCompanyEvents] = useState<CompanyEvent[]>([]);
+  const [companyDuplicatesHidden, setCompanyDuplicatesHidden] = useState(0);
   const [companyConfig, setCompanyConfig] = useState({ marker_color: '#2563eb' });
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -191,9 +225,13 @@ export default function CalendarioPage() {
         const data = await res.json();
         if (Array.isArray(data.events)) {
           setCompanyEvents(data.events);
+          setCompanyDuplicatesHidden(
+            typeof data.duplicatesHidden === 'number' ? data.duplicatesHidden : 0,
+          );
         }
       } catch {
         setCompanyEvents([]);
+        setCompanyDuplicatesHidden(0);
       }
     };
     loadCompanyEvents();
@@ -245,12 +283,18 @@ export default function CalendarioPage() {
     loadHolidays();
   }, [currentYear, locale, t]);
 
+  const companyDedupe = useMemo(
+    () => dedupeSimilarCalendarEvents(companyEvents),
+    [companyEvents],
+  );
+  const uniqueCompanyEvents = companyDedupe.events;
+
   const getEventsForDate = useCallback((date: Date) => {
     const dStr = toLocalYmd(date);
     const holidays = allHolidays.filter((h) => h.date === dStr);
-    const company = companyEvents.filter((e) => eventStartYmd(e.start) === dStr);
+    const company = uniqueCompanyEvents.filter((e) => eventStartYmd(e.start) === dStr);
     return { holidays, company };
-  }, [allHolidays, companyEvents]);
+  }, [allHolidays, uniqueCompanyEvents]);
 
   const tileContent = ({ date, view }: { date: Date; view: string }) => {
     if (view !== 'month') return null;
@@ -298,6 +342,8 @@ export default function CalendarioPage() {
       .map((h) => ({
         key: `h-${h.date}-${h.name}`,
         date: h.date,
+        start: h.date,
+        allDay: true,
         name: h.name,
         type: h.type,
         description: h.description,
@@ -305,7 +351,7 @@ export default function CalendarioPage() {
         color: h.type === 'MUNICIPAL' ? '#f59e0b' : '#0ea5e9',
       }));
 
-    const cList: CalendarListItem[] = companyEvents
+    const cList: CalendarListItem[] = uniqueCompanyEvents
       .filter((e) => {
         const ymd = eventStartYmd(e.start);
         const [ey, em] = ymd.split('-').map(Number);
@@ -314,18 +360,43 @@ export default function CalendarioPage() {
       .map((e) => ({
         key: `c-${e.id}`,
         date: eventStartYmd(e.start),
+        start: e.start,
+        allDay: e.allDay,
         name: e.summary,
         type: 'EMPRESA',
         description: e.description,
         location: e.location,
+        url: e.url,
         source: 'company' as const,
         color: companyConfig.marker_color,
+        attendees: e.attendees,
       }));
 
-    const unique = new Map<string, CalendarListItem>();
-    [...hList, ...cList].forEach((ev) => unique.set(`${ev.date}-${ev.name}-${ev.type}`, ev));
-    return Array.from(unique.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [allHolidays, companyEvents, viewDate, companyConfig.marker_color]);
+    const merged = dedupeSimilarCalendarEvents([...hList, ...cList]);
+    return Array.from(merged.events).sort((a, b) => {
+      const byDate = a.date.localeCompare(b.date);
+      if (byDate !== 0) return byDate;
+      return a.start.localeCompare(b.start);
+    });
+  }, [allHolidays, uniqueCompanyEvents, viewDate, companyConfig.marker_color]);
+
+  const displayDuplicatesHidden = useMemo(() => {
+    const m = viewDate.getMonth();
+    const y = viewDate.getFullYear();
+    const holidayCount = allHolidays.filter((h) => {
+      const [hy, hm] = h.date.split('-').map(Number);
+      return hy === y && hm === m + 1;
+    }).length;
+    const companyCount = uniqueCompanyEvents.filter((e) => {
+      const ymd = eventStartYmd(e.start);
+      const [ey, em] = ymd.split('-').map(Number);
+      return ey === y && em === m + 1;
+    }).length;
+    return Math.max(0, holidayCount + companyCount - eventsThisMonth.length);
+  }, [allHolidays, uniqueCompanyEvents, eventsThisMonth, viewDate]);
+
+  const duplicatesHidden =
+    Math.max(companyDuplicatesHidden, companyDedupe.hidden) + displayDuplicatesHidden;
 
   const selectedDayEvents = useMemo(
     () => eventsThisMonth.filter((ev) => ev.date === selectedYmd),
@@ -412,6 +483,11 @@ export default function CalendarioPage() {
             </h2>
             <p className="text-xs text-gray-500 mb-4">
               {t('calendario.sharedOnlyHint')}
+              {duplicatesHidden > 0 && (
+                <span className="block mt-1 text-gray-400">
+                  {t('calendario.duplicatesHiddenHint', { count: duplicatesHidden })}
+                </span>
+              )}
             </p>
 
             {selectedDayEvents.length > 0 && (
@@ -437,6 +513,7 @@ export default function CalendarioPage() {
               {eventsThisMonth.map((ev) => {
                 const isSelected = ev.date === selectedYmd;
                 const day = ev.date.slice(8, 10);
+                const clock = formatEventClock(ev.start, ev.allDay, locale);
                 return (
                   <li
                     key={ev.key}
@@ -449,12 +526,13 @@ export default function CalendarioPage() {
                       {day} — {ev.name}
                     </span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                      {ev.source === 'company'
-                        ? t('calendario.companyEvents')
-                        : ev.type === 'MUNICIPAL'
-                          ? t('calendario.municipalHoliday')
-                          : t('calendario.nationalHoliday')}
+                      {listItemSourceLabel(ev, t)}
                     </span>
+                    {clock && (
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <FiClock className="w-3 h-3" /> {clock}
+                      </p>
+                    )}
                     {ev.location && (
                       <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                         <FiMapPin className="w-3 h-3" /> {ev.location}

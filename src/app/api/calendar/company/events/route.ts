@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { parseIcs, IcsEvent } from '@/lib/ics';
+import { dedupeSimilarCalendarEvents } from '@/lib/calendar-event-dedupe';
 
 export const dynamic = 'force-dynamic';
 
 // Simple in-memory cache (per lambda instance)
-let CACHE: { key: string; ts: number; events: IcsEvent[] } | null = null;
+let CACHE: { key: string; ts: number; events: IcsEvent[]; duplicatesHidden: number } | null = null;
 
 function deriveIcsFromGcalUrl(input?: string | null): string | null {
   if (!input) return null;
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     const cacheKey = `${icsUrl}|${fromParam || ''}|${toParam || ''}|${rangeDays}`;
     if (CACHE && CACHE.key === cacheKey && !force && Date.now() - CACHE.ts < 1000 * 60 * 5) {
-      return NextResponse.json({ events: CACHE.events });
+      return NextResponse.json({ events: CACHE.events, duplicatesHidden: CACHE.duplicatesHidden });
     }
 
     const res = await fetch(icsUrl, { cache: 'no-store' });
@@ -79,9 +80,15 @@ export async function GET(req: NextRequest) {
       return start >= min && start <= max;
     }).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
-    CACHE = { key: cacheKey, ts: Date.now(), events };
+    const deduped = dedupeSimilarCalendarEvents(events);
+    events = deduped.events;
 
-    return NextResponse.json({ events });
+    CACHE = { key: cacheKey, ts: Date.now(), events, duplicatesHidden: deduped.hidden };
+
+    return NextResponse.json({
+      events,
+      duplicatesHidden: deduped.hidden,
+    });
   } catch (e: any) {
     console.error('company/events GET error', e);
     return NextResponse.json({ error: e?.message || 'Erro interno' }, { status: 500 });

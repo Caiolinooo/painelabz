@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiX, FiUser, FiBookOpen, FiHeart, FiFileText, FiAnchor, FiRepeat, FiUpload, FiBell, FiRefreshCw, FiLayers
+  FiX, FiUser, FiBookOpen, FiHeart, FiFileText, FiAnchor, FiRepeat, FiUpload, FiBell, FiRefreshCw, FiLayers, FiShield
 } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { QHSE_MODULE_KEY } from '@/lib/document-catalog/permissions';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
@@ -15,6 +17,7 @@ import TreinamentosTab from './tabs/TreinamentosTab';
 import ASOTab from './tabs/ASOTab';
 import PassaportesTab from './tabs/PassaportesTab';
 import DocumentosTab from './tabs/DocumentosTab';
+import QhseTab from './tabs/QhseTab';
 import HistoricoEmbarquesTab from './tabs/HistoricoEmbarquesTab';
 import SubstituicoesTab from './tabs/SubstituicoesTab';
 import FichaUnificadaTab from './tabs/FichaUnificadaTab';
@@ -106,7 +109,7 @@ interface CollaboratorDetail {
   substituicoes: Substitution[];
 }
 
-export type TabKey = 'dados' | 'ficha' | 'treinamentos' | 'aso' | 'passaportes' | 'documentos' | 'embarques' | 'substituicoes';
+export type TabKey = 'dados' | 'ficha' | 'treinamentos' | 'aso' | 'passaportes' | 'documentos' | 'qhse' | 'embarques' | 'substituicoes';
 
 interface CollaboratorModalProps {
   colaboradorId: string;
@@ -122,6 +125,7 @@ const TABS: { key: TabKey; label: string; labelKey?: string; icon: React.Element
   { key: 'aso', labelKey: 'gestaoTripulantes.profile.aso', label: 'ASO', icon: FiHeart },
   { key: 'passaportes', labelKey: 'gestaoTripulantes.profile.passports', label: 'Passaportes', icon: FiFileText },
   { key: 'documentos', labelKey: 'gestaoTripulantes.profile.documents', label: 'Documentos', icon: FiFileText },
+  { key: 'qhse', labelKey: 'gestaoTripulantes.profile.qhse', label: 'QHSE / EPI', icon: FiShield },
   { key: 'embarques', labelKey: 'gestaoTripulantes.profile.embarkations', label: 'Embarques', icon: FiAnchor },
   { key: 'substituicoes', labelKey: 'gestaoTripulantes.profile.substitutions', label: 'Substituições', icon: FiRepeat },
 ];
@@ -200,6 +204,12 @@ function fetchColaboradorDetail(colaboradorId: string, opts?: { force?: boolean 
 
 export default function CollaboratorModal({ colaboradorId, onClose, initialTab, highlightDocId }: CollaboratorModalProps) {
   const { t } = useI18n();
+  const { hasAccess } = useSupabaseAuth();
+  const canSeeQhseTab = hasAccess(QHSE_MODULE_KEY);
+  const visibleTabs = useMemo(
+    () => TABS.filter((tab) => tab.key !== 'qhse' || canSeeQhseTab),
+    [canSeeQhseTab]
+  );
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab || 'dados');
   const [focusDocId, setFocusDocId] = useState<string | null>(highlightDocId || null);
   const [data, setData] = useState<CollaboratorDetail | null>(null);
@@ -235,6 +245,10 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
     const el = document.getElementById(`gt-doc-${focusDocId}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [focusDocId, activeTab, loading, data]);
+
+  useEffect(() => {
+    if (activeTab === 'qhse' && !canSeeQhseTab) setActiveTab('documentos');
+  }, [activeTab, canSeeQhseTab]);
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -336,6 +350,8 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
         return <PassaportesTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} highlightDocId={focusDocId} />;
       case 'documentos':
         return <DocumentosTab colaboradorId={data.id} documentos={data.documentos || []} onRefresh={silentRefresh} highlightDocId={focusDocId} />;
+      case 'qhse':
+        return <QhseTab colaboradorId={data.id} />;
       case 'embarques':
         return <HistoricoEmbarquesTab embarques={data.embarques || []} />;
       case 'substituicoes':
@@ -449,7 +465,7 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
           {/* Tabs */}
           <div className="border-b border-gray-200 bg-gray-50/50 overflow-x-auto shrink-0">
             <div className="flex min-w-max">
-              {TABS.map(tab => {
+              {visibleTabs.map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.key;
                 return (

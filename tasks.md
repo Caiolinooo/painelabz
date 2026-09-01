@@ -1,3 +1,10 @@
+## Release v5.70.0 (2026-09-01)
+
+Publicado no branch portal: catálogo QHSE/EPI, POB só ON, histórico colapsável de docs/treinamentos, filtro de data do Man Schedule e dedupe do calendário.
+
+---
+
+
 ## Man Schedule — novos lançamentos não contabilizam (2026-08-31)
 
 ### Problema
@@ -22,6 +29,73 @@ KPI **Documentos Vencidos = 1** (ex.: ANDERSON GONÇALVES PINTO / matr. 670) mas
 - [x] Abas alinhadas a `documentoPertenceAba`; highlight do id
 - [x] Hub agrega `gt_*` + `users_unified` + férias + reembolsos
 - [x] Tool IA `buscar_documentos_vencidos`
+
+## GT — histórico colapsável de treinamentos/documentos (2026-09-01)
+
+### Objetivo
+Quando o tripulante tem certificado novo válido e declaração/certificado antigo do mesmo curso (ex. CBSP), a ficha deve mostrar o lançamento mais recente como linha primária. Versões antigas ficam no submenu **Histórico** (colapsado, status Obsoleto), só para rastreio e download. O resumo (válido/vencido) e as pendências da ficha/lista usam **somente o primário**.
+
+### Feito
+- [x] Helper compartilhado `src/lib/gestao-tripulantes/documento-historico.ts` (chave = tipo + código/alias; primário por validade + certificado > declaração)
+- [x] UI: `TreinamentosTab`, `DocumentosTab`, `PassaportesTab` + `HistoricoColapsavel`
+- [x] APIs: `GET /colaboradores/[id]` deixa de ocultar duplicatas por título; `qtd_docs_*` e `onlyVencidos` usam primários
+- [x] Sem persistir `obsoleto` no banco; histórico permanece nas linhas
+- [x] Testes: `npx tsx --test src/lib/gestao-tripulantes/documento-historico.test.ts`
+- [x] KPI Matriz `GET /dashboard` `total_docs_vencidos`/`vencendo`: `somarDocsPorStatusPrimario` (primário por grupo). Employee Hub `documentsSummary` idem. Clique do card KPI / Man Schedule / POB não alterados.
+
+---
+
+## Docs globais usuário + QHSE/EPI (2026-09-01)
+
+### Objetivo
+Gestão de usuários deve listar **todos** os documentos do colaborador (GT, QHSE/ficha de EPI, lista de presença assinada, academy, contratos, férias, reembolso, assinatura), reconhecidos automaticamente hoje e no futuro. Sem copiar blobs.
+
+### Feito
+- [x] Catálogo vivo `src/lib/document-catalog/` (registry + resolver; sem tabela de índice)
+- [x] Matching: `user_id` → CPF (`findColaboradorByCpf`) → e-mail → nome (lista de presença sem user_id)
+- [x] Fontes: `gt`, `epi` (ficha AN-HSE-005 sob demanda), `lista_presenca` (EPI se título/pauta QHSE), `academy`, `contratos`, `ferias`, `reembolso`, `assinatura`
+- [x] APIs `GET /api/document-catalog`, `GET /api/users/[id]/documents`, `GET /api/document-catalog/download`
+- [x] UI: `/admin/users` (UserEditor), `/profile` aba Documentos, extras na aba Documentos do GT (sem mexer em Treinamentos)
+- [x] RLS/auth: QHSE = módulo `epi` (ADMIN/MANAGER sempre); sem ACL extra de catálogo
+- [x] Teste `npx tsx --test src/lib/document-catalog/document-catalog.test.ts`
+
+### Follow-up — aba nativa QHSE/EPI (2026-09-01)
+- [x] Aba **QHSE / EPI** no modal GT (`QhseTab`), só com `hasAccess('epi')` — mesma chave do módulo EPI
+- [x] `/profile` aba QHSE / EPI; aba Documentos com `hideQhse`
+- [x] UserEditor: seção QHSE (não dump genérico); admin libera em Módulos do Sistema → **EPI**
+- [x] Removido bloco “outros módulos” da aba Documentos do GT (Documentos continua só `gt_documentos` + Histórico)
+- [x] API `?qhse=1`; `canSeeQhseDocuments` não exige `lista-presenca.manage` / `gestao-tripulantes.view`
+
+### Como adicionar fonte futura
+1. `sources/<modulo>.ts` + `registerDocumentSource`
+2. Import em `sources/index.ts`
+3. Incluir id em `DOCUMENT_CATALOG_SOURCE_IDS` + switch de permissão/download
+
+### Lacunas
+- Não há tabela/arquivo persistido de “ficha de EPI assinada”; a ficha é gerada de `epi_registrations` + `signature_url`.
+- Lista de presença não guarda PDF de ficha EPI: o vínculo é o registro assinado em listas cujo título/pauta indica EPI/QHSE/HSE/SESMT.
+- Certificados da Academy e PDFs de férias usam os endpoints originais (não duplicados no catálogo).
+- Reembolso tenta `reimbursements` e fallback `Reimbursement`; comprovantes só se `user_id` + JSON `comprovantes`.
+
+---
+
+## Calendário — dedupe eventos semelhantes (2026-09-01)
+
+### Objetivo
+`/calendario` mostrava o mesmo compromisso várias vezes (ICS com VEVENTs repetidos / títulos quase iguais). Deduplicar na API e na lista para exibir **um** evento quando título semelhante + mesmo horário + mesmo local. Não apagar o ICS de origem. Sem reintroduzir MIO/`gt_*`.
+
+### Regra
+- Chave: `start` (minuto via date-fns `startOfMinute`, ou `YYYY-MM-DD|allday`) + local compatível (vazio = incompleto; senão texto normalizado / similaridade ≥ 0,9)
+- Título: normaliza caixa/acentos/pontuação/espaços; Levenshtein ≥ 0,88 **ou** Jaccard ≥ 0,8 com Levenshtein ≥ 0,72; números diferentes não mesclam
+- Fica o registro mais rico (descrição, participantes, url)
+- Mesmo nome em horários ou locais distintos permanece separado
+
+### Passos
+- [x] Helper `src/lib/calendar-event-dedupe.ts`
+- [x] `GET /api/calendar/company/events` (+ notify) aplica dedupe
+- [x] UI `/calendario` aplica o mesmo filtro na lista (feriados + ICS)
+- [x] Teste `npx tsx scripts/test-calendar-event-dedupe.ts`
+
 
 ---
 
@@ -825,3 +899,47 @@ git push -u --force-with-lease origin portal
 - [x] `20260723_000001_aso_identity_gate.sql` (cpf_documento, identity_match, colaborador_id nullable)
 - [x] `20260723_000002_gt_tipos_evento_escala.sql` (5 marcadores seed ON/FI/DBA/STB/OFF-C)
 - Script: `node scripts/run-aso-escala-migrations.js`
+
+---
+
+## GT — hang no filtro de data inicial (2026-09-01)
+
+### Problema
+Digitar o ano em Data Início (Man Schedule) congelava a UI. Chrome dispara `onChange` com `0002-01-01` / `0020-01-01` / `0202-01-01`; a grade interpretava isso como data válida e gerava centenas de milhares de colunas.
+
+### Passos
+- [x] Inventariar inputs `type="date"` de filtro em GT (lista/matriz sem período; hang = Man Schedule Data Início/Fim)
+- [x] Gate: só aplicar YYYY-MM-DD completo com ano 1990–2100 (`filter-date.ts`)
+- [x] `ScheduleDateFilterInput`: rascunho local; pai só recebe data completa ou vazio (sem re-render da grade a cada dígito)
+- [x] Cap de colunas (400 dias / 2000 semanas) como rede de segurança
+- [x] Mesmo input em `GTManScheduleTab` e `/department/man-schedule`
+- [x] DOX (`src/components/gestao-tripulantes/AGENTS.md` + API Man Schedule)
+- [ ] Playwright E2E no módulo autenticado (servidor/login não disponíveis nesta sessão)
+
+---
+
+## GT — KPIs clicáveis e contagem embarcados (2026-09-01)
+
+### Problema
+1. Cards da Matriz não filtravam a lista.
+2. POB inflado: Aislan — status 3P embarcados, Man Schedule só 2 `ON` e 1 `ON*` / `*`.
+
+### Definição POB
+Embarcado = código de escala **exato `ON`** no dia civil de hoje. **Não conta:** `ON*`, `*`, STB, DBA, FI, OFF-C, TRE, FER, UTR, DHC, `-`. Fonte: `gt_historico_embarques` (+ afastamentos), não `status_embarque`.
+
+### Feito
+- [x] Helper `src/lib/gestao-tripulantes/embarque-status.ts` + testes
+- [x] Dashboard `total_embarcados` via `listarIdsEmbarcadosHoje`
+- [x] Cards clicáveis + URL `?kpi=` (lista e Man Schedule)
+- [x] LGP pull grava `previsto` / `GT_EMBARQUE=previsto` quando não há Embarque Real
+- [x] Man Schedule: display ON*, badge `Hoje: NP a bordo`, coluna ON só exact ON
+- [x] Relatório mensal não soma ON* como dias ON
+- [ ] Playwright E2E autenticado (se servidor/login disponíveis)
+
+### Como conferir
+```
+npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts
+```
+Clique "Embarcados Agora" → URL `?kpi=embarcados` → lista = mesmo N do card.
+Pull MIO para marcar rotações só previstas como ON*.
+
