@@ -160,6 +160,16 @@ export default function ModalAprovacaoFechamento({
   const handleApprove = async () => {
     setErrorMsg(null);
     setResultMsg(null);
+    const lista = (previewData?.aprovadoresObrigatorios || []) as AprovadorObrigatorio[];
+    const gate = podeAssinarFechamento(lista, {
+      userId: user?.id,
+      email: user?.email || '',
+      role: user?.role,
+    });
+    if (!gate.permitido) {
+      setErrorMsg(mensagemErroAssinaturaNegada(gate.motivo));
+      return;
+    }
     try {
       const sign = await requestSignature({
         title: 'Assinatura Digital de Fechamento de Escala',
