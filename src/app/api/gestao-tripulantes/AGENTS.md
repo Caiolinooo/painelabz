@@ -170,11 +170,13 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 ### Fechamento Mensal de Escalas & Despacho ao Departamento Pessoal (DP)
 
 - **Workflow de Fechamento e Auditoria (`gt_relatorios_aprovacoes`)**:
-  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM`: Retorna preview consolidado com métricas por tripulante e totais gerais (`totalColaboradores`, `totalON`, `totalDBA`, `totalFI`, `totalTRE`, `totalFER`), além de histórico de aprovação.
-  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM&download=true`: Gera e faz download direto da planilha oficial XLSX pré-formatada com colunas dedicadas de Matrícula, Cargo, Centro de Custo, Regime/Escala, ON, DBA, FI, TRE e FER.
-  - `POST /api/gestao-tripulantes/relatorio-mensal/aprovar`: Valida permissão RBAC (`ADMIN` ou `MANAGER`), gera carimbo e hash SHA-256 de autenticidade (`GT_FECHAMENTO:mesAno:nome:cpf:data:ip`), grava assinatura digital e despacha por e-mail com anexo XLSX para as contas configuradas do DP (`emails_destinatarios_dp`).
-  - `GET /api/gestao-tripulantes/cron/relatorio-mensal`: Acionado periodicamente para checar se a data de corte do mês foi atingida e notificar pendências.
-  - `GET|PUT /api/gestao-tripulantes/relatorio-mensal/config`: Configura o dia de corte mensal (1-31), listas de e-mails principais e CC, envio automático e templates de mensagem.
+  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM`: preview consolidado (`totalColaboradores`, `totalON`, `totalDBA`, `totalFI`, `totalTRE`, `totalFER`), `aprovadoresObrigatorios`, `assinaturasColetadas` e registro.
+  - `GET /api/gestao-tripulantes/relatorio-mensal?mesAno=YYYY-MM&download=true`: XLSX oficial (Matrícula, Cargo, Centro de Custo, Regime/Escala, ON, DBA, FI, TRE, FER).
+  - `POST /api/gestao-tripulantes/relatorio-mensal/aprovar`: RBAC ADMIN/MANAGER (também GERENTE/ADMINISTRADOR/SUPERADMIN). Exige `signature_url` no body (do `useSignature().requestSignature`) ou no perfil. Carimbo SHA-256 `GT_FECHAMENTO:mesAno:nome:cpf:data:ip` (`montarHashFechamento`; CPF = `users_unified.tax_id`). Sem `full_name`/`cpf` nessa tabela — usar `first_name`+`last_name` e `tax_id`.
+  - **100% das assinaturas**: lista vazia de `aprovadores_obrigatorios` → a primeira assinatura de um gestor/admin conclui e libera o e-mail ao DP. Lista com N nomes → todos os N precisam assinar; extras não bloqueiam; e-mail XLSX só em 100%. Regras em `fechamento-assinatura.ts`.
+  - `GET /api/gestao-tripulantes/cron/relatorio-mensal`: data de corte e pendências.
+  - `GET|PUT /api/gestao-tripulantes/relatorio-mensal/config`: dia de corte, e-mails DP/CC, aprovadores, auto-envio, templates. GET devolve `availableManagers` via `listarGestoresPortal()` (ADMIN/MANAGER ativos com e-mail).
+  - UI: admin `WorkflowFechamentoTab`; DP/GT `ModalAprovacaoFechamento` — só o `SignatureModal` global (não montar segundo). Sem assinatura, o modal de cadastro roda e só então o POST. Erros da API vão para o usuário (`error` string), nunca exception crua.
 
 ### Regras Contábeis de Cômputo de Dobra (DBA) e Escalas
 - A escala do colaborador é extraída via `extractEscalaDias` lendo `escala_embarque`, `escala_folga` ou `regime_trabalho` (ex: `14x14`, `28x28`, `15x15`, `30x30`, `60x60`):
@@ -224,6 +226,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `GET /dashboard` totals exclude `ativo=false` and inactive cost centers; docs vencidos/vencendo count **primary per group** only (`somarDocsPorStatusPrimario`).
 - Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks. Toolbar Hoje/arrows move one column; pill interpolates `{count}` as civil-today POB (`countPobOnCivilDay`).
 - `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; `total_embarcados` = ON exato hoje (`embarque-status.ts`); `total_docs_vencidos` conta só o primário por grupo.
+- Fechamento: `POST .../relatorio-mensal/aprovar` com lista vazia + 1 assinatura → `aprovado`/`enviado`; com N aprovadores, e-mail só em 100%. `GET .../config` `availableManagers.length > 0` para ADMIN/MANAGER ativos. `npx tsx --test src/lib/gestao-tripulantes/fechamento-assinatura.test.ts`.
 - `GET /documentos/alertas` lista título/tipo/aba; `npx tsx scripts/verify-docs-alertas.ts` → `DOCS_ALERTAS_VERIFY_OK`.
 - Typing year digits in Man Schedule Data Início does not rebuild the grid until a complete 1990–2100 date.
 - Clique no card Embarcados filtra `GET /colaboradores?kpi=embarcados` ao mesmo conjunto. Linhas ON hoje devolvem `status_embarque=embarcado` (não Folga stale). `npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts`.

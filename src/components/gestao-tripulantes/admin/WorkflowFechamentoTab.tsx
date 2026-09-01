@@ -15,14 +15,29 @@ import {
   FiUserPlus,
   FiTrash2,
   FiUsers,
-  FiClock,
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
+import {
+  displayNameFromUser,
+  isFechamentoStatus,
+  labelFechamentoStatus,
+} from '@/lib/gestao-tripulantes/fechamento-assinatura';
 
 interface AprovadorItem {
   id?: string;
   nome: string;
   email: string;
+  cargo?: string;
+}
+
+interface GestorOption {
+  id: string;
+  email: string;
+  nome?: string;
+  first_name?: string;
+  last_name?: string;
+  name?: string;
+  role?: string;
   cargo?: string;
 }
 
@@ -70,7 +85,7 @@ export default function WorkflowFechamentoTab() {
     corpo_email_template: 'Prezados,\n\nSegue em anexo o relatório oficial consolidado de escalas da Gestão de Tripulantes para o período de {Mes_Ano}.\n\nAtenciosamente,\nGestão de Tripulantes - ABZ Group'
   });
 
-  const [availableManagers, setAvailableManagers] = useState<any[]>([]);
+  const [availableManagers, setAvailableManagers] = useState<GestorOption[]>([]);
   const [destinatariosInput, setDestinatariosInput] = useState('dp@groupabz.com');
   const [ccInput, setCcInput] = useState('');
   const [historico, setHistorico] = useState<RelatorioRegistro[]>([]);
@@ -91,7 +106,10 @@ export default function WorkflowFechamentoTab() {
     setErrorMsg(null);
     try {
       const resConfig = await fetchWithToken('/api/gestao-tripulantes/relatorio-mensal/config');
-      const dataConfig = await resConfig.json();
+      const dataConfig = await resConfig.json().catch(() => ({}));
+      if (Array.isArray(dataConfig.availableManagers)) {
+        setAvailableManagers(dataConfig.availableManagers);
+      }
       if (dataConfig.success && dataConfig.config) {
         setConfig(dataConfig.config);
         setDestinatariosInput(
@@ -104,9 +122,8 @@ export default function WorkflowFechamentoTab() {
             ? dataConfig.config.emails_cc.join(', ')
             : dataConfig.config.emails_cc || ''
         );
-        if (dataConfig.availableManagers) {
-          setAvailableManagers(dataConfig.availableManagers);
-        }
+      } else if (!resConfig.ok) {
+        throw new Error(dataConfig.error || 'Falha ao carregar configurações de fechamento.');
       }
 
       // Carregar preview e histórico
@@ -116,9 +133,9 @@ export default function WorkflowFechamentoTab() {
       if (dataRel.registro) {
         setHistorico([dataRel.registro]);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao carregar dados de fechamento:', err);
-      setErrorMsg('Falha ao carregar configurações de fechamento.');
+      setErrorMsg(err instanceof Error ? err.message : 'Falha ao carregar configurações de fechamento.');
     } finally {
       setIsLoading(false);
     }
@@ -131,27 +148,34 @@ export default function WorkflowFechamentoTab() {
   const handleAddAprovador = () => {
     const list = config.aprovadores_obrigatorios || [];
     if (selectedManagerId) {
-      const mgr = availableManagers.find(m => m.id === selectedManagerId);
+      const mgr = availableManagers.find((m) => m.id === selectedManagerId);
       if (mgr) {
-        const jaExiste = list.some(a => a.email && a.email.toLowerCase() === mgr.email.toLowerCase());
+        const email = String(mgr.email || '').trim();
+        if (!email) {
+          setErrorMsg('Este usuário não tem e-mail cadastrado.');
+          return;
+        }
+        const jaExiste = list.some((a) => a.email && a.email.toLowerCase() === email.toLowerCase());
         if (jaExiste) {
           setErrorMsg('Este aprovador já está na lista.');
           return;
         }
-        setConfig(prev => ({
+        setConfig((prev) => ({
           ...prev,
           aprovadores_obrigatorios: [
             ...(prev.aprovadores_obrigatorios || []),
             {
               id: mgr.id,
-              nome: mgr.full_name || mgr.name || mgr.email,
-              email: mgr.email,
-              cargo: mgr.role?.toUpperCase() || 'Gestor',
-            }
-          ]
+              nome: mgr.nome || displayNameFromUser(mgr) || email,
+              email,
+              cargo: mgr.cargo || mgr.role || 'Gestor',
+            },
+          ],
         }));
         setSelectedManagerId('');
         setErrorMsg(null);
+      } else {
+        setErrorMsg('Selecione um gestor válido na lista.');
       }
     } else if (customNome.trim() && customEmail.trim()) {
       const jaExiste = list.some(a => a.email && a.email.toLowerCase() === customEmail.trim().toLowerCase());
@@ -175,7 +199,7 @@ export default function WorkflowFechamentoTab() {
       setCustomCargo('');
       setErrorMsg(null);
     } else {
-      setErrorMsg('Selecione um gestor ou preencha o nome e e-mail do aprovador.');
+      setErrorMsg('Selecione um gestor na lista para adicionar.');
     }
   };
 
@@ -215,15 +239,15 @@ export default function WorkflowFechamentoTab() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Erro ao salvar configurações.');
       }
 
       setSuccessMsg('Configurações de fechamento mensal salvas com sucesso!');
       setConfig(payload);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao salvar.');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Erro ao salvar.');
     } finally {
       setIsSaving(false);
     }
@@ -292,7 +316,7 @@ export default function WorkflowFechamentoTab() {
             <div className="space-y-2">
               {(!config.aprovadores_obrigatorios || config.aprovadores_obrigatorios.length === 0) ? (
                 <div className="p-3 bg-white border border-dashed border-gray-300 rounded-lg text-xs text-gray-500 text-center">
-                  Nenhum aprovador específico cadastrado. (Qualquer gestor ou administrador poderá aprovar individualmente).
+                  Nenhum aprovador específico cadastrado. Qualquer gestor ou administrador poderá assinar uma vez e concluir o fechamento.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -339,12 +363,18 @@ export default function WorkflowFechamentoTab() {
                   }}
                   className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-abz-blue sm:col-span-2"
                 >
-                  <option value="">-- Selecionar Gestor / Usuário do Sistema --</option>
-                  {availableManagers.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.full_name || m.name} ({m.email}) - {m.role}
-                    </option>
-                  ))}
+                  <option value="">
+                    {availableManagers.length === 0
+                      ? '-- Nenhum gestor encontrado --'
+                      : '-- Selecionar Gestor / Usuário do Sistema --'}
+                  </option>
+                  {availableManagers
+                    .filter((m) => m.id && m.email)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nome || displayNameFromUser(m)} ({m.email}) — {m.role || m.cargo || 'Gestor'}
+                      </option>
+                    ))}
                 </select>
 
                 <div className="sm:col-span-2 flex gap-2">
@@ -518,13 +548,12 @@ export default function WorkflowFechamentoTab() {
                             ? 'bg-emerald-100 text-emerald-800'
                             : (h.status === 'em_aprovacao' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')
                         }`}>
-                          {h.status === 'enviado'
-                            ? 'Enviado ao DP'
-                            : (h.status === 'aprovado'
-                              ? 'Aprovado (100%)'
-                              : (h.status === 'em_aprovacao'
-                                ? `Em Aprovação (${assinaturas.length}/${obrigatorios.length || 1})`
-                                : 'Pendente'))}
+                          {isFechamentoStatus(h.status)
+                            ? labelFechamentoStatus(h.status, {
+                              assinados: assinaturas.length,
+                              obrigatorios: obrigatorios.length,
+                            })
+                            : h.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs font-semibold text-gray-700">

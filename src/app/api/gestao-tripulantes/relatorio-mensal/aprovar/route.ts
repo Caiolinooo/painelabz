@@ -1,11 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { sendEmail } from '@/lib/email-exchange';
 import { gerarRelatorioEscalaMensal } from '@/lib/gestao-tripulantes/relatorio-escala-generator';
-import crypto from 'crypto';
+import {
+  clientIpFromRequest,
+  resolveAuthUserId,
+} from '@/lib/gestao-tripulantes/aso-agendamento-auth';
+import {
+  avaliarAssinaturasFechamento,
+  isFechamentoRole,
+  mensagemErroAssinaturaAusente,
+  montarHashFechamento,
+  normalizeAprovadoresObrigatorios,
+  type AssinaturaFechamento,
+} from '@/lib/gestao-tripulantes/fechamento-assinatura';
+import { loadFechamentoAtor } from '@/lib/gestao-tripulantes/fechamento-gestores';
 
 export const dynamic = 'force-dynamic';
+
+function parseConfigValor(raw: unknown): Record<string, unknown> {
+  if (!raw) return {};
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
+    } catch {
+      return {};
+    }
+  }
+  if (typeof raw === 'object') return raw as Record<string, unknown>;
+  return {};
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,41 +46,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const role = (payload.role || '').toUpperCase();
-    if (role !== 'ADMIN' && role !== 'ADMINISTRADOR' && role !== 'SUPERADMIN' && role !== 'MANAGER') {
+    if (!isFechamentoRole(payload.role)) {
       return NextResponse.json({ error: 'Apenas gestores ou administradores podem aprovar o fechamento mensal da Gestão de Tripulantes.' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { mesAno, observacoes, enviarEmail = true, filtros = {} } = body;
+    const body = await request.json().catch(() => ({}));
+    const { mesAno, observacoes, enviarEmail = true, filtros = {} } = body as {
+      mesAno?: string;
+      observacoes?: string;
+      enviarEmail?: boolean;
+      filtros?: Record<string, string | undefined>;
+      signature_url?: string;
+      assinatura_url?: string;
+    };
     if (!mesAno) {
       return NextResponse.json({ error: 'Mês de referência (mesAno) é obrigatório (formato YYYY-MM)' }, { status: 400 });
     }
 
-    // 1. Buscar dados do usuário aprovador logado
-    const userId = payload.id || payload.userId;
-    const { data: userRecord } = await supabaseAdmin
-      .from('users_unified')
-      .select('id, name, full_name, email, cpf, signature_url, role')
-      .eq('id', userId)
-      .maybeSingle();
+    const userId = resolveAuthUserId(payload);
+    if (!userId) {
+      return NextResponse.json({ error: 'Não foi possível identificar o usuário autenticado.' }, { status: 401 });
+    }
 
-    const approverName = userRecord?.full_name || userRecord?.name || payload.name || payload.email || 'Gestor Autorizado';
-    const approverEmail = (userRecord?.email || payload.email || '').toLowerCase().trim();
-    const approverCpf = userRecord?.cpf || '';
-    const approverSignatureUrl = userRecord?.signature_url || '';
+    const ator = await loadFechamentoAtor(userId);
+    const approverName = ator?.nome || payload.email || 'Gestor Autorizado';
+    const approverEmail = (ator?.email || payload.email || '').toLowerCase().trim();
+    const approverCpf = ator?.cpf || '';
+    const signatureFromBody = String(body.signature_url || body.assinatura_url || '').trim();
+    const approverSignatureUrl = signatureFromBody || ator?.signatureUrl || '';
+
+    if (!approverSignatureUrl) {
+      return NextResponse.json({ error: mensagemErroAssinaturaAusente() }, { status: 400 });
+    }
+    if (!approverEmail) {
+      return NextResponse.json({ error: 'Seu usuário não tem e-mail cadastrado. Atualize o perfil antes de assinar o fechamento.' }, { status: 400 });
+    }
+
     const nowIso = new Date().toISOString();
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
-
-    const hashContent = `GT_FECHAMENTO:${mesAno}:${approverEmail}:${approverCpf}:${nowIso}:${clientIp}`;
+    const clientIp = clientIpFromRequest(request);
+    const hashContent = montarHashFechamento({
+      mesAno,
+      nome: approverName,
+      cpf: approverCpf,
+      dataIso: nowIso,
+      ip: clientIp,
+    });
     const signatureHash = crypto.createHash('sha256').update(hashContent).digest('hex');
 
-    const currentSignature = {
+    const currentSignature: AssinaturaFechamento = {
       userId,
       email: approverEmail,
       nome: approverName,
       cpf: approverCpf,
-      cargo: userRecord?.role || payload.role || 'Gestor',
+      cargo: ator?.cargo || payload.role || 'Gestor',
       assinado_em: nowIso,
       dataHora: new Date().toLocaleString('pt-BR'),
       ip: clientIp,
@@ -61,66 +106,36 @@ export async function POST(request: NextRequest) {
       assinaturaHash: signatureHash,
     };
 
-    // 2. Buscar configuração de aprovadores obrigatórios e de e-mail
     const { data: configData } = await supabaseAdmin
       .from('gt_configuracoes')
       .select('valor')
       .eq('chave', 'gt_fechamento_mensal_config')
       .maybeSingle();
 
-    const config = configData?.valor ? (typeof configData.valor === 'string' ? JSON.parse(configData.valor) : configData.valor) : {
-      emails_destinatarios_dp: ['dp@groupabz.com'],
-      emails_cc: [],
-      aprovadores_obrigatorios: [],
-      assunto_email_template: 'Fechamento de Escala Gestão de Tripulantes - {Mes_Ano}',
-      corpo_email_template: 'Prezados,\n\nSegue em anexo o relatório oficial consolidado de escalas da Gestão de Tripulantes para o período de {Mes_Ano}.\n\nAtenciosamente,\nGestão de Tripulantes - ABZ Group'
-    };
+    const config = parseConfigValor(configData?.valor);
+    const aprovadoresObrigatorios = normalizeAprovadoresObrigatorios(config.aprovadores_obrigatorios);
 
-    const aprovadoresObrigatorios: Array<{ id?: string; email: string; nome: string; cargo?: string }> = Array.isArray(config.aprovadores_obrigatorios)
-      ? config.aprovadores_obrigatorios
-      : [];
-
-    // 3. Buscar registro existente para mesAno
     const { data: registroExistente } = await supabaseAdmin
       .from('gt_relatorios_aprovacoes')
       .select('*')
       .eq('mes_referencia', mesAno)
       .maybeSingle();
 
-    const assinaturasMap = new Map<string, typeof currentSignature>();
-
-    // Carregar assinaturas já coletadas
+    const assinaturasMap = new Map<string, AssinaturaFechamento>();
     if (Array.isArray(registroExistente?.assinaturas)) {
-      for (const sig of registroExistente.assinaturas) {
-        if (sig.email) assinaturasMap.set(sig.email.toLowerCase(), sig);
-        else if (sig.userId) assinaturasMap.set(sig.userId, sig);
+      for (const sig of registroExistente.assinaturas as AssinaturaFechamento[]) {
+        const key = (sig.email || '').toLowerCase() || String(sig.userId || '');
+        if (key) assinaturasMap.set(key, sig);
       }
     }
-
-    // Inserir / Atualizar assinatura do usuário atual
     assinaturasMap.set(approverEmail, currentSignature);
     const assinaturasArray = Array.from(assinaturasMap.values());
 
-    // 4. Verificar se todos os aprovadores obrigatórios assinaram
-    let todosAssinaram = true;
-    const pendentes: typeof aprovadoresObrigatorios = [];
+    const { todosAssinaram, pendentes } = avaliarAssinaturasFechamento(
+      aprovadoresObrigatorios,
+      assinaturasArray,
+    );
 
-    if (aprovadoresObrigatorios.length > 0) {
-      for (const obr of aprovadoresObrigatorios) {
-        const obrEmail = (obr.email || '').toLowerCase().trim();
-        const obrId = obr.id;
-        const assinou = assinaturasArray.some(s => 
-          (obrEmail && s.email && s.email.toLowerCase() === obrEmail) ||
-          (obrId && s.userId && s.userId === obrId)
-        );
-        if (!assinou) {
-          todosAssinaram = false;
-          pendentes.push(obr);
-        }
-      }
-    }
-
-    // 5. Gerar planilha oficial com a lista de chancelas digitais coletadas
     const reportResult = await gerarRelatorioEscalaMensal({
       mesAno,
       dataInicio: filtros.dataInicio,
@@ -128,23 +143,25 @@ export async function POST(request: NextRequest) {
       empresa: filtros.empresa,
       embarcacao: filtros.embarcacao,
       cargo: filtros.cargo,
-      statusAtivo: filtros.statusAtivo,
+      statusAtivo: filtros.statusAtivo as 'ativos' | 'inativos' | 'todos' | undefined,
       busca: filtros.busca,
       aprovadores: assinaturasArray,
     });
 
-    const recipientList = config.emails_destinatarios_dp || ['dp@groupabz.com'];
+    const recipientRaw = config.emails_destinatarios_dp;
+    const recipientList = Array.isArray(recipientRaw)
+      ? recipientRaw.map((e) => String(e).trim()).filter(Boolean)
+      : ['dp@groupabz.com'];
     const safeEmb = (filtros.embarcacao || 'Todas').replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_');
     const filename = `relatorio_fechamento_${mesAno}_${safeEmb}.xlsx`;
     let emailSent = false;
-    let emailErrorMsg = null;
+    let emailErrorMsg: string | null = null;
 
-    // Se TODOS os aprovadores obrigatórios assinaram e o envio está habilitado: despachar e-mail ao DP
     if (todosAssinaram && enviarEmail && recipientList.length > 0) {
-      const subject = (config.assunto_email_template || 'Fechamento de Escala Gestão de Tripulantes - {Mes_Ano}')
+      const subject = String(config.assunto_email_template || 'Fechamento de Escala Gestão de Tripulantes - {Mes_Ano}')
         .replace(/{Mes_Ano}/g, mesAno);
 
-      const chancelasHtml = assinaturasArray.map(s => `
+      const chancelasHtml = assinaturasArray.map((s) => `
         <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 8px 12px; border-radius: 6px; margin-top: 8px;">
           <p style="margin: 0; font-size: 12px; color: #065f46;">
             <strong>✓ Assinado por:</strong> ${s.nome} (${s.cargo || 'Gestor'})<br />
@@ -197,18 +214,17 @@ export async function POST(request: NextRequest) {
                 filename,
                 content: reportResult.buffer,
                 contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-              }
-            ]
-          }
+              },
+            ],
+          },
         );
         emailSent = true;
-      } catch (err: any) {
+      } catch (err) {
         console.error('[API Aprovar SendEmail Error]', err);
-        emailErrorMsg = err.message || 'Falha ao despachar e-mail para destinatários';
+        emailErrorMsg = err instanceof Error ? err.message : 'Falha ao despachar e-mail para destinatários';
       }
     }
 
-    // 6. Persistir no banco de dados com status apropriado
     const [ano, mes] = mesAno.split('-').map(Number);
     const finalStatus = todosAssinaram
       ? (emailSent ? 'enviado' : 'aprovado')
@@ -247,7 +263,10 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error('[API Aprovar Upsert DB Error]', dbError);
-      return NextResponse.json({ error: dbError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: dbError.message || 'Não foi possível gravar a aprovação do fechamento.' },
+        { status: 500 },
+      );
     }
 
     let message = '';
@@ -255,8 +274,11 @@ export async function POST(request: NextRequest) {
       message = emailSent
         ? `Fechamento de ${mesAno} aprovado por todos os integrantes e enviado com sucesso ao DP (${recipientList.join(', ')})!`
         : `Fechamento de ${mesAno} aprovado por todos os integrantes!`;
+      if (emailErrorMsg) {
+        message += ` O e-mail ao DP não foi enviado: ${emailErrorMsg}`;
+      }
     } else {
-      const nomesPendentes = pendentes.map(p => p.nome).join(', ');
+      const nomesPendentes = pendentes.map((p) => p.nome || p.email).join(', ');
       message = `Sua assinatura foi registrada com sucesso! Aguardando a assinatura de: ${nomesPendentes} para o envio final ao DP.`;
     }
 
@@ -272,8 +294,11 @@ export async function POST(request: NextRequest) {
       emailErrorMsg,
       signatureHash,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API Aprovar Error]', error);
-    return NextResponse.json({ error: error.message || 'Erro ao processar aprovação do fechamento' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erro ao processar aprovação do fechamento' },
+      { status: 500 },
+    );
   }
 }

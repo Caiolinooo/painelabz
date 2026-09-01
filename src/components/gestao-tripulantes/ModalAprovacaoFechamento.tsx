@@ -18,6 +18,14 @@ import {
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { useSignature } from '@/contexts/SignatureContext';
+import {
+  assinaturaCobreAprovador,
+  isFechamentoStatus,
+  labelFechamentoStatus,
+  mensagemErroAssinaturaAusente,
+  type AprovadorObrigatorio,
+  type AssinaturaFechamento,
+} from '@/lib/gestao-tripulantes/fechamento-assinatura';
 
 export interface ModalFilters {
   empresa?: string;
@@ -70,21 +78,21 @@ export default function ModalAprovacaoFechamento({
     return params.toString();
   };
 
-  const loadPreview = async (targetMes: string) => {
+  const loadPreview = async (targetMes: string, opts?: { keepResult?: boolean }) => {
     setIsLoading(true);
     setErrorMsg(null);
-    setResultMsg(null);
+    if (!opts?.keepResult) setResultMsg(null);
     try {
       const q = buildQueryString(targetMes);
       const res = await fetchWithToken(`/api/gestao-tripulantes/relatorio-mensal?${q}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Erro ao carregar dados do mês.');
       }
       setPreviewData(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro no preview do fechamento:', err);
-      setErrorMsg(err.message || 'Falha ao buscar dados do fechamento.');
+      setErrorMsg(err instanceof Error ? err.message : 'Falha ao buscar dados do fechamento.');
     } finally {
       setIsLoading(false);
     }
@@ -101,27 +109,7 @@ export default function ModalAprovacaoFechamento({
     window.open(`/api/gestao-tripulantes/relatorio-mensal?${q}`, '_blank');
   };
 
-  const handleApprove = async () => {
-    setErrorMsg(null);
-    setResultMsg(null);
-
-    // Se o usuário não tiver assinatura cadastrada, solicitar que cadastre agora
-    if (!hasSignature) {
-      requestSignature({
-        title: 'Assinatura Digital de Fechamento de Escala',
-        description: `Cadastre sua assinatura digital para validar o fechamento de escala de ${mesAno} para o DP.`,
-        documentId: `fechamento-${mesAno}`,
-        onSign: async () => {
-          await executeApproval();
-        }
-      });
-      return;
-    }
-
-    await executeApproval();
-  };
-
-  const executeApproval = async () => {
+  const executeApproval = async (signatureUrl: string) => {
     setIsApproving(true);
     try {
       const res = await fetchWithToken('/api/gestao-tripulantes/relatorio-mensal/aprovar', {
@@ -131,6 +119,7 @@ export default function ModalAprovacaoFechamento({
           mesAno,
           observacoes,
           enviarEmail,
+          signature_url: signatureUrl,
           filtros: {
             empresa: filters.empresa,
             embarcacao: filters.embarcacao,
@@ -139,12 +128,12 @@ export default function ModalAprovacaoFechamento({
             busca: searchTerm,
             dataInicio: filters.dataInicio,
             dataFim: filters.dataFim,
-          }
+          },
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao aprovar fechamento.');
+        throw new Error(data.error || `Erro ao aprovar fechamento (${res.status}).`);
       }
 
       setResultMsg({
@@ -155,13 +144,32 @@ export default function ModalAprovacaoFechamento({
       });
 
       if (onSuccess) onSuccess();
-      // Recarregar preview com status e assinaturas atualizadas
-      await loadPreview(mesAno);
-    } catch (err: any) {
+      await loadPreview(mesAno, { keepResult: true });
+    } catch (err) {
       console.error('Erro na aprovação do fechamento:', err);
-      setErrorMsg(err.message || 'Erro ao processar aprovação.');
+      setErrorMsg(err instanceof Error ? err.message : 'Erro ao processar aprovação.');
     } finally {
       setIsApproving(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    setErrorMsg(null);
+    setResultMsg(null);
+    try {
+      const sign = await requestSignature({
+        title: 'Assinatura Digital de Fechamento de Escala',
+        description: `Confirme sua assinatura digital para validar o fechamento de escala de ${mesAno} para o DP.`,
+      });
+      if (!sign) {
+        if (!hasSignature) {
+          setErrorMsg(mensagemErroAssinaturaAusente());
+        }
+        return;
+      }
+      await executeApproval(sign.signatureUrl);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Erro ao solicitar assinatura digital.');
     }
   };
 
@@ -174,12 +182,18 @@ export default function ModalAprovacaoFechamento({
     (c.cargo || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const obrigatorios = previewData?.aprovadoresObrigatorios || [];
-  const assinaturas = previewData?.assinaturasColetadas || [];
-  const totalObrigatorios = obrigatorios.length || 1;
+  const obrigatorios: AprovadorObrigatorio[] = previewData?.aprovadoresObrigatorios || [];
+  const assinaturas: AssinaturaFechamento[] = previewData?.assinaturasColetadas || [];
+  const totalObrigatorios = obrigatorios.length > 0 ? obrigatorios.length : 1;
   const assinadosCount = assinaturas.length;
-  const isFullyApproved = previewData?.registro?.status === 'aprovado' || previewData?.registro?.status === 'enviado';
-  const isPartiallyApproved = previewData?.registro?.status === 'em_aprovacao';
+  const registroStatus = String(previewData?.registro?.status || '');
+  const isFullyApproved = registroStatus === 'aprovado' || registroStatus === 'enviado';
+  const isPartiallyApproved = registroStatus === 'em_aprovacao';
+  const statusBadgeLabel = isFechamentoStatus(registroStatus)
+    ? labelFechamentoStatus(registroStatus, { assinados: assinadosCount, obrigatorios: obrigatorios.length })
+    : (isFullyApproved
+      ? '✓ 100% Assinado & Aprovado'
+      : (isPartiallyApproved ? `Em Aprovação (${assinadosCount}/${totalObrigatorios})` : 'Pendente de Assinatura'));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
@@ -336,19 +350,14 @@ export default function ModalAprovacaoFechamento({
                   ? 'bg-emerald-100 text-emerald-800'
                   : (isPartiallyApproved ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')
               }`}>
-                {isFullyApproved
-                  ? '✓ 100% Assinado & Aprovado'
-                  : (isPartiallyApproved ? `Em Aprovação (${assinadosCount}/${totalObrigatorios})` : 'Pendente de Assinatura')}
+                {isFullyApproved ? '✓ 100% Assinado & Aprovado' : statusBadgeLabel}
               </span>
             </div>
 
             {obrigatorios.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {obrigatorios.map((obr: any, idx: number) => {
-                  const signature = assinaturas.find((s: any) =>
-                    (s.email && s.email.toLowerCase() === obr.email.toLowerCase()) ||
-                    (obr.id && s.userId === obr.id)
-                  );
+                {obrigatorios.map((obr, idx) => {
+                  const signature = assinaturaCobreAprovador(obr, assinaturas);
                   return (
                     <div
                       key={obr.email || idx}
@@ -378,12 +387,14 @@ export default function ModalAprovacaoFechamento({
               </div>
             ) : (
               <div className="text-xs text-gray-600">
-                Nenhum aprovador específico fixado nas configurações. Qualquer gestor ou administrador poderá assinar e aprovar.
+                Nenhum aprovador específico fixado nas configurações. Qualquer gestor ou administrador pode assinar uma vez para concluir o fechamento e liberar o e-mail ao DP.
               </div>
             )}
 
             <p className="text-[11px] text-gray-500 pt-1">
-              ⚠️ O despacho oficial por e-mail com anexo para o Departamento Pessoal só é enviado automaticamente quando <strong>todos os integrantes obrigatórios</strong> concluírem suas assinaturas.
+              {obrigatorios.length > 0
+                ? 'O e-mail com a planilha para o Departamento Pessoal só é enviado quando 100% dos aprovadores obrigatórios tiverem assinado.'
+                : 'Sem lista nominada, a primeira assinatura de um gestor ou administrador conclui o fechamento e dispara o e-mail ao DP (se marcado).'}
             </p>
           </div>
 

@@ -8,7 +8,7 @@ import {
   isLogisticaRole,
   requireAsoAgendamentoAuth,
 } from '@/lib/gestao-tripulantes/aso-agendamento-auth';
-import { supabaseAdmin } from '@/lib/supabase';
+import { listarGestoresPortal } from '@/lib/gestao-tripulantes/fechamento-gestores';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +18,12 @@ export async function GET(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const config = await getAsoAgendamentoConfig();
-    const { data: managers } = await supabaseAdmin
-      .from('users_unified')
-      .select('id, name, full_name, email, role, cpf')
-      .in('role', ['admin', 'ADMIN', 'administrador', 'ADMINISTRADOR', 'superadmin', 'SUPERADMIN', 'manager', 'MANAGER'])
-      .order('name');
+    const availableManagers = await listarGestoresPortal();
 
     return NextResponse.json({
       success: true,
       config,
-      availableManagers: managers || [],
+      availableManagers,
     });
   } catch (error) {
     console.error('[ASO agendamento config GET]', error);

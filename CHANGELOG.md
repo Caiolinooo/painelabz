@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.71.1] - 2026-09-01
+
+### 🔧 Fechamento de escalas: assinatura digital, dropdown de gestores e lista vazia
+
+1. **Assinatura no modal**: `ModalAprovacaoFechamento` passa a aguardar a Promise de `requestSignature()` em vez do callback obsoleto `onSign`. O cadastro de assinatura POSTa `/aprovar`; quem já tem assinatura envia `signature_url` no body (antes o POST ia sem a URL).
+2. **Dropdown de gestores**: a lista usa `first_name` / `last_name` / `tax_id` de `users_unified` (não `full_name` / `cpf`). O PostgREST deixava `availableManagers=[]` e o placeholder do select parecia duplicado.
+3. **Lista vazia de aprovadores**: sem nomes cadastrados, uma assinatura de ADMIN/MANAGER conclui o fechamento e libera o e-mail ao DP. Lista nominada continua exigindo 100% das N assinaturas.
+
 ## [5.71.0] - 2026-09-01
 
 ### ⚓ GT/DP: status real da escala, Man Schedule usável e agendamento de ASO

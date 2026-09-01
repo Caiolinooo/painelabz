@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { gerarRelatorioEscalaMensal } from '@/lib/gestao-tripulantes/relatorio-escala-generator';
+import { normalizeAprovadoresObrigatorios } from '@/lib/gestao-tripulantes/fechamento-assinatura';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +36,15 @@ export async function GET(request: NextRequest) {
       .eq('chave', 'gt_fechamento_mensal_config')
       .maybeSingle();
 
-    const config = configData?.valor ? (typeof configData.valor === 'string' ? JSON.parse(configData.valor) : configData.valor) : {};
-    const aprovadoresObrigatorios = config.aprovadores_obrigatorios || [];
+    let config: Record<string, unknown> = {};
+    try {
+      const raw = configData?.valor;
+      if (typeof raw === 'string') config = JSON.parse(raw);
+      else if (raw && typeof raw === 'object') config = raw as Record<string, unknown>;
+    } catch {
+      config = {};
+    }
+    const aprovadoresObrigatorios = normalizeAprovadoresObrigatorios(config.aprovadores_obrigatorios);
 
     // 2. Buscar registro existente de fechamento
     const { data: registroExistente } = await supabaseAdmin

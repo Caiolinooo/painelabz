@@ -7,7 +7,7 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 ## Ownership
 
 - Page/layout: `src/app/department/dp/`
-- APIs: `GET /api/gestao-tripulantes/colaboradores`, `GET|POST /api/gestao-tripulantes/aso/notificar-vencimentos`, `GET|POST /api/gestao-tripulantes/aso/agendamentos`, `GET|POST /api/gestao-tripulantes/aso/agendamentos/sugestoes`, `GET /api/gestao-tripulantes/relatorio-mensal`, `POST /api/e-social/consolidar`
+- APIs: `GET /api/gestao-tripulantes/colaboradores`, `GET|POST /api/gestao-tripulantes/aso/notificar-vencimentos`, `GET|POST /api/gestao-tripulantes/aso/agendamentos`, `GET|POST /api/gestao-tripulantes/aso/agendamentos/sugestoes`, `GET /api/gestao-tripulantes/relatorio-mensal`, `POST /api/gestao-tripulantes/relatorio-mensal/aprovar`, `POST /api/e-social/consolidar`
 - Lib: `src/lib/gestao-tripulantes/aso-vencimentos.ts`, `aso-agendamento-*.ts`, `LIST_SELECT` em `colaborador-get.ts`
 
 ## Local Contracts
@@ -19,7 +19,7 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 - Janela vencendo = antecedência admin (padrão 60 dias), não hardcoded 30.
 - DP escolhe data sugerida (escala STB preferida) e assina (`useSignature`); cria `solicitado` para a logística. Status `marcado` / `reprovado` (com motivo) aparecem na mesma aba.
 - Status VENCIDO/VENCENDO vem de `alerta` calculado por data civil local (`YYYY-MM-DD`), não de `new Date(iso)` UTC.
-- Fechamento: preview de totais via `relatorio-mensal`; aprovação continua em `ModalAprovacaoFechamento`.
+- Fechamento: preview de totais via `relatorio-mensal`; aprovação em `ModalAprovacaoFechamento` com `useSignature().requestSignature` (modal global). Sem aprovadores nominados, um ADMIN/MANAGER assina e conclui; com N nomes, e-mail ao DP só em 100%.
 
 ## Work Guidance
 
@@ -32,7 +32,7 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 - Colunas Cargo, Centro de Custo, Empresa e Escala preenchidas quando o cadastro tem FK.
 - Coluna Status mostra Ativo/Inativo **e** a pílula de embarque da célula de hoje (ON → Embarcado).
 - Aba ASO lista nome/CPF/cargo (não `N/A` em massa); validade em `dd/mm/aaaa`; vencido só se a data local já passou; permite Agendar → logística; marcado após aprovação.
-- Aba Fechamento mostra totais ON/DBA/FI/TRE do mês selecionado.
+- Aba Fechamento mostra totais ON/DBA/FI/TRE do mês selecionado. Assinar abre o SignatureModal global; cancelar não quebra; sem assinatura cadastrada o cadastro no próprio modal precede o POST.
 
 ## Child DOX Index
 
