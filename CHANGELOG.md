@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.72.1] - 2026-09-02
+
+### 🔒 Segurança e qualidade de tipos (employee-hub, GT, IA e e-mail)
+
+1. **Vazamento PII na ficha unificada**: `resolvePortalUser` exige corroboração de identidade (nome ou segundo identificador) antes de mesclar férias/reembolsos de outro usuário do portal ou fazer backfill de `user_id`. Match solto por e-mail/CPF editável no GT não expõe mais dados de terceiros.
+2. **TypeScript real zerado**: corrigidos ~140 erros de tipo em gestão-tripulantes/e-Social (flatten de joins Supabase), IA/e-mail (`await` em `resolveEmailAuth`, `LLMMessage` com `tool`, schemas de tools) e pontos residuais (catálogo lista-presença, mascote Companion).
+3. **Build confiável**: `tsconfig` exclui `scratch/` e `scripts/` de verificação; `npx tsc --noEmit` passa sem erros de código-fonte.
+
 ## [5.72.0] - 2026-09-02
 
 ### 🪪 Ficha do colaborador, regime sem escala e viewport do portal

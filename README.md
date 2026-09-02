@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.72.0-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.72.1-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
@@ -24,10 +24,12 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ---
 
-## Novidades da Versão [v5.72.0]
+## Novidades da Versão [v5.72.1]
 
 | | Capacidade | Destaque |
 |---|---|---|
+| 🔒 | **Segurança na ficha** | Vínculo portal exige corroboração de identidade; e-mail/CPF solto não mescla férias/reembolsos de terceiros. |
+| 🛠️ | **TypeScript limpo** | Erros reais corrigidos em GT, IA, e-mail e employee-hub; `tsc --noEmit` passa no código-fonte. |
 | 🪪 | **Ficha do colaborador** | Portal liga por `tax_id`/e-mail; QHSE sem ASO; modal e listas cabem na tela. |
 | 🏖️ | **Sem escala / onshore** | Administrativo não vira 14x14; DBA automático só em NxN. |
 | 🖥️ | **GT sem tela branca** | Fechamento usa `useSupabaseAuth`; páginas GT/DP/portal com scroll interno. |
