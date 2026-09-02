@@ -156,12 +156,12 @@ export function sanitizeMessagesForLLM(messages: LLMMessage[]): LLMMessage[] {
       };
 
       if (role === 'tool') {
-        cleanMsg.tool_call_id = (msg as any).tool_call_id || 'call_0';
+        cleanMsg.tool_call_id = msg.tool_call_id || 'call_0';
         // Sem 'name' no objeto tool para compatibilidade estrita com o Gemini
       }
 
-      if (role === 'assistant' && Array.isArray((msg as any).tool_calls) && (msg as any).tool_calls.length > 0) {
-        cleanMsg.tool_calls = (msg as any).tool_calls;
+      if (role === 'assistant' && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+        cleanMsg.tool_calls = msg.tool_calls;
       }
 
       return cleanMsg as LLMMessage;
@@ -307,8 +307,13 @@ export async function chatCompletion(
         return data;
       }
       
-      const toolCalls = data.choices[0].message.tool_calls;
-      const newMessages = [...messages, data.choices[0].message];
+      const toolCalls = data.choices[0].message.tool_calls ?? [];
+      const assistantMessage: LLMMessage = {
+        role: 'assistant',
+        content: data.choices[0].message.content,
+        tool_calls: toolCalls,
+      };
+      const newMessages: LLMMessage[] = [...messages, assistantMessage];
       let mergedMetadata = options?._accumulatedMetadata || {};
       const { formatToolResultForLLM } = await import('./tool-result-format');
       
@@ -359,7 +364,7 @@ export async function chatCompletion(
             role: 'tool',
             content: toolContent,
             tool_call_id: tc.id,
-          } as any);
+          });
         }
       
       const totalElapsed = Date.now() - callStartTime;

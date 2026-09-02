@@ -45,7 +45,7 @@ export interface DocumentosAlertasResult {
 export interface DocAlertaRow {
   id: string;
   colaborador_id: string | null;
-  tipo_documento: string;
+  tipo_documento?: string | null;
   subtipo?: string | null;
   titulo?: string | null;
   numero_documento?: string | null;
@@ -70,15 +70,16 @@ export function montarItensAlerta(
     const alerta = classificarValidadeCivil(d.data_validade, hoje);
     if (alerta !== 'vencido' && alerta !== 'vencendo') continue;
     const colab = nomes[d.colaborador_id as string] || { nome: null, matricula: null, cpf: null };
+    const tipo = d.tipo_documento || 'outro';
     items.push({
       id: d.id,
       colaborador_id: d.colaborador_id as string,
       colaborador_nome: colab.nome,
       colaborador_matricula: colab.matricula,
       cpf: colab.cpf,
-      tipo_documento: d.tipo_documento,
+      tipo_documento: tipo,
       subtipo: d.subtipo ?? null,
-      titulo: d.titulo || d.tipo_documento,
+      titulo: d.titulo || tipo,
       numero_documento: d.numero_documento ?? null,
       numero_rastreio: d.numero_rastreio ?? null,
       data_emissao: d.data_emissao ?? null,
@@ -87,7 +88,7 @@ export function montarItensAlerta(
       origem: d.origem ?? null,
       alerta,
       papel: d.papel,
-      aba: abaParaTipoDocumento(d.tipo_documento),
+      aba: abaParaTipoDocumento(tipo),
       status_stale: d.status_validacao !== alerta,
     });
   }
@@ -140,7 +141,12 @@ export function contarDocsPorColaborador(
   }
   for (const [id, list] of byColab) {
     if (!counts[id]) counts[id] = { qtd_docs_vencidos: 0, qtd_docs_vencendo: 0, qtd_docs_validos: 0 };
-    counts[id] = contarAlertasVigentes(marcarPapeisConformidade(list), hoje);
+    const c = contarAlertasVigentes(marcarPapeisConformidade(list), hoje);
+    counts[id] = {
+      qtd_docs_vencidos: c.vencidos,
+      qtd_docs_vencendo: c.vencendo,
+      qtd_docs_validos: c.validos,
+    };
   }
   return counts;
 }

@@ -46,17 +46,34 @@ export interface AsoCarimboInput {
   agendamentoId: string;
 }
 
-function asRel<T>(value: T | T[] | null | undefined): T | null {
+interface ColaboradorJoinRaw {
+  id?: unknown;
+  user_id?: unknown;
+  nome_completo?: unknown;
+  cpf?: unknown;
+  email?: unknown;
+  matricula?: unknown;
+  cargo?: { nome?: string } | { nome?: string }[] | null;
+  empresa?: { nome?: string } | { nome?: string }[] | null;
+  embarcacao_atual?: { nome?: string } | { nome?: string }[] | null;
+}
+
+function asRel<T>(value: unknown): T | null {
   if (value == null) return null;
-  return Array.isArray(value) ? (value[0] ?? null) : value;
+  if (Array.isArray(value)) return (value[0] ?? null) as T | null;
+  return value as T;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return (value ?? {}) as Record<string, unknown>;
 }
 
 function flattenColaborador(raw: unknown) {
-  const colab = asRel(raw as Record<string, unknown> | null);
+  const colab = asRel<ColaboradorJoinRaw>(raw);
   if (!colab || typeof colab.id !== 'string') return null;
-  const cargo = asRel(colab.cargo as { nome?: string } | null);
-  const empresa = asRel(colab.empresa as { nome?: string } | null);
-  const embarcacao = asRel(colab.embarcacao_atual as { nome?: string } | null);
+  const cargo = asRel<{ nome?: string }>(colab.cargo);
+  const empresa = asRel<{ nome?: string }>(colab.empresa);
+  const embarcacao = asRel<{ nome?: string }>(colab.embarcacao_atual);
   return {
     id: colab.id,
     user_id: (colab.user_id as string | null) ?? null,
@@ -70,7 +87,17 @@ function flattenColaborador(raw: unknown) {
   };
 }
 
-export function flattenAsoAgendamento(row: Record<string, unknown>) {
+export type AsoAgendamentoFlat = Record<string, unknown> & {
+  colaborador: ReturnType<typeof flattenColaborador>;
+  status?: unknown;
+  data_solicitada?: unknown;
+  data_sugerida?: unknown;
+  assinaturas?: unknown;
+  solicitado_por_id?: unknown;
+  observacoes?: unknown;
+};
+
+export function flattenAsoAgendamento(row: Record<string, unknown>): AsoAgendamentoFlat {
   return {
     ...row,
     colaborador: flattenColaborador(row.colaborador),
@@ -172,10 +199,10 @@ export async function buscarAgendamentos(filtros: {
 
   const { data, error } = await q.limit(500);
   if (error) throw new Error(error.message);
-  return (data || []).map((row) => flattenAsoAgendamento(row as Record<string, unknown>));
+  return (data || []).map((row) => flattenAsoAgendamento(asRecord(row)));
 }
 
-export async function buscarAgendamentoPorId(id: string) {
+export async function buscarAgendamentoPorId(id: string): Promise<(AsoAgendamentoFlat & { log: unknown[] }) | null> {
   const { data, error } = await supabaseAdmin
     .from('gt_aso_agendamentos')
     .select(AGENDAMENTO_SELECT)
@@ -192,7 +219,7 @@ export async function buscarAgendamentoPorId(id: string) {
     .order('created_at', { ascending: true });
 
   return {
-    ...flattenAsoAgendamento(data as Record<string, unknown>),
+    ...flattenAsoAgendamento(asRecord(data)),
     log: log || [],
   };
 }
@@ -519,7 +546,7 @@ export async function solicitarAgendamento(opts: {
     console.warn('[aso-agendamento] e-mail logística falhou:', err);
   }
 
-  return flattenAsoAgendamento(updated as Record<string, unknown>);
+  return flattenAsoAgendamento(asRecord(updated));
 }
 
 export async function decidirAgendamento(opts: {
@@ -643,7 +670,7 @@ export async function decidirAgendamento(opts: {
     }
   }
 
-  return flattenAsoAgendamento(updated as Record<string, unknown>);
+  return flattenAsoAgendamento(asRecord(updated));
 }
 
 export async function cancelarAgendamento(opts: {
@@ -663,7 +690,7 @@ export async function cancelarAgendamento(opts: {
     .from('gt_aso_agendamentos')
     .update({
       status: 'cancelado',
-      observacoes: opts.motivo || atual.observacoes,
+      observacoes: opts.motivo || (typeof atual.observacoes === 'string' ? atual.observacoes : null),
     })
     .eq('id', opts.id)
     .select(AGENDAMENTO_SELECT)
@@ -680,7 +707,7 @@ export async function cancelarAgendamento(opts: {
     payload: { motivo: opts.motivo || null },
   });
 
-  return flattenAsoAgendamento(updated as Record<string, unknown>);
+  return flattenAsoAgendamento(asRecord(updated));
 }
 
 export async function loadAtorFromUserId(userId: string): Promise<AsoAgendamentoAtor> {

@@ -119,14 +119,26 @@ export async function listarStatusEscalaHoje(
       data_desembarque: string | null;
       data_prevista_desembarque: string | null;
       observacoes: string | null;
-    }>((from, to) => {
+    }>(async (from, to) => {
       let q = supabaseAdmin
         .from('gt_historico_embarques')
         .select('id, colaborador_id, tipo, data_embarque, data_desembarque, data_prevista_desembarque, observacoes')
         .is('deleted_at', null)
         .lte('data_embarque', hoje);
       if (idList) q = q.in('colaborador_id', idList);
-      return q.range(from, to).then((r) => ({ data: r.data as typeof r.data, error: r.error }));
+      const r = await q.range(from, to);
+      return {
+        data: (Array.isArray(r.data) ? r.data : null) as {
+          id: string;
+          colaborador_id: string;
+          tipo: string | null;
+          data_embarque: string | null;
+          data_desembarque: string | null;
+          data_prevista_desembarque: string | null;
+          observacoes: string | null;
+        }[] | null,
+        error: r.error,
+      };
     }),
     paginarSelect<{
       id: string;
@@ -136,13 +148,25 @@ export async function listarStatusEscalaHoje(
       data_fim: string | null;
       data_prevista_retorno: string | null;
       motivo: string | null;
-    }>((from, to) => {
+    }>(async (from, to) => {
       let q = supabaseAdmin
         .from('gt_afastamentos')
         .select('id, colaborador_id, tipo_afastamento, data_inicio, data_fim, data_prevista_retorno, motivo')
         .is('deleted_at', null);
       if (idList) q = q.in('colaborador_id', idList);
-      return q.range(from, to).then((r) => ({ data: r.data as typeof r.data, error: r.error }));
+      const r = await q.range(from, to);
+      return {
+        data: (Array.isArray(r.data) ? r.data : null) as {
+          id: string;
+          colaborador_id: string;
+          tipo_afastamento: string | null;
+          data_inicio: string | null;
+          data_fim: string | null;
+          data_prevista_retorno: string | null;
+          motivo: string | null;
+        }[] | null,
+        error: r.error,
+      };
     }),
   ]);
 

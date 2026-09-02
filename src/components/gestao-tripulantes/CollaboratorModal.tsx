@@ -501,7 +501,7 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
               {/* Action buttons */}
               <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                 <button
-                  onClick={fetchData}
+                  onClick={() => { void fetchData(); }}
                   className="p-2 hover:bg-white/20 rounded-lg transition-colors"
                   title="Atualizar"
                 >

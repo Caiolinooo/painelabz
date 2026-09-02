@@ -195,7 +195,11 @@ async function getUserEmails(userId: string): Promise<Array<{subject: string; fr
     if (!res.ok) return [];
 
     const mailData = await res.json();
-    return enrichGraphEmails(mailData.value || [], { maxItems: 25 });
+    return enrichGraphEmails(mailData.value || [], { maxItems: 25 }).map((email) => ({
+      subject: email.assunto || '',
+      from: email.de?.email || email.de?.nome || '',
+      date: email.data_recebido || email.data_recebido_iso || '',
+    }));
 
   } catch {
     return [];

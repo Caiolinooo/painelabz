@@ -148,7 +148,16 @@ export async function POST(request: NextRequest) {
       cargo: filtros.cargo,
       statusAtivo: filtros.statusAtivo as 'ativos' | 'inativos' | 'todos' | undefined,
       busca: filtros.busca,
-      aprovadores: assinaturasArray,
+      aprovadores: assinaturasArray.map((s) => ({
+        nome: s.nome || '',
+        cpf: s.cpf,
+        email: s.email,
+        cargo: s.cargo,
+        dataHora: s.dataHora || s.assinado_em || '',
+        ip: s.ip,
+        assinaturaUrl: s.assinaturaUrl,
+        assinaturaHash: s.assinaturaHash,
+      })),
     });
 
     const recipientRaw = config.emails_destinatarios_dp;

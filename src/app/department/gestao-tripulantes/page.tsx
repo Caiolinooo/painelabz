@@ -98,10 +98,11 @@ function GestaoTripulantesContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const kpiFilter = parseGtDashboardKpi(searchParams.get('kpi'));
+  const pathnameSafe = pathname || '/department/gestao-tripulantes';
+  const kpiFilter = parseGtDashboardKpi(searchParams?.get('kpi'));
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'schedule' | 'aso-logistica'>(() =>
-    searchParams.get('tab') === 'aso-logistica' ? 'aso-logistica' : 'matrix',
+    searchParams?.get('tab') === 'aso-logistica' ? 'aso-logistica' : 'matrix',
   );
   const [scheduleMounted, setScheduleMounted] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -122,16 +123,16 @@ function GestaoTripulantesContent() {
   }, [filters.docsVencidos]);
 
   useEffect(() => {
-    if (searchParams.get('tab') === 'aso-logistica') setActiveTab('aso-logistica');
+    if (searchParams?.get('tab') === 'aso-logistica') setActiveTab('aso-logistica');
   }, [searchParams]);
 
   const setKpiInUrl = useCallback((kpi: GtDashboardKpi | '') => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
     if (kpi) params.set('kpi', kpi);
     else params.delete('kpi');
     const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [pathname, router, searchParams]);
+    router.replace(qs ? `${pathnameSafe}?${qs}` : pathnameSafe, { scroll: false });
+  }, [pathnameSafe, router, searchParams]);
 
   const handleKpiClick = useCallback((kpi: GtDashboardKpi) => {
     const next = kpiFilter === kpi ? '' : kpi;

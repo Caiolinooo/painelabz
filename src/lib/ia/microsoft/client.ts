@@ -149,11 +149,11 @@ async function graphCallPaginated<T = any>(
 
   while (results.length < cap && (relativeEndpoint || nextUrl)) {
     const token = await getAppAccessToken();
-    const url = nextUrl
+    const url: string = nextUrl
       ? nextUrl
       : `https://graph.microsoft.com/v1.0${relativeEndpoint}`;
 
-    const response = await fetch(url, {
+    const response: Response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -167,7 +167,7 @@ async function graphCallPaginated<T = any>(
       throw new Error(`Graph API error (${response.status}): ${error}`);
     }
 
-    const data = await response.json();
+    const data: { value?: T[]; '@odata.nextLink'?: string } = await response.json();
     const page: T[] = data.value || [];
     results.push(...page);
 

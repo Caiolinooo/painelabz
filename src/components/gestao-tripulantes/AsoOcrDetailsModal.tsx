@@ -29,6 +29,13 @@ interface Props {
   colaboradorCpf?: string;
 }
 
+type OcrNamedItem = { nome?: string; exame?: string; data?: string };
+type OcrListItem = string | OcrNamedItem;
+
+function isOcrNamedItem(value: OcrListItem): value is OcrNamedItem {
+  return typeof value === 'object' && value != null;
+}
+
 const TIPO_EXAME_LABELS: Record<string, string> = {
   admissional: 'Admissional',
   periodico: 'Periódico',
@@ -86,23 +93,23 @@ export default function AsoOcrDetailsModal({
   const cnpjClinica = ocrData.cnpj_clinica || '';
   const enderecoClinica = [ocrData.endereco_logradouro, ocrData.endereco_cep].filter(Boolean).join(' - ');
 
-  const examesRealizados = Array.isArray(ocrData.exames_realizados)
+  const examesRealizados: OcrListItem[] = Array.isArray(ocrData.exames_realizados)
     ? ocrData.exames_realizados
     : Array.isArray(ocrData.exames_complementares)
     ? ocrData.exames_complementares
     : [];
 
-  const riscosOcupacionais = Array.isArray(ocrData.riscos_ocupacionais)
+  const riscosOcupacionais: OcrListItem[] = Array.isArray(ocrData.riscos_ocupacionais)
     ? ocrData.riscos_ocupacionais
     : Array.isArray(ocrData.fatores_risco)
     ? ocrData.fatores_risco
     : [];
 
-  const formatDate = (val) => {
+  const formatDate = (val: unknown) => {
     if (!val) return '—';
     try {
       if (typeof val === 'string' && val.includes('/')) return val;
-      return new Date(val).toLocaleDateString('pt-BR');
+      return new Date(String(val)).toLocaleDateString('pt-BR');
     } catch {
       return String(val);
     }
@@ -337,13 +344,13 @@ export default function AsoOcrDetailsModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {examesRealizados.map((ex, idx) => (
+                    {examesRealizados.map((ex: OcrListItem, idx: number) => (
                       <tr key={idx} className="hover:bg-slate-50 transition-colors">
                         <td className="py-2 px-3 font-medium text-slate-800 uppercase">
                           {typeof ex === 'string' ? ex : ex.nome || ex.exame || '—'}
                         </td>
                         <td className="py-2 px-3 text-slate-600">
-                          {typeof ex === 'object' && ex.data ? formatDate(ex.data) : formatDate(dataRealizacao)}
+                          {isOcrNamedItem(ex) && ex.data ? formatDate(ex.data) : formatDate(dataRealizacao)}
                         </td>
                         <td className="py-2 px-3">
                           <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
@@ -368,7 +375,7 @@ export default function AsoOcrDetailsModal({
                 </h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                {riscosOcupacionais.map((risco, idx) => (
+                {riscosOcupacionais.map((risco: OcrListItem, idx: number) => (
                   <span
                     key={idx}
                     className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg text-xs font-medium uppercase"

@@ -151,6 +151,8 @@ export async function createEvento(evento: {
   modulo_origem?: string;
   entidade_origem_id?: string;
   entidade_origem_tipo?: string;
+  protocolo_envio?: string | null;
+  numero_recibo?: string | null;
 }): Promise<ESocialEvento> {
   const { data, error } = await supabaseAdmin
     .from('esocial_eventos')
@@ -164,6 +166,8 @@ export async function createEvento(evento: {
       modulo_origem: evento.modulo_origem || 'manual',
       entidade_origem_id: evento.entidade_origem_id || null,
       entidade_origem_tipo: evento.entidade_origem_tipo || null,
+      protocolo_envio: evento.protocolo_envio || null,
+      numero_recibo: evento.numero_recibo || null,
     })
     .select()
     .single();
@@ -187,8 +191,10 @@ export async function updateEvento(id: string, updates: {
   revisado_em?: string;
   enviado_em?: string;
   comentario_revisao?: string;
+  matricula?: string;
+  updated_at?: string;
 }): Promise<ESocialEvento> {
-  const updateData: any = { updated_at: new Date().toISOString() };
+  const updateData: any = { updated_at: updates.updated_at || new Date().toISOString() };
 
   if (updates.dados_evento !== undefined) updateData.dados_evento = updates.dados_evento;
   if (updates.status !== undefined) updateData.status = updates.status;
@@ -201,6 +207,7 @@ export async function updateEvento(id: string, updates: {
   if (updates.revisado_em !== undefined) updateData.revisado_em = updates.revisado_em;
   if (updates.enviado_em !== undefined) updateData.enviado_em = updates.enviado_em;
   if (updates.comentario_revisao !== undefined) updateData.comentario_revisao = updates.comentario_revisao;
+  if (updates.matricula !== undefined) updateData.matricula = updates.matricula;
 
   const { data, error } = await supabaseAdmin
     .from('esocial_eventos')

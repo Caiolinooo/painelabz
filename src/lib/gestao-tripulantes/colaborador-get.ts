@@ -7,7 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 import { marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
 import { montarItensAlerta } from '@/lib/gestao-tripulantes/documentos-alertas';
-import { contarDocsPorStatusPrimario } from '@/lib/gestao-tripulantes/documento-historico';
+import { contarDocsPorStatusPrimario, type DocumentoAgrupavel } from '@/lib/gestao-tripulantes/documento-historico';
 import { overlayStatusEscalaHoje } from '@/lib/gestao-tripulantes/dashboard-service';
 
 export const DEFAULT_INCLUDE = [
@@ -81,7 +81,19 @@ function asObj<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-export function flattenColaboradorRow(row: Record<string, unknown>) {
+export type FlattenedColaboradorRow = Record<string, unknown> & {
+  cargo_nome: string | null;
+  cargo_nivel: number | null;
+  cargo_ordem: number | null;
+  empresa_nome: string | null;
+  empresa_cnpj: string | null;
+  embarcacao_nome: string | null;
+  embarcacao_imo: string | null;
+  centro_custo_nome: string | null;
+  centro_custo_codigo: string | null;
+};
+
+export function flattenColaboradorRow(row: Record<string, unknown>): FlattenedColaboradorRow {
   const cargo = asObj(row.cargo as { nome?: string; nivel?: number; ordem_exibicao?: number } | null);
   const empresa = asObj(row.empresa as { nome?: string; cnpj?: string } | null);
   const embarcacao = asObj(row.embarcacao_atual as { nome?: string; imo?: string } | null);
@@ -119,21 +131,7 @@ function flattenEmbarque(row: Record<string, unknown>) {
   };
 }
 
-function countDocsByStatus(documentos: {
-  id?: string;
-  colaborador_id?: string | null;
-  tipo_documento?: string | null;
-  subtipo?: string | null;
-  titulo?: string | null;
-  descricao?: string | null;
-  origem?: string | null;
-  numero_documento?: string | null;
-  data_emissao?: string | null;
-  data_validade?: string | null;
-  created_at?: string | null;
-  status_validacao?: string | null;
-  treinamento_data?: { nome_curso?: string | null; tipo_curso?: string | null } | null;
-}[]) {
+function countDocsByStatus(documentos: DocumentoAgrupavel[]) {
   const counts = contarDocsPorStatusPrimario(documentos);
   return {
     qtd_docs_vencidos: counts.qtd_docs_vencidos,

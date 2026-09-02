@@ -11,6 +11,8 @@ import {
   pickUniqueEmailMatch,
   pickUniqueNameCpfMatch,
   pickUniqueTaxIdMatch,
+  resolveModuleUserIds,
+  shouldAcceptPrimaryMatch,
   shouldBackfillUserId,
   uniqueUserIds,
   normalizePersonName,
@@ -100,9 +102,19 @@ async function maybeBackfillColaboradorUserId(
   }
 }
 
+function skipUncorroborated(kind: string, userId: string): void {
+  console.warn(`[employee-hub] skip uncorroborated ${kind} portal match`, userId);
+}
+
 export async function resolvePortalUser(lookup: PortalUserLookup): Promise<PortalUserResolution> {
   const cpf = normalizeCpf(lookup.cpf || '');
   const email = normalizeEmail(lookup.email);
+  const nome = lookup.nome || '';
+  const identityCtx = {
+    colaboradorNome: nome,
+    colaboradorCpf: cpf,
+    colaboradorEmail: email,
+  };
 
   try {
     if (lookup.userId) {
@@ -115,33 +127,53 @@ export async function resolvePortalUser(lookup: PortalUserLookup): Promise<Porta
         return {
           user: byId,
           reason: 'user_id',
-          moduleUserIds: uniqueUserIds(byId.id, byTax?.id, byEmail?.id),
+          moduleUserIds: resolveModuleUserIds({
+            primary: byId,
+            primaryReason: 'user_id',
+            byTax,
+            byEmail,
+            ...identityCtx,
+          }),
         };
       }
     }
 
-    const byTax = await fetchPortalUserByTaxId(cpf);
+    const [byTax, byEmail] = await Promise.all([
+      fetchPortalUserByTaxId(cpf),
+      fetchPortalUserByEmail(email),
+    ]);
+
     if (byTax) {
-      const byEmail = await fetchPortalUserByEmail(email);
-      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byTax.id);
-      return {
-        user: byTax,
-        reason: 'tax_id',
-        moduleUserIds: uniqueUserIds(byTax.id, byEmail?.id),
-      };
+      if (shouldAcceptPrimaryMatch(byTax, 'tax_id', { nome, cpf, email })) {
+        await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byTax.id);
+        return {
+          user: byTax,
+          reason: 'tax_id',
+          moduleUserIds: resolveModuleUserIds({
+            primary: byTax,
+            primaryReason: 'tax_id',
+            byTax,
+            byEmail,
+            ...identityCtx,
+          }),
+        };
+      }
+      skipUncorroborated('tax_id', byTax.id);
     }
 
-    const byEmail = await fetchPortalUserByEmail(email);
     if (byEmail) {
-      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byEmail.id);
-      return {
-        user: byEmail,
-        reason: 'email',
-        moduleUserIds: uniqueUserIds(byEmail.id),
-      };
+      if (shouldAcceptPrimaryMatch(byEmail, 'email', { nome, cpf, email })) {
+        await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byEmail.id);
+        return {
+          user: byEmail,
+          reason: 'email',
+          moduleUserIds: uniqueUserIds(byEmail.id),
+        };
+      }
+      skipUncorroborated('email', byEmail.id);
     }
 
-    const byName = await fetchPortalUserByNameAndCpf(lookup.nome || '', cpf);
+    const byName = await fetchPortalUserByNameAndCpf(nome, cpf);
     if (byName) {
       await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byName.id);
       return {

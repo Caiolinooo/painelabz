@@ -20,8 +20,8 @@ interface Document {
   titulo: string;
   numero_documento: string;
   orgao_emissor: string;
-  data_emissao: string;
-  data_validade: string;
+  data_emissao: string | null;
+  data_validade: string | null;
   status_validacao: string;
   ocr_status: string;
   arquivo_url: string;

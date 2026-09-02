@@ -5895,7 +5895,7 @@ async function getGlobalUserEmails(
       (filters.length ? `&$filter=${filters.join(' and ')}` : '');
 
     while (nextUrl && collected.length < limit) {
-      const mailRes = await fetch(nextUrl, {
+      const mailRes: Response = await fetch(nextUrl, {
         headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
       });
 
@@ -5907,7 +5907,7 @@ async function getGlobalUserEmails(
         return `Erro ao ler e-mails do usuário via Graph API: ${mailRes.status} - ${errorData}`;
       }
 
-      const mailData = await mailRes.json();
+      const mailData: { value?: unknown[]; '@odata.nextLink'?: string } = await mailRes.json();
       collected.push(...(mailData.value || []));
       nextUrl = mailData['@odata.nextLink'] || null;
     }

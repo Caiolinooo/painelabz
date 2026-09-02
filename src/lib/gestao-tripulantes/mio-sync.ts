@@ -379,7 +379,15 @@ export async function syncFromMIO(): Promise<{
 
         const agoraIso = new Date().toISOString();
         const colaboradorData: Record<string, unknown> = { ...mapMIOToColaborador(integrante), updated_at: agoraIso };
-        const regimeMio = mesclarRegimeMio(existing, regimeFromMioIntegrante(integrante));
+        const regimeMio = mesclarRegimeMio(
+          existing,
+          regimeFromMioIntegrante(integrante as unknown as {
+            [key: string]: unknown;
+            regime_trabalho?: string | null;
+            regime?: string | null;
+            Regime?: string | null;
+          }),
+        );
         if (regimeMio) {
           colaboradorData.regime_trabalho = regimeMio.regime_trabalho;
           colaboradorData.escala_embarque = regimeMio.escala_embarque;

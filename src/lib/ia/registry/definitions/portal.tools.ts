@@ -3,6 +3,7 @@
  */
 import { registerTool } from '../tools-registry';
 import type { IATool, IAToolResult } from '@/types/ia-global';
+import type { AICommandPayload } from '../../portal-action-bus';
 import { aliasToPath, buildNavCommand, resolvePortalNavigation } from '../../portal-navigation';
 import {
   createKpiBoard,
@@ -41,14 +42,14 @@ const navegarPortalTool: IATool = {
 
     const match = resolvePortalNavigation(destino);
     const path = match && match.score >= 0.78 ? match.route.path : aliasToPath(destino);
-    const commands = [
+    const commands: AICommandPayload[] = [
       match && match.score >= 0.78
         ? buildNavCommand(match)
-        : { action: 'NAVIGATE' as const, target: path, label: `Navegando para ${path}...` },
+        : { action: 'NAVIGATE', target: path, label: `Navegando para ${path}...` },
     ];
     if (args.highlight) {
       commands.push({
-        action: 'HIGHLIGHT_ELEMENT' as const,
+        action: 'HIGHLIGHT_ELEMENT',
         target: String(args.highlight),
         label: 'Destacando elemento',
       });
@@ -73,9 +74,9 @@ const criarQuadroKpiTool: IATool = {
     parameters: {
       type: 'object',
       properties: {
-        titulo: { type: 'string', required: true },
-        spec: { type: 'object', required: true },
-        abrir: { type: 'boolean', required: false },
+        titulo: { type: 'string', description: 'Título do quadro KPI', required: true },
+        spec: { type: 'object', description: 'Especificação do quadro (widgets, layout, dataSources)', required: true },
+        abrir: { type: 'boolean', description: 'Se true, abre o quadro em /kpi após criar', required: false },
       },
       required: ['titulo', 'spec'],
     },
@@ -110,8 +111,9 @@ const listarQuadrosKpiTool: IATool = {
     parameters: {
       type: 'object',
       properties: {
-        limite: { type: 'number', required: false },
+        limite: { type: 'number', description: 'Quantidade máxima de quadros a listar', required: false },
       },
+      required: [],
     },
   },
   handler: async (args, ctx): Promise<IAToolResult> => {
@@ -132,8 +134,9 @@ const abrirQuadroKpiTool: IATool = {
     parameters: {
       type: 'object',
       properties: {
-        board_id: { type: 'string', required: false },
+        board_id: { type: 'string', description: 'ID do quadro a abrir; vazio usa o quadro ativo', required: false },
       },
+      required: [],
     },
   },
   handler: async (args, ctx): Promise<IAToolResult> => {
@@ -163,10 +166,10 @@ const atualizarQuadroKpiTool: IATool = {
     parameters: {
       type: 'object',
       properties: {
-        board_id: { type: 'string', required: true },
-        titulo: { type: 'string', required: false },
-        spec: { type: 'object', required: false },
-        abrir: { type: 'boolean', required: false },
+        board_id: { type: 'string', description: 'ID do quadro a atualizar', required: true },
+        titulo: { type: 'string', description: 'Novo título do quadro', required: false },
+        spec: { type: 'object', description: 'Nova especificação do quadro (widgets, layout)', required: false },
+        abrir: { type: 'boolean', description: 'Se true, abre o quadro em /kpi após atualizar', required: false },
       },
       required: ['board_id'],
     },
@@ -199,10 +202,11 @@ const excluirQuadroKpiTool: IATool = {
     parameters: {
       type: 'object',
       properties: {
-        id: { type: 'string', required: false },
-        board_id: { type: 'string', required: false },
-        titulo: { type: 'string', required: false },
+        id: { type: 'string', description: 'ID do quadro a excluir', required: false },
+        board_id: { type: 'string', description: 'Alias de id do quadro a excluir', required: false },
+        titulo: { type: 'string', description: 'Título do quadro para busca fuzzy', required: false },
       },
+      required: [],
     },
   },
   handler: async (args, ctx): Promise<IAToolResult> => {
@@ -232,6 +236,7 @@ const excluirTodosQuadrosKpiTool: IATool = {
     parameters: {
       type: 'object',
       properties: {},
+      required: [],
     },
   },
   handler: async (_args, ctx): Promise<IAToolResult> => {

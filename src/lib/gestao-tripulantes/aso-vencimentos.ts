@@ -53,19 +53,32 @@ export interface AsosComAlerta {
   vencendo: AsoVencimentoItem[];
 }
 
-function asRel<T>(value: T | T[] | null | undefined): T | null {
+interface ColaboradorJoinRaw {
+  id?: unknown;
+  user_id?: unknown;
+  nome_completo?: unknown;
+  cpf?: unknown;
+  email?: unknown;
+  matricula?: unknown;
+  cargo?: { nome?: string } | { nome?: string }[] | null;
+  empresa?: { nome?: string } | { nome?: string }[] | null;
+  embarcacao_atual?: { nome?: string } | { nome?: string }[] | null;
+}
+
+function asRel<T>(value: unknown): T | null {
   if (value == null) return null;
-  return Array.isArray(value) ? (value[0] ?? null) : value;
+  if (Array.isArray(value)) return (value[0] ?? null) as T | null;
+  return value as T;
 }
 
 function normalizarColaborador(raw: unknown): AsoVencimentoColaborador | null {
-  const colab = asRel(raw as Record<string, unknown> | null);
+  const colab = asRel<ColaboradorJoinRaw>(raw);
   if (!colab || typeof colab.id !== 'string') return null;
-  const cargo = asRel(colab.cargo as { nome?: string } | null);
-  const empresa = asRel(colab.empresa as { nome?: string } | null);
-  const embarcacao = asRel(colab.embarcacao_atual as { nome?: string } | null);
+  const cargo = asRel<{ nome?: string }>(colab.cargo);
+  const empresa = asRel<{ nome?: string }>(colab.empresa);
+  const embarcacao = asRel<{ nome?: string }>(colab.embarcacao_atual);
   return {
-    id: colab.id as string,
+    id: colab.id,
     user_id: (colab.user_id as string | null) ?? null,
     nome_completo: String(colab.nome_completo || ''),
     cpf: String(colab.cpf || ''),

@@ -243,10 +243,15 @@ export async function updateColaborador(
     delete (updateData as any).deleted_at;
 
     if ('regime_trabalho' in updateData) {
+      const escalaPatch = updateData as {
+        regime_trabalho?: string | null;
+        escala_embarque?: string | number | null;
+        escala_folga?: string | number | null;
+      };
       const persistido = persistirCamposEscala({
-        regime_trabalho: (updateData as { regime_trabalho?: string | null }).regime_trabalho,
-        escala_embarque: (updateData as { escala_embarque?: unknown }).escala_embarque,
-        escala_folga: (updateData as { escala_folga?: unknown }).escala_folga,
+        regime_trabalho: escalaPatch.regime_trabalho,
+        escala_embarque: escalaPatch.escala_embarque,
+        escala_folga: escalaPatch.escala_folga,
       });
       (updateData as Record<string, unknown>).regime_trabalho = persistido.regime_trabalho;
       (updateData as Record<string, unknown>).escala_embarque = persistido.escala_embarque;

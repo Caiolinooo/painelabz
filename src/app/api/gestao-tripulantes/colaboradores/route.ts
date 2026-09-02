@@ -274,24 +274,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao listar colaboradores' }, { status: 500 });
     }
 
-    const flattened = (rows || []).map((row) => flattenColaboradorRow(row as Record<string, unknown>));
+    const flattened = (rows || []).map((row) => flattenColaboradorRow(row as unknown as Record<string, unknown>));
     const ids = flattened.map((c) => c.id as string).filter(Boolean);
 
     let countsById: Record<string, { qtd_docs_vencidos: number; qtd_docs_vencendo: number; qtd_docs_validos: number }> = {};
-    const docRows: {
-      id: string;
-      colaborador_id: string;
-      tipo_documento: string | null;
-      subtipo: string | null;
-      titulo: string | null;
-      numero_documento: string | null;
-      data_emissao: string | null;
-      data_validade: string | null;
-      created_at: string | null;
-      status_validacao: string | null;
-      origem?: string | null;
-      numero_rastreio?: string | null;
-    }[] = [];
+    const docRows: DocPendencyRow[] = [];
     if (ids.length > 0) {
       const fetchedDocs = await fetchDocumentosAgrupaveis(ids);
       docRows.push(...fetchedDocs);

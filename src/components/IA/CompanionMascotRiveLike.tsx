@@ -214,12 +214,12 @@ export default function CompanionMascotRiveLike({
 
   // Resolve + blend face layer (disabled when MASCOT_USE_FACE_OVERLAY is false)
   useEffect(() => {
-    const showFaceLayer =
-      MASCOT_USE_FACE_OVERLAY &&
-      !reducedMotion &&
-      cycle.face !== 'none' &&
-      cycle.face !== undefined;
-    if (!showFaceLayer) {
+    if (
+      !MASCOT_USE_FACE_OVERLAY ||
+      reducedMotion ||
+      cycle.face === 'none' ||
+      cycle.face === undefined
+    ) {
       return;
     }
     let faceId: MascotFaceId = 'face_neutral';

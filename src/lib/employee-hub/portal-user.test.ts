@@ -3,10 +3,14 @@ import { describe, it } from 'node:test';
 import {
   PORTAL_USER_SELECT,
   emailsMatchExact,
+  hasSecondIdentityFactor,
+  namesCorroborate,
   pickUniqueEmailMatch,
   pickUniqueNameCpfMatch,
   pickUniqueTaxIdMatch,
   portalDisplayName,
+  resolveModuleUserIds,
+  shouldAcceptPrimaryMatch,
   shouldBackfillUserId,
   taxIdDigitsMatch,
   uniqueUserIds,
@@ -108,5 +112,178 @@ describe('portalDisplayName / uniqueUserIds', () => {
       gmailUser.id,
       corpUser.id,
     ]);
+  });
+});
+
+const strangerUser: PortalUser = {
+  id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+  first_name: 'Maria',
+  last_name: 'Santos Oliveira',
+  email: 'maria.santos@example.com',
+  role: 'USER',
+  tax_id: '39053344705',
+};
+
+const aislanLookup = {
+  colaboradorNome: 'AISLAN ROCHA DE ARAUJO LEITE',
+  colaboradorCpf: AISLAN_CPF,
+  colaboradorEmail: 'aislan.roocha@gmail.com',
+};
+
+describe('namesCorroborate', () => {
+  it('treats Aislan short and full names as the same person', () => {
+    assert.equal(
+      namesCorroborate('AISLAN ROCHA DE ARAUJO LEITE', 'Aislan Rocha'),
+      true,
+    );
+    assert.equal(
+      namesCorroborate(portalDisplayName(gmailUser), portalDisplayName(corpUser)),
+      true,
+    );
+    assert.equal(namesCorroborate('AISLAN ROCHA DE ARAUJO LEITE', 'AISLAN ROCHA DE ARAUJO LEITE'), true);
+  });
+
+  it('rejects unrelated or first-name-only matches', () => {
+    assert.equal(namesCorroborate('AISLAN ROCHA DE ARAUJO LEITE', 'Maria Santos Oliveira'), false);
+    assert.equal(namesCorroborate('Aislan', 'AISLAN ROCHA DE ARAUJO LEITE'), false);
+    assert.equal(namesCorroborate('Pedro Santos', 'Pedro Souza'), false);
+    assert.equal(namesCorroborate('', 'Aislan Rocha'), false);
+  });
+});
+
+describe('hasSecondIdentityFactor / shouldAcceptPrimaryMatch', () => {
+  it('accepts the Aislan corporate clone via name even without shared tax_id', () => {
+    assert.equal(
+      hasSecondIdentityFactor(corpUser, {
+        foundBy: 'email',
+        confirmed: gmailUser,
+        ...aislanLookup,
+        colaboradorEmail: 'aislan.rocha@groupabz.com',
+      }),
+      true,
+    );
+    assert.equal(
+      hasSecondIdentityFactor(gmailUser, {
+        foundBy: 'tax_id',
+        confirmed: corpUser,
+        colaboradorNome: 'Aislan Rocha',
+        colaboradorCpf: AISLAN_CPF,
+        colaboradorEmail: 'aislan.rocha@groupabz.com',
+      }),
+      true,
+    );
+  });
+
+  it('rejects a coincidental email/CPF hit with no name relation', () => {
+    assert.equal(
+      hasSecondIdentityFactor(strangerUser, {
+        foundBy: 'email',
+        confirmed: gmailUser,
+        ...aislanLookup,
+        colaboradorEmail: strangerUser.email || '',
+      }),
+      false,
+    );
+    assert.equal(
+      hasSecondIdentityFactor(strangerUser, {
+        foundBy: 'tax_id',
+        confirmed: gmailUser,
+        colaboradorNome: aislanLookup.colaboradorNome,
+        colaboradorCpf: '39053344705',
+        colaboradorEmail: aislanLookup.colaboradorEmail,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldAcceptPrimaryMatch(strangerUser, 'email', {
+        nome: 'AISLAN ROCHA DE ARAUJO LEITE',
+        cpf: AISLAN_CPF,
+        email: 'maria.santos@example.com',
+      }),
+      false,
+    );
+  });
+
+  it('accepts email-only or tax-only primary when a second factor exists', () => {
+    assert.equal(
+      shouldAcceptPrimaryMatch(gmailUser, 'email', {
+        nome: 'AISLAN ROCHA DE ARAUJO LEITE',
+        cpf: '',
+        email: 'aislan.roocha@gmail.com',
+      }),
+      true,
+    );
+    assert.equal(
+      shouldAcceptPrimaryMatch(gmailUser, 'tax_id', {
+        nome: 'Aislan Rocha',
+        cpf: AISLAN_CPF,
+        email: '',
+      }),
+      true,
+    );
+    assert.equal(
+      shouldAcceptPrimaryMatch(gmailUser, 'email', {
+        nome: 'Outra Pessoa',
+        cpf: AISLAN_CPF,
+        email: 'aislan.roocha@gmail.com',
+      }),
+      true,
+    );
+  });
+});
+
+describe('resolveModuleUserIds', () => {
+  it('keeps both Aislan portal ids when names corroborate', () => {
+    assert.deepEqual(
+      resolveModuleUserIds({
+        primary: gmailUser,
+        primaryReason: 'user_id',
+        byTax: gmailUser,
+        byEmail: corpUser,
+        colaboradorNome: 'AISLAN ROCHA DE ARAUJO LEITE',
+        colaboradorCpf: AISLAN_CPF,
+        colaboradorEmail: 'aislan.rocha@groupabz.com',
+      }),
+      [gmailUser.id, corpUser.id],
+    );
+    assert.deepEqual(
+      resolveModuleUserIds({
+        primary: corpUser,
+        primaryReason: 'user_id',
+        byTax: gmailUser,
+        byEmail: corpUser,
+        colaboradorNome: 'Aislan Rocha',
+        colaboradorCpf: AISLAN_CPF,
+        colaboradorEmail: 'aislan.rocha@groupabz.com',
+      }),
+      [corpUser.id, gmailUser.id],
+    );
+  });
+
+  it('does not merge a stranger found only by recycled/typo email or CPF', () => {
+    assert.deepEqual(
+      resolveModuleUserIds({
+        primary: gmailUser,
+        primaryReason: 'user_id',
+        byTax: gmailUser,
+        byEmail: strangerUser,
+        colaboradorNome: 'AISLAN ROCHA DE ARAUJO LEITE',
+        colaboradorCpf: AISLAN_CPF,
+        colaboradorEmail: 'maria.santos@example.com',
+      }),
+      [gmailUser.id],
+    );
+    assert.deepEqual(
+      resolveModuleUserIds({
+        primary: gmailUser,
+        primaryReason: 'user_id',
+        byTax: strangerUser,
+        byEmail: gmailUser,
+        colaboradorNome: 'AISLAN ROCHA DE ARAUJO LEITE',
+        colaboradorCpf: '39053344705',
+        colaboradorEmail: 'aislan.roocha@gmail.com',
+      }),
+      [gmailUser.id],
+    );
   });
 });

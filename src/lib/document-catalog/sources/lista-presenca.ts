@@ -25,22 +25,22 @@ async function collectListaPresenca(ctx: CatalogSourceContext): Promise<CatalogD
   const rows: PresencaRow[] = [];
 
   if (userId) {
-    let byUser = await supabaseAdmin
+    const byUser = await supabaseAdmin
       .from('registros_presenca')
       .select('id, user_id, nome_completo, assinatura_url, created_at, lista_id')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(100);
     if (byUser.error) {
-      byUser = await supabaseAdmin
+      const byUserFallback = await supabaseAdmin
         .from('registros_presenca')
         .select('id, user_id, nome_completo, assinatura_url, created_at, lista_presenca_id')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(100);
-      if (!byUser.error && byUser.data) {
+      if (!byUserFallback.error && byUserFallback.data) {
         rows.push(
-          ...(byUser.data as Array<PresencaRow & { lista_presenca_id?: string }>).map((r) => ({
+          ...(byUserFallback.data as Array<PresencaRow & { lista_presenca_id?: string }>).map((r) => ({
             ...r,
             lista_id: r.lista_id || r.lista_presenca_id || null,
           }))
