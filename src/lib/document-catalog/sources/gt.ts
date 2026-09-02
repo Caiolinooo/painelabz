@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { catalogDownloadApi } from '../qhse';
+import { catalogDownloadApi, qhseFlagsForGtTipo } from '../qhse';
 import { registerDocumentSource } from '../registry';
 import type { CatalogDocument, CatalogSourceContext } from '../types';
 
@@ -26,7 +26,7 @@ async function collectGtDocuments(ctx: CatalogSourceContext): Promise<CatalogDoc
 
   return data.map((row) => {
     const tipo = (row.tipo_documento || 'outro').toLowerCase();
-    const qhseRelated = tipo === 'aso' || tipo.includes('epi');
+    const { qhseRelated, category } = qhseFlagsForGtTipo(tipo);
     const hasFile = !!(row.arquivo_url && !row.arquivo_ausente);
     return {
       id: `gt:${row.id}`,
@@ -34,12 +34,13 @@ async function collectGtDocuments(ctx: CatalogSourceContext): Promise<CatalogDoc
       sourceLabel: 'Gestão de Tripulantes',
       title: row.titulo || row.tipo_documento || 'Documento GT',
       subtitle: row.numero_documento ? `Nº ${row.numero_documento}` : row.tipo_documento,
-      category: tipo === 'aso' ? 'qhse' : 'gt',
+      category,
       issuedAt: row.data_emissao || null,
       validUntil: row.data_validade || null,
       status: row.status_validacao || null,
       signed: false,
       qhseRelated,
+      tipoDocumento: tipo,
       recordId: row.id,
       moduleHref: null,
       downloadKind: 'api',

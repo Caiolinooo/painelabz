@@ -13,22 +13,24 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 ## Local Contracts
 
 - Sempre wrap com `MainLayout` (`layout.tsx`) — o menu lateral vem daí, como GT / e-Social / Man Schedule.
-- Lista de colaboradores usa campos achatados da API: `cargo_nome`, `empresa_nome`, `embarcacao_nome`, `centro_custo_nome`, `centro_custo_codigo`, `ativo`, `regime_trabalho`, `escala_embarque`, `escala_folga`, `status_embarque` (célula de hoje, não a coluna stale). Nunca `cargo.nome` / `empresa.nome` (o flatten remove os nested).
+- Lista de colaboradores usa campos achatados da API: `cargo_nome`, `empresa_nome`, `embarcacao_nome`, `centro_custo_nome`, `centro_custo_codigo`, `ativo`, `regime_trabalho`, `escala_embarque`, `escala_folga`, `status_embarque` (célula de hoje, não a coluna stale). Nunca `cargo.nome` / `empresa.nome` (o flatten remove os nested). Coluna Escala: `formatRegimeDisplay` — `sem_escala`/`administrativo`/`onshore` (não 14x14).
 - Coluna Status: Ativo/Inativo **e** pílula de embarque viva (Embarcado/StandBy/Folga/Afastado) da mesma API.
 - Aba ASO lê `GET /api/gestao-tripulantes/aso/notificar-vencimentos` (`tipo_documento=aso` + join colaborador) e `GET /aso/agendamentos`. Não usar o bucket genérico de `/auditoria`.
 - Janela vencendo = antecedência admin (padrão 60 dias), não hardcoded 30.
 - DP escolhe data sugerida (escala STB preferida) e assina (`useSignature`); cria `solicitado` para a logística. Status `marcado` / `reprovado` (com motivo) aparecem na mesma aba.
 - Status VENCIDO/VENCENDO vem de `alerta` calculado por data civil local (`YYYY-MM-DD`), não de `new Date(iso)` UTC.
-- Fechamento: preview de totais via `relatorio-mensal`; aprovação em `ModalAprovacaoFechamento` com `useSignature().requestSignature` (modal global). Lista nominada = exatamente essas pessoas, qualquer role; sem nomes, um ADMIN/MANAGER assina e conclui.
+- Fechamento: preview de totais via `relatorio-mensal`; aprovação em `ModalAprovacaoFechamento` com `useSignature().requestSignature` (modal global) e ator via `useSupabaseAuth` (não `AuthContext` legado). Lista nominada = exatamente essas pessoas, qualquer role; sem nomes, um ADMIN/MANAGER assina e conclui.
 
 ## Work Guidance
 
 - Novos campos da tabela DP devem existir em `LIST_SELECT` + flatten.
 - Clique na linha de ASO abre o `CollaboratorModal` do colaborador.
+- Viewport: `GtPageShell` preenche o `<main>` do MainLayout (`flex-1 min-h-0`). Header, KPIs, abas e filtros `shrink-0`; lista de colaboradores e painel ASO `flex-1 min-h-0 overflow-auto`. Sem scroll duplo da página.
 
 ## Verification
 
 - `/department/dp` mostra sidebar do portal (não tela full-bleed).
+- Lista DP: filtros visíveis; a tabela rola no pane restante (documento não vira o scroll principal).
 - Colunas Cargo, Centro de Custo, Empresa e Escala preenchidas quando o cadastro tem FK.
 - Coluna Status mostra Ativo/Inativo **e** a pílula de embarque da célula de hoje (ON → Embarcado).
 - Aba ASO lista nome/CPF/cargo (não `N/A` em massa); validade em `dd/mm/aaaa`; vencido só se a data local já passou; permite Agendar → logística; marcado após aprovação.

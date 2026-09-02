@@ -32,6 +32,7 @@ export function classificarValidadeCivil(
   return 'valido';
 }
 
+/** Tabs that consume `gt_documentos` via tipo. QHSE / EPI is catalog-only (`onlyQhse`) and is never an ASO landing tab. */
 export type AbaDocumento =
   | 'treinamentos'
   | 'aso'

@@ -5,7 +5,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase';
-import { normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
+import { formatCpf, normalizeCpf } from '@/lib/gestao-tripulantes/cpf';
 import { listarDocumentosAlertas } from '@/lib/gestao-tripulantes/documentos-alertas';
 import { marcarPapeisConformidade } from '@/lib/gestao-tripulantes/validade-civil';
 import {
@@ -13,13 +13,17 @@ import {
   contarDocsPorStatusPrimario,
 } from '@/lib/gestao-tripulantes/documento-historico';
 import { overlayStatusEscalaHoje } from '@/lib/gestao-tripulantes/dashboard-service';
+import {
+  resolvePortalUser,
+  type PortalUser,
+} from '@/lib/employee-hub/portal-user';
 
 // ────────────────────────────────────────────────────────────────
 // Types
 // ────────────────────────────────────────────────────────────────
 export interface EmployeeFullRecord {
   colaborador: any;
-  portalUser: any | null;
+  portalUser: PortalUser | null;
   documentsSummary: DocumentsSummary;
   documentos: any[];
   documentosAlertas: any[];
@@ -89,9 +93,10 @@ export async function getEmployeeFullRecord(colaboradorId: string): Promise<Empl
   if (colabErr || !colab) return null;
 
   const cpf = normalizeCpf(colab.cpf || '');
+  const email = String(colab.email || '').trim().toLowerCase();
 
-  // Parallel queries
-  const [docsPack, latestAso, timeline, embarques, afastamentos, acidentes, treinamentos, portalUser, ferias, reembolsos, live] =
+  // Wave 1: GT data + portal identity (tax_id / email). Férias/reembolsos need the resolved user.
+  const [docsPack, latestAso, timeline, embarques, afastamentos, acidentes, treinamentos, portalResolution, live] =
     await Promise.all([
       getDocumentsPack(colaboradorId),
       getLatestAso(colaboradorId),
@@ -100,9 +105,13 @@ export async function getEmployeeFullRecord(colaboradorId: string): Promise<Empl
       getAfastamentos(colaboradorId),
       getAcidentes(colaboradorId),
       getTreinamentos(colaboradorId),
-      getPortalUser(colab.user_id, cpf),
-      getFerias(colab.user_id, cpf),
-      getReembolsos(colab.user_id, cpf),
+      resolvePortalUser({
+        colaboradorId: colab.id as string,
+        userId: colab.user_id as string | null,
+        cpf,
+        email,
+        nome: colab.nome_completo as string | null,
+      }),
       overlayStatusEscalaHoje([
         {
           id: colab.id as string,
@@ -111,6 +120,22 @@ export async function getEmployeeFullRecord(colaboradorId: string): Promise<Empl
         },
       ]),
     ]);
+
+  const portalUser = portalResolution.user;
+  if (portalUser && !colab.user_id) {
+    colab.user_id = portalUser.id;
+  }
+
+  const moduleUserIds = portalResolution.moduleUserIds.length
+    ? portalResolution.moduleUserIds
+    : portalUser?.id
+      ? [portalUser.id]
+      : [];
+
+  const [ferias, reembolsos] = await Promise.all([
+    getFerias(moduleUserIds),
+    getReembolsos(moduleUserIds, cpf),
+  ]);
 
   if (!live.error && live.rows[0]) {
     colab.status_embarque = live.rows[0].status_embarque;
@@ -148,58 +173,43 @@ async function safeSelect<T = any>(run: () => PromiseLike<{ data: T[] | null; er
   }
 }
 
-const PORTAL_USER_SELECT = 'id, first_name, last_name, email, phone, phone_number, role, department, active, cpf, created_at';
-
-async function getPortalUser(userId: string | null | undefined, cpf: string): Promise<any | null> {
-  try {
-    if (userId) {
-      const { data } = await supabaseAdmin
-        .from('users_unified')
-        .select(PORTAL_USER_SELECT)
-        .eq('id', userId)
-        .maybeSingle();
-      if (data) return data;
-    }
-    if (cpf.length === 11) {
-      const { data } = await supabaseAdmin
-        .from('users_unified')
-        .select(PORTAL_USER_SELECT)
-        .or(`cpf.eq.${cpf},cpf.eq.${cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}`)
-        .limit(1)
-        .maybeSingle();
-      return data || null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-async function getFerias(userId: string | null | undefined, _cpf: string): Promise<any[]> {
-  if (!userId) return [];
+async function getFerias(userIds: string[]): Promise<any[]> {
+  if (!userIds.length) return [];
   return safeSelect(() =>
     supabaseAdmin
       .from('leave_requests')
       .select('id, user_id, start_date, end_date, status, justification, created_at')
-      .eq('user_id', userId)
+      .in('user_id', userIds)
       .order('created_at', { ascending: false })
       .limit(20),
   );
 }
 
-async function getReembolsos(userId: string | null | undefined, cpf: string): Promise<any[]> {
-  if (userId) {
+async function getReembolsos(userIds: string[], cpf: string): Promise<any[]> {
+  const select = 'id, user_id, status, valor_total, created_at';
+  if (userIds.length) {
     const byUser = await safeSelect(() =>
       supabaseAdmin
-        .from('reembolsos')
-        .select('id, user_id, status, valor_total, created_at')
-        .eq('user_id', userId)
+        .from('Reimbursement')
+        .select(select)
+        .in('user_id', userIds)
         .order('created_at', { ascending: false })
         .limit(20),
     );
     if (byUser.length) return byUser;
   }
-  void cpf;
+  if (cpf.length === 11) {
+    const masked = formatCpf(cpf);
+    const byCpf = await safeSelect(() =>
+      supabaseAdmin
+        .from('Reimbursement')
+        .select(select)
+        .or(`cpf.eq.${cpf},cpf.eq.${masked}`)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    );
+    if (byCpf.length) return byCpf;
+  }
   return [];
 }
 

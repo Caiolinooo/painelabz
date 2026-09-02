@@ -16,7 +16,7 @@ Resolver vivo que, dado um colaborador (portal `users_unified` e/ou `gt_colabora
 - Sem tabela de índice: cada fonte consulta o registro original. Download aponta para URL/`arquivo_url` existente ou gera ficha EPI sob demanda.
 - Matching: `user_id` → `cpf` (dígitos, via `findColaboradorByCpf`) → e-mail → nome normalizado (só lista de presença sem `user_id`).
 - **QHSE/EPI na ficha do colaborador**: aba própria **QHSE / EPI** (não dump em Documentos). Módulo-chave `epi` (`QHSE_MODULE_KEY`) — o mesmo checkbox “EPI” em `/admin/users` → Configurar permissões → Módulos do Sistema. Sem ACL extra de catálogo (`lista-presenca.manage` / `gestao-tripulantes.view`). ADMIN/MANAGER sempre veem. USER só com `modules.epi === true` (ou default do role se a flag individual não existir).
-- Query `?qhse=1` no catálogo devolve só itens QHSE (`qhseRelated` ou `category === 'qhse'`).
+- Query `?qhse=1` / `onlyQhse` devolve só itens QHSE (`qhseRelated` ou `category === 'qhse'`), **exceto ASO/laudo**. `qhseRelated` é false para `tipo_documento` aso/laudo (`qhseFlagsForGtTipo`). `isQhseCatalogDocument` também rejeita `tipoDocumento`/`category` aso|laudo mesmo se uma fonte marcar QHSE. Exames ocupacionais ficam na aba ASO do modal GT.
 - Não alterar agrupamento de Treinamentos/CBSP no GT. A aba Documentos do GT é só `gt_documentos` + Histórico colapsável.
 
 ## Work Guidance
@@ -32,8 +32,8 @@ Registrar fonte futura (código, sem over-engineering):
 
 ## Verification
 
-- `npx tsx --test src/lib/document-catalog/document-catalog.test.ts`
-- Modal GT com módulo `epi`: aba **QHSE / EPI** lista ficha AN-HSE-005 e listas QHSE. Sem o módulo, a aba não aparece.
+- `npx tsx --test src/lib/document-catalog/document-catalog.test.ts src/lib/gestao-tripulantes/validade-civil.test.ts`
+- Modal GT com módulo `epi`: aba **QHSE / EPI** lista ficha AN-HSE-005 e listas QHSE e **não** lista ASO/laudo. Sem o módulo, a aba não aparece.
 - `/admin/users` → editor: seção QHSE se o admin/editor tem `epi`; permissões do colaborador editado = checkbox EPI.
 - `/profile` → aba QHSE / EPI só com `hasAccess('epi')`. Documentos genéricos usam `hideQhse`.
 - USER com `epi: false` não lista EPI de outro colaborador mesmo com ACL de lista-presença/GT.

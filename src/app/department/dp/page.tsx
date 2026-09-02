@@ -8,12 +8,14 @@ import { formatCpf } from '@/lib/utils/identity';
 import CollaboratorModal from '@/components/gestao-tripulantes/CollaboratorModal';
 import ModalAprovacaoFechamento from '@/components/gestao-tripulantes/ModalAprovacaoFechamento';
 import AsoAgendamentoDpPanel from '@/components/gestao-tripulantes/AsoAgendamentoDpPanel';
+import GtPageShell, { GT_PAGE_SCROLLPORT_CLASS } from '@/components/gestao-tripulantes/GtPageShell';
 import SearchableCreatableSelect from '@/components/gestao-tripulantes/SearchableCreatableSelect';
 import { toast } from 'react-hot-toast';
 import {
   FiUsers, FiCalendar, FiAlertTriangle, FiSearch, FiEdit2, FiRefreshCw, FiSend,
   FiBriefcase, FiShield,
 } from 'react-icons/fi';
+import { formatRegimeDisplay } from '@/lib/gestao-tripulantes/regime-escala';
 
 interface ColaboradorItem {
   id: string;
@@ -57,10 +59,11 @@ interface FechamentoTotais {
 }
 
 function formatRegime(c: ColaboradorItem): string {
-  if (c.escala_embarque && c.escala_folga) {
-    return `${c.escala_embarque}x${c.escala_folga}`;
-  }
-  return c.regime_trabalho || '—';
+  return formatRegimeDisplay({
+    regime_trabalho: c.regime_trabalho,
+    escala_embarque: c.escala_embarque,
+    escala_folga: c.escala_folga,
+  });
 }
 
 function formatCentroCusto(c: ColaboradorItem): string {
@@ -280,8 +283,8 @@ export default function DepartamentoPessoalPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+    <GtPageShell className="gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <span className="p-2 bg-blue-50 text-abz-blue rounded-xl">
@@ -325,7 +328,7 @@ export default function DepartamentoPessoalPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
           <span className="text-xs font-bold text-gray-500 uppercase block">Total de Colaboradores</span>
           <span className="text-2xl font-black text-gray-900 mt-1 block">{colaboradores.length}</span>
@@ -355,7 +358,7 @@ export default function DepartamentoPessoalPage() {
         </div>
       </div>
 
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 shrink-0">
         <nav className="flex space-x-6 -mb-px overflow-x-auto">
           <button
             onClick={() => setActiveTab('colaboradores')}
@@ -401,8 +404,8 @@ export default function DepartamentoPessoalPage() {
       </div>
 
       {activeTab === 'colaboradores' && (
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-3">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-3">
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-3 shrink-0">
             <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
               <div className="relative flex-1 w-full">
                 <FiSearch className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
@@ -471,10 +474,9 @@ export default function DepartamentoPessoalPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
-                <thead className="bg-gray-50 text-gray-700 font-bold uppercase tracking-wider">
+          <div className={`bg-white rounded-xl border border-gray-200 shadow-xs ${GT_PAGE_SCROLLPORT_CLASS}`}>
+            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+              <thead className="bg-gray-50 text-gray-700 font-bold uppercase tracking-wider sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3">Matrícula</th>
                     <th className="px-4 py-3">Colaborador / CPF</th>
@@ -553,13 +555,12 @@ export default function DepartamentoPessoalPage() {
                   )}
                 </tbody>
               </table>
-            </div>
           </div>
         </div>
       )}
 
       {activeTab === 'fechamento' && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-6">
+        <div className={`${GT_PAGE_SCROLLPORT_CLASS} bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-6`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Fechamento Mensal de Escalas — DP & Folha</h2>
@@ -626,7 +627,7 @@ export default function DepartamentoPessoalPage() {
             <p className="font-bold text-slate-900">Regras Contábeis do Fechamento DP:</p>
             <ul className="list-disc list-inside space-y-1">
               <li><strong>Cômputo Diário</strong>: Cada dia no período selecionado é verificado individualmente.</li>
-              <li><strong>Dobras Automáticas</strong>: Calculadas com base no regime de escala do colaborador (ex: 14x14, 28x28). Qualquer embarque contínuo que ultrapassar a escala regular é computado como <strong>DBA</strong>.</li>
+              <li><strong>Dobras Automáticas</strong>: Calculadas com base no regime NxN do colaborador (ex: 14x14, 28x28). Quem está em Sem escala / Administrativo / Onshore não entra nessa regra. Evento explícito DBA continua DBA.</li>
               <li><strong>Multi-Assinaturas Obrigatórias</strong>: O e-mail oficial para o DP só é despachado quando todos os integrantes configurados realizarem a assinatura digital com hash criptográfico.</li>
             </ul>
           </div>
@@ -634,13 +635,15 @@ export default function DepartamentoPessoalPage() {
       )}
 
       {activeTab === 'asos' && (
-        <AsoAgendamentoDpPanel
-          asosPendentes={asosPendentes}
-          loading={loading}
-          antecedenciaDias={asoAntecedenciaDias}
-          onOpenColaborador={(id) => setSelectedColaboradorId(id)}
-          onRefreshVencimentos={loadData}
-        />
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <AsoAgendamentoDpPanel
+            asosPendentes={asosPendentes}
+            loading={loading}
+            antecedenciaDias={asoAntecedenciaDias}
+            onOpenColaborador={(id) => setSelectedColaboradorId(id)}
+            onRefreshVencimentos={loadData}
+          />
+        </div>
       )}
 
       {selectedColaboradorId && (
@@ -667,6 +670,6 @@ export default function DepartamentoPessoalPage() {
           onClose={() => setIsFechamentoModalOpen(false)}
         />
       )}
-    </div>
+    </GtPageShell>
   );
 }

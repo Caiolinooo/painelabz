@@ -3,7 +3,9 @@
 import React from 'react';
 import { ESocialEvento, ESocialEventoStatus } from '@/types/e-social';
 import { useI18n } from '@/contexts/I18nContext';
-import { FiEye, FiEdit2, FiSend, FiTrash2, FiRefreshCw, FiAlertTriangle, FiCheckCircle, FiFileText } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiSend, FiTrash2, FiRefreshCw, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
+import { cn } from '@/lib/utils';
+import { GT_PAGE_SCROLLPORT_CLASS } from '@/components/gestao-tripulantes/GtPageShell';
 
 interface EventosListProps {
   eventos: ESocialEvento[];
@@ -14,6 +16,7 @@ interface EventosListProps {
   onDelete: (evento: ESocialEvento) => void;
   onConsult?: (evento: ESocialEvento) => void;
   consultLoading?: string | null;
+  className?: string;
 }
 
 const statusStyle: Record<ESocialEventoStatus, string> = {
@@ -51,12 +54,12 @@ function formatarCPF(cpf?: string | null): string {
   return cpf;
 }
 
-export default function EventosList({ eventos, loading, onView, onEdit, onSend, onDelete, onConsult, consultLoading }: EventosListProps) {
+export default function EventosList({ eventos, loading, onView, onEdit, onSend, onDelete, onConsult, consultLoading, className }: EventosListProps) {
   const { t } = useI18n();
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8">
+      <div className={cn('bg-white rounded-lg shadow-sm border border-gray-100 p-8 flex flex-col min-h-0', className)}>
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-14 bg-gray-100 animate-pulse rounded-lg" />
@@ -67,10 +70,10 @@ export default function EventosList({ eventos, loading, onView, onEdit, onSend, 
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className={cn('bg-white rounded-xl shadow-sm border border-slate-200/80 flex flex-col min-h-0 overflow-hidden', className)}>
+      <div className={GT_PAGE_SCROLLPORT_CLASS}>
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-slate-50/80">
+          <thead className="bg-slate-50 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
                 {t('eSocial.eventosList.code', 'Código')}

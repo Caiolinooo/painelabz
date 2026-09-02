@@ -9,6 +9,10 @@ import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
 import HistoricoColapsavel from '@/components/gestao-tripulantes/HistoricoColapsavel';
 import { agruparDocumentosPorTipo } from '@/lib/gestao-tripulantes/documento-historico';
+import {
+  COLLABORATOR_MODAL_TAB_FILL_CLASS,
+  COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
+} from '@/components/gestao-tripulantes/collaborator-modal-layout';
 
 interface Document {
   id: string;
@@ -131,9 +135,9 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh, hi
   };
 
   return (
-    <div>
+    <div className={COLLABORATOR_MODAL_TAB_FILL_CLASS}>
       {/* Upload area */}
-      <div className="p-4 bg-gray-50/70 border-b border-gray-100">
+      <div className="p-4 bg-gray-50/70 border-b border-gray-100 shrink-0">
         <div className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="flex-1">
             <label className="block text-xs text-gray-500 font-medium mb-1">Tipo do Documento</label>
@@ -173,6 +177,7 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh, hi
         </div>
       </div>
 
+      <div className={COLLABORATOR_MODAL_TABLE_SCROLL_CLASS}>
       {grupos.length === 0 ? (
         <div className="p-12 text-center">
           <FiFile className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -257,6 +262,8 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh, hi
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
+

@@ -13,6 +13,7 @@ import ImportarASOModal from '@/components/e-social/ImportarASOModal';
 import NovoColaboradorModal from '@/components/e-social/NovoColaboradorModal';
 import ESocialNavigation from '@/components/e-social/ESocialNavigation';
 import { toast } from 'react-hot-toast';
+import GtPageShell from '@/components/gestao-tripulantes/GtPageShell';
 import {
   FiPlus,
   FiSearch,
@@ -263,11 +264,11 @@ export default function ESocialEventosPage() {
   const hasActiveFilters = Boolean(filtroCodigo || filtroStatus || filtroBusca || filtroViewMode !== 'todos');
 
   return (
-    <div className="flex-1 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <GtPageShell>
+      <div className="flex flex-col flex-1 min-h-0 w-full max-w-7xl mx-auto gap-4">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">{t('eSocial.eventos', 'Eventos e-Social')}</h1>
             <p className="text-sm text-gray-500">Histórico de transmissões, validações e lançamentos</p>
@@ -316,10 +317,12 @@ export default function ESocialEventosPage() {
         </div>
 
         {/* Sub-Navigation Tabs */}
-        <ESocialNavigation />
+        <div className="shrink-0">
+          <ESocialNavigation />
+        </div>
 
         {/* Quick View Modes */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 shrink-0">
           <button
             onClick={() => { setFiltroViewMode('todos'); setFiltroStatus(''); setPage(1); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
@@ -377,7 +380,7 @@ export default function ESocialEventosPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-4">
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-4 shrink-0">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Search by Worker name or CPF */}
             <div className="relative">
@@ -424,6 +427,7 @@ export default function ESocialEventosPage() {
 
         {/* List */}
         <EventosList
+          className="flex-1 min-h-0"
           eventos={eventos}
           loading={loading}
           onView={(e) => setReviewEvento(e)}
@@ -436,7 +440,7 @@ export default function ESocialEventosPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-2 shrink-0">
             <span className="text-xs text-slate-500 font-medium">
               Mostrando página <strong>{page}</strong> de <strong>{totalPages}</strong> ({totalCount} eventos no total)
             </span>
@@ -491,6 +495,6 @@ export default function ESocialEventosPage() {
         onClose={() => setIsNewColabModalOpen(false)}
         onSuccess={loadEventos}
       />
-    </div>
+    </GtPageShell>
   );
 }

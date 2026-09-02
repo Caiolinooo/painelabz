@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiX, FiUser, FiBookOpen, FiHeart, FiFileText, FiAnchor, FiRepeat, FiUpload, FiBell, FiRefreshCw, FiLayers, FiShield
@@ -22,6 +22,15 @@ import HistoricoEmbarquesTab from './tabs/HistoricoEmbarquesTab';
 import SubstituicoesTab from './tabs/SubstituicoesTab';
 import FichaUnificadaTab from './tabs/FichaUnificadaTab';
 import type { DocumentoAlertaUI } from './DocsAlertasPanel';
+import {
+  COLLABORATOR_MODAL_BODY_CLASS,
+  COLLABORATOR_MODAL_HEADER_CLASS,
+  COLLABORATOR_MODAL_OVERLAY_CLASS,
+  COLLABORATOR_MODAL_PANEL_CLASS,
+  COLLABORATOR_MODAL_TABLIST_CLASS,
+  COLLABORATOR_MODAL_TABLIST_SHELL_CLASS,
+  COLLABORATOR_MODAL_TAB_BUTTON_CLASS,
+} from './collaborator-modal-layout';
 
 interface Document {
   id: string;
@@ -118,8 +127,19 @@ interface CollaboratorModalProps {
   highlightDocId?: string | null;
 }
 
+/**
+ * Modal tab contract:
+ * dados — cadastro RH/identidade (sem docs ASO/EPI)
+ * ficha — Employee Hub (identidade + vigentes + cards; sem edição)
+ * treinamentos — certificados/cursos (sem ASO/EPI)
+ * aso — exames ocupacionais, upload, S-2220, agendamento DP (único lugar de laudo/ASO)
+ * passaportes — documentos de viagem; não ocultar por cargo
+ * documentos — só gt_documentos locais agrupados (sem dump QHSE/outros módulos)
+ * qhse — ficha AN-HSE-005, entregas EPI, listas QHSE (`onlyQhse`); nunca ASO/laudo
+ * embarques / substituicoes — operação
+ */
 const TABS: { key: TabKey; label: string; labelKey?: string; icon: React.ElementType }[] = [
-  { key: 'dados', labelKey: 'gestaoTripulantes.profile.personalData', label: 'Dados', icon: FiUser },
+  { key: 'dados', labelKey: 'gestaoTripulantes.profile.personalData', label: 'Dados Pessoais', icon: FiUser },
   { key: 'ficha', label: 'Ficha unificada', icon: FiLayers },
   { key: 'treinamentos', labelKey: 'gestaoTripulantes.profile.trainings', label: 'Treinamentos', icon: FiBookOpen },
   { key: 'aso', labelKey: 'gestaoTripulantes.profile.aso', label: 'ASO', icon: FiHeart },
@@ -216,6 +236,8 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
   const [loading, setLoading] = useState(true);
   const [showBackModal, setShowBackModal] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [tabOverflow, setTabOverflow] = useState({ left: false, right: false });
+  const tablistRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async (opts?: { silent?: boolean }) => {
     try {
@@ -257,6 +279,53 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
       document.body.style.overflow = prevOverflow;
     };
   }, []);
+
+  const updateTabOverflow = useCallback(() => {
+    const el = tablistRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setTabOverflow({
+      left: scrollLeft > 2,
+      right: scrollLeft + clientWidth < scrollWidth - 2,
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = tablistRef.current;
+    if (!el) return;
+    updateTabOverflow();
+    el.addEventListener('scroll', updateTabOverflow, { passive: true });
+    const ro = new ResizeObserver(updateTabOverflow);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateTabOverflow);
+      ro.disconnect();
+    };
+  }, [updateTabOverflow, visibleTabs, activeTab]);
+
+  useEffect(() => {
+    const selected = tablistRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    selected?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [activeTab]);
+
+  const onTabListKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') {
+      return;
+    }
+    const keys = visibleTabs.map((tab) => tab.key);
+    const current = keys.indexOf(activeTab);
+    if (current < 0) return;
+    e.preventDefault();
+    let next = current;
+    if (e.key === 'ArrowRight') next = (current + 1) % keys.length;
+    else if (e.key === 'ArrowLeft') next = (current - 1 + keys.length) % keys.length;
+    else if (e.key === 'Home') next = 0;
+    else next = keys.length - 1;
+    setActiveTab(keys[next]);
+    requestAnimationFrame(() => {
+      tablistRef.current?.querySelector<HTMLElement>(`[data-tab-key="${keys[next]}"]`)?.focus();
+    });
+  };
 
   const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -373,7 +442,7 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+        className={COLLABORATOR_MODAL_OVERLAY_CLASS}
         onClick={onClose}
       >
         <motion.div
@@ -382,11 +451,12 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
           exit={{ opacity: 0, y: 15, scale: 0.98 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           onClick={e => e.stopPropagation()}
-          className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col my-auto"
+          className={COLLABORATOR_MODAL_PANEL_CLASS}
+          data-testid="collaborator-modal-panel"
         >
           {/* Header */}
-          <div className={`bg-gradient-to-r ${gradientClass} px-6 py-5 shrink-0`}>
-            <div className="flex items-center justify-between gap-4">
+          <div className={`${COLLABORATOR_MODAL_HEADER_CLASS} bg-gradient-to-r ${gradientClass} px-4 py-3 sm:px-6 sm:py-4`}>
+            <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 {/* Avatar */}
                 <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/30 flex-shrink-0">
@@ -429,7 +499,7 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
               </div>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                 <button
                   onClick={fetchData}
                   className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -463,22 +533,40 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-gray-200 bg-gray-50/50 overflow-x-auto shrink-0">
-            <div className="flex min-w-max">
+          <div
+            className={COLLABORATOR_MODAL_TABLIST_SHELL_CLASS}
+            data-overflow-left={tabOverflow.left ? 'true' : 'false'}
+            data-overflow-right={tabOverflow.right ? 'true' : 'false'}
+          >
+            <div
+              ref={tablistRef}
+              role="tablist"
+              aria-label="Abas do colaborador"
+              data-testid="collaborator-modal-tablist"
+              onKeyDown={onTabListKeyDown}
+              className={COLLABORATOR_MODAL_TABLIST_CLASS}
+            >
               {visibleTabs.map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.key;
                 return (
                   <button
                     key={tab.key}
+                    type="button"
+                    role="tab"
+                    data-tab-key={tab.key}
+                    id={`collaborator-modal-tab-${tab.key}`}
+                    aria-selected={isActive}
+                    aria-controls={`collaborator-modal-panel-${tab.key}`}
+                    tabIndex={isActive ? 0 : -1}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    className={`${COLLABORATOR_MODAL_TAB_BUTTON_CLASS} ${
                       isActive
                         ? 'text-blue-600 border-blue-600 bg-white'
                         : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100/50'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 shrink-0" />
                     {tab.labelKey ? t(tab.labelKey) : tab.label}
                   </button>
                 );
@@ -487,7 +575,13 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div
+            className={COLLABORATOR_MODAL_BODY_CLASS}
+            role="tabpanel"
+            id={`collaborator-modal-panel-${activeTab}`}
+            aria-labelledby={`collaborator-modal-tab-${activeTab}`}
+            data-testid="collaborator-modal-body"
+          >
             <TabErrorBoundary key={activeTab}>
               {renderTabContent()}
             </TabErrorBoundary>

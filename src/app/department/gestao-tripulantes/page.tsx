@@ -7,6 +7,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import DashboardCards from '@/components/gestao-tripulantes/DashboardCards';
+import GtPageShell from '@/components/gestao-tripulantes/GtPageShell';
 import GTMatrixFilters from '@/components/gestao-tripulantes/GTMatrixFilters';
 import GTMatrix from '@/components/gestao-tripulantes/GTMatrix';
 import GTMatrixLegend from '@/components/gestao-tripulantes/GTMatrixLegend';
@@ -248,7 +249,7 @@ function GestaoTripulantesContent() {
   }, [kpiFilter, t]);
 
   return (
-    <div className={activeTab === 'schedule' ? 'flex flex-col min-h-0 h-[calc(100vh-6.5rem)] overflow-hidden gap-3 -my-4 md:-my-6' : 'space-y-6'}>
+    <GtPageShell>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
@@ -302,40 +303,45 @@ function GestaoTripulantesContent() {
       </div>
 
       {activeTab === 'matrix' && (
-        <div className="space-y-6">
-          <AsoReviewPanel compact />
-          <DashboardCards data={dashboard} activeKpi={kpiFilter} onKpiClick={handleKpiClick} />
-          {bannerLabel && (
-            <div className="flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 text-blue-900 text-sm rounded-xl px-4 py-2">
-              <span>{bannerLabel}</span>
-              <button
-                type="button"
-                onClick={() => handleKpiClick(kpiFilter || 'colaboradores')}
-                className="text-xs font-semibold underline underline-offset-2 hover:text-blue-700"
-              >
-                {t('gestaoTripulantes.dashboard.kpiClear', 'Limpar filtro')}
-              </button>
-            </div>
-          )}
-          {showAlertas && (
-            <DocsAlertasPanel
-              open={showAlertas}
-              onClose={() => setShowAlertas(false)}
-              onOpenDocumento={handleOpenAlerta}
-            />
-          )}
-          <GTMatrixFilters filters={filters} onChange={handleFilterChange} colaboradores={colaboradores} />
+        <div className="flex flex-col flex-1 min-h-0 gap-3 overflow-hidden">
+          <div className="shrink-0 space-y-3">
+            <AsoReviewPanel compact />
+            <DashboardCards data={dashboard} activeKpi={kpiFilter} onKpiClick={handleKpiClick} />
+            {bannerLabel && (
+              <div className="flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 text-blue-900 text-sm rounded-xl px-4 py-2">
+                <span>{bannerLabel}</span>
+                <button
+                  type="button"
+                  onClick={() => handleKpiClick(kpiFilter || 'colaboradores')}
+                  className="text-xs font-semibold underline underline-offset-2 hover:text-blue-700"
+                >
+                  {t('gestaoTripulantes.dashboard.kpiClear', 'Limpar filtro')}
+                </button>
+              </div>
+            )}
+            {showAlertas && (
+              <DocsAlertasPanel
+                open={showAlertas}
+                onClose={() => setShowAlertas(false)}
+                onOpenDocumento={handleOpenAlerta}
+              />
+            )}
+            <GTMatrixFilters filters={filters} onChange={handleFilterChange} colaboradores={colaboradores} />
+          </div>
           <GTMatrix
             colaboradores={colaboradores}
             loading={loading}
             onRowClick={handleRowClick}
+            className="flex-1 min-h-0"
           />
           <GTMatrixLegend />
         </div>
       )}
 
       {activeTab === 'aso-logistica' && (
-        <AsoAgendamentoInbox />
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <AsoAgendamentoInbox />
+        </div>
       )}
 
       {scheduleMounted && (
@@ -352,7 +358,7 @@ function GestaoTripulantesContent() {
           onClose={() => { setShowModal(false); setSelectedColaborador(null); setHighlightDocId(null); }}
         />
       )}
-    </div>
+    </GtPageShell>
   );
 }
 

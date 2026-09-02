@@ -17,7 +17,7 @@ import {
   FiClock,
 } from 'react-icons/fi';
 import { fetchWithToken } from '@/lib/tokenStorage';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useSignature } from '@/contexts/SignatureContext';
 import {
   assinaturaCobreAprovador,
@@ -67,7 +67,14 @@ export default function ModalAprovacaoFechamento({
   const [resultMsg, setResultMsg] = useState<{ success: boolean; text: string; hash?: string; pendentes?: any[] } | null>(null);
 
   const { requestSignature, hasSignature } = useSignature();
-  const { user } = useAuth();
+  const { user, profile } = useSupabaseAuth();
+  const fechamentoUser = {
+    id: profile?.id || user?.id,
+    email: profile?.email || user?.email || '',
+    role: profile?.role ?? null,
+    first_name: profile?.first_name ?? null,
+    last_name: profile?.last_name ?? null,
+  };
 
   const buildQueryString = (targetMes: string) => {
     const params = new URLSearchParams();
@@ -162,9 +169,9 @@ export default function ModalAprovacaoFechamento({
     setResultMsg(null);
     const lista = (previewData?.aprovadoresObrigatorios || []) as AprovadorObrigatorio[];
     const gate = podeAssinarFechamento(lista, {
-      userId: user?.id,
-      email: user?.email || '',
-      role: user?.role,
+      userId: fechamentoUser.id,
+      email: fechamentoUser.email,
+      role: fechamentoUser.role,
     });
     if (!gate.permitido) {
       setErrorMsg(mensagemErroAssinaturaNegada(gate.motivo));
@@ -204,9 +211,9 @@ export default function ModalAprovacaoFechamento({
   const isFullyApproved = registroStatus === 'aprovado' || registroStatus === 'enviado';
   const isPartiallyApproved = registroStatus === 'em_aprovacao';
   const gateAssinatura = podeAssinarFechamento(obrigatorios, {
-    userId: user?.id,
-    email: user?.email || '',
-    role: user?.role,
+    userId: fechamentoUser.id,
+    email: fechamentoUser.email,
+    role: fechamentoUser.role,
   });
   const podeAssinarAgora = Boolean(previewData) && gateAssinatura.permitido;
   const motivoNaoAssinar = !gateAssinatura.permitido
@@ -480,7 +487,7 @@ export default function ModalAprovacaoFechamento({
                         <td className="px-3 py-2 text-gray-600">{c.cargo}</td>
                         <td className="px-3 py-2 text-gray-600 text-[11px] font-semibold">{c.centro_custo || 'N/A'}</td>
                         <td className="px-3 py-2 text-gray-600">{c.embarcacao}</td>
-                        <td className="px-3 py-2 text-center font-mono font-semibold text-gray-700">{c.regime_escala || '14x14'}</td>
+                        <td className="px-3 py-2 text-center font-mono font-semibold text-gray-700">{c.regime_escala || '—'}</td>
                         <td className="px-3 py-2 text-center font-bold text-emerald-700 bg-emerald-50/30">
                           {c.total_dias_on ?? c.total_on ?? 0}
                         </td>

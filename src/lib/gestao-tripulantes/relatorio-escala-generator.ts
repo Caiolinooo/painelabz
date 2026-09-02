@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizeCpf, mapDbTipoToCodigo } from '@/lib/gestao-tripulantes/escala-tipos';
 import { isRotacaoPrevista } from '@/lib/gestao-tripulantes/embarque-status';
+import { extractEscalaDias } from '@/lib/gestao-tripulantes/regime-escala';
+
+export { extractEscalaDias };
 
 export interface AprovadorRegistro {
   nome: string;
@@ -81,50 +84,19 @@ function formatCpfDisplay(cpf: string): string {
   return cpf;
 }
 
-/**
- * Extrai com precisão a quantidade máxima de dias regulares a bordo (escala de embarque)
- * e os dias de folga a partir de escala_embarque, escala_folga ou regime_trabalho (ex: '14x14', '28x28', '15x15', '30x30', '60x60').
- */
-export function extractEscalaDias(c: {
-  escala_embarque?: number | string | null;
-  escala_folga?: number | string | null;
-  regime_trabalho?: string | null;
-}): { diasEmbarque: number; diasFolga: number; label: string } {
-  let diasEmbarque = 0;
-  let diasFolga = 0;
-
-  if (c.escala_embarque != null && c.escala_embarque !== '') {
-    const val = typeof c.escala_embarque === 'number' ? c.escala_embarque : parseInt(String(c.escala_embarque), 10);
-    if (!isNaN(val) && val > 0) diasEmbarque = val;
+function fimEmbarqueParaDobra(
+  h: { data_desembarque?: string | null; data_prevista_desembarque?: string | null },
+  hStart: Date,
+  maxDiasRegulares: number,
+  aplicaDobraAutomatica: boolean,
+): Date | null {
+  if (h.data_desembarque) return parseLocalDate(h.data_desembarque);
+  if (h.data_prevista_desembarque) return parseLocalDate(h.data_prevista_desembarque);
+  // No-rotation / empty regime: do not invent a 14-day ON window.
+  if (aplicaDobraAutomatica && maxDiasRegulares > 0) {
+    return new Date(hStart.getTime() + maxDiasRegulares * 86400000);
   }
-
-  if (c.escala_folga != null && c.escala_folga !== '') {
-    const val = typeof c.escala_folga === 'number' ? c.escala_folga : parseInt(String(c.escala_folga), 10);
-    if (!isNaN(val) && val > 0) diasFolga = val;
-  }
-
-  if ((!diasEmbarque || !diasFolga) && c.regime_trabalho && typeof c.regime_trabalho === 'string') {
-    const match = c.regime_trabalho.match(/(\d+)\s*[xX/:\-]\s*(\d+)/);
-    if (match) {
-      if (!diasEmbarque) diasEmbarque = parseInt(match[1], 10);
-      if (!diasFolga) diasFolga = parseInt(match[2], 10);
-    } else {
-      const single = c.regime_trabalho.match(/\b(\d+)\b/);
-      if (single && !diasEmbarque) {
-        diasEmbarque = parseInt(single[1], 10);
-        if (!diasFolga) diasFolga = diasEmbarque;
-      }
-    }
-  }
-
-  if (!diasEmbarque || isNaN(diasEmbarque) || diasEmbarque <= 0) diasEmbarque = 14;
-  if (!diasFolga || isNaN(diasFolga) || diasFolga <= 0) diasFolga = diasEmbarque;
-
-  const label = c.regime_trabalho && typeof c.regime_trabalho === 'string' && c.regime_trabalho.trim()
-    ? c.regime_trabalho.trim()
-    : `${diasEmbarque}x${diasFolga}`;
-
-  return { diasEmbarque, diasFolga, label };
+  return new Date(hStart.getTime());
 }
 
 export async function gerarRelatorioEscalaMensal(
@@ -267,8 +239,12 @@ export async function gerarRelatorioEscalaMensal(
     const cHist = histPorColab.get(c.id) || [];
     const cAfast = afastPorColab.get(c.id) || [];
 
-    // Limite regular da escala de embarque do colaborador (ex: 14, 28, 15, 30, 60)
-    const { diasEmbarque: maxDiasRegulares, label: regimeEscalaLabel } = extractEscalaDias(c);
+    // Limite regular da escala de embarque (NxN). sem_escala/administrativo/onshore → 0, sem DBA auto.
+    const {
+      diasEmbarque: maxDiasRegulares,
+      label: regimeEscalaLabel,
+      aplicaDobraAutomatica,
+    } = extractEscalaDias(c);
 
     let diasON = 0;
     let diasDBA = 0;
@@ -308,9 +284,7 @@ export async function gerarRelatorioEscalaMensal(
           if (!h.data_embarque) continue;
           const hStart = parseLocalDate(h.data_embarque);
           if (!hStart) continue;
-          const hEnd = h.data_desembarque
-            ? parseLocalDate(h.data_desembarque)
-            : (h.data_prevista_desembarque ? parseLocalDate(h.data_prevista_desembarque) : new Date(hStart.getTime() + maxDiasRegulares * 86400000));
+          const hEnd = fimEmbarqueParaDobra(h, hStart, maxDiasRegulares, aplicaDobraAutomatica);
           if (!hEnd) continue;
           hEnd.setHours(23, 59, 59, 999);
 
@@ -330,8 +304,8 @@ export async function gerarRelatorioEscalaMensal(
             } else if (cod === 'OFFC' || cod === 'OFF-C' || cod === 'TROCA_TURMA') {
               statusDoDia = 'OFF-C';
             } else {
-              // Rotação regular: se ultrapassar a escala máxima contínua (ex: >28d na 28x28, >14d na 14x14), contabiliza como DBA (Dobra)
-              if (diasCorridosEmbarque > maxDiasRegulares) {
+              // Rotação NxN: overflow contínuo vira DBA. Sem escala → nunca tratar como 14x14.
+              if (aplicaDobraAutomatica && maxDiasRegulares > 0 && diasCorridosEmbarque > maxDiasRegulares) {
                 statusDoDia = 'DBA';
               } else if (isRotacaoPrevista(h.tipo, h.observacoes)) {
                 statusDoDia = 'ON*';
@@ -385,9 +359,7 @@ export async function gerarRelatorioEscalaMensal(
           if (!h.data_embarque) continue;
           const hStart = parseLocalDate(h.data_embarque);
           if (!hStart) continue;
-          const hEnd = h.data_desembarque
-            ? parseLocalDate(h.data_desembarque)
-            : (h.data_prevista_desembarque ? parseLocalDate(h.data_prevista_desembarque) : new Date(hStart.getTime() + maxDiasRegulares * 86400000));
+          const hEnd = fimEmbarqueParaDobra(h, hStart, maxDiasRegulares, aplicaDobraAutomatica);
           if (!hEnd) continue;
           hEnd.setHours(23, 59, 59, 999);
 
@@ -404,9 +376,8 @@ export async function gerarRelatorioEscalaMensal(
             } else if (cod === 'OFFC' || cod === 'OFF-C') {
               weekStatus = 'OFF-C';
             } else {
-              // Se a semana estiver após os dias regulares do embarque, marca DBA
               const diasDesdeInicio = Math.floor((wStart.getTime() - hStart.getTime()) / 86400000) + 1;
-              if (diasDesdeInicio > maxDiasRegulares) {
+              if (aplicaDobraAutomatica && maxDiasRegulares > 0 && diasDesdeInicio > maxDiasRegulares) {
                 weekStatus = 'DBA';
               } else if (isRotacaoPrevista(h.tipo, h.observacoes)) {
                 weekStatus = 'ON*';

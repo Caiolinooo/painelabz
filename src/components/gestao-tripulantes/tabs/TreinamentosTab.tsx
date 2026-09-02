@@ -27,6 +27,10 @@ import {
   agruparDocumentosPorTipo,
   contarDocsPorStatusPrimario,
 } from '@/lib/gestao-tripulantes/documento-historico';
+import {
+  COLLABORATOR_MODAL_TAB_FILL_CLASS,
+  COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
+} from '@/components/gestao-tripulantes/collaborator-modal-layout';
 
 export interface Document {
   id: string;
@@ -675,9 +679,9 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
   };
 
   return (
-    <div className="divide-y divide-gray-100 bg-white">
+    <div className={`${COLLABORATOR_MODAL_TAB_FILL_CLASS} divide-y divide-gray-100 bg-white`}>
       {/* Top Header & Actions Bar */}
-      <div className="p-4 bg-slate-50/80 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-4 bg-slate-50/80 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         {/* Stats summary */}
         <div className="flex items-center gap-2 flex-wrap text-xs text-gray-600">
           <div className="flex items-center gap-1.5 font-bold text-gray-800 text-sm mr-2">
@@ -736,7 +740,7 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
           <p className="text-gray-400 text-xs mt-1">Clique no botão acima para cadastrar ou anexar certificados.</p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className={`${COLLABORATOR_MODAL_TABLE_SCROLL_CLASS} divide-y divide-gray-100`}>
 
           {grupos.map((grupo, idx) => (
             <div key={grupo.key} className="bg-white">

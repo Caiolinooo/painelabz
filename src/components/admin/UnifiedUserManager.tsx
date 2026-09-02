@@ -1084,9 +1084,9 @@ export default function UnifiedUserManager() {
 
   // Renderiza��o do componente
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="flex flex-col min-h-0 flex-1 h-full">
       {/* Abas */}
-      <div className="flex justify-between mb-6">
+      <div className="shrink-0 flex justify-between mb-6">
         <div>
           <button
             onClick={fixToken}
@@ -1138,8 +1138,8 @@ export default function UnifiedUserManager() {
 
       {/* Conte�do da aba de usu�rios */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex flex-wrap justify-between items-center mb-6">
+        <div className="bg-white rounded-lg shadow-md p-6 flex-1 min-h-0 flex flex-col">
+          <div className="shrink-0 flex flex-wrap justify-between items-center mb-6">
             <div className="flex items-center mb-4 md:mb-0">
               <div className="relative mr-2">
                 <input
@@ -1173,9 +1173,9 @@ export default function UnifiedUserManager() {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0 overflow-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Nome
@@ -1367,10 +1367,10 @@ export default function UnifiedUserManager() {
 
       {/* Conte�do da aba de usu�rios autorizados */}
       {activeTab === 'authorized' && (
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6 flex-1 min-h-0 flex flex-col">
           {/* Estat�sticas */}
           {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="text-lg font-semibold text-blue-700">Usu�rios</h3>
                 <div className="mt-2 space-y-1">
@@ -1653,9 +1653,9 @@ export default function UnifiedUserManager() {
           )}
 
           {/* Lista de usu�rios autorizados */}
-          <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0 overflow-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tipo

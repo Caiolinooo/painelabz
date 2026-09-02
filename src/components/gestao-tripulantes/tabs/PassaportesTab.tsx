@@ -9,6 +9,10 @@ import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
 import HistoricoColapsavel from '@/components/gestao-tripulantes/HistoricoColapsavel';
 import { agruparDocumentosPorTipo } from '@/lib/gestao-tripulantes/documento-historico';
+import {
+  COLLABORATOR_MODAL_TAB_FILL_CLASS,
+  COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
+} from '@/components/gestao-tripulantes/collaborator-modal-layout';
 
 interface Document {
   id: string;
@@ -178,9 +182,9 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
   };
 
   return (
-    <div className="divide-y divide-gray-100">
+    <div className={`${COLLABORATOR_MODAL_TAB_FILL_CLASS} divide-y divide-gray-100`}>
       {/* Upload bar */}
-      <div className="p-4 flex items-center justify-between bg-gray-50/70">
+      <div className="p-4 flex items-center justify-between bg-gray-50/70 shrink-0">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <FiGlobe className="text-indigo-500" />
           <span>{grupos.length} passaporte(s) cadastrado(s)</span>
@@ -192,6 +196,7 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
         </label>
       </div>
 
+      <div className={COLLABORATOR_MODAL_TABLE_SCROLL_CLASS}>
       {grupos.length === 0 ? (
         <div className="p-12 text-center">
           <FiGlobe className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -350,6 +355,7 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
           );
         })
       )}
+      </div>
     </div>
   );
 }

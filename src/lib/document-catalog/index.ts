@@ -13,4 +13,10 @@ export {
   hasQhseModule,
   isAdminOrManager,
 } from './permissions';
-export { isQhseCatalogDocument, isQhseRelatedText, restrictCatalogToQhse } from './qhse';
+export {
+  isOccupationalExamTipo,
+  isQhseCatalogDocument,
+  isQhseRelatedText,
+  qhseFlagsForGtTipo,
+  restrictCatalogToQhse,
+} from './qhse';

@@ -13,6 +13,7 @@
 
 ## Local Contracts
 
+- **Viewport**: raiz preenche a coluna do `MainLayout`; grade + lista do mês em `flex-1 min-h-0 overflow-auto` (preferir `dvh` no shell).
 - **Não** chamar `/api/mio/calendar`, `gt_historico_embarques`, treinamentos/ASO ou qualquer evento operacional
 - Fontes permitidas: feriados (BrasilAPI / scrape / estático + municipais Macaé; `en-US` = UK) + ICS da empresa
 - Lista e bolinhas do mês: só essas fontes. Legenda: nacional, municipal, calendário compartilhado

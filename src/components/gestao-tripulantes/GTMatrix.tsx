@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { useI18n } from '@/contexts/I18nContext';
+import { cn } from '@/lib/utils';
+import { GT_PAGE_SCROLLPORT_CLASS } from '@/components/gestao-tripulantes/GtPageShell';
 
 interface Collaborator {
   id: string;
@@ -27,6 +29,7 @@ interface GTMatrixProps {
   colaboradores: Collaborator[];
   loading: boolean;
   onRowClick: (colaborador: Collaborator) => void;
+  className?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -68,7 +71,7 @@ function SkeletonRows() {
   );
 }
 
-export default function GTMatrix({ colaboradores, loading, onRowClick }: GTMatrixProps) {
+export default function GTMatrix({ colaboradores, loading, onRowClick, className }: GTMatrixProps) {
   const { t } = useI18n();
 
   const getStatusBadge = (status: string, standby: boolean) => {
@@ -118,10 +121,10 @@ export default function GTMatrix({ colaboradores, loading, onRowClick }: GTMatri
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className={cn('bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-0 overflow-hidden', className)}>
+      <div className={GT_PAGE_SCROLLPORT_CLASS}>
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 w-12">{t('gestaoTripulantes.table.photo')}</th>
               <th className="px-4 py-3">{t('gestaoTripulantes.table.name')}</th>

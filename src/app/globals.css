@@ -162,6 +162,10 @@ error, success {
 }
 
 /* Custom Scrollbar for elements with .custom-scrollbar class */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
+}
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -188,6 +192,35 @@ error, success {
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: #6b7280;
   }
+}
+
+/* CollaboratorModal tablist: hide the native horizontal bar; fade via data-overflow-* */
+.collaborator-modal-tablist {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.collaborator-modal-tablist::-webkit-scrollbar {
+  display: none;
+  height: 0;
+  width: 0;
+}
+.collaborator-modal-tablist-shell[data-overflow-left='true']::before,
+.collaborator-modal-tablist-shell[data-overflow-right='true']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2rem;
+  pointer-events: none;
+  z-index: 1;
+}
+.collaborator-modal-tablist-shell[data-overflow-left='true']::before {
+  left: 0;
+  background: linear-gradient(to right, rgb(249 250 251), transparent);
+}
+.collaborator-modal-tablist-shell[data-overflow-right='true']::after {
+  right: 0;
+  background: linear-gradient(to left, rgb(249 250 251), transparent);
 }
 
 /* React PDF Text & Annotation layer adjustments for clickable signature inputs */

@@ -48,6 +48,8 @@ export interface CatalogDocument {
   status?: string | null;
   signed: boolean;
   qhseRelated: boolean;
+  /** GT `tipo_documento` (aso, laudo, certificado, epi, …). ASO/laudo never belong in the QHSE catalog. */
+  tipoDocumento?: string | null;
   recordId: string;
   moduleHref?: string | null;
   downloadKind: CatalogDownloadKind;

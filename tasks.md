@@ -1,3 +1,17 @@
+## GT / portal — crash useAuth + ficha / regime (2026-09-01)
+
+Produção `portal.groupabz.com` `/department/gestao-tripulantes` em branco: `useAuth deve ser usado dentro de um AuthProvider`. `ClientProviders` só tem `SupabaseAuthProvider`. Não ressuscitar `AuthProvider` legado.
+
+- [x] useAuth crash GT — `ModalAprovacaoFechamento` → `useSupabaseAuth` (id, email, role, first_name/last_name)
+- [x] Ficha: vínculo portal (Aislan tax_id/email)
+- [x] Ficha: abas (QHSE sem ASO duplicado)
+- [x] Ficha: scroll/viewport do modal
+- [x] Regime sem_escala / onshore / administrativo (não default 14x14)
+- [x] Adaptação dinâmica páginas GT/DP/man-schedule
+- [x] Adaptação dinâmica resto do portal
+
+---
+
 ## Portal auth audit — leftovers (2026-09-01)
 
 Fechamento (lista nominada + save isolado), colunas `users_unified` (`first_name`/`last_name`/`tax_id`) e ASO logística por setor foram neste ship. **Não fazer agora** (PR seguinte):

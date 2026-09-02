@@ -879,10 +879,10 @@ export default function FeriasPage() {
 
     return (
         <MainLayout>
-            <div className="p-6 max-w-5xl mx-auto space-y-6">
+            <div className="flex flex-col min-h-0 flex-1 h-full max-w-5xl mx-auto w-full">
 
                 {/* Header & Tabs */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-200 pb-4">
+                <div className="shrink-0 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-200 pb-4">
                     <div>
                         <div className="flex items-center gap-3 mb-4 md:mb-6">
                             <div className="bg-blue-100 p-3 rounded-xl border border-blue-200">
@@ -953,7 +953,7 @@ export default function FeriasPage() {
 
                 {/* Soft prompt: assinatura não cadastrada (dismissível nesta sessão) */}
                 {needsSignaturePrompt && (
-                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                    <div className="shrink-0 mt-4 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                         <div className="flex gap-3 items-start">
                             <FiEdit3 className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                             <div className="text-sm text-amber-900">
@@ -988,9 +988,9 @@ export default function FeriasPage() {
 
                 {/* TAB CONTENT: MY LEAVES */}
                 {activeTab === 'my_leaves' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col min-h-0 flex-1 pt-4">
                         {/* Histórico: filtros status + ano + exportação */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between mb-4">
+                        <div className="shrink-0 bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between mb-4">
                             <div className="flex flex-wrap gap-2 items-center">
                                 <select
                                     value={myStatusFilter}
@@ -1037,9 +1037,9 @@ export default function FeriasPage() {
                         </div>
 
                         {loading ? (
-                            <div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
+                            <div className="py-12 flex justify-center flex-1 min-h-0"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
                         ) : filteredMyRequests.length === 0 ? (
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 flex flex-col items-center justify-center text-center">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 flex flex-col items-center justify-center text-center flex-1 min-h-0">
                                 <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
                                     <FiCalendar className="w-8 h-8 text-blue-300" />
                                 </div>
@@ -1051,7 +1051,7 @@ export default function FeriasPage() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="grid gap-4">
+                            <div className="grid gap-4 flex-1 min-h-0 overflow-auto">
                                 {filteredMyRequests.map((request) => {
                                     const statusStyle = getStatusBadgeOptions(request.status);
                                     return (
@@ -1129,8 +1129,8 @@ export default function FeriasPage() {
 
                 {/* TAB CONTENT: APPROVALS */}
                 {activeTab === 'approvals' && isApprover && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4">
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col min-h-0 flex-1 pt-4">
+                        <div className="shrink-0 bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4">
                             <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
                                 <button
                                     onClick={() => setApprovalsView('pending')}
@@ -1188,7 +1188,7 @@ export default function FeriasPage() {
                                     Nenhum registro no histórico da equipe para os filtros selecionados.
                                 </div>
                             ) : (
-                                <div className="grid gap-4">
+                                <div className="grid gap-4 flex-1 min-h-0 overflow-auto">
                                     {filteredTeamHistory.map((request) => (
                                         <div key={request.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
                                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -1230,7 +1230,7 @@ export default function FeriasPage() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="grid gap-4">
+                            <div className="grid gap-4 flex-1 min-h-0 overflow-auto">
                                 {approvals.map((request) => (
                                     <div key={request.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
@@ -1342,9 +1342,9 @@ export default function FeriasPage() {
 
                 {/* TAB CONTENT: ALL REQUESTS (Admin) */}
                 {activeTab === 'all_requests' && hasFeriasAdmin && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col min-h-0 flex-1 pt-4">
                         {/* Filters */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4 mb-4">
+                        <div className="shrink-0 bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4 mb-4">
                             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                                 <div className="flex gap-2 bg-gray-100 p-1 rounded-lg self-start md:self-auto overflow-x-auto w-full md:w-auto">
                                     {[
@@ -1412,10 +1412,10 @@ export default function FeriasPage() {
                         </div>
 
                         {/* Data Table */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="overflow-x-auto">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+                            <div className="flex-1 min-h-0 overflow-auto">
                                 <table className="w-full min-w-[800px]">
-                                    <thead className="bg-gray-50 border-b">
+                                    <thead className="bg-gray-50 border-b sticky top-0 z-10">
                                         <tr>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Colaborador / Setor</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Período Principal</th>

@@ -12,6 +12,18 @@ import {
   toLookupOptions,
   type GtLookupKind,
 } from '@/components/gestao-tripulantes/createGtLookupOption';
+import {
+  REGIME_TRABALHO_OPTIONS,
+  escalaDiasParaForm,
+  formatRegimeDisplay,
+  inferRegimeUi,
+  isRegimeSemRotacao,
+  persistirCamposEscala,
+} from '@/lib/gestao-tripulantes/regime-escala';
+import {
+  COLLABORATOR_MODAL_TAB_FILL_CLASS,
+  COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
+} from '@/components/gestao-tripulantes/collaborator-modal-layout';
 
 interface CollaboratorDetail {
   id: string;
@@ -71,13 +83,7 @@ const STATUS_EMBARQUE_OPTIONS = [
   'embarcado', 'standby', 'folga', 'desembarcado', 'afastado', 'ferias', 'treinamento',
 ] as const;
 
-const REGIME_ESCALA_OPTIONS = [
-  { value: '14x14', label: '14 x 14 (14 dias a bordo / 14 dias folga)' },
-  { value: '28x28', label: '28 x 28 (28 dias a bordo / 28 dias folga)' },
-  { value: '15x15', label: '15 x 15 (15 dias a bordo / 15 dias folga)' },
-  { value: '30x30', label: '30 x 30 (30 dias a bordo / 30 dias folga)' },
-  { value: '60x60', label: '60 x 60 (60 dias a bordo / 60 dias folga)' },
-] as const;
+const REGIME_ESCALA_OPTIONS = REGIME_TRABALHO_OPTIONS;
 
 function toDateInput(d?: string | null): string {
   if (!d) return '';
@@ -93,6 +99,7 @@ function displayDate(d?: string | null): string {
 }
 
 function buildForm(data: CollaboratorDetail) {
+  const regimeUi = inferRegimeUi(data);
   return {
     nome_completo: data.nome_completo || '',
     cpf: data.cpf ? formatCpf(data.cpf) : '',
@@ -110,9 +117,9 @@ function buildForm(data: CollaboratorDetail) {
     empresa_id: data.empresa_id || '',
     embarcacao_atual_id: data.embarcacao_atual_id || '',
     centro_custo_id: data.centro_custo_id || '',
-    regime_trabalho: data.regime_trabalho || '14x14',
-    escala_embarque: String(data.escala_embarque || 14),
-    escala_folga: String(data.escala_folga || 14),
+    regime_trabalho: regimeUi,
+    escala_embarque: escalaDiasParaForm(regimeUi || data.regime_trabalho, data.escala_embarque),
+    escala_folga: escalaDiasParaForm(regimeUi || data.regime_trabalho, data.escala_folga),
     data_admissao: toDateInput(data.data_admissao),
     data_ultimo_embarque: toDateInput(data.data_ultimo_embarque),
     data_ultimo_desembarque: toDateInput(data.data_ultimo_desembarque),
@@ -229,14 +236,20 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
     }
     try {
       setSaving(true);
+      const escalaPersistida = persistirCamposEscala({
+        regime_trabalho: form.regime_trabalho || null,
+        escala_embarque: form.escala_embarque,
+        escala_folga: form.escala_folga,
+      });
       const payload = {
         ...form,
         cargo_id: form.cargo_id || null,
         empresa_id: form.empresa_id || null,
         embarcacao_atual_id: form.embarcacao_atual_id || null,
         centro_custo_id: form.centro_custo_id || null,
-        escala_embarque: form.escala_embarque ? Number(form.escala_embarque) : null,
-        escala_folga: form.escala_folga ? Number(form.escala_folga) : null,
+        regime_trabalho: escalaPersistida.regime_trabalho,
+        escala_embarque: escalaPersistida.escala_embarque,
+        escala_folga: escalaPersistida.escala_folga,
         data_nascimento: form.data_nascimento || null,
         data_admissao: form.data_admissao || null,
         data_ultimo_embarque: form.data_ultimo_embarque || null,
@@ -273,9 +286,9 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`${COLLABORATOR_MODAL_TAB_FILL_CLASS} p-6`}>
       {/* Edit toggle */}
-      <div className="flex justify-end">
+      <div className="flex justify-end shrink-0 mb-6">
         {editing ? (
           <div className="flex gap-2">
             <button
@@ -302,6 +315,7 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
         )}
       </div>
 
+      <div className={`${COLLABORATOR_MODAL_TABLE_SCROLL_CLASS} space-y-6`}>
       {/* Status badge */}
       <div className="flex items-center gap-3">
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[data.status_embarque] || 'bg-gray-100 text-gray-600'}`}>
@@ -442,12 +456,17 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
                   value={form.regime_trabalho}
                   onChange={e => {
                     const val = e.target.value;
-                    setField('regime_trabalho', val);
-                    const match = val.match(/^(\d+)x(\d+)/i);
-                    if (match) {
-                      setField('escala_embarque', match[1]);
-                      setField('escala_folga', match[2]);
-                    }
+                    const persistido = persistirCamposEscala({
+                      regime_trabalho: val || null,
+                      escala_embarque: form.escala_embarque,
+                      escala_folga: form.escala_folga,
+                    });
+                    setForm(f => ({
+                      ...f,
+                      regime_trabalho: persistido.regime_trabalho || val,
+                      escala_embarque: persistido.escala_embarque == null ? '' : String(persistido.escala_embarque),
+                      escala_folga: persistido.escala_folga == null ? '' : String(persistido.escala_folga),
+                    }));
                   }}
                 >
                   <option value="">—</option>
@@ -462,23 +481,25 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
               <EditField label="Dias A Bordo (Escala Regular)">
                 <input
                   type="number"
-                  min="1"
+                  min={isRegimeSemRotacao(form.regime_trabalho) ? 0 : 1}
                   max="180"
                   className={inputClass}
                   value={form.escala_embarque}
+                  disabled={isRegimeSemRotacao(form.regime_trabalho)}
                   onChange={e => setField('escala_embarque', e.target.value)}
-                  placeholder="Ex: 14"
+                  placeholder={isRegimeSemRotacao(form.regime_trabalho) ? '0' : 'Ex: 14'}
                 />
               </EditField>
               <EditField label="Dias de Folga (Escala Regular)">
                 <input
                   type="number"
-                  min="1"
+                  min={isRegimeSemRotacao(form.regime_trabalho) ? 0 : 1}
                   max="180"
                   className={inputClass}
                   value={form.escala_folga}
+                  disabled={isRegimeSemRotacao(form.regime_trabalho)}
                   onChange={e => setField('escala_folga', e.target.value)}
-                  placeholder="Ex: 14"
+                  placeholder={isRegimeSemRotacao(form.regime_trabalho) ? '0' : 'Ex: 14'}
                 />
               </EditField>
               <EditField label={t('gestaoTripulantes.personalData.admissionDate')}>
@@ -519,7 +540,7 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
               <InfoField label={t('gestaoTripulantes.personalData.company')} value={data.empresa_nome} />
               <InfoField label={t('gestaoTripulantes.personalData.vessel', 'Embarcação')} value={data.embarcacao_nome} />
               <InfoField label={t('gestaoTripulantes.personalData.costCenter')} value={data.centro_custo_nome} />
-              <InfoField label="Regime / Escala de Trabalho" value={data.regime_trabalho ? `${data.regime_trabalho} (${data.escala_embarque || 14}d a bordo / ${data.escala_folga || 14}d folga)` : '14x14 (14d a bordo / 14d folga)'} />
+              <InfoField label="Regime / Escala de Trabalho" value={formatRegimeDisplay(data)} />
               <InfoField label={t('gestaoTripulantes.personalData.admissionDate')} value={displayDate(data.data_admissao)} />
               <InfoField label="Último Embarque" value={displayDate(data.data_ultimo_embarque)} />
               <InfoField label="Último Desembarque" value={displayDate(data.data_ultimo_desembarque)} />
@@ -561,6 +582,7 @@ export default function DadosPessoaisTab({ data, onUpdate, onRefresh }: Props) {
             <InfoField label="CEP" value={data.endereco_cep} />
           </div>
         )}
+      </div>
       </div>
     </div>
   );

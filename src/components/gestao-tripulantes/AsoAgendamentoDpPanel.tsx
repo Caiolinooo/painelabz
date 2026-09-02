@@ -12,6 +12,7 @@ import {
   type AsoAgendamentoStatus,
   type AsoSugestaoData,
 } from '@/lib/gestao-tripulantes/aso-agendamento-status';
+import { GT_PAGE_SCROLLPORT_CLASS } from '@/components/gestao-tripulantes/GtPageShell';
 
 export interface AsoVencimentoRow {
   id: string;
@@ -229,8 +230,8 @@ export default function AsoAgendamentoDpPanel({
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col flex-1 min-h-0 overflow-hidden gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
         <div>
           <h2 className="text-lg font-bold text-gray-900">Controle e agendamento de ASO</h2>
           <p className="text-xs text-gray-500">
@@ -249,9 +250,9 @@ export default function AsoAgendamentoDpPanel({
         </button>
       </div>
 
-      <div className="overflow-x-auto border border-gray-200 rounded-xl">
+      <div className={`border border-gray-200 rounded-xl ${GT_PAGE_SCROLLPORT_CLASS}`}>
         <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
-          <thead className="bg-gray-50 text-gray-700 font-bold uppercase">
+          <thead className="bg-gray-50 text-gray-700 font-bold uppercase sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3">Colaborador</th>
               <th className="px-4 py-3">CPF</th>

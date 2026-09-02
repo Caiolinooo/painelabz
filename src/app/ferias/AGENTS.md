@@ -17,6 +17,10 @@ Módulo de solicitações de férias (`/ferias`): criação, aprovação por set
 
 ## Local Contracts
 
+### Viewport
+
+- Página preenche a coluna do `MainLayout` (`flex flex-col min-h-0 flex-1`); filtros/header `shrink-0`; lista/tabela primária em `flex-1 min-h-0 overflow-auto`.
+
 ### Histórico
 
 - Listagens **não** filtram só futuro: incluem aprovadas/rejeitadas/canceladas/passadas

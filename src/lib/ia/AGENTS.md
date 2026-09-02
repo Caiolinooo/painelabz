@@ -71,6 +71,7 @@ Ferramentas LLM do portal (`tools.ts`, cliente Microsoft Graph, geradores Excel/
 - API: `DELETE /api/ia/kpi-boards?id=` (um) ou `?all=1` (todos do usuário); UI `/kpi` tem botão lixeira com confirm
 - `render_dashboard` persiste board + `_metadata.dashboard` + `portalCommands` (`OPEN_KPI_BOARD` + `NAVIGATE /kpi`)
 - `/kpi` usa AuthContext `user.id` / `profile.id` (não `abz_user_id` localStorage)
+- **/kpi viewport**: página preenche a coluna (`flex flex-col min-h-0 flex-1`); header `shrink-0`; quadro em `overflow-auto` (sem `min-h-screen`)
 - `html_sandbox`: nunca `dangerouslySetInnerHTML` no origin; CSP no srcdoc; size cap ~100KB
 - `ia_dashboard_cache` = summary TTL apenas (não confundir com boards)
 - **Widget data binding**: `normalizeWidgetData` / `adaptToolResultToWidget` em `kpi-board-shared.ts` — coerção de shapes LLM (`label`/`value`/`assunto`/`labels+datasets`) → metric/list/chart/table; empty-state textual (não só ícones em branco)

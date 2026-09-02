@@ -10,6 +10,7 @@ import {
   toLookupOptions,
   type GtLookupKind,
 } from '@/components/gestao-tripulantes/createGtLookupOption';
+import { REGIME_TRABALHO_OPTIONS } from '@/lib/gestao-tripulantes/regime-escala';
 
 type TabId = 'dados-pessoais' | 'documentos' | 'endereco' | 'contato' | 'dados-bancarios' | 'vinculo' | 'esocial';
 
@@ -373,7 +374,7 @@ export default function NovoColaboradorPage() {
               <div>{label('Sindicato')}{input('sindicato')}</div>
             </>)}
             {section('Regime e Contrato', <>
-              <div>{label('Regime de Trabalho')}{select('regime_trabalho', ['Offshore', 'Presencial', 'Híbrido', 'Home Office', 'Escala'])}</div>
+              <div>{label('Regime de Trabalho')}{select('regime_trabalho', REGIME_TRABALHO_OPTIONS.map(o => ({ id: o.value, nome: o.label })))}</div>
               <div>{label('Tipo de Contrato')}{select('tipo_contrato', ['CLT', 'PJ', 'Temporário', 'Estágio', 'Autônomo'])}</div>
               <div>{label('Prazo do Contrato')}{input('prazo_contrato')}</div>
               <div>{label('Categoria do Contrato')}{input('categoria_contrato')}</div>

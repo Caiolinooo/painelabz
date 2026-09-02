@@ -22,6 +22,7 @@ import {
   idsComPrimarioVencido,
   type DocumentoAgrupavel,
 } from '@/lib/gestao-tripulantes/documento-historico';
+import { persistirCamposEscala } from '@/lib/gestao-tripulantes/regime-escala';
 
 const DOC_PENDENCY_SELECT =
   'id, colaborador_id, tipo_documento, subtipo, titulo, descricao, origem, numero_documento, numero_rastreio, data_emissao, data_validade, status_validacao, created_at';
@@ -442,9 +443,11 @@ export async function POST(request: NextRequest) {
         categoria_contrato: body.categoria_contrato || null,
         tipo_trabalho: body.tipo_trabalho || null,
         tipo_mao_de_obra: body.tipo_mao_de_obra || null,
-        regime_trabalho: body.regime_trabalho || null,
-        escala_embarque: body.escala_embarque || null,
-        escala_folga: body.escala_folga || null,
+        ...persistirCamposEscala({
+          regime_trabalho: body.regime_trabalho,
+          escala_embarque: body.escala_embarque,
+          escala_folga: body.escala_folga,
+        }),
         status_embarque: body.status_embarque || 'desembarcado',
         dados_saude: body.dados_saude || null,
         tipo_admissao: body.tipo_admissao || null,

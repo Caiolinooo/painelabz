@@ -203,7 +203,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <ProtectedRoute>
       <GlobalTimeTracker />
-      <div className="min-h-screen bg-gray-50 flex font-sans">
+      <div className="h-dvh bg-gray-50 flex font-sans overflow-hidden">
 
         {/* Mobile Overlay */}
         {isMobileMenuOpen && (
@@ -330,10 +330,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </aside>
 
         {/* Main Content Wrapper */}
-        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+        <div className={`flex-1 flex flex-col min-h-0 h-dvh transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
 
           {/* Top Header */}
-          <header className="h-16 px-4 md:px-8 flex items-center justify-between md:justify-end bg-gray-50/90 backdrop-blur-md border-b border-gray-200/50 z-20 sticky top-0 transition-colors">
+          <header className="h-16 shrink-0 px-4 md:px-8 flex items-center justify-between md:justify-end bg-gray-50/90 backdrop-blur-md border-b border-gray-200/50 z-20 sticky top-0 transition-colors">
             {/* Mobile Menu Toggle (Left Side) */}
             <div className="md:hidden">
               <button
@@ -424,7 +424,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 md:px-8 py-8">
+          <main className="flex-1 min-h-0 flex flex-col overflow-y-auto px-4 md:px-8 py-8">
             {children}
           </main>
         </div>

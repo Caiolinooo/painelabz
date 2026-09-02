@@ -9,6 +9,10 @@ import { cpfsMatch, formatCpf, isEsocialGlobalVisible, normalizeCpf } from '@/li
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 import AsoOcrDetailsModal from '@/components/gestao-tripulantes/AsoOcrDetailsModal';
 import { classificarValidadeCivil, documentoPertenceAba } from '@/lib/gestao-tripulantes/validade-civil';
+import {
+  COLLABORATOR_MODAL_TAB_FILL_CLASS,
+  COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
+} from '@/components/gestao-tripulantes/collaborator-modal-layout';
 
 interface Document {
   id: string;
@@ -603,8 +607,8 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
   const totalCount = asos.length + unlinkedEsocialAsos.length;
 
   return (
-    <div className="divide-y divide-gray-100">
-      <div className="p-4 flex items-center justify-between bg-gray-50/70">
+    <div className={`${COLLABORATOR_MODAL_TAB_FILL_CLASS} divide-y divide-gray-100`}>
+      <div className="p-4 flex items-center justify-between bg-gray-50/70 shrink-0">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <FiHeart className="text-red-500" />
           <span>
@@ -626,7 +630,7 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
           <p className="text-gray-400 text-sm">{t('gestaoTripulantes.aso.noAso')}</p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className={`${COLLABORATOR_MODAL_TABLE_SCROLL_CLASS} divide-y divide-gray-100`}>
           {availableAsos.length > 0 && (
             <div>
               <div className="px-5 py-2 bg-green-50/80 border-b border-green-100">

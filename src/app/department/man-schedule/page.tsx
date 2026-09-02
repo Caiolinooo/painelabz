@@ -8,6 +8,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import ScheduleDateFilterInput from '@/components/gestao-tripulantes/ScheduleDateFilterInput';
 import ManScheduleTimelineNav from '@/components/gestao-tripulantes/ManScheduleTimelineNav';
+import GtPageShell from '@/components/gestao-tripulantes/GtPageShell';
 import {
     MAN_SCHEDULE_SCROLL_CLASS,
     MAN_SCHEDULE_STICKY_EDGE_CLASS,
@@ -582,7 +583,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     }, [presentStatuses, t]);
 
     return (
-        <div className="flex flex-col min-h-0 -mx-4 md:-mx-8 -my-8 h-[calc(100vh-4rem)] overflow-hidden bg-white">
+        <GtPageShell flush>
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-4 py-3 shrink-0 border-b border-gray-200 gap-3">
                 <div>
@@ -877,6 +878,6 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                     <span className="text-[11px] text-slate-600">= Dia inicial do evento</span>
                 </div>
             </div>
-        </div>
+        </GtPageShell>
     );
 }

@@ -407,8 +407,8 @@ export default function CalendarioPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+      <div className="flex flex-col min-h-0 flex-1 h-full gap-6">
+        <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
           <div className="flex items-center gap-3">
             <span className="p-2.5 bg-blue-50 text-abz-blue rounded-xl">
               <FiCalendar className="w-6 h-6" />
@@ -421,14 +421,14 @@ export default function CalendarioPage() {
         </div>
 
         {error && !loading && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl flex items-center gap-2">
+          <div className="shrink-0 p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl flex items-center gap-2">
             <FiInfo className="shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-xs">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0 overflow-auto lg:overflow-hidden">
+          <div className="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-xs overflow-auto min-h-0">
             {loading && (
               <p className="text-center text-gray-500 text-sm mb-4 flex items-center justify-center gap-2">
                 <FiRefreshCw className="animate-spin" />
@@ -477,7 +477,7 @@ export default function CalendarioPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-1 bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col min-h-[28rem]">
+          <div className="lg:col-span-1 bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col min-h-[28rem] lg:min-h-0">
             <h2 className="text-lg font-bold text-gray-900 mb-1 capitalize">
               {t('calendario.holidaysInMonth')} {monthLabel}
             </h2>

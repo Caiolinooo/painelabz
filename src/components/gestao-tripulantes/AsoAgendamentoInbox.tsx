@@ -13,6 +13,7 @@ import {
   labelAsoAgendamentoStatus,
   type AsoAgendamentoStatus,
 } from '@/lib/gestao-tripulantes/aso-agendamento-status';
+import { GT_PAGE_SCROLLPORT_CLASS } from '@/components/gestao-tripulantes/GtPageShell';
 
 interface InboxRow {
   id: string;
@@ -114,8 +115,8 @@ export default function AsoAgendamentoInbox() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
         <div>
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <FiShield className="text-abz-blue" />
@@ -142,9 +143,9 @@ export default function AsoAgendamentoInbox() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+      <div className={`bg-white border border-gray-200 rounded-xl ${GT_PAGE_SCROLLPORT_CLASS}`}>
         <table className="min-w-full text-xs text-left">
-          <thead className="bg-gray-50 font-bold uppercase text-gray-600">
+          <thead className="bg-gray-50 font-bold uppercase text-gray-600 sticky top-0 z-10">
             <tr>
               <th className="px-3 py-2">Colaborador</th>
               <th className="px-3 py-2">Data</th>

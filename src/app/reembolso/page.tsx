@@ -208,14 +208,14 @@ export default function ReembolsoPage() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center mb-6">
+      <div className="flex flex-col min-h-0 flex-1 h-full">
+        <div className="shrink-0 flex items-center mb-6">
           <FiDollarSign className="h-6 w-6 text-abz-blue mr-2" />
           <h1 className="text-2xl font-bold text-abz-blue">{t('reimbursement.title', 'Reembolso')}</h1>
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-6 border-b border-gray-200">
+        <div className="shrink-0 mb-6 border-b border-gray-200">
           <nav className="flex -mb-px">
             <button
               onClick={() => handleTabChange('request')}
@@ -264,7 +264,7 @@ export default function ReembolsoPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6 flex-1 min-h-0 overflow-auto flex flex-col">
           <ErrorBoundary fallback={
             <div className="p-4 text-center">
               <div className="text-red-500 mb-4">

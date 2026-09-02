@@ -478,7 +478,7 @@ export default {
     title: 'Collaborator documents',
     subtitle: 'GT, QHSE/PPE, signed attendance lists and other modules — matched automatically by CPF, user id and email.',
     qhseTitle: 'QHSE / PPE',
-    qhseSubtitle: 'PPE form (AN-HSE-005), deliveries and QHSE attendance lists matched automatically for this collaborator.',
+    qhseSubtitle: 'PPE form (AN-HSE-005), deliveries and QHSE attendance lists. Occupational exams (ASO) belong on the ASO tab.',
     qhseEmpty: 'No QHSE/PPE documents found for this collaborator.',
     all: 'All',
     loading: 'Loading documents...',

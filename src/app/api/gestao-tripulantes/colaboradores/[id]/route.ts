@@ -4,6 +4,7 @@ import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
 import { autoGenerateESocialEvents } from '@/services/eSocialAutoService';
 import { isValidCpf, normalizeCpf } from '@/lib/utils/identity';
 import { loadColaboradorDetail, parseIncludeParam } from '@/lib/gestao-tripulantes/colaborador-get';
+import { persistirCamposEscala } from '@/lib/gestao-tripulantes/regime-escala';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +93,7 @@ export async function PUT(
     ]);
 
     const BOOLEAN_FIELDS = new Set(['standby', 'ativo']);
-    const NUMBER_FIELDS = new Set(['peso', 'altura', 'salario']);
+    const NUMBER_FIELDS = new Set(['peso', 'altura', 'salario', 'escala_embarque', 'escala_folga']);
 
     const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
 
@@ -163,6 +164,17 @@ export async function PUT(
         return NextResponse.json({ error: `${nameKey.replace('_nome', '')} não encontrado: ${body[nameKey]}` }, { status: 400 });
       }
       updateData[idKey] = row.id;
+    }
+
+    if ('regime_trabalho' in updateData) {
+      const persistido = persistirCamposEscala({
+        regime_trabalho: updateData.regime_trabalho,
+        escala_embarque: 'escala_embarque' in updateData ? updateData.escala_embarque : body.escala_embarque,
+        escala_folga: 'escala_folga' in updateData ? updateData.escala_folga : body.escala_folga,
+      });
+      updateData.regime_trabalho = persistido.regime_trabalho;
+      updateData.escala_embarque = persistido.escala_embarque;
+      updateData.escala_folga = persistido.escala_folga;
     }
 
     const { data: updated, error: updateError } = await supabaseAdmin

@@ -23,6 +23,10 @@ import {
 } from '@/lib/gestao-tripulantes/lgp-rotation';
 import { dataLocalISO } from '@/lib/gestao-tripulantes/aso-vencimentos';
 import { composeLgpObservacoes } from '@/lib/gestao-tripulantes/embarque-status';
+import {
+  mesclarRegimeMio,
+  regimeFromMioIntegrante,
+} from '@/lib/gestao-tripulantes/regime-escala';
 
 interface MIOConfig {
   baseUrl: string;
@@ -344,12 +348,17 @@ export async function syncFromMIO(): Promise<{
         // Upsert idempotente: localiza pela chave natural mio_id,
         // depois CPF digits-only, depois CPF legado mascarado.
         const mioIdStr = integrante.id != null ? String(integrante.id) : null;
-        let existing: { id: string } | null = null;
+        let existing: {
+          id: string;
+          regime_trabalho?: string | null;
+          escala_embarque?: string | number | null;
+          escala_folga?: string | number | null;
+        } | null = null;
 
         if (mioIdStr) {
           const { data } = await supabase
             .from('gt_colaboradores')
-            .select('id')
+            .select('id, regime_trabalho, escala_embarque, escala_folga')
             .eq('mio_id', mioIdStr)
             .is('deleted_at', null)
             .maybeSingle();
@@ -358,11 +367,24 @@ export async function syncFromMIO(): Promise<{
 
         if (!existing) {
           const byCpf = await findColaboradorByCpf(cpfLimpo);
-          existing = byCpf ? { id: byCpf.id } : null;
+          if (byCpf) {
+            const { data } = await supabase
+              .from('gt_colaboradores')
+              .select('id, regime_trabalho, escala_embarque, escala_folga')
+              .eq('id', byCpf.id)
+              .maybeSingle();
+            existing = data ?? { id: byCpf.id };
+          }
         }
 
         const agoraIso = new Date().toISOString();
-        const colaboradorData = { ...mapMIOToColaborador(integrante), updated_at: agoraIso };
+        const colaboradorData: Record<string, unknown> = { ...mapMIOToColaborador(integrante), updated_at: agoraIso };
+        const regimeMio = mesclarRegimeMio(existing, regimeFromMioIntegrante(integrante));
+        if (regimeMio) {
+          colaboradorData.regime_trabalho = regimeMio.regime_trabalho;
+          colaboradorData.escala_embarque = regimeMio.escala_embarque;
+          colaboradorData.escala_folga = regimeMio.escala_folga;
+        }
 
         if (existing) {
           // Nunca insert duplicado: sempre UPDATE na linha já existente.

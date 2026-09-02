@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.72.0] - 2026-09-02
+
+### 🪪 Ficha do colaborador, regime sem escala e viewport do portal
+
+1. **GT não cai mais em branco**: `ModalAprovacaoFechamento` usa `useSupabaseAuth` (o portal não monta o `AuthProvider` legado).
+2. **Ficha**: vínculo de portal por `user_id` → `tax_id` → e-mail (não `cpf`/`full_name`). QHSE/EPI deixa de listar ASO; exames ocupacionais ficam só na aba ASO. Modal preenche a tela; cada aba rola o conteúdo internamente.
+3. **Administrativo / onshore**: regimes `sem_escala`, `administrativo` e `onshore` (dias 0). Token vazio + 0/0 não vira 14x14. DBA automático não trata quem não tem rotação.
+4. **Viewport**: Matriz, DP, Man Schedule, e-Social e listas do portal (férias, reembolso, academy, admin) preenchem `h-dvh`; filtros ficam, a tabela rola.
+
 ## [5.71.3] - 2026-09-01
 
 ### 🔧 Fechamento isolado, colunas reais de `users_unified` e ASO logística por setor

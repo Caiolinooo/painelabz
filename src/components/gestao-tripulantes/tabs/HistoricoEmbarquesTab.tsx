@@ -3,6 +3,10 @@
 import React from 'react';
 import { FiAnchor, FiCalendar, FiMapPin, FiClock, FiArrowRight, FiMessageSquare } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
+import {
+  COLLABORATOR_MODAL_TAB_FILL_CLASS,
+  COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
+} from '@/components/gestao-tripulantes/collaborator-modal-layout';
 
 interface Embarkation {
   id: string;
@@ -75,9 +79,9 @@ export default function HistoricoEmbarquesTab({ embarques }: Props) {
   }
 
   return (
-    <div className="p-6">
+    <div className={`${COLLABORATOR_MODAL_TAB_FILL_CLASS} p-6`}>
       {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6 shrink-0">
         <div className="bg-blue-50 rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-blue-700">{embarques.length}</p>
           <p className="text-xs text-blue-600 mt-1">Total de Escalas</p>
@@ -97,7 +101,7 @@ export default function HistoricoEmbarquesTab({ embarques }: Props) {
       </div>
 
       {/* Timeline */}
-      <div className="relative pl-6">
+      <div className={`${COLLABORATOR_MODAL_TABLE_SCROLL_CLASS} relative pl-6`}>
         <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-gray-200" />
 
         {embarques.map((emb, i) => {

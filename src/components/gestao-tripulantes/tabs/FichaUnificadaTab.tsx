@@ -3,6 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { classificarValidadeCivil } from '@/lib/gestao-tripulantes/validade-civil';
+import {
+  COLLABORATOR_MODAL_TAB_FILL_CLASS,
+  COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
+} from '@/components/gestao-tripulantes/collaborator-modal-layout';
 
 interface Props {
   colaboradorId: string;
@@ -53,8 +57,8 @@ export default function FichaUnificadaTab({ colaboradorId, onOpenTab }: Props) {
   const docs = record.documentos || [];
 
   return (
-    <div className="p-6 space-y-6">
-      <section>
+    <div className={`${COLLABORATOR_MODAL_TAB_FILL_CLASS} gap-6 p-6`}>
+      <section className="shrink-0">
         <h3 className="text-sm font-bold text-gray-800">Identidade central</h3>
         <p className="text-xs text-gray-500 mt-1">
           Fonte canônica `gt_*` via Employee Hub — documentos, escala, e-Social, afastamentos e treinamentos no mesmo registro.
@@ -67,7 +71,7 @@ export default function FichaUnificadaTab({ colaboradorId, onOpenTab }: Props) {
         </dl>
       </section>
 
-      <section>
+      <section className="shrink-0">
         <h3 className="text-sm font-bold text-gray-800">Documentos vigentes</h3>
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
           <span className="px-2 py-1 rounded-full bg-red-50 text-red-700 font-semibold">{summary.vencidos ?? 0} vencidos</span>
@@ -78,7 +82,7 @@ export default function FichaUnificadaTab({ colaboradorId, onOpenTab }: Props) {
       </section>
 
       {alertas.length > 0 && (
-        <section>
+        <section className="shrink-0">
           <h3 className="text-sm font-bold text-gray-800">Onde está o documento com alerta</h3>
           <ul className="mt-2 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
             {alertas.map((a: any) => (
@@ -100,11 +104,11 @@ export default function FichaUnificadaTab({ colaboradorId, onOpenTab }: Props) {
         </section>
       )}
 
-      <section>
-        <h3 className="text-sm font-bold text-gray-800">Todos os documentos</h3>
-        <div className="mt-2 overflow-x-auto">
+      <section className="flex min-h-0 flex-1 flex-col">
+        <h3 className="shrink-0 text-sm font-bold text-gray-800">Todos os documentos</h3>
+        <div className={`${COLLABORATOR_MODAL_TABLE_SCROLL_CLASS} mt-2`}>
           <table className="min-w-full text-xs">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-white">
               <tr className="text-left text-gray-400">
                 <th className="py-2 pr-3">Tipo</th>
                 <th className="py-2 pr-3">Título</th>
@@ -133,7 +137,7 @@ export default function FichaUnificadaTab({ colaboradorId, onOpenTab }: Props) {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+      <section className="grid shrink-0 grid-cols-1 gap-3 text-sm sm:grid-cols-3">
         <div className="rounded-xl border border-gray-100 p-3">
           <p className="text-xs text-gray-400">Embarques</p>
           <p className="text-lg font-bold">{(record.embarques || []).length}</p>
@@ -154,13 +158,23 @@ export default function FichaUnificadaTab({ colaboradorId, onOpenTab }: Props) {
           <p className="text-xs text-gray-400">Reembolsos</p>
           <p className="text-lg font-bold">{(record.reembolsos || []).length}</p>
         </div>
-        <div className="rounded-xl border border-gray-100 p-3">
+        <div className="rounded-xl border border-gray-100 p-3" data-testid="ficha-portal-user">
           <p className="text-xs text-gray-400">Usuário do portal</p>
-          <p className="text-sm font-semibold truncate">
-            {record.portalUser
-              ? `${record.portalUser.first_name || ''} ${record.portalUser.last_name || ''}`.trim() || record.portalUser.email
-              : 'sem vínculo'}
-          </p>
+          {record.portalUser ? (
+            <>
+              <p className="text-sm font-semibold truncate">
+                {`${record.portalUser.first_name || ''} ${record.portalUser.last_name || ''}`.trim() || record.portalUser.email || '—'}
+              </p>
+              {record.portalUser.email ? (
+                <p className="text-xs text-gray-500 truncate">{record.portalUser.email}</p>
+              ) : null}
+              {record.portalUser.role ? (
+                <p className="text-xs text-gray-400">{record.portalUser.role}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm font-semibold">sem vínculo</p>
+          )}
         </div>
       </section>
     </div>

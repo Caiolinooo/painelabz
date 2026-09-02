@@ -591,7 +591,7 @@ export default {
     title: 'Documentos do colaborador',
     subtitle: 'GT, QHSE/EPI, listas de presença assinadas e outros módulos — reconhecidos automaticamente por CPF, usuário e e-mail.',
     qhseTitle: 'QHSE / EPI',
-    qhseSubtitle: 'Ficha de EPI (AN-HSE-005), entregas e listas de presença QHSE reconhecidas automaticamente para este colaborador.',
+    qhseSubtitle: 'Ficha de EPI (AN-HSE-005), entregas e listas de presença QHSE. Exames ocupacionais (ASO/laudo) ficam na aba ASO.',
     qhseEmpty: 'Nenhum documento QHSE/EPI encontrado para este colaborador.',
     all: 'Todos',
     loading: 'Carregando documentos...',

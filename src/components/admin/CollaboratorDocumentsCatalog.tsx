@@ -29,7 +29,7 @@ interface Props {
   colaboradorId?: string | null;
   excludeSources?: DocumentCatalogSourceId[];
   compact?: boolean;
-  /** Ficha AN-HSE-005, entregas EPI e listas de presença QHSE. */
+  /** Ficha AN-HSE-005, entregas EPI e listas de presença QHSE. Never ASO/laudo. */
   onlyQhse?: boolean;
   /** Omit QHSE items (used by the generic Documentos tab). */
   hideQhse?: boolean;
@@ -177,7 +177,7 @@ export default function CollaboratorDocumentsCatalog({
             </h3>
             <p className="text-sm text-gray-500 mt-1">
               {onlyQhse
-                ? t('documentCatalog.qhseSubtitle', 'Ficha de EPI (AN-HSE-005), entregas e listas de presença QHSE reconhecidas automaticamente para este colaborador.')
+                ? t('documentCatalog.qhseSubtitle', 'Ficha de EPI (AN-HSE-005), entregas e listas de presença QHSE. Exames ocupacionais (ASO/laudo) ficam na aba ASO.')
                 : t('documentCatalog.subtitle', 'GT, QHSE/EPI, listas de presença assinadas e outros módulos — reconhecidos automaticamente por CPF, usuário e e-mail.')}
             </p>
           </div>

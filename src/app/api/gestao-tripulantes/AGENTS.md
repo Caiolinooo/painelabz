@@ -60,6 +60,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 ### Employee Record Hub (`/api/employee-hub`)
 - Single point of truth for employee data, combining personal details, document counts, ASOs, embarques, e-Social event timeline, afastamentos, acidentes (CAT), and trainings.
+- Portal user join: `user_id` → `users_unified.tax_id` digits = colaborador CPF → email lowercase exact. Never select `cpf` / `full_name` on `users_unified`. Contract: `src/lib/employee-hub/AGENTS.md`.
 - Endpoints: `GET /api/employee-hub/[id]`, `GET /api/employee-hub/[id]/timeline`, `GET /api/employee-hub/search`.
 
 ### Global ASO read
@@ -150,7 +151,8 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 
 ### Collaborator modal — Dados Pessoais edit
 
-- Edit mode (`DadosPessoaisTab`) renders inputs/selects for identity (nome, CPF, RG, matrícula, nascimento, nacionalidade, naturalidade, filiação, estado civil, email, telefone) and professional fields (cargo/empresa/embarcação/centro de custo via `SearchableCreatableSelect` + POST create, admissão, próximo embarque, status, standby) plus address.
+- Edit mode (`DadosPessoaisTab`) renders inputs/selects for identity (nome, CPF, RG, matrícula, nascimento, nacionalidade, naturalidade, filiação, estado civil, email, telefone) and professional fields (cargo/empresa/embarcação/centro de custo via `SearchableCreatableSelect` + POST create, admissão, próximo embarque, status, standby, **regime de trabalho**) plus address.
+- **Regime**: first-class `sem_escala` | `administrativo` | `onshore` | `14x14` | `28x28` | `15x15` | `30x30` | `60x60` (`regime-escala.ts`). Empty/null/no-rotation **never** coerce to 14x14. No-rotation persists `escala_embarque`/`escala_folga` = 0. PUT uses `persistirCamposEscala`.
 - CPF: client + PUT validate with `isValidCpf` (Módulo 11); persist digits-only via `normalizeCpf`. Invalid/empty CPF → 400, never silently dropped.
 - `PUT /api/gestao-tripulantes/colaboradores/[id]` whitelists every editable `gt_colaboradores` column (not PK/system/`mio_*`/e-Social tracking). View aliases (`cargo_nome`…) resolve to FKs instead of being ignored.
 - Modal fetch: keep previous `data` on error; ignore abort; do not replace loaded content with skeleton; tab error boundary isolates Treinamentos crashes.
@@ -178,15 +180,16 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
   - **100% das assinaturas**: lista vazia → primeira assinatura de gestor/admin conclui e libera e-mail ao DP. Lista com N nomes → exatamente esses N, independente de cargo; extras não contam; e-mail XLSX só em 100%. `fechamento-assinatura.ts` (`podeAssinarFechamento` / `autorizacaoAssinarFechamento`).
   - `GET /api/gestao-tripulantes/cron/relatorio-mensal`: data de corte e pendências.
   - `GET|PUT /api/gestao-tripulantes/relatorio-mensal/config`: dia de corte, e-mails DP/CC, aprovadores, auto-envio, templates. PUT só ADMIN/MANAGER, persistência via `updateConfig` (erro do Supabase volta 500). GET devolve `availableUsers`/`availableManagers` via `listarCandidatosAprovadores()` (portal ativos + `gt_colaboradores` ativos com e-mail). `PUT /configuracoes` só grava chaves gerais — nunca `gt_fechamento_mensal_config`. `listarGestoresPortal()` permanece para ASO logística.
-  - UI: admin `WorkflowFechamentoTab`; DP/GT `ModalAprovacaoFechamento` — só o `SignatureModal` global (não montar segundo). Sem assinatura, o modal de cadastro roda e só então o POST. Erros da API vão para o usuário (`error` string), nunca exception crua.
+  - UI: admin `WorkflowFechamentoTab`; DP/GT `ModalAprovacaoFechamento` — só o `SignatureModal` global (não montar segundo). Sem assinatura, o modal de cadastro roda e só então o POST. Erros da API vão para o usuário (`error` string), nunca exception crua. Modal lê o ator com `useSupabaseAuth` (não `AuthContext` legado).
 
 ### Regras Contábeis de Cômputo de Dobra (DBA) e Escalas
-- A escala do colaborador é extraída via `extractEscalaDias` lendo `escala_embarque`, `escala_folga` ou `regime_trabalho` (ex: `14x14`, `28x28`, `15x15`, `30x30`, `60x60`):
-  - Se escala de 28 dias e ficar 30 dias embarcado: 28 dias são `ON` e 2 dias são `DBA`.
-  - Se escala de 14 dias e ficar 21 dias embarcado: 14 dias são `ON` e 7 dias são `DBA`.
-  - Se o tipo do evento for explicitamente `dba` ou `dobra`: todos os dias são contabilizados como `DBA`.
-  - Eventos de Folga Indenizada (`fi`), Treinamento (`tre`/`tf`), Standby (`stb`) e Troca de Turma (`offc`) mantêm suas respectivas classificações diárias e semanais.
-  - Períodos de afastamentos e férias (`gt_afastamentos` / `/ferias`) são integrados com código `FER` e não se sobrepõem indevidamente ao cômputo de dias ON/DBA.
+- A escala vem de `extractEscalaDias` em `regime-escala.ts` (`escala_embarque`, `escala_folga`, `regime_trabalho`):
+  - **NxN** (`14x14`, `28x28`, `15x15`, `30x30`, `60x60`): se ultrapassar os dias regulares contínuos, o excedente é `DBA` (ex: 28x28 e 30d a bordo → 28 ON + 2 DBA).
+  - **`sem_escala` / `administrativo` / `onshore`** (e vazio/null): **não** viram 14x14. Dias = 0. `aplicaDobraAutomatica = false`. Evento explícito `dba`/`dobra` ainda conta DBA; não inventar janela ON de 14 dias se faltar desembarque.
+  - Eventos FI / TRE / STB / OFF-C mantêm a classificação do tipo.
+  - Afastamentos e férias (`gt_afastamentos` / `/ferias`) entram como `FER` e não se sobrepõem ao cômputo ON/DBA.
+- **Man Schedule / matriz**: administrativos/onshore existem **sem** rotação ON/STB. A grade não inventa dias ON. A pílula de status continua a célula de hoje (`embarque-status.ts`).
+- **MIO pull**: `mesclarRegimeMio` — override local (incl. `sem_escala`) não é sobrescrito. MIO vazio → `sem_escala`; MIO onshore → `onshore`. Nunca gravar 14x14 como default. Nunca PUT de volta ao MIO.
 
 ### Cruzamento de Dados e Sincronização Automática
 - **Edição de Colaborador** (`CollaboratorModal`, `DadosPessoaisTab`): Ao atualizar matrícula, centro de custo, cargo, empresa, embarcação, regime de trabalho, escalas e datas de embarque/desembarque em `gt_colaboradores`, o motor sincroniza automaticamente os eventos e-Social (S-2200, S-2240, S-2299) e os fechamentos DP.
@@ -218,7 +221,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - Novo ON sobre STB longo aparece nas semanas do período e incrementa a coluna ON. `npx tsx scripts/verify-escala-contagem.ts` → `ESCALA_CONTAGEM_VERIFY_OK`.
 - `npm run mio:assert-local-first` exits 0 (`ASSERT_MIO_LOCAL_FIRST_OK`).
 - Full pull: `npm run mio:pull` (admin credentials in `.env.local`). Dry-run: `npm run mio:pull:dry`.
-- Dados Pessoais edit mode: all identity + professional fields are inputs (not plain text); Save persists via PUT whitelist including CPF (validated) and FK professional columns.
+- Dados Pessoais edit mode: all identity + professional fields are inputs (not plain text); Save persists via PUT whitelist including CPF (validated) and FK professional columns. Regime `sem_escala` survives reload (`npx tsx --test src/lib/gestao-tripulantes/regime-escala.test.ts`).
 - After Treinamentos “Exportar Excel”, modal still shows collaborator data (reopen included); GET 200 is not wiped by export.
 - Valid CBSP + expired/declaração CBSP do mesmo colaborador: UI mostra 1 linha primária válida, histórico colapsado “Obsoleto”, `qtd_docs_vencidos` da ficha **não** inclui o CBSP antigo. `npx tsx --test src/lib/gestao-tripulantes/documento-historico.test.ts`.
 - `GET /api/gestao-tripulantes/poliweb/asos-pendentes` returns 200 with array `data` (empty + `warning` if Poliweb down); GT page does not show Next.js overlay.

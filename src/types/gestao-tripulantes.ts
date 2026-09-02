@@ -67,6 +67,9 @@ export interface GTColaborador {
     matricula?: string;
     status_embarque: StatusEmbarque;
     standby: boolean;
+    regime_trabalho?: string | null;
+    escala_embarque?: number | string | null;
+    escala_folga?: number | string | null;
     data_ultimo_embarque?: string;
     data_ultimo_desembarque?: string;
     data_proximo_embarque?: string;

@@ -294,8 +294,8 @@ export default function GestaoTripulantesAdminPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col min-h-0 flex-1 h-full gap-6">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gestão de Tripulantes</h1>
           <p className="text-sm text-gray-500">Configurações administrativas do módulo</p>
@@ -331,14 +331,14 @@ export default function GestaoTripulantesAdminPage() {
       </div>
 
       {success && (
-        <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md">{success}</div>
+        <div className="shrink-0 p-4 bg-green-50 border border-green-200 text-green-700 rounded-md">{success}</div>
       )}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">{error}</div>
+        <div className="shrink-0 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">{error}</div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="border-b overflow-x-auto">
+      <div className="bg-white rounded-lg shadow-md flex-1 min-h-0 flex flex-col">
+        <div className="shrink-0 border-b overflow-x-auto">
           <nav className="flex">
             {tabs.map(tab => {
               const Icon = tab.icon;
@@ -360,7 +360,7 @@ export default function GestaoTripulantesAdminPage() {
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 flex-1 min-h-0 overflow-auto">
           {activeTab === 'auditoria' && <AuditoriaDocumentosTab />}
           {activeTab === 'exportar' && <ExportarTab />}
           {activeTab === 'centros_custo' && <CentrosCustoAdminTab />}

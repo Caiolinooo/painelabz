@@ -237,8 +237,8 @@ export default function AdminLeaveRequestsPage() {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col min-h-0 flex-1 h-full max-w-7xl mx-auto w-full">
+            <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <FiCalendar className="w-8 h-8 text-blue-600" />
                     <div>
@@ -256,7 +256,7 @@ export default function AdminLeaveRequestsPage() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="shrink-0 bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
                 <div className="flex gap-2 bg-gray-100 p-1 rounded-lg self-start md:self-auto overflow-x-auto w-full md:w-auto">
                     {[
                         { id: 'ALL', label: 'Todas' },
@@ -301,10 +301,10 @@ export default function AdminLeaveRequestsPage() {
             </div>
 
             {/* Data Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-0 overflow-auto">
                     <table ref={tableRef} className="w-full min-w-[800px]">
-                        <thead className="bg-gray-50 border-b">
+                        <thead className="bg-gray-50 border-b sticky top-0 z-10">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Colaborador / Setor</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Período Principal</th>

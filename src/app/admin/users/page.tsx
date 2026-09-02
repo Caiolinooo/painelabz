@@ -312,8 +312,8 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="flex flex-col min-h-0 flex-1 h-full">
+      <div className="shrink-0 flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-abz-blue flex items-center">
           <FiUsers className="mr-2" /> {t('userEditor.usersSection', 'Gerenciamento de Usuários')}
         </h1>
@@ -336,7 +336,7 @@ export default function UsersPage() {
       </div>
 
       {/* Barra de pesquisa */}
-      <div className="mb-6">
+      <div className="shrink-0 mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className="h-5 w-5 text-gray-400" />
@@ -352,7 +352,7 @@ export default function UsersPage() {
       </div>
 
       {/* Conteúdo principal */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden flex-1 min-h-0 flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-abz-blue"></div>
@@ -382,9 +382,9 @@ export default function UsersPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0 overflow-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Usuário
