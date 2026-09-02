@@ -7,6 +7,8 @@ import {
   pickUniqueNameCpfMatch,
   pickUniqueTaxIdMatch,
   portalDisplayName,
+  portalUsersCompatibleForModules,
+  compatibleModuleUserIds,
   shouldBackfillUserId,
   taxIdDigitsMatch,
   uniqueUserIds,
@@ -98,6 +100,56 @@ describe('shouldBackfillUserId', () => {
     assert.equal(shouldBackfillUserId(null, gmailUser.id), true);
     assert.equal(shouldBackfillUserId(gmailUser.id, corpUser.id), false);
     assert.equal(shouldBackfillUserId(undefined, null), false);
+  });
+
+  it('does not persist email-only matches when tax_id disagrees or is missing', () => {
+    assert.equal(
+      shouldBackfillUserId(null, corpUser.id, {
+        reason: 'email',
+        cpfDigits: AISLAN_CPF,
+        matchedTaxId: corpUser.tax_id,
+      }),
+      false,
+    );
+    const otherCpfUser = { ...gmailUser, tax_id: '00000000000' };
+    assert.equal(
+      shouldBackfillUserId(null, otherCpfUser.id, {
+        reason: 'email',
+        cpfDigits: AISLAN_CPF,
+        matchedTaxId: otherCpfUser.tax_id,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldBackfillUserId(null, gmailUser.id, {
+        reason: 'email',
+        cpfDigits: AISLAN_CPF,
+        matchedTaxId: gmailUser.tax_id,
+      }),
+      true,
+    );
+  });
+});
+
+describe('compatibleModuleUserIds', () => {
+  it('keeps Aislan gmail + corporate clone (null tax_id)', () => {
+    assert.deepEqual(compatibleModuleUserIds(gmailUser, AISLAN_CPF, corpUser), [
+      gmailUser.id,
+      corpUser.id,
+    ]);
+  });
+
+  it('drops an email hit whose tax_id is a different person', () => {
+    const victim: PortalUser = {
+      id: 'victim-id',
+      first_name: 'Other',
+      last_name: 'Person',
+      email: 'other@groupabz.com',
+      role: 'USER',
+      tax_id: '52998224725',
+    };
+    assert.equal(portalUsersCompatibleForModules(gmailUser, victim, AISLAN_CPF), false);
+    assert.deepEqual(compatibleModuleUserIds(gmailUser, AISLAN_CPF, victim), [gmailUser.id]);
   });
 });
 
