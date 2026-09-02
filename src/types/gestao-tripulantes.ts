@@ -64,6 +64,7 @@ export interface GTColaborador {
     cargo_id?: string;
     data_admissao?: string;
     data_demissao?: string;
+    motivo_demissao?: string;
     matricula?: string;
     status_embarque: StatusEmbarque;
     standby: boolean;
@@ -315,4 +316,59 @@ export interface GTConfigAlgoritmoBack {
     peso_senioridade_similar: number;
     limite_resultados: number;
     sugestao_automatica: boolean;
+}
+
+export type GTTipoRescisao =
+    | 'sem_justa_causa'
+    | 'pedido_demissao'
+    | 'justa_causa'
+    | 'acordo_mutuo'
+    | 'termino_contrato'
+    | 'rescisao_indireta';
+
+export type GTAvisoPrevioTipo = 'indenizado' | 'trabalhado' | 'dispensado' | 'nao_aplicavel';
+
+export type GTStatusDesligamento = 'iniciado' | 'calculado' | 'aprovado' | 'pago' | 'cancelado';
+
+export interface GTVerbaRescisaoPrevista {
+    code: string;
+    name: string;
+    observation: string;
+}
+
+export interface GTDesligamento {
+    id: string;
+    colaborador_id: string;
+    tipo_rescisao: GTTipoRescisao;
+    data_desligamento: string;
+    motivo: string | null;
+    mtv_deslig: string;
+    aviso_previo_tipo: GTAvisoPrevioTipo;
+    aviso_previo_dias: number | null;
+    data_ultimo_dia_trabalhado: string | null;
+    prazo_pagamento: string | null;
+    status: GTStatusDesligamento;
+    payroll_sheet_id: string | null;
+    verbas_previstas: GTVerbaRescisaoPrevista[];
+    observacoes: string | null;
+    criado_por: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface GTDesligamentoEtapas {
+    gt: { ok: boolean; warning?: string };
+    payroll: { ok: boolean; skipped: boolean; sheet_id?: string; warning?: string };
+    esocial: { ok: boolean; skipped?: boolean; evento_id?: string; warning?: string };
+}
+
+export interface GTDesligamentoPayload {
+    tipo_rescisao: GTTipoRescisao;
+    data_desligamento: string;
+    motivo?: string;
+    mtv_deslig?: string;
+    aviso_previo_tipo?: GTAvisoPrevioTipo;
+    aviso_previo_dias?: number;
+    data_ultimo_dia_trabalhado?: string;
+    observacoes?: string;
 }

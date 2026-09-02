@@ -23,6 +23,21 @@ import {
     readVisibleColumnIndex,
     scrollScheduleColumnIntoView,
 } from '@/lib/gestao-tripulantes/man-schedule-nav';
+import {
+    buildScheduleColumns,
+    civilReferenceMonth,
+    clampReferenceMonth,
+    columnPeriod,
+    focusColumnIndex,
+    formatReferenceMonthLabel,
+    indexOfCivilDay,
+    isSameReferenceMonth,
+    persistReferenceMonthPreference,
+    readReferenceMonthPreference,
+    realtimeJanelaForReferenceMonth,
+    shiftReferenceMonth,
+    type ReferenceMonth,
+} from '@/lib/gestao-tripulantes/man-schedule-reference-month';
 
 interface CrewSchedule {
     id: string;
@@ -81,13 +96,31 @@ export default function ManSchedulePage() {
     const [filterPosition, setFilterPosition] = useState('');
     const [filterDateStart, setFilterDateStart] = useState('');
     const [filterDateEnd, setFilterDateEnd] = useState('');
+    const [referenceMonth, setReferenceMonth] = useState<ReferenceMonth>(() => civilReferenceMonth());
 
     // Timeline navigation
     const tableContainerRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        const stored = readReferenceMonthPreference();
+        if (stored) setReferenceMonth(stored);
+    }, []);
+
+    const applyReferenceMonth = useCallback((next: ReferenceMonth) => {
+        const clamped = clampReferenceMonth(next);
+        setReferenceMonth(clamped);
+        persistReferenceMonthPreference(clamped);
+    }, []);
+
+    const janela = useMemo(
+        () => realtimeJanelaForReferenceMonth(referenceMonth),
+        [referenceMonth],
+    );
+
     const fetchSchedules = useCallback(async () => {
         try {
-            const res = await fetchWithToken('/api/man-schedule/realtime');
+            const qs = janela === '90d' ? '' : `?janela=${janela}`;
+            const res = await fetchWithToken(`/api/man-schedule/realtime${qs}`);
             if (!res.ok) {
                 if (res.status === 503) {
                     throw new Error('Cache MIO indisponível. Por favor, atualize o cache no painel administrativo.');
@@ -104,7 +137,7 @@ export default function ManSchedulePage() {
         } finally {
             setLoading(false);
         }
-    }, [t]);
+    }, [t, janela]);
 
     useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
 
@@ -198,121 +231,65 @@ function parseLocalDate(str: string | null | undefined): Date | null {
     return isNaN(fallback.getTime()) ? null : fallback;
 }
 
-    // ─── Dynamic timeline calculation ───
-    const { weeks, timelineStart } = useMemo(() => {
-        // Find earliest and latest dates across all visible rotations
-        let earliest: Date | null = null;
-        let latest: Date | null = null;
-
+    const weeks = useMemo(() => {
+        const rotationDates: Date[] = [];
         for (const group of positionGroups) {
             for (const m of group.members) {
                 for (const r of m.rotations) {
-                    if (r.start) {
-                        const d = parseLocalDate(r.start);
-                        if (d && (!earliest || d < earliest)) earliest = d;
-                    }
-                    if (r.end) {
-                        const d = parseLocalDate(r.end);
-                        if (d && (!latest || d > latest)) latest = d;
-                    }
+                    const start = parseLocalDate(r.start);
+                    const end = parseLocalDate(r.end);
+                    if (start) rotationDates.push(start);
+                    if (end) rotationDates.push(end);
                 }
             }
         }
 
-        // Fallback: if no dates, show current year range
-        if (!earliest) earliest = new Date(new Date().getFullYear(), 0, 1);
-        if (!latest) latest = new Date(new Date().getFullYear(), 11, 31);
+        return buildScheduleColumns({
+            viewport: 'week',
+            referenceMonth,
+            rotationDates,
+            filterStart: parseCompleteFilterDate(filterDateStart),
+            filterEnd: parseCompleteFilterDate(filterDateEnd),
+        });
+    }, [positionGroups, referenceMonth, filterDateStart, filterDateEnd]);
 
-        // Snap earliest to start of week (Saturday to match original)
-        const snapToSaturday = (d: Date) => {
-            const day = d.getDay();
-            const diff = (day >= 6) ? day - 6 : day + 1; // distance to previous Saturday
-            d.setDate(d.getDate() - diff);
-            return d;
-        };
-
-        const start = snapToSaturday(new Date(earliest));
-        // Add 2 weeks buffer before and after
-        start.setDate(start.getDate() - 14);
-
-        const endDate = new Date(latest);
-        endDate.setDate(endDate.getDate() + 14);
-
-        const totalWeeks = Math.max(Math.ceil((endDate.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)), 12);
-
-        const generatedWeeks = [];
-        for (let i = 0; i < totalWeeks; i++) {
-            const d = new Date(start);
-            d.setDate(d.getDate() + i * 7);
-            generatedWeeks.push({ date: new Date(d) });
-        }
-
-        return { weeks: generatedWeeks, timelineStart: start };
-    }, [positionGroups]);
-
-    // ─── Filtered weeks based on date range selector ───
     const filteredWeeks = useMemo(() => {
         const startDate = parseCompleteFilterDate(filterDateStart);
         const endDate = parseCompleteFilterDate(filterDateEnd);
         if (!startDate && !endDate) return weeks;
 
-        return weeks.filter(w => {
-            const weekDate = new Date(w.date);
-            weekDate.setHours(0, 0, 0, 0);
-            const weekEnd = new Date(weekDate);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            weekEnd.setHours(23, 59, 59, 999);
+        return weeks.filter((w) => {
+            const { start: colStart, end: colEnd } = columnPeriod(w.date, 'week');
             if (startDate && endDate) {
-                return weekEnd >= startDate && weekDate <= endDate;
+                return colEnd >= startDate && colStart <= endDate;
             }
             if (startDate) {
-                return weekEnd >= startDate;
+                return colEnd >= startDate;
             }
             if (endDate) {
-                return weekDate <= endDate;
+                return colStart <= endDate;
             }
             return true;
         });
     }, [weeks, filterDateStart, filterDateEnd]);
 
-    // ─── Current week calculation ───
-    const currentWeekIndex = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        let idx = -1;
-        for (let i = 0; i < filteredWeeks.length; i++) {
-            const weekStart = new Date(filteredWeeks[i].date);
-            weekStart.setHours(0, 0, 0, 0);
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            
-            if (today >= weekStart && today <= weekEnd) {
-                idx = i;
-                break;
-            }
-        }
-        
-        if (idx === -1 && filteredWeeks.length > 0) {
-            let minDiff = Infinity;
-            filteredWeeks.forEach((week, i) => {
-                const diff = Math.abs(today.getTime() - new Date(week.date).getTime());
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    idx = i;
-                }
-            });
-        }
-        
-        return idx >= 0 ? idx : 0;
-    }, [filteredWeeks]);
+    const todayYmd = civilTodayYmd();
+    const todayColumnIndex = useMemo(
+        () => indexOfCivilDay(filteredWeeks, todayYmd, 'week'),
+        [filteredWeeks, todayYmd],
+    );
+    const isCurrentMonth = isSameReferenceMonth(referenceMonth, civilReferenceMonth());
+    const focusIndex = useMemo(
+        () => focusColumnIndex(filteredWeeks, referenceMonth, 'week', todayYmd),
+        [filteredWeeks, referenceMonth, todayYmd],
+    );
 
     const todayPobCount = useMemo(() => {
         return countPobOnCivilDay(
             positionGroups.flatMap((group) => group.members),
-            civilTodayYmd(),
+            todayYmd,
         );
-    }, [positionGroups]);
+    }, [positionGroups, todayYmd]);
 
     const scrollToColumn = useCallback((index: number) => {
         const root = tableContainerRef.current;
@@ -327,16 +304,21 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         scrollToColumn(adjacentColumnIndex(visible, delta, filteredWeeks.length));
     }, [filteredWeeks.length, scrollToColumn]);
 
-    const scrollToCurrentWeek = useCallback(() => {
-        scrollToColumn(currentWeekIndex);
-    }, [currentWeekIndex, scrollToColumn]);
+    const goToToday = useCallback(() => {
+        const current = civilReferenceMonth();
+        if (!isSameReferenceMonth(referenceMonth, current)) {
+            applyReferenceMonth(current);
+            return;
+        }
+        scrollToColumn(focusIndex);
+    }, [applyReferenceMonth, focusIndex, referenceMonth, scrollToColumn]);
 
     useEffect(() => {
         if (!loading && filteredWeeks.length > 0) {
-            const timer = setTimeout(scrollToCurrentWeek, 120);
+            const timer = setTimeout(() => scrollToColumn(focusIndex), 120);
             return () => clearTimeout(timer);
         }
-    }, [loading, filteredWeeks.length, scrollToCurrentWeek]);
+    }, [loading, filteredWeeks.length, focusIndex, referenceMonth.year, referenceMonth.month, scrollToColumn]);
 
     // ─── Format helpers ───
     const formatHeaderDate = (d: Date) => {
@@ -677,7 +659,13 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         viewport="week"
                         onPrev={() => scrollByColumns(-1)}
                         onNext={() => scrollByColumns(1)}
-                        onToday={scrollToCurrentWeek}
+                        onToday={goToToday}
+                        referenceMonthLabel={formatReferenceMonthLabel(referenceMonth, locale)}
+                        onPrevMonth={() => applyReferenceMonth(shiftReferenceMonth(referenceMonth, -1))}
+                        onNextMonth={() => applyReferenceMonth(shiftReferenceMonth(referenceMonth, 1))}
+                        disablePrevMonth={isSameReferenceMonth(referenceMonth, shiftReferenceMonth(referenceMonth, -1))}
+                        disableNextMonth={isSameReferenceMonth(referenceMonth, shiftReferenceMonth(referenceMonth, 1))}
+                        isCurrentMonth={isCurrentMonth}
                     />
 
                     <button
@@ -736,7 +724,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                                 {t('manSchedule.tableHeaders.rank', 'CARGO')}
                             </th>
                             {filteredWeeks.map((week, idx) => {
-                                const isCurrentWeek = idx === currentWeekIndex;
+                                const isCurrentWeek = todayColumnIndex >= 0 && idx === todayColumnIndex;
                                 return (
                                 <th
                                     key={`date-${idx}`}
@@ -763,7 +751,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                             <th className="bg-white border-r border-b border-black sticky left-[300px] z-30"></th>
                             <th className={`bg-white ${MAN_SCHEDULE_STICKY_EDGE_CLASS} border-r border-b border-black sticky left-[380px] z-30`}></th>
                             {filteredWeeks.map((week, idx) => {
-                                const isCurrentWeek = idx === currentWeekIndex;
+                                const isCurrentWeek = todayColumnIndex >= 0 && idx === todayColumnIndex;
                                 return (
                                 <th
                                     key={`day-${idx}`}
@@ -818,7 +806,7 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                                                     const meta = getWeekRotationMeta(week.date, member.rotations);
                                                     const status = meta.status;
                                                     const dayLabel = meta.dayLabel;
-                                                    const isCurrentWeek = wIdx === currentWeekIndex;
+                                                    const isCurrentWeek = todayColumnIndex >= 0 && wIdx === todayColumnIndex;
                                                     let cellClass = 'bg-white border-[#d1d5db]';
                                                     if (status === 'ON*') cellClass = 'bg-[#c6d9f0] text-[#1f4e79] font-bold border-black';
                                                     else if (status === 'ON' || status === 'FI' || status === 'DBA') cellClass = 'bg-[#e2efda] text-[#00b050] font-bold border-black';

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { FiUpload, FiDownload, FiGlobe, FiEdit2, FiSave, FiX, FiRefreshCw, FiArchive } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiGlobe, FiEdit2, FiSave, FiX, FiRefreshCw, FiArchive, FiTrash2 } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
@@ -13,6 +13,7 @@ import {
   COLLABORATOR_MODAL_TAB_FILL_CLASS,
   COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
 } from '@/components/gestao-tripulantes/collaborator-modal-layout';
+import { useGtDocumentPermissions } from '@/components/gestao-tripulantes/use-gt-document-permissions';
 
 interface Document {
   id: string;
@@ -62,7 +63,9 @@ function DaysToExpiry({ dateStr }: { dateStr: string | null }) {
 
 export default function PassaportesTab({ colaboradorId, documentos, onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
+  const { canEdit, canDelete } = useGtDocumentPermissions();
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ numero_documento: '', orgao_emissor: '', data_emissao: '', data_validade: '' });
   const [saving, setSaving] = useState(false);
@@ -178,6 +181,22 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
       toast.error('Erro ao salvar alterações');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (docId: string) => {
+    if (!confirm('Excluir este passaporte do cadastro?')) return;
+    try {
+      setDeletingId(docId);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Falha ao excluir');
+      toast.success('Passaporte excluído');
+      onRefresh?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir passaporte');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -309,13 +328,23 @@ export default function PassaportesTab({ colaboradorId, documentos, onRefresh, h
                   <FiDownload className="w-4 h-4" />
                 </a>
               )}
-              {editingId !== doc.id && (
+              {editingId !== doc.id && canEdit && (
                 <button
                   onClick={() => startEditing(doc)}
                   className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition"
                   title="Editar"
                 >
                   <FiEdit2 className="w-4 h-4" />
+                </button>
+              )}
+              {editingId !== doc.id && canDelete && (
+                <button
+                  onClick={() => handleDelete(doc.id)}
+                  disabled={deletingId === doc.id}
+                  className="p-1.5 text-gray-400 hover:text-red-600 rounded transition disabled:opacity-50"
+                  title="Excluir"
+                >
+                  <FiTrash2 className="w-4 h-4" />
                 </button>
               )}
             </div>

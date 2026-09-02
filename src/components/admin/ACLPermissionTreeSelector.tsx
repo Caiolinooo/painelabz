@@ -76,7 +76,9 @@ const ACLPermissionTreeSelector: React.FC<ACLPermissionTreeSelectorProps> = ({
       'ferias': 'Férias',
       'contratos': 'Contratos',
       'lista-presenca': 'Lista de Presença',
-      'reimbursement': 'Reembolso'
+      'reimbursement': 'Reembolso',
+      'gestao-tripulantes': 'Gestão de Tripulantes',
+      'e-social': 'e-Social'
     };
 
     perms.forEach(perm => {

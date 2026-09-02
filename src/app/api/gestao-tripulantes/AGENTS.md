@@ -58,6 +58,20 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
   - **S-2240**: `gt_colaboradores.esocial_risco_status`
   - **S-2299**: `gt_colaboradores.esocial_desligamento_status`
 
+### Desligamento / rescisão (`gt_desligamentos`)
+
+- Processo auditável além de `gt_colaboradores.data_demissao` / `motivo_demissao`.
+- Tabela `gt_desligamentos` (migration `20260902_000001`): RLS ligado, **sem** policy anon (`service_role`). Um registro aberto por colaborador (`status <> cancelado`).
+- `payroll_sheet_id` é referência **solta** (sem FK) — `payroll_*` vive em `scripts/create-payroll-tables.sql`.
+- APIs: `GET|POST /api/gestao-tripulantes/colaboradores/[id]/desligamento`.
+- Auth POST: ADMIN/MANAGER/SUPERADMIN **ou** setor DP/RH-like (`setorEhDp`) **e** módulo `gestao-tripulantes` (`podeRegistrarDesligamento`). Sem e-mail hardcoded. GET autenticado devolve o registro + `pode_registrar`.
+- Body: `tipo_rescisao` (`sem_justa_causa|pedido_demissao|justa_causa|acordo_mutuo|termino_contrato|rescisao_indireta`), `data_desligamento`, `motivo`, `aviso_previo_tipo`, `aviso_previo_dias`, `data_ultimo_dia_trabalhado`, `observacoes`, `mtv_deslig` opcional.
+- `tipo_rescisao` → e-Social Tabela 19 (`mtvDeslig`): `02` sem justa causa / indireta, `07` pedido, `01` justa causa, `25` acordo 484-A, `06` término. Gravado em `gt_desligamentos.mtv_deslig` **e** em `gt_colaboradores.motivo_demissao` para o hook existente `autoGenerateESocialEvents` (S-2299).
+- Ordem: inativa colaborador (`ativo=false`, `data_demissao`) → insert `gt_desligamentos` (`iniciado`) → folha **fail-soft** → dispara `autoGenerateESocialEvents`. Folha/e-Social nunca derrubam o GT.
+- Folha: localiza/cria `payroll_employees` pelo CPF; reusa `payroll_sheets` do mês (ou cria draft); lança `payroll_sheet_items` com valor 0 (DP calcula). Rubricas 301/302 (seed) + 303–307 (`scripts/seed-payroll-data.sql` e migration `20260902_000002`, skip se `payroll_codes` não existir).
+- Prazo de pagamento: 10 dias corridos (Lei 13.467/2017) em `prazo_pagamento`. Aviso sugerido: 30 + 3/ano, máx. 90.
+- UI: aba/botão no `CollaboratorModal` + `DesligamentoModal`. Não editar `dp/page.tsx` — a lista DP já abre o modal na linha.
+
 ### Employee Record Hub (`/api/employee-hub`)
 - Single point of truth for employee data, combining personal details, document counts, ASOs, embarques, e-Social event timeline, afastamentos, acidentes (CAT), and trainings.
 - Portal user join: `user_id` → `users_unified.tax_id` digits = colaborador CPF → email lowercase exact. Never select `cpf` / `full_name` on `users_unified`. Contract: `src/lib/employee-hub/AGENTS.md`.
@@ -110,7 +124,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `GET /api/man-schedule/realtime`: merge **gt_historico_embarques** (origem mio + local) with colaboradores; extras FI/DBA/STB/OFF-C are materialized at pull time. Return explicit `observacoes` + `tipo_codigo` / `rotation_type`; CPF joins via digits-only normalize.
 - Cache in-memory: assinatura inclui `count` + último `updated_at` **e** último `created_at` (insert local sem `updated_at` não pode reusar payload velho). POST/PUT/DELETE embarques chama `invalidateManScheduleCache()` e grava `updated_at`.
 - Grade: `allSchedules` é lista plana (`rotation_start`/`rotation_end`). Save otimista **insere/atualiza uma linha**, nunca `row.rotations`. Coluna ON/DBA/FI/TRE conta colunas visíveis; evento novo ganha de STB sobreposto (`pickOverlappingRotation`: início na coluna, depois data de início mais recente).
-- **Viewport dia/semana**: checkbox `Visualizar por dia` em `GTManScheduleTab` (`localStorage` `gt-man-schedule-viewport-day`). Desligado = colunas sábado–sexta (atual). Ligado = um dia por coluna (janela padrão 90d se sem filtro de data). Clique na célula passa a `Date` da coluna. Semanas continuam começando sábado. Toolbar **Hoje / setas / pill POB** vive em `ManScheduleTimelineNav` (também em `/department/man-schedule`): pill = `countPobOnCivilDay` (ON exato hoje); setas = uma coluna; Hoje = coluna de hoje visível.
+- **Viewport dia/semana**: checkbox `Visualizar por dia` em `GTManScheduleTab` (`localStorage` `gt-man-schedule-viewport-day`). Desligado = colunas sábado–sexta (atual). Ligado = um dia por coluna. Clique na célula passa a `Date` da coluna. Semanas continuam começando sábado. Toolbar em `ManScheduleTimelineNav` (também em `/department/man-schedule`): **mês de referência** cobre o mês inteiro mesmo sem rotações (`buildScheduleColumns`); setas de coluna = uma coluna; setas de mês mudam o mês; **Hoje** restaura o mês atual e a coluna de hoje; pill = `countPobOnCivilDay` (ON exato no dia civil de **hoje**, independente do mês visível). Destaque amarelo só se a coluna de hoje existir na grade.
 - **Scroll da grade**: UI em `src/components/gestao-tripulantes/AGENTS.md` — overflow no wrapper, sticky na coluna NOME, `border-separate`. Aplica à aba GT e a `/department/man-schedule`.
 - **Filtro de data da escala**: UI só aplica `YYYY-MM-DD` completo (ano 1990–2100) via `parseCompleteFilterDate` / `ScheduleDateFilterInput`. Valores parciais do Chrome ao digitar o ano não expandem a timeline. Viewport dia recorta em 400 colunas; semana tem teto de segurança 2000.
 
@@ -122,6 +136,7 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `gt_afastamentos` + `gt_acidentes` applied remotely (repo files `20260724_000003` / `000004` were missing on Painel_ABZGroup). Pull writes afastamentos with `origem=mio`.
 - **RLS (2026-09-01):** `gt_afastamentos`, `gt_acidentes`, `gt_relatorios_aprovacoes`, `gt_aso_agendamentos`, `gt_aso_agendamentos_log` have RLS enabled and **no** anon/authenticated policies (same as `gt_cargos` / `gt_historico_embarques`). REST with the publishable/anon key returns zero rows. Runtime reads/writes only via `supabaseAdmin` (`service_role`). Migrations `20260901_000001_gt_sensitive_tables_enable_rls.sql` and `20260901_000002_gt_aso_agendamentos.sql`. Do not add `USING (true)` policies to silence `rls_enabled_no_policy`.
 - Canonical extras: `gt_documentos.arquivo_ausente*`, `gt_mio_anexo_misses`, `gt_mio_entidades`, `gt_colaboradores.ativo`, `gt_historico_embarques.updated_at`.
+- Migration `20260902_000001_gt_desligamentos.sql`: processo de rescisão. `20260902_000002_payroll_codes_rescisao.sql` insere 303–307 só se `payroll_codes` existir.
 
 ### Document integrity gate (ALL document types)
 
@@ -138,6 +153,17 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - **OCR on every upload**: after `POST /documentos/upload` the UI triggers `enviarOcrDocumento` (client text extract → `POST /documentos/[id]/ocr`). Server path for scanned PDF/image: convert PNG **once** → Tesseract/local OCR → regex (`extrairDadosTexto`, passaporte included). Vision LLM only if local OCR is weak **and** `visaoLlmCompativel` (provider matches model: `gemini`+Gemini, `openai`+gpt-4o, `llamacpp`+llava — never `llamacpp`+`gemini`). Structured LLM is a tools-free `/chat/completions` call; skipped on empty text or when passport regex already filled `numero_passaporte`. Extracted `numero_documento` / `orgao_emissor` / dates persist when the row is still empty (`persistirCamposOcrDocumento`). Failure leaves the file saved for manual edit (`identity_match=unknown`). pdf.js uses `CanvasFactory` class (not deprecated `canvasFactory` instance).
 - **Upload MIME**: `resolverMimeArquivo` accepts empty/`octet-stream`/`image/jpg` via extension and magic bytes (PDF/JPEG/PNG/WebP). UI tipos `visto`/`ctm`/`habilitacao`/`declaracao` map to CHECK-valid tipos (`documento_pessoal`/`cnh`/`outro`).
 - **Auditoria panel**: tab "Auditoria Documentos" in `/admin/gestao-tripulantes` + API `GET|POST /api/gestao-tripulantes/auditoria`. GET returns buckets: sem_emissao, sem_validade, sem_rastreio, duplicados (groups), quarentena, vencidos, vencendo. POST fix actions (ADMIN-only): `gerar_rastreio`, `corrigir_datas`, `resolver_quarentena` (blocks if OCR CPF ≠ target CPF), `mesclar_duplicados`.
+
+### Edição e exclusão de itens do cadastro (Treinamentos/ASO/Documentos/Passaportes) — ACL (2026-09-02)
+
+- Todos esses itens são linhas de `gt_documentos` (+ `gt_documentos_aso`/`gt_documentos_treinamento`). Um único gate cobre as quatro abas: `PUT`/`DELETE /api/gestao-tripulantes/documentos/[id]`.
+- Helper `src/lib/gestao-tripulantes/documento-permissions.ts` (`canEditGtDocuments` / `canDeleteGtDocuments`), 1ª camada que autorizar já libera:
+  1. Role `ADMIN`/`MANAGER` — bypass total (comportamento implícito que já existia).
+  2. Feature JSONB `gestao-tripulantes.documents.edit` / `gestao-tripulantes.documents.delete` (`access_permissions.features`, `src/lib/permissions.ts`) — editável por usuário em `/admin/users` (checkbox "Gestão de Tripulantes — Cadastro do Colaborador", só aparece se o módulo `gestao-tripulantes` está habilitado para o usuário).
+  3. ACL granular (`acl_permissions`/`user_acl_permissions`/`role_acl_permissions`, resource `gestao-tripulantes`, actions `documents.edit`/`documents.delete`/`manage`/`admin`) via `checkAclPermission` — mesmo mecanismo já usado por férias. Seed em `POST /api/acl/init` e aplicado diretamente no Supabase em 2026-09-02 (antes disso as tabelas ACL não tinham **nenhuma** linha para `gestao-tripulantes`/`e-social`, ou seja, o ACL não fazia nada para o módulo).
+- Rota `documentos/[id]` trocou `verifyToken` cru por `authenticateUser` (`@/lib/api-auth`) no PUT/DELETE para ter `role` + `access_permissions` disponíveis para o gate; GET continua só autenticado (leitura ampla, sem gate de ação).
+- ASO já `enviado`/`processado` no e-Social não pode ser editado/excluído pela aba ASO (`isAsoLockedForEdit` em `ASOTab.tsx`) — evita divergir do evento oficial já transmitido.
+- Cliente: hook `useGtDocumentPermissions()` (`src/components/gestao-tripulantes/use-gt-document-permissions.ts`) usa `hasFeature` do `SupabaseAuthContext` (já faz bypass ADMIN/MANAGER) para decidir se mostra os botões de editar/excluir nas quatro abas. Não reflete grants feitos só via ACL granular para um USER específico (limitação conhecida — o servidor aceita, mas o botão só aparece com a feature JSONB ou role ADMIN/MANAGER).
 
 ### Treinamentos — Numeração, Validade, Download e Anexos
 - **Separação de Código e Numeração**: `subtipo` armazena a sigla/código do curso (ex: `CIR`, `TBS-I`, `CESS`, `GMDSS`, `STCW OF.NÁUTICA`), enquanto `numero_documento` armazena o número real do certificado/registro da Marinha/Instituição.
@@ -229,13 +255,17 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `npx tsx --test src/lib/gestao-tripulantes/aso-agendamento-sugestoes.test.ts` → STB before ON; janela 60d + min lead.
 - DP escolhe data sugerida (STB) → POST agendamentos → logística vê em ASO Logística → assina aprovar → status `marcado` nos dois painéis. Reprovar exige motivo visível no DP. USER do setor Logística com módulo GT consegue aprovar/reprovar; USER de TI/QHSE com o mesmo módulo toma 403. `npx tsx --test src/lib/gestao-tripulantes/aso-agendamento-auth.test.ts src/lib/gestao-tripulantes/aso-agendamento-sugestoes.test.ts`.
 - `GET /dashboard` totals exclude `ativo=false` and inactive cost centers; docs vencidos/vencendo count **primary per group** only (`somarDocsPorStatusPrimario`).
-- Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks. Toolbar Hoje/arrows move one column; pill interpolates `{count}` as civil-today POB (`countPobOnCivilDay`).
+- Man Schedule checkbox “Visualizar por dia” renders one column per day; unchecked keeps Saturday weeks. Toolbar Hoje restores the current month and today’s column; month arrows change the reference month (grid covers that month even with no rotations). Pill interpolates `{count}` as civil-today POB (`countPobOnCivilDay`), independent of the reference month.
 - `GET /api/gestao-tripulantes/dashboard`: `total_colaboradores` ignora inativos e CC inativo; `total_embarcados` = ON exato hoje (`embarque-status.ts`); `total_docs_vencidos` conta só o primário por grupo.
 - Fechamento: `POST .../relatorio-mensal/aprovar` com lista nominada espera só quem está nela (USER incluso; ADMIN fora → 403). Lista vazia + 1 assinatura ADMIN/MANAGER → `aprovado`/`enviado`. `GET .../config` `availableUsers`/`availableManagers` = usuários ativos com e-mail. `npx tsx --test src/lib/gestao-tripulantes/fechamento-assinatura.test.ts`.
 - `GET /documentos/alertas` lista título/tipo/aba; `npx tsx scripts/verify-docs-alertas.ts` → `DOCS_ALERTAS_VERIFY_OK`.
 - Typing year digits in Man Schedule Data Início does not rebuild the grid until a complete 1990–2100 date.
 - Clique no card Embarcados filtra `GET /colaboradores?kpi=embarcados` ao mesmo conjunto. Linhas ON hoje devolvem `status_embarque=embarcado` (não Folga stale). `npx tsx --test src/lib/gestao-tripulantes/embarque-status.test.ts`.
 - Advisor `rls_disabled_in_public` is empty for `gt_afastamentos`, `gt_acidentes`, `gt_relatorios_aprovacoes`, `gt_aso_agendamentos`. Anon REST `GET /rest/v1/<table>?select=id&limit=1` → `[]`. Service-role / API routes still return rows.
+- USER sem feature/ACL de GT → `PUT`/`DELETE /api/gestao-tripulantes/documentos/[id]` retorna 403 (`canEditGtDocuments`/`canDeleteGtDocuments`). MANAGER/ADMIN sempre passam. USER com `access_permissions.features['gestao-tripulantes.documents.edit']=true` (setado em `/admin/users`) consegue PUT; com `.delete=true` consegue DELETE.
+- `SELECT ... FROM acl_permissions WHERE resource='gestao-tripulantes'` deve incluir `documents.edit` e `documents.delete` (seed 2026-09-02); `role_acl_permissions` tem MANAGER com `documents.edit` e ADMIN com todas.
+- ASO com `aso_data.esocial_status` em `enviado`/`processado`: botões Editar/Excluir da aba ASO ficam ocultos (mensagem "Já enviado ao e-Social — não editável"); ASO em `nao_enviado`/`pendente`/`quarentena` mostra os botões quando `canEdit`/`canDelete`.
+- `POST /colaboradores/[id]/desligamento` (ADMIN/MANAGER ou setor DP/RH + módulo GT) inativa o colaborador, cria `gt_desligamentos`, dispara S-2299 e tenta a folha sem falhar o GT. USER de TI com o mesmo módulo toma 403. `npx tsx --test src/lib/gestao-tripulantes/desligamento.test.ts src/lib/gestao-tripulantes/desligamento-auth.test.ts`.
 
 ## Child DOX Index
 

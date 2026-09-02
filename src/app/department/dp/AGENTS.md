@@ -20,21 +20,25 @@ UI de `/department/dp` para o DP operar cadastro de colaboradores, fechamento de
 - DP escolhe data sugerida (escala STB preferida) e assina (`useSignature`); cria `solicitado` para a logística. Status `marcado` / `reprovado` (com motivo) aparecem na mesma aba.
 - Status VENCIDO/VENCENDO vem de `alerta` calculado por data civil local (`YYYY-MM-DD`), não de `new Date(iso)` UTC.
 - Fechamento: preview de totais via `relatorio-mensal`; aprovação em `ModalAprovacaoFechamento` com `useSignature().requestSignature` (modal global) e ator via `useSupabaseAuth` (não `AuthContext` legado). Lista nominada = exatamente essas pessoas, qualquer role; sem nomes, um ADMIN/MANAGER assina e conclui.
+- Header: pills compactas (não grid de KPI). Colaboradores = `filteredColabs.length` visíveis + ativos na folha + carregados na consulta (não o total bruto como se fosse a tabela). ASO = vencidos + janela de antecedência. Sem cards decorativos “Escalas & Fechamento” / “e-Social Integrado”.
+- Lista: `GET /colaboradores?limit=5000`; se `pagination.total` > linhas carregadas, pill “Lista incompleta” + `console.warn`. Filtros Empresa/Embarcação/Cargo (`SearchableCreatableSelect`): Enter com texto seleciona o primeiro resultado real, não “Todas…”. Enter com campo vazio continua limpando o filtro. Busca por CPF ignora pontuação-só (não casa todos os CPFs).
 
 ## Work Guidance
 
 - Novos campos da tabela DP devem existir em `LIST_SELECT` + flatten.
-- Clique na linha de ASO abre o `CollaboratorModal` do colaborador.
-- Viewport: `GtPageShell` preenche o `<main>` do MainLayout (`flex-1 min-h-0`). Header, KPIs, abas e filtros `shrink-0`; lista de colaboradores e painel ASO `flex-1 min-h-0 overflow-auto`. Sem scroll duplo da página.
+- Clique na linha de ASO **ou** na lista de colaboradores abre o `CollaboratorModal` do colaborador.
+- **Desligamento**: não há ação na lista. Abrir o modal → botão/aba **Desligamento** (`DesligamentoModal`). API `GET|POST /colaboradores/[id]/desligamento`. Colaborador já inativo com `gt_desligamentos` mostra histórico (não desliga de novo).
+- Viewport: `GtPageShell` preenche o `<main>` do MainLayout (`flex-1 min-h-0`). Header (título + pills de métricas), abas e filtros `shrink-0`; lista de colaboradores e painel ASO `flex-1 min-h-0 overflow-auto`. Sem faixa de KPI cards em todas as abas. Sem scroll duplo da página.
 
 ## Verification
 
-- `/department/dp` mostra sidebar do portal (não tela full-bleed).
+- `/department/dp` mostra sidebar do portal (não tela full-bleed). Sem grid de 4 KPI cards no topo; pills no header (visíveis = linhas da tabela).
 - Lista DP: filtros visíveis; a tabela rola no pane restante (documento não vira o scroll principal).
 - Colunas Cargo, Centro de Custo, Empresa e Escala preenchidas quando o cadastro tem FK.
 - Coluna Status mostra Ativo/Inativo **e** a pílula de embarque da célula de hoje (ON → Embarcado).
 - Aba ASO lista nome/CPF/cargo (não `N/A` em massa); validade em `dd/mm/aaaa`; vencido só se a data local já passou; permite Agendar → logística; marcado após aprovação.
 - Aba Fechamento mostra totais ON/DBA/FI/TRE do mês selecionado. Assinar abre o SignatureModal global; cancelar não quebra; sem assinatura cadastrada o cadastro no próprio modal precede o POST.
+- Clique na linha do colaborador → `CollaboratorModal` → Desligar / aba Desligamento. A lista DP não tem botão próprio de rescisão.
 
 ## Child DOX Index
 

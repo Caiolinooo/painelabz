@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FiUpload, FiDownload, FiSend, FiHeart, FiAlertCircle, FiCheckCircle, FiClock, FiEye, FiFileText } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiSend, FiHeart, FiAlertCircle, FiCheckCircle, FiClock, FiEye, FiFileText, FiEdit2, FiTrash2, FiX, FiSave } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
@@ -13,6 +13,7 @@ import {
   COLLABORATOR_MODAL_TAB_FILL_CLASS,
   COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
 } from '@/components/gestao-tripulantes/collaborator-modal-layout';
+import { useGtDocumentPermissions } from '@/components/gestao-tripulantes/use-gt-document-permissions';
 
 interface Document {
   id: string;
@@ -183,13 +184,37 @@ function isDraftStatus(status: string): boolean {
   return !isEsocialGlobalVisible(status);
 }
 
+export function isAsoLockedForEdit(status?: string | null): boolean {
+  const normalized = (status || '').toLowerCase();
+  return normalized === 'enviado' || normalized === 'processado';
+}
+
+function toDateInput(value?: string | null): string {
+  if (!value) return '';
+  return value.slice(0, 10);
+}
+
 export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esocialAsos = [], onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
+  const { canEdit, canDelete } = useGtDocumentPermissions();
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
   const [runningOcr, setRunningOcr] = useState<string | null>(null);
   const [ocrProgress, setOcrProgress] = useState('');
   const [selectedAsoForDetails, setSelectedAsoForDetails] = useState<any | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingAso, setEditingAso] = useState<Document | null>(null);
+  const [savingAso, setSavingAso] = useState(false);
+  const [asoEditForm, setAsoEditForm] = useState({
+    tipo_exame: '',
+    resultado: '',
+    data_realizacao: '',
+    data_emissao: '',
+    data_validade: '',
+    medico_nome: '',
+    medico_crm: '',
+    nome_clinica: '',
+  });
 
   const rawAsos = documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'aso'));
   const profileCpf = normalizeCpf(colaboradorCpf || '');
@@ -415,9 +440,77 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
     }
   };
 
+  const openAsoEdit = (doc: Document) => {
+    const meta = doc.aso_data || {};
+    setEditingAso(doc);
+    setAsoEditForm({
+      tipo_exame: meta.tipo_exame || '',
+      resultado: meta.resultado || '',
+      data_realizacao: toDateInput(meta.data_realizacao),
+      data_emissao: toDateInput(doc.data_emissao),
+      data_validade: toDateInput(doc.data_validade),
+      medico_nome: meta.medico_nome || '',
+      medico_crm: meta.medico_crm || '',
+      nome_clinica: meta.nome_clinica || '',
+    });
+  };
+
+  const handleSaveAsoEdit = async () => {
+    if (!editingAso) return;
+    try {
+      setSavingAso(true);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${editingAso.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data_emissao: asoEditForm.data_emissao || null,
+          data_validade: asoEditForm.data_validade || null,
+          aso: {
+            tipo_exame: asoEditForm.tipo_exame || null,
+            resultado: asoEditForm.resultado || null,
+            data_realizacao: asoEditForm.data_realizacao || null,
+            medico_nome: asoEditForm.medico_nome || null,
+            medico_crm: asoEditForm.medico_crm || null,
+            nome_clinica: asoEditForm.nome_clinica || null,
+          },
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Falha ao salvar ASO');
+      toast.success('ASO atualizado');
+      setEditingAso(null);
+      onRefresh?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar ASO');
+    } finally {
+      setSavingAso(false);
+    }
+  };
+
+  const handleDeleteAso = async (doc: Document) => {
+    if (isAsoLockedForEdit(doc.aso_data?.esocial_status)) {
+      toast.error('ASO já enviado ao e-Social — não editável');
+      return;
+    }
+    if (!confirm('Excluir este ASO do cadastro?')) return;
+    try {
+      setDeletingId(doc.id);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${doc.id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Falha ao excluir');
+      toast.success('ASO excluído');
+      onRefresh?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir ASO');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const renderAsoCard = (doc: Document, section: 'available' | 'draft') => {
     const meta = doc.aso_data || {};
     const eSocialStatus = meta.esocial_status || 'nao_enviado';
+    const locked = isAsoLockedForEdit(eSocialStatus);
     const { cpfDoc, nomeOcr, match, matchesProfile } = getOcrIdentity(doc);
     const semCpfExtraido = cpfDoc.length !== 11; // sem prova de identidade
     const identityBlocked =
@@ -595,6 +688,34 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
                     <FiAlertCircle className="w-3 h-3 shrink-0" />
                     {motivoBloqueio}
                   </p>
+                )}
+              </>
+            )}
+
+            {locked ? (
+              <p className="max-w-[180px] text-right text-[10px] font-semibold text-slate-500">
+                Já enviado ao e-Social — não editável
+              </p>
+            ) : (
+              <>
+                {canEdit && (
+                  <button
+                    onClick={() => openAsoEdit(doc)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
+                    title="Editar ASO"
+                  >
+                    <FiEdit2 className="w-3 h-3" /> Editar
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={() => handleDeleteAso(doc)}
+                    disabled={deletingId === doc.id}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                    title="Excluir ASO"
+                  >
+                    <FiTrash2 className="w-3 h-3" /> Excluir
+                  </button>
                 )}
               </>
             )}
@@ -791,6 +912,104 @@ export default function ASOTab({ colaboradorId, colaboradorCpf, documentos, esoc
           documento={selectedAsoForDetails}
           colaboradorCpf={colaboradorCpf}
         />
+      )}
+
+      {editingAso && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden my-auto">
+            <div className="bg-gradient-to-r from-rose-700 to-red-800 px-6 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <FiEdit2 className="w-5 h-5" />
+                <h3 className="font-bold text-base">Editar ASO</h3>
+              </div>
+              <button onClick={() => setEditingAso(null)} className="p-1 hover:bg-white/20 rounded-lg transition">
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3 max-h-[75vh] overflow-y-auto">
+              <label className="block text-xs font-bold text-gray-700 uppercase">Tipo de exame</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                value={asoEditForm.tipo_exame}
+                onChange={(e) => setAsoEditForm((f) => ({ ...f, tipo_exame: e.target.value }))}
+              >
+                <option value="">—</option>
+                <option value="admissional">Admissional</option>
+                <option value="periodico">Periódico</option>
+                <option value="demissional">Demissional</option>
+                <option value="retorno">Retorno</option>
+                <option value="mudanca_funcao">Mudança de função</option>
+              </select>
+              <label className="block text-xs font-bold text-gray-700 uppercase">Resultado</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                value={asoEditForm.resultado}
+                onChange={(e) => setAsoEditForm((f) => ({ ...f, resultado: e.target.value }))}
+              >
+                <option value="">—</option>
+                <option value="apto">Apto</option>
+                <option value="inapto">Inapto</option>
+                <option value="apto_condicional">Apto condicional</option>
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Realização</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    value={asoEditForm.data_realizacao}
+                    onChange={(e) => setAsoEditForm((f) => ({ ...f, data_realizacao: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Validade</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    value={asoEditForm.data_validade}
+                    onChange={(e) => setAsoEditForm((f) => ({ ...f, data_validade: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                value={asoEditForm.data_emissao}
+                onChange={(e) => setAsoEditForm((f) => ({ ...f, data_emissao: e.target.value }))}
+              />
+              <input
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                placeholder="Médico"
+                value={asoEditForm.medico_nome}
+                onChange={(e) => setAsoEditForm((f) => ({ ...f, medico_nome: e.target.value }))}
+              />
+              <input
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                placeholder="CRM"
+                value={asoEditForm.medico_crm}
+                onChange={(e) => setAsoEditForm((f) => ({ ...f, medico_crm: e.target.value }))}
+              />
+              <input
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                placeholder="Clínica"
+                value={asoEditForm.nome_clinica}
+                onChange={(e) => setAsoEditForm((f) => ({ ...f, nome_clinica: e.target.value }))}
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setEditingAso(null)} className="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveAsoEdit}
+                disabled={savingAso}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-rose-700 rounded-lg disabled:opacity-50"
+              >
+                <FiSave className="w-4 h-4" /> {savingAso ? 'Salvando…' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

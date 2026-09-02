@@ -33,6 +33,12 @@ function normalize(s: string): string {
   return s.trim().toLowerCase();
 }
 
+/** When the query is empty, highlight "clear" (index 0). After typing, skip it so Enter picks the first real result. */
+function firstResultHighlight(query: string, allowClear: boolean): number {
+  if (!query.trim() || !allowClear) return 0;
+  return 1;
+}
+
 export default function SearchableCreatableSelect({
   options,
   value,
@@ -148,7 +154,7 @@ export default function SearchableCreatableSelect({
       e.preventDefault();
       if (!open) {
         setOpen(true);
-        setHighlight(0);
+        setHighlight(firstResultHighlight(query, allowClear));
         return;
       }
       setHighlight(i => (i + 1) % Math.max(items.length, 1));
@@ -168,6 +174,7 @@ export default function SearchableCreatableSelect({
       e.preventDefault();
       if (!open) {
         setOpen(true);
+        setHighlight(firstResultHighlight(query, allowClear));
         return;
       }
       const item = items[highlight];
@@ -200,12 +207,13 @@ export default function SearchableCreatableSelect({
         onFocus={() => {
           if (disabled) return;
           setOpen(true);
-          setHighlight(0);
+          setHighlight(firstResultHighlight(query, allowClear));
         }}
         onChange={e => {
-          setQuery(e.target.value);
+          const nextQuery = e.target.value;
+          setQuery(nextQuery);
           setOpen(true);
-          setHighlight(0);
+          setHighlight(firstResultHighlight(nextQuery, allowClear));
         }}
         onKeyDown={onKeyDown}
         autoComplete="off"

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { extractTokenFromHeader, verifyToken } from '@/lib/auth';
+import { authenticateUser } from '@/lib/api-auth';
+import { canDeleteGtDocuments, canEditGtDocuments } from '@/lib/gestao-tripulantes/documento-permissions';
 import { buscarCodigoExame } from '@/lib/e-social/codigos';
 import {
   garantirNumeroRastreioUnico,
@@ -70,15 +72,10 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization') || undefined;
-    const token = extractTokenFromHeader(authHeader);
-    if (!token) {
-      return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    const { user, error: authError } = await authenticateUser(request);
+    if (authError) return authError;
+    if (!user || !(await canEditGtDocuments(user))) {
+      return NextResponse.json({ error: 'Sem permissão para editar documentos do cadastro' }, { status: 403 });
     }
 
     const { id } = await context.params;
@@ -216,15 +213,10 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization') || undefined;
-    const token = extractTokenFromHeader(authHeader);
-    if (!token) {
-      return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    const { user, error: authError } = await authenticateUser(request);
+    if (authError) return authError;
+    if (!user || !(await canDeleteGtDocuments(user))) {
+      return NextResponse.json({ error: 'Sem permissão para excluir documentos do cadastro' }, { status: 403 });
     }
 
     const { id } = await context.params;

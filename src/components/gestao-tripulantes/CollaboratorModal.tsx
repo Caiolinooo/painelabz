@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiX, FiUser, FiBookOpen, FiHeart, FiFileText, FiAnchor, FiRepeat, FiUpload, FiBell, FiRefreshCw, FiLayers, FiShield
+  FiX, FiUser, FiBookOpen, FiHeart, FiFileText, FiAnchor, FiRepeat, FiUpload, FiBell, FiRefreshCw, FiLayers, FiShield, FiUserX
 } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
@@ -12,6 +12,8 @@ import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
 import { enviarOcrDocumento } from '@/components/gestao-tripulantes/ocr-client';
 import SugestaoBackModal from './SugestaoBackModal';
+import DesligamentoModal, { DesligamentoHistorico } from './DesligamentoModal';
+import type { GTDesligamento } from '@/types/gestao-tripulantes';
 import DadosPessoaisTab from './tabs/DadosPessoaisTab';
 import TreinamentosTab from './tabs/TreinamentosTab';
 import ASOTab from './tabs/ASOTab';
@@ -106,6 +108,9 @@ interface CollaboratorDetail {
   escala_embarque?: number | string | null;
   escala_folga?: number | string | null;
   data_admissao: string;
+  data_demissao?: string | null;
+  motivo_demissao?: string | null;
+  ativo?: boolean;
   data_ultimo_embarque?: string | null;
   data_ultimo_desembarque?: string | null;
   data_proximo_embarque: string;
@@ -118,13 +123,14 @@ interface CollaboratorDetail {
   substituicoes: Substitution[];
 }
 
-export type TabKey = 'dados' | 'ficha' | 'treinamentos' | 'aso' | 'passaportes' | 'documentos' | 'qhse' | 'embarques' | 'substituicoes';
+export type TabKey = 'dados' | 'ficha' | 'treinamentos' | 'aso' | 'passaportes' | 'documentos' | 'qhse' | 'embarques' | 'substituicoes' | 'desligamento';
 
 interface CollaboratorModalProps {
   colaboradorId: string;
   onClose: () => void;
   initialTab?: TabKey;
   highlightDocId?: string | null;
+  onUpdated?: () => void;
 }
 
 /**
@@ -137,6 +143,7 @@ interface CollaboratorModalProps {
  * documentos — só gt_documentos locais agrupados (sem dump QHSE/outros módulos)
  * qhse — ficha AN-HSE-005, entregas EPI, listas QHSE (`onlyQhse`); nunca ASO/laudo
  * embarques / substituicoes — operação
+ * desligamento — processo de rescisão (histórico ou ação DP)
  */
 const TABS: { key: TabKey; label: string; labelKey?: string; icon: React.ElementType }[] = [
   { key: 'dados', labelKey: 'gestaoTripulantes.profile.personalData', label: 'Dados Pessoais', icon: FiUser },
@@ -148,6 +155,7 @@ const TABS: { key: TabKey; label: string; labelKey?: string; icon: React.Element
   { key: 'qhse', labelKey: 'gestaoTripulantes.profile.qhse', label: 'QHSE / EPI', icon: FiShield },
   { key: 'embarques', labelKey: 'gestaoTripulantes.profile.embarkations', label: 'Embarques', icon: FiAnchor },
   { key: 'substituicoes', labelKey: 'gestaoTripulantes.profile.substitutions', label: 'Substituições', icon: FiRepeat },
+  { key: 'desligamento', label: 'Desligamento', icon: FiUserX },
 ];
 
 function SkeletonBlock() {
@@ -222,7 +230,7 @@ function fetchColaboradorDetail(colaboradorId: string, opts?: { force?: boolean 
   return pending;
 }
 
-export default function CollaboratorModal({ colaboradorId, onClose, initialTab, highlightDocId }: CollaboratorModalProps) {
+export default function CollaboratorModal({ colaboradorId, onClose, initialTab, highlightDocId, onUpdated }: CollaboratorModalProps) {
   const { t } = useI18n();
   const { hasAccess } = useSupabaseAuth();
   const canSeeQhseTab = hasAccess(QHSE_MODULE_KEY);
@@ -235,6 +243,9 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
   const [data, setData] = useState<CollaboratorDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBackModal, setShowBackModal] = useState(false);
+  const [showDesligamentoModal, setShowDesligamentoModal] = useState(false);
+  const [desligamento, setDesligamento] = useState<GTDesligamento | null>(null);
+  const [podeDesligar, setPodeDesligar] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [tabOverflow, setTabOverflow] = useState({ left: false, right: false });
   const tablistRef = useRef<HTMLDivElement>(null);
@@ -256,6 +267,26 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
   const silentRefresh = useCallback(() => fetchData({ silent: true }), [fetchData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchWithToken(`/api/gestao-tripulantes/colaboradores/${colaboradorId}/desligamento`)
+      .then(async (res) => {
+        const json = (await res.json().catch(() => ({}))) as {
+          data?: GTDesligamento | null;
+          pode_registrar?: boolean;
+        };
+        if (cancelled || !res.ok) return;
+        setDesligamento(json.data || null);
+        setPodeDesligar(Boolean(json.pode_registrar));
+      })
+      .catch(() => {
+        if (!cancelled) setPodeDesligar(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [colaboradorId]);
 
   useEffect(() => {
     if (initialTab) setActiveTab(initialTab);
@@ -425,6 +456,39 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
         return <HistoricoEmbarquesTab embarques={data.embarques || []} />;
       case 'substituicoes':
         return <SubstituicoesTab colaboradorId={data.id} substituicoes={data.substituicoes || []} />;
+      case 'desligamento':
+        if (desligamento || data.ativo === false) {
+          return desligamento ? (
+            <DesligamentoHistorico desligamento={desligamento} />
+          ) : (
+            <p className="p-6 text-sm text-gray-500">
+              Colaborador inativo sem processo de desligamento no portal (legado / MIO).
+              {data.data_demissao ? ` Data de demissão: ${data.data_demissao}.` : ''}
+            </p>
+          );
+        }
+        if (podeDesligar) {
+          return (
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-gray-600">
+                Registre a rescisão aqui. O colaborador será inativado, a folha tentará gerar as
+                rubricas típicas e o e-Social S-2299 será disparado.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowDesligamentoModal(true)}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+              >
+                Desligar colaborador
+              </button>
+            </div>
+          );
+        }
+        return (
+          <p className="p-6 text-sm text-gray-500">
+            Sem registro de desligamento. Apenas o DP (gestor ou setor DP/RH com o módulo Gestão de Tripulantes) pode iniciar o processo.
+          </p>
+        );
       default: {
         const _exhaustive: never = activeTab;
         void _exhaustive;
@@ -522,6 +586,27 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
                   {t('gestaoTripulantes.profile.suggestBack')}
                 </button>
 
+                {desligamento || data?.ativo === false ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('desligamento')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/90 hover:bg-red-600 text-white text-xs rounded-lg transition-colors"
+                  >
+                    <FiUserX className="w-3.5 h-3.5" />
+                    Desligado
+                  </button>
+                ) : podeDesligar ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDesligamentoModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/90 hover:bg-red-600 text-white text-xs rounded-lg transition-colors"
+                    data-testid="desligar-colaborador"
+                  >
+                    <FiUserX className="w-3.5 h-3.5" />
+                    Desligar
+                  </button>
+                ) : null}
+
                 <button
                   onClick={onClose}
                   className="p-1.5 hover:bg-white/20 rounded-lg transition-colors ml-1"
@@ -598,6 +683,32 @@ export default function CollaboratorModal({ colaboradorId, onClose, initialTab, 
           onSelect={(candidateId) => {
             console.log('Substituto selecionado:', candidateId);
             fetchData();
+          }}
+        />
+      )}
+
+      {showDesligamentoModal && data && !desligamento && (
+        <DesligamentoModal
+          colaboradorId={data.id}
+          colaboradorNome={data.nome_completo}
+          dataAdmissao={data.data_admissao}
+          onClose={() => setShowDesligamentoModal(false)}
+          onConcluido={(result) => {
+            setDesligamento(result.desligamento);
+            setPodeDesligar(false);
+            setData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    ativo: false,
+                    data_demissao: result.data_desligamento,
+                    motivo_demissao: result.mtv_deslig || prev.motivo_demissao,
+                  }
+                : prev,
+            );
+            onUpdated?.();
+            void silentRefresh();
+            setActiveTab('desligamento');
           }}
         />
       )}

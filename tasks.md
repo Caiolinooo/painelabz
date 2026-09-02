@@ -1,3 +1,18 @@
+## Desligamento / rescisão DP (2026-09-02)
+
+Fluxo de processo no portal (não é cálculo trabalhista certificado). Abrir o colaborador no `CollaboratorModal` (lista DP já faz isso na linha).
+
+- [x] Migration `gt_desligamentos` (RLS, sem policy anon) + rubricas 303–307 (seed + migration fail-soft)
+- [x] `GET|POST /api/gestao-tripulantes/colaboradores/[id]/desligamento`
+- [x] Permissão ADMIN/MANAGER ou setor DP/RH + módulo GT (`podeRegistrarDesligamento`)
+- [x] Folha best-effort (CPF → `payroll_employees` / sheet / items valor 0)
+- [x] Disparo S-2299 via `autoGenerateESocialEvents` (`mtvDeslig` em `motivo_demissao`)
+- [x] UI: aba/botão + `DesligamentoModal` no `CollaboratorModal` (sem editar `dp/page.tsx`)
+- [x] DOX + testes `desligamento.test.ts` / `desligamento-auth.test.ts`
+- [x] SQL aplicado no projeto remoto Painel_ABZGroup (`gt_desligamentos` + rubricas 303–307)
+
+---
+
 ## GT / portal — crash useAuth + ficha / regime (2026-09-01)
 
 Produção `portal.groupabz.com` `/department/gestao-tripulantes` em branco: `useAuth deve ser usado dentro de um AuthProvider`. `ClientProviders` só tem `SupabaseAuthProvider`. Não ressuscitar `AuthProvider` legado.

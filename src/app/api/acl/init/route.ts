@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
       { name: 'gestao-tripulantes.manage', description: 'Gerenciar tripulantes', resource: 'gestao-tripulantes', action: 'manage', level: 2 },
       { name: 'gestao-tripulantes.admin', description: 'Admin total', resource: 'gestao-tripulantes', action: 'admin', level: 3 },
       { name: 'gestao-tripulantes.documents.upload', description: 'Upload documentos', resource: 'gestao-tripulantes', action: 'documents.upload', level: 1 },
+      { name: 'gestao-tripulantes.documents.edit', description: 'Editar documentos do cadastro', resource: 'gestao-tripulantes', action: 'documents.edit', level: 1 },
+      { name: 'gestao-tripulantes.documents.delete', description: 'Excluir documentos do cadastro', resource: 'gestao-tripulantes', action: 'documents.delete', level: 2 },
       { name: 'gestao-tripulantes.documents.ocr', description: 'Executar OCR', resource: 'gestao-tripulantes', action: 'documents.ocr', level: 2 },
       { name: 'gestao-tripulantes.back.suggest', description: 'Sugerir back', resource: 'gestao-tripulantes', action: 'back.suggest', level: 2 },
       { name: 'gestao-tripulantes.poliweb.scrape', description: 'Scraping PoliWeb', resource: 'gestao-tripulantes', action: 'poliweb.scrape', level: 3 },
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
         'contratos.read', 'contratos.sign', 'contratos.manage',
         'lista-presenca.read', 'lista-presenca.create', 'lista-presenca.manage',
         'gestao-tripulantes.view', 'gestao-tripulantes.manage',
-        'gestao-tripulantes.documents.upload', 'gestao-tripulantes.back.suggest'
+        'gestao-tripulantes.documents.upload', 'gestao-tripulantes.documents.edit', 'gestao-tripulantes.back.suggest'
       ],
       'USER': [
         'news.read',

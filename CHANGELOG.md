@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.73.0] - 2026-09-02
+
+### 🚪 Desligamento, ACL de documentos GT e Man Schedule
+
+1. **Desligamento / rescisão**: processo em `gt_desligamentos` pela aba/botão do `CollaboratorModal` (não na lista DP). Permissão ADMIN/MANAGER ou setor DP/RH com módulo `gestao-tripulantes`. Folha é fail-soft; e-Social S-2299 reusa `autoGenerateESocialEvents` (`motivo_demissao` = `mtvDeslig`).
+2. **Editar e excluir itens do cadastro**: Treinamentos, ASO, documentos e passaportes passam pelo gate `PUT`/`DELETE /api/gestao-tripulantes/documentos/[id]` (`canEditGtDocuments` / `canDeleteGtDocuments`). ADMIN/MANAGER liberados; USER precisa da feature `gestao-tripulantes.documents.edit` / `.delete` ou ACL no recurso `gestao-tripulantes`. ASO já `enviado`/`processado` no e-Social não é editável/excluível na aba.
+3. **Man Schedule**: mês de referência (default = mês civil; `localStorage`) gera colunas do 1º ao último dia mesmo sem rotações, para planejar o futuro. Setas do rótulo mudam o mês; setas laterais andam uma coluna.
+
 ## [5.72.1] - 2026-09-02
 
 ### 🔒 Segurança e qualidade de tipos (employee-hub, GT, IA e e-mail)

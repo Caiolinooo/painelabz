@@ -66,6 +66,7 @@ export interface PermissionFeatures {
   'gestao-tripulantes.manage'?: boolean;
   'gestao-tripulantes.admin'?: boolean;
   'gestao-tripulantes.documents.edit'?: boolean;
+  'gestao-tripulantes.documents.delete'?: boolean;
   'gestao-tripulantes.documents.ocr'?: boolean;
   'gestao-tripulantes.back.suggest'?: boolean;
   'gestao-tripulantes.poliweb.scrape'?: boolean;
@@ -332,6 +333,7 @@ export const PERMISSIONS = {
     MANAGE: 'gestao-tripulantes.manage',
     ADMIN: 'gestao-tripulantes.admin',
     DOCUMENTS_EDIT: 'gestao-tripulantes.documents.edit',
+    DOCUMENTS_DELETE: 'gestao-tripulantes.documents.delete',
     DOCUMENTS_OCR: 'gestao-tripulantes.documents.ocr',
     BACK_SUGGEST: 'gestao-tripulantes.back.suggest',
     POLIWEB_SCRAPE: 'gestao-tripulantes.poliweb.scrape',
@@ -435,6 +437,10 @@ export const PERMISSION_DESCRIPTIONS = {
     title: 'Editar Documentos',
     description: 'Pode fazer upload e editar documentos'
   },
+  'gestao-tripulantes.documents.delete': {
+    title: 'Excluir Documentos',
+    description: 'Pode excluir treinamentos, ASOs, documentos e passaportes do cadastro'
+  },
   'gestao-tripulantes.documents.ocr': {
     title: 'Executar OCR',
     description: 'Pode executar OCR em documentos'
@@ -518,7 +524,7 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
       'ferias.read': true, 'ferias.create': true, 'ferias.approve': true, 'ferias.manage': true, 'ferias.admin': true,
       'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': true,
       'gestao-tripulantes.view': true, 'gestao-tripulantes.manage': true, 'gestao-tripulantes.admin': true,
-      'gestao-tripulantes.documents.edit': true, 'gestao-tripulantes.documents.ocr': true,
+      'gestao-tripulantes.documents.edit': true, 'gestao-tripulantes.documents.delete': true, 'gestao-tripulantes.documents.ocr': true,
       'gestao-tripulantes.back.suggest': true, 'gestao-tripulantes.poliweb.scrape': true,
       'gestao-tripulantes.notifications.manage': true,
       'esocial.view': true, 'esocial.prepare': true, 'esocial.review': true, 'esocial.send': true, 'esocial.admin': true
@@ -554,7 +560,7 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, {
       'ferias.read': true, 'ferias.create': true, 'ferias.approve': true, 'ferias.manage': false, 'ferias.admin': false,
       'lista-presenca.read': true, 'lista-presenca.create': true, 'lista-presenca.manage': true, 'lista-presenca.admin': false,
       'gestao-tripulantes.view': true, 'gestao-tripulantes.manage': true,
-      'gestao-tripulantes.documents.edit': true, 'gestao-tripulantes.back.suggest': true,
+      'gestao-tripulantes.documents.edit': true, 'gestao-tripulantes.documents.delete': true, 'gestao-tripulantes.back.suggest': true,
       'esocial.view': true
     }
   },

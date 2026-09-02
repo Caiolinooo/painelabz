@@ -99,6 +99,8 @@ function formatCpfDisplay(cpf: string | null | undefined): string {
   return formatted || cpf;
 }
 
+const COLABORADORES_FETCH_LIMIT = 5000;
+
 export default function DepartamentoPessoalPage() {
   const { user, isLoading: authLoading } = useSupabaseAuth();
   const router = useRouter();
@@ -119,6 +121,7 @@ export default function DepartamentoPessoalPage() {
   const [filterCargo, setFilterCargo] = useState('');
   const [filterEscala, setFilterEscala] = useState('');
   const [filterStatus, setFilterStatus] = useState('ativos');
+  const [colaboradoresTotalApi, setColaboradoresTotalApi] = useState<number | null>(null);
 
   const [mesFechamento, setMesFechamento] = useState(() => new Date().toISOString().slice(0, 7));
   const [fechamentoTotais, setFechamentoTotais] = useState<FechamentoTotais | null>(null);
@@ -128,13 +131,25 @@ export default function DepartamentoPessoalPage() {
     try {
       setLoading(true);
       const [resColabs, resAsos] = await Promise.all([
-        fetchWithToken('/api/gestao-tripulantes/colaboradores?limit=1000'),
+        fetchWithToken(`/api/gestao-tripulantes/colaboradores?limit=${COLABORADORES_FETCH_LIMIT}`),
         fetchWithToken('/api/gestao-tripulantes/aso/notificar-vencimentos'),
       ]);
 
       if (resColabs.ok) {
-        const json = await resColabs.json();
-        setColaboradores(json.data || json.colaboradores || []);
+        const json = await resColabs.json() as {
+          data?: ColaboradorItem[];
+          colaboradores?: ColaboradorItem[];
+          pagination?: { total?: number };
+        };
+        const rows = json.data || json.colaboradores || [];
+        setColaboradores(rows);
+        const total = typeof json.pagination?.total === 'number' ? json.pagination.total : null;
+        setColaboradoresTotalApi(total);
+        if (total != null && total > rows.length) {
+          console.warn(
+            `[DP] lista incompleta: ${rows.length} de ${total} colaboradores (teto ${COLABORADORES_FETCH_LIMIT}).`
+          );
+        }
       } else {
         toast.error('Erro ao carregar colaboradores');
       }
@@ -241,7 +256,9 @@ export default function DepartamentoPessoalPage() {
         const nome = (c.nome_completo || '').toLowerCase();
         const cpf = (c.cpf || '').replace(/\D/g, '');
         const mat = (c.matricula || '').toLowerCase();
-        return nome.includes(q) || cpf.includes(q.replace(/\D/g, '')) || mat.includes(q);
+        const cpfDigits = q.replace(/\D/g, '');
+        const cpfMatch = cpfDigits.length > 0 && cpf.includes(cpfDigits);
+        return nome.includes(q) || cpfMatch || mat.includes(q);
       }
 
       return true;
@@ -280,6 +297,14 @@ export default function DepartamentoPessoalPage() {
     [asosPendentes]
   );
 
+  const ativosCount = useMemo(
+    () => colaboradores.filter((c) => c.ativo !== false).length,
+    [colaboradores]
+  );
+
+  const listaColaboradoresIncompleta =
+    colaboradoresTotalApi != null && colaboradoresTotalApi > colaboradores.length;
+
   if (authLoading || !user) return null;
 
   return (
@@ -294,6 +319,40 @@ export default function DepartamentoPessoalPage() {
               <h1 className="text-2xl font-black text-gray-900">Departamento Pessoal (DP)</h1>
               <p className="text-sm text-gray-500">Gestão unificada de colaboradores, escalas de trabalho, fechamento de folha e e-Social</p>
             </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('colaboradores')}
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition"
+              title={`${ativosCount} ativos na folha · ${colaboradores.length} carregados na consulta`}
+            >
+              <FiUsers className="w-3 h-3" />
+              <span className="tabular-nums">{filteredColabs.length} visíveis</span>
+              <span className="font-semibold text-slate-500">
+                · {ativosCount} ativos / {colaboradores.length} na consulta
+              </span>
+            </button>
+            {listaColaboradoresIncompleta && (
+              <span
+                className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 border border-amber-200"
+                title={`A API retornou ${colaboradores.length} de ${colaboradoresTotalApi} colaboradores`}
+              >
+                Lista incompleta ({colaboradores.length}/{colaboradoresTotalApi})
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('asos')}
+              className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition"
+              title={`${asosVencidosCount} vencidos · ${asosPendentes.length - asosVencidosCount} a vencer em ${asoAntecedenciaDias}d`}
+            >
+              <FiAlertTriangle className="w-3 h-3" />
+              <span className="tabular-nums">{asosPendentes.length} ASO</span>
+              <span className="font-semibold text-amber-700">
+                · {asosVencidosCount} vencidos · {asosPendentes.length - asosVencidosCount} em {asoAntecedenciaDias}d
+              </span>
+            </button>
           </div>
         </div>
 
@@ -325,36 +384,6 @@ export default function DepartamentoPessoalPage() {
             <FiCalendar className="w-3.5 h-3.5" />
             Fechamento Mensal DP
           </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-xs font-bold text-gray-500 uppercase block">Total de Colaboradores</span>
-          <span className="text-2xl font-black text-gray-900 mt-1 block">{colaboradores.length}</span>
-          <span className="text-[11px] text-emerald-600 font-semibold">
-            {colaboradores.filter(c => c.ativo !== false).length} ativos na folha
-          </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-xs font-bold text-amber-700 uppercase block">ASOs com Alerta</span>
-          <span className="text-2xl font-black text-amber-800 mt-1 block">{asosPendentes.length}</span>
-          <span className="text-[11px] text-amber-600 font-semibold">
-            {asosVencidosCount} vencidos · {asosPendentes.length - asosVencidosCount} a vencer em {asoAntecedenciaDias}d
-          </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-xs font-bold text-blue-700 uppercase block">Escalas & Fechamento</span>
-          <span className="text-2xl font-black text-blue-900 mt-1 block">Diário</span>
-          <span className="text-[11px] text-blue-600 font-semibold">Dias ON, DBA, FI e TRE</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-xs font-bold text-indigo-700 uppercase block">e-Social Integrado</span>
-          <span className="text-2xl font-black text-indigo-900 mt-1 block">Ativo</span>
-          <span className="text-[11px] text-indigo-600 font-semibold">S-2200, S-2220 e S-2230</span>
         </div>
       </div>
 

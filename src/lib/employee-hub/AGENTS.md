@@ -26,6 +26,7 @@ Ponto único de leitura do colaborador no portal: `gt_*` + usuário (`users_unif
 ## Work Guidance
 
 - Novos módulos com vínculo de colaborador entram aqui; não criar segundo hub.
+- Desligamento auditável fica em `gt_desligamentos` (modal GT/DP). A ficha já lê `gt_colaboradores.ativo` / `data_demissao`; não duplicar o processo no hub.
 
 ## Verification
 

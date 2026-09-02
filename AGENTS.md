@@ -96,12 +96,15 @@ When the user requests a durable behavior change, record it here or in the relev
 - **QHSE/EPI na ficha**: aba **QHSE / EPI** no modal GT e em `/profile` (seção no UserEditor) quando o viewer tem o módulo `epi`. Sem ACL extra de catálogo. Admin libera em `/admin/users` → Módulos do Sistema → EPI. **Nunca lista ASO/laudo** — exames ocupacionais ficam só na aba ASO. Ver `src/lib/document-catalog/AGENTS.md`.
 - **Documentos globais do colaborador**: catálogo vivo em `src/lib/document-catalog/` (CPF / user id / e-mail). Inclui QHSE/ficha EPI e listas de presença assinadas. Sem copiar blobs. Ver `src/lib/document-catalog/AGENTS.md`.
 - **Viewport do portal**: shell `h-dvh` + coluna de conteúdo `flex flex-col min-h-0 flex-1`; página preenche; filtros/header `shrink-0`; lista/tabela primária em `flex-1 min-h-0 overflow-auto`. Família GT (`department/gestao-tripulantes|dp|man-schedule|e-social`) tem contrato próprio.
+- **Desligamento (rescisão)**: processo em `gt_desligamentos` via `CollaboratorModal` (aba/botão), **não** na lista DP. Permissão ADMIN/MANAGER ou setor DP/RH + módulo `gestao-tripulantes`. Folha é fail-soft; e-Social S-2299 reusa `autoGenerateESocialEvents` (`motivo_demissao` = `mtvDeslig`). Ver `src/app/api/gestao-tripulantes/AGENTS.md`.
+- **Editar/excluir itens do cadastro GT (treinamentos/ASO/documentos/passaportes)**: gate único em `PUT`/`DELETE /api/gestao-tripulantes/documentos/[id]` (`documento-permissions.ts`) — ADMIN/MANAGER bypass, senão feature JSONB `gestao-tripulantes.documents.edit`/`.delete` (checkbox em `/admin/users`) ou ACL granular (`acl_permissions` resource `gestao-tripulantes`). Cliente usa `useGtDocumentPermissions()`. ASO já enviado ao e-Social não é editável/excluível. Ver `src/app/api/gestao-tripulantes/AGENTS.md`.
+- **Sistema de ACL (visão geral)**: três camadas independentes coexistem — módulos on/off (`access_permissions.modules` + `sectors.allowed_modules`), features JSONB granulares (`access_permissions.features`, `src/lib/permissions.ts`) e tabelas ACL (`acl_permissions`/`user_acl_permissions`/`role_acl_permissions`, checadas via `checkAclPermission`). A maioria dos módulos usa só as duas primeiras; **férias** e agora **gestão de tripulantes** (`documents.edit`/`documents.delete`) também aceitam a 3ª. Antes de 2026-09-02 as tabelas ACL não tinham nenhuma linha para `gestao-tripulantes`/`e-social` — corrigido via seed em `POST /api/acl/init` + migration aplicada direto no Supabase.
 
 ## Child DOX Index
 
 - `src/app/api/reembolso/AGENTS.md` — fluxo de emails e status de reembolso
 - `src/app/api/admin/email-settings/AGENTS.md` — credenciais SMTP no admin (app_secrets)
-- `src/app/api/gestao-tripulantes/AGENTS.md` — ASO identity gate, ASO agendamento DP/logística (60d config), e-Social, Man Schedule from `gt_*`, MIO canonical pull, fechamento lista nomeada
+- `src/app/api/gestao-tripulantes/AGENTS.md` — ASO identity gate, ASO agendamento DP/logística (60d config), e-Social, Man Schedule from `gt_*`, MIO canonical pull, fechamento lista nomeada, desligamento (`gt_desligamentos` + S-2299)
 - `src/lib/ia/AGENTS.md` — tools LLM, Graph, Companion (`portal-navigation` fuzzy + IA real)
 - `src/components/IA/AGENTS.md` — Companion FAB UI / mascote Fase 0 + Rive/Rive-like
 - `src/app/ferias/AGENTS.md` — histórico, export XLSX/CSV, PDF preenchido + assinaturas + soft prompt de cadastro

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { FiUpload, FiDownload, FiFile, FiAlertCircle, FiCheckCircle, FiClock, FiTrash2, FiArchive } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiFile, FiAlertCircle, FiCheckCircle, FiClock, FiTrash2, FiArchive, FiEdit2, FiSave, FiX } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken } from '@/lib/tokenStorage';
 import { toast } from 'react-hot-toast';
@@ -13,6 +13,7 @@ import {
   COLLABORATOR_MODAL_TAB_FILL_CLASS,
   COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
 } from '@/components/gestao-tripulantes/collaborator-modal-layout';
+import { useGtDocumentPermissions } from '@/components/gestao-tripulantes/use-gt-document-permissions';
 
 interface Document {
   id: string;
@@ -61,8 +62,18 @@ const TIPO_COLORS: Record<string, string> = {
 
 export default function DocumentosTab({ colaboradorId, documentos, onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
+  const { canEdit, canDelete } = useGtDocumentPermissions();
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    titulo: '',
+    numero_documento: '',
+    orgao_emissor: '',
+    data_emissao: '',
+    data_validade: '',
+  });
   const [newTipo, setNewTipo] = useState('documento_pessoal');
   const [ocrRunning, setOcrRunning] = useState<string | null>(null);
   const [newTitulo, setNewTitulo] = useState('');
@@ -124,13 +135,51 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh, hi
     try {
       setDeletingId(docId);
       const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Falha ao excluir');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Falha ao excluir');
       toast.success('Documento excluído');
       onRefresh?.();
     } catch {
       toast.error(t('gestaoTripulantes.errors.deleteError'));
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const startEditing = (doc: Document) => {
+    setEditingId(doc.id);
+    setEditForm({
+      titulo: doc.titulo || '',
+      numero_documento: doc.numero_documento || '',
+      orgao_emissor: doc.orgao_emissor || '',
+      data_emissao: (doc.data_emissao || '').slice(0, 10),
+      data_validade: (doc.data_validade || '').slice(0, 10),
+    });
+  };
+
+  const handleSaveEdit = async (docId: string) => {
+    try {
+      setSaving(true);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: editForm.titulo.trim() || null,
+          numero_documento: editForm.numero_documento.trim() || null,
+          orgao_emissor: editForm.orgao_emissor.trim() || null,
+          data_emissao: editForm.data_emissao || null,
+          data_validade: editForm.data_validade || null,
+        }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || 'Falha ao salvar');
+      toast.success('Documento atualizado');
+      setEditingId(null);
+      onRefresh?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar alterações');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -204,8 +253,62 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh, hi
                     <StatusIcon className={`w-4 h-4 ${STATUS_COLORS[statusKey] || 'text-gray-400'}`} />
                   </div>
                   <p className="font-semibold text-gray-800 text-sm mb-1 line-clamp-2">{doc.titulo}</p>
+                  {editingId === doc.id ? (
+                    <div className="space-y-2 mb-2">
+                      <input
+                        className="w-full text-xs bg-white border border-gray-200 rounded px-2 py-1"
+                        value={editForm.titulo}
+                        onChange={(e) => setEditForm((f) => ({ ...f, titulo: e.target.value }))}
+                        placeholder="Título"
+                      />
+                      <input
+                        className="w-full text-xs bg-white border border-gray-200 rounded px-2 py-1"
+                        value={editForm.numero_documento}
+                        onChange={(e) => setEditForm((f) => ({ ...f, numero_documento: e.target.value }))}
+                        placeholder="Número"
+                      />
+                      <input
+                        className="w-full text-xs bg-white border border-gray-200 rounded px-2 py-1"
+                        value={editForm.orgao_emissor}
+                        onChange={(e) => setEditForm((f) => ({ ...f, orgao_emissor: e.target.value }))}
+                        placeholder="Órgão emissor"
+                      />
+                      <div className="grid grid-cols-2 gap-1">
+                        <input
+                          type="date"
+                          className="w-full text-xs bg-white border border-gray-200 rounded px-2 py-1"
+                          value={editForm.data_emissao}
+                          onChange={(e) => setEditForm((f) => ({ ...f, data_emissao: e.target.value }))}
+                        />
+                        <input
+                          type="date"
+                          className="w-full text-xs bg-white border border-gray-200 rounded px-2 py-1"
+                          value={editForm.data_validade}
+                          onChange={(e) => setEditForm((f) => ({ ...f, data_validade: e.target.value }))}
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleSaveEdit(doc.id)}
+                          disabled={saving}
+                          className="flex items-center gap-1 px-2 py-1 text-[11px] text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          <FiSave className="w-3 h-3" /> Salvar
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="flex items-center gap-1 px-2 py-1 text-[11px] text-gray-600 border border-gray-300 rounded"
+                        >
+                          <FiX className="w-3 h-3" /> Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   {doc.numero_documento && (
                     <p className="text-xs text-gray-400 mb-2">Nº {doc.numero_documento}</p>
+                  )}
+                    </>
                   )}
                   <div className="flex items-center justify-between mt-3">
                     <div>
@@ -219,13 +322,25 @@ export default function DocumentosTab({ colaboradorId, documentos, onRefresh, hi
                           <FiDownload className="w-3.5 h-3.5" />
                         </a>
                       )}
+                      {canEdit && editingId !== doc.id && (
+                        <button
+                          onClick={() => startEditing(doc)}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition"
+                          title="Editar"
+                        >
+                          <FiEdit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {canDelete && (
                       <button
                         onClick={() => handleDelete(doc.id)}
                         disabled={deletingId === doc.id}
                         className="p-1.5 text-gray-400 hover:text-red-600 rounded transition disabled:opacity-50"
+                        title="Excluir"
                       >
                         <FiTrash2 className="w-3.5 h-3.5" />
                       </button>
+                      )}
                     </div>
                   </div>
                 </div>

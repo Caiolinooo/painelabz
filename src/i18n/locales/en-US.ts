@@ -3611,10 +3611,14 @@ export default {
     todayPobHint: 'People with exact ON today (no asterisk)',
     today: 'Today',
     currentWeek: 'Jump to today',
+    goToCurrentMonth: 'Back to the current month and jump to today',
     prevDay: 'Previous day',
     nextDay: 'Next day',
     prevWeeks: 'Previous week',
     nextWeeks: 'Next week',
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    referenceMonth: 'Reference month',
     legendStb: 'StandBy'
   },
   contrato: {

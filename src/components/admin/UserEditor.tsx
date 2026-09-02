@@ -394,6 +394,19 @@ const UserEditor: React.FC<UserEditorProps> = ({
     }));
   };
 
+  const handleFeaturePermissionChange = (featureId: string, checked: boolean) => {
+    setEditedUser(prev => ({
+      ...prev,
+      accessPermissions: {
+        ...prev.accessPermissions,
+        features: {
+          ...prev.accessPermissions?.features,
+          [featureId]: checked
+        }
+      }
+    }));
+  };
+
   // Validar email
   const validateEmail = (email: string): boolean => {
     const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -877,6 +890,57 @@ const UserEditor: React.FC<UserEditorProps> = ({
                   })}
                 </div>
               )}
+
+              {(() => {
+                const gtModuleEnabled = editedUser.accessPermissions?.modules?.['gestao-tripulantes']
+                  ?? rolePermissions[editedUser.role]?.modules?.['gestao-tripulantes']
+                  ?? false;
+                if (!gtModuleEnabled) return null;
+                const featureDisabled = editedUser.role === 'ADMIN' || editedUser.role === 'MANAGER';
+                const editOn = editedUser.accessPermissions?.features?.['gestao-tripulantes.documents.edit'] === true
+                  || featureDisabled;
+                const deleteOn = editedUser.accessPermissions?.features?.['gestao-tripulantes.documents.delete'] === true
+                  || featureDisabled;
+                return (
+                  <div className="mt-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                    <h4 className="text-sm font-medium text-slate-900 mb-1">
+                      Gestão de Tripulantes — Cadastro do Colaborador
+                    </h4>
+                    <p className="text-xs text-slate-600 mb-3">
+                      Controla editar e excluir treinamentos, ASOs, documentos e passaportes já cadastrados.
+                      ADMIN e MANAGER já têm acesso (bypass por cargo).
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <label className="flex items-start gap-2 text-sm text-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={editOn}
+                          disabled={featureDisabled}
+                          onChange={(e) => handleFeaturePermissionChange('gestao-tripulantes.documents.edit', e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
+                        />
+                        <span>
+                          Editar itens do cadastro
+                          <span className="block text-xs text-slate-500">Treinamentos, ASO, documentos e passaportes</span>
+                        </span>
+                      </label>
+                      <label className="flex items-start gap-2 text-sm text-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={deleteOn}
+                          disabled={featureDisabled}
+                          onChange={(e) => handleFeaturePermissionChange('gestao-tripulantes.documents.delete', e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
+                        />
+                        <span>
+                          Excluir itens do cadastro
+                          <span className="block text-xs text-slate-500">Soft-delete em gt_documentos</span>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Permissões específicas de reembolso */}
               <ReimbursementPermissionsEditor

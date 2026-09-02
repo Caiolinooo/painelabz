@@ -9,6 +9,7 @@ import {
   FiClock,
   FiBookOpen,
   FiEdit2,
+  FiTrash2,
   FiX,
   FiFileText,
   FiCheck,
@@ -31,6 +32,7 @@ import {
   COLLABORATOR_MODAL_TAB_FILL_CLASS,
   COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
 } from '@/components/gestao-tripulantes/collaborator-modal-layout';
+import { useGtDocumentPermissions } from '@/components/gestao-tripulantes/use-gt-document-permissions';
 
 export interface Document {
   id: string;
@@ -171,7 +173,9 @@ function DaysToExpiry({ dateStr }: { dateStr?: string | null }) {
 
 export default function TreinamentosTab({ colaboradorId, colaborador, documentos, onRefresh, highlightDocId }: Props) {
   const { t } = useI18n();
+  const { canEdit, canDelete } = useGtDocumentPermissions();
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
   const [exportingExcel, setExportingExcel] = useState(false);
 
@@ -450,6 +454,22 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
     }
   };
 
+  const handleDelete = async (docId: string) => {
+    if (!confirm('Excluir este treinamento do cadastro?')) return;
+    try {
+      setDeletingId(docId);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${docId}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Falha ao excluir');
+      toast.success('Treinamento excluído');
+      onRefresh?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir treinamento');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   // --------------------------------------------------------------------------
   // Save New Training Handler
   // --------------------------------------------------------------------------
@@ -664,13 +684,25 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
               >
                 <FiUpload className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => handleOpenEdit(doc)}
-                className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
-                title="Editar número, validade e dados do curso"
-              >
-                <FiEdit2 className="w-4 h-4" />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => handleOpenEdit(doc)}
+                  className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
+                  title="Editar número, validade e dados do curso"
+                >
+                  <FiEdit2 className="w-4 h-4" />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={() => handleDelete(doc.id)}
+                  disabled={deletingId === doc.id}
+                  className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition border border-transparent hover:border-red-200 disabled:opacity-50"
+                  title="Excluir treinamento"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                </button>
+              )}
             </>
           )}
         </div>

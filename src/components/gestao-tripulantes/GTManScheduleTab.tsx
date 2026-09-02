@@ -37,9 +37,22 @@ import {
     scrollScheduleColumnIntoView,
 } from '@/lib/gestao-tripulantes/man-schedule-nav';
 import {
-    MAX_SCHEDULE_DAY_COLUMNS,
-    MAX_SCHEDULE_WEEK_COLUMNS,
-    clampScheduleRange,
+    buildScheduleColumns,
+    civilReferenceMonth,
+    clampReferenceMonth,
+    columnPeriod,
+    focusColumnIndex,
+    formatReferenceMonthLabel,
+    indexOfCivilDay,
+    isSameReferenceMonth,
+    persistReferenceMonthPreference,
+    readReferenceMonthPreference,
+    parseCivilYmd,
+    shiftReferenceMonth,
+    type ReferenceMonth,
+    type ScheduleViewport,
+} from '@/lib/gestao-tripulantes/man-schedule-reference-month';
+import {
     parseCompleteFilterDate,
 } from '@/lib/gestao-tripulantes/filter-date';
 
@@ -187,54 +200,7 @@ function applyRotationRow(
     return [...prev, payload(template)];
 }
 
-type ScheduleViewport = 'day' | 'week';
-
 const VIEWPORT_STORAGE_KEY = 'gt-man-schedule-viewport-day';
-const DAY_VIEWPORT_DEFAULT_WINDOW_DAYS = 90;
-
-function viewportColumnSpanDays(viewport: ScheduleViewport): number {
-    switch (viewport) {
-        case 'day':
-            return 1;
-        case 'week':
-            return 7;
-        default: {
-            const _never: never = viewport;
-            return _never;
-        }
-    }
-}
-
-function columnPeriod(columnDate: Date, viewport: ScheduleViewport): { start: Date; end: Date } {
-    const start = new Date(columnDate);
-    start.setHours(0, 0, 0, 0);
-    const span = viewportColumnSpanDays(viewport);
-    const end = new Date(start);
-    end.setDate(end.getDate() + span - 1);
-    end.setHours(23, 59, 59, 999);
-    return { start, end };
-}
-
-function generateDayColumns(rangeStart: Date, rangeEnd: Date): { date: Date }[] {
-    const { start, end } = clampScheduleRange(rangeStart, rangeEnd, MAX_SCHEDULE_DAY_COLUMNS);
-    const days: { date: Date }[] = [];
-    const cursor = new Date(start);
-    while (cursor <= end) {
-        days.push({ date: new Date(cursor) });
-        cursor.setDate(cursor.getDate() + 1);
-    }
-    return days.length > 0 ? days : [{ date: new Date(start) }];
-}
-
-function dayViewportDefaultWindow(): { start: Date; end: Date } {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const start = new Date(today);
-    start.setDate(start.getDate() - 30);
-    const end = new Date(start);
-    end.setDate(end.getDate() + DAY_VIEWPORT_DEFAULT_WINDOW_DAYS - 1);
-    return { start, end };
-}
 
 function readViewportDayPreference(): boolean {
     if (typeof window === 'undefined') return false;
@@ -585,14 +551,23 @@ export default function GTManScheduleTab({ onColabClick, kpiFilter = '' }: Props
     const [filterDateStart, setFilterDateStart] = useState('');
     const [filterDateEnd, setFilterDateEnd] = useState('');
     const [viewportDay, setViewportDay] = useState(false);
+    const [referenceMonth, setReferenceMonth] = useState<ReferenceMonth>(() => civilReferenceMonth());
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setViewportDay(readViewportDayPreference());
+        const storedMonth = readReferenceMonthPreference();
+        if (storedMonth) setReferenceMonth(storedMonth);
     }, []);
 
     const viewport: ScheduleViewport = viewportDay ? 'day' : 'week';
+
+    const applyReferenceMonth = useCallback((next: ReferenceMonth) => {
+        const clamped = clampReferenceMonth(next);
+        setReferenceMonth(clamped);
+        persistReferenceMonthPreference(clamped);
+    }, []);
 
     const handleViewportDayChange = (checked: boolean) => {
         setViewportDay(checked);
@@ -1057,78 +1032,27 @@ function parseLocalDate(str: string | null | undefined): Date | null {
             .map(([position, members]) => ({ position, members, count: members.length }));
     }, [filteredSchedules]);
 
-    const { weeks } = useMemo(() => {
-        let earliest: Date | null = null;
-        let latest: Date | null = null;
-
+    const weeks = useMemo(() => {
+        const rotationDates: Date[] = [];
         for (const group of positionGroups) {
             for (const m of group.members) {
                 for (const r of m.rotations) {
-                    if (r.start) {
-                        const d = parseLocalDate(r.start);
-                        if (d && (!earliest || d < earliest)) earliest = d;
-                    }
-                    if (r.end) {
-                        const d = parseLocalDate(r.end);
-                        if (d && (!latest || d > latest)) latest = d;
-                    }
+                    const start = parseLocalDate(r.start);
+                    const end = parseLocalDate(r.end);
+                    if (start) rotationDates.push(start);
+                    if (end) rotationDates.push(end);
                 }
             }
         }
 
-        const appliedStart = parseCompleteFilterDate(filterDateStart);
-        const appliedEnd = parseCompleteFilterDate(filterDateEnd);
-
-        if (appliedStart && (!earliest || appliedStart < earliest)) earliest = appliedStart;
-        if (appliedEnd && (!latest || appliedEnd > latest)) latest = appliedEnd;
-
-        if (!earliest) earliest = new Date(new Date().getFullYear(), 0, 1);
-        if (!latest) latest = new Date(new Date().getFullYear(), 11, 31);
-
-        const snapToSaturday = (d: Date) => {
-            const day = d.getDay();
-            const diff = day >= 6 ? day - 6 : day + 1;
-            d.setDate(d.getDate() - diff);
-            return d;
-        };
-
-        if (viewport === 'day') {
-            const fallback = dayViewportDefaultWindow();
-            const startBound = appliedStart || (!appliedStart && !appliedEnd ? fallback.start : earliest);
-            const endBound = appliedEnd || (!appliedStart && !appliedEnd ? fallback.end : latest);
-            const columns = generateDayColumns(startBound, endBound);
-            return {
-                weeks: columns,
-                timelineStart: columns[0]?.date ?? startBound,
-            };
-        }
-
-        const start = snapToSaturday(new Date(earliest));
-        start.setDate(start.getDate() - 14);
-
-        const endDate = new Date(latest);
-        endDate.setDate(endDate.getDate() + 14);
-
-        let totalWeeks = Math.max(
-            Math.ceil((endDate.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)),
-            12
-        );
-
-        if (totalWeeks > MAX_SCHEDULE_WEEK_COLUMNS) {
-            start.setTime(endDate.getTime() - MAX_SCHEDULE_WEEK_COLUMNS * 7 * 24 * 60 * 60 * 1000);
-            snapToSaturday(start);
-            totalWeeks = MAX_SCHEDULE_WEEK_COLUMNS;
-        }
-
-        const generatedWeeks = [];
-        for (let i = 0; i < totalWeeks; i++) {
-            const d = new Date(start);
-            d.setDate(d.getDate() + i * 7);
-            generatedWeeks.push({ date: new Date(d) });
-        }
-
-        return { weeks: generatedWeeks, timelineStart: start };
-    }, [positionGroups, filterDateStart, filterDateEnd, viewport]);
+        return buildScheduleColumns({
+            viewport,
+            referenceMonth,
+            rotationDates,
+            filterStart: parseCompleteFilterDate(filterDateStart),
+            filterEnd: parseCompleteFilterDate(filterDateEnd),
+        });
+    }, [positionGroups, filterDateStart, filterDateEnd, viewport, referenceMonth]);
 
     const filteredWeeks = useMemo(() => {
         const startDate = parseCompleteFilterDate(filterDateStart);
@@ -1150,39 +1074,22 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         });
     }, [weeks, filterDateStart, filterDateEnd, viewport]);
 
-    const currentWeekIndex = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        let idx = -1;
-        for (let i = 0; i < filteredWeeks.length; i++) {
-            const { start: colStart, end: colEnd } = columnPeriod(filteredWeeks[i].date, viewport);
-            if (today >= colStart && today <= colEnd) {
-                idx = i;
-                break;
-            }
-        }
-
-        if (idx === -1 && filteredWeeks.length > 0) {
-            let minDiff = Infinity;
-            filteredWeeks.forEach((week, i) => {
-                const diff = Math.abs(today.getTime() - new Date(week.date).getTime());
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    idx = i;
-                }
-            });
-        }
-
-        return idx >= 0 ? idx : 0;
-    }, [filteredWeeks, viewport]);
-
+    const todayYmd = civilTodayYmd();
+    const todayColumnIndex = useMemo(
+        () => indexOfCivilDay(filteredWeeks, todayYmd, viewport),
+        [filteredWeeks, todayYmd, viewport],
+    );
     const currentWeekKey = useMemo(
         () =>
-            filteredWeeks[currentWeekIndex]?.date
-                ? new Date(filteredWeeks[currentWeekIndex].date).toDateString()
+            todayColumnIndex >= 0 && filteredWeeks[todayColumnIndex]?.date
+                ? new Date(filteredWeeks[todayColumnIndex].date).toDateString()
                 : null,
-        [filteredWeeks, currentWeekIndex]
+        [filteredWeeks, todayColumnIndex],
+    );
+    const isCurrentMonth = isSameReferenceMonth(referenceMonth, civilReferenceMonth());
+    const focusIndex = useMemo(
+        () => focusColumnIndex(filteredWeeks, referenceMonth, viewport, todayYmd),
+        [filteredWeeks, referenceMonth, viewport, todayYmd],
     );
 
     const scrollToColumn = useCallback((index: number) => {
@@ -1199,16 +1106,21 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         scrollToColumn(adjacentColumnIndex(visible, delta, filteredWeeks.length));
     }, [filteredWeeks.length, scrollToColumn]);
 
-    const scrollToCurrentWeek = useCallback(() => {
-        scrollToColumn(currentWeekIndex);
-    }, [currentWeekIndex, scrollToColumn]);
+    const goToToday = useCallback(() => {
+        const current = civilReferenceMonth();
+        if (!isSameReferenceMonth(referenceMonth, current)) {
+            applyReferenceMonth(current);
+            return;
+        }
+        scrollToColumn(focusIndex);
+    }, [applyReferenceMonth, focusIndex, referenceMonth, scrollToColumn]);
 
     useEffect(() => {
         if (!loading && filteredWeeks.length > 0) {
-            const timer = setTimeout(scrollToCurrentWeek, 120);
+            const timer = setTimeout(() => scrollToColumn(focusIndex), 120);
             return () => clearTimeout(timer);
         }
-    }, [loading, filteredWeeks.length, scrollToCurrentWeek]);
+    }, [loading, filteredWeeks.length, focusIndex, referenceMonth.year, referenceMonth.month, viewport, scrollToColumn]);
 
     const getWeekStatus = useCallback(
         (weekDate: Date, rotations: RotationCell[]): string => {
@@ -1300,15 +1212,14 @@ function parseLocalDate(str: string | null | undefined): Date | null {
         return statuses;
     }, [positionGroups, filteredWeeks, getWeekStatus]);
 
-    const todayColumnDate = filteredWeeks[currentWeekIndex]?.date ?? null;
+    const todayColumnDate = parseCivilYmd(todayYmd);
 
     const todayPobCount = useMemo(() => {
-        const ymd = civilTodayYmd();
         return countPobOnCivilDay(
             positionGroups.flatMap((group) => group.members),
-            ymd,
+            todayYmd,
         );
-    }, [positionGroups]);
+    }, [positionGroups, todayYmd]);
 
     const visibleGroups = useMemo(() => {
         if (kpiFilter !== 'embarcados' && kpiFilter !== 'disponiveis') return positionGroups;
@@ -1602,7 +1513,13 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                         viewport={viewport}
                         onPrev={() => scrollByColumns(-1)}
                         onNext={() => scrollByColumns(1)}
-                        onToday={scrollToCurrentWeek}
+                        onToday={goToToday}
+                        referenceMonthLabel={formatReferenceMonthLabel(referenceMonth, locale)}
+                        onPrevMonth={() => applyReferenceMonth(shiftReferenceMonth(referenceMonth, -1))}
+                        onNextMonth={() => applyReferenceMonth(shiftReferenceMonth(referenceMonth, 1))}
+                        disablePrevMonth={isSameReferenceMonth(referenceMonth, shiftReferenceMonth(referenceMonth, -1))}
+                        disableNextMonth={isSameReferenceMonth(referenceMonth, shiftReferenceMonth(referenceMonth, 1))}
+                        isCurrentMonth={isCurrentMonth}
                     />
 
                     <div className="flex items-center gap-2 ml-auto self-end">

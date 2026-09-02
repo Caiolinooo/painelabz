@@ -3924,10 +3924,14 @@ export default {
     todayPobHint: 'Pessoas com ON hoje (sem asterisco)',
     today: 'Hoje',
     currentWeek: 'Ir para hoje',
+    goToCurrentMonth: 'Voltar ao mês atual e ir para hoje',
     prevDay: 'Dia anterior',
     nextDay: 'Próximo dia',
     prevWeeks: 'Semana anterior',
     nextWeeks: 'Próxima semana',
+    prevMonth: 'Mês anterior',
+    nextMonth: 'Próximo mês',
+    referenceMonth: 'Mês de referência',
     legendStb: 'StandBy'
   },
   contrato: {

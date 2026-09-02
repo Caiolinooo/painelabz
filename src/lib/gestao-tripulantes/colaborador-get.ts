@@ -29,7 +29,7 @@ const PROFILE_SELECT = `
   centro_custo_id, empresa_id, embarcacao_atual_id, cargo_id,
   data_admissao, data_demissao, matricula, status_embarque, standby,
   data_ultimo_embarque, data_ultimo_desembarque, data_proximo_embarque,
-  origem, mio_id, ultimo_sync_mio, foto_url, created_at, updated_at,
+  origem, mio_id, ultimo_sync_mio, foto_url, ativo, created_at, updated_at,
   sexo, genero, peso, altura, raca_cor, escolaridade, deficiencia, deficiencia_cid,
   orgao_emissor, data_emissao_rg, pis_pasep, ctps, ctps_serie, ctps_uf,
   cnh, cnh_categoria, cnh_validade, cnh_uf,
