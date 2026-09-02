@@ -15,8 +15,9 @@ Ponto único de leitura do colaborador no portal: `gt_*` + usuário (`users_unif
 
 - Join colaborador: `gt_colaboradores.id`.
 - Join portal (`resolvePortalUser`): `user_id` → `users_unified.tax_id` dígitos = CPF do colaborador → e-mail lowercase exact → nome+CPF se único. Select `first_name, last_name, email, tax_id, role` — **nunca** `cpf` / `full_name` / `phone` (não existem em `users_unified`; o PostgREST quebra e a ficha cai em "sem vínculo").
-- Backfill `gt_colaboradores.user_id` só se estiver null e o match for único; nunca sobrescreve outro `user_id`.
-- Férias (`leave_requests`) e reembolsos (`Reimbursement`, não `reembolsos`) usam os `user_id` resolvidos; reembolso também tenta CPF da própria tabela.
+- Backfill `gt_colaboradores.user_id` só se estiver null e o match for único; nunca sobrescreve outro `user_id`. Match só por e-mail **não** persiste `user_id` salvo se o `tax_id` do portal for o mesmo CPF do colaborador.
+- `moduleUserIds` (férias/reembolsos): canônico + extras só se o extra **não** tiver `tax_id` conflitante com o CPF (clone corporativo com `tax_id` null ok; outra pessoa com CPF diferente não entra).
+- Férias (`leave_requests`) e reembolsos (`Reimbursement`, não `reembolsos`) usam esses `moduleUserIds`; reembolso também tenta CPF da própria tabela.
 - Documentos: validade civil + papel vigente/histórico (`validade-civil.ts` / `documentos-alertas.ts`).
 - Módulos externos (`leave_requests`, `Reimbursement`) são fail-soft: tabela ausente ou erro → lista vazia.
 - GET `/api/employee-hub/[id]` devolve o record plano (não `{ data }`). `colaborador.status_embarque` é o status vivo da célula de hoje (`overlayStatusEscalaHoje` / `embarque-status.ts`), com `escala_codigo_hoje`. Search overlay the same.

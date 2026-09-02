@@ -12,10 +12,11 @@ import {
   pickUniqueNameCpfMatch,
   pickUniqueTaxIdMatch,
   shouldBackfillUserId,
-  uniqueUserIds,
+  compatibleModuleUserIds,
   normalizePersonName,
   type PortalUser,
   type PortalUserLookup,
+  type PortalUserMatchReason,
   type PortalUserResolution,
 } from '@/lib/employee-hub/portal-user-match';
 
@@ -86,13 +87,23 @@ async function fetchPortalUserByNameAndCpf(
 async function maybeBackfillColaboradorUserId(
   colaboradorId: string,
   currentUserId: string | null | undefined,
-  matchedUserId: string,
+  matched: PortalUser,
+  reason: PortalUserMatchReason,
+  cpfDigits: string,
 ): Promise<void> {
-  if (!shouldBackfillUserId(currentUserId, matchedUserId)) return;
+  if (
+    !shouldBackfillUserId(currentUserId, matched.id, {
+      reason,
+      cpfDigits,
+      matchedTaxId: matched.tax_id,
+    })
+  ) {
+    return;
+  }
   try {
     await supabaseAdmin
       .from('gt_colaboradores')
-      .update({ user_id: matchedUserId, updated_at: new Date().toISOString() })
+      .update({ user_id: matched.id, updated_at: new Date().toISOString() })
       .eq('id', colaboradorId)
       .is('user_id', null);
   } catch {
@@ -115,7 +126,7 @@ export async function resolvePortalUser(lookup: PortalUserLookup): Promise<Porta
         return {
           user: byId,
           reason: 'user_id',
-          moduleUserIds: uniqueUserIds(byId.id, byTax?.id, byEmail?.id),
+          moduleUserIds: compatibleModuleUserIds(byId, cpf, byTax, byEmail),
         };
       }
     }
@@ -123,31 +134,31 @@ export async function resolvePortalUser(lookup: PortalUserLookup): Promise<Porta
     const byTax = await fetchPortalUserByTaxId(cpf);
     if (byTax) {
       const byEmail = await fetchPortalUserByEmail(email);
-      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byTax.id);
+      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byTax, 'tax_id', cpf);
       return {
         user: byTax,
         reason: 'tax_id',
-        moduleUserIds: uniqueUserIds(byTax.id, byEmail?.id),
+        moduleUserIds: compatibleModuleUserIds(byTax, cpf, byEmail),
       };
     }
 
     const byEmail = await fetchPortalUserByEmail(email);
     if (byEmail) {
-      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byEmail.id);
+      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byEmail, 'email', cpf);
       return {
         user: byEmail,
         reason: 'email',
-        moduleUserIds: uniqueUserIds(byEmail.id),
+        moduleUserIds: compatibleModuleUserIds(byEmail, cpf),
       };
     }
 
     const byName = await fetchPortalUserByNameAndCpf(lookup.nome || '', cpf);
     if (byName) {
-      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byName.id);
+      await maybeBackfillColaboradorUserId(lookup.colaboradorId, lookup.userId, byName, 'name_cpf', cpf);
       return {
         user: byName,
         reason: 'name_cpf',
-        moduleUserIds: uniqueUserIds(byName.id),
+        moduleUserIds: compatibleModuleUserIds(byName, cpf),
       };
     }
   } catch {

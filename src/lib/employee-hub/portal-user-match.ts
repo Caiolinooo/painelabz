@@ -79,9 +79,51 @@ export function portalDisplayName(
 export function shouldBackfillUserId(
   currentUserId: string | null | undefined,
   matchedUserId: string | null | undefined,
+  opts?: {
+    reason?: PortalUserMatchReason | null;
+    cpfDigits?: string;
+    matchedTaxId?: string | null;
+  },
 ): boolean {
   if (!matchedUserId) return false;
-  return !currentUserId;
+  if (currentUserId) return false;
+  if (opts?.reason === 'email') {
+    const cpf = opts.cpfDigits || '';
+    const matchedTax = normalizeCpf(opts.matchedTaxId || '');
+    if (cpf.length !== 11) return false;
+    return matchedTax.length === 11 && matchedTax === cpf;
+  }
+  return true;
+}
+
+/**
+ * Extra portal rows may share férias/reembolsos with the canonical user only when
+ * they do not carry a conflicting tax_id (same person: gmail + corporate clone).
+ */
+export function portalUsersCompatibleForModules(
+  canonical: PortalUser,
+  other: PortalUser,
+  cpfDigits: string,
+): boolean {
+  const otherTax = normalizeCpf(other.tax_id || '');
+  const canonTax = normalizeCpf(canonical.tax_id || '');
+  if (otherTax.length === 11 && cpfDigits.length === 11 && otherTax !== cpfDigits) return false;
+  if (otherTax.length === 11 && canonTax.length === 11 && otherTax !== canonTax) return false;
+  return true;
+}
+
+export function compatibleModuleUserIds(
+  canonical: PortalUser,
+  cpfDigits: string,
+  ...others: Array<PortalUser | null | undefined>
+): string[] {
+  const ids = [canonical.id];
+  for (const other of others) {
+    if (!other?.id || other.id === canonical.id) continue;
+    if (!portalUsersCompatibleForModules(canonical, other, cpfDigits)) continue;
+    ids.push(other.id);
+  }
+  return uniqueUserIds(...ids);
 }
 
 export function pickUniqueTaxIdMatch(rows: PortalUser[], cpfDigits: string): PortalUser | null {
