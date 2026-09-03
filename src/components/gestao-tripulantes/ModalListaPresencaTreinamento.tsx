@@ -3,16 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   FiUsers,
-  FiFileText,
-  FiCalendar,
-  FiClock,
-  FiMapPin,
-  FiUser,
   FiCheck,
   FiX,
   FiCheckSquare,
   FiSquare,
-  FiDownload,
   FiExternalLink,
   FiAward
 } from 'react-icons/fi';
@@ -496,7 +490,6 @@ export default function ModalListaPresencaTreinamento({
           )}
         </div>
 
-        {/* Footer */}
         {/* Footer */}
         {!createdLista && (
           <div className="p-3 sm:p-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 shrink-0">

@@ -21,7 +21,10 @@ export async function GET(
 ) {
   try {
     const authHeader = request.headers.get('authorization') || undefined;
-    const token = extractTokenFromHeader(authHeader);
+    const token =
+      extractTokenFromHeader(authHeader) ||
+      request.cookies.get('abzToken')?.value ||
+      request.cookies.get('token')?.value;
     if (!token) {
       return NextResponse.json({ error: 'Token de autorização necessário' }, { status: 401 });
     }

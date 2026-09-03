@@ -3,15 +3,13 @@
 import React, { useState } from 'react';
 import {
   FiAward,
-  FiCheckCircle,
   FiClock,
   FiAlertCircle,
   FiAlertTriangle,
   FiPlus,
   FiChevronDown,
   FiChevronUp,
-  FiCheck,
-  FiFileText
+  FiCheck
 } from 'react-icons/fi';
 
 export interface MatrizConformidadeData {

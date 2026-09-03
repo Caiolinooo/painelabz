@@ -7,13 +7,9 @@ import {
   FiUpload,
   FiTrash2,
   FiEdit2,
-  FiCheck,
   FiX,
-  FiDownload,
-  FiRefreshCw,
   FiSearch,
   FiCheckCircle,
-  FiAlertCircle,
   FiLayers,
   FiBriefcase
 } from 'react-icons/fi';
