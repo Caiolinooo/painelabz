@@ -1,5 +1,28 @@
 # Changelog
 
+## [5.74.0] - 2026-09-03
+
+### 🎓 Matrizes de Treinamento, Lista de Presença e Responsividade Global (Mobile & PC)
+
+1. **Matrizes de Treinamento por Cargo & Setores (ACL)**:
+   - Configuração completa em `/admin/gestao-tripulantes` e atalho direto em `/department/gestao-tripulantes` (aba e botão de cabeçalho).
+   - Importador oficial de planilhas XLSX do MIO (`Matriz - Modelo 002`).
+   - Cruzamento automático por cargo e regime na ficha do colaborador (`MatrizConformidadeColaboradorCard`) com barra de conformidade, listagem de cursos vigentes/a vencer/vencidos/faltantes e ação rápida "Lançar / Anexar" em 1 clique.
+   - Visibilidade e gestão condicionadas a Setores autorizados (DP, RH, Treinamento, Operações, SMS/QHSE com módulo `gestao-tripulantes`), Roles (ADMIN/MANAGER), ACL granular (`matrizes.manage`/`matrizes.view`) e feature JSONB configurável em `/admin/users`.
+2. **Edição e Exclusão Total de Treinamentos**:
+   - Correção e exclusão auditável de lançamentos incorretos de cursos e certificados, operando tanto no certificado primário quanto no histórico colapsado (`obsoleto`) na ficha do colaborador.
+3. **Lista de Presença para Treinamentos Internos**:
+   - Modal integrado na ficha do colaborador (`ModalListaPresencaTreinamento`) permitindo emitir listas oficiais de presença em `/lista-presenca` para assinaturas digitais, download em PDF e opção de lançamento automático imediato da conclusão em lote nos prontuários de todos os participantes.
+4. **Man Schedule (Scroll e Timeline)**:
+   - Adicionada barra de rolagem de alto contraste e largura confortável (14px) no CSS global e barra superior de rolagem sincronizada em tempo real via `ResizeObserver`.
+5. **Responsividade Global e Viewport (Mobile & PC)**:
+   - Auto-close do menu drawer no mobile ao navegar (`pathname`).
+   - Padding responsivo do `<main>` (`px-3 py-3 sm:px-4 sm:py-4 md:px-8 md:py-6 touch-scroll`), recuperando mais de 50px de altura útil.
+   - `GtPageShell` atualizado para rolagem vertical suave no mobile (`overflow-y-auto lg:overflow-hidden`) com scrollports mantendo altura mínima segura (`min-h-[320px]` / `min-h-[360px]`), garantindo que tabelas nunca mais colapsem para 0px.
+   - Cards de KPI em grade compacta 2x2 no mobile (`grid-cols-2 lg:grid-cols-4`) ocupando apenas ~110px de altura.
+   - Filtros, abas de navegação (`no-scrollbar`) e tabelas com largura mínima (`min-w-[...]`) permitindo visualização fluida e cliques precisos em qualquer dispositivo.
+   - Modais com botões de ação fixos no rodapé (`sticky bottom-0`).
+
 ## [5.73.0] - 2026-09-02
 
 ### 🚪 Desligamento, ACL de documentos GT e Man Schedule

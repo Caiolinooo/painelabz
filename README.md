@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.73.0-orange?style=for-the-badge)](#)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)[![Version](https://img.shields.io/badge/Version-5.74.0-orange?style=for-the-badge)](#)
 
 **Portal corporativo unificado para gestão de pessoas, processos, comunicação interna e compliance trabalhista.**
 
@@ -24,13 +24,15 @@ O **Painel ABZ** é o núcleo digital da ABZ Group, projetado para centralizar f
 
 ---
 
-## Novidades da Versão [v5.73.0]
+## Novidades da Versão [v5.74.0]
 
 | | Capacidade | Destaque |
 |---|---|---|
-| 🚪 | **Desligamento** | Rescisão no modal do colaborador (`gt_desligamentos`); DP/RH com módulo GT; folha fail-soft; S-2299. |
-| 🔐 | **Editar/excluir cadastro** | Treinamentos, ASO, documentos e passaportes com permissão ACL/feature; ASO já enviado ao e-Social fica travado. |
-| 📅 | **Man Schedule** | Mês de referência cobre o mês inteiro mesmo sem rotações; setas de mês distintas das de coluna. |
+| 🎓 | **Matrizes de Treinamento** | Configuração por cargo/regime, importador XLSX do MIO (Modelo 002), cruzamento na ficha com conformidade percentual e controle ACL/Setores. |
+| 🗑️ | **Edição/Exclusão de Treinamentos** | Remoção e correção total de lançamentos de cursos no prontuário, incluindo no histórico colapsado com auditoria. |
+| 📝 | **Lista de Presença Interna** | Geração formal de listas para assinaturas digitais (`/lista-presenca`) e lançamento em lote imediato nos colaboradores. |
+| 📜 | **Man Schedule (Scroll)** | Barra de rolagem de 14px estilizada no CSS global e barra superior sincronizada em tempo real via ResizeObserver. |
+| 📱 | **Responsividade Global** | Auto-close de menus mobile, padding responsivo, desbloqueio de viewport (`min-h-[320px]`), cards compactos e botões sticky. |
 
 ---
 
