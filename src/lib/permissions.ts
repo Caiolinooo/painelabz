@@ -65,6 +65,8 @@ export interface PermissionFeatures {
   'gestao-tripulantes.view'?: boolean;
   'gestao-tripulantes.manage'?: boolean;
   'gestao-tripulantes.admin'?: boolean;
+  'gestao-tripulantes.matrizes.manage'?: boolean;
+  'gestao-tripulantes.matrizes.view'?: boolean;
   'gestao-tripulantes.documents.edit'?: boolean;
   'gestao-tripulantes.documents.delete'?: boolean;
   'gestao-tripulantes.documents.ocr'?: boolean;
@@ -332,6 +334,8 @@ export const PERMISSIONS = {
     VIEW: 'gestao-tripulantes.view',
     MANAGE: 'gestao-tripulantes.manage',
     ADMIN: 'gestao-tripulantes.admin',
+    MATRIZES_MANAGE: 'gestao-tripulantes.matrizes.manage',
+    MATRIZES_VIEW: 'gestao-tripulantes.matrizes.view',
     DOCUMENTS_EDIT: 'gestao-tripulantes.documents.edit',
     DOCUMENTS_DELETE: 'gestao-tripulantes.documents.delete',
     DOCUMENTS_OCR: 'gestao-tripulantes.documents.ocr',

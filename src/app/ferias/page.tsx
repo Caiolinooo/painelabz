@@ -894,10 +894,10 @@ export default function FeriasPage() {
                             </div>
                         </div>
 
-                        <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+                        <div className="flex bg-gray-100 p-1 rounded-xl max-w-full overflow-x-auto no-scrollbar">
                             <button
                                 onClick={() => setActiveTab('my_leaves')}
-                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'my_leaves' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap ${activeTab === 'my_leaves' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
                             >
                                 <FiList />
                                 Minhas Solicitações
@@ -906,12 +906,12 @@ export default function FeriasPage() {
                             {isApprover && (
                                 <button
                                     onClick={() => setActiveTab('approvals')}
-                                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'approvals' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap ${activeTab === 'approvals' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
                                 >
                                     <FiInbox />
                                     Aprovações da Equipe
                                     {approvals.length > 0 && (
-                                        <span className="ml-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                                        <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                                             {approvals.length}
                                         </span>
                                     )}
@@ -921,7 +921,7 @@ export default function FeriasPage() {
                             {hasFeriasAdmin && (
                                 <button
                                     onClick={() => setActiveTab('all_requests')}
-                                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'all_requests' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap ${activeTab === 'all_requests' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
                                 >
                                     <FiEye />
                                     Todas as Solicitações
@@ -931,20 +931,20 @@ export default function FeriasPage() {
                     </div>
 
                     {activeTab === 'my_leaves' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full sm:w-auto">
                             <button
                                 onClick={handleDownloadFormulario}
-                                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-blue-200 text-blue-700 font-medium rounded-xl hover:bg-blue-50 transition-all shadow-sm active:scale-95"
+                                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-blue-200 text-blue-700 text-xs sm:text-sm font-medium rounded-xl hover:bg-blue-50 transition-all shadow-sm active:scale-95"
                                 title="Baixar formulário em branco para preenchimento manual"
                             >
-                                <FiFileText className="w-5 h-5" />
-                                <span className="hidden sm:inline">Formulário</span>
+                                <FiFileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                                <span>Formulário</span>
                             </button>
                             <button
                                 onClick={handleOpenNovaSolicitacao}
-                                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all shadow-sm active:scale-95"
+                                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-xl hover:bg-blue-700 transition-all shadow-sm active:scale-95"
                             >
-                                <FiPlus className="w-5 h-5" />
+                                <FiPlus className="w-4 h-4 sm:w-5 sm:h-5" />
                                 Nova Solicitação
                             </button>
                         </div>

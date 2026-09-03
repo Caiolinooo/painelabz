@@ -72,7 +72,7 @@ export default function EventosList({ eventos, loading, onView, onEdit, onSend, 
   return (
     <div className={cn('bg-white rounded-xl shadow-sm border border-slate-200/80 flex flex-col min-h-0 overflow-hidden', className)}>
       <div className={GT_PAGE_SCROLLPORT_CLASS}>
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="w-full min-w-[720px] divide-y divide-gray-200">
           <thead className="bg-slate-50 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">

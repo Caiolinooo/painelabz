@@ -82,6 +82,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
     if (savedMeuRH !== null) setIsMeuRHOpen(JSON.parse(savedMeuRH));
   }, []);
 
+  // Fechar menu mobile automaticamente ao navegar
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   const toggleSidebar = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
@@ -424,7 +429,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 min-h-0 flex flex-col overflow-y-auto px-4 md:px-8 py-8">
+          <main className="flex-1 min-h-0 flex flex-col overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 md:px-8 md:py-6 touch-scroll">
             {children}
           </main>
         </div>

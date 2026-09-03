@@ -554,6 +554,45 @@ export default function GTManScheduleTab({ onColabClick, kpiFilter = '' }: Props
     const [referenceMonth, setReferenceMonth] = useState<ReferenceMonth>(() => civilReferenceMonth());
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
+    const topScrollRef = useRef<HTMLDivElement>(null);
+    const [tableScrollWidth, setTableScrollWidth] = useState(0);
+    const isSyncingScrollRef = useRef(false);
+
+    useEffect(() => {
+        const el = tableContainerRef.current;
+        if (!el) return;
+        const updateWidth = () => {
+            if (el.scrollWidth && el.scrollWidth !== tableScrollWidth) {
+                setTableScrollWidth(el.scrollWidth);
+            }
+        };
+        updateWidth();
+        const ro = new ResizeObserver(updateWidth);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [tableScrollWidth]);
+
+    const handleTopScroll = () => {
+        if (isSyncingScrollRef.current) return;
+        isSyncingScrollRef.current = true;
+        if (tableContainerRef.current && topScrollRef.current) {
+            tableContainerRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+        }
+        requestAnimationFrame(() => {
+            isSyncingScrollRef.current = false;
+        });
+    };
+
+    const handleTableScroll = () => {
+        if (isSyncingScrollRef.current) return;
+        isSyncingScrollRef.current = true;
+        if (tableContainerRef.current && topScrollRef.current) {
+            topScrollRef.current.scrollLeft = tableContainerRef.current.scrollLeft;
+        }
+        requestAnimationFrame(() => {
+            isSyncingScrollRef.current = false;
+        });
+    };
 
     useEffect(() => {
         setViewportDay(readViewportDayPreference());
@@ -1545,8 +1584,20 @@ function parseLocalDate(str: string | null | undefined): Date | null {
                 </div>
             </div>
 
+            {/* Barra de rolagem horizontal superior sincronizada para fácil navegação */}
+            <div
+                ref={topScrollRef}
+                onScroll={handleTopScroll}
+                className="overflow-x-auto overflow-y-hidden shrink-0 border-b border-gray-200 bg-slate-50/80 man-schedule-scroll"
+                style={{ height: '14px' }}
+                title="Barra de rolagem horizontal rápida do Man Schedule"
+            >
+                <div style={{ width: `${tableScrollWidth || 3000}px`, height: '1px' }} />
+            </div>
+
             <div
                 ref={tableContainerRef}
+                onScroll={handleTableScroll}
                 data-testid="man-schedule-scroll"
                 className={MAN_SCHEDULE_SCROLL_CLASS}
             >

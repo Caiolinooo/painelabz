@@ -16,6 +16,8 @@ import WorkflowFechamentoTab, {
   type WorkflowFechamentoHandle,
 } from '@/components/gestao-tripulantes/admin/WorkflowFechamentoTab';
 import AsoAgendamentoConfigTab from '@/components/gestao-tripulantes/admin/AsoAgendamentoConfigTab';
+import MatrizTreinamentoConfigTab from '@/components/gestao-tripulantes/admin/MatrizTreinamentoConfigTab';
+import { FiAward } from 'react-icons/fi';
 
 function MioSyncButton() {
   const [syncing, setSyncing] = useState(false);
@@ -119,7 +121,7 @@ export default function GestaoTripulantesAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('geral');
   const fechamentoRef = useRef<WorkflowFechamentoHandle>(null);
-  const TABS_COM_SALVAR_PROPRIO = new Set(['fechamento', 'aso_agendamento', 'auditoria', 'exportar', 'centros_custo', 'escala']);
+  const TABS_COM_SALVAR_PROPRIO = new Set(['fechamento', 'aso_agendamento', 'auditoria', 'exportar', 'centros_custo', 'escala', 'matriz_treinamentos']);
   const [isTestingConexao, setIsTestingConexao] = useState(false);
   const [isScraping, setIsScraping] = useState(false);
   const [cronLogs, setCronLogs] = useState<any[]>([]);
@@ -151,8 +153,8 @@ export default function GestaoTripulantesAdminPage() {
       if (data.success && data.data) {
         setCronLogs(data.data);
       }
-    } catch (err) {
-      console.error('Erro ao buscar logs de cron:', err);
+    } catch {
+      /* fail-soft */
     }
   };
 
@@ -166,15 +168,21 @@ export default function GestaoTripulantesAdminPage() {
     setIsTestingConexao(true);
     setTestResult(null);
     try {
-      const res = await fetchWithToken('/api/gestao-tripulantes/poliweb', {
+      const res = await fetchWithToken('/api/gestao-tripulantes/poliweb/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao: 'testar_conexao' }),
+        body: JSON.stringify({
+          username: config.poliweb_username,
+          password: config.poliweb_password,
+        }),
       });
       const data = await res.json();
-      setTestResult({ success: data.success, message: data.message || 'Conexão concluída' });
+      setTestResult({
+        success: data.success,
+        message: data.success ? 'Conexão estabelecida com sucesso!' : (data.error || 'Falha na conexão'),
+      });
     } catch {
-      setTestResult({ success: false, message: 'Falha ao testar conexão com o servidor PoliWeb' });
+      setTestResult({ success: false, message: 'Erro ao testar conexão' });
     } finally {
       setIsTestingConexao(false);
     }
@@ -184,18 +192,11 @@ export default function GestaoTripulantesAdminPage() {
     setIsScraping(true);
     setScrapeResult(null);
     try {
-      const res = await fetchWithToken('/api/gestao-tripulantes/poliweb', {
+      const res = await fetchWithToken('/api/gestao-tripulantes/poliweb/scrape', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao: 'scraping' }),
       });
       const data = await res.json();
-      if (data.success) {
-        setScrapeResult(data.data);
-        fetchCronLogs();
-      } else {
-        setScrapeResult({ error: data.error || 'Erro na importação' });
-      }
+      setScrapeResult(data);
     } catch {
       setScrapeResult({ error: 'Erro ao executar sincronização manual' });
     } finally {
@@ -269,6 +270,7 @@ export default function GestaoTripulantesAdminPage() {
   };
 
   const tabs = [
+    { id: 'matriz_treinamentos', label: 'Matriz de Treinamentos', icon: FiAward },
     { id: 'auditoria', label: 'Auditoria Documentos', icon: FiAlertTriangle },
     { id: 'exportar', label: 'Exportar', icon: FiDownload },
     { id: 'centros_custo', label: 'Centros de Custo', icon: FiFolder },
@@ -338,15 +340,15 @@ export default function GestaoTripulantesAdminPage() {
       )}
 
       <div className="bg-white rounded-lg shadow-md flex-1 min-h-0 flex flex-col">
-        <div className="shrink-0 border-b overflow-x-auto">
-          <nav className="flex">
+        <div className="shrink-0 border-b overflow-x-auto no-scrollbar">
+          <nav className="flex min-w-max">
             {tabs.map(tab => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  className={`flex items-center px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-abz-blue text-abz-blue'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -360,7 +362,8 @@ export default function GestaoTripulantesAdminPage() {
           </nav>
         </div>
 
-        <div className="p-6 flex-1 min-h-0 overflow-auto">
+        <div className="p-3 sm:p-6 flex-1 min-h-0 overflow-auto touch-scroll">
+          {activeTab === 'matriz_treinamentos' && <MatrizTreinamentoConfigTab />}
           {activeTab === 'auditoria' && <AuditoriaDocumentosTab />}
           {activeTab === 'exportar' && <ExportarTab />}
           {activeTab === 'centros_custo' && <CentrosCustoAdminTab />}

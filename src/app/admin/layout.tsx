@@ -249,6 +249,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, []);
 
+  // Fechar menu mobile automaticamente ao navegar
+  React.useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   // Adicionar logs para depuração
   console.log('AdminLayout - isAdmin:', isAdmin);
   console.log('AdminLayout - pathname:', pathname);
@@ -412,12 +417,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </header>
 
           {/* Conteúdo da página */}
-          <main className="flex-1 min-h-0 flex flex-col overflow-y-auto p-4 md:p-6">
+          <main className="flex-1 min-h-0 flex flex-col overflow-y-auto p-3 sm:p-4 md:p-6 touch-scroll">
             {children}
           </main>
 
-          {/* Footer */}
-          <div className="shrink-0">
+          {/* Footer (compacto em telas pequenas) */}
+          <div className="shrink-0 hidden sm:block">
             <Footer />
           </div>
 

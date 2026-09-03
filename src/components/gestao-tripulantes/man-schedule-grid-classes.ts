@@ -8,7 +8,7 @@
  */
 
 export const MAN_SCHEDULE_SCROLL_CLASS =
-    'man-schedule-scroll flex-1 min-h-0 overflow-auto overscroll-contain relative isolate w-full';
+    'man-schedule-scroll flex-1 min-h-0 overflow-auto overscroll-contain relative isolate w-full min-h-[360px]';
 
 export const MAN_SCHEDULE_TABLE_CLASS =
     'man-schedule-grid w-max min-w-full border-separate border-spacing-0 font-sans text-xs bg-white';

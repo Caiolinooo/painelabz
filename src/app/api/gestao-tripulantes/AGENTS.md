@@ -221,6 +221,26 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - **Edição de Colaborador** (`CollaboratorModal`, `DadosPessoaisTab`): Ao atualizar matrícula, centro de custo, cargo, empresa, embarcação, regime de trabalho, escalas e datas de embarque/desembarque em `gt_colaboradores`, o motor sincroniza automaticamente os eventos e-Social (S-2200, S-2240, S-2299) e os fechamentos DP.
 - **Férias & Man Schedule**: Férias aprovadas no módulo `/ferias` sincronizam automaticamente com `gt_afastamentos` (S-2230) e refletem diretamente na escala visual do Man Schedule e no fechamento DP.
 
+### Matrizes de Treinamento & Conformidade por Cargo
+
+- **Tabelas canônicas**:
+  - `gt_matrizes_treinamento`: `id`, `codigo`, `nome`, `descricao`, `centro_resultado`, `cliente`, `contrato`, `responsavel`, `ativo`, `created_at`, `updated_at`.
+  - `gt_matriz_treinamento_requisitos`: `id`, `matriz_id`, `cargo_id`, `cargo_nome`, `regime` (Offshore/Onshore/Geral), `treinamento_nome`, `sigla`, `obrigatorio` (boolean), `validade_meses`, `especialidade`.
+- **Endpoints de Matrizes**:
+  - `GET|POST /api/gestao-tripulantes/matrizes`: lista matrizes com contagem agregada de requisitos e cadastra nova matriz (acesso ADMIN/MANAGER).
+  - `GET|PUT|DELETE /api/gestao-tripulantes/matrizes/[id]`: consulta detalhes com requisitos ordenados, substitui requisitos em lote e remove matriz.
+  - `POST /api/gestao-tripulantes/matrizes/import`: recebe arquivo multipart `.xlsx` no padrão oficial de exportação do MIO/PoliWeb (abas `Matriz` para metadados e `Registros` para requisitos de Cargo + Regime + Treinamento) e faz upsert automático.
+  - `GET /api/gestao-tripulantes/colaboradores/[id]/matriz-conformidade`: calcula o gap analysis do colaborador em relação à matriz de seu cargo e regime (cursos vigentes/válidos, a vencer em 30d, vencidos e faltantes não realizados).
+- **Treinamentos — Edição e Exclusão Total de Lançamentos Incorretos**:
+  - Itens obsoletos/históricos no card de treinamentos expõem botões de edição e exclusão para operadores autorizados (`useGtDocumentPermissions()`).
+  - Edição de treinamentos persiste carga horária, nome do curso, instituição e datas simultaneamente mesmo quando acompanhada de novo anexo de certificado.
+- **Lista de Presença para Treinamentos Internos**:
+  - `ModalListaPresencaTreinamento.tsx` integra o cadastro de tripulantes ao módulo global `/api/lista-presenca`.
+  - Permite emissão de lista oficial para assinaturas digitais e opção de lançamento automático em lote do treinamento concluído no prontuário de cada participante selecionado.
+- **Man Schedule — Barra de Rolagem Horizontal Aprimorada e Sincronizada**:
+  - CSS customizado `.man-schedule-scroll` (14px de espessura, thumb contrastado `#94a3b8` com track `#f1f5f9`).
+  - Barra de rolagem superior sincronizada (`topScrollRef` via `ResizeObserver` e listener de `scrollLeft`) para navegação horizontal imediata sem necessitar rolar até o rodapé da tabela.
+
 ### Centros de Custo Globais
 
 - **Tabela `gt_centros_custo`**: `id`, `codigo` (ex: `CC-OP-001`), `nome`, `ativo`, `created_at`, `updated_at`.
@@ -266,6 +286,14 @@ API routes for crew management (colaboradores, documentos, ASO, embarques, tipos
 - `SELECT ... FROM acl_permissions WHERE resource='gestao-tripulantes'` deve incluir `documents.edit` e `documents.delete` (seed 2026-09-02); `role_acl_permissions` tem MANAGER com `documents.edit` e ADMIN com todas.
 - ASO com `aso_data.esocial_status` em `enviado`/`processado`: botões Editar/Excluir da aba ASO ficam ocultos (mensagem "Já enviado ao e-Social — não editável"); ASO em `nao_enviado`/`pendente`/`quarentena` mostra os botões quando `canEdit`/`canDelete`.
 - `POST /colaboradores/[id]/desligamento` (ADMIN/MANAGER ou setor DP/RH + módulo GT) inativa o colaborador, cria `gt_desligamentos`, dispara S-2299 e tenta a folha sem falhar o GT. USER de TI com o mesmo módulo toma 403. `npx tsx --test src/lib/gestao-tripulantes/desligamento.test.ts src/lib/gestao-tripulantes/desligamento-auth.test.ts`.
+- **Matrizes de Treinamento por Cargo (Acesso e Permissões por Setor / ACL)**:
+  - Rotas: `GET|POST /api/gestao-tripulantes/matrizes`, `GET|PUT|DELETE /api/gestao-tripulantes/matrizes/[id]`, `POST /api/gestao-tripulantes/matrizes/import`, `GET /api/gestao-tripulantes/matrizes/permissions`.
+  - Gate unificado em `src/lib/gestao-tripulantes/matriz-permissions.ts` (`podeGerenciarMatrizesTreinamento` / `podeVisualizarMatrizesTreinamento`):
+    1. Role: ADMIN, ADMINISTRADOR, SUPERADMIN, MANAGER (acesso irrestrito).
+    2. Setores autorizados: Setor DP, RH, Treinamento, Operações, SMS/QHSE ou Gestão de Tripulantes com o módulo `gestao-tripulantes` habilitado em `sectors.allowed_modules`.
+    3. ACL granular: `acl_permissions` resource `gestao-tripulantes` com action `matrizes.manage` (ou `matrizes.view`), seed em `POST /api/acl/init` associado a MANAGER/ADMIN e atribuível a USERs.
+    4. Feature JSONB: `gestao-tripulantes.matrizes.manage` configurável em `/admin/users` no editor de usuário.
+  - Disponível nativamente na aba e no botão do header de `/department/gestao-tripulantes` (respeitando visivelmente o ACL — só é renderizado quando o usuário possui permissão de leitura/gestão).
 
 ## Child DOX Index
 

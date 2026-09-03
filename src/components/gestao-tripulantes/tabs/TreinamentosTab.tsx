@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   FiUpload,
   FiDownload,
@@ -16,7 +16,8 @@ import {
   FiPaperclip,
   FiCalendar,
   FiAward,
-  FiArchive
+  FiArchive,
+  FiUsers
 } from 'react-icons/fi';
 import { useI18n } from '@/contexts/I18nContext';
 import { fetchWithToken, getToken } from '@/lib/tokenStorage';
@@ -33,6 +34,10 @@ import {
   COLLABORATOR_MODAL_TABLE_SCROLL_CLASS,
 } from '@/components/gestao-tripulantes/collaborator-modal-layout';
 import { useGtDocumentPermissions } from '@/components/gestao-tripulantes/use-gt-document-permissions';
+import MatrizConformidadeColaboradorCard, {
+  type MatrizConformidadeData,
+} from '@/components/gestao-tripulantes/MatrizConformidadeColaboradorCard';
+import ModalListaPresencaTreinamento from '@/components/gestao-tripulantes/ModalListaPresencaTreinamento';
 
 export interface Document {
   id: string;
@@ -233,6 +238,41 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [historicoAberto, setHistoricoAberto] = useState<Record<string, boolean>>({});
 
+  // Matriz de Treinamentos e Conformidade
+  const [conformidade, setConformidade] = useState<MatrizConformidadeData | null>(null);
+  const [loadingConformidade, setLoadingConformidade] = useState(false);
+  const [showListaPresencaModal, setShowListaPresencaModal] = useState(false);
+
+  const fetchConformidade = React.useCallback(async () => {
+    if (!colaboradorId) return;
+    try {
+      setLoadingConformidade(true);
+      const res = await fetchWithToken(`/api/gestao-tripulantes/colaboradores/${colaboradorId}/matriz-conformidade`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setConformidade(json.data);
+      }
+    } catch {
+      /* fail-soft */
+    } finally {
+      setLoadingConformidade(false);
+    }
+  }, [colaboradorId]);
+
+  useEffect(() => {
+    fetchConformidade();
+  }, [fetchConformidade]);
+
+  const handleLancarCursoFromMatriz = (nomeCurso: string, sigla?: string | null) => {
+    setNewForm(prev => ({
+      ...prev,
+      titulo: nomeCurso,
+      subtipo: sigla || '',
+      orgao_emissor: 'ABZ Group',
+    }));
+    setShowNewModal(true);
+  };
+
   const treinamentos = Array.isArray(documentos)
     ? documentos.filter(d => documentoPertenceAba(d.tipo_documento, 'treinamentos'))
     : [];
@@ -417,31 +457,31 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
           const errJson = await upRes.json().catch(() => ({}));
           throw new Error(errJson.error || 'Erro ao enviar arquivo');
         }
-      } else {
-        const payload = {
-          titulo: editForm.titulo.trim(),
-          subtipo: editForm.subtipo.trim() || null,
-          numero_documento: editForm.numero_documento.trim() || null,
-          orgao_emissor: editForm.orgao_emissor.trim() || null,
-          data_emissao: editForm.data_emissao || null,
-          data_validade: editForm.permanente ? null : (editForm.data_validade || null),
-          treinamento_data: {
-            nome_curso: editForm.titulo.trim(),
-            instituicao: editForm.orgao_emissor.trim() || null,
-            carga_horaria: editForm.carga_horaria ? Number(editForm.carga_horaria) : null,
-          },
-        };
+      }
 
-        const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${editingDoc.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+      const payload = {
+        titulo: editForm.titulo.trim(),
+        subtipo: editForm.subtipo.trim() || null,
+        numero_documento: editForm.numero_documento.trim() || null,
+        orgao_emissor: editForm.orgao_emissor.trim() || null,
+        data_emissao: editForm.data_emissao || null,
+        data_validade: editForm.permanente ? null : (editForm.data_validade || null),
+        treinamento_data: {
+          nome_curso: editForm.titulo.trim(),
+          instituicao: editForm.orgao_emissor.trim() || null,
+          carga_horaria: editForm.carga_horaria ? Number(editForm.carga_horaria) : null,
+        },
+      };
 
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => ({}));
-          throw new Error(errJson.error || 'Erro ao atualizar dados do treinamento');
-        }
+      const res = await fetchWithToken(`/api/gestao-tripulantes/documentos/${editingDoc.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erro ao atualizar dados do treinamento');
       }
 
       toast.success('Treinamento atualizado com sucesso!');
@@ -674,36 +714,32 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
             <FiDownload className="w-3.5 h-3.5" />
             {isDownloadingThis ? 'Baixando...' : (hasAttachedFile ? 'Baixar PDF' : 'Baixar Ficha')}
           </button>
-          {!obsoleto && (
-            <>
-              <button
-                onClick={() => fileInputRefs.current[doc.id]?.click()}
-                disabled={isUploadingThis}
-                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
-                title={hasAttachedFile ? 'Substituir arquivo anexado' : 'Anexar certificado em PDF ou imagem'}
-              >
-                <FiUpload className="w-4 h-4" />
-              </button>
-              {canEdit && (
-                <button
-                  onClick={() => handleOpenEdit(doc)}
-                  className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
-                  title="Editar número, validade e dados do curso"
-                >
-                  <FiEdit2 className="w-4 h-4" />
-                </button>
-              )}
-              {canDelete && (
-                <button
-                  onClick={() => handleDelete(doc.id)}
-                  disabled={deletingId === doc.id}
-                  className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition border border-transparent hover:border-red-200 disabled:opacity-50"
-                  title="Excluir treinamento"
-                >
-                  <FiTrash2 className="w-4 h-4" />
-                </button>
-              )}
-            </>
+          <button
+            onClick={() => fileInputRefs.current[doc.id]?.click()}
+            disabled={isUploadingThis}
+            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
+            title={hasAttachedFile ? 'Substituir arquivo anexado' : 'Anexar certificado em PDF ou imagem'}
+          >
+            <FiUpload className="w-4 h-4" />
+          </button>
+          {canEdit && (
+            <button
+              onClick={() => handleOpenEdit(doc)}
+              className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-200"
+              title="Editar número, validade e dados do curso"
+            >
+              <FiEdit2 className="w-4 h-4" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => handleDelete(doc.id)}
+              disabled={deletingId === doc.id}
+              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition border border-transparent hover:border-red-200 disabled:opacity-50"
+              title={obsoleto ? "Excluir lançamento incorreto ou duplicado do histórico" : "Excluir treinamento"}
+            >
+              <FiTrash2 className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
@@ -742,6 +778,15 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowListaPresencaModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-semibold rounded-lg shadow-sm transition"
+            title="Gerar lista de presença para treinamento interno com assinatura digital"
+          >
+            <FiUsers className="w-3.5 h-3.5" />
+            Lista de Presença
+          </button>
+
           {treinamentos.length > 0 && (
             <button
               onClick={handleExportExcel}
@@ -763,6 +808,13 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
           </button>
         </div>
       </div>
+
+      {/* Matriz de Conformidade do Cargo */}
+      <MatrizConformidadeColaboradorCard
+        conformidade={conformidade}
+        isLoading={loadingConformidade}
+        onLancarCurso={handleLancarCursoFromMatriz}
+      />
 
       {/* Training Cards List */}
       {treinamentos.length === 0 ? (
@@ -1171,6 +1223,25 @@ export default function TreinamentosTab({ colaboradorId, colaborador, documentos
           </div>
         </div>
       )}
+
+      {/* Modal Lista de Presença para Treinamento Interno */}
+      <ModalListaPresencaTreinamento
+        isOpen={showListaPresencaModal}
+        onClose={() => setShowListaPresencaModal(false)}
+        initialColaborador={
+          colaboradorId
+            ? {
+                id: colaboradorId,
+                nome_completo: colaborador?.nome_completo || 'Tripulante',
+                cargo_nome: colaborador?.cargo_nome || '',
+              }
+            : null
+        }
+        onTreinamentoLancado={() => {
+          onRefresh?.();
+          fetchConformidade();
+        }}
+      />
     </div>
   );
 }

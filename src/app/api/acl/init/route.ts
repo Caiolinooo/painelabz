@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
       { name: 'gestao-tripulantes.view', description: 'Visualizar dashboard', resource: 'gestao-tripulantes', action: 'view', level: 0 },
       { name: 'gestao-tripulantes.manage', description: 'Gerenciar tripulantes', resource: 'gestao-tripulantes', action: 'manage', level: 2 },
       { name: 'gestao-tripulantes.admin', description: 'Admin total', resource: 'gestao-tripulantes', action: 'admin', level: 3 },
+      { name: 'gestao-tripulantes.matrizes.view', description: 'Visualizar matrizes de treinamento', resource: 'gestao-tripulantes', action: 'matrizes.view', level: 0 },
+      { name: 'gestao-tripulantes.matrizes.manage', description: 'Gerenciar matrizes de treinamento por cargo', resource: 'gestao-tripulantes', action: 'matrizes.manage', level: 2 },
       { name: 'gestao-tripulantes.documents.upload', description: 'Upload documentos', resource: 'gestao-tripulantes', action: 'documents.upload', level: 1 },
       { name: 'gestao-tripulantes.documents.edit', description: 'Editar documentos do cadastro', resource: 'gestao-tripulantes', action: 'documents.edit', level: 1 },
       { name: 'gestao-tripulantes.documents.delete', description: 'Excluir documentos do cadastro', resource: 'gestao-tripulantes', action: 'documents.delete', level: 2 },
@@ -142,6 +144,7 @@ export async function POST(request: NextRequest) {
         'contratos.read', 'contratos.sign', 'contratos.manage',
         'lista-presenca.read', 'lista-presenca.create', 'lista-presenca.manage',
         'gestao-tripulantes.view', 'gestao-tripulantes.manage',
+        'gestao-tripulantes.matrizes.view', 'gestao-tripulantes.matrizes.manage',
         'gestao-tripulantes.documents.upload', 'gestao-tripulantes.documents.edit', 'gestao-tripulantes.back.suggest'
       ],
       'USER': [

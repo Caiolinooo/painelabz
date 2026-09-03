@@ -12,10 +12,10 @@ import { cn } from '@/lib/utils';
  * Height is `100%` of main plus `py-8` (spacing.16), not a viewport fudge.
  */
 export const GT_PAGE_SHELL_CLASS =
-  'flex flex-col flex-1 min-h-0 overflow-hidden';
+  'flex flex-col flex-1 min-h-0 overflow-y-auto lg:overflow-hidden';
 
 export const GT_PAGE_SCROLLPORT_CLASS =
-  'flex-1 min-h-0 overflow-auto overscroll-contain';
+  'flex-1 min-h-0 overflow-auto overscroll-contain min-h-[320px] sm:min-h-[380px]';
 
 interface GtPageShellProps {
   children: React.ReactNode;
@@ -31,7 +31,7 @@ export default function GtPageShell({ children, className, flush = false }: GtPa
       className={cn(
         GT_PAGE_SHELL_CLASS,
         flush
-          ? 'bg-white -mx-4 md:-mx-8 -my-8 h-[calc(100%+theme(spacing.16))]'
+          ? 'bg-white -mx-3 -my-3 sm:-mx-4 sm:-my-4 md:-mx-8 md:-my-6 h-[calc(100%+theme(spacing.6))] sm:h-[calc(100%+theme(spacing.8))] md:h-[calc(100%+theme(spacing.12))]'
           : 'gap-3',
         className,
       )}

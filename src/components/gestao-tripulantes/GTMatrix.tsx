@@ -123,7 +123,7 @@ export default function GTMatrix({ colaboradores, loading, onRowClick, className
   return (
     <div className={cn('bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-0 overflow-hidden', className)}>
       <div className={GT_PAGE_SCROLLPORT_CLASS}>
-        <table className="w-full text-sm text-left">
+        <table className="w-full min-w-[760px] text-sm text-left">
           <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 w-12">{t('gestaoTripulantes.table.photo')}</th>

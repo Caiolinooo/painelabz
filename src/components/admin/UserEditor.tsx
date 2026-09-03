@@ -901,16 +901,18 @@ const UserEditor: React.FC<UserEditorProps> = ({
                   || featureDisabled;
                 const deleteOn = editedUser.accessPermissions?.features?.['gestao-tripulantes.documents.delete'] === true
                   || featureDisabled;
+                const matrizesOn = editedUser.accessPermissions?.features?.['gestao-tripulantes.matrizes.manage'] === true
+                  || featureDisabled;
                 return (
                   <div className="mt-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
                     <h4 className="text-sm font-medium text-slate-900 mb-1">
-                      Gestão de Tripulantes — Cadastro do Colaborador
+                      Gestão de Tripulantes — Permissões Específicas
                     </h4>
                     <p className="text-xs text-slate-600 mb-3">
-                      Controla editar e excluir treinamentos, ASOs, documentos e passaportes já cadastrados.
-                      ADMIN e MANAGER já têm acesso (bypass por cargo).
+                      Controla edição/exclusão de documentos e gestão de matrizes por cargo.
+                      ADMIN e MANAGER já têm acesso total por cargo; setores autorizados (DP, RH, Treinamento, SMS, Operações) recebem permissão setorial.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
                       <label className="flex items-start gap-2 text-sm text-slate-800">
                         <input
                           type="checkbox"
@@ -935,6 +937,19 @@ const UserEditor: React.FC<UserEditorProps> = ({
                         <span>
                           Excluir itens do cadastro
                           <span className="block text-xs text-slate-500">Soft-delete em gt_documentos</span>
+                        </span>
+                      </label>
+                      <label className="flex items-start gap-2 text-sm text-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={matrizesOn}
+                          disabled={featureDisabled}
+                          onChange={(e) => handleFeaturePermissionChange('gestao-tripulantes.matrizes.manage', e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
+                        />
+                        <span>
+                          Gerenciar Matrizes de Treinamento
+                          <span className="block text-xs text-slate-500">Configurar cursos por cargo e importar MIO</span>
                         </span>
                       </label>
                     </div>
@@ -1153,18 +1168,18 @@ const UserEditor: React.FC<UserEditorProps> = ({
           </div>
         </div>
 
-        {/* Botões de ação */}
-        <div className="flex justify-end space-x-3 border-t pt-4">
+        {/* Botões de ação (Sticky) */}
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t p-3 sm:p-4 mt-6 z-20 flex justify-end space-x-3 rounded-b-xl shadow-xs">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+            className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue transition"
           >
             {t('common.cancel')}
           </button>
           <button
             type="submit"
-            className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-abz-blue hover:bg-abz-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue"
+            className="flex items-center px-5 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-abz-blue hover:bg-abz-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-abz-blue transition"
           >
             <FiSave className="mr-2" />
             {t('common.save')}
@@ -1177,8 +1192,8 @@ const UserEditor: React.FC<UserEditorProps> = ({
   // Renderizar como modal ou como componente normal
   if (isModal) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl max-w-4xl w-full max-h-[96dvh] sm:max-h-[90vh] overflow-auto">
           {renderContent()}
         </div>
       </div>

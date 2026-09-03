@@ -387,8 +387,8 @@ export default function DepartamentoPessoalPage() {
         </div>
       </div>
 
-      <div className="border-b border-gray-200 shrink-0">
-        <nav className="flex space-x-6 -mb-px overflow-x-auto">
+      <div className="border-b border-gray-200 shrink-0 overflow-x-auto no-scrollbar">
+        <nav className="flex space-x-4 sm:space-x-6 -mb-px min-w-max pb-0.5">
           <button
             onClick={() => setActiveTab('colaboradores')}
             className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
@@ -433,7 +433,7 @@ export default function DepartamentoPessoalPage() {
       </div>
 
       {activeTab === 'colaboradores' && (
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-3">
+        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto lg:overflow-hidden gap-3">
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-3 shrink-0">
             <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
               <div className="relative flex-1 w-full">
@@ -504,7 +504,7 @@ export default function DepartamentoPessoalPage() {
           </div>
 
           <div className={`bg-white rounded-xl border border-gray-200 shadow-xs ${GT_PAGE_SCROLLPORT_CLASS}`}>
-            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+            <table className="w-full min-w-[850px] divide-y divide-gray-200 text-left text-xs">
               <thead className="bg-gray-50 text-gray-700 font-bold uppercase tracking-wider sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3">Matrícula</th>

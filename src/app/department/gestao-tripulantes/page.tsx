@@ -2,6 +2,8 @@
 
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { FiAward } from 'react-icons/fi';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useI18n } from '@/contexts/I18nContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
@@ -20,9 +22,20 @@ import {
   parseGtDashboardKpi,
   type GtDashboardKpi,
 } from '@/lib/gestao-tripulantes/embarque-status';
+import { useGtMatrizPermissions } from '@/components/gestao-tripulantes/use-gt-matriz-permissions';
 
 const GTManScheduleTab = dynamic(
   () => import('@/components/gestao-tripulantes/GTManScheduleTab'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="animate-pulse h-64 bg-gray-100 rounded-xl" aria-hidden="true" />
+    ),
+  }
+);
+
+const MatrizTreinamentoConfigTab = dynamic(
+  () => import('@/components/gestao-tripulantes/admin/MatrizTreinamentoConfigTab'),
   {
     ssr: false,
     loading: () => (
@@ -101,9 +114,15 @@ function GestaoTripulantesContent() {
   const pathnameSafe = pathname || '/department/gestao-tripulantes';
   const kpiFilter = parseGtDashboardKpi(searchParams?.get('kpi'));
 
-  const [activeTab, setActiveTab] = useState<'matrix' | 'schedule' | 'aso-logistica'>(() =>
-    searchParams?.get('tab') === 'aso-logistica' ? 'aso-logistica' : 'matrix',
-  );
+  const { canManageMatrizes, canViewMatrizes } = useGtMatrizPermissions();
+
+  const [activeTab, setActiveTab] = useState<'matrix' | 'schedule' | 'aso-logistica' | 'matriz-config'>(() => {
+    const tabParam = searchParams?.get('tab');
+    if (tabParam === 'aso-logistica') return 'aso-logistica';
+    if (tabParam === 'matriz-config') return 'matriz-config';
+    if (tabParam === 'schedule') return 'schedule';
+    return 'matrix';
+  });
   const [scheduleMounted, setScheduleMounted] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [colaboradores, setColaboradores] = useState<Collaborator[]>([]);
@@ -123,7 +142,9 @@ function GestaoTripulantesContent() {
   }, [filters.docsVencidos]);
 
   useEffect(() => {
-    if (searchParams?.get('tab') === 'aso-logistica') setActiveTab('aso-logistica');
+    const tab = searchParams?.get('tab');
+    if (tab === 'aso-logistica') setActiveTab('aso-logistica');
+    else if (tab === 'matriz-config') setActiveTab('matriz-config');
   }, [searchParams]);
 
   const setKpiInUrl = useCallback((kpi: GtDashboardKpi | '') => {
@@ -257,16 +278,33 @@ function GestaoTripulantesContent() {
           <h1 className="text-2xl font-bold text-gray-800 tracking-tight">{t('gestaoTripulantes.title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{t('gestaoTripulantes.subtitle')}</p>
         </div>
-        <a href="/department/gestao-tripulantes/novo"
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm font-semibold self-start sm:self-auto">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-          Novo Colaborador
-        </a>
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          {(canViewMatrizes || canManageMatrizes) && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('matriz-config')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-sm ${
+                activeTab === 'matriz-config'
+                  ? 'bg-blue-600 text-white shadow-blue-500/20'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+              }`}
+              title="Configurar matriz de treinamentos exigidos por cargo"
+            >
+              <FiAward className={`w-4 h-4 ${activeTab === 'matriz-config' ? 'text-white' : 'text-indigo-600'}`} />
+              Matriz de Treinamentos
+            </button>
+          )}
+          <a href="/department/gestao-tripulantes/novo"
+            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm font-semibold">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+            Novo Colaborador
+          </a>
+        </div>
       </div>
 
       {/* Tabs Seletor */}
-      <div className="border-b border-gray-200 shrink-0">
-        <nav className="flex space-x-6 -mb-px">
+      <div className="border-b border-gray-200 shrink-0 overflow-x-auto no-scrollbar">
+        <nav className="flex space-x-4 sm:space-x-6 -mb-px min-w-max pb-0.5">
           <button
             onClick={() => setActiveTab('matrix')}
             className={`pb-3 text-sm font-bold border-b-2 transition-all ${
@@ -300,11 +338,23 @@ function GestaoTripulantesContent() {
           >
             ASO Logística
           </button>
+          {(canViewMatrizes || canManageMatrizes) && (
+            <button
+              onClick={() => setActiveTab('matriz-config')}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+                activeTab === 'matriz-config'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Matriz de Treinamentos
+            </button>
+          )}
         </nav>
       </div>
 
       {activeTab === 'matrix' && (
-        <div className="flex flex-col flex-1 min-h-0 gap-3 overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 gap-3 overflow-y-auto lg:overflow-hidden">
           <div className="shrink-0 space-y-3">
             <AsoReviewPanel compact />
             <DashboardCards data={dashboard} activeKpi={kpiFilter} onKpiClick={handleKpiClick} />
@@ -342,6 +392,12 @@ function GestaoTripulantesContent() {
       {activeTab === 'aso-logistica' && (
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <AsoAgendamentoInbox />
+        </div>
+      )}
+
+      {activeTab === 'matriz-config' && (
+        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1">
+          <MatrizTreinamentoConfigTab readOnly={!canManageMatrizes} />
         </div>
       )}
 
