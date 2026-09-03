@@ -59,7 +59,6 @@ export default function GTMatrixFilters({ filters, onChange, colaboradores = [] 
   }, [colaboradores]);
 
   return (
-  return (
     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-2.5 sm:gap-3">
       {/* Linha 1: Busca rápida */}
       <div className="relative w-full">
