@@ -68,6 +68,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isMeuRHOpen, setIsMeuRHOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // O estado colapsado/aberto é restaurado do localStorage após o mount.
+  // Até lá, as transições ficam desabilitadas para que a página abra direto
+  // no estado final, sem animação de "esticar" do menu/conteúdo.
+  const [isLayoutStateLoaded, setIsLayoutStateLoaded] = useState(false);
+  const layoutTransition = (classes: string) => (isLayoutStateLoaded ? classes : '!transition-none');
+
   // Customizer State
   const [isMenuCustomizerOpen, setIsMenuCustomizerOpen] = useState(false);
 
@@ -80,6 +86,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
     setIsCollapsed(saved ? JSON.parse(saved) : false);
     const savedMeuRH = localStorage.getItem('sidebar-meurh-open');
     if (savedMeuRH !== null) setIsMeuRHOpen(JSON.parse(savedMeuRH));
+    // Só reabilita as transições depois que o estado restaurado foi pintado
+    // (dois frames), evitando a animação de esticar ao abrir a página.
+    let raf2: number | undefined;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setIsLayoutStateLoaded(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2 !== undefined) cancelAnimationFrame(raf2);
+    };
   }, []);
 
   // Fechar menu mobile automaticamente ao navegar
@@ -172,7 +188,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         key={item.id}
         href={item.href}
         onClick={handleItemClick}
-        className={`relative flex items-center px-4 py-3.5 my-1 mx-2 rounded-xl transition-all duration-200 group
+        className={`relative flex items-center px-4 py-3.5 my-1 mx-2 rounded-xl ${layoutTransition('transition-all duration-200')} group
           ${isActive
             ? 'bg-[#0066FF] text-white shadow-md shadow-blue-500/30'
             : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
@@ -223,7 +239,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           className={`bg-white fixed z-40 inset-y-0 left-0 border-r border-gray-100 flex flex-col transition-transform duration-300 w-64 ${isCollapsed ? 'md:w-20' : 'md:w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
           {/* Logo */}
-          <div className={`h-20 flex items-center ${isCollapsed ? 'md:justify-center px-6 md:px-0' : 'px-6'} justify-between`}>
+          <div className={`h-20 shrink-0 flex items-center ${isCollapsed ? 'md:justify-center px-6 md:px-0' : 'px-6'} justify-between`}>
             {(!isCollapsed || isMobileMenuOpen) && (
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
@@ -263,7 +279,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </div>
 
           {/* Menu */}
-          <nav className="flex-1 py-4 overflow-y-auto px-2 space-y-1">
+          {/* min-h-0: sem ele o flex item não encolhe abaixo do conteúdo e o menu
+              empurra o rodapé da sidebar para fora da viewport (logo cortado, sem scroll) */}
+          <nav className="flex-1 min-h-0 py-4 overflow-y-auto px-2 space-y-1">
             {/* Core Items - Using Unified Data */}
             {unifiedCore.map(renderItem)}
 
@@ -278,13 +296,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   {!isCollapsed && (
                     <>
                       <span className="font-medium text-sm text-gray-500 flex-1 text-left">{t('categories.hr', MODULE_CATEGORIES.hr)}</span>
-                      <FiChevronDown className={`w-4 h-4 transition-transform ${isMeuRHOpen ? 'rotate-180' : ''}`} />
+                      <FiChevronDown className={`w-4 h-4 ${layoutTransition('transition-transform')} ${isMeuRHOpen ? 'rotate-180' : ''}`} />
                     </>
                   )}
                 </button>
 
                 {/* Submenu */}
-                <div className={`overflow-hidden transition-all duration-300 ${isMeuRHOpen && !isCollapsed ? 'max-h-[1200px] mt-1' : 'max-h-0'}`}>
+                <div className={`overflow-hidden ${layoutTransition('transition-all duration-300')} ${isMeuRHOpen && !isCollapsed ? 'max-h-[1200px] mt-1' : 'max-h-0'}`}>
                   {unifiedHr.map(renderItem)}
                 </div>
               </div>
@@ -303,13 +321,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       <span className="font-medium text-sm text-gray-500 flex-1 text-left truncate">
                         {departmentTitle === MODULE_CATEGORIES.department ? t('categories.department', MODULE_CATEGORIES.department) : departmentTitle}
                       </span>
-                      <FiChevronDown className={`w-4 h-4 transition-transform ${isDepartmentOpen ? 'rotate-180' : ''}`} />
+                      <FiChevronDown className={`w-4 h-4 ${layoutTransition('transition-transform')} ${isDepartmentOpen ? 'rotate-180' : ''}`} />
                     </>
                   )}
                 </button>
 
                 {/* Submenu */}
-                <div className={`overflow-hidden transition-all duration-300 ${isDepartmentOpen && !isCollapsed ? 'max-h-[1200px] mt-1' : 'max-h-0'}`}>
+                <div className={`overflow-hidden ${layoutTransition('transition-all duration-300')} ${isDepartmentOpen && !isCollapsed ? 'max-h-[1200px] mt-1' : 'max-h-0'}`}>
                   {unifiedDept.map(renderItem)}
                 </div>
               </div>
@@ -324,7 +342,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
           {/* Credits */}
           {!isCollapsed && (
-            <div className="p-6 mt-auto">
+            <div className="p-6 mt-auto shrink-0">
               <div className="pt-4 border-t border-gray-100 text-[11px] text-gray-500 font-medium leading-relaxed">
                 {t('layout.developedBy', 'Desenvolvido por')} <a href="https://github.com/Caiolinooo" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600 transition-colors">Caio Correia</a>.
                 <br />
@@ -335,7 +353,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </aside>
 
         {/* Main Content Wrapper */}
-        <div className={`flex-1 flex flex-col min-h-0 h-dvh transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+        {/* min-w-0: row flex items default to min-width:auto (min-content of descendants).
+            Without it, wide grids (Man Schedule `w-max` table) inflate this wrapper beyond
+            the viewport and the outer `overflow-hidden` clips them — no scrollport ever overflows. */}
+        <div className={`flex-1 min-w-0 flex flex-col min-h-0 h-dvh ${layoutTransition('transition-all duration-300')} ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
 
           {/* Top Header */}
           <header className="h-16 shrink-0 px-4 md:px-8 flex items-center justify-between md:justify-end bg-gray-50/90 backdrop-blur-md border-b border-gray-200/50 z-20 sticky top-0 transition-colors">
