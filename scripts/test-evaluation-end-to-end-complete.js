@@ -10,7 +10,7 @@
  * 6. Integration testing between all components
  * 7. Original issue resolution verification
  */
-
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { Client } = require('pg');
 const { v4: uuidv4 } = require('uuid');
@@ -34,7 +34,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
 // Test data - Generate valid UUIDs and unique emails and phone numbers
 const timestamp = Date.now();
-const randomSuffix = Math.floor(Math.random() * 10000);
+const randomSuffix = crypto.randomInt(10000000, 99999999);
 const TEST_FUNCIONARIO_ID = uuidv4();
 const TEST_AVALIADOR_ID = uuidv4();
 const TEST_FUNCIONARIO_EMAIL = `funcionario.e2e.${timestamp}@example.com`;
